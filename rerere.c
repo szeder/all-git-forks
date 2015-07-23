@@ -30,14 +30,17 @@ static int rerere_dir_alloc;
 #define RR_HAS_PREIMAGE 2
 static struct rerere_dir {
 	unsigned char sha1[20];
-	unsigned char status;
+	int status_alloc, status_nr;
+	unsigned char *status;
 } **rerere_dir;
 
 static void free_rerere_dirs(void)
 {
 	int i;
-	for (i = 0; i < rerere_dir_nr; i++)
+	for (i = 0; i < rerere_dir_nr; i++) {
+		free(rerere_dir[i]->status);
 		free(rerere_dir[i]);
+	}
 	free(rerere_dir);
 	rerere_dir_nr = rerere_dir_alloc = 0;
 	rerere_dir = NULL;
@@ -53,17 +56,38 @@ static const char *rerere_id_hex(const struct rerere_id *id)
 	return sha1_to_hex(id->collection->sha1);
 }
 
+static void fit_variant(struct rerere_dir *rr_dir, int variant)
+{
+	ALLOC_GROW(rr_dir->status, variant, rr_dir->status_alloc);
+	if (rr_dir->status_nr < variant)
+		memset(rr_dir->status + rr_dir->status_nr,
+		       '\0', variant - rr_dir->status_nr);
+}
+
 const char *rerere_path(const struct rerere_id *id, const char *file)
 {
 	if (!file)
 		return git_path("rr-cache/%s", rerere_id_hex(id));
 
-	return git_path("rr-cache/%s/%s", rerere_id_hex(id), file);
+	if (id->variant <= 0)
+		return git_path("rr-cache/%s/%s", rerere_id_hex(id), file);
+
+	return git_path("rr-cache/%s/%s.%d",
+			rerere_id_hex(id), file, id->variant);
 }
 
-static int is_rr_file(const char *name, const char *filename)
+static int is_rr_file(const char *name, const char *filename, int *variant)
 {
-	return !strcmp(name, filename);
+	const char *suffix;
+
+	if (!strcmp(name, filename)) {
+		*variant = 0;
+		return 1;
+	}
+	if (!skip_prefix(name, filename, &suffix) || *suffix != '.')
+		return 0;
+
+	return !strtol_i(suffix + 1, 10, variant);
 }
 
 static void scan_rerere_dir(struct rerere_dir *rr_dir)
@@ -74,10 +98,15 @@ static void scan_rerere_dir(struct rerere_dir *rr_dir)
 	if (!dir)
 		return;
 	while ((de = readdir(dir)) != NULL) {
-		if (is_rr_file(de->d_name, "postimage"))
-			rr_dir->status |= RR_HAS_POSTIMAGE;
-		else if (is_rr_file(de->d_name, "preimage"))
-			rr_dir->status |= RR_HAS_PREIMAGE;
+		int variant;
+
+		if (is_rr_file(de->d_name, "postimage", &variant)) {
+			fit_variant(rr_dir, variant);
+			rr_dir->status[variant] |= RR_HAS_POSTIMAGE;
+		} else if (is_rr_file(de->d_name, "preimage", &variant)) {
+			fit_variant(rr_dir, variant);
+			rr_dir->status[variant] |= RR_HAS_PREIMAGE;
+		}
 	}
 	closedir(dir);
 }
@@ -118,19 +147,27 @@ static struct rerere_dir *find_rerere_dir(const char *hex)
 static int has_rerere_resolution(const struct rerere_id *id)
 {
 	const int both = RR_HAS_POSTIMAGE|RR_HAS_PREIMAGE;
+	int variant = id->variant;
 
-	return ((id->collection->status & both) == both);
+	if (variant < 0)
+		return 0;
+	return ((id->collection->status[variant] & both) == both);
 }
 
 static int has_rerere_preimage(const struct rerere_id *id)
 {
-	return (id->collection->status & RR_HAS_PREIMAGE);
+	int variant = id->variant;
+
+	if (variant < 0)
+		return 0;
+	return (id->collection->status[variant] & RR_HAS_PREIMAGE);
 }
 
 static struct rerere_id *new_rerere_id_hex(char *hex)
 {
 	struct rerere_id *id = xmalloc(sizeof(*id));
 	id->collection = find_rerere_dir(hex);
+	id->variant = -1; /* not known yet */
 	return id;
 }
 
