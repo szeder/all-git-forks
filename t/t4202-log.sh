@@ -871,4 +871,34 @@ test_expect_success 'log --graph --no-walk is forbidden' '
 	test_must_fail git log --graph --no-walk
 '
 
+test_expect_success 'setup simple merge for first-parent tests' '
+	git tag fp-base &&
+	test_commit master &&
+	git checkout -b fp-side &&
+	test_commit side &&
+	git checkout master &&
+	git merge --no-ff fp-side
+'
+
+test_expect_success 'log.firstparent config turns on first-parent' '
+	test_config log.firstparent true &&
+	cat >expect <<-\EOF &&
+	Merge branch '\''fp-side'\''
+	master
+	EOF
+	git log --format=%s fp-base.. >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'log --no-first-parent override log.firstparent' '
+	test_config log.firstparent true &&
+	cat >expect <<-\EOF &&
+	Merge branch '\''fp-side'\''
+	side
+	master
+	EOF
+	git log --no-first-parent --format=%s fp-base.. >actual &&
+	test_cmp expect actual
+'
+
 test_done

@@ -31,6 +31,7 @@ static const char *default_date_mode = NULL;
 
 static int default_abbrev_commit;
 static int default_show_root = 1;
+static int default_first_parent;
 static int decoration_style;
 static int decoration_given;
 static int use_mailmap_config;
@@ -109,6 +110,7 @@ static void cmd_log_init_defaults(struct rev_info *rev)
 	rev->abbrev_commit = default_abbrev_commit;
 	rev->show_root_diff = default_show_root;
 	rev->subject_prefix = fmt_patch_subject_prefix;
+	rev->first_parent_only = default_first_parent;
 	DIFF_OPT_SET(&rev->diffopt, ALLOW_TEXTCONV);
 
 	if (default_date_mode)
@@ -394,6 +396,10 @@ static int git_log_config(const char *var, const char *value, void *cb)
 		return parse_decorate_color_config(var, slot_name, value);
 	if (!strcmp(var, "log.mailmap")) {
 		use_mailmap_config = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "log.firstparent")) {
+		default_first_parent = git_config_bool(var, value);
 		return 0;
 	}
 

@@ -1802,6 +1802,10 @@ log.mailmap::
 	If true, makes linkgit:git-log[1], linkgit:git-show[1], and
 	linkgit:git-whatchanged[1] assume `--use-mailmap`.
 
+log.firstparent::
+	If true, linkgit:git-log[1] will default to `--first-parent`;
+	can be overridden by supplying `--no-first-parent`.
+
 mailinfo.scissors::
 	If true, makes linkgit:git-mailinfo[1] (and therefore
 	linkgit:git-am[1]) act by default as if the --scissors option
