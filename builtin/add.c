@@ -5,6 +5,7 @@
  */
 #include "cache.h"
 #include "builtin.h"
+#include "lockfile.h"
 #include "dir.h"
 #include "pathspec.h"
 #include "exec_cmd.h"
@@ -18,7 +19,7 @@
 #include "argv-array.h"
 
 static const char * const builtin_add_usage[] = {
-	N_("git add [options] [--] <pathspec>..."),
+	N_("git add [<options>] [--] <pathspec>..."),
 	NULL
 };
 static int patch_interactive, add_interactive, edit_interactive;
@@ -180,7 +181,7 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 	char *file = git_pathdup("ADD_EDIT.patch");
 	const char *apply_argv[] = { "apply", "--recount", "--cached",
 		NULL, NULL };
-	struct child_process child;
+	struct child_process child = CHILD_PROCESS_INIT;
 	struct rev_info rev;
 	int out;
 	struct stat st;
@@ -207,14 +208,14 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 	if (run_diff_files(&rev, 0))
 		die(_("Could not write patch"));
 
-	launch_editor(file, NULL, NULL);
+	if (launch_editor(file, NULL, NULL))
+		die(_("editing patch failed"));
 
 	if (stat(file, &st))
 		die_errno(_("Could not stat '%s'"), file);
 	if (!st.st_size)
 		die(_("Empty patch. Aborted."));
 
-	memset(&child, 0, sizeof(child));
 	child.git_cmd = 1;
 	child.argv = apply_argv;
 	if (run_command(&child))
@@ -284,7 +285,7 @@ static int add_files(struct dir_struct *dir, int flags)
 		for (i = 0; i < dir->ignored_nr; i++)
 			fprintf(stderr, "%s\n", dir->ignored[i]->name);
 		fprintf(stderr, _("Use -f if you really want to add them.\n"));
-		die(_("no files added"));
+		exit_status = 1;
 	}
 
 	for (i = 0; i < dir->nr; i++)

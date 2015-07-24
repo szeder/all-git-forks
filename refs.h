@@ -1,15 +1,38 @@
 #ifndef REFS_H
 #define REFS_H
 
-struct ref_lock {
-	char *ref_name;
-	char *orig_ref_name;
-	struct lock_file *lk;
-	unsigned char old_sha1[20];
-	int lock_fd;
-	int force_write;
-};
-
+/*
+ * A ref_transaction represents a collection of ref updates
+ * that should succeed or fail together.
+ *
+ * Calling sequence
+ * ----------------
+ * - Allocate and initialize a `struct ref_transaction` by calling
+ *   `ref_transaction_begin()`.
+ *
+ * - List intended ref updates by calling functions like
+ *   `ref_transaction_update()` and `ref_transaction_create()`.
+ *
+ * - Call `ref_transaction_commit()` to execute the transaction.
+ *   If this succeeds, the ref updates will have taken place and
+ *   the transaction cannot be rolled back.
+ *
+ * - At any time call `ref_transaction_free()` to discard the
+ *   transaction and free associated resources.  In particular,
+ *   this rolls back the transaction if it has not been
+ *   successfully committed.
+ *
+ * Error handling
+ * --------------
+ *
+ * On error, transaction functions append a message about what
+ * went wrong to the 'err' argument.  The message mentions what
+ * ref was being updated (if any) when the error occurred so it
+ * can be passed to 'die' or 'error' as-is.
+ *
+ * The message is appended to err without first clearing err.
+ * err will not be '\n' terminated.
+ */
 struct ref_transaction;
 
 /*
@@ -24,10 +47,18 @@ struct ref_transaction;
 
 /*
  * Reference cannot be resolved to an object name: dangling symbolic
- * reference (directly or indirectly), corrupt reference file, or
- * symbolic reference refers to ill-formatted reference name.
+ * reference (directly or indirectly), corrupt reference file,
+ * reference exists but name is bad, or symbolic reference refers to
+ * ill-formatted reference name.
  */
 #define REF_ISBROKEN 0x04
+
+/*
+ * Reference name is not well formed.
+ *
+ * See git-check-ref-format(1) for the definition of well formed ref names.
+ */
+#define REF_BAD_NAME 0x08
 
 /*
  * The signature for the callback function for the for_each_*()
@@ -36,7 +67,7 @@ struct ref_transaction;
  * single callback invocation.
  */
 typedef int each_ref_fn(const char *refname,
-			const unsigned char *sha1, int flags, void *cb_data);
+			const struct object_id *oid, int flags, void *cb_data);
 
 /*
  * The following functions invoke the specified callback function for
@@ -77,7 +108,7 @@ static inline const char *has_glob_specials(const char *pattern)
 extern int for_each_rawref(each_ref_fn, void *);
 
 extern void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname);
-extern void warn_dangling_symrefs(FILE *fp, const char *msg_fmt, const struct string_list* refnames);
+extern void warn_dangling_symrefs(FILE *fp, const char *msg_fmt, const struct string_list *refnames);
 
 /*
  * Lock the packed-refs file for writing.  Flags is passed to
@@ -123,7 +154,15 @@ extern void rollback_packed_refs(void);
  */
 int pack_refs(unsigned int flags);
 
-extern int repack_without_refs(const char **refnames, int n,
+/*
+ * Rewrite the packed-refs file, omitting any refs listed in
+ * 'refnames'. On error, packed-refs will be unchanged, the return
+ * value is nonzero, and a message about the error is written to the
+ * 'err' strbuf.
+ *
+ * The refs in 'refnames' needn't be sorted. `err` must not be NULL.
+ */
+extern int repack_without_refs(struct string_list *refnames,
 			       struct strbuf *err);
 
 extern int ref_exists(const char *);
@@ -141,37 +180,22 @@ extern int is_branch(const char *refname);
 extern int peel_ref(const char *refname, unsigned char *sha1);
 
 /*
- * Locks a "refs/" ref returning the lock on success and NULL on failure.
- * On failure errno is set to something meaningful.
+ * Flags controlling ref_transaction_update(), ref_transaction_create(), etc.
+ * REF_NODEREF: act on the ref directly, instead of dereferencing
+ *              symbolic references.
+ *
+ * Other flags are reserved for internal use.
  */
-extern struct ref_lock *lock_ref_sha1(const char *refname, const unsigned char *old_sha1);
-
-/** Locks any ref (for 'HEAD' type refs). */
 #define REF_NODEREF	0x01
-/* errno is set to something meaningful on failure */
-extern struct ref_lock *lock_any_ref_for_update(const char *refname,
-						const unsigned char *old_sha1,
-						int flags, int *type_p);
-
-/** Close the file descriptor owned by a lock and return the status */
-extern int close_ref(struct ref_lock *lock);
-
-/** Close and commit the ref locked by the lock */
-extern int commit_ref(struct ref_lock *lock);
-
-/** Release any lock taken but not written. **/
-extern void unlock_ref(struct ref_lock *lock);
-
-/** Writes sha1 into the ref specified by the lock. **/
-extern int write_ref_sha1(struct ref_lock *lock, const unsigned char *sha1, const char *msg);
 
 /*
  * Setup reflog before using. Set errno to something meaningful on failure.
  */
-int log_ref_setup(const char *refname, char *logfile, int bufsize);
+int log_ref_setup(const char *refname, struct strbuf *logfile);
 
 /** Reads log for the value of ref during at_time. **/
-extern int read_ref_at(const char *refname, unsigned long at_time, int cnt,
+extern int read_ref_at(const char *refname, unsigned int flags,
+		       unsigned long at_time, int cnt,
 		       unsigned char *sha1, char **msg,
 		       unsigned long *cutoff_time, int *cutoff_tz, int *cutoff_cnt);
 
@@ -194,7 +218,6 @@ extern int for_each_reflog(each_ref_fn, void *);
 
 #define REFNAME_ALLOW_ONELEVEL 1
 #define REFNAME_REFSPEC_PATTERN 2
-#define REFNAME_DOT_COMPONENT 4
 
 /*
  * Return 0 iff refname has the correct format for a refname according
@@ -202,10 +225,7 @@ extern int for_each_reflog(each_ref_fn, void *);
  * If REFNAME_ALLOW_ONELEVEL is set in flags, then accept one-level
  * reference names.  If REFNAME_REFSPEC_PATTERN is set in flags, then
  * allow a "*" wildcard character in place of one of the name
- * components.  No leading or repeated slashes are accepted.  If
- * REFNAME_DOT_COMPONENT is set in flags, then allow refname
- * components to start with "." (but not a whole component equal to
- * "." or "..").
+ * components.  No leading or repeated slashes are accepted.
  */
 extern int check_refname_format(const char *refname, int flags);
 
@@ -232,75 +252,177 @@ enum action_on_err {
  * Begin a reference transaction.  The reference transaction must
  * be freed by calling ref_transaction_free().
  */
-struct ref_transaction *ref_transaction_begin(void);
+struct ref_transaction *ref_transaction_begin(struct strbuf *err);
 
 /*
- * The following functions add a reference check or update to a
- * ref_transaction.  In all of them, refname is the name of the
- * reference to be affected.  The functions make internal copies of
- * refname, so the caller retains ownership of the parameter.  flags
- * can be REF_NODEREF; it is passed to update_ref_lock().
+ * Reference transaction updates
+ *
+ * The following four functions add a reference check or update to a
+ * ref_transaction.  They have some common similar parameters:
+ *
+ *     transaction -- a pointer to an open ref_transaction, obtained
+ *         from ref_transaction_begin().
+ *
+ *     refname -- the name of the reference to be affected.
+ *
+ *     flags -- flags affecting the update, passed to
+ *         update_ref_lock(). Can be REF_NODEREF, which means that
+ *         symbolic references should not be followed.
+ *
+ *     msg -- a message describing the change (for the reflog).
+ *
+ *     err -- a strbuf for receiving a description of any error that
+ *         might have occured.
+ *
+ * The functions make internal copies of refname and msg, so the
+ * caller retains ownership of these parameters.
+ *
+ * The functions return 0 on success and non-zero on failure. A
+ * failure means that the transaction as a whole has failed and needs
+ * to be rolled back.
  */
 
 /*
- * Add a reference update to transaction.  new_sha1 is the value that
- * the reference should have after the update, or zeros if it should
- * be deleted.  If have_old is true, then old_sha1 holds the value
- * that the reference should have had before the update, or zeros if
- * it must not have existed beforehand.
- * Function returns 0 on success and non-zero on failure. A failure to update
- * means that the transaction as a whole has failed and will need to be
- * rolled back. On failure the err buffer will be updated.
+ * Add a reference update to transaction. new_sha1 is the value that
+ * the reference should have after the update, or null_sha1 if it
+ * should be deleted. If new_sha1 is NULL, then the reference is not
+ * changed at all. old_sha1 is the value that the reference must have
+ * before the update, or null_sha1 if it must not have existed
+ * beforehand. The old value is checked after the lock is taken to
+ * prevent races. If the old value doesn't agree with old_sha1, the
+ * whole transaction fails. If old_sha1 is NULL, then the previous
+ * value is not checked.
+ *
+ * See the above comment "Reference transaction updates" for more
+ * information.
  */
 int ref_transaction_update(struct ref_transaction *transaction,
 			   const char *refname,
 			   const unsigned char *new_sha1,
 			   const unsigned char *old_sha1,
-			   int flags, int have_old,
+			   unsigned int flags, const char *msg,
 			   struct strbuf *err);
 
 /*
- * Add a reference creation to transaction.  new_sha1 is the value
- * that the reference should have after the update; it must not be the
- * null SHA-1.  It is verified that the reference does not exist
+ * Add a reference creation to transaction. new_sha1 is the value that
+ * the reference should have after the update; it must not be
+ * null_sha1. It is verified that the reference does not exist
  * already.
+ *
+ * See the above comment "Reference transaction updates" for more
+ * information.
  */
-void ref_transaction_create(struct ref_transaction *transaction,
-			    const char *refname,
-			    const unsigned char *new_sha1,
-			    int flags);
+int ref_transaction_create(struct ref_transaction *transaction,
+			   const char *refname,
+			   const unsigned char *new_sha1,
+			   unsigned int flags, const char *msg,
+			   struct strbuf *err);
 
 /*
- * Add a reference deletion to transaction.  If have_old is true, then
- * old_sha1 holds the value that the reference should have had before
- * the update (which must not be the null SHA-1).
+ * Add a reference deletion to transaction. If old_sha1 is non-NULL,
+ * then it holds the value that the reference should have had before
+ * the update (which must not be null_sha1).
+ *
+ * See the above comment "Reference transaction updates" for more
+ * information.
  */
-void ref_transaction_delete(struct ref_transaction *transaction,
-			    const char *refname,
-			    const unsigned char *old_sha1,
-			    int flags, int have_old);
+int ref_transaction_delete(struct ref_transaction *transaction,
+			   const char *refname,
+			   const unsigned char *old_sha1,
+			   unsigned int flags, const char *msg,
+			   struct strbuf *err);
+
+/*
+ * Verify, within a transaction, that refname has the value old_sha1,
+ * or, if old_sha1 is null_sha1, then verify that the reference
+ * doesn't exist. old_sha1 must be non-NULL.
+ *
+ * See the above comment "Reference transaction updates" for more
+ * information.
+ */
+int ref_transaction_verify(struct ref_transaction *transaction,
+			   const char *refname,
+			   const unsigned char *old_sha1,
+			   unsigned int flags,
+			   struct strbuf *err);
 
 /*
  * Commit all of the changes that have been queued in transaction, as
- * atomically as possible.  Return a nonzero value if there is a
- * problem.
- * If err is non-NULL we will add an error string to it to explain why
- * the transaction failed. The string does not end in newline.
+ * atomically as possible.
+ *
+ * Returns 0 for success, or one of the below error codes for errors.
  */
+/* Naming conflict (for example, the ref names A and A/B conflict). */
+#define TRANSACTION_NAME_CONFLICT -1
+/* All other errors. */
+#define TRANSACTION_GENERIC_ERROR -2
 int ref_transaction_commit(struct ref_transaction *transaction,
-			   const char *msg, struct strbuf *err);
+			   struct strbuf *err);
 
 /*
  * Free an existing transaction and all associated data.
  */
 void ref_transaction_free(struct ref_transaction *transaction);
 
-/** Lock a ref and then write its file */
-int update_ref(const char *action, const char *refname,
-		const unsigned char *sha1, const unsigned char *oldval,
-		int flags, enum action_on_err onerr);
+/**
+ * Lock, update, and unlock a single reference. This function
+ * basically does a transaction containing a single call to
+ * ref_transaction_update(). The parameters to this function have the
+ * same meaning as the corresponding parameters to
+ * ref_transaction_update(). Handle errors as requested by the `onerr`
+ * argument.
+ */
+int update_ref(const char *msg, const char *refname,
+	       const unsigned char *new_sha1, const unsigned char *old_sha1,
+	       unsigned int flags, enum action_on_err onerr);
 
 extern int parse_hide_refs_config(const char *var, const char *value, const char *);
 extern int ref_is_hidden(const char *);
+
+enum expire_reflog_flags {
+	EXPIRE_REFLOGS_DRY_RUN = 1 << 0,
+	EXPIRE_REFLOGS_UPDATE_REF = 1 << 1,
+	EXPIRE_REFLOGS_VERBOSE = 1 << 2,
+	EXPIRE_REFLOGS_REWRITE = 1 << 3
+};
+
+/*
+ * The following interface is used for reflog expiration. The caller
+ * calls reflog_expire(), supplying it with three callback functions,
+ * of the following types. The callback functions define the
+ * expiration policy that is desired.
+ *
+ * reflog_expiry_prepare_fn -- Called once after the reference is
+ *     locked.
+ *
+ * reflog_expiry_should_prune_fn -- Called once for each entry in the
+ *     existing reflog. It should return true iff that entry should be
+ *     pruned.
+ *
+ * reflog_expiry_cleanup_fn -- Called once before the reference is
+ *     unlocked again.
+ */
+typedef void reflog_expiry_prepare_fn(const char *refname,
+				      const unsigned char *sha1,
+				      void *cb_data);
+typedef int reflog_expiry_should_prune_fn(unsigned char *osha1,
+					  unsigned char *nsha1,
+					  const char *email,
+					  unsigned long timestamp, int tz,
+					  const char *message, void *cb_data);
+typedef void reflog_expiry_cleanup_fn(void *cb_data);
+
+/*
+ * Expire reflog entries for the specified reference. sha1 is the old
+ * value of the reference. flags is a combination of the constants in
+ * enum expire_reflog_flags. The three function pointers are described
+ * above. On success, return zero.
+ */
+extern int reflog_expire(const char *refname, const unsigned char *sha1,
+			 unsigned int flags,
+			 reflog_expiry_prepare_fn prepare_fn,
+			 reflog_expiry_should_prune_fn should_prune_fn,
+			 reflog_expiry_cleanup_fn cleanup_fn,
+			 void *policy_cb_data);
 
 #endif /* REFS_H */

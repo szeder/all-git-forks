@@ -110,6 +110,32 @@ test_expect_success "delete symref without dereference when the referred ref is 
 cp -f .git/HEAD.orig .git/HEAD
 git update-ref -d $m
 
+test_expect_success 'update-ref -d is not confused by self-reference' '
+	git symbolic-ref refs/heads/self refs/heads/self &&
+	test_when_finished "rm -f .git/refs/heads/self" &&
+	test_path_is_file .git/refs/heads/self &&
+	test_must_fail git update-ref -d refs/heads/self &&
+	test_path_is_file .git/refs/heads/self
+'
+
+test_expect_success 'update-ref --no-deref -d can delete self-reference' '
+	git symbolic-ref refs/heads/self refs/heads/self &&
+	test_when_finished "rm -f .git/refs/heads/self" &&
+	test_path_is_file .git/refs/heads/self &&
+	git update-ref --no-deref -d refs/heads/self &&
+	test_path_is_missing .git/refs/heads/self
+'
+
+test_expect_success 'update-ref --no-deref -d can delete reference to bad ref' '
+	>.git/refs/heads/bad &&
+	test_when_finished "rm -f .git/refs/heads/bad" &&
+	git symbolic-ref refs/heads/ref-to-bad refs/heads/bad &&
+	test_when_finished "rm -f .git/refs/heads/ref-to-bad" &&
+	test_path_is_file .git/refs/heads/ref-to-bad &&
+	git update-ref --no-deref -d refs/heads/ref-to-bad &&
+	test_path_is_missing .git/refs/heads/ref-to-bad
+'
+
 test_expect_success '(not) create HEAD with old sha1' "
 	test_must_fail git update-ref HEAD $A $B
 "
@@ -374,12 +400,6 @@ test_expect_success 'stdin fails create with no ref' '
 	grep "fatal: create: missing <ref>" err
 '
 
-test_expect_success 'stdin fails create with bad ref name' '
-	echo "create ~a $m" >stdin &&
-	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: invalid ref format: ~a" err
-'
-
 test_expect_success 'stdin fails create with no new value' '
 	echo "create $a" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
@@ -398,12 +418,6 @@ test_expect_success 'stdin fails update with no ref' '
 	grep "fatal: update: missing <ref>" err
 '
 
-test_expect_success 'stdin fails update with bad ref name' '
-	echo "update ~a $m" >stdin &&
-	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: invalid ref format: ~a" err
-'
-
 test_expect_success 'stdin fails update with no new value' '
 	echo "update $a" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
@@ -420,12 +434,6 @@ test_expect_success 'stdin fails delete with no ref' '
 	echo "delete " >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
 	grep "fatal: delete: missing <ref>" err
-'
-
-test_expect_success 'stdin fails delete with bad ref name' '
-	echo "delete ~a $m" >stdin &&
-	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: invalid ref format: ~a" err
 '
 
 test_expect_success 'stdin fails delete with too many arguments' '
@@ -511,7 +519,7 @@ test_expect_success 'stdin create ref works with path with space to blob' '
 test_expect_success 'stdin update ref fails with wrong old value' '
 	echo "update $c $m $m~1" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
 	test_must_fail git rev-parse --verify -q $c
 '
 
@@ -547,7 +555,7 @@ test_expect_success 'stdin update ref works with right old value' '
 test_expect_success 'stdin delete ref fails with wrong old value' '
 	echo "delete $a $m~1" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: Cannot lock the ref '"'"'$a'"'"'" err &&
+	grep "fatal: cannot lock ref '"'"'$a'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual
@@ -611,6 +619,52 @@ test_expect_success 'stdin update/create/verify combination works' '
 	test_must_fail git rev-parse --verify -q $c
 '
 
+test_expect_success 'stdin verify succeeds for correct value' '
+	git rev-parse $m >expect &&
+	echo "verify $m $m" >stdin &&
+	git update-ref --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin verify succeeds for missing reference' '
+	echo "verify refs/heads/missing $Z" >stdin &&
+	git update-ref --stdin <stdin &&
+	test_must_fail git rev-parse --verify -q refs/heads/missing
+'
+
+test_expect_success 'stdin verify treats no value as missing' '
+	echo "verify refs/heads/missing" >stdin &&
+	git update-ref --stdin <stdin &&
+	test_must_fail git rev-parse --verify -q refs/heads/missing
+'
+
+test_expect_success 'stdin verify fails for wrong value' '
+	git rev-parse $m >expect &&
+	echo "verify $m $m~1" >stdin &&
+	test_must_fail git update-ref --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin verify fails for mistaken null value' '
+	git rev-parse $m >expect &&
+	echo "verify $m $Z" >stdin &&
+	test_must_fail git update-ref --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin verify fails for mistaken empty value' '
+	M=$(git rev-parse $m) &&
+	test_when_finished "git update-ref $m $M" &&
+	git rev-parse $m >expect &&
+	echo "verify $m" >stdin &&
+	test_must_fail git update-ref --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'stdin update refs works with identity updates' '
 	cat >stdin <<-EOF &&
 	update $a $m $m
@@ -634,7 +688,7 @@ test_expect_success 'stdin update refs fails with wrong old value' '
 	update $c  ''
 	EOF
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual &&
@@ -700,12 +754,6 @@ test_expect_success 'stdin -z fails create with no ref' '
 	grep "fatal: create: missing <ref>" err
 '
 
-test_expect_success 'stdin -z fails create with bad ref name' '
-	printf $F "create ~a " "$m" >stdin &&
-	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: invalid ref format: ~a " err
-'
-
 test_expect_success 'stdin -z fails create with no new value' '
 	printf $F "create $a" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
@@ -728,12 +776,6 @@ test_expect_success 'stdin -z fails update with too few args' '
 	printf $F "update $a" "$m" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
 	grep "fatal: update $a: unexpected end of input when reading <oldvalue>" err
-'
-
-test_expect_success 'stdin -z fails update with bad ref name' '
-	printf $F "update ~a" "$m" "" >stdin &&
-	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: invalid ref format: ~a" err
 '
 
 test_expect_success 'stdin -z emits warning with empty new value' '
@@ -766,12 +808,6 @@ test_expect_success 'stdin -z fails delete with no ref' '
 	printf $F "delete " >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
 	grep "fatal: delete: missing <ref>" err
-'
-
-test_expect_success 'stdin -z fails delete with bad ref name' '
-	printf $F "delete ~a" "$m" >stdin &&
-	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: invalid ref format: ~a" err
 '
 
 test_expect_success 'stdin -z fails delete with no old value' '
@@ -847,7 +883,7 @@ test_expect_success 'stdin -z create ref works with path with space to blob' '
 test_expect_success 'stdin -z update ref fails with wrong old value' '
 	printf $F "update $c" "$m" "$m~1" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
 	test_must_fail git rev-parse --verify -q $c
 '
 
@@ -863,7 +899,7 @@ test_expect_success 'stdin -z create ref fails when ref exists' '
 	git rev-parse "$c" >expect &&
 	printf $F "create $c" "$m~1" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
 	git rev-parse "$c" >actual &&
 	test_cmp expect actual
 '
@@ -894,7 +930,7 @@ test_expect_success 'stdin -z update ref works with right old value' '
 test_expect_success 'stdin -z delete ref fails with wrong old value' '
 	printf $F "delete $a" "$m~1" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: Cannot lock the ref '"'"'$a'"'"'" err &&
+	grep "fatal: cannot lock ref '"'"'$a'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual
@@ -948,6 +984,52 @@ test_expect_success 'stdin -z update/create/verify combination works' '
 	test_must_fail git rev-parse --verify -q $c
 '
 
+test_expect_success 'stdin -z verify succeeds for correct value' '
+	git rev-parse $m >expect &&
+	printf $F "verify $m" "$m" >stdin &&
+	git update-ref -z --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin -z verify succeeds for missing reference' '
+	printf $F "verify refs/heads/missing" "$Z" >stdin &&
+	git update-ref -z --stdin <stdin &&
+	test_must_fail git rev-parse --verify -q refs/heads/missing
+'
+
+test_expect_success 'stdin -z verify treats no value as missing' '
+	printf $F "verify refs/heads/missing" "" >stdin &&
+	git update-ref -z --stdin <stdin &&
+	test_must_fail git rev-parse --verify -q refs/heads/missing
+'
+
+test_expect_success 'stdin -z verify fails for wrong value' '
+	git rev-parse $m >expect &&
+	printf $F "verify $m" "$m~1" >stdin &&
+	test_must_fail git update-ref -z --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin -z verify fails for mistaken null value' '
+	git rev-parse $m >expect &&
+	printf $F "verify $m" "$Z" >stdin &&
+	test_must_fail git update-ref -z --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'stdin -z verify fails for mistaken empty value' '
+	M=$(git rev-parse $m) &&
+	test_when_finished "git update-ref $m $M" &&
+	git rev-parse $m >expect &&
+	printf $F "verify $m" "" >stdin &&
+	test_must_fail git update-ref -z --stdin <stdin &&
+	git rev-parse $m >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success 'stdin -z update refs works with identity updates' '
 	printf $F "update $a" "$m" "$m" "update $b" "$m" "$m" "update $c" "$Z" "" >stdin &&
 	git update-ref -z --stdin <stdin &&
@@ -963,7 +1045,7 @@ test_expect_success 'stdin -z update refs fails with wrong old value' '
 	git update-ref $c $m &&
 	printf $F "update $a" "$m" "$m" "update $b" "$m" "$m" "update $c" "$m" "$Z" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: Cannot lock the ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual &&
@@ -981,6 +1063,34 @@ test_expect_success 'stdin -z delete refs works with packed and loose refs' '
 	test_must_fail git rev-parse --verify -q $a &&
 	test_must_fail git rev-parse --verify -q $b &&
 	test_must_fail git rev-parse --verify -q $c
+'
+
+run_with_limited_open_files () {
+	(ulimit -n 32 && "$@")
+}
+
+test_lazy_prereq ULIMIT_FILE_DESCRIPTORS 'run_with_limited_open_files true'
+
+test_expect_success ULIMIT_FILE_DESCRIPTORS 'large transaction creating branches does not burst open file limit' '
+(
+	for i in $(test_seq 33)
+	do
+		echo "create refs/heads/$i HEAD"
+	done >large_input &&
+	run_with_limited_open_files git update-ref --stdin <large_input &&
+	git rev-parse --verify -q refs/heads/33
+)
+'
+
+test_expect_success ULIMIT_FILE_DESCRIPTORS 'large transaction deleting branches does not burst open file limit' '
+(
+	for i in $(test_seq 33)
+	do
+		echo "delete refs/heads/$i HEAD"
+	done >large_input &&
+	run_with_limited_open_files git update-ref --stdin <large_input &&
+	test_must_fail git rev-parse --verify -q refs/heads/33
+)
 '
 
 test_done

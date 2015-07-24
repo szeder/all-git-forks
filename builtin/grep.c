@@ -20,7 +20,7 @@
 #include "pathspec.h"
 
 static char const * const grep_usage[] = {
-	N_("git grep [options] [-e] <pattern> [<rev>...] [[--] <path>...]"),
+	N_("git grep [<options>] [-e] <pattern> [<rev>...] [[--] <path>...]"),
 	NULL
 };
 
@@ -456,10 +456,10 @@ static int grep_tree(struct grep_opt *opt, const struct pathspec *pathspec,
 }
 
 static int grep_object(struct grep_opt *opt, const struct pathspec *pathspec,
-		       struct object *obj, const char *name, struct object_context *oc)
+		       struct object *obj, const char *name, const char *path)
 {
 	if (obj->type == OBJ_BLOB)
-		return grep_sha1(opt, obj->sha1, name, 0, oc ? oc->path : NULL);
+		return grep_sha1(opt, obj->sha1, name, 0, path);
 	if (obj->type == OBJ_COMMIT || obj->type == OBJ_TREE) {
 		struct tree_desc tree;
 		void *data;
@@ -501,7 +501,7 @@ static int grep_objects(struct grep_opt *opt, const struct pathspec *pathspec,
 	for (i = 0; i < nr; i++) {
 		struct object *real_obj;
 		real_obj = deref_tag(list->objects[i].item, NULL, 0);
-		if (grep_object(opt, pathspec, real_obj, list->objects[i].name, list->objects[i].context)) {
+		if (grep_object(opt, pathspec, real_obj, list->objects[i].name, list->objects[i].path)) {
 			hit = 1;
 			if (opt->status_only)
 				break;
@@ -641,7 +641,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "untracked", &untracked,
 			N_("search in both tracked and untracked files")),
 		OPT_SET_INT(0, "exclude-standard", &opt_exclude,
-			    N_("search also in ignored files"), 1),
+			    N_("ignore files specified via '.gitignore'"), 1),
 		OPT_GROUP(""),
 		OPT_BOOL('v', "invert-match", &opt.invert,
 			N_("show non-matching lines")),
@@ -738,7 +738,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 			PARSE_OPT_OPTARG, NULL, (intptr_t)default_pager },
 		OPT_BOOL(0, "ext-grep", &external_grep_allowed__ignored,
 			 N_("allow calling of grep(1) (ignored by this build)")),
-		{ OPTION_CALLBACK, 0, "help-all", &options, NULL, N_("show usage"),
+		{ OPTION_CALLBACK, 0, "help-all", NULL, NULL, N_("show usage"),
 		  PARSE_OPT_HIDDEN | PARSE_OPT_NOARG, help_callback },
 		OPT_END()
 	};
@@ -821,7 +821,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 			struct object *object = parse_object_or_die(sha1, arg);
 			if (!seen_dashdash)
 				verify_non_filename(prefix, arg);
-			add_object_array_with_context(object, arg, &list, xmemdupz(&oc, sizeof(struct object_context)));
+			add_object_array_with_path(object, arg, &list, oc.mode, oc.path);
 			continue;
 		}
 		if (!strcmp(arg, "--")) {
@@ -885,7 +885,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	if (!show_in_pager)
+	if (!show_in_pager && !opt.status_only)
 		setup_pager();
 
 	if (!use_index && (untracked || cached))

@@ -38,8 +38,8 @@ static const char *fmt_patch_subject_prefix = "PATCH";
 static const char *fmt_pretty;
 
 static const char * const builtin_log_usage[] = {
-	N_("git log [<options>] [<revision range>] [[--] <path>...]\n")
-	N_("   or: git show [options] <object>..."),
+	N_("git log [<options>] [<revision-range>] [[--] <path>...]"),
+	N_("git show [<options>] <object>..."),
 	NULL
 };
 
@@ -78,7 +78,7 @@ static int decorate_callback(const struct option *opt, const char *arg, int unse
 		decoration_style = DECORATE_SHORT_REFS;
 
 	if (decoration_style < 0)
-		die("invalid --decorate option: %s", arg);
+		die(_("invalid --decorate option: %s"), arg);
 
 	decoration_given = 1;
 
@@ -130,7 +130,7 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 		{ OPTION_CALLBACK, 0, "decorate", NULL, NULL, N_("decorate options"),
 		  PARSE_OPT_OPTARG, decorate_callback},
 		OPT_CALLBACK('L', NULL, &line_cb, "n,m:file",
-			     "Process line range n,m in file, counting from 1",
+			     N_("Process line range n,m in file, counting from 1"),
 			     log_line_range_callback),
 		OPT_END()
 	};
@@ -150,7 +150,7 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 
 	/* Any arguments at this point are not recognized */
 	if (argc > 1)
-		die("unrecognized argument: %s", argv[1]);
+		die(_("unrecognized argument: %s"), argv[1]);
 
 	memset(&w, 0, sizeof(w));
 	userformat_find_requirements(NULL, &w);
@@ -368,6 +368,8 @@ static int cmd_log_walk(struct rev_info *rev)
 
 static int git_log_config(const char *var, const char *value, void *cb)
 {
+	const char *slot_name;
+
 	if (!strcmp(var, "format.pretty"))
 		return git_config_string(&fmt_pretty, var, value);
 	if (!strcmp(var, "format.subjectprefix"))
@@ -388,8 +390,8 @@ static int git_log_config(const char *var, const char *value, void *cb)
 		default_show_root = git_config_bool(var, value);
 		return 0;
 	}
-	if (starts_with(var, "color.decorate."))
-		return parse_decorate_color_config(var, 15, value);
+	if (skip_prefix(var, "color.decorate.", &slot_name))
+		return parse_decorate_color_config(var, slot_name, value);
 	if (!strcmp(var, "log.mailmap")) {
 		use_mailmap_config = git_config_bool(var, value);
 		return 0;
@@ -447,13 +449,13 @@ static int show_blob_object(const unsigned char *sha1, struct rev_info *rev, con
 		return stream_blob_to_fd(1, sha1, NULL, 0);
 
 	if (get_sha1_with_context(obj_name, 0, sha1c, &obj_context))
-		die("Not a valid object name %s", obj_name);
+		die(_("Not a valid object name %s"), obj_name);
 	if (!obj_context.path[0] ||
 	    !textconv_object(obj_context.path, obj_context.mode, sha1c, 1, &buf, &size))
 		return stream_blob_to_fd(1, sha1, NULL, 0);
 
 	if (!buf)
-		die("git show %s: bad file", obj_name);
+		die(_("git show %s: bad file"), obj_name);
 
 	write_or_die(1, buf, size);
 	return 0;
@@ -487,7 +489,7 @@ static int show_tag_object(const unsigned char *sha1, struct rev_info *rev)
 }
 
 static int show_tree_object(const unsigned char *sha1,
-		const char *base, int baselen,
+		struct strbuf *base,
 		const char *pathname, unsigned mode, int stage, void *context)
 {
 	printf("%s%s\n", pathname, S_ISDIR(mode) ? "/" : "");
@@ -703,7 +705,7 @@ static int git_format_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff") ||
-	    !strcmp(var, "color.ui")) {
+	    !strcmp(var, "color.ui") || !strcmp(var, "diff.submodule")) {
 		return 0;
 	}
 	if (!strcmp(var, "format.numbered")) {
@@ -793,7 +795,7 @@ static int reopen_stdout(struct commit *commit, const char *subject,
 static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 {
 	struct rev_info check_rev;
-	struct commit *commit;
+	struct commit *commit, *c1, *c2;
 	struct object *o1, *o2;
 	unsigned flags1, flags2;
 
@@ -801,9 +803,11 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 		die(_("Need exactly one range."));
 
 	o1 = rev->pending.objects[0].item;
-	flags1 = o1->flags;
 	o2 = rev->pending.objects[1].item;
+	flags1 = o1->flags;
 	flags2 = o2->flags;
+	c1 = lookup_commit_reference(o1->sha1);
+	c2 = lookup_commit_reference(o2->sha1);
 
 	if ((flags1 & UNINTERESTING) == (flags2 & UNINTERESTING))
 		die(_("Not a range."));
@@ -825,10 +829,8 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 	}
 
 	/* reset for next revision walk */
-	clear_commit_marks((struct commit *)o1,
-			SEEN | UNINTERESTING | SHOWN | ADDED);
-	clear_commit_marks((struct commit *)o2,
-			SEEN | UNINTERESTING | SHOWN | ADDED);
+	clear_commit_marks(c1, SEEN | UNINTERESTING | SHOWN | ADDED);
+	clear_commit_marks(c2, SEEN | UNINTERESTING | SHOWN | ADDED);
 	o1->flags = flags1;
 	o2->flags = flags2;
 }
@@ -864,6 +866,7 @@ static void add_branch_description(struct strbuf *buf, const char *branch_name)
 		strbuf_addbuf(buf, &desc);
 		strbuf_addch(buf, '\n');
 	}
+	strbuf_release(&desc);
 }
 
 static char *find_branch_name(struct rev_info *rev)
@@ -1020,7 +1023,7 @@ static const char *set_outdir(const char *prefix, const char *output_directory)
 }
 
 static const char * const builtin_format_patch_usage[] = {
-	N_("git format-patch [options] [<since> | <revision range>]"),
+	N_("git format-patch [<options>] [<since> | <revision-range>]"),
 	NULL
 };
 
@@ -1397,7 +1400,8 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		if (check_head) {
 			unsigned char sha1[20];
 			const char *ref, *v;
-			ref = resolve_ref_unsafe("HEAD", sha1, 1, NULL);
+			ref = resolve_ref_unsafe("HEAD", RESOLVE_REF_READING,
+						 sha1, NULL);
 			if (ref && skip_prefix(ref, "refs/heads/", &v))
 				branch_name = xstrdup(v);
 			else
@@ -1439,7 +1443,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 			continue;
 
 		nr++;
-		list = xrealloc(list, nr * sizeof(list[0]));
+		REALLOC_ARRAY(list, nr);
 		list[nr - 1] = commit;
 	}
 	if (nr == 0)
@@ -1628,16 +1632,13 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 		break;
 	default:
 		current_branch = branch_get(NULL);
-		if (!current_branch || !current_branch->merge
-					|| !current_branch->merge[0]
-					|| !current_branch->merge[0]->dst) {
+		upstream = branch_get_upstream(current_branch, NULL);
+		if (!upstream) {
 			fprintf(stderr, _("Could not find a tracked"
 					" remote branch, please"
 					" specify <upstream> manually.\n"));
 			usage_with_options(cherry_usage, options);
 		}
-
-		upstream = current_branch->merge[0]->dst;
 	}
 
 	init_revisions(&revs, prefix);

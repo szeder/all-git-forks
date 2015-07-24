@@ -348,11 +348,18 @@ test_declared_prereq () {
 	return 1
 }
 
+test_verify_prereq () {
+	test -z "$test_prereq" ||
+	expr >/dev/null "$test_prereq" : '[A-Z0-9_,!]*$' ||
+	error "bug in the test script: '$test_prereq' does not look like a prereq"
+}
+
 test_expect_failure () {
 	test_start_
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-failure"
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$@"
 	then
@@ -372,6 +379,7 @@ test_expect_success () {
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-success"
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$@"
 	then
@@ -400,6 +408,7 @@ test_external () {
 	error >&5 "bug in the test script: not 3 or 4 parameters to test_external"
 	descr="$1"
 	shift
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$descr" "$@"
 	then
@@ -413,7 +422,7 @@ test_external () {
 		# test_run_, but keep its stdout on our stdout even in
 		# non-verbose mode.
 		"$@" 2>&4
-		if [ "$?" = 0 ]
+		if test "$?" = 0
 		then
 			if test $test_external_has_tap -eq 0; then
 				test_ok_ "$descr"
@@ -440,11 +449,12 @@ test_external_without_stderr () {
 	tmp=${TMPDIR:-/tmp}
 	stderr="$tmp/git-external-stderr.$$.tmp"
 	test_external "$@" 4> "$stderr"
-	[ -f "$stderr" ] || error "Internal error: $stderr disappeared."
+	test -f "$stderr" || error "Internal error: $stderr disappeared."
 	descr="no stderr: $1"
 	shift
 	say >&3 "# expecting no stderr from previous command"
-	if [ ! -s "$stderr" ]; then
+	if test ! -s "$stderr"
+	then
 		rm "$stderr"
 
 		if test $test_external_has_tap -eq 0; then
@@ -454,8 +464,9 @@ test_external_without_stderr () {
 			test_success=$(($test_success + 1))
 		fi
 	else
-		if [ "$verbose" = t ]; then
-			output=`echo; echo "# Stderr is:"; cat "$stderr"`
+		if test "$verbose" = t
+		then
+			output=$(echo; echo "# Stderr is:"; cat "$stderr")
 		else
 			output=
 		fi
@@ -474,17 +485,17 @@ test_external_without_stderr () {
 # The commands test the existence or non-existence of $1. $2 can be
 # given to provide a more precise diagnosis.
 test_path_is_file () {
-	if ! [ -f "$1" ]
+	if ! test -f "$1"
 	then
-		echo "File $1 doesn't exist. $*"
+		echo "File $1 doesn't exist. $2"
 		false
 	fi
 }
 
 test_path_is_dir () {
-	if ! [ -d "$1" ]
+	if ! test -d "$1"
 	then
-		echo "Directory $1 doesn't exist. $*"
+		echo "Directory $1 doesn't exist. $2"
 		false
 	fi
 }
@@ -501,11 +512,12 @@ test_dir_is_empty () {
 }
 
 test_path_is_missing () {
-	if [ -e "$1" ]
+	if test -e "$1"
 	then
 		echo "Path exists:"
 		ls -ld "$1"
-		if [ $# -ge 1 ]; then
+		if test $# -ge 1
+		then
 			echo "$*"
 		fi
 		false
@@ -634,6 +646,15 @@ test_cmp_bin() {
 	cmp "$@"
 }
 
+# Call any command "$@" but be more verbose about its
+# failure. This is handy for commands like "test" which do
+# not output anything when they fail.
+verbose () {
+	"$@" && return 0
+	echo >&2 "command failed: $(git rev-parse --sq-quote "$@")"
+	return 1
+}
+
 # Check if the file expected to be empty is indeed empty, and barfs
 # otherwise.
 
@@ -657,9 +678,12 @@ test_cmp_rev () {
 # similar to GNU seq(1), but the latter might not be available
 # everywhere (and does not do letters).  It may be used like:
 #
-#	for i in `test_seq 100`; do
-#		for j in `test_seq 10 20`; do
-#			for k in `test_seq a z`; do
+#	for i in $(test_seq 100)
+#	do
+#		for j in $(test_seq 10 20)
+#		do
+#			for k in $(test_seq a z)
+#			do
 #				echo $i-$j-$k
 #			done
 #		done
@@ -730,7 +754,9 @@ test_ln_s_add () {
 	else
 		printf '%s' "$1" >"$2" &&
 		ln_s_obj=$(git hash-object -w "$2") &&
-		git update-index --add --cacheinfo 120000 $ln_s_obj "$2"
+		git update-index --add --cacheinfo 120000 $ln_s_obj "$2" &&
+		# pick up stat info from the file
+		git update-index "$2"
 	fi
 }
 

@@ -127,7 +127,7 @@ bisect_start() {
 		if test "z$mode" != "z--no-checkout"
 		then
 			git checkout "$start_head" -- ||
-			die "$(eval_gettext "Checking out '\$start_head' failed. Try 'git bisect reset <validbranch>'.")"
+			die "$(eval_gettext "Checking out '\$start_head' failed. Try 'git bisect reset <valid-branch>'.")"
 		fi
 	else
 		# Get rev from where we start.
@@ -237,15 +237,18 @@ bisect_state() {
 		check_expected_revs "$rev" ;;
 	2,bad|*,good|*,skip)
 		shift
-		eval=''
+		hash_list=''
 		for rev in "$@"
 		do
 			sha=$(git rev-parse --verify "$rev^{commit}") ||
 				die "$(eval_gettext "Bad rev input: \$rev")"
-			eval="$eval bisect_write '$state' '$sha'; "
+			hash_list="$hash_list $sha"
 		done
-		eval "$eval"
-		check_expected_revs "$@" ;;
+		for rev in $hash_list
+		do
+			bisect_write "$state" "$rev"
+		done
+		check_expected_revs $hash_list ;;
 	*,bad)
 		die "$(gettext "'git bisect bad' can take only one argument.")" ;;
 	*)
@@ -286,11 +289,11 @@ bisect_next_check() {
 
 		if test -s "$GIT_DIR/BISECT_START"
 		then
-			gettextln "You need to give me at least one good and one bad revisions.
+			gettextln "You need to give me at least one good and one bad revision.
 (You can use \"git bisect bad\" and \"git bisect good\" for that.)" >&2
 		else
 			gettextln "You need to start by \"git bisect start\".
-You then need to give me at least one good and one bad revisions.
+You then need to give me at least one good and one bad revision.
 (You can use \"git bisect bad\" and \"git bisect good\" for that.)" >&2
 		fi
 		exit 1 ;;
