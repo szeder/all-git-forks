@@ -7,9 +7,12 @@ before_script:
   - ./android-configure
   - make configure
   - ./configure
+  - export AR=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar
+	- export CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
+	- export CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
+	- export LINK=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
+	- export CPPFLAGS="-fPIE"
+	- export LDFLAGS="-fPIE -pie -L$PREFIX/lib"
   
 script: 
   - make
-  - ls
-  - ls out
-  - echo $CC
