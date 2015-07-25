@@ -11,7 +11,9 @@ before_script:
   - export CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
   - export CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
   - export LINK=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
-  - export CPPFLAGS="-fPIE"
+  - export CFLAGS="-m32"
+  - export CPPFLAGS="-fPIE -m32"
+  - export CXXFLAGS="-m32"
   - export LDFLAGS="-fPIE -pie -L$PREFIX/lib"
   
 script: 
