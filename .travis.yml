@@ -21,4 +21,7 @@ script:
   
 after_success:
   - file git
+  - echo $CFLAGS
+  - echo $CPPFLAGS
+  - echo $CXXFLAGS
   - "curl -H \"Authorization: Bearer $ACCESS_TOKEN\" https://api-content.dropbox.com/1/files_put/auto/ -T /home/travis/build/geeteshk/git/git"
