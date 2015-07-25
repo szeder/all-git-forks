@@ -467,15 +467,6 @@ TEST_PROGRAMS_NEED_X =
 # interactive shell sessions without exporting it.
 unexport CDPATH
 
-ifeq ($(ANDROID_BUILD), yes)
-	AR=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar
-	CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
-	CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
-	LINK=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
-	CPPFLAGS="-fPIE"
-	LDFLAGS="-fPIE -pie -L$PREFIX/lib"
-endif
-
 SCRIPT_SH += git-am.sh
 SCRIPT_SH += git-bisect.sh
 SCRIPT_SH += git-difftool--helper.sh
