@@ -7,20 +7,16 @@ before_script:
   - ./android-configure
   - make configure
   - ./configure
-  - export AR="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar -m32"
-  - export CC="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc -m32"
-  - export CXX="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++ -m32"
-  - export LINK="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++ -m32"
-  - export CFLAGS="-m32"
-  - export CPPFLAGS="-fPIE -m32"
-  - export LDFLAGS="-fPIE -pie -L/usr/lib32 -m32"
+  - export AR=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar
+  - export CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
+  - export CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
+  - export LINK=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
+  - export CPPFLAGS="-fPIE"
+  - export LDFLAGS="-fPIE -pie -L$PREFIX/lib"
   
 script: 
   - make all
   
 after_success:
   - file git
-  - echo $CFLAGS
-  - echo $CPPFLAGS
-  - echo $LDFLAGS
   - "curl -H \"Authorization: Bearer $ACCESS_TOKEN\" https://api-content.dropbox.com/1/files_put/auto/ -T /home/travis/build/geeteshk/git/git"
