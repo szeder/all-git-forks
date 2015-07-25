@@ -15,10 +15,7 @@ before_script:
   - export LDFLAGS="-fPIE -pie -L$PREFIX/lib"
   
 script: 
-  - make
-
+  - make all
+  
 after_success:
-  - echo "Debugging!"
-  - ls -l
-  - ls -l /home/travis/build/geeteshk/git/android-toolchain/bin
-  - echo $CC
+  - "curl -H \"Authorization: Bearer $ACCESS_TOKEN\" https://api-content.dropbox.com/1/files_put/auto/ -T /home/travis/build/geeteshk/git/git"
