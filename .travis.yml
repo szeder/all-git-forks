@@ -7,10 +7,10 @@ before_script:
   - ./android-configure
   - make configure
   - ./configure
-  - export AR=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar
-  - export CC=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc
-  - export CXX=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
-  - export LINK=/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++
+  - export AR="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-ar -m32"
+  - export CC="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-gcc -m32"
+  - export CXX="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++ -m32"
+  - export LINK="/home/travis/build/geeteshk/git/android-toolchain/bin/arm-linux-androideabi-g++ -m32"
   - export CFLAGS="-m32"
   - export CPPFLAGS="-fPIE -m32"
   - export LDFLAGS="-fPIE -pie -L/usr/lib32 -m32"
