@@ -75,6 +75,7 @@ static void remove_subtree(struct strbuf *path)
 
 static int create_file(const char *path, unsigned int mode)
 {
+	printf("path from create_file %s\n", path);
 	mode = (mode & 0100) ? 0777 : 0666;
 	return open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
 }
@@ -146,7 +147,8 @@ static int write_entry(struct cache_entry *ce,
 	unsigned long size;
 	size_t wrote, newsize = 0;
 	struct stat st;
-
+	printf("work-tree form write_entry %s\n", get_git_work_tree());
+	printf("path from write_entry %s\n", path);
 	if (ce_mode_s_ifmt == S_IFREG) {
 		struct stream_filter *filter = get_stream_filter(ce->name, ce->sha1);
 		if (filter &&
@@ -236,6 +238,21 @@ static int check_path(const char *path, int len, struct stat *st, int skiplen)
 	}
 	return lstat(path, st);
 }
+
+
+// just to help debugging cahe_entries.
+extern void print_cache_entry_name (struct cache_entry* ce) {
+        char* char_in_name;
+        char_in_name = &((ce->name)[0]);
+        size_t jump_size = sizeof(char);
+        int i;
+	printf("print_cache: ");
+        for (i = 0; i < ce->ce_namelen; i++){
+                printf("%c", *(char_in_name + (i*(jump_size))));
+        }
+	printf("\n");
+};
+
 
 /*
  * Write the contents from ce out to the working tree.

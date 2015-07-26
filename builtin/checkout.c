@@ -359,8 +359,10 @@ static int checkout_paths(const struct checkout_opts *opts,
 	state.istate = &the_index;
 	for (pos = 0; pos < active_nr; pos++) {
 		struct cache_entry *ce = active_cache[pos];
+		print_cache_entry_name(ce);
 		if (ce->ce_flags & CE_MATCHED) {
 			if (!ce_stage(ce)) {
+                                //printf("work-tree from checkout: %s", get_git_work_tree());
 				errs |= checkout_entry(ce, &state, NULL);
 				continue;
 			}

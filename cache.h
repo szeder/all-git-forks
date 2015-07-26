@@ -158,6 +158,9 @@ struct cache_entry {
 	char name[FLEX_ARRAY]; /* more */
 };
 
+
+extern void print_cache_entry_name (struct cache_entry* ce);
+
 #define CE_STAGEMASK (0x3000)
 #define CE_EXTENDED  (0x4000)
 #define CE_VALID     (0x8000)

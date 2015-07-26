@@ -11,7 +11,7 @@
 #include "refs.h"
 #include "fmt-merge-msg.h"
 #include "commit.h"
-
+//#include "startup-info.h"
 int trust_executable_bit = 1;
 int trust_ctime = 1;
 int check_stat = 1;
@@ -314,3 +314,6 @@ const char *get_commit_output_encoding(void)
 {
 	return git_commit_encoding ? git_commit_encoding : "UTF-8";
 }
+#include "cache.h"
+#include <stdio.h>
+//printf("work-tree from environment %s", get_git_work_tree());
