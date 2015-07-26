@@ -17,7 +17,6 @@ OPTIONS_SPEC=
 SUBDIRECTORY_OK=Yes
 . git-sh-setup
 . git-sh-i18n
-. git-parse-remote
 require_work_tree
 wt_prefix=$(git rev-parse --show-prefix)
 cd_to_toplevel
@@ -36,6 +35,13 @@ update=
 prefix=
 custom_name=
 depth=
+
+get_default_remote () {
+	curr_branch=$(git symbolic-ref -q HEAD)
+	curr_branch="${curr_branch#refs/heads/}"
+	origin=$(git config --get "branch.$curr_branch.remote")
+	echo ${origin:-origin}
+}
 
 # The function takes at most 2 arguments. The first argument is the
 # URL that navigates to the submodule origin repo. When relative, this URL

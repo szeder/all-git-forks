@@ -194,10 +194,10 @@ static struct option builtin_merge_options[] = {
 		PARSE_OPT_NOARG, option_parse_n },
 	OPT_BOOL(0, "stat", &show_diffstat,
 		N_("show a diffstat at the end of the merge")),
-	OPT_BOOL(0, "summary", &show_diffstat, N_("(synonym to --stat)")),
+	OPT_HIDDEN_BOOL(0, "summary", &show_diffstat, N_("(synonym to --stat)")),
 	{ OPTION_INTEGER, 0, "log", &shortlog_len, N_("n"),
-	  N_("add (at most <n>) entries from shortlog to merge commit message"),
-	  PARSE_OPT_OPTARG, NULL, DEFAULT_MERGE_LOG_LEN },
+		N_("add (at most <n>) entries from shortlog to merge commit message"),
+		PARSE_OPT_OPTARG, NULL, DEFAULT_MERGE_LOG_LEN },
 	OPT_BOOL(0, "squash", &squash,
 		N_("create a single commit instead of doing a merge")),
 	OPT_BOOL(0, "commit", &option_commit,
@@ -210,7 +210,7 @@ static struct option builtin_merge_options[] = {
 		PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL, FF_ONLY },
 	OPT_RERERE_AUTOUPDATE(&allow_rerere_auto),
 	OPT_BOOL(0, "verify-signatures", &verify_signatures,
-		N_("Verify that the named commit has a valid GPG signature")),
+		N_("verify that the named commit has a valid GPG signature")),
 	OPT_CALLBACK('s', "strategy", &use_strategies, N_("strategy"),
 		N_("merge strategy to use"), option_parse_strategy),
 	OPT_CALLBACK('X', "strategy-option", &xopts, N_("option=value"),
@@ -223,7 +223,7 @@ static struct option builtin_merge_options[] = {
 		N_("abort the current in-progress merge")),
 	OPT_SET_INT(0, "progress", &show_progress, N_("force progress reporting"), 1),
 	{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key-id"),
-	  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
+		N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
 	OPT_BOOL(0, "overwrite-ignore", &overwrite_ignore, N_("update ignored files (default)")),
 	OPT_END()
 };
@@ -1220,11 +1220,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		 * There is no unmerged entry, don't advise 'git
 		 * add/rm <file>', just 'git commit'.
 		 */
-		if (advice_resolve_conflict)
-			die(_("You have not concluded your merge (MERGE_HEAD exists).\n"
-				  "Please, commit your changes before you merge."));
-		else
-			die(_("You have not concluded your merge (MERGE_HEAD exists)."));
+		die_merge_in_progress();
 	}
 	if (file_exists(git_path("CHERRY_PICK_HEAD"))) {
 		if (advice_resolve_conflict)

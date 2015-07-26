@@ -24,6 +24,7 @@ __attribute__((format (printf, 1, 2)))
 void advise(const char *advice, ...);
 int error_resolve_conflict(const char *me);
 extern void NORETURN die_resolve_conflict(const char *me);
+extern void NORETURN die_merge_in_progress();
 void detach_advice(const char *new_name);
 
 #endif /* ADVICE_H */

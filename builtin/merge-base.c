@@ -145,15 +145,57 @@ static int collect_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	return 0;
 }
 
+const unsigned char *get_fork_point(const char *refname, const unsigned char *derived_sha1)
+{
+	/*
+	 * TODO I dislike exporting this function via builtin.h. I would prefer to
+	 * move it to libgit if possible.
+	 */
+	unsigned const char *fork_point_sha1 = null_sha1;
+	struct rev_collect revs;
+	struct commit *derived;
+	struct commit_list *bases;
+	int i;
+
+	derived = lookup_commit_reference(derived_sha1);
+	memset(&revs, 0, sizeof(revs));
+	revs.initial = 1;
+	for_each_reflog_ent(refname, collect_one_reflog_ent, &revs);
+
+	for (i = 0; i < revs.nr; i++)
+		revs.commit[i]->object.flags &= ~TMP_MARK;
+
+	bases = get_merge_bases_many_dirty(derived, revs.nr, revs.commit);
+
+	/*
+	 * There should be one and only one merge base, when we found
+	 * a common ancestor among reflog entries.
+	 */
+	if (!bases || bases->next)
+		goto cleanup_return;
+
+	/* And the found one must be one of the reflog entries */
+	for (i = 0; i < revs.nr; i++)
+		if (&bases->item->object == &revs.commit[i]->object)
+			break; /* found */
+	if (revs.nr <= i) {
+		/* not found */
+		goto cleanup_return;
+	}
+
+	fork_point_sha1 = bases->item->object.sha1;
+
+cleanup_return:
+	free_commit_list(bases);
+	return fork_point_sha1;
+}
+
 static int handle_fork_point(int argc, const char **argv)
 {
 	unsigned char sha1[20];
 	char *refname;
 	const char *commitname;
-	struct rev_collect revs;
-	struct commit *derived;
-	struct commit_list *bases;
-	int i, ret = 0;
+	const unsigned char *fork_point_sha1;
 
 	switch (dwim_ref(argv[0], strlen(argv[0]), sha1, &refname)) {
 	case 0:
@@ -168,39 +210,11 @@ static int handle_fork_point(int argc, const char **argv)
 	if (get_sha1(commitname, sha1))
 		die("Not a valid object name: '%s'", commitname);
 
-	derived = lookup_commit_reference(sha1);
-	memset(&revs, 0, sizeof(revs));
-	revs.initial = 1;
-	for_each_reflog_ent(refname, collect_one_reflog_ent, &revs);
+	fork_point_sha1 = get_fork_point(refname, sha1);
+	if (!is_null_sha1(fork_point_sha1))
+		printf("%s\n", sha1_to_hex(fork_point_sha1));
 
-	for (i = 0; i < revs.nr; i++)
-		revs.commit[i]->object.flags &= ~TMP_MARK;
-
-	bases = get_merge_bases_many_dirty(derived, revs.nr, revs.commit);
-
-	/*
-	 * There should be one and only one merge base, when we found
-	 * a common ancestor among reflog entries.
-	 */
-	if (!bases || bases->next) {
-		ret = 1;
-		goto cleanup_return;
-	}
-
-	/* And the found one must be one of the reflog entries */
-	for (i = 0; i < revs.nr; i++)
-		if (&bases->item->object == &revs.commit[i]->object)
-			break; /* found */
-	if (revs.nr <= i) {
-		ret = 1; /* not found */
-		goto cleanup_return;
-	}
-
-	printf("%s\n", sha1_to_hex(bases->item->object.sha1));
-
-cleanup_return:
-	free_commit_list(bases);
-	return ret;
+	return is_null_sha1(fork_point_sha1);
 }
 
 int cmd_merge_base(int argc, const char **argv, const char *prefix)

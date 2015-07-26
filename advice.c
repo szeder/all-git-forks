@@ -96,6 +96,15 @@ void NORETURN die_resolve_conflict(const char *me)
 	die("Exiting because of an unresolved conflict.");
 }
 
+void NORETURN die_merge_in_progress()
+{
+	if (advice_resolve_conflict)
+		die(_("You have not concluded your merge (MERGE_HEAD exists).\n"
+		"Please, commit your changes before you merge."));
+	else
+		die(_("You have not concluded your merge (MERGE_HEAD exists)."));
+}
+
 void detach_advice(const char *new_name)
 {
 	const char fmt[] =
