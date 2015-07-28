@@ -203,7 +203,7 @@ static int add_worktree(const char *path, const char *refname,
 	else if (!opts->detach && !strbuf_check_branch_ref(&symref, refname) &&
 		 ref_exists(symref.buf)) { /* it's a branch */
 		if (!opts->force)
-			die_if_checked_out(symref.buf);
+			die_if_checked_out("HEAD", symref.buf);
 	} else { /* must be a commit */
 		commit = lookup_commit_reference_by_name(refname);
 		if (!commit)
