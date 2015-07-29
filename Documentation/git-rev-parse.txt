@@ -111,10 +111,13 @@ can be used.
 
 -q::
 --quiet::
-	Only meaningful in `--verify` mode. Do not output an error
-	message if the first argument is not a valid object name;
-	instead exit with non-zero status silently.
+	In combination with --verify, do not output an error message
+	if the first argument is not a valid object name; instead
+	exit with non-zero status silently.
 	SHA-1s for valid object names are printed to stdout on success.
+	In combination with any of --is-inside-git-dir,
+	--is-inside-work-tree and --is-bare-repository, do not output
+	true or false, but a specific exit code.
 
 --sq::
 	Usually the output is made one line per flag and
@@ -222,13 +225,16 @@ print a message to stderr and exit with nonzero status.
 --is-inside-git-dir::
 	When the current working directory is below the repository
 	directory print "true", otherwise "false".
+	With --quiet, return 1 instead of printing "true".
 
 --is-inside-work-tree::
 	When the current working directory is inside the work tree of the
 	repository print "true", otherwise "false".
+	With --quiet, return 2 instead of printing "true".
 
 --is-bare-repository::
 	When the repository is bare print "true", otherwise "false".
+	with --quiet, return 4 instead of printing "true".
 
 --resolve-git-dir <path>::
 	Check if <path> is a valid repository or a gitfile that

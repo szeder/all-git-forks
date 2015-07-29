@@ -507,6 +507,8 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 	int i, as_is = 0, verify = 0, quiet = 0, revs_count = 0, type = 0;
 	int has_dashdash = 0;
 	int output_prefix = 0;
+	int is_result = 0;
+	int return_code = 0;
 	unsigned char sha1[20];
 	unsigned int flags = 0;
 	const char *name = NULL;
@@ -777,18 +779,33 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--is-inside-git-dir")) {
-				printf("%s\n", is_inside_git_dir() ? "true"
-						: "false");
+				is_result = is_inside_git_dir();
+				if (quiet == 1) {
+					return_code |= is_result * (1 << 0);
+				} else {
+					printf("%s\n", is_result ? "true"
+							: "false");
+				}
 				continue;
 			}
 			if (!strcmp(arg, "--is-inside-work-tree")) {
-				printf("%s\n", is_inside_work_tree() ? "true"
-						: "false");
+				is_result = is_inside_work_tree();
+				if (quiet == 1) {
+					return_code |= is_result * (1 << 1);
+				} else {
+					printf("%s\n", is_result ? "true"
+							: "false");
+				}
 				continue;
 			}
 			if (!strcmp(arg, "--is-bare-repository")) {
-				printf("%s\n", is_bare_repository() ? "true"
-						: "false");
+				is_result = is_bare_repository();
+				if (quiet == 1) {
+					return_code |= is_result * (1 << 2);
+				} else {
+					printf("%s\n", is_result ? "true"
+							: "false");
+				}
 				continue;
 			}
 			if (!strcmp(arg, "--shared-index-path")) {
@@ -847,6 +864,9 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		if (!show_file(arg, output_prefix))
 			continue;
 		verify_filename(prefix, arg, 1);
+	}
+	if (quiet && !verify) {
+		return return_code;
 	}
 	if (verify) {
 		if (revs_count == 1) {

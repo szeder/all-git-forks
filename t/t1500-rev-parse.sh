@@ -7,6 +7,11 @@ test_rev_parse() {
 	name=$1
 	shift
 
+	test_expect_success "$name: quiet" \
+	"test_expect_code $1 git rev-parse -q --is-inside-git-dir --is-inside-work-tree --is-bare-repository"
+	shift
+	[ $# -eq 0 ] && return
+
 	test_expect_success "$name: is-bare-repository" \
 	"test '$1' = \"\$(git rev-parse --is-bare-repository)\""
 	shift
@@ -33,28 +38,28 @@ test_rev_parse() {
 	[ $# -eq 0 ] && return
 }
 
-# label is-bare is-inside-git is-inside-work prefix git-dir
+# label return_code is-bare is-inside-git is-inside-work prefix git-dir
 
 ROOT=$(pwd)
 
-test_rev_parse toplevel false false true '' .git
+test_rev_parse toplevel 2 false false true '' .git
 
 cd .git || exit 1
-test_rev_parse .git/ false true false '' .
+test_rev_parse .git/ 1 false true false '' .
 cd objects || exit 1
-test_rev_parse .git/objects/ false true false '' "$ROOT/.git"
+test_rev_parse .git/objects/ 1 false true false '' "$ROOT/.git"
 cd ../.. || exit 1
 
 mkdir -p sub/dir || exit 1
 cd sub/dir || exit 1
-test_rev_parse subdirectory false false true sub/dir/ "$ROOT/.git"
+test_rev_parse subdirectory 2 false false true sub/dir/ "$ROOT/.git"
 cd ../.. || exit 1
 
 git config core.bare true
-test_rev_parse 'core.bare = true' true false false
+test_rev_parse 'core.bare = true' 4 true false false
 
 git config --unset core.bare
-test_rev_parse 'core.bare undefined' false false true
+test_rev_parse 'core.bare undefined' 2 false false true
 
 mkdir work || exit 1
 cd work || exit 1
@@ -63,25 +68,25 @@ GIT_CONFIG="$(pwd)"/../.git/config
 export GIT_DIR GIT_CONFIG
 
 git config core.bare false
-test_rev_parse 'GIT_DIR=../.git, core.bare = false' false false true ''
+test_rev_parse 'GIT_DIR=../.git, core.bare = false' 2 false false true ''
 
 git config core.bare true
-test_rev_parse 'GIT_DIR=../.git, core.bare = true' true false false ''
+test_rev_parse 'GIT_DIR=../.git, core.bare = true' 4 true false false ''
 
 git config --unset core.bare
-test_rev_parse 'GIT_DIR=../.git, core.bare undefined' false false true ''
+test_rev_parse 'GIT_DIR=../.git, core.bare undefined' 2 false false true ''
 
 mv ../.git ../repo.git || exit 1
 GIT_DIR=../repo.git
 GIT_CONFIG="$(pwd)"/../repo.git/config
 
 git config core.bare false
-test_rev_parse 'GIT_DIR=../repo.git, core.bare = false' false false true ''
+test_rev_parse 'GIT_DIR=../repo.git, core.bare = false' 2 false false true ''
 
 git config core.bare true
-test_rev_parse 'GIT_DIR=../repo.git, core.bare = true' true false false ''
+test_rev_parse 'GIT_DIR=../repo.git, core.bare = true' 4 true false false ''
 
 git config --unset core.bare
-test_rev_parse 'GIT_DIR=../repo.git, core.bare undefined' false false true ''
+test_rev_parse 'GIT_DIR=../repo.git, core.bare undefined' 2 false false true ''
 
 test_done
