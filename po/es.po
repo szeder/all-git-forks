@@ -3,12 +3,13 @@
 # This file is distributed under the same license as the Git package.
 # Rafa Pereira <rptv2003@yahoo.com>, 2014.
 #
+#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-07-14 07:19+0800\n"
-"PO-Revision-Date: 2014-09-11 21:03+0200\n"
+"PO-Revision-Date: 2015-07-29 22:14+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -23,32 +24,26 @@ msgid "hint: %.*s\n"
 msgstr "pista: %.*s\n"
 
 #: advice.c:88
-#, fuzzy
 msgid ""
 "Fix them up in the work tree, and then use 'git add/rm <file>'\n"
 "as appropriate to mark resolution and make a commit."
 msgstr ""
 "Corríjalos en el árbol de trabajo,\n"
 "y después use 'git add/rm <fichero>' según\n"
-"corresponda para marcar la resolución y haga un commit,\n"
-"o use 'git commit -a'."
+"corresponda para marcar la resolución y haga un commit."
 
 #: archive.c:11
-#, fuzzy
 msgid "git archive [<options>] <tree-ish> [<path>...]"
-msgstr "git archive [opciones] <pseudo-árbol> [<ruta>...]"
+msgstr "git archive [<opciones>] <pseudo-árbol> [<ruta>...]"
 
 #: archive.c:12
 msgid "git archive --list"
 msgstr "git archive --list"
 
 #: archive.c:13
-#, fuzzy
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [<options>] <tree-ish> [<path>...]"
-msgstr ""
-"git archive --remote <repo> [--exec <orden>] [opciones] <pseudo-árbol> "
-"[<ruta>...]"
+msgstr "git archive --remote <repo> [--exec <orden>] [<opciones>] <pseudo-árbol> [<ruta>...]"
 
 #: archive.c:14
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
@@ -316,14 +311,14 @@ msgid "index-pack died"
 msgstr ""
 
 #: color.c:260
-#, fuzzy, c-format
+#, c-format
 msgid "invalid color value: %.*s"
-msgstr "Valor inválido para %s: %s"
+msgstr "valor de color inválido: %.*s"
 
 #: commit.c:40
 #, c-format
 msgid "could not parse %s"
-msgstr "no he podido analizar %s"
+msgstr "no he podido analizar sintácticamente %s"
 
 #: commit.c:42
 #, c-format
@@ -350,9 +345,9 @@ msgid "bad numeric config value '%s' for '%s': %s"
 msgstr ""
 
 #: config.c:679
-#, fuzzy, c-format
+#, c-format
 msgid "failed to expand user dir in: '%s'"
-msgstr "no he podido crear el enlace '%s'"
+msgstr "no he podido expandir el directorio de usuario en: '%s'"
 
 #: config.c:757 config.c:768
 #, c-format
@@ -360,23 +355,22 @@ msgid "bad zlib compression level %d"
 msgstr ""
 
 #: config.c:890
-#, fuzzy, c-format
+#, c-format
 msgid "invalid mode for object creation: %s"
-msgstr "commit inválido: %s"
+msgstr "modo inválido para creación de objeto: %s"
 
 #: config.c:1216
-#, fuzzy
 msgid "unable to parse command-line config"
-msgstr "no puedo leer el fichero índice"
+msgstr ""
 
 #: config.c:1277
 msgid "unknown error occured while reading the configuration files"
 msgstr ""
 
 #: config.c:1601
-#, fuzzy, c-format
+#, c-format
 msgid "unable to parse '%s' from command-line config"
-msgstr "no puedo eliminar %s del índice"
+msgstr ""
 
 #: config.c:1603
 #, c-format
@@ -482,7 +476,7 @@ msgstr ""
 #: diff.c:114
 #, c-format
 msgid "  Failed to parse dirstat cut-off percentage '%s'\n"
-msgstr "  No he podido analizar el porcentaje de corte de dirstat: '%s'\n"
+msgstr "  No he podido analizar sintácticamente el porcentaje de corte de dirstat: '%s'\n"
 
 #: diff.c:119
 #, c-format
@@ -676,7 +670,6 @@ msgid "Removing %s to make room for subdirectory\n"
 msgstr "Eliminando %s para hacer sitio para el subdirectorio\n"
 
 #: merge-recursive.c:712 merge-recursive.c:733
-#, fuzzy
 msgid ": perhaps a D/F conflict?"
 msgstr ": ¿quizá un conflicto D/F?"
 
@@ -1021,9 +1014,8 @@ msgid ""
 msgstr ""
 
 #: pretty.c:968
-#, fuzzy
 msgid "unable to parse --pretty format"
-msgstr "no puedo abrir o leer %s"
+msgstr "no puedo analizar sintácticamente el formato --pretty"
 
 #: progress.c:236
 msgid "done"
@@ -1071,9 +1063,9 @@ msgid "HEAD does not point to a branch"
 msgstr "CABEZA [HEAD] no apunta a una rama"
 
 #: remote.c:1732
-#, fuzzy, c-format
+#, c-format
 msgid "no such branch: '%s'"
-msgstr "no existe la rama '%s'"
+msgstr "no existe la rama: '%s'"
 
 #: remote.c:1735
 #, c-format
@@ -1091,9 +1083,9 @@ msgid "push destination '%s' on remote '%s' has no local tracking branch"
 msgstr ""
 
 #: remote.c:1771
-#, fuzzy, c-format
+#, c-format
 msgid "branch '%s' has no remote for pushing"
-msgstr "rama '%s' no encontrada."
+msgstr "la rama '%s' no tiene remota para empujar [push]."
 
 #: remote.c:1782
 #, c-format
@@ -1169,9 +1161,8 @@ msgid "  (use \"git pull\" to merge the remote branch into yours)\n"
 msgstr "  (use \"git pull\" para fusionar la rama remota con la suya)\n"
 
 #: revision.c:2366
-#, fuzzy
 msgid "--first-parent is incompatible with --bisect"
-msgstr "--dirty es incompatible con pseudo-commits"
+msgstr "--first-parent es incompatible con --bisect"
 
 #: run-command.c:83
 msgid "open /dev/null failed"
@@ -1183,9 +1174,8 @@ msgid "dup2(%d,%d) failed"
 msgstr "error en dup2(%d,%d)"
 
 #: send-pack.c:272
-#, fuzzy
 msgid "failed to sign the push certificate"
-msgstr "gpg no ha podido firmar los datos"
+msgstr "no he podido firmar el certificado para empujar [push]"
 
 #: send-pack.c:378
 msgid "the receiving end does not support --signed push"
@@ -1329,7 +1319,7 @@ msgid "git %s: failed to refresh the index"
 msgstr "git %s: no he podido actualizar el índice"
 
 #: sequencer.c:725
-#, fuzzy, c-format
+#, c-format
 msgid "Cannot %s during a %s"
 msgstr "No puedo ejecutar %s durante la ejecución de %s"
 
@@ -1427,7 +1417,7 @@ msgid "Could not format %s."
 msgstr "No he podido formatear %s."
 
 #: sequencer.c:1086
-#, fuzzy, c-format
+#, c-format
 msgid "%s: can't cherry-pick a %s"
 msgstr "%s: no puedo entresacar un objeto de tipo %s"
 
@@ -1445,9 +1435,9 @@ msgid "Can't cherry-pick into empty head"
 msgstr ""
 
 #: setup.c:243
-#, fuzzy, c-format
+#, c-format
 msgid "failed to read %s"
-msgstr "no he podido eliminar %s"
+msgstr "no he podido leer %s"
 
 #: sha1_name.c:453
 msgid ""
@@ -1507,14 +1497,13 @@ msgid "empty trailer token in trailer '%.*s'"
 msgstr ""
 
 #: trailer.c:701
-#, fuzzy, c-format
+#, c-format
 msgid "could not read input file '%s'"
-msgstr "no he podido crear el fichero '%s'"
+msgstr "no he podido leer el fichero de entrada '%s'"
 
 #: trailer.c:704
-#, fuzzy
 msgid "could not read from stdin"
-msgstr "No he podido leer de '%s'"
+msgstr "no he podido leer de la entrada estándar [stdin]"
 
 #: unpack-trees.c:203
 msgid "Checking out files"
@@ -1569,24 +1558,23 @@ msgid "no such user"
 msgstr "no existe el usuario"
 
 #: wrapper.c:564
-#, fuzzy
 msgid "unable to get current working directory"
-msgstr "No puedo acceder al directorio de trabajo actual"
+msgstr "no puedo obtener el directorio de trabajo actual"
 
 #: wrapper.c:575
-#, fuzzy, c-format
+#, c-format
 msgid "could not open %s for writing"
-msgstr "No he podido abrir '%s' para escritura"
+msgstr "no he podido abrir '%s' para escritura"
 
 #: wrapper.c:587
-#, fuzzy, c-format
+#, c-format
 msgid "could not write to %s"
-msgstr "No he podido escribir en %s"
+msgstr "no he podido escribir en %s"
 
 #: wrapper.c:593
-#, fuzzy, c-format
+#, c-format
 msgid "could not close %s"
-msgstr "no he podido analizar %s"
+msgstr "no he podido cerrar %s"
 
 #: wt-status.c:150
 msgid "Unmerged paths:"
@@ -2007,7 +1995,6 @@ msgid "nothing to commit, working directory clean\n"
 msgstr "nada incluido para el commit, directorio de trabajo limpio\n"
 
 #: wt-status.c:1528
-#, fuzzy
 msgid "HEAD (no branch)"
 msgstr "CABEZA [HEAD] (no rama)"
 
@@ -2029,9 +2016,8 @@ msgid "failed to unlink '%s'"
 msgstr ""
 
 #: builtin/add.c:22
-#, fuzzy
 msgid "git add [<options>] [--] <pathspec>..."
-msgstr "git add [opciones] [--] <patrón-de-ruta>..."
+msgstr "git add [<opciones>] [--] <patrón-de-ruta>..."
 
 #: builtin/add.c:65
 #, c-format
@@ -2065,9 +2051,8 @@ msgid "Could not write patch"
 msgstr "No he podido escribir el parche"
 
 #: builtin/add.c:212
-#, fuzzy
 msgid "editing patch failed"
-msgstr "no he podido borrar '%s'"
+msgstr "no he podido editar el parche"
 
 #: builtin/add.c:215
 #, c-format
@@ -2183,9 +2168,8 @@ msgid "Unable to write new index file"
 msgstr ""
 
 #: builtin/apply.c:59
-#, fuzzy
 msgid "git apply [<options>] [<patch>...]"
-msgstr "git apply [opciones] [<parche>...]"
+msgstr "git apply [<opciones>] [<parche>...]"
 
 #: builtin/apply.c:112
 #, c-format
@@ -2402,9 +2386,9 @@ msgid "%s has type %o, expected %o"
 msgstr "%s tiene tipo %o, esperado %o"
 
 #: builtin/apply.c:3693 builtin/apply.c:3695
-#, fuzzy, c-format
+#, c-format
 msgid "invalid path '%s'"
-msgstr "opción inválida: %s"
+msgstr "ruta inválida: '%s'"
 
 #: builtin/apply.c:3750
 #, c-format
@@ -2570,9 +2554,8 @@ msgid "apply a patch without touching the working tree"
 msgstr "aplica un parche sin tocar el árbol de trabajo"
 
 #: builtin/apply.c:4551
-#, fuzzy
 msgid "accept a patch that touches outside the working area"
-msgstr "aplica un parche sin tocar el árbol de trabajo"
+msgstr "acepta un parche que toca el exterior del área de trabajo"
 
 #: builtin/apply.c:4553
 msgid "also apply the patch (use with --stat/--summary/--check)"
@@ -2717,9 +2700,8 @@ msgid "update BISECT_HEAD instead of checking out the current commit"
 msgstr ""
 
 #: builtin/blame.c:31
-#, fuzzy
 msgid "git blame [<options>] [<rev-opts>] [<rev>] [--] <file>"
-msgstr "git clone [opciones] [--] <repo> [<dir>]"
+msgstr ""
 
 #: builtin/blame.c:36
 msgid "<rev-opts> are documented in git-rev-list(1)"
@@ -2824,29 +2806,24 @@ msgstr "Procesa sólo el rango de líneas n,m, contando desde 1"
 #. relative timestamps, but your language may need more or
 #. fewer display columns.
 #: builtin/blame.c:2601
-#, fuzzy
 msgid "4 years, 11 months ago"
 msgstr "hace 4 años y 11 meses"
 
 #: builtin/branch.c:24
-#, fuzzy
 msgid "git branch [<options>] [-r | -a] [--merged | --no-merged]"
-msgstr "git branch [opciones] [-r | -a] [--merged | --no-merged]"
+msgstr "git branch [<opciones>] [-r | -a] [--merged | --no-merged]"
 
 #: builtin/branch.c:25
-#, fuzzy
 msgid "git branch [<options>] [-l] [-f] <branch-name> [<start-point>]"
-msgstr "git branch [opciones] [-l] [-f] <rama> [<punto-bifurcación>]"
+msgstr "git branch [<opciones>] [-l] [-f] <rama> [<punto-bifurcación>]"
 
 #: builtin/branch.c:26
-#, fuzzy
 msgid "git branch [<options>] [-r] (-d | -D) <branch-name>..."
-msgstr "git branch [opciones] [-r] (-d | -D) <rama>..."
+msgstr "git branch [<opciones>] [-r] (-d | -D) <rama>..."
 
 #: builtin/branch.c:27
-#, fuzzy
 msgid "git branch [<options>] (-m | -M) [<old-branch>] <new-branch>"
-msgstr "git branch [opciones] (-m | -M) [<rama-antigua>] <rama-nueva>"
+msgstr "git branch [<opciones>] (-m | -M) [<rama-antigua>] <rama-nueva>"
 
 #: builtin/branch.c:150
 #, c-format
@@ -2898,9 +2875,9 @@ msgid "Cannot delete the branch '%s' which you are currently on."
 msgstr "No se puede borrar la rama en la que está usted: '%s'."
 
 #: builtin/branch.c:243
-#, fuzzy, c-format
+#, c-format
 msgid "remote-tracking branch '%s' not found."
-msgstr "rama remota '%s' no encontrada."
+msgstr "rama '%s', de seguimiento de remota, no encontrada."
 
 #: builtin/branch.c:244
 #, c-format
@@ -2908,9 +2885,9 @@ msgid "branch '%s' not found."
 msgstr "rama '%s' no encontrada."
 
 #: builtin/branch.c:258
-#, fuzzy, c-format
+#, c-format
 msgid "Error deleting remote-tracking branch '%s'"
-msgstr "Error borrando la rama remota '%s'"
+msgstr "Error borrando la rama '%s', de seguimiento de remota"
 
 #: builtin/branch.c:259
 #, c-format
@@ -2918,9 +2895,9 @@ msgid "Error deleting branch '%s'"
 msgstr "Error borrando la rama '%s'"
 
 #: builtin/branch.c:266
-#, fuzzy, c-format
+#, c-format
 msgid "Deleted remote-tracking branch %s (was %s).\n"
-msgstr "Borrada la rama remota %s (era %s).\n"
+msgstr "Borrada la rama %s (era %s), de seguimiento de remota.\n"
 
 #: builtin/branch.c:267
 #, c-format
@@ -3261,18 +3238,16 @@ msgid "Need a repository to unbundle."
 msgstr ""
 
 #: builtin/cat-file.c:369
-#, fuzzy
 msgid ""
 "git cat-file (-t [--allow-unknown-type]|-s [--allow-unknown-type]|-e|-p|"
 "<type>|--textconv) <object>"
-msgstr "git cat-file (-t|-s|-e|-p|<tipo>|--textconv) <objeto>"
+msgstr "git cat-file (-t [--allow-unknown-type]|-s [--allow-unknown-type]|-e|-p|<tipo>|--textconv) <objeto>"
 
 #: builtin/cat-file.c:370
-#, fuzzy
 msgid ""
 "git cat-file (--batch | --batch-check) [--follow-symlinks] < <list-of-"
 "objects>"
-msgstr "git cat-file (--batch|--batch-check) < <lista_de_objetos>"
+msgstr "git cat-file (--batch | --batch-check) [--follow-symlinks] < <lista-de-objetos>"
 
 #: builtin/cat-file.c:407
 msgid "<type> can be one of: blob, tree, commit, tag"
@@ -3287,7 +3262,6 @@ msgid "show object size"
 msgstr "muestra el tamaño del objeto"
 
 #: builtin/cat-file.c:411
-#, fuzzy
 msgid "exit with zero when there's no error"
 msgstr "termina con código de salida cero cuando no hay errores"
 
@@ -3316,14 +3290,12 @@ msgid "follow in-tree symlinks (used with --batch or --batch-check)"
 msgstr ""
 
 #: builtin/check-attr.c:11
-#, fuzzy
 msgid "git check-attr [-a | --all | <attr>...] [--] <pathname>..."
-msgstr "git check-attr [-a | --all | attr...] [--] ruta..."
+msgstr "git check-attr [-a | --all | <atrib>...] [--] ruta..."
 
 #: builtin/check-attr.c:12
-#, fuzzy
 msgid "git check-attr --stdin [-z] [-a | --all | <attr>...] < <list-of-paths>"
-msgstr "git check-attr --stdin [-z] [-a | --all | attr...] < <lista-de-rutas>"
+msgstr "git check-attr --stdin [-z] [-a | --all | <atrib>...] < <lista-de-rutas>"
 
 #: builtin/check-attr.c:19
 msgid "report all attributes set on file"
@@ -3378,9 +3350,8 @@ msgid "--non-matching is only valid with --verbose"
 msgstr "--non-matching sólo es válido con --verbose"
 
 #: builtin/check-mailmap.c:8
-#, fuzzy
 msgid "git check-mailmap [<options>] <contact>..."
-msgstr "git check-mailmap [opciones] <contacto>..."
+msgstr "git check-mailmap [<opciones>] <contacto>..."
 
 #: builtin/check-mailmap.c:13
 msgid "also read contacts from stdin"
@@ -3396,9 +3367,8 @@ msgid "no contacts specified"
 msgstr "no ha especificado ningún contacto"
 
 #: builtin/checkout-index.c:126
-#, fuzzy
 msgid "git checkout-index [<options>] [--] [<file>...]"
-msgstr "git checkout-index [opciones] [--] [<fichero>...]"
+msgstr "git checkout-index [<opciones>] [--] [<fichero>...]"
 
 #: builtin/checkout-index.c:188
 msgid "check out all files in the index"
@@ -3443,14 +3413,12 @@ msgid "copy out the files from named stage"
 msgstr ""
 
 #: builtin/checkout.c:24
-#, fuzzy
 msgid "git checkout [<options>] <branch>"
-msgstr "git checkout [opciones] <rama>"
+msgstr "git checkout [<opciones>] <rama>"
 
 #: builtin/checkout.c:25
-#, fuzzy
 msgid "git checkout [<options>] [<branch>] -- <file>..."
-msgstr "git checkout [opciones] [<rama>] -- <fichero>..."
+msgstr "git checkout [<opciones>] [<rama>] -- <fichero>..."
 
 #: builtin/checkout.c:134 builtin/checkout.c:167
 #, c-format
@@ -3574,7 +3542,7 @@ msgstr[1] ""
 "%s\n"
 
 #: builtin/checkout.c:758
-#, fuzzy, c-format
+#, c-format
 msgid ""
 "If you want to keep it by creating a new branch, this may be a good time\n"
 "to do so with:\n"
@@ -3588,18 +3556,16 @@ msgid_plural ""
 " git branch <new-branch-name> %s\n"
 "\n"
 msgstr[0] ""
-"Si quiere conservarlos creando una rama nueva, este puede ser un buen "
-"momento\n"
+"Si quiere conservarlos creando una rama nueva, este puede ser un buen momento\n"
 "para hacerlo con:\n"
 "\n"
-" git branch nombre_rama_nueva %s\n"
+" git branch <nombre-rama-nueva> %s\n"
 "\n"
 msgstr[1] ""
-"Si quiere conservarlos creando una rama nueva, este puede ser un buen "
-"momento\n"
+"Si quiere conservarlos creando una rama nueva, este puede ser un buen momento\n"
 "para hacerlo con:\n"
 "\n"
-" git branch nombre_rama_nueva %s\n"
+" git branch <nombre-rama-nueva> %s\n"
 "\n"
 
 #: builtin/checkout.c:794
@@ -3725,9 +3691,8 @@ msgid "second guess 'git checkout <no-such-branch>'"
 msgstr ""
 
 #: builtin/checkout.c:1227
-#, fuzzy
 msgid "do not check if another worktree is holding the given ref"
-msgstr "no comprueba al árbol de trabajo tras la fusión"
+msgstr "no comprueba si otro árbol de trabajo contiene la ref dada"
 
 #: builtin/checkout.c:1252
 msgid "-b, -B and --orphan are mutually exclusive"
@@ -3835,9 +3800,9 @@ msgstr ""
 
 #. TRANSLATORS: Make sure to keep [y/N] as is
 #: builtin/clean.c:756
-#, fuzzy, c-format
+#, c-format
 msgid "Remove %s [y/N]? "
-msgstr "¿eliminar %s? "
+msgstr "¿Eliminar %s [y/N]? "
 
 #: builtin/clean.c:781
 msgid "Bye."
@@ -3926,9 +3891,8 @@ msgstr ""
 "especificado -i, -n ni -f; rehusando limpiar"
 
 #: builtin/clone.c:37
-#, fuzzy
 msgid "git clone [<options>] [--] <repo> [<dir>]"
-msgstr "git clone [opciones] [--] <repo> [<dir>]"
+msgstr "git clone [<opciones>] [--] <repo> [<dir>]"
 
 #: builtin/clone.c:57 builtin/fetch.c:111 builtin/merge.c:224
 #: builtin/push.c:523
@@ -4103,9 +4067,8 @@ msgid "unable to checkout working tree"
 msgstr ""
 
 #: builtin/clone.c:731
-#, fuzzy
 msgid "cannot repack to clean up"
-msgstr "no he podido leer el objeto %s"
+msgstr ""
 
 #: builtin/clone.c:733
 msgid "cannot unlink temporary alternates file"
@@ -4155,9 +4118,9 @@ msgid "could not create leading directories of '%s'"
 msgstr ""
 
 #: builtin/clone.c:838
-#, fuzzy, c-format
+#, c-format
 msgid "could not create work tree dir '%s'"
-msgstr "no he podido crear el fichero '%s'"
+msgstr "no he podido crear el directorio árbol de trabajo '%s'"
 
 #: builtin/clone.c:856
 #, c-format
@@ -4201,9 +4164,8 @@ msgid "You appear to have cloned an empty repository."
 msgstr "Parece haber clonado un repositorio vacío."
 
 #: builtin/column.c:9
-#, fuzzy
 msgid "git column [<options>]"
-msgstr "git column [opciones]"
+msgstr "git column [<opciones>]"
 
 #: builtin/column.c:26
 msgid "lookup config vars"
@@ -4234,17 +4196,14 @@ msgid "--command must be the first argument"
 msgstr "--command debe ser el primer parámetro"
 
 #: builtin/commit.c:37
-#, fuzzy
 msgid "git commit [<options>] [--] <pathspec>..."
-msgstr "git commit [opciones] [--] <patrón-de-ruta>..."
+msgstr "git commit [<opciones>] [--] <patrón-de-ruta>..."
 
 #: builtin/commit.c:42
-#, fuzzy
 msgid "git status [<options>] [--] <pathspec>..."
-msgstr "git status [opciones] [--] <patrón-de-ruta>..."
+msgstr "git status [<opciones>] [--] <patrón-de-ruta>..."
 
 #: builtin/commit.c:47
-#, fuzzy
 msgid ""
 "Your name and email address were configured automatically based\n"
 "on your username and hostname. Please check that they are accurate.\n"
@@ -4258,14 +4217,13 @@ msgid ""
 "\n"
 "    git commit --amend --reset-author\n"
 msgstr ""
-"Su nombre y dirección de email fueron configurados automáticamente en base a "
-"su\n"
-"nombre de usuario y al nombre de la máquina. Por favor, compruebe que son "
-"correctos.\n"
-"Puede suprimir este mensaje dándoles valor explícitamente:\n"
+"Su nombre y dirección de email fueron configurados automáticamente en base a su\n"
+"nombre de usuario y al nombre de la máquina. Por favor, compruebe que son correctos.\n"
+"Puede suprimir este mensaje dándoles valor explícitamente. Ejecute la\n"
+"orden siguiente y siga las instrucciones de su editor para editar\n"
+"su fichero de configuración:\n"
 "\n"
-"    git config --global user.name \"Su Nombre\"\n"
-"    git config --global user.email usted@ejemplo.com\n"
+"    git config --global --edit\n"
 "\n"
 "Tras hacerlo, puede corregir la identidad usada para este commit con:\n"
 "\n"
@@ -4355,19 +4313,17 @@ msgid "interactive add failed"
 msgstr ""
 
 #: builtin/commit.c:361
-#, fuzzy
 msgid "unable to write index file"
-msgstr "no puedo escribir el fichero índice nuevo"
+msgstr "no puedo escribir el fichero índice"
 
 #: builtin/commit.c:363
-#, fuzzy
 msgid "unable to update temporary index"
-msgstr "no puedo crear el índice temporal"
+msgstr "no puedo actualizar el índice temporal"
 
 #: builtin/commit.c:365
 #, fuzzy
 msgid "Failed to update main cache tree"
-msgstr "no he podido leer la caché"
+msgstr "No he podido actualizar el árbol caché principal"
 
 #: builtin/commit.c:389 builtin/commit.c:414 builtin/commit.c:463
 msgid "unable to write new_index file"
@@ -4404,9 +4360,9 @@ msgid "malformed --author parameter"
 msgstr ""
 
 #: builtin/commit.c:609
-#, fuzzy, c-format
+#, c-format
 msgid "invalid date format: %s"
-msgstr "commit inválido: %s"
+msgstr "formato de fecha inválido: %s"
 
 #: builtin/commit.c:653
 msgid ""
@@ -4501,19 +4457,19 @@ msgstr ""
 "Un mensaje vacío aborta el commit.\n"
 
 #: builtin/commit.c:848
-#, fuzzy, c-format
+#, c-format
 msgid "%sAuthor:    %.*s <%.*s>"
-msgstr "%sAutor:    %s"
+msgstr "%sAutor:     %.*s <%.*s>"
 
 #: builtin/commit.c:856
-#, fuzzy, c-format
+#, c-format
 msgid "%sDate:      %s"
-msgstr "%sAutor:    %s"
+msgstr "%sFecha:     %s"
 
 #: builtin/commit.c:863
-#, fuzzy, c-format
+#, c-format
 msgid "%sCommitter: %.*s <%.*s>"
-msgstr "%sCommit hecho por: %s"
+msgstr "%sCommit de: %.*s <%.*s>"
 
 #: builtin/commit.c:881
 msgid "Cannot read index"
@@ -4852,9 +4808,8 @@ msgid ""
 msgstr ""
 
 #: builtin/config.c:8
-#, fuzzy
 msgid "git config [<options>]"
-msgstr "git config [opciones]"
+msgstr "git config [<opciones>]"
 
 #: builtin/config.c:53
 msgid "Config file location"
@@ -4977,9 +4932,8 @@ msgid "respect include directives on lookup"
 msgstr ""
 
 #: builtin/config.c:316
-#, fuzzy
 msgid "unable to parse default color value"
-msgstr "no puedo leer el fichero índice"
+msgstr "no puedo analizar sintácticamente el valor del color por omisión"
 
 #: builtin/config.c:457
 #, c-format
@@ -4992,9 +4946,9 @@ msgid ""
 msgstr ""
 
 #: builtin/config.c:587
-#, fuzzy, c-format
+#, c-format
 msgid "cannot create configuration file %s"
-msgstr "no he podido crear el fichero de archivo '%s'"
+msgstr "no he podido crear el fichero de configuración %s"
 
 #: builtin/count-objects.c:55
 msgid "git count-objects [-v] [-H | --human-readable]"
@@ -5005,14 +4959,12 @@ msgid "print sizes in human readable format"
 msgstr ""
 
 #: builtin/describe.c:17
-#, fuzzy
 msgid "git describe [<options>] [<commit-ish>...]"
-msgstr "git describe [opciones] <pseudo-commit>*"
+msgstr "git describe [<opciones>] [<pseudo-commit>...]"
 
 #: builtin/describe.c:18
-#, fuzzy
 msgid "git describe [<options>] --dirty"
-msgstr "git describe [opciones] --dirty"
+msgstr "git describe [<opciones>] --dirty"
 
 #: builtin/describe.c:217
 #, c-format
@@ -5486,11 +5438,9 @@ msgid "Fetching a group and specifying refspecs does not make sense"
 msgstr ""
 
 #: builtin/fmt-merge-msg.c:13
-#, fuzzy
 msgid ""
 "git fmt-merge-msg [-m <message>] [--log[=<n>] | --no-log] [--file <file>]"
-msgstr ""
-"git fmt-merge-msg [-m <mensaje>] [--log[=<n>]|--no-log] [--file <fichero>]"
+msgstr "git fmt-merge-msg [-m <mensaje>] [--log[=<n>] | --no-log] [--file <fichero>]"
 
 #: builtin/fmt-merge-msg.c:668 builtin/fmt-merge-msg.c:671 builtin/grep.c:698
 #: builtin/merge.c:198 builtin/repack.c:178 builtin/repack.c:182
@@ -5520,14 +5470,12 @@ msgid "file to read from"
 msgstr "fichero del que leer"
 
 #: builtin/for-each-ref.c:687
-#, fuzzy
 msgid "unable to parse format"
-msgstr "no puedo abrir o leer %s"
+msgstr "no puedo analizar sintácticamente el formato"
 
 #: builtin/for-each-ref.c:1083
-#, fuzzy
 msgid "git for-each-ref [<options>] [<pattern>]"
-msgstr "git for-each-ref [opciones] [<patrón>]"
+msgstr "git for-each-ref [<opciones>] [<patrón>]"
 
 #: builtin/for-each-ref.c:1098
 msgid "quote placeholders suitably for shells"
@@ -5574,9 +5522,8 @@ msgid "Checking object directories"
 msgstr "Comprobando directorios de objetos"
 
 #: builtin/fsck.c:611
-#, fuzzy
 msgid "git fsck [<options>] [<object>...]"
-msgstr "git fsck [opciones] [<objeto>...]"
+msgstr "git fsck [<opciones>] [<objeto>...]"
 
 #: builtin/fsck.c:617
 msgid "show unreachable objects"
@@ -5623,9 +5570,8 @@ msgid "Checking objects"
 msgstr "Comprobando objetos"
 
 #: builtin/gc.c:24
-#, fuzzy
 msgid "git gc [<options>]"
-msgstr "git gc [opciones]"
+msgstr "git gc [<opciones>]"
 
 #: builtin/gc.c:67
 #, c-format
@@ -5684,7 +5630,7 @@ msgstr ""
 #: builtin/grep.c:23
 #, fuzzy
 msgid "git grep [<options>] [-e] <pattern> [<rev>...] [[--] <path>...]"
-msgstr "git ls-tree [<opciones>] <pseudo-árbol> [<ruta>...]"
+msgstr "git grep [<opciones>] [-e] <patrón> [<rev>...] [[--] [<ruta>...]  ¿rev?"
 
 #: builtin/grep.c:218
 #, c-format
@@ -5908,13 +5854,10 @@ msgid "both --cached and trees are given."
 msgstr ""
 
 #: builtin/hash-object.c:80
-#, fuzzy
 msgid ""
 "git hash-object [-t <type>] [-w] [--path=<file> | --no-filters] [--stdin] "
 "[--] <file>..."
-msgstr ""
-"git hash-object [-t <tipo>] [-w] [--path=<fichero>|--no-filters] [--stdin] "
-"[--] <fichero>..."
+msgstr "git hash-object [-t <tipo>] [-w] [--path=<fichero> | --no-filters] [--stdin] [--] <fichero>..."
 
 #: builtin/hash-object.c:81
 msgid "git hash-object  --stdin-paths < <list-of-paths>"
@@ -5970,9 +5913,8 @@ msgid "show info page"
 msgstr "muestra la página info"
 
 #: builtin/help.c:52
-#, fuzzy
 msgid "git help [--all] [--guides] [--man | --web | --info] [<command>]"
-msgstr "git help [--all] [--guides] [--man|--web|--info] [orden]"
+msgstr "git help [--all] [--guides] [--man | --web | --info] [<orden>]"
 
 #: builtin/help.c:64
 #, c-format
@@ -6071,9 +6013,9 @@ msgid "`git %s' is aliased to `%s'"
 msgstr ""
 
 #: builtin/index-pack.c:151
-#, fuzzy, c-format
+#, c-format
 msgid "unable to open %s"
-msgstr "no puedo leer %s"
+msgstr "no puedo abrir %s"
 
 #: builtin/index-pack.c:201
 #, c-format
@@ -6081,14 +6023,14 @@ msgid "object type mismatch at %s"
 msgstr ""
 
 #: builtin/index-pack.c:221
-#, fuzzy, c-format
+#, c-format
 msgid "did not receive expected object %s"
-msgstr "No he podido leer el objeto %s"
+msgstr "no he recibido el objeto que esperaba: %s"
 
 #: builtin/index-pack.c:224
-#, fuzzy, c-format
+#, c-format
 msgid "object %s: expected type %s, found %s"
-msgstr "objeto de un tipo inesperado"
+msgstr "objeto %s: tipo esperado %s, encontrado %s"
 
 #: builtin/index-pack.c:266
 #, c-format
@@ -6464,13 +6406,10 @@ msgid " shared"
 msgstr ""
 
 #: builtin/init-db.c:482
-#, fuzzy
 msgid ""
 "git init [-q | --quiet] [--bare] [--template=<template-directory>] [--"
 "shared[=<permissions>]] [<directory>]"
-msgstr ""
-"git init [-q | --quiet] [--bare] [--template=<directorio-plantillas>] [--"
-"shared[=<permisos>]] [directorio]"
+msgstr "git init [-q | --quiet] [--bare] [--template=<directorio-plantillas>] [--shared[=<permisos>]] [<directorio>]"
 
 #: builtin/init-db.c:505
 msgid "permissions"
@@ -6530,17 +6469,16 @@ msgstr ""
 #: builtin/log.c:41
 #, fuzzy
 msgid "git log [<options>] [<revision-range>] [[--] <path>...]"
-msgstr "git ls-tree [<opciones>] <pseudo-árbol> [<ruta>...]"
+msgstr "git log [<opciones>] [<rango-revisiones>] [[--] <ruta>...]  ¿¿revisiones??"
 
 #: builtin/log.c:42
-#, fuzzy
 msgid "git show [<options>] <object>..."
-msgstr "  o: git show [opciones] <objeto>..."
+msgstr "git show [<opciones>] <objeto>..."
 
 #: builtin/log.c:81
-#, fuzzy, c-format
+#, c-format
 msgid "invalid --decorate option: %s"
-msgstr "opción inválida: %s"
+msgstr "opción de --decorate inválida: %s"
 
 #: builtin/log.c:127
 msgid "suppress diff output"
@@ -6559,9 +6497,8 @@ msgid "decorate options"
 msgstr ""
 
 #: builtin/log.c:133
-#, fuzzy
 msgid "Process line range n,m in file, counting from 1"
-msgstr "Procesa sólo el rango de líneas n,m, contando desde 1"
+msgstr "Procesa el rango de líneas n,m en el fichero <file>, contando desde 1"
 
 #: builtin/log.c:229
 #, c-format
@@ -6616,7 +6553,7 @@ msgstr ""
 #: builtin/log.c:1026
 #, fuzzy
 msgid "git format-patch [<options>] [<since> | <revision-range>]"
-msgstr "git remote update [<opciones>] [<grupo> | <remoto>]..."
+msgstr "git format-patch [<opciones>] [<desde> | <rango-revisiones>]   ¿¿revisiones??"
 
 #: builtin/log.c:1071
 msgid "Two output directories?"
@@ -6750,9 +6687,8 @@ msgid "add a signature"
 msgstr "añade una firma"
 
 #: builtin/log.c:1245
-#, fuzzy
 msgid "add a signature from a file"
-msgstr "añade una firma"
+msgstr "añade una firma leída de un fichero"
 
 #: builtin/log.c:1246
 msgid "don't print the patch filenames"
@@ -6793,9 +6729,9 @@ msgid "Could not create directory '%s'"
 msgstr "No he podido crear el directorio  '%s'"
 
 #: builtin/log.c:1472
-#, fuzzy, c-format
+#, c-format
 msgid "unable to read signature file '%s'"
-msgstr "no puedo leer el fichero índice"
+msgstr "no puedo leer el fichero de firma '%s'"
 
 #: builtin/log.c:1535
 msgid "Failed to create output files"
@@ -6817,9 +6753,8 @@ msgid "Unknown commit %s"
 msgstr "Commit desconocido %s"
 
 #: builtin/ls-files.c:358
-#, fuzzy
 msgid "git ls-files [<options>] [<file>...]"
-msgstr "git ls-files [opciones] [<fichero>...]"
+msgstr "git ls-files [<opciones>] [<fichero>...]"
 
 #: builtin/ls-files.c:415
 msgid "identify the file status with tags"
@@ -6950,14 +6885,12 @@ msgstr ""
 "lista el árbol completo, no sólo el directorio actual (implica --full-name)"
 
 #: builtin/merge.c:45
-#, fuzzy
 msgid "git merge [<options>] [<commit>...]"
-msgstr "git merge [opciones] [<commit>...]"
+msgstr "git merge [<opciones>] [<commit>...]"
 
 #: builtin/merge.c:46
-#, fuzzy
 msgid "git merge [<options>] <msg> HEAD <commit>"
-msgstr "git merge [opciones] <mens> HEAD <commit>"
+msgstr "git merge [<opciones>] <mens> HEAD <commit>"
 
 #: builtin/merge.c:47
 msgid "git merge --abort"
@@ -7174,31 +7107,33 @@ msgid "No remote-tracking branch for %s from %s"
 msgstr ""
 
 #: builtin/merge.c:1081
-#, fuzzy, c-format
+#, c-format
 msgid "could not close '%s'"
-msgstr "no he podido abrir '%s'"
+msgstr "no he podido cerrar '%s'"
 
 #: builtin/merge.c:1208
 msgid "There is no merge to abort (MERGE_HEAD missing)."
 msgstr "No hay ninguna fusión que abortar (no existe MERGE_HEAD)."
 
 #: builtin/merge.c:1224
-#, fuzzy
 msgid ""
 "You have not concluded your merge (MERGE_HEAD exists).\n"
 "Please, commit your changes before you merge."
-msgstr "No ha concluido su fusión (existe MERGE_HEAD)."
+msgstr ""
+"No ha concluido su fusión (existe MERGE_HEAD).\n"
+"Por favor, haga commit de sus cambios antes de fusionar."
 
 #: builtin/merge.c:1227 git-pull.sh:74
 msgid "You have not concluded your merge (MERGE_HEAD exists)."
 msgstr "No ha concluido su fusión (existe MERGE_HEAD)."
 
 #: builtin/merge.c:1231
-#, fuzzy
 msgid ""
 "You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists).\n"
 "Please, commit your changes before you merge."
-msgstr "No ha concluido su entresaca (existe CHERRY_PICK_HEAD)."
+msgstr ""
+"No ha concluido su entresaca (existe CHERRY_PICK_HEAD).\n"
+"Por favor, haga commit de sus cambios antes de fusionar."
 
 #: builtin/merge.c:1234
 msgid "You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists)."
@@ -7303,14 +7238,12 @@ msgstr ""
 "instrucciones\n"
 
 #: builtin/merge-base.c:29
-#, fuzzy
 msgid "git merge-base [-a | --all] <commit> <commit>..."
-msgstr "git merge-base [-a|--all] <commit> <commit>..."
+msgstr "git merge-base [-a | --all] <commit> <commit>..."
 
 #: builtin/merge-base.c:30
-#, fuzzy
 msgid "git merge-base [-a | --all] --octopus <commit>..."
-msgstr "git merge-base [-a|--all] --octopus <commit>..."
+msgstr "git merge-base [-a | --all] --octopus <commit>..."
 
 #: builtin/merge-base.c:31
 msgid "git merge-base --independent <commit>..."
@@ -7345,13 +7278,10 @@ msgid "find where <commit> forked from reflog of <ref>"
 msgstr ""
 
 #: builtin/merge-file.c:8
-#, fuzzy
 msgid ""
 "git merge-file [<options>] [-L <name1> [-L <orig> [-L <name2>]]] <file1> "
 "<orig-file> <file2>"
-msgstr ""
-"git merge-file [opciones] [-L nombre1 [-L orig [-L nombre2]]] fichero1 "
-"fichero_orig fichero2"
+msgstr "git merge-file [<opciones>] [-L <nombre1> [-L <orig> [-L <nombre2>]]] <fichero1> <fichero-orig> <fichero2>"
 
 #: builtin/merge-file.c:33
 msgid "send results to standard output"
@@ -7382,9 +7312,8 @@ msgid "do not warn about conflicts"
 msgstr "no avisa de los conflictos"
 
 #: builtin/merge-file.c:45
-#, fuzzy
 msgid "set labels for file1/orig-file/file2"
-msgstr "asigna etiquetas a fichero1/fichero_orig/fichero2"
+msgstr "asigna etiquetas a fichero1/fichero-orig/fichero2"
 
 #: builtin/mktree.c:64
 msgid "git mktree [-z] [--missing] [--batch]"
@@ -7403,9 +7332,8 @@ msgid "allow creation of more than one tree"
 msgstr "permite la creación de más de un árbol"
 
 #: builtin/mv.c:15
-#, fuzzy
 msgid "git mv [<options>] <source>... <destination>"
-msgstr "git mv [opciones] <origen>... <destino>"
+msgstr "git mv [<opciones>] <origen>... <destino>"
 
 #: builtin/mv.c:69
 #, c-format
@@ -7413,14 +7341,13 @@ msgid "Directory %s is in index and no submodule?"
 msgstr ""
 
 #: builtin/mv.c:71
-#, fuzzy
 msgid "Please stage your changes to .gitmodules or stash them to proceed"
-msgstr "Haga commit con sus modificaciones o apártelas [stash] para continuar."
+msgstr "Por favor, añada al stage sus cambios a .gitmodules o apártelos [stash] para continuar."
 
 #: builtin/mv.c:89
-#, fuzzy, c-format
+#, c-format
 msgid "%.*s is in index"
-msgstr "¿Eh? ¿%.*s está en el índice?"
+msgstr "¿%.*s está en el índice?"
 
 #: builtin/mv.c:111
 msgid "force move/rename even if target exists"
@@ -7431,9 +7358,9 @@ msgid "skip move/rename errors"
 msgstr "ignora errores al mover/renombrar"
 
 #: builtin/mv.c:151
-#, fuzzy, c-format
+#, c-format
 msgid "destination '%s' is not a directory"
-msgstr "%s existe y no es un directorio"
+msgstr "el destino '%s' no es un directorio"
 
 #: builtin/mv.c:162
 #, c-format
@@ -7497,19 +7424,16 @@ msgid "renaming '%s' failed"
 msgstr "no he podido renombrar '%s'"
 
 #: builtin/name-rev.c:255
-#, fuzzy
 msgid "git name-rev [<options>] <commit>..."
-msgstr "git name-rev [opciones] <commit>..."
+msgstr "git name-rev [<opciones>] <commit>..."
 
 #: builtin/name-rev.c:256
-#, fuzzy
 msgid "git name-rev [<options>] --all"
-msgstr "git name-rev [opciones] --all"
+msgstr "git name-rev [<opciones>] --all"
 
 #: builtin/name-rev.c:257
-#, fuzzy
 msgid "git name-rev [<options>] --stdin"
-msgstr "git name-rev [opciones] --stdin"
+msgstr "git name-rev [<opciones>] --stdin"
 
 #: builtin/name-rev.c:309
 msgid "print only names (no SHA-1)"
@@ -7997,9 +7921,8 @@ msgid "include objects referred by reflog entries"
 msgstr ""
 
 #: builtin/pack-objects.c:2664
-#, fuzzy
 msgid "include objects referred to by the index"
-msgstr "Añade el contenido de ficheros al índice"
+msgstr "incluye objetos a los que hace referencia el índice"
 
 #: builtin/pack-objects.c:2667
 msgid "output pack to stdout"
@@ -8054,9 +7977,8 @@ msgid "Counting objects"
 msgstr "Contabilizando objetos"
 
 #: builtin/pack-refs.c:6
-#, fuzzy
 msgid "git pack-refs [<options>]"
-msgstr "git pack-refs [opciones]"
+msgstr "git pack-refs [<opciones>]"
 
 #: builtin/pack-refs.c:14
 msgid "pack everything"
@@ -8067,9 +7989,8 @@ msgid "prune loose refs (default)"
 msgstr ""
 
 #: builtin/prune-packed.c:7
-#, fuzzy
 msgid "git prune-packed [-n | --dry-run] [-q | --quiet]"
-msgstr "git prune-packed [-n|--dry-run] [-q|--quiet]"
+msgstr "git prune-packed [-n | --dry-run] [-q | --quiet]"
 
 #: builtin/prune-packed.c:40
 msgid "Removing duplicate objects"
@@ -8918,9 +8839,8 @@ msgid "be verbose; must be placed before a subcommand"
 msgstr "es verboso; debe escribirse antes de la suborden"
 
 #: builtin/repack.c:17
-#, fuzzy
 msgid "git repack [<options>]"
-msgstr "git repack [opciones]"
+msgstr "git repack [<opciones>]"
 
 #: builtin/repack.c:159
 msgid "pack everything in a single pack"
@@ -8998,14 +8918,12 @@ msgid "git replace [-f] <object> <replacement>"
 msgstr ""
 
 #: builtin/replace.c:20
-#, fuzzy
 msgid "git replace [-f] --edit <object>"
-msgstr "git replace -d <objeto>..."
+msgstr "git replace [-f] --edit <objeto>"
 
 #: builtin/replace.c:21
-#, fuzzy
 msgid "git replace [-f] --graft <commit> [<parent>...]"
-msgstr "git replace [--format=<formato>] [-l [<patrón>]]"
+msgstr "git replace [-f] --graft <commit> [<padre>...]"
 
 #: builtin/replace.c:22
 msgid "git replace -d <object>..."
@@ -9016,9 +8934,9 @@ msgid "git replace [--format=<format>] [-l [<pattern>]]"
 msgstr "git replace [--format=<formato>] [-l [<patrón>]]"
 
 #: builtin/replace.c:325 builtin/replace.c:363 builtin/replace.c:391
-#, fuzzy, c-format
+#, c-format
 msgid "Not a valid object name: '%s'"
-msgstr "Nombre de objeto inválido: '%s'."
+msgstr "Nombre de objeto inválido: '%s'"
 
 #: builtin/replace.c:355
 #, c-format
@@ -9038,18 +8956,18 @@ msgid ""
 msgstr ""
 
 #: builtin/replace.c:401
-#, fuzzy, c-format
+#, c-format
 msgid "the original commit '%s' has a gpg signature."
-msgstr "Verifica que el commit especificado tiene una firma GPG válida"
+msgstr "el commit original '%s' tiene una firma gpg."
 
 #: builtin/replace.c:402
 msgid "the signature will be removed in the replacement commit!"
-msgstr ""
+msgstr "¡la firma será eliminada en el commit sustituto!"
 
 #: builtin/replace.c:408
-#, fuzzy, c-format
+#, c-format
 msgid "could not write replacement commit for: '%s'"
-msgstr "No he podido escribir en '%s'"
+msgstr "no he podido escribir el commit sustituto de: '%s'"
 
 #: builtin/replace.c:432
 msgid "list replace refs"
@@ -9060,9 +8978,8 @@ msgid "delete replace refs"
 msgstr ""
 
 #: builtin/replace.c:434
-#, fuzzy
 msgid "edit existing object"
-msgstr "reutiliza objetos existentes"
+msgstr "edita objeto existente"
 
 #: builtin/replace.c:435
 msgid "change a commit's parents"
@@ -9081,9 +8998,8 @@ msgid "use this format"
 msgstr "usa este formato"
 
 #: builtin/rerere.c:12
-#, fuzzy
 msgid "git rerere [clear | forget <path>... | status | remaining | diff | gc]"
-msgstr "git rerere [clear | forget ruta... | status | remaining | diff | gc]"
+msgstr "git rerere [clear | forget <ruta>... | status | remaining | diff | gc]"
 
 #: builtin/rerere.c:57
 msgid "register clean resolutions in index"
@@ -9179,7 +9095,7 @@ msgstr ""
 #: builtin/reset.c:308 builtin/reset.c:316
 #, c-format
 msgid "Could not parse object '%s'."
-msgstr "No he podido analizar el objeto '%s'."
+msgstr "No he podido analizar sintácticamente el objeto '%s'."
 
 #: builtin/reset.c:313
 #, c-format
@@ -9223,9 +9139,8 @@ msgid "Could not write new index file."
 msgstr "No he podido escribir el fichero índice nuevo."
 
 #: builtin/rev-parse.c:361
-#, fuzzy
 msgid "git rev-parse --parseopt [<options>] -- [<args>...]"
-msgstr "git rev-parse --parseopt [opciones] -- [<parms>...]"
+msgstr "git rev-parse --parseopt [<opciones>] -- [<parms>...]"
 
 #: builtin/rev-parse.c:366
 msgid "keep the `--` passed as an arg"
@@ -9240,7 +9155,6 @@ msgid "output in stuck long form"
 msgstr ""
 
 #: builtin/rev-parse.c:499
-#, fuzzy
 msgid ""
 "git rev-parse --parseopt [<options>] -- [<args>...]\n"
 "   or: git rev-parse --sq-quote [<arg>...]\n"
@@ -9248,17 +9162,15 @@ msgid ""
 "\n"
 "Run \"git rev-parse --parseopt -h\" for more information on the first usage."
 msgstr ""
-"git rev-parse --parseopt [opciones] -- [<parms>...]\n"
+"git rev-parse --parseopt [<opciones>] -- [<parms>...]\n"
 "  o: git rev-parse --sq-quote [<parm>...]\n"
-"  o: git rev-parse [opciones] [<parm>...]\n"
+"  o: git rev-parse [<opciones>] [<parm>...]\n"
 "\n"
-"Ejecute \"git rev-parse --parseopt -h\" para más información sobre el primer "
-"uso."
+"Ejecute \"git rev-parse --parseopt -h\" para más información sobre el primer uso."
 
 #: builtin/revert.c:22
-#, fuzzy
 msgid "git revert [<options>] <commit-ish>..."
-msgstr "git revert [opciones] <pseudo-commit>..."
+msgstr "git revert [<opciones>] <pseudo-commit>..."
 
 #: builtin/revert.c:23
 msgid "git revert <subcommand>"
@@ -11309,23 +11221,3 @@ msgstr ""
 msgid "Synchronizing submodule url for '$displaypath'"
 msgstr ""
 
-#~ msgid "The most commonly used git commands are:"
-#~ msgstr "Las órdenes git usadas más frecuentemente son:"
-
-#~ msgid "No such branch: '%s'"
-#~ msgstr "No existe la rama: '%s'"
-
-#~ msgid "no files added"
-#~ msgstr "ningún fichero añadido"
-
-#~ msgid "invalid commit: %s"
-#~ msgstr "commit inválido: %s"
-
-#~ msgid "search also in ignored files"
-#~ msgstr "busca también en ficheros ignorados"
-
-#~ msgid "git remote set-head <name> (-a | --auto | -d | --delete |<branch>)"
-#~ msgstr "git remote set-head <nombre> (-a | --auto | -d | --delete |<rama>)"
-
-#~ msgid "commit has empty message"
-#~ msgstr "el commit tiene un mensaje vacío"
