@@ -177,15 +177,6 @@ static int has_rerere_resolution(const struct rerere_id *id)
 	return ((id->collection->status[variant] & both) == both);
 }
 
-static int has_rerere_preimage(const struct rerere_id *id)
-{
-	int variant = id->variant;
-
-	if (variant < 0)
-		return 0;
-	return (id->collection->status[variant] & RR_HAS_PREIMAGE);
-}
-
 static struct rerere_id *new_rerere_id_hex(char *hex)
 {
 	struct rerere_id *id = xmalloc(sizeof(*id));
@@ -830,32 +821,47 @@ static void do_rerere_one_path(struct string_list_item *rr_item,
 {
 	const char *path = rr_item->string;
 	struct rerere_id *id = rr_item->util;
+	struct rerere_dir *rr_dir = id->collection;
 	int variant;
 
-	if (id->variant < 0)
-		assign_variant(id);
 	variant = id->variant;
 
-	if (!has_rerere_preimage(id)) {
-		/*
-		 * We are the first to encounter this conflict.  Ask
-		 * handle_file() to write the normalized contents to
-		 * the "preimage" file.
-		 */
-		handle_file(path, NULL, rerere_path(id, "preimage"));
-		if (id->collection->status[variant] & RR_HAS_POSTIMAGE) {
-			const char *path = rerere_path(id, "postimage");
-			if (unlink(path))
-				die_errno("cannot unlink stray '%s'", path);
-			id->collection->status[variant] &= ~RR_HAS_PREIMAGE;
+	/* Has the user resolved it already? */
+	if (variant >= 0) {
+		if (!handle_file(path, NULL, NULL)) {
+			copy_file(rerere_path(id, "postimage"), path, 0666);
+			id->collection->status[variant] |= RR_HAS_POSTIMAGE;
+			fprintf(stderr, "Recorded resolution for '%s'.\n", path);
+			free_rerere_id(rr_item);
+			rr_item->util = NULL;
+			return;
 		}
-		id->collection->status[variant] |= RR_HAS_PREIMAGE;
-		fprintf(stderr, "Recorded preimage for '%s'\n", path);
-		return;
-	} else if (has_rerere_resolution(id)) {
-		/* Is there a recorded resolution we could attempt to apply? */
-		if (merge(id, path))
-			return; /* failed to replay */
+		/*
+		 * There may be other variants that can cleanly
+		 * replay.  Try them and update the variant number for
+		 * this one.
+		 */
+	}
+
+	/* Does any existing resolution apply cleanly? */
+	for (variant = 0; variant < rr_dir->status_nr; variant++) {
+		const int both = RR_HAS_PREIMAGE | RR_HAS_POSTIMAGE;
+		struct rerere_id vid = *id;
+
+		if ((rr_dir->status[variant] & both) != both)
+			continue;
+
+		vid.variant = variant;
+		if (merge(&vid, path))
+			continue; /* failed to replay */
+
+		if (0 <= id->variant) {
+			/*
+			 * NEEDSWORK: Lose the assigned variant as we
+			 * reused somebody else's resolution.
+			 */
+			;
+		}
 
 		if (rerere_autoupdate)
 			string_list_insert(update, path);
@@ -863,16 +869,24 @@ static void do_rerere_one_path(struct string_list_item *rr_item,
 			fprintf(stderr,
 				"Resolved '%s' using previous resolution.\n",
 				path);
-	} else if (!handle_file(path, NULL, NULL)) {
-		/* The user has resolved it. */
-		copy_file(rerere_path(id, "postimage"), path, 0666);
-		id->collection->status[variant] |= RR_HAS_POSTIMAGE;
-		fprintf(stderr, "Recorded resolution for '%s'.\n", path);
-	} else {
+		free_rerere_id(rr_item);
+		rr_item->util = NULL;
 		return;
 	}
-	free_rerere_id(rr_item);
-	rr_item->util = NULL;
+
+	/* None of the existing one applies; we need a new variant */
+	assign_variant(id);
+
+	variant = id->variant;
+	handle_file(path, NULL, rerere_path(id, "preimage"));
+	if (id->collection->status[variant] & RR_HAS_POSTIMAGE) {
+		const char *path = rerere_path(id, "postimage");
+		if (unlink(path))
+			die_errno("cannot unlink stray '%s'", path);
+		id->collection->status[variant] &= ~RR_HAS_PREIMAGE;
+	}
+	id->collection->status[variant] |= RR_HAS_PREIMAGE;
+	fprintf(stderr, "Recorded preimage for '%s'\n", path);
 }
 
 static int do_plain_rerere(struct string_list *rr, int fd)
