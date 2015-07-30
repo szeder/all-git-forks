@@ -57,6 +57,6 @@ extern int read_branch_desc(struct strbuf *, const char *branch_name);
  * worktree and die (with a message describing its checkout location) if
  * it is.
  */
-extern void die_if_checked_out(const char *branch);
+extern void die_if_checked_out(const char *head, const char *branch);
 
 #endif
