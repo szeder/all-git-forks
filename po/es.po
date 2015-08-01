@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: Git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-07-14 07:19+0800\n"
-"PO-Revision-Date: 2015-07-31 22:23+0200\n"
+"PO-Revision-Date: 2015-08-01 22:33+0200\n"
 "Last-Translator: Rafa Pereira <rptv2003@yahoo.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -137,7 +137,7 @@ msgstr "No configuraré la rama %s como su propia rama superior [upstream]."
 #: branch.c:83
 #, c-format
 msgid "Branch %s set up to track remote branch %s from %s by rebasing."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la rama remota %s de %s mediante cambio de base [rebase]."
 
 #: branch.c:84
 #, c-format
@@ -147,7 +147,7 @@ msgstr "Rama %s configurada para seguir a la rama remota %s de %s."
 #: branch.c:88
 #, c-format
 msgid "Branch %s set up to track local branch %s by rebasing."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la rama local %s mediante cambio de base [rebase]."
 
 #: branch.c:89
 #, c-format
@@ -157,7 +157,7 @@ msgstr "Rama %s configurada para seguir a la rama local %s."
 #: branch.c:94
 #, c-format
 msgid "Branch %s set up to track remote ref %s by rebasing."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la ref remota %s mediante cambio de base [rebase]."
 
 #: branch.c:95
 #, c-format
@@ -167,7 +167,7 @@ msgstr "Rama %s configurada para seguir a la ref remota %s."
 #: branch.c:99
 #, c-format
 msgid "Branch %s set up to track local ref %s by rebasing."
-msgstr ""
+msgstr "Rama %s configurada para seguir a la ref local %s mediante cambio de base [rebase]."
 
 #: branch.c:100
 #, c-format
@@ -201,7 +201,7 @@ msgstr ""
 #: branch.c:197
 #, c-format
 msgid "the requested upstream branch '%s' does not exist"
-msgstr "la rama superior solicitada '%s' no existe"
+msgstr "la rama superior [upstream] solicitada '%s' no existe"
 
 #: branch.c:199
 msgid ""
@@ -571,7 +571,7 @@ msgstr "'%s': %s"
 #: grep.c:1746
 #, c-format
 msgid "'%s': short read %s"
-msgstr ""
+msgstr "'%s': lectura corta %s"
 
 #: help.c:207
 #, c-format
@@ -584,7 +584,7 @@ msgstr "órdenes git disponibles desde otros lugares de su $PATH"
 
 #: help.c:246
 msgid "These are common Git commands used in various situations:"
-msgstr ""
+msgstr "Estas son órdenes comunes Git usadas en varias situaciones:"
 
 #: help.c:311
 #, c-format
@@ -666,7 +666,7 @@ msgstr ""
 
 #: merge-recursive.c:270
 msgid "error building trees"
-msgstr ""
+msgstr "error construyendo árboles"
 
 #: merge-recursive.c:687
 #, c-format
@@ -901,7 +901,7 @@ msgstr ""
 #: merge-recursive.c:2007
 #, c-format
 msgid "Could not parse object '%s'"
-msgstr ""
+msgstr "No he podido analizar sintácticamente el objeto '%s'"
 
 #: merge-recursive.c:2018 builtin/merge.c:645
 msgid "Unable to write index."
@@ -979,17 +979,17 @@ msgstr ""
 #: pathspec.c:183
 #, c-format
 msgid "Invalid pathspec magic '%.*s' in '%s'"
-msgstr ""
+msgstr "Patrón-de-ruta mágico inválido '%.*s' en '%s'"
 
 #: pathspec.c:187
 #, c-format
 msgid "Missing ')' at the end of pathspec magic in '%s'"
-msgstr ""
+msgstr "Falta ')' al final del patrón-de-ruta mágico en '%s'"
 
 #: pathspec.c:205
 #, c-format
 msgid "Unimplemented pathspec magic '%c' in '%s'"
-msgstr ""
+msgstr "Patrón-de-ruta mágico no implementado '%c' en '%s'"
 
 #: pathspec.c:230
 #, c-format
@@ -1009,7 +1009,7 @@ msgstr ""
 #: pathspec.c:353
 #, c-format
 msgid "%s: pathspec magic not supported by this command: %s"
-msgstr ""
+msgstr "%s: patrón-de-ruta mágico no aceptado por esta orden: %s"
 
 #: pathspec.c:432
 #, c-format
@@ -1901,7 +1901,7 @@ msgstr "En la rama "
 
 #: wt-status.c:1331
 msgid "rebase in progress; onto "
-msgstr "reorganización en curso; sobre "
+msgstr "cambio de base [rebase] en curso; sobre "
 
 #: wt-status.c:1336
 msgid "HEAD detached at "
@@ -9288,9 +9288,7 @@ msgstr[1] ""
 msgid ""
 "\n"
 "(use 'rm -rf' if you really want to remove it including all of its history)"
-msgstr ""
-"\n"
-"(use 'rm -rf' si realmente quiere eliminarlo incluyendo toda su historia)"
+msgstr "\n(use 'rm -rf' si realmente quiere eliminarlo incluyendo todo su historial)"
 
 #: builtin/rm.c:230
 msgid ""
@@ -10130,23 +10128,23 @@ msgstr ""
 
 #: common-cmds.h:10
 msgid "start a working area (see also: git help tutorial)"
-msgstr ""
+msgstr "empezar un área de trabajo (vea también: git help tutorial)"
 
 #: common-cmds.h:11
 msgid "work on the current change (see also: git help everyday)"
-msgstr ""
+msgstr "trabajar en la modificación actual (vea también: git help everyday)"
 
 #: common-cmds.h:12
 msgid "examine the history and state (see also: git help revisions)"
-msgstr ""
+msgstr "examinar el historial y el estado (vea también: git help revisions)"
 
 #: common-cmds.h:13
 msgid "grow, mark and tweak your common history"
-msgstr ""
+msgstr "desarrollar, marcar y afinar su historial común"
 
 #: common-cmds.h:14
 msgid "collaborate (see also: git help workflows)"
-msgstr ""
+msgstr "colaborar (vea también: git help workflows)"
 
 #: common-cmds.h:18
 msgid "Add file contents to the index"
@@ -10652,8 +10650,7 @@ msgstr ""
 
 #: git-rebase.sh:213
 msgid "It looks like git-am is in progress. Cannot rebase."
-msgstr ""
-"Parece como si hubiera una orden git-am en curso. No puedo reorganizar."
+msgstr "Parece como si hubiera una orden git-am en curso. No puedo cambiar de base [rebase]."
 
 #: git-rebase.sh:351
 msgid "The --exec option must be used with the --interactive option"
@@ -10666,8 +10663,7 @@ msgstr ""
 
 #: git-rebase.sh:367
 msgid "The --edit-todo action can only be used during interactive rebase."
-msgstr ""
-"La acción --edit-todo sólo se puede usar en la reorganización interactiva."
+msgstr "La acción --edit-todo sólo se puede usar en el cambio de base [rebase] interactivo."
 
 #: git-rebase.sh:374
 msgid "Cannot read HEAD"
@@ -10699,13 +10695,12 @@ msgid ""
 "valuable there."
 msgstr ""
 "Parece que ya existe un directorio $state_dir_base, y\n"
-"me pregunto si se encuentra en medio de otra reorganización. Si es\n"
+"me pregunto si se encuentra en medio de otro cambio de base [rebase]. Si es\n"
 "así, por favor, intente\n"
 "\t$cmd_live_rebase\n"
 "Si no es así, por favor, haga\n"
 "\t$cmd_clear_stale_rebase\n"
-"y, a continuación, ejecúteme de nuevo. Me detengo por si todavía tuviera "
-"algo\n"
+"y, a continuación, ejecúteme de nuevo. Me detengo por si todavía tuviera algo\n"
 "allí que quisiera conservar."
 
 #: git-rebase.sh:465
@@ -10754,8 +10749,7 @@ msgstr "La rama actual $branch_name está actualizada."
 #: git-rebase.sh:590
 #, sh-format
 msgid "Current branch $branch_name is up to date, rebase forced."
-msgstr ""
-"La rama actual $branch_name está actualizada, forzada la reorganización."
+msgstr "La rama actual $branch_name está actualizada, forzado el cambio de base [rebase]."
 
 #: git-rebase.sh:601
 #, sh-format
@@ -11065,8 +11059,7 @@ msgstr ""
 #, sh-format
 msgid ""
 "(use 'rm -rf' if you really want to remove it including all of its history)"
-msgstr ""
-"(use 'rm -rf' si realmente quiere eliminarlo incluyendo toda su historia)"
+msgstr "(use 'rm -rf' si realmente quiere eliminarlo incluyendo todo su historial)"
 
 #: git-submodule.sh:698
 #, sh-format
