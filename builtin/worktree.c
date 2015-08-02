@@ -6,10 +6,12 @@
 #include "run-command.h"
 #include "sigchain.h"
 #include "refs.h"
+#include "revision.h"
 
 static const char * const worktree_usage[] = {
 	N_("git worktree add [<options>] <path> <branch>"),
 	N_("git worktree prune [<options>]"),
+	N_("git worktree branchout"),
 	NULL
 };
 
@@ -316,6 +318,37 @@ static int add(int ac, const char **av, const char *prefix)
 	return add_worktree(path, cmd.argv);
 }
 
+static int branchout_ref(const char *refname, const struct object_id *oid, int flags, void *current_refname)
+{
+	if (strcmp(refname, current_refname) == 0)
+	{
+		fprintf_ln(stderr, _("current branch '%s' will not be branchedout"), _(current_refname));
+		return 0;
+	}
+	if (file_exists(refname) && !is_empty_dir(refname))
+	{
+		fprintf_ln(stderr, _("ignoring branch '%s' as a non empty directory already exists"), _(refname));
+		return 0;
+	}
+	fprintf_ln(stderr, _("Branch out '%s'"), _(refname));
+
+	struct argv_array cmd = ARGV_ARRAY_INIT;
+	argv_array_push(&cmd, "checkout");
+	argv_array_push(&cmd, refname);
+	return 0;
+	//return add_worktree(refname, cmd.argv);
+}
+
+static int branchout(int ac, const char **av, const char *prefix)
+{
+	// resolve the current branch
+	unsigned char sha1[20];
+	char *current = resolve_refdup("HEAD", 0, sha1, NULL) + 11;
+	for_each_branch_ref(branchout_ref, current);
+
+	return 0;
+}
+
 int cmd_worktree(int ac, const char **av, const char *prefix)
 {
 	struct option options[] = {
@@ -328,5 +361,8 @@ int cmd_worktree(int ac, const char **av, const char *prefix)
 		return add(ac - 1, av + 1, prefix);
 	if (!strcmp(av[1], "prune"))
 		return prune(ac - 1, av + 1, prefix);
+	if (!strcmp(av[1], "branchout"))
+		return branchout(ac - 1, av + 1, prefix);
+
 	usage_with_options(worktree_usage, options);
 }
