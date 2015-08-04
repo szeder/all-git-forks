@@ -123,7 +123,7 @@ void stage_updated_gitmodules(void)
 static int add_submodule_odb(const char *path)
 {
 	struct alternate_object_database *alt_odb;
-	const char* objects_directory;
+	const char *objects_directory;
 	int ret = 0;
 
 	objects_directory = git_path_submodule(path, "objects/");
