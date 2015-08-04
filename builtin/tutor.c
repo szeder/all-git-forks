@@ -145,6 +145,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		char merge_tut[] = "git merge upstream/master";
 		char merge_input[sizeof(merge_tut)];
 		char push1_tut[] = "git push origin master";
+		char push1_input[sizeof(push1_tut)];
 		char add_tut[] = "git add .";
 		char commit_tut[] = "git commit -m \"";
 		char push2_tut[] = "git push origin/master";
@@ -245,17 +246,29 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		system("git merge upstream/master");
 		//read_input[0]='\0';
 		
-		return 0;
 		
 		//push
-		printf("Tutorial 3: Pushing \n");
-		printf("\nPush Command: Update remote refs along with associated objects");
-		printf("\nHint: git push [Repository Name] [Local Branch]...\nType the command: ");
-		gets(read_input);
-		string_compare(push1_tut, read_input, push_str);
-		system("git push origin master");
-		read_input[0]='\0';
+		printf("\nTutorial 3: Pushing \n");
+		printf("Summary: 'git push allows us to move our changes from one repository to a new host.\n");
+		printf("Instructions: Push the changes in our master repository to our origin repository on our master branch\n");
+		printf("\nHint: git push [target Repository Name] [Local Branch]\nType the command: ");
+		//push1_input
+
+		while(1){
+			printf("Input >> ");
+			fflush(stdin);
+			fgets(push1_input, sizeof(push1_input), stdin);
+			
+			if(strcmp(push1_tut,push1_input)==0)
+				break;
+			else
+				printf("incorrect please try again\n");
+		}
 		
+		system("git push origin master");
+		//read_input[0]='\0';
+		
+		return 0;
 		//add
 		printf("Tutorial 4: Adding \n");
 		printf("\nAdd Command: Add file contents to the index");
