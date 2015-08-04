@@ -98,7 +98,7 @@ static const char *common_list[] = {
 	NULL
 };
 
-static void update_common_dir(struct strbuf *buf, int git_dir_len, const char* common_dir)
+static void update_common_dir(struct strbuf *buf, int git_dir_len, const char *common_dir)
 {
 	char *base = buf->buf + git_dir_len;
 	const char **p;
