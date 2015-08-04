@@ -134,25 +134,26 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 
         int loopi=0;
 		FILE *dummyfile;
-	 char read_input[100];
+		char read_input[100];
 		char fetch_str[] = "fetched";
 		char merge_str[] = "merged";
 		char push_str[] = "pushed";
 		char add_str[] = "added";
 		char commit_str[] = "committed";
 		char fetch_tut[] = "git fetch upstream";
-		char fetch_input[19];
+		char fetch_input[sizeof(fetch_tut)];
 		char merge_tut[] = "git merge upstream/master";
 		char merge_input[sizeof(merge_tut)];
 		char push1_tut[] = "git push origin master";
 		char push1_input[sizeof(push1_tut)];
 		char add_tut[] = "git add .";
+		char add_input[sizeof(add_tut)];
 		char commit_tut[] = "git commit -m \"";
 		char push2_tut[] = "git push origin/master";
 		char diff_tut[] = "git diff";
 		char status_tut[] = "git status";
 		
-		int flag;
+		//int flag;
 		int T_F = 0;
 
 		for (; loopi<1000; loopi++){
@@ -251,8 +252,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		printf("\nTutorial 3: Pushing \n");
 		printf("Summary: 'git push allows us to move our changes from one repository to a new host.\n");
 		printf("Instructions: Push the changes in our master repository to our origin repository on our master branch\n");
-		printf("\nHint: git push [target Repository Name] [Local Branch]\nType the command: ");
-		//push1_input
+		printf("\nHint: git push [target Repository Name] [Local Branch]\n");
 
 		while(1){
 			printf("Input >> ");
@@ -268,15 +268,31 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		system("git push origin master");
 		//read_input[0]='\0';
 		
-		return 0;
+		
 		//add
-		printf("Tutorial 4: Adding \n");
-		printf("\nAdd Command: Add file contents to the index");
-		printf("\nHint: git add [option]...\nType the command: ");
-		gets(read_input);
-		string_compare(add_tut, read_input, add_str);
+		//We need an actual file to commit, before progressing.
+		printf("\nTutorial 4: Adding to staging \n");
+		printf("Summary: 'git add' allows us to move our current changes to staging, a step before committing the work.\n");
+		printf("Instructions: Add this directory's contents and onwards to move all changed items to staging\n");	
+		printf("\nHint: git add [directory/specific file]\n");
+
+		while(1){
+			printf("Input >> ");
+			fflush(stdin);
+			fgets(add_input, sizeof(add_input), stdin);
+			
+			if(strcmp(add_tut,add_input)==0)
+				break;
+			else
+				printf("incorrect please try again\n");
+		}
 		system("git add .");
-		read_input[0]='\0';
+		
+		
+		printf("Git Tutor tutorials are complete, congratulations!\n");
+		
+        return 0;
+		
 		
 		//commit
 		printf("Tutorial 5: Committing \n");
