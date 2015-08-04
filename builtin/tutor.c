@@ -30,7 +30,6 @@ void string_compare(char a[], char b[], char c[])
 		{
 			while(strcmp(a, b) != 0)
 			{
-				printf("Wrong! try again: ");
 				gets(b);
 				count++;
 				if ((count%5)==0)
@@ -45,7 +44,7 @@ void string_compare(char a[], char b[], char c[])
 						count++;
 					}
 				}
-				
+				printf("Wrong! try again: ");
 			}
 			printf("Correct! Your file(s) are %s\n", c);
 			//fetch the file
@@ -90,6 +89,12 @@ void status (char a[], char b[])
 int cmd_tutor(int argc, const char **argv, const char *prefix)
 {
 
+		//remove repos
+		system("rm -rf ./master");
+		system("rm -rf ./origin.git");
+		system("rm -rf ./upstream");
+
+
 		/* Check for GUI arguments and grab it, then activate it */
 
 		char *Gui1 = "--gui";
@@ -126,17 +131,12 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 
         int loopi=0;
 		FILE *dummyfile;
-		
-		for (; loopi<50; loopi++){
-			printf("\n");
-		}
-        printf("Welcome to Git Tutor.\n\n\n\nGit Tutor is a tutorial that seeks to teach Git through a step-by step approach.");
-
+	
 		char fetch_str[] = "fetched";
 		char merge_str[] = "merged";
 		char push_str[] = "pushed";
 		char add_str[] = "added";
-		char commit_str[] = "commited";
+		char commit_str[] = "committed";
 		char fetch_tut[] = "git fetch upstream";
 		char merge_tut[] = "git merge upstream/master";
 		char push1_tut[] = "git push origin master";
@@ -148,32 +148,32 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		
 		int flag;
 		int T_F = 0;
-        printf("Welcome to Git Tutor!!\nGit Tutor is a tutorial that seeks to teach by example \nand supply the information to complete tasks that Git tutor assigns.");
 
-        printf("\nDo you want to continue? Yes or No: ");
+		for (; loopi<1000; loopi++){
+			printf("\n");
+		}
+        //Start
+		printf("Git Tutor is a tutorial that seeks to teach Git through a step-by step approach.\n");
+        printf("Do you wish to continue? (Yes or No) \n");
+		printf("Input >> ");
 		scanf("%s", begin_end);
-		printf("Input: %s \n", begin_end);
-        if ((strcmp(yes1, begin_end) == 0)  || (strcmp(begin_end, yes2) == 0)) {
-                printf("You are beginning the tutorial now!\n");
-        }
-        else {
+        
+		if ((strcmp(yes1, begin_end) != 0)  && (strcmp(begin_end, yes2) != 0)) {
 				printf("Exiting tutorial.\n");
-                exit(-1);
+                exit(1);
         }
-
+			
 		//create directories
 		mkdir("./upstream/");
 		mkdir("./master/");
 		//mkdir("./origin/");
-		//system("mkdir ./upstream/");
-		//system("mkdir ./origin/");
+		//Git repo setup
 		system("git init -q --bare ./origin.git/");
 		system("git init -q ./upstream/");
 		system("git clone -q ./origin.git ./master");
-		//system("touch ./upstream/test.txt");
+		
 		dummyfile = fopen("./upstream/test.txt","w");
 		fclose(dummyfile);
-		//system("cd ./upstream");
 		chdir("./upstream");
 
 		//there must a check for account's default identity for git being already set.
@@ -187,15 +187,21 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		chdir("./master");
 		//system("git remote rm origin");
 		//system("cd ..");
-		printf("Following three repositories are created:\n1. master \n2. origin \n3. upstream");
-		
-		//
+
 		// add origin and upstream 
-		system("git remote add origin ./origin.git");
+		//system("git remote add origin ./origin.git"); < -don't need for some reason
 		system("git remote add upstream ./upstream");
-		printf("\nRemote is created for origin and upstream...");
+		//printf("\nRemote is created for origin and upstream...");
 		
-		//fetch
+		loopi=0;
+		for (; loopi<1000; loopi++){
+			printf("\n");
+		}
+		
+		printf("Beginning Git Tutor\n");
+		printf("The following three repositories are created:\n1. master - our local repository \n2. origin.git - Our repository to which we will send our changes \n3. upstream - Our repository where we will grab changes from\n\n");
+		//Fetching
+		printf("Tutorial 1: Fetching \n");
 		printf("Fetch Command: Download objects and refs from another repository.");
 		printf("\nHint: git fetch [Repository Name] \nType the command: ");
 		gets(read_input);
@@ -204,6 +210,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		read_input[0]='\0';
 		
 		//merge
+		printf("Tutorial 2: Merging \n");
 		printf("\nMerge Command: Join two or more development histories together");
 		printf("\nHint: git merge [Repository Name/LocalBranch]...\nType the command: ");
 		gets(read_input);
@@ -212,6 +219,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		read_input[0]='\0';
 		
 		//push
+		printf("Tutorial 3: Pushing \n");
 		printf("\nPush Command: Update remote refs along with associated objects");
 		printf("\nHint: git push [Repository Name] [Local Branch]...\nType the command: ");
 		gets(read_input);
@@ -220,6 +228,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		read_input[0]='\0';
 		
 		//add
+		printf("Tutorial 4: Adding \n");
 		printf("\nAdd Command: Add file contents to the index");
 		printf("\nHint: git add [option]...\nType the command: ");
 		gets(read_input);
@@ -228,6 +237,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		read_input[0]='\0';
 		
 		//commit
+		printf("Tutorial 5: Committing \n");
 		printf("\nRecord changes to the repository");
 		printf("\nHint: git commit [option] [Branch]...\nType the command: ");
 		int c = 1;
@@ -279,6 +289,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		
 		
 		//push
+		printf("Tutorial 6: Pushing \n");
 		printf("Push Command: Update remote refs along with associated objects");
 		printf("\nHint: git push [Repository Name] [Local Branch]...\nType the command: ");
 		gets(read_input);
