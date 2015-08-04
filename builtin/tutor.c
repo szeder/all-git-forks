@@ -16,12 +16,15 @@ static struct option builtin_tutor_options[] = {
 };
 */
 	
-void string_compare(char a[], char b[], char c[])
-{
+void string_compare(char a[], char b[], char c[]){
+		
 		int count = 1;
 		char yes_no[4];
 		char yes1[] = "Yes";
         char yes2[] = "yes";
+		
+		printf("input : %s \n", b);
+		printf("what should be : |%s| \n", a);
 		if ((strcmp(a, b)) == 0)
 		{
 			printf("Correct! Your file(s) are %s\n", c);
@@ -44,6 +47,7 @@ void string_compare(char a[], char b[], char c[])
 						count++;
 					}
 				}
+				printf("\ninput : |%s| \n", b);
 				printf("Wrong! try again: ");
 			}
 			printf("Correct! Your file(s) are %s\n", c);
@@ -124,7 +128,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		
 		
         char begin_end[3];
-		char read_input[100];
+		//char read_input[100];
 		char yes_no[4];
         char yes1[] = "Yes";
         char yes2[] = "yes";
@@ -138,6 +142,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		char add_str[] = "added";
 		char commit_str[] = "committed";
 		char fetch_tut[] = "git fetch upstream";
+		char read_input[19];
 		char merge_tut[] = "git merge upstream/master";
 		char push1_tut[] = "git push origin master";
 		char add_tut[] = "git add .";
@@ -190,7 +195,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 
 		// add origin and upstream 
 		//system("git remote add origin ./origin.git"); < -don't need for some reason
-		system("git remote add upstream ./upstream");
+		system("git remote add upstream ../upstream");
 		//printf("\nRemote is created for origin and upstream...");
 		
 		loopi=0;
@@ -200,17 +205,30 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		
 		printf("Beginning Git Tutor\n");
 		printf("The following three repositories are created:\n1. master - our local repository \n2. origin.git - Our repository to which we will send our changes \n3. upstream - Our repository where we will grab changes from\n\n");
+		
 		//Fetching
 		printf("Tutorial 1: Fetching \n");
-		printf("Fetch Command: Download objects and refs from another repository.");
-		printf("\nHint: git fetch [Repository Name] \nType the command: ");
-		gets(read_input);
-		string_compare(fetch_tut, read_input, fetch_str);
+		printf("Summary: 'git fetch' allows us to retrieve references to changes in other\ngit repositories and bring it to our current git repository.\n");
+		printf("Instructions:  Fetch the changes from the upstream repository.\n");
+		printf("\nHint: git fetch <Repository Name> \n");
+		
+		//fgets(read_input, sizeof(read_input), stdin);
+		
+		while(1){
+			printf("Input >> ");
+			fflush(stdin);
+			fgets(read_input, sizeof(read_input), stdin);
+			
+			if(strcmp(fetch_tut,read_input)==0)
+				break;
+			else
+				printf("incorrect please try again\n");
+		}
+		//string_compare(fetch_tut, read_input, fetch_str);
 		system("git fetch upstream");
-		read_input[0]='\0';
 		
 		//merge
-		printf("Tutorial 2: Merging \n");
+		printf("\n\nTutorial 2: Merging \n");
 		printf("\nMerge Command: Join two or more development histories together");
 		printf("\nHint: git merge [Repository Name/LocalBranch]...\nType the command: ");
 		gets(read_input);
@@ -304,6 +322,7 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		read_input[0]='\0';
 		
 		
+		printf("Tutorial complete, congratulations\n");
 		
         return 0;
 }
