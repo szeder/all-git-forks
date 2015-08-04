@@ -3,7 +3,19 @@
 #include <stdlib.h> // exit ()
 #include <unistd.h>
 
- 
+/* Future HELP stuff
+
+static const char * const builtin_tutor_usage[] = {
+	N_("git tutor [<options>] [--]"),
+	NULL
+}
+
+static struct option builtin_tutor_options[] = {
+	OPT_BOOL('g', "gui", &show_all, N_("Git Tutor user interface")),
+	OPT_END(),
+};
+*/
+	
 void string_compare(char a[], char b[], char c[])
 {
 		int count = 1;
@@ -77,6 +89,35 @@ void status (char a[], char b[])
 
 int cmd_tutor(int argc, const char **argv, const char *prefix)
 {
+
+		/* Check for GUI arguments and grab it, then activate it */
+
+		char *Gui1 = "--gui";
+		char *Gui2 = "-g";
+		
+		if(argc==2 && ( strcmp(argv[1],Gui1) ==0 || strcmp(argv[1],Gui2) == 0)){
+			mkdir("./.gittutor");
+			chdir("./.gittutor");
+			if(access("GitTutor.html", F_OK) !=0) {
+				printf("Launching GUI... Please wait.\n");
+				system("curl -so GitTutor.html https://raw.githubusercontent.com/joey-walker/COMP650-SeniorProject/master/GitTutor/GitTutor.html");
+				system("curl -so Picture1.png  https://raw.githubusercontent.com/joey-walker/COMP650-SeniorProject/master/GitTutor/Picture1.png");
+				system("curl -so local.PNG https://raw.githubusercontent.com/joey-walker/COMP650-SeniorProject/master/GitTutor/local.PNG");
+				system("curl -so padnote.PNG https://raw.githubusercontent.com/joey-walker/COMP650-SeniorProject/master/GitTutor/padnote.PNG");
+				system("curl -so repo_created.png https://raw.githubusercontent.com/joey-walker/COMP650-SeniorProject/master/GitTutor/repo_created.png");
+			}
+			system("start GitTutor.html");
+			exit(1);
+		}else if (argc >= 2 ){
+			if( strcmp(argv[1],Gui1) != 0 || strcmp(argv[1],Gui2) != 0){
+				printf("Git Tutor did not recognize the additional argument\n Correct usage is 'git tutor --gui' or 'git tutor -g'");
+				exit(1);
+			}
+		}
+		
+		/*													*/
+		
+		
         char begin_end[3];
 		char read_input[100];
 		char yes_no[4];
@@ -89,7 +130,6 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		for (; loopi<50; loopi++){
 			printf("\n");
 		}
-		
         printf("Welcome to Git Tutor.\n\n\n\nGit Tutor is a tutorial that seeks to teach Git through a step-by step approach.");
 
 		char fetch_str[] = "fetched";
@@ -192,7 +232,8 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		printf("\nHint: git commit [option] [Branch]...\nType the command: ");
 		int c = 1;
 		int len = sizeof(commit_tut);
-		LOOP:
+		
+		while(1){
 			if ((c%5)==0)
 			{
 				printf("Do you want to get the answer? (yes or no) If no, you will continue: ");
@@ -224,16 +265,17 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 				}
 				count++;
 			}
-			if (T_F == 0)
+			if (T_F != 0)
 			{
 				printf("Correct! Your file(s) are %s\n", commit_str);
+				break;
 				//system(read_input);
 			}
 			else
 			{
 				printf("Wrong! try again: ");
-				goto LOOP;
 			}
+		}
 		
 		
 		//push
