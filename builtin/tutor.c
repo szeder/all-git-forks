@@ -128,22 +128,22 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		
 		
         char begin_end[3];
-		//char read_input[100];
 		char yes_no[4];
         char yes1[] = "Yes";
         char yes2[] = "yes";
 
         int loopi=0;
 		FILE *dummyfile;
-	
+	 char read_input[100];
 		char fetch_str[] = "fetched";
 		char merge_str[] = "merged";
 		char push_str[] = "pushed";
 		char add_str[] = "added";
 		char commit_str[] = "committed";
 		char fetch_tut[] = "git fetch upstream";
-		char read_input[19];
+		char fetch_input[19];
 		char merge_tut[] = "git merge upstream/master";
+		char merge_input[sizeof(merge_tut)];
 		char push1_tut[] = "git push origin master";
 		char add_tut[] = "git add .";
 		char commit_tut[] = "git commit -m \"";
@@ -211,15 +211,13 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		printf("Summary: 'git fetch' allows us to retrieve references to changes in other\ngit repositories and bring it to our current git repository.\n");
 		printf("Instructions:  Fetch the changes from the upstream repository.\n");
 		printf("\nHint: git fetch <Repository Name> \n");
-		
-		//fgets(read_input, sizeof(read_input), stdin);
-		
+
 		while(1){
 			printf("Input >> ");
 			fflush(stdin);
-			fgets(read_input, sizeof(read_input), stdin);
+			fgets(fetch_input, sizeof(fetch_input), stdin);
 			
-			if(strcmp(fetch_tut,read_input)==0)
+			if(strcmp(fetch_tut,fetch_input)==0)
 				break;
 			else
 				printf("incorrect please try again\n");
@@ -229,12 +227,25 @@ int cmd_tutor(int argc, const char **argv, const char *prefix)
 		
 		//merge
 		printf("\n\nTutorial 2: Merging \n");
-		printf("\nMerge Command: Join two or more development histories together");
-		printf("\nHint: git merge [Repository Name/LocalBranch]...\nType the command: ");
-		gets(read_input);
-		string_compare(merge_tut, read_input, merge_str);
+		printf("Summary: 'git merge will combine the references from another repository with a branch located on local repository\n");
+		printf("Instructions: Merge the changes from the upstream repository into the master branch \n");
+		printf("\nHint: git merge [Repository Name/LocalBranch]\n");
+
+		while(1){
+			printf("Input >> ");
+			fflush(stdin);
+			fgets(merge_input, sizeof(merge_input), stdin);
+			
+			if(strcmp(merge_tut,merge_input)==0)
+				break;
+			else
+				printf("incorrect please try again\n");
+		}
+		
 		system("git merge upstream/master");
-		read_input[0]='\0';
+		//read_input[0]='\0';
+		
+		return 0;
 		
 		//push
 		printf("Tutorial 3: Pushing \n");
