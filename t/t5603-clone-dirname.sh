@@ -22,7 +22,8 @@ test_clone_dir () {
 	expect=success
 	bare=non-bare
 	clone_opts=
-	for i in "$@"; do
+	for i in "$@"
+	do
 		case "$i" in
 		fail)
 			expect=failure
@@ -61,12 +62,23 @@ test_clone_dir ssh://host/foo/ foo
 test_clone_dir ssh://host/foo.git/ foo
 test_clone_dir ssh://host/foo/.git/ foo
 
+test_clone_dir host:foo/ foo
+test_clone_dir host:foo.git/ foo
+test_clone_dir host:foo/.git/ foo
+
 # omitting the path should default to the hostname
 test_clone_dir ssh://host/ host
 test_clone_dir ssh://host:1234/ host
 test_clone_dir ssh://user@host/ host
+test_clone_dir host:/ host
+
+# auth materials should be redacted
 test_clone_dir ssh://user:password@host/ host
 test_clone_dir ssh://user:password@host:1234/ host
+test_clone_dir ssh://user:passw@rd@host:1234/ host
+test_clone_dir user@host:/ host
+test_clone_dir user:password@host:/ host
+test_clone_dir user:passw@rd@host:/ host
 
 # trailing port-like numbers should not be stripped for paths
 test_clone_dir ssh://user:password@host/test:1234 1234

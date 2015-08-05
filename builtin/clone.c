@@ -160,13 +160,12 @@ static char *guess_dir_name(const char *repo, int is_bundle, int is_bare)
 		start += 3;
 
 	/*
-	 * Skip authentication data.
+	 * Skip authentication data, if exists.
 	 */
-	ptr = start;
-	while (ptr < end && !is_dir_sep(*ptr) && *ptr != '@')
-		ptr++;
-	if (*ptr == '@')
-		start = ptr + 1;
+	for (ptr = start; ptr < end && !is_dir_sep(*ptr); ptr++) {
+		if (*ptr == '@')
+			start = ptr + 1;
+	}
 
 	/*
 	 * Strip trailing spaces, slashes and /.git
