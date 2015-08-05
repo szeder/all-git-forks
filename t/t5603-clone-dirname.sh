@@ -63,8 +63,13 @@ test_clone_dir ssh://host/foo/.git/ foo
 
 # omitting the path should default to the hostname
 test_clone_dir ssh://host/ host
-test_clone_dir ssh://host:1234/ host fail
+test_clone_dir ssh://host:1234/ host
 test_clone_dir ssh://user@host/ host
 test_clone_dir ssh://user:password@host/ host
+test_clone_dir ssh://user:password@host:1234/ host
+
+# trailing port-like numbers should not be stripped for paths
+test_clone_dir ssh://user:password@host/test:1234 1234
+test_clone_dir ssh://user:password@host/test:1234.git 1234
 
 test_done
