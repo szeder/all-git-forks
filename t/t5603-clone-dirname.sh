@@ -64,6 +64,7 @@ test_clone_dir ssh://host/foo/.git/ foo
 # omitting the path should default to the hostname
 test_clone_dir ssh://host/ host
 test_clone_dir ssh://host:1234/ host fail
-test_clone_dir ssh://user@host/ host fail
+test_clone_dir ssh://user@host/ host
+test_clone_dir ssh://user:password@host/ host
 
 test_done
