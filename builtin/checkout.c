@@ -235,6 +235,45 @@ static int checkout_merged(int pos, struct checkout *state)
 	return status;
 }
 
+struct thread_data {
+	pthread_t pthread;
+	int pos;
+	int endpos;
+	int errs;
+	struct checkout *state;
+	const struct checkout_opts *opts;
+};
+
+static void *checkout_thread(void *_data)
+{
+	struct thread_data *p = _data;
+	struct checkout *state = p->state;
+	const struct checkout_opts *opts = p->opts;
+	int pos, errs;
+
+	printf("thread started %d, %d -> %d\n", pthread_self(), p->pos, p->endpos);
+	
+	for (pos = p->pos; pos < p->endpos; pos++) {
+		/* FIXME: copied from the single-thread loop, should be its own fn */
+		struct cache_entry *ce = active_cache[pos];
+		printf("%d: checking out %d\n", pthread_self(), pos);
+		if (ce->ce_flags & CE_MATCHED) {
+			if (!ce_stage(ce)) {
+				errs |= checkout_entry(ce, state, NULL);
+				continue;
+			}
+			if (opts->writeout_stage)
+				errs |= checkout_stage(opts->writeout_stage, ce, pos, state);
+			else if (opts->merge)
+				errs |= checkout_merged(pos, state);
+			pos = skip_same_name(ce, pos) - 1;
+		}
+	}
+
+	p->errs = errs;
+	return NULL;
+}
+
 static int checkout_paths(const struct checkout_opts *opts,
 			  const char *revision)
 {
@@ -357,6 +396,33 @@ static int checkout_paths(const struct checkout_opts *opts,
 	state.force = 1;
 	state.refresh_cache = 1;
 	state.istate = &the_index;
+#ifdef THREADED_CHECKOUT
+	struct thread_data data[2];
+
+	printf("checking out %d paths\n", active_nr);
+	for (int nthread = 0; nthread < 2; nthread++) {
+		struct thread_data *p = &data[nthread];
+		p->pos = DIV_ROUND_UP(active_nr, 2) * nthread;
+		p->endpos = p->pos + DIV_ROUND_UP(active_nr, 2);
+		p->state = &state;
+		p->opts = opts;
+
+		if (p->endpos > active_nr)
+			p->endpos = active_nr;
+
+		if (pthread_create(&p->pthread, NULL, checkout_thread, p))
+			die("unable to create threaded checkout");
+	}
+
+	for (int nthread = 0; nthread < 2; nthread++) {
+		struct thread_data *p = &data[nthread];
+		if (pthread_join(p->pthread, NULL))
+			die("unable to join threaded checkout");
+
+		errs |= p->errs;
+	}
+
+#else
 	for (pos = 0; pos < active_nr; pos++) {
 		struct cache_entry *ce = active_cache[pos];
 		if (ce->ce_flags & CE_MATCHED) {
@@ -371,6 +437,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 			pos = skip_same_name(ce, pos) - 1;
 		}
 	}
+#endif
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));
