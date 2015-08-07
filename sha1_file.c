@@ -1469,6 +1469,7 @@ int git_open_noatime(const char *name)
 		/* Might the failure be due to O_NOATIME? */
 		if (errno != ENOENT && sha1_file_open_flag) {
 			sha1_file_open_flag = 0;
+			errno = 0;
 			continue;
 		}
 
