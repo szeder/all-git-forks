@@ -20,7 +20,9 @@ SYNOPSIS
 	   | [--show-priorities] 
 	   | [--pending]
 	   | [--switch] 
-	   | [--stat] ]
+	   | [--stat] 
+	   | [--import]
+	   | [--export] ]
 
 Each option accepts arguments. See OPTIONS section for more info about a specific option and arguments.
 
@@ -58,6 +60,11 @@ OPTIONS
 
 --file [--add | --rm] : Used to link, unlink (or both) files to/of a task.
 
+--input-file : File with data to import
+
+--in : Input format
+
+--out : Output format
 
 [Create option]
 Need to specify 'name', 'state', 'priority' and 'type'.
@@ -110,6 +117,12 @@ Use same command to deactivate an active task.
 Execute 'git task --stat' to see project statistics like completion percents and other interesting
 data to evaluate project and take decisions about how to continue work.
 
+[Import data]
+Takes an input file and an input format to include data in database, file can contain task, user and asignation data
+
+[Export data]
+Giving an output format task, user and asignation data will be exported to selected format
+
 NOTES
 -----
 When updating tasks, data such as notes, estimated time and real time will be added to existent value.
@@ -159,3 +172,9 @@ Activating task:
 Checking stats:
 	git task --stat
 	git task --stat > 'my_stat_file.txt'
+	
+Importing data:
+	git task --import --input-file "myfile.csv" --in csv
+
+Exporting data:
+	git task --export --out csv

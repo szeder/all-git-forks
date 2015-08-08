@@ -156,7 +156,7 @@ int cmd_task(int argc, const char **argv, const char *prefix){
 		OPT_STRING(0,"est_time",&task_est_time,"task est time",N_("specifies estimated task time in hours")),
 		OPT_STRING(0,"time",&task_time,"task real time",N_("specifies real task time in hours")),
 		OPT_GROUP("Notes"),
-		OPT_GROUP("\t- When updating tasks indicated data such as notes, estimated time and real time will be added to existent value\n\t- Date format is dd/mm/yyyy\n\t- Times are measured in minutes\n\t- If any filter is set when requested it apply to all existent tasks\n\t- To create a new task parameters name, state, priority and type are mandatory"),
+		OPT_GROUP("\t- When updating tasks indicated data such as notes, estimated time and real time will be added to existent value\n\t- Date format is dd/mm/yyyy\n\t- Times are measured in hours\n\t- If any filter is set when requested it apply to all existent tasks\n\t- To create a new task parameters name, state, priority and type are mandatory"),
 		OPT_END()
 	};
 
