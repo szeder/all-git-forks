@@ -21,8 +21,6 @@ static int rerere_enabled = -1;
 /* automatically update cleanly resolved paths to the index */
 static int rerere_autoupdate;
 
-static char *merge_rr_path;
-
 static int rerere_dir_nr;
 static int rerere_dir_alloc;
 
@@ -149,7 +147,7 @@ static struct rerere_id *new_rerere_id(unsigned char *sha1)
 static void read_rr(struct string_list *rr)
 {
 	struct strbuf buf = STRBUF_INIT;
-	FILE *in = fopen(merge_rr_path, "r");
+	FILE *in = fopen(git_path_merge_rr(), "r");
 
 	if (!in)
 		return;
@@ -848,21 +846,21 @@ static void git_rerere_config(void)
 	git_config(git_default_config, NULL);
 }
 
+static GIT_PATH_FUNC(git_path_rr_cache, "rr-cache")
+
 static int is_rerere_enabled(void)
 {
-	const char *rr_cache;
 	int rr_cache_exists;
 
 	if (!rerere_enabled)
 		return 0;
 
-	rr_cache = git_path("rr-cache");
-	rr_cache_exists = is_directory(rr_cache);
+	rr_cache_exists = is_directory(git_path_rr_cache());
 	if (rerere_enabled < 0)
 		return rr_cache_exists;
 
-	if (!rr_cache_exists && mkdir_in_gitdir(rr_cache))
-		die("Could not create directory %s", rr_cache);
+	if (!rr_cache_exists && mkdir_in_gitdir(git_path_rr_cache()))
+		die("Could not create directory %s", git_path_rr_cache());
 	return 1;
 }
 
@@ -876,8 +874,7 @@ int setup_rerere(struct string_list *merge_rr, int flags)
 
 	if (flags & (RERERE_AUTOUPDATE|RERERE_NOAUTOUPDATE))
 		rerere_autoupdate = !!(flags & RERERE_AUTOUPDATE);
-	merge_rr_path = git_pathdup("MERGE_RR");
-	fd = hold_lock_file_for_update(&write_lock, merge_rr_path,
+	fd = hold_lock_file_for_update(&write_lock, git_path_merge_rr(),
 				       LOCK_DIE_ON_ERROR);
 	read_rr(merge_rr);
 	return fd;
@@ -1077,5 +1074,5 @@ void rerere_clear(struct string_list *merge_rr)
 		if (!has_rerere_resolution(id))
 			unlink_rr_item(id);
 	}
-	unlink_or_warn(git_path("MERGE_RR"));
+	unlink_or_warn(git_path_merge_rr());
 }

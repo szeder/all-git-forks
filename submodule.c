@@ -120,10 +120,10 @@ void stage_updated_gitmodules(void)
 static int add_submodule_odb(const char *path)
 {
 	struct alternate_object_database *alt_odb;
-	const char *objects_directory;
+	char *objects_directory;
 	int ret = 0;
 
-	objects_directory = git_path_submodule(path, "objects/");
+	objects_directory = git_pathdup_submodule(path, "objects/");
 	if (!is_directory(objects_directory)) {
 		ret = -1;
 		goto done;
@@ -148,6 +148,7 @@ static int add_submodule_odb(const char *path)
 	read_info_alternates(objects_directory, 0);
 	prepare_alt_odb();
 done:
+	free(objects_directory);
 	return ret;
 }
 
