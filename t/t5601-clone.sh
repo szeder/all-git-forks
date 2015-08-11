@@ -353,12 +353,6 @@ test_expect_success 'plink is treated specially (as putty)' '
 	expect_ssh "-P 123" myhost src
 '
 
-test_expect_success 'plink.exe is treated specially (as putty)' '
-	copy_ssh_wrapper_as "$TRASH_DIRECTORY/plink.exe" &&
-	git clone "[myhost:123]:src" ssh-bracket-clone-plink-1 &&
-	expect_ssh "-P 123" myhost src
-'
-
 test_expect_success 'tortoiseplink is like putty, with extra arguments' '
 	copy_ssh_wrapper_as "$TRASH_DIRECTORY/tortoiseplink" &&
 	git clone "[myhost:123]:src" ssh-bracket-clone-plink-2 &&
