@@ -67,4 +67,6 @@ test_expect_success 'checkout sub manually' \
 test_expect_success 'can see submodule diffs after manual checkout of linked submodule' \
     '(cd linked_submodule/main && git diff --submodule master"^!" | grep "sub_update")'
 
+# test_expect_success 'archive' 'tar czf ../t7410.tar.gz .'
+
 test_done
