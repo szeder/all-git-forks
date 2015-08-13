@@ -525,10 +525,12 @@ char *reencode_string_len(const char *in, int insz,
 	}
 
 	out = reencode_string_iconv(in, insz, conv, outsz);
-	if (errno == EILSEQ || errno == EINVAL)
-		warning("Invalid input for conversion from %s to %s, falling back to verbatim copy", in_encoding, out_encoding);
-	else
-		warning("Conversion from %s to %s failed: %s, falling back to verbatim copy", in_encoding, out_encoding, strerror(errno));
+	if (out == NULL) {
+		if (errno == EILSEQ || errno == EINVAL)
+			warning("Invalid input for conversion from %s to %s, falling back to verbatim copy", in_encoding, out_encoding);
+		else
+			warning("Conversion from %s to %s failed: %s, falling back to verbatim copy", in_encoding, out_encoding, strerror(errno));
+	}
 	iconv_close(conv);
 	return out;
 }
