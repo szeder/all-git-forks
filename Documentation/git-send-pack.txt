@@ -10,7 +10,7 @@ SYNOPSIS
 --------
 [verse]
 'git send-pack' [--all] [--dry-run] [--force] [--receive-pack=<git-receive-pack>]
-		[--verbose] [--thin] [--atomic] [--signed]
+		[--verbose] [--thin] [--atomic] [--signed] [--signed-if-possible]
 		[<host>:]<directory> [<ref>...]
 
 DESCRIPTION
@@ -75,7 +75,12 @@ be in a separate packet, and the list must end with a flush packet.
 	logged.  See linkgit:git-receive-pack[1] for the details
 	on the receiving end.  If the `gpg` executable is not available,
 	or if the server does not support signed pushes, the push will
-	fail.
+	fail. Takes precedence over --signed-if-possible.
+
+--signed-if-possible::
+	Like --signed, but only if the server supports signed pushes. If
+	the server supports signed pushes but the `gpg` is not available,
+	the push will fail.
 
 <host>::
 	A remote host to house the repository.  When this

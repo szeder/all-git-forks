@@ -370,7 +370,7 @@ int send_pack(struct send_pack_args *args,
 		args->use_thin_pack = 0;
 	if (server_supports("atomic"))
 		atomic_supported = 1;
-	if (args->push_cert) {
+	if (args->push_cert == SEND_PACK_PUSH_CERT_ALWAYS) {
 		int len;
 
 		push_cert_nonce = server_feature_value("push-cert", &len);
@@ -378,6 +378,18 @@ int send_pack(struct send_pack_args *args,
 			die(_("the receiving end does not support --signed push"));
 		reject_invalid_nonce(push_cert_nonce, len);
 		push_cert_nonce = xmemdupz(push_cert_nonce, len);
+	}
+	if (args->push_cert == SEND_PACK_PUSH_CERT_IF_POSSIBLE) {
+		int len;
+
+		push_cert_nonce = server_feature_value("push-cert", &len);
+		if (push_cert_nonce) {
+			reject_invalid_nonce(push_cert_nonce, len);
+			push_cert_nonce = xmemdupz(push_cert_nonce, len);
+		} else
+			warning(_("not sending a push certificate since the"
+				  " receiving end does not support --signed"
+				  " push"));
 	}
 
 	if (!remote_refs) {
@@ -413,7 +425,7 @@ int send_pack(struct send_pack_args *args,
 	if (!args->dry_run)
 		advertise_shallow_grafts_buf(&req_buf);
 
-	if (!args->dry_run && args->push_cert)
+	if (!args->dry_run && push_cert_nonce)
 		cmds_sent = generate_push_cert(&req_buf, remote_refs, args,
 					       cap_buf.buf, push_cert_nonce);
 
@@ -452,7 +464,7 @@ int send_pack(struct send_pack_args *args,
 	for (ref = remote_refs; ref; ref = ref->next) {
 		char *old_hex, *new_hex;
 
-		if (args->dry_run || args->push_cert)
+		if (args->dry_run || push_cert_nonce)
 			continue;
 
 		if (check_to_send_update(ref, args) < 0)
