@@ -737,6 +737,37 @@ static int merge_commit(struct notes_merge_options *o)
 	return ret;
 }
 
+static int parse_notes_strategy(const char *arg, enum notes_merge_strategy *strategy)
+{
+	if (!strcmp(arg, "manual"))
+		*strategy = NOTES_MERGE_RESOLVE_MANUAL;
+	else if (!strcmp(arg, "ours"))
+		*strategy = NOTES_MERGE_RESOLVE_OURS;
+	else if (!strcmp(arg, "theirs"))
+		*strategy = NOTES_MERGE_RESOLVE_THEIRS;
+	else if (!strcmp(arg, "union"))
+		*strategy = NOTES_MERGE_RESOLVE_UNION;
+	else if (!strcmp(arg, "cat_sort_uniq"))
+		*strategy = NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ;
+	else
+		return -1;
+
+	return 0;
+}
+
+static int git_config_get_notes_strategy(const char *key,
+					 enum notes_merge_strategy *strategy)
+{
+	const char *value;
+
+	if (git_config_get_string_const(key, &value))
+		return 1;
+	if (parse_notes_strategy(value, strategy))
+		git_die_config(key, "unknown notes merge strategy %s", value);
+
+	return 0;
+}
+
 static int merge(int argc, const char **argv, const char *prefix)
 {
 	struct strbuf remote_ref = STRBUF_INIT, msg = STRBUF_INIT;
@@ -796,20 +827,12 @@ static int merge(int argc, const char **argv, const char *prefix)
 	o.remote_ref = remote_ref.buf;
 
 	if (strategy) {
-		if (!strcmp(strategy, "manual"))
-			o.strategy = NOTES_MERGE_RESOLVE_MANUAL;
-		else if (!strcmp(strategy, "ours"))
-			o.strategy = NOTES_MERGE_RESOLVE_OURS;
-		else if (!strcmp(strategy, "theirs"))
-			o.strategy = NOTES_MERGE_RESOLVE_THEIRS;
-		else if (!strcmp(strategy, "union"))
-			o.strategy = NOTES_MERGE_RESOLVE_UNION;
-		else if (!strcmp(strategy, "cat_sort_uniq"))
-			o.strategy = NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ;
-		else {
+		if (parse_notes_strategy(strategy, &o.strategy)) {
 			error("Unknown -s/--strategy: %s", strategy);
 			usage_with_options(git_notes_merge_usage, options);
 		}
+	} else {
+		git_config_get_notes_strategy("notes.mergestrategy", &o.strategy);
 	}
 
 	t = init_notes_check("merge");
