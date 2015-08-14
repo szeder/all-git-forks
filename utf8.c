@@ -465,7 +465,9 @@ char *reencode_string_iconv(const char *in, size_t insz, iconv_t conv, int *outs
 		if (cnt == (size_t) -1) {
 			size_t sofar;
 			if (errno != E2BIG) {
+				int failure_errno = errno;
 				free(out);
+				errno = failure_errno;
 				return NULL;
 			}
 			/* insz has remaining number of bytes.
@@ -513,13 +515,33 @@ char *reencode_string_len(const char *in, int insz,
 		if (is_encoding_utf8(out_encoding))
 			out_encoding = "UTF-8";
 		conv = iconv_open(out_encoding, in_encoding);
-		if (conv == (iconv_t) -1)
+		if (conv == (iconv_t) -1) {
+			if (errno == EINVAL)
+				warning("Conversion from %s to %s not supported, falling back to verbatim copy", in_encoding, out_encoding);
+			else
+				warning("Conversion from %s to %s failed: %s, falling back to verbatim copy", in_encoding, out_encoding, strerror(errno));
 			return NULL;
+		}
 	}
 
 	out = reencode_string_iconv(in, insz, conv, outsz);
+	if (out == NULL) {
+		if (errno == EILSEQ || errno == EINVAL)
+			warning("Invalid input for conversion from %s to %s, falling back to verbatim copy", in_encoding, out_encoding);
+		else
+			warning("Conversion from %s to %s failed: %s, falling back to verbatim copy", in_encoding, out_encoding, strerror(errno));
+	}
 	iconv_close(conv);
 	return out;
+}
+#else
+char *reencode_string_len(const char *in, int insz,
+			  const char *out_encoding, const char *in_encoding,
+			  int *outsz)
+{
+	if (!same_encoding(in_encoding, out_encoding))
+		warning("Iconv support is disabled at compile time. It is likely that\nincorrect data will be printed or stored in repository.\nConsider using other build for this task.");
+	return NULL;
 }
 #endif
 
