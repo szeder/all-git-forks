@@ -770,13 +770,13 @@ static int git_config_get_notes_strategy(const char *key,
 
 static int merge(int argc, const char **argv, const char *prefix)
 {
-	struct strbuf remote_ref = STRBUF_INIT, msg = STRBUF_INIT;
+	struct strbuf remote_ref = STRBUF_INIT, msg = STRBUF_INIT, merge_key = STRBUF_INIT;
 	unsigned char result_sha1[20];
 	struct notes_tree *t;
 	struct notes_merge_options o;
 	int do_merge = 0, do_commit = 0, do_abort = 0;
 	int verbosity = 0, result;
-	const char *strategy = NULL;
+	const char *strategy = NULL, *short_ref = NULL;
 	struct option options[] = {
 		OPT_GROUP(N_("General options")),
 		OPT__VERBOSITY(&verbosity),
@@ -832,7 +832,14 @@ static int merge(int argc, const char **argv, const char *prefix)
 			usage_with_options(git_notes_merge_usage, options);
 		}
 	} else {
-		git_config_get_notes_strategy("notes.mergestrategy", &o.strategy);
+		if (!skip_prefix(o.local_ref, "refs/notes/", &short_ref))
+			die("Refusing to merge notes into %s (outside of refs/notes/)",
+			    o.local_ref);
+
+		strbuf_addf(&merge_key, "notes.%s.mergestrategy", short_ref);
+
+		if (git_config_get_notes_strategy(merge_key.buf, &o.strategy))
+			git_config_get_notes_strategy("notes.mergestrategy", &o.strategy);
 	}
 
 	t = init_notes_check("merge");

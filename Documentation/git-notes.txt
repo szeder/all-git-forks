@@ -322,6 +322,12 @@ notes.mergestrategy::
 +
 This setting can be overridden by passing the `--strategy` option.
 
+notes.<localref>.mergestrategy::
+	Which strategy to choose when merging into <localref>. The set of
+	allowed values is the same as "notes.mergestrategy". <localref> must be
+	the short name of a ref under refs/notes/. See "NOTES MERGE STRATEGIES"
+	section above for more information about each strategy.
+
 notes.displayRef::
 	Which ref (or refs, if a glob or specified more than once), in
 	addition to the default set by `core.notesRef` or

@@ -1893,6 +1893,13 @@ notes.mergestrategy::
 	STRATEGIES" section of linkgit:git-notes[1] for more information
 	on each strategy.
 
+notes.<localref>.mergestrategy::
+	Which merge strategy to choose if the local ref for a notes merge
+	matches <localref>, overriding "notes.mergestrategy". <localref> must
+	be the short name of a ref under refs/notes/. See "NOTES MERGE
+	STRATEGIES" section in linkgit:git-notes[1] for more information on the
+	available strategies.
+
 notes.displayRef::
 	The (fully qualified) refname from which to show notes when
 	showing commit messages.  The value of this variable can be set
