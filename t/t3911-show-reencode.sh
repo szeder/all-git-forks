@@ -30,7 +30,7 @@ test_expect_success 'unknown encoding' '
 	test_cmp out a_diaeresis_utf8
 '
 
-# apparently incomplete UTF8 byte sequences siletly treated as latin1
+# apparently incomplete UTF8 byte sequences silently treated as latin1
 test_expect_failure 'incomplete utf8' '
 	git log --encoding=latin1 --pretty=format:%B -1 invalid_utf8 >out 2>err &&
 	grep -q "Invalid input" err &&
