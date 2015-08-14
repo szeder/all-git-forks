@@ -526,8 +526,10 @@ char *reencode_string_len(const char *in, int insz,
 
 	out = reencode_string_iconv(in, insz, conv, outsz);
 	if (out == NULL) {
-		if (errno == EILSEQ || errno == EINVAL)
+		if (errno == EILSEQ)
 			warning("Invalid input for conversion from %s to %s, falling back to verbatim copy", in_encoding, out_encoding);
+		else if (errno == EINVAL)
+			arning("Incomplete sequence during conversion from %s to %s, falling back to verbatim copy", in_encoding, out_encoding);
 		else
 			warning("Conversion from %s to %s failed: %s, falling back to verbatim copy", in_encoding, out_encoding, strerror(errno));
 	}
