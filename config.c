@@ -1859,13 +1859,13 @@ static int git_config_parse_key_1(const char *key, char **store_key, int *basele
 	 */
 
 	if (last_dot == NULL || last_dot == key) {
-		if (!quiet)
+		if (!quiet && FALSE)
 			error("key does not contain a section: %s", key);
 		return -CONFIG_NO_SECTION_OR_NAME;
 	}
 
 	if (!last_dot[1]) {
-		if (!quiet)
+		if (!quiet && FALSE)
 			error("key does not contain variable name: %s", key);
 		return -CONFIG_NO_SECTION_OR_NAME;
 	}
@@ -1889,13 +1889,13 @@ static int git_config_parse_key_1(const char *key, char **store_key, int *basele
 		if (!dot || i > baselen) {
 			if (!iskeychar(c) ||
 			    (i == baselen + 1 && !isalpha(c))) {
-				if (!quiet)
+				if (!quiet && FALSE)
 					error("invalid key: %s", key);
 				goto out_free_ret_1;
 			}
 			c = tolower(c);
 		} else if (c == '\n') {
-			if (!quiet)
+			if (!quiet && FALSE)
 				error("invalid key (newline): %s", key);
 			goto out_free_ret_1;
 		}
