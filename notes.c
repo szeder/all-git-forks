@@ -334,15 +334,14 @@ static void note_tree_free(struct int_node *tree)
  * - hex      - Partial SHA1 segment in ASCII hex format
  * - hex_len  - Length of above segment. Must be multiple of 2 between 0 and 40
  * - sha1     - Partial SHA1 value is written here
- * - sha1_len - Max #bytes to store in sha1, Must be >= hex_len / 2, and < 20
  * Returns 0 on success or -1 on error (invalid arguments or invalid
- * SHA1 (not in hex format)). Pads sha1 with NULs up to sha1_len.
+ * SHA1 (not in hex format)).
  */
 static int get_sha1_hex_segment(const char *hex, unsigned int hex_len,
-		unsigned char *sha1, unsigned int sha1_len)
+		unsigned char *sha1)
 {
 	unsigned int i, len = hex_len >> 1;
-	if (hex_len % 2 != 0 || len > sha1_len)
+	if (hex_len % 2 != 0)
 		return -1;
 	for (i = 0; i < len; i++) {
 		unsigned int val = (hexval(hex[0]) << 4) | hexval(hex[1]);
@@ -351,8 +350,6 @@ static int get_sha1_hex_segment(const char *hex, unsigned int hex_len,
 		*sha1++ = val;
 		hex += 2;
 	}
-	for (; i < sha1_len; i++)
-		*sha1++ = 0;
 	return 0;
 }
 
@@ -431,8 +428,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 		if (path_len == 2 * (20 - prefix_len) && S_ISREG(entry.mode)) {
 			/* This is potentially the remainder of the SHA-1 */
 			if (get_sha1_hex_segment(entry.path, path_len,
-						 object_sha1 + prefix_len,
-						 20 - prefix_len))
+						 object_sha1 + prefix_len))
 				goto handle_non_note; /* entry.path is not a SHA1 */
 
 			type = PTR_TYPE_NOTE;
@@ -442,17 +438,23 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 			hashcpy(l->val_sha1, entry.sha1);
 		} else if (path_len == 2 && prefix_len < 19 && S_ISDIR(entry.mode)) {
 			/* This is potentially an internal node */
+			int len;
+
 			if (get_sha1_hex_segment(entry.path, 2,
-						 object_sha1 + prefix_len,
-						 20 - prefix_len))
+						 object_sha1 + prefix_len))
 				goto handle_non_note; /* entry.path is not a SHA1 */
+
+			len = prefix_len + 1;
+			/* Pad most of the rest of SHA-1 with zeros... */
+			memset(object_sha1 + len, 0, 20 - len - 1);
+			/* ...except for the last byte, which holds the length: */
+			object_sha1[19] = (unsigned char) len;
 
 			type = PTR_TYPE_SUBTREE;
 			l = (struct leaf_node *)
 				xcalloc(1, sizeof(struct leaf_node));
 			hashcpy(l->key_sha1, object_sha1);
 			hashcpy(l->val_sha1, entry.sha1);
-			l->key_sha1[19] = (unsigned char) (prefix_len + 1);
 		} else {
 			/* This can't be part of a note */
 			goto handle_non_note;
