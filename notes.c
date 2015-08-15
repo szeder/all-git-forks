@@ -335,9 +335,8 @@ static void note_tree_free(struct int_node *tree)
  * - hex_len  - Length of above segment. Must be multiple of 2 between 0 and 40
  * - sha1     - Partial SHA1 value is written here
  * - sha1_len - Max #bytes to store in sha1, Must be >= hex_len / 2, and < 20
- * Returns -1 on error (invalid arguments or invalid SHA1 (not in hex format)).
- * Otherwise, returns number of bytes written to sha1 (i.e. hex_len / 2).
- * Pads sha1 with NULs up to sha1_len (not included in returned length).
+ * Returns 0 on success or -1 on error (invalid arguments or invalid
+ * SHA1 (not in hex format)). Pads sha1 with NULs up to sha1_len.
  */
 static int get_sha1_hex_segment(const char *hex, unsigned int hex_len,
 		unsigned char *sha1, unsigned int sha1_len)
@@ -354,7 +353,7 @@ static int get_sha1_hex_segment(const char *hex, unsigned int hex_len,
 	}
 	for (; i < sha1_len; i++)
 		*sha1++ = 0;
-	return len;
+	return 0;
 }
 
 static int non_note_cmp(const struct non_note *a, const struct non_note *b)
@@ -433,7 +432,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 			/* This is potentially the remainder of the SHA-1 */
 			if (get_sha1_hex_segment(entry.path, path_len,
 						 object_sha1 + prefix_len,
-						 20 - prefix_len) < 0)
+						 20 - prefix_len))
 				goto handle_non_note; /* entry.path is not a SHA1 */
 
 			type = PTR_TYPE_NOTE;
@@ -445,7 +444,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 			/* This is potentially an internal node */
 			if (get_sha1_hex_segment(entry.path, 2,
 						 object_sha1 + prefix_len,
-						 20 - prefix_len) < 0)
+						 20 - prefix_len))
 				goto handle_non_note; /* entry.path is not a SHA1 */
 
 			type = PTR_TYPE_SUBTREE;
