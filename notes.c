@@ -415,9 +415,6 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 	void *buf;
 	struct tree_desc desc;
 	struct name_entry entry;
-	int len, path_len;
-	unsigned char type;
-	struct leaf_node *l;
 
 	buf = fill_tree_descriptor(&desc, subtree->val_sha1);
 	if (!buf)
@@ -428,7 +425,10 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 	assert(prefix_len * 2 >= n);
 	memcpy(object_sha1, subtree->key_sha1, prefix_len);
 	while (tree_entry(&desc, &entry)) {
-		path_len = strlen(entry.path);
+		unsigned char type;
+		int len, path_len = strlen(entry.path);
+		struct leaf_node *l;
+
 		len = get_sha1_hex_segment(entry.path, path_len,
 				object_sha1 + prefix_len, 20 - prefix_len);
 		if (len < 0)
