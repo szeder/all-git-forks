@@ -440,25 +440,23 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 		 * If object SHA1 is incomplete (len < 20), and current
 		 * component consists of 2 hex chars, assume note subtree
 		 */
-		if (len <= 20) {
-			type = PTR_TYPE_NOTE;
-			l = (struct leaf_node *)
-				xcalloc(1, sizeof(struct leaf_node));
-			hashcpy(l->key_sha1, object_sha1);
-			hashcpy(l->val_sha1, entry.sha1);
-			if (len < 20) {
-				if (!S_ISDIR(entry.mode) || path_len != 2)
-					goto handle_non_note; /* not subtree */
-				l->key_sha1[19] = (unsigned char) len;
-				type = PTR_TYPE_SUBTREE;
-			}
-			if (note_tree_insert(t, node, n, l, type,
-					     combine_notes_concatenate))
-				die("Failed to load %s %s into notes tree "
-				    "from %s",
-				    type == PTR_TYPE_NOTE ? "note" : "subtree",
-				    sha1_to_hex(l->key_sha1), t->ref);
+		type = PTR_TYPE_NOTE;
+		l = (struct leaf_node *)
+			xcalloc(1, sizeof(struct leaf_node));
+		hashcpy(l->key_sha1, object_sha1);
+		hashcpy(l->val_sha1, entry.sha1);
+		if (len < 20) {
+			if (!S_ISDIR(entry.mode) || path_len != 2)
+				goto handle_non_note; /* not subtree */
+			l->key_sha1[19] = (unsigned char) len;
+			type = PTR_TYPE_SUBTREE;
 		}
+		if (note_tree_insert(t, node, n, l, type,
+				     combine_notes_concatenate))
+			die("Failed to load %s %s into notes tree "
+			    "from %s",
+			    type == PTR_TYPE_NOTE ? "note" : "subtree",
+			    sha1_to_hex(l->key_sha1), t->ref);
 		continue;
 
 handle_non_note:
