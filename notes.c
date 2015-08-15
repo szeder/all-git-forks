@@ -441,7 +441,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 				xcalloc(1, sizeof(struct leaf_node));
 			hashcpy(l->key_sha1, object_sha1);
 			hashcpy(l->val_sha1, entry.sha1);
-		} else if (path_len == 2) {
+		} else if (path_len == 2 && S_ISDIR(entry.mode)) {
 			/* This is potentially an internal node */
 			if (get_sha1_hex_segment(entry.path, 2,
 						 object_sha1 + prefix_len,
@@ -453,8 +453,6 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 				xcalloc(1, sizeof(struct leaf_node));
 			hashcpy(l->key_sha1, object_sha1);
 			hashcpy(l->val_sha1, entry.sha1);
-			if (!S_ISDIR(entry.mode))
-				goto handle_non_note; /* not subtree */
 			l->key_sha1[19] = (unsigned char) (prefix_len + 1);
 		} else {
 			/* This can't be part of a note */
