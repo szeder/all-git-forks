@@ -63,7 +63,7 @@ struct non_note {
 #define CLR_PTR_TYPE(ptr)       ((void *) ((uintptr_t) (ptr) & ~3))
 #define SET_PTR_TYPE(ptr, type) ((void *) ((uintptr_t) (ptr) | (type)))
 
-#define GET_NIBBLE(n, sha1) (((sha1[(n) >> 1]) >> ((~(n) & 0x01) << 2)) & 0x0f)
+#define GET_NIBBLE(n, sha1) ((((sha1)[(n) >> 1]) >> ((~(n) & 0x01) << 2)) & 0x0f)
 
 #define SUBTREE_SHA1_PREFIXCMP(key_sha1, subtree_sha1) \
 	(memcmp(key_sha1, subtree_sha1, subtree_sha1[19]))
