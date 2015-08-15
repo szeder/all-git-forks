@@ -806,7 +806,7 @@ test_expect_success !MINGW 'quoting allows trailing whitespace' '
 	test_cmp err.expect err
 '
 
-test_expect_success NOT_MINGW,NOT_CYGWIN 'correct handling of backslashes' '
+test_expect_success !MINGW,!CYGWIN 'correct handling of backslashes' '
 	rm -rf whitespace &&
 	mkdir whitespace &&
 	>"whitespace/trailing 1  " &&
@@ -829,6 +829,16 @@ test_expect_success NOT_MINGW,NOT_CYGWIN 'correct handling of backslashes' '
 	git ls-files -o -X ignore whitespace >actual 2>err &&
 	test_cmp expect actual &&
 	test_cmp err.expect err
+'
+
+test_expect_success 'info/exclude trumps core.excludesfile' '
+	echo >>global-excludes usually-ignored &&
+	echo >>.git/info/exclude "!usually-ignored" &&
+	>usually-ignored &&
+	echo "?? usually-ignored" >expect &&
+
+	git status --porcelain usually-ignored >actual &&
+	test_cmp expect actual
 '
 
 test_done

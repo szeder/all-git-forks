@@ -9,6 +9,7 @@
  */
 
 #include "builtin.h"
+#include "lockfile.h"
 #include "parse-options.h"
 #include "fetch-pack.h"
 #include "refs.h"
@@ -33,7 +34,7 @@
  *
  */
 static const char * const builtin_clone_usage[] = {
-	N_("git clone [options] [--] <repo> [<dir>]"),
+	N_("git clone [<options>] [--] <repo> [<dir>]"),
 	NULL
 };
 
@@ -48,15 +49,7 @@ static int option_verbosity;
 static int option_progress = -1;
 static struct string_list option_config;
 static struct string_list option_reference;
-
-static int opt_parse_reference(const struct option *opt, const char *arg, int unset)
-{
-	struct string_list *option_reference = opt->value;
-	if (!arg)
-		return -1;
-	string_list_append(option_reference, arg);
-	return 0;
-}
+static int option_dissociate;
 
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
@@ -81,8 +74,10 @@ static struct option builtin_clone_options[] = {
 		    N_("initialize submodules in the clone")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
-	OPT_CALLBACK(0 , "reference", &option_reference, N_("repo"),
-		     N_("reference repository"), &opt_parse_reference),
+	OPT_STRING_LIST(0, "reference", &option_reference, N_("repo"),
+			N_("reference repository")),
+	OPT_BOOL(0, "dissociate", &option_dissociate,
+		 N_("use --reference only while cloning")),
 	OPT_STRING('o', "origin", &option_origin, N_("name"),
 		   N_("use <name> instead of 'origin' to track upstream")),
 	OPT_STRING('b', "branch", &option_branch, N_("branch"),
@@ -152,6 +147,7 @@ static char *get_repo_path(const char *repo, int *is_bundle)
 static char *guess_dir_name(const char *repo, int is_bundle, int is_bare)
 {
 	const char *end = repo + strlen(repo), *start;
+	size_t len;
 	char *dir;
 
 	/*
@@ -178,20 +174,12 @@ static char *guess_dir_name(const char *repo, int is_bundle, int is_bare)
 	/*
 	 * Strip .{bundle,git}.
 	 */
-	if (is_bundle) {
-		if (end - start > 7 && !strncmp(end - 7, ".bundle", 7))
-			end -= 7;
-	} else {
-		if (end - start > 4 && !strncmp(end - 4, ".git", 4))
-			end -= 4;
-	}
+	strip_suffix(start, is_bundle ? ".bundle" : ".git" , &len);
 
-	if (is_bare) {
-		struct strbuf result = STRBUF_INIT;
-		strbuf_addf(&result, "%.*s.git", (int)(end - start), start);
-		dir = strbuf_detach(&result, NULL);
-	} else
-		dir = xstrndup(start, end - start);
+	if (is_bare)
+		dir = xstrfmt("%.*s.git", (int)len, start);
+	else
+		dir = xstrndup(start, len);
 	/*
 	 * Replace sequences of 'control' characters and whitespace
 	 * with one ascii space, remove leading and trailing spaces.
@@ -289,16 +277,17 @@ static void copy_alternates(struct strbuf *src, struct strbuf *dst,
 	struct strbuf line = STRBUF_INIT;
 
 	while (strbuf_getline(&line, in, '\n') != EOF) {
-		char *abs_path, abs_buf[PATH_MAX];
+		char *abs_path;
 		if (!line.len || line.buf[0] == '#')
 			continue;
 		if (is_absolute_path(line.buf)) {
 			add_to_alternates_file(line.buf);
 			continue;
 		}
-		abs_path = mkpath("%s/objects/%s", src_repo, line.buf);
-		normalize_path_copy(abs_buf, abs_path);
-		add_to_alternates_file(abs_buf);
+		abs_path = mkpathdup("%s/objects/%s", src_repo, line.buf);
+		normalize_path_copy(abs_path, abs_path);
+		add_to_alternates_file(abs_path);
+		free(abs_path);
 	}
 	strbuf_release(&line);
 	fclose(in);
@@ -390,7 +379,6 @@ static void clone_local(const char *src_repo, const char *dest_repo)
 
 static const char *junk_work_tree;
 static const char *junk_git_dir;
-static pid_t junk_pid;
 static enum {
 	JUNK_LEAVE_NONE,
 	JUNK_LEAVE_REPO,
@@ -417,8 +405,6 @@ static void remove_junk(void)
 		break;
 	}
 
-	if (getpid() != junk_pid)
-		return;
 	if (junk_git_dir) {
 		strbuf_addstr(&sb, junk_git_dir);
 		remove_dir_recursively(&sb, 0);
@@ -622,7 +608,7 @@ static int checkout(void)
 	if (option_no_checkout)
 		return 0;
 
-	head = resolve_refdup("HEAD", sha1, 1, NULL);
+	head = resolve_refdup("HEAD", RESOLVE_REF_READING, sha1, NULL);
 	if (!head) {
 		warning(_("remote HEAD refers to nonexistent ref, "
 			  "unable to checkout.\n"));
@@ -685,9 +671,10 @@ static void write_config(struct string_list *config)
 	}
 }
 
-static void write_refspec_config(const char* src_ref_prefix,
-		const struct ref* our_head_points_at,
-		const struct ref* remote_head_points_at, struct strbuf* branch_top)
+static void write_refspec_config(const char *src_ref_prefix,
+		const struct ref *our_head_points_at,
+		const struct ref *remote_head_points_at,
+		struct strbuf *branch_top)
 {
 	struct strbuf key = STRBUF_INIT;
 	struct strbuf value = STRBUF_INIT;
@@ -736,6 +723,16 @@ static void write_refspec_config(const char* src_ref_prefix,
 	strbuf_release(&value);
 }
 
+static void dissociate_from_references(void)
+{
+	static const char* argv[] = { "repack", "-a", "-d", NULL };
+
+	if (run_command_v_opt(argv, RUN_GIT_CMD|RUN_COMMAND_NO_STDIN))
+		die(_("cannot repack to clean up"));
+	if (unlink(git_path("objects/info/alternates")) && errno != ENOENT)
+		die_errno(_("cannot unlink temporary alternates file"));
+}
+
 int cmd_clone(int argc, const char **argv, const char *prefix)
 {
 	int is_bundle = 0, is_local;
@@ -757,8 +754,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	struct refspec *refspec;
 	const char *fetch_pattern;
-
-	junk_pid = getpid();
 
 	packet_trace_identity("clone");
 	argc = parse_options(argc, argv, prefix, builtin_clone_options,
@@ -832,20 +827,21 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		git_dir = mkpathdup("%s/.git", dir);
 	}
 
+	atexit(remove_junk);
+	sigchain_push_common(remove_junk_on_signal);
+
 	if (!option_bare) {
-		junk_work_tree = work_tree;
 		if (safe_create_leading_directories_const(work_tree) < 0)
 			die_errno(_("could not create leading directories of '%s'"),
 				  work_tree);
 		if (!dest_exists && mkdir(work_tree, 0777))
-			die_errno(_("could not create work tree dir '%s'."),
+			die_errno(_("could not create work tree dir '%s'"),
 				  work_tree);
+		junk_work_tree = work_tree;
 		set_git_work_tree(work_tree);
 	}
-	junk_git_dir = git_dir;
-	atexit(remove_junk);
-	sigchain_push_common(remove_junk_on_signal);
 
+	junk_git_dir = git_dir;
 	if (safe_create_leading_directories_const(git_dir) < 0)
 		die(_("could not create leading directories of '%s'"), git_dir);
 
@@ -883,6 +879,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	if (option_reference.nr)
 		setup_reference();
+	else if (option_dissociate) {
+		warning(_("--dissociate given, but there is no --reference"));
+		option_dissociate = 0;
+	}
 
 	fetch_pattern = value.buf;
 	refspec = parse_fetch_refspec(1, &fetch_pattern);
@@ -891,6 +891,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	remote = remote_get(option_origin);
 	transport = transport_get(remote, remote->url[0]);
+	transport_set_verbosity(transport, option_verbosity, option_progress);
+
 	path = get_repo_path(remote->url[0], &is_bundle);
 	is_local = option_local != 0 && path && !is_bundle;
 	if (is_local) {
@@ -916,8 +918,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 				     option_depth);
 	if (option_single_branch)
 		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
-
-	transport_set_verbosity(transport, option_verbosity, option_progress);
 
 	if (option_upload_pack)
 		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
@@ -996,6 +996,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	transport_unlock_pack(transport);
 	transport_disconnect(transport);
 
+	if (option_dissociate)
+		dissociate_from_references();
+
 	junk_mode = JUNK_LEAVE_REPO;
 	err = checkout();
 
@@ -1004,5 +1007,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	strbuf_release(&key);
 	strbuf_release(&value);
 	junk_mode = JUNK_LEAVE_ALL;
+
+	free(refspec);
 	return err;
 }

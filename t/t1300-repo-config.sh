@@ -677,7 +677,7 @@ test_expect_success 'invalid unit' '
 	echo 1auto >expect &&
 	git config aninvalid.unit >actual &&
 	test_cmp expect actual &&
-	cat >expect <<-\EOF
+	cat >expect <<-\EOF &&
 	fatal: bad numeric config value '\''1auto'\'' for '\''aninvalid.unit'\'' in .git/config: invalid unit
 	EOF
 	test_must_fail git config --int --get aninvalid.unit 2>actual &&
@@ -824,14 +824,14 @@ cat >expect <<\EOF
 	trailingtilde = foo~
 EOF
 
-test_expect_success NOT_MINGW 'set --path' '
+test_expect_success !MINGW 'set --path' '
 	rm -f .git/config &&
 	git config --path path.home "~/" &&
 	git config --path path.normal "/dev/null" &&
 	git config --path path.trailingtilde "foo~" &&
 	test_cmp expect .git/config'
 
-if test_have_prereq NOT_MINGW && test "${HOME+set}"
+if test_have_prereq !MINGW && test "${HOME+set}"
 then
 	test_set_prereq HOMEVAR
 fi
@@ -854,7 +854,7 @@ cat >expect <<\EOF
 foo~
 EOF
 
-test_expect_success NOT_MINGW 'get --path copes with unset $HOME' '
+test_expect_success !MINGW 'get --path copes with unset $HOME' '
 	(
 		unset HOME;
 		test_must_fail git config --get --path path.home \
@@ -1165,7 +1165,7 @@ test_expect_failure 'adding a key into an empty section reuses header' '
 	Qkey = value
 	EOF
 
-	git config section.key value
+	git config section.key value &&
 	test_cmp expect .git/config
 '
 

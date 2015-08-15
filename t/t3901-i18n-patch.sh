@@ -9,7 +9,7 @@ test_description='i18n settings and format-patch | am pipe'
 
 check_encoding () {
 	# Make sure characters are not corrupted
-	cnt="$1" header="$2" i=1 j=0 bad=0
+	cnt="$1" header="$2" i=1 j=0
 	while test "$i" -le $cnt
 	do
 		git format-patch --encoding=UTF-8 --stdout HEAD~$i..HEAD~$j |
@@ -20,14 +20,10 @@ check_encoding () {
 			grep "^encoding ISO8859-1" ;;
 		*)
 			grep "^encoding ISO8859-1"; test "$?" != 0 ;;
-		esac || {
-			bad=1
-			break
-		}
+		esac || return 1
 		j=$i
 		i=$(($i+1))
 	done
-	(exit $bad)
 }
 
 test_expect_success setup '
@@ -54,7 +50,7 @@ test_expect_success setup '
 	git add yours &&
 	git commit -s -m "Second on side" &&
 
-	if test_have_prereq NOT_MINGW
+	if test_have_prereq !MINGW
 	then
 		# the second one on the side branch is ISO-8859-1
 		git config i18n.commitencoding ISO8859-1 &&
@@ -122,7 +118,7 @@ test_expect_success 'rebase (U/L)' '
 	check_encoding 2
 '
 
-test_expect_success NOT_MINGW 'rebase (L/L)' '
+test_expect_success !MINGW 'rebase (L/L)' '
 	# In this test we want ISO-8859-1 encoded commits as the result
 	git config i18n.commitencoding ISO8859-1 &&
 	git config i18n.logoutputencoding ISO8859-1 &&
@@ -134,7 +130,7 @@ test_expect_success NOT_MINGW 'rebase (L/L)' '
 	check_encoding 2 8859
 '
 
-test_expect_success NOT_MINGW 'rebase (L/U)' '
+test_expect_success !MINGW 'rebase (L/U)' '
 	# This is pathological -- use UTF-8 as intermediate form
 	# to get ISO-8859-1 results.
 	git config i18n.commitencoding ISO8859-1 &&
@@ -162,7 +158,7 @@ test_expect_success 'cherry-pick(U/U)' '
 	check_encoding 3
 '
 
-test_expect_success NOT_MINGW 'cherry-pick(L/L)' '
+test_expect_success !MINGW 'cherry-pick(L/L)' '
 	# Both the commitencoding and logoutputencoding is set to ISO-8859-1
 
 	git config i18n.commitencoding ISO8859-1 &&
@@ -192,7 +188,7 @@ test_expect_success 'cherry-pick(U/L)' '
 	check_encoding 3
 '
 
-test_expect_success NOT_MINGW 'cherry-pick(L/U)' '
+test_expect_success !MINGW 'cherry-pick(L/U)' '
 	# Again, the commitencoding is set to ISO-8859-1 but
 	# logoutputencoding is set to UTF-8.
 

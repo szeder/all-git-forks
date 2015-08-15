@@ -42,7 +42,7 @@ test_expect_success GPG 'create signed commits' '
 	git tag seventh-unsigned &&
 
 	test_tick && git rebase -f HEAD^^ && git tag sixth-signed HEAD^ &&
-	git tag seventh-signed
+	git tag seventh-signed &&
 
 	echo 8 >file && test_tick && git commit -a -m eighth -SB7227189 &&
 	git tag eighth-signed-alt
@@ -86,8 +86,8 @@ test_expect_success GPG 'show signed commit with signature' '
 	git show -s --show-signature initial >show &&
 	git verify-commit -v initial >verify.1 2>verify.2 &&
 	git cat-file commit initial >cat &&
-	grep -v "gpg: " show >show.commit &&
-	grep "gpg: " show >show.gpg &&
+	grep -v -e "gpg: " -e "Warning: " show >show.commit &&
+	grep -e "gpg: " -e "Warning: " show >show.gpg &&
 	grep -v "^ " cat | grep -v "^gpgsig " >cat.commit &&
 	test_cmp show.commit commit &&
 	test_cmp show.gpg verify.2 &&

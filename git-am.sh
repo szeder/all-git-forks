@@ -17,6 +17,7 @@ s,signoff       add a Signed-off-by line to the commit message
 u,utf8          recode into utf8 (default)
 k,keep          pass -k flag to git-mailinfo
 keep-non-patch  pass -b flag to git-mailinfo
+m,message-id    pass -m flag to git-mailinfo
 keep-cr         pass --keep-cr flag to git-mailsplit for mbox format
 no-keep-cr      do not pass --keep-cr flag to git-mailsplit independent of am.keepcr
 c,scissors      strip everything before a scissors line
@@ -68,6 +69,8 @@ then
 	cmdline="$cmdline -3"
 fi
 
+empty_tree=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+
 sq () {
 	git rev-parse --sq-quote "$@"
 }
@@ -84,7 +87,7 @@ safe_to_abort () {
 		return 1
 	fi
 
-	if ! test -s "$dotest/abort-safety"
+	if ! test -f "$dotest/abort-safety"
 	then
 		return 0
 	fi
@@ -176,7 +179,8 @@ It does not apply to blobs recorded in its index.")"
     then
 	    GIT_MERGE_VERBOSITY=0 && export GIT_MERGE_VERBOSITY
     fi
-    git-merge-recursive $orig_tree -- HEAD $his_tree || {
+    our_tree=$(git rev-parse --verify -q HEAD || echo $empty_tree)
+    git-merge-recursive $orig_tree -- $our_tree $his_tree || {
 	    git rerere $allow_rerere_autoupdate
 	    die "$(gettext "Failed to merge in the changes.")"
     }
@@ -371,12 +375,18 @@ split_patches () {
 prec=4
 dotest="$GIT_DIR/rebase-apply"
 sign= utf8=t keep= keepcr= skip= interactive= resolved= rebasing= abort=
-resolvemsg= resume= scissors= no_inbody_headers=
+messageid= resolvemsg= resume= scissors= no_inbody_headers=
 git_apply_opt=
 committer_date_is_author_date=
 ignore_date=
 allow_rerere_autoupdate=
 gpg_sign_opt=
+threeway=
+
+if test "$(git config --bool --get am.messageid)" = true
+then
+    messageid=t
+fi
 
 if test "$(git config --bool --get am.keepcr)" = true
 then
@@ -400,6 +410,10 @@ it will be removed. Please do not use it anymore."
 		utf8=t ;; # this is now default
 	--no-utf8)
 		utf8= ;;
+	-m|--message-id)
+		messageid=t ;;
+	--no-message-id)
+		messageid=f ;;
 	-k|--keep)
 		keep=t ;;
 	--keep-non-patch)
@@ -492,10 +506,11 @@ then
 		;;
 	t,)
 		git rerere clear
-		git read-tree --reset -u HEAD HEAD
-		orig_head=$(cat "$GIT_DIR/ORIG_HEAD")
-		git reset HEAD
-		git update-ref ORIG_HEAD $orig_head
+		head_tree=$(git rev-parse --verify -q HEAD || echo $empty_tree) &&
+		git read-tree --reset -u $head_tree $head_tree &&
+		index_tree=$(git write-tree) &&
+		git read-tree -m -u $index_tree $head_tree
+		git read-tree $head_tree
 		;;
 	,t)
 		if test -f "$dotest/rebasing"
@@ -505,8 +520,19 @@ then
 		git rerere clear
 		if safe_to_abort
 		then
-			git read-tree --reset -u HEAD ORIG_HEAD
-			git reset ORIG_HEAD
+			head_tree=$(git rev-parse --verify -q HEAD || echo $empty_tree) &&
+			git read-tree --reset -u $head_tree $head_tree &&
+			index_tree=$(git write-tree) &&
+			orig_head=$(git rev-parse --verify -q ORIG_HEAD || echo $empty_tree) &&
+			git read-tree -m -u $index_tree $orig_head
+			if git rev-parse --verify -q ORIG_HEAD >/dev/null 2>&1
+			then
+				git reset ORIG_HEAD
+			else
+				git read-tree $empty_tree
+				curr_branch=$(git symbolic-ref HEAD 2>/dev/null) &&
+				git update-ref -d $curr_branch
+			fi
 		fi
 		rm -fr "$dotest"
 		exit ;;
@@ -567,6 +593,7 @@ Use \"git am --abort\" to remove it.")"
 	echo "$sign" >"$dotest/sign"
 	echo "$utf8" >"$dotest/utf8"
 	echo "$keep" >"$dotest/keep"
+	echo "$messageid" >"$dotest/messageid"
 	echo "$scissors" >"$dotest/scissors"
 	echo "$no_inbody_headers" >"$dotest/no_inbody_headers"
 	echo "$GIT_QUIET" >"$dotest/quiet"
@@ -620,6 +647,12 @@ b)
 	keep=-b ;;
 *)
 	keep= ;;
+esac
+case "$(cat "$dotest/messageid")" in
+t)
+	messageid=-m ;;
+f)
+	messageid= ;;
 esac
 case "$(cat "$dotest/scissors")" in
 t)
@@ -692,7 +725,7 @@ do
 			get_author_ident_from_commit "$commit" >"$dotest/author-script"
 			git diff-tree --root --binary --full-index "$commit" >"$dotest/patch"
 		else
-			git mailinfo $keep $no_inbody_headers $scissors $utf8 "$dotest/msg" "$dotest/patch" \
+			git mailinfo $keep $no_inbody_headers $messageid $scissors $utf8 "$dotest/msg" "$dotest/patch" \
 				<"$dotest/$msgnum" >"$dotest/info" ||
 				stop_here $this
 
@@ -810,10 +843,10 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."
 		continue
 	fi
 
-	if test -x "$GIT_DIR"/hooks/applypatch-msg
+	hook="$(git rev-parse --git-path hooks/applypatch-msg)"
+	if test -x "$hook"
 	then
-		"$GIT_DIR"/hooks/applypatch-msg "$dotest/final-commit" ||
-		stop_here $this
+		"$hook" "$dotest/final-commit" || stop_here $this
 	fi
 
 	if test -f "$dotest/final-commit"
@@ -887,9 +920,10 @@ did you forget to use 'git add'?"
 		stop_here_user_resolve $this
 	fi
 
-	if test -x "$GIT_DIR"/hooks/pre-applypatch
+	hook="$(git rev-parse --git-path hooks/pre-applypatch)"
+	if test -x "$hook"
 	then
-		"$GIT_DIR"/hooks/pre-applypatch || stop_here $this
+		"$hook" || stop_here $this
 	fi
 
 	tree=$(git write-tree) &&
@@ -916,18 +950,17 @@ did you forget to use 'git add'?"
 		echo "$(cat "$dotest/original-commit") $commit" >> "$dotest/rewritten"
 	fi
 
-	if test -x "$GIT_DIR"/hooks/post-applypatch
-	then
-		"$GIT_DIR"/hooks/post-applypatch
-	fi
+	hook="$(git rev-parse --git-path hooks/post-applypatch)"
+	test -x "$hook" && "$hook"
 
 	go_next
 done
 
 if test -s "$dotest"/rewritten; then
     git notes copy --for-rewrite=rebase < "$dotest"/rewritten
-    if test -x "$GIT_DIR"/hooks/post-rewrite; then
-	"$GIT_DIR"/hooks/post-rewrite rebase < "$dotest"/rewritten
+    hook="$(git rev-parse --git-path hooks/post-rewrite)"
+    if test -x "$hook"; then
+	"$hook" rebase < "$dotest"/rewritten
     fi
 fi
 

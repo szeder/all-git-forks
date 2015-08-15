@@ -347,36 +347,6 @@ test_expect_success 'B: fail on invalid blob sha1' '
 rm -f .git/objects/pack_* .git/objects/index_*
 
 cat >input <<INPUT_END
-commit .badbranchname
-committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
-data <<COMMIT
-corrupt
-COMMIT
-
-from refs/heads/master
-
-INPUT_END
-test_expect_success 'B: fail on invalid branch name ".badbranchname"' '
-    test_must_fail git fast-import <input
-'
-rm -f .git/objects/pack_* .git/objects/index_*
-
-cat >input <<INPUT_END
-commit bad[branch]name
-committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
-data <<COMMIT
-corrupt
-COMMIT
-
-from refs/heads/master
-
-INPUT_END
-test_expect_success 'B: fail on invalid branch name "bad[branch]name"' '
-    test_must_fail git fast-import <input
-'
-rm -f .git/objects/pack_* .git/objects/index_*
-
-cat >input <<INPUT_END
 commit TEMP_TAG
 committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
 data <<COMMIT
@@ -582,8 +552,8 @@ test_expect_success 'D: verify pack' '
 '
 
 cat >expect <<EOF
-:000000 100755 0000000000000000000000000000000000000000 35a59026a33beac1569b1c7f66f3090ce9c09afc A	newdir/exec.sh
-:000000 100644 0000000000000000000000000000000000000000 046d0371e9220107917db0d0e030628de8a1de9b A	newdir/interesting
+:000000 100755 0000000000000000000000000000000000000000 e74b7d465e52746be2b4bae983670711e6e66657 A	newdir/exec.sh
+:000000 100644 0000000000000000000000000000000000000000 fcf778cda181eaa1cbc9e9ce3a2e15ee9f9fe791 A	newdir/interesting
 EOF
 git diff-tree -M -r branch^ branch >actual
 test_expect_success \
@@ -1162,7 +1132,7 @@ test_expect_success \
 	 compare_diff_raw expect actual'
 
 test_expect_success PIPE 'N: read and copy directory' '
-	cat >expect <<-\EOF
+	cat >expect <<-\EOF &&
 	:100755 100755 f1fb5da718392694d0076d677d6d0e364c79b0bc f1fb5da718392694d0076d677d6d0e364c79b0bc C100	file2/newf	file3/newf
 	:100644 100644 7123f7f44e39be127c5eb701e5968176ee9d78b1 7123f7f44e39be127c5eb701e5968176ee9d78b1 C100	file2/oldf	file3/oldf
 	EOF
@@ -2258,7 +2228,7 @@ test_expect_success 'R: feature import-marks-if-exists' '
 	>expect &&
 
 	git fast-import --import-marks-if-exists=not_io.marks \
-			--export-marks=io.marks <<-\EOF
+			--export-marks=io.marks <<-\EOF &&
 	feature import-marks-if-exists=io.marks
 	EOF
 	test_cmp expect io.marks
@@ -2336,7 +2306,7 @@ test_expect_success 'R: cat-blob-fd must be a nonnegative integer' '
 	test_must_fail git fast-import --cat-blob-fd=-1 </dev/null
 '
 
-test_expect_success NOT_MINGW 'R: print old blob' '
+test_expect_success !MINGW 'R: print old blob' '
 	blob=$(echo "yes it can" | git hash-object -w --stdin) &&
 	cat >expect <<-EOF &&
 	${blob} blob 11
@@ -2348,7 +2318,7 @@ test_expect_success NOT_MINGW 'R: print old blob' '
 	test_cmp expect actual
 '
 
-test_expect_success NOT_MINGW 'R: in-stream cat-blob-fd not respected' '
+test_expect_success !MINGW 'R: in-stream cat-blob-fd not respected' '
 	echo hello >greeting &&
 	blob=$(git hash-object -w greeting) &&
 	cat >expect <<-EOF &&
@@ -2369,7 +2339,7 @@ test_expect_success NOT_MINGW 'R: in-stream cat-blob-fd not respected' '
 	test_cmp expect actual.1
 '
 
-test_expect_success NOT_MINGW 'R: print new blob' '
+test_expect_success !MINGW 'R: print new blob' '
 	blob=$(echo "yep yep yep" | git hash-object --stdin) &&
 	cat >expect <<-EOF &&
 	${blob} blob 12
@@ -2387,7 +2357,7 @@ test_expect_success NOT_MINGW 'R: print new blob' '
 	test_cmp expect actual
 '
 
-test_expect_success NOT_MINGW 'R: print new blob by sha1' '
+test_expect_success !MINGW 'R: print new blob by sha1' '
 	blob=$(echo "a new blob named by sha1" | git hash-object --stdin) &&
 	cat >expect <<-EOF &&
 	${blob} blob 25
@@ -2687,7 +2657,7 @@ test_expect_success 'R: verify created pack' '
 test_expect_success \
 	'R: verify written objects' \
 	'git --git-dir=R/.git cat-file blob big-file:big1 >actual &&
-	 test_cmp expect actual &&
+	 test_cmp_bin expect actual &&
 	 a=$(git --git-dir=R/.git rev-parse big-file:big1) &&
 	 b=$(git --git-dir=R/.git rev-parse big-file:big2) &&
 	 test $a = $b'
@@ -2866,7 +2836,7 @@ test_expect_success 'S: notemodify with garbage after sha1 dataref must fail' '
 #
 # notemodify, mark in commit-ish
 #
-test_expect_success 'S: notemodify with garbarge after mark commit-ish must fail' '
+test_expect_success 'S: notemodify with garbage after mark commit-ish must fail' '
 	test_must_fail git fast-import --import-marks=marks <<-EOF 2>err &&
 	commit refs/heads/Snotes
 	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
@@ -2883,8 +2853,8 @@ test_expect_success 'S: notemodify with garbarge after mark commit-ish must fail
 # from
 #
 test_expect_success 'S: from with garbage after mark must fail' '
-	# no &&
-	git fast-import --import-marks=marks --export-marks=marks <<-EOF 2>err
+	test_must_fail \
+	git fast-import --import-marks=marks --export-marks=marks <<-EOF 2>err &&
 	commit refs/heads/S2
 	mark :303
 	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
@@ -2895,9 +2865,6 @@ test_expect_success 'S: from with garbage after mark must fail' '
 	M 100644 :403 hello.c
 	EOF
 
-	ret=$? &&
-	echo returned $ret &&
-	test $ret -ne 0 && # failed, but it created the commit
 
 	# go create the commit, need it for merge test
 	git fast-import --import-marks=marks --export-marks=marks <<-EOF &&

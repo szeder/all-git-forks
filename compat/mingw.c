@@ -312,7 +312,7 @@ int mingw_open (const char *filename, int oflags, ...)
 		return -1;
 	fd = _wopen(wfilename, oflags, mode);
 
-	if (fd < 0 && (oflags & O_CREAT) && errno == EACCES) {
+	if (fd < 0 && (oflags & O_ACCMODE) != O_RDONLY && errno == EACCES) {
 		DWORD attrs = GetFileAttributesW(wfilename);
 		if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY))
 			errno = EISDIR;
@@ -2127,4 +2127,15 @@ void mingw_startup()
 
 	/* initialize Unicode console */
 	winansi_init();
+}
+
+int uname(struct utsname *buf)
+{
+	DWORD v = GetVersion();
+	memset(buf, 0, sizeof(*buf));
+	strcpy(buf->sysname, "Windows");
+	sprintf(buf->release, "%u.%u", v & 0xff, (v >> 8) & 0xff);
+	/* assuming NT variants only.. */
+	sprintf(buf->version, "%u", (v >> 16) & 0x7fff);
+	return 0;
 }

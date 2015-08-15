@@ -5,7 +5,7 @@
 #include "urlmatch.h"
 
 static const char *const builtin_config_usage[] = {
-	N_("git config [options]"),
+	N_("git config [<options>]"),
 	NULL
 };
 
@@ -69,8 +69,8 @@ static struct option builtin_config_options[] = {
 	OPT_BIT(0, "remove-section", &actions, N_("remove a section: name"), ACTION_REMOVE_SECTION),
 	OPT_BIT('l', "list", &actions, N_("list all"), ACTION_LIST),
 	OPT_BIT('e', "edit", &actions, N_("open an editor"), ACTION_EDIT),
-	OPT_STRING(0, "get-color", &get_color_slot, N_("slot"), N_("find the color configured: [default]")),
-	OPT_STRING(0, "get-colorbool", &get_colorbool_slot, N_("slot"), N_("find the color setting: [stdout-is-tty]")),
+	OPT_BIT(0, "get-color", &actions, N_("find the color configured: slot [default]"), ACTION_GET_COLOR),
+	OPT_BIT(0, "get-colorbool", &actions, N_("find the color setting: slot [stdout-is-tty]"), ACTION_GET_COLORBOOL),
 	OPT_GROUP(N_("Type")),
 	OPT_BIT(0, "bool", &types, N_("value is \"true\" or \"false\""), TYPE_BOOL),
 	OPT_BIT(0, "int", &types, N_("value is decimal number"), TYPE_INT),
@@ -193,7 +193,7 @@ static int get_value(const char *key_, const char *regex_)
 
 		key_regexp = (regex_t*)xmalloc(sizeof(regex_t));
 		if (regcomp(key_regexp, key, REG_EXTENDED)) {
-			fprintf(stderr, "Invalid key pattern: %s\n", key_);
+			error("invalid key pattern: %s", key_);
 			free(key_regexp);
 			key_regexp = NULL;
 			ret = CONFIG_INVALID_PATTERN;
@@ -214,7 +214,7 @@ static int get_value(const char *key_, const char *regex_)
 
 		regexp = (regex_t*)xmalloc(sizeof(regex_t));
 		if (regcomp(regexp, regex_, REG_EXTENDED)) {
-			fprintf(stderr, "Invalid pattern: %s\n", regex_);
+			error("invalid pattern: %s", regex_);
 			free(regexp);
 			regexp = NULL;
 			ret = CONFIG_INVALID_PATTERN;
@@ -296,21 +296,25 @@ static int git_get_color_config(const char *var, const char *value, void *cb)
 	if (!strcmp(var, get_color_slot)) {
 		if (!value)
 			config_error_nonbool(var);
-		color_parse(value, var, parsed_color);
+		if (color_parse(value, parsed_color) < 0)
+			return -1;
 		get_color_found = 1;
 	}
 	return 0;
 }
 
-static void get_color(const char *def_color)
+static void get_color(const char *var, const char *def_color)
 {
+	get_color_slot = var;
 	get_color_found = 0;
 	parsed_color[0] = '\0';
 	git_config_with_options(git_get_color_config, NULL,
 				&given_config_source, respect_includes);
 
-	if (!get_color_found && def_color)
-		color_parse(def_color, "command line", parsed_color);
+	if (!get_color_found && def_color) {
+		if (color_parse(def_color, parsed_color) < 0)
+			die(_("unable to parse default color value"));
+	}
 
 	fputs(parsed_color, stdout);
 }
@@ -330,8 +334,9 @@ static int git_get_colorbool_config(const char *var, const char *value,
 	return 0;
 }
 
-static int get_colorbool(int print)
+static int get_colorbool(const char *var, int print)
 {
+	get_colorbool_slot = var;
 	get_colorbool_found = -1;
 	get_diff_color_found = -1;
 	get_color_ui_found = -1;
@@ -445,6 +450,20 @@ static int get_urlmatch(const char *var, const char *url)
 	return 0;
 }
 
+static char *default_user_config(void)
+{
+	struct strbuf buf = STRBUF_INIT;
+	strbuf_addf(&buf,
+		    _("# This is Git's per-user configuration file.\n"
+		      "[user]\n"
+		      "# Please adapt and uncomment the following lines:\n"
+		      "#	name = %s\n"
+		      "#	email = %s\n"),
+		    ident_default_name(),
+		    ident_default_email());
+	return strbuf_detach(&buf, NULL);
+}
+
 int cmd_config(int argc, const char **argv, const char *prefix)
 {
 	int nongit = !startup_info->have_repository;
@@ -469,10 +488,8 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 	}
 
 	if (use_global_config) {
-		char *user_config = NULL;
-		char *xdg_config = NULL;
-
-		home_config_paths(&user_config, &xdg_config, "config");
+		char *user_config = expand_user_path("~/.gitconfig");
+		char *xdg_config = xdg_config_home("config");
 
 		if (!user_config)
 			/*
@@ -515,12 +532,7 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		usage_with_options(builtin_config_usage, builtin_config_options);
 	}
 
-	if (get_color_slot)
-	    actions |= ACTION_GET_COLOR;
-	if (get_colorbool_slot)
-	    actions |= ACTION_GET_COLORBOOL;
-
-	if ((get_color_slot || get_colorbool_slot) && types) {
+	if ((actions & (ACTION_GET_COLOR|ACTION_GET_COLORBOOL)) && types) {
 		error("--get-color and variable type are incoherent");
 		usage_with_options(builtin_config_usage, builtin_config_options);
 	}
@@ -551,6 +563,8 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		}
 	}
 	else if (actions == ACTION_EDIT) {
+		char *config_file;
+
 		check_argc(argc, 0, 0);
 		if (!given_config_source.file && nongit)
 			die("not in a git directory");
@@ -559,9 +573,21 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		if (given_config_source.blob)
 			die("editing blobs is not supported");
 		git_config(git_default_config, NULL);
-		launch_editor(given_config_source.file ?
-			      given_config_source.file : git_path("config"),
-			      NULL, NULL);
+		config_file = xstrdup(given_config_source.file ?
+				      given_config_source.file : git_path("config"));
+		if (use_global_config) {
+			int fd = open(config_file, O_CREAT | O_EXCL | O_WRONLY, 0666);
+			if (fd) {
+				char *content = default_user_config();
+				write_str_in_full(fd, content);
+				free(content);
+				close(fd);
+			}
+			else if (errno != EEXIST)
+				die_errno(_("cannot create configuration file %s"), config_file);
+		}
+		launch_editor(config_file, NULL, NULL);
+		free(config_file);
 	}
 	else if (actions == ACTION_SET) {
 		int ret;
@@ -655,12 +681,14 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 			die("No such section!");
 	}
 	else if (actions == ACTION_GET_COLOR) {
-		get_color(argv[0]);
+		check_argc(argc, 1, 2);
+		get_color(argv[0], argv[1]);
 	}
 	else if (actions == ACTION_GET_COLORBOOL) {
-		if (argc == 1)
-			color_stdout_is_tty = git_config_bool("command line", argv[0]);
-		return get_colorbool(argc != 0);
+		check_argc(argc, 1, 2);
+		if (argc == 2)
+			color_stdout_is_tty = git_config_bool("command line", argv[1]);
+		return get_colorbool(argv[0], argc == 2);
 	}
 
 	return 0;
