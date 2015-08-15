@@ -330,24 +330,22 @@ static void note_tree_free(struct int_node *tree)
 }
 
 /*
- * Convert a partial SHA1 hex string to the corresponding partial SHA1 value.
- * - hex      - Partial SHA1 segment in ASCII hex format
- * - hex_len  - Length of above segment. Must be multiple of 2 between 0 and 40
- * - sha1     - Partial SHA1 value is written here
+ * Convert len pairs of hexadecimal digits into bytes.
+ * - binary   - The resulting bytes are written here
+ * - hex      - Pointer to at least 2*len hexadecimal digits
+ * - len      - Number of digit pairs to convert
  * Returns 0 on success or -1 on error (invalid arguments or invalid
  * SHA1 (not in hex format)).
  */
-static int get_sha1_hex_segment(const char *hex, unsigned int hex_len,
-		unsigned char *sha1)
+static int hex_to_bytes(unsigned char *binary, const char *hex,
+			unsigned int len)
 {
-	unsigned int i, len = hex_len >> 1;
-	if (hex_len % 2 != 0)
-		return -1;
-	for (i = 0; i < len; i++) {
+	for (; len; len--) {
 		unsigned int val = (hexval(hex[0]) << 4) | hexval(hex[1]);
+
 		if (val & ~0xff)
 			return -1;
-		*sha1++ = val;
+		*binary++ = val;
 		hex += 2;
 	}
 	return 0;
@@ -427,8 +425,8 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 
 		if (path_len == 2 * (20 - prefix_len) && S_ISREG(entry.mode)) {
 			/* This is potentially the remainder of the SHA-1 */
-			if (get_sha1_hex_segment(entry.path, path_len,
-						 object_sha1 + prefix_len))
+			if (hex_to_bytes(object_sha1 + prefix_len, entry.path,
+					 20 - prefix_len))
 				goto handle_non_note; /* entry.path is not a SHA1 */
 
 			type = PTR_TYPE_NOTE;
@@ -440,8 +438,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 			/* This is potentially an internal node */
 			int len;
 
-			if (get_sha1_hex_segment(entry.path, 2,
-						 object_sha1 + prefix_len))
+			if (hex_to_bytes(object_sha1 + prefix_len, entry.path, 1))
 				goto handle_non_note; /* entry.path is not a SHA1 */
 
 			len = prefix_len + 1;
