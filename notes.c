@@ -429,7 +429,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 		int path_len = strlen(entry.path);
 		struct leaf_node *l;
 
-		if (path_len == 2 * (20 - prefix_len)) {
+		if (path_len == 2 * (20 - prefix_len) && S_ISREG(entry.mode)) {
 			/* This is potentially the remainder of the SHA-1 */
 			if (get_sha1_hex_segment(entry.path, path_len,
 						 object_sha1 + prefix_len,
@@ -441,7 +441,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 				xcalloc(1, sizeof(struct leaf_node));
 			hashcpy(l->key_sha1, object_sha1);
 			hashcpy(l->val_sha1, entry.sha1);
-		} else if (path_len == 2 && S_ISDIR(entry.mode)) {
+		} else if (path_len == 2 && prefix_len < 19 && S_ISDIR(entry.mode)) {
 			/* This is potentially an internal node */
 			if (get_sha1_hex_segment(entry.path, 2,
 						 object_sha1 + prefix_len,
