@@ -22,7 +22,6 @@ sqlite3 new_db < dump_v1
 
 echo "Cleaning conflicted files..."
 rm dump_v1 dump_v2 patch-diff
-rm $v1 $v2
 rm $db_path
 
 echo "Loading merged working database..."
