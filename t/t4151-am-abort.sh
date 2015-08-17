@@ -168,4 +168,16 @@ test_expect_success 'am --abort on unborn branch will keep local commits intact'
 	test_cmp expect actual
 '
 
+test_expect_success 'am --abort leaves index stat info alone' '
+	git checkout -f --orphan stat-info &&
+	git reset &&
+	test_commit should-be-untouched &&
+	test-chmtime =0 should-be-untouched.t &&
+	git update-index --refresh &&
+	git diff-files --exit-code --quiet &&
+	test_must_fail git am 0001-*.patch &&
+	git am --abort &&
+	git diff-files --exit-code --quiet
+'
+
 test_done
