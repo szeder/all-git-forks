@@ -158,7 +158,11 @@ int cmd_send_pack(int argc, const char **argv, const char *prefix)
 				continue;
 			}
 			if (!strcmp(arg, "--signed")) {
-				args.push_cert = 1;
+				args.push_cert = SEND_PACK_PUSH_CERT_ALWAYS;
+				continue;
+			}
+			if (!strcmp(arg, "--signed-if-possible")) {
+				args.push_cert = SEND_PACK_PUSH_CERT_IF_POSSIBLE;
 				continue;
 			}
 			if (!strcmp(arg, "--progress")) {
