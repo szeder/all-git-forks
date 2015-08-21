@@ -1314,7 +1314,7 @@ static struct config_set_element *configset_find_element(struct config_set *cs, 
 	 * `key` may come from the user, so normalize it before using it
 	 * for querying entries from the hashmap.
 	 */
-	ret = git_config_parse_key(key, &normalized_key, NULL);
+	ret = git_config_parse_key(key, &normalized_key, NULL, CONFIG_ERROR_QUIET);
 
 	if (ret)
 		return NULL;
@@ -1847,11 +1847,14 @@ int git_config_set(const char *key, const char *value)
  *             lowercase section and variable name
  * baselen - pointer to int which will hold the length of the
  *           section + subsection part, can be NULL
+ * flags - we respect CONFIG_ERROR_QUIET to toggle whether the function raises
+ *         an error on a syntactically malformed key
  */
-int git_config_parse_key(const char *key, char **store_key, int *baselen_)
+int git_config_parse_key(const char *key, char **store_key, int *baselen_, unsigned int flags)
 {
 	int i, dot, baselen;
 	const char *last_dot = strrchr(key, '.');
+	int quiet = flags & CONFIG_ERROR_QUIET;
 
 	/*
 	 * Since "key" actually contains the section name and the real
@@ -1859,12 +1862,14 @@ int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 	 */
 
 	if (last_dot == NULL || last_dot == key) {
-		error("key does not contain a section: %s", key);
+		if (!quiet)
+			error("key does not contain a section: %s", key);
 		return -CONFIG_NO_SECTION_OR_NAME;
 	}
 
 	if (!last_dot[1]) {
-		error("key does not contain variable name: %s", key);
+		if (!quiet)
+			error("key does not contain variable name: %s", key);
 		return -CONFIG_NO_SECTION_OR_NAME;
 	}
 
@@ -1886,12 +1891,14 @@ int git_config_parse_key(const char *key, char **store_key, int *baselen_)
 		if (!dot || i > baselen) {
 			if (!iskeychar(c) ||
 			    (i == baselen + 1 && !isalpha(c))) {
-				error("invalid key: %s", key);
+				if (!quiet)
+					error("invalid key: %s", key);
 				goto out_free_ret_1;
 			}
 			c = tolower(c);
 		} else if (c == '\n') {
-			error("invalid key (newline): %s", key);
+			if (!quiet)
+				error("invalid key (newline): %s", key);
 			goto out_free_ret_1;
 		}
 		(*store_key)[i] = c;
@@ -1943,7 +1950,7 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	size_t contents_sz;
 
 	/* parse-key returns negative; flip the sign to feed exit(3) */
-	ret = 0 - git_config_parse_key(key, &store.key, &store.baselen);
+	ret = 0 - git_config_parse_key(key, &store.key, &store.baselen, 0);
 	if (ret)
 		goto out_free;
 

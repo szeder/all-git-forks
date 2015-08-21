@@ -200,7 +200,7 @@ static int get_value(const char *key_, const char *regex_)
 			goto free_strings;
 		}
 	} else {
-		if (git_config_parse_key(key_, &key, NULL)) {
+		if (git_config_parse_key(key_, &key, NULL, 0)) {
 			ret = CONFIG_INVALID_KEY;
 			goto free_strings;
 		}

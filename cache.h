@@ -1416,6 +1416,8 @@ extern int update_server_info(int);
 
 #define CONFIG_REGEX_NONE ((void *)1)
 
+#define CONFIG_ERROR_QUIET 0x0001
+
 struct git_config_source {
 	unsigned int use_stdin:1;
 	const char *file;
@@ -1445,7 +1447,7 @@ extern int git_config_string(const char **, const char *, const char *);
 extern int git_config_pathname(const char **, const char *, const char *);
 extern int git_config_set_in_file(const char *, const char *, const char *);
 extern int git_config_set(const char *, const char *);
-extern int git_config_parse_key(const char *, char **, int *);
+extern int git_config_parse_key(const char *, char **, int *, unsigned int);
 extern int git_config_set_multivar(const char *, const char *, const char *, int);
 extern int git_config_set_multivar_in_file(const char *, const char *, const char *, const char *, int);
 extern int git_config_rename_section(const char *, const char *);
