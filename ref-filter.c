@@ -10,6 +10,7 @@
 #include "quote.h"
 #include "ref-filter.h"
 #include "revision.h"
+#include "utf8.h"
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
 
@@ -53,6 +54,13 @@ static struct {
 	{ "flag" },
 	{ "HEAD" },
 	{ "color" },
+	{ "align" },
+	{ "end" },
+};
+
+struct align {
+	align_type position;
+	unsigned int width;
 };
 
 #define REF_FORMATTING_STATE_INIT  { 0, NULL }
@@ -60,6 +68,8 @@ static struct {
 struct ref_formatting_stack {
 	struct ref_formatting_stack *prev;
 	struct strbuf output;
+	void (*at_end)(struct ref_formatting_stack *stack);
+	void *cb_data;
 };
 
 struct ref_formatting_state {
@@ -69,6 +79,8 @@ struct ref_formatting_state {
 
 struct atom_value {
 	const char *s;
+	struct align *align;
+	void (*handler)(struct atom_value *atomv, struct ref_formatting_state *state);
 	unsigned long ul; /* used for sorting when not FIELD_STR */
 };
 
@@ -632,6 +644,51 @@ static inline char *copy_advance(char *dst, const char *src)
 	return dst;
 }
 
+static void align_handler(struct ref_formatting_stack *stack)
+{
+	struct align *align = (struct align *)stack->cb_data;
+	struct strbuf s = STRBUF_INIT;
+
+	strbuf_utf8_align(&s, align->position, align->width, stack->output.buf);
+	strbuf_swap(&stack->output, &s);
+	strbuf_release(&s);
+	free(align);
+}
+
+static void align_atom_handler(struct atom_value *atomv, struct ref_formatting_state *state)
+{
+	struct ref_formatting_stack *new;
+
+	push_new_stack_element(&state->stack);
+	new = state->stack;
+	new->at_end = align_handler;
+	new->cb_data = atomv->align;
+}
+
+static void perform_quote_formatting(struct strbuf *s, const char *str, int quote_style);
+
+static void end_atom_handler(struct atom_value *atomv, struct ref_formatting_state *state)
+{
+	struct ref_formatting_stack *current = state->stack;
+	struct strbuf s = STRBUF_INIT;
+
+	if (!current->at_end)
+		die(_("format: `end` atom used without a supporting atom"));
+	current->at_end(current);
+	/*
+	 * Whenever we have more than one stack element that means we
+	 * are using a certain modifier atom. In that case we need to
+	 * perform quote formatting.
+	 */
+	if (!state->stack->prev->prev) {
+		perform_quote_formatting(&s, current->output.buf, state->quote_style);
+		strbuf_reset(&current->output);
+		strbuf_addbuf(&current->output, &s);
+	}
+	strbuf_release(&s);
+	pop_stack_element(&state->stack);
+}
+
 /*
  * Parse the object referred by ref, and grab needed value.
  */
@@ -660,6 +717,7 @@ static void populate_value(struct ref_array_item *ref)
 		int deref = 0;
 		const char *refname;
 		const char *formatp;
+		const char *valp;
 		struct branch *branch = NULL;
 
 		if (*name == '*') {
@@ -724,6 +782,35 @@ static void populate_value(struct ref_array_item *ref)
 				v->s = "*";
 			else
 				v->s = " ";
+			continue;
+		} else if (skip_prefix(name, "align:", &valp)) {
+			struct align *align = xmalloc(sizeof(struct align));
+			struct strbuf **s = strbuf_split_str(valp, ',', 0);
+
+			/* If the position is given trim the ',' from the first strbuf */
+			if (s[1])
+				strbuf_remove(s[0], s[0]->len - 1, 1);
+
+			if (strtoul_ui(s[0]->buf, 10, &align->width))
+				die(_("positive width expected align:%s"), s[0]->buf);
+
+			/* If no position is given, default to ALIGN_LEFT */
+			if (!s[1] || !strcmp(s[1]->buf, "left"))
+				align->position = ALIGN_LEFT;
+			else if (!strcmp(s[1]->buf, "right"))
+				align->position = ALIGN_RIGHT;
+			else if (!strcmp(s[1]->buf, "middle"))
+				align->position = ALIGN_MIDDLE;
+			else
+				die(_("improper format entered align:%s"), s[1]->buf);
+
+			strbuf_list_free(s);
+
+			v->align = align;
+			v->handler = align_atom_handler;
+			continue;
+		} else if (!strcmp(name, "end")) {
+			v->handler = end_atom_handler;
 			continue;
 		} else
 			continue;
@@ -1228,27 +1315,31 @@ void ref_array_sort(struct ref_sorting *sorting, struct ref_array *array)
 	qsort(array->items, array->nr, sizeof(struct ref_array_item *), compare_refs);
 }
 
+static void perform_quote_formatting(struct strbuf *s, const char *str, int quote_style)
+{
+	switch (quote_style) {
+	case QUOTE_NONE:
+		strbuf_addstr(s, str);
+		break;
+	case QUOTE_SHELL:
+		sq_quote_buf(s, str);
+		break;
+	case QUOTE_PERL:
+		perl_quote_buf(s, str);
+		break;
+	case QUOTE_PYTHON:
+		python_quote_buf(s, str);
+		break;
+	case QUOTE_TCL:
+		tcl_quote_buf(s, str);
+		break;
+	}
+}
+
 static void append_atom(struct atom_value *v, struct ref_formatting_state *state)
 {
 	struct strbuf *s = &state->stack->output;
-
-	switch (state->quote_style) {
-	case QUOTE_NONE:
-		strbuf_addstr(s, v->s);
-		break;
-	case QUOTE_SHELL:
-		sq_quote_buf(s, v->s);
-		break;
-	case QUOTE_PERL:
-		perl_quote_buf(s, v->s);
-		break;
-	case QUOTE_PYTHON:
-		python_quote_buf(s, v->s);
-		break;
-	case QUOTE_TCL:
-		tcl_quote_buf(s, v->s);
-		break;
-	}
+	perform_quote_formatting(s, v->s, state->quote_style);
 }
 
 static int hex1(char ch)
@@ -1307,7 +1398,18 @@ void show_ref_array_item(struct ref_array_item *info, const char *format, int qu
 		if (cp < sp)
 			append_literal(cp, sp, &state);
 		get_ref_atom_value(info, parse_ref_filter_atom(sp + 2, ep), &atomv);
-		append_atom(atomv, &state);
+		/*
+		 * If the atom is a modifier atom, then call the handler function.
+		 * Else, if this is the first element on the stack, then we need to
+		 * format the atom as per the given quote. Else we just add the atom value
+		 * to the current stack element and handle quote formatting at the end.
+		 */
+		if (atomv->handler)
+			atomv->handler(atomv, &state);
+		else if (!state.stack->prev)
+			append_atom(atomv, &state);
+		else
+			strbuf_addstr(&state.stack->output, atomv->s);
 	}
 	if (*cp) {
 		sp = cp + strlen(cp);
@@ -1322,6 +1424,8 @@ void show_ref_array_item(struct ref_array_item *info, const char *format, int qu
 		resetv.s = color;
 		append_atom(&resetv, &state);
 	}
+	if (state.stack->prev)
+		die(_("format: `end` atom missing"));
 	final_buf = &state.stack->output;
 	fwrite(final_buf->buf, 1, final_buf->len, stdout);
 	pop_stack_element(&state.stack);
