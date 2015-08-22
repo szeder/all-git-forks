@@ -110,13 +110,15 @@ enum diff_words_type {
 	DIFF_WORDS_COLOR
 };
 
+typedef uint64_t diff_flags_t;
+
 struct diff_options {
 	const char *orderfile;
 	const char *pickaxe;
 	const char *single_follow;
 	const char *a_prefix, *b_prefix;
-	unsigned flags;
-	unsigned touched_flags;
+	diff_flags_t flags;
+	diff_flags_t touched_flags;
 
 	/* diff-filter bits */
 	unsigned int filter;
@@ -347,7 +349,7 @@ extern int diff_result_code(struct diff_options *, int);
 
 extern void diff_no_index(struct rev_info *, int, const char **, const char *);
 
-extern int index_differs_from(const char *def, int diff_flags);
+extern int index_differs_from(const char *def, diff_flags_t diff_flags);
 
 extern size_t fill_textconv(struct userdiff_driver *driver,
 			    struct diff_filespec *df,
