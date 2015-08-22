@@ -1123,6 +1123,36 @@ static struct ref_array_item *new_ref_array_item(const char *refname,
 	return ref;
 }
 
+static int filter_ref_kind(struct ref_filter *filter, const char *refname)
+{
+	unsigned int i;
+
+	static struct {
+		const char *prefix;
+		unsigned int kind;
+	} ref_kind[] = {
+		{ "refs/heads/" , FILTER_REFS_BRANCHES },
+		{ "refs/remotes/" , FILTER_REFS_REMOTES },
+		{ "refs/tags/", FILTER_REFS_TAGS}
+	};
+
+	if (filter->kind == FILTER_REFS_BRANCHES)
+		return FILTER_REFS_BRANCHES;
+	else if (filter->kind == FILTER_REFS_REMOTES)
+		return FILTER_REFS_REMOTES;
+	else if (filter->kind == FILTER_REFS_TAGS)
+		return FILTER_REFS_TAGS;
+	else if (!strcmp(refname, "HEAD"))
+		return FILTER_REFS_DETACHED_HEAD;
+
+	for (i = 0; i < ARRAY_SIZE(ref_kind); i++) {
+		if (starts_with(refname, ref_kind[i].prefix))
+			return ref_kind[i].kind;
+	}
+
+	return FILTER_REFS_OTHERS;
+}
+
 /*
  * A call-back given to for_each_ref().  Filter refs and keep them for
  * later object processing.
@@ -1133,6 +1163,7 @@ static int ref_filter_handler(const char *refname, const struct object_id *oid, 
 	struct ref_filter *filter = ref_cbdata->filter;
 	struct ref_array_item *ref;
 	struct commit *commit = NULL;
+	unsigned int kind;
 
 	if (flag & REF_BAD_NAME) {
 		warning("ignoring ref with broken name %s", refname);
@@ -1143,6 +1174,10 @@ static int ref_filter_handler(const char *refname, const struct object_id *oid, 
 		warning("ignoring broken ref %s", refname);
 		return 0;
 	}
+
+	kind = filter_ref_kind(filter, refname);
+	if (!(kind & filter->kind))
+		return 0;
 
 	if (*filter->name_patterns && !match_name_as_path(filter->name_patterns, refname))
 		return 0;
@@ -1175,6 +1210,7 @@ static int ref_filter_handler(const char *refname, const struct object_id *oid, 
 
 	REALLOC_ARRAY(ref_cbdata->array->items, ref_cbdata->array->nr + 1);
 	ref_cbdata->array->items[ref_cbdata->array->nr++] = ref;
+	ref->kind = kind;
 	return 0;
 }
 
@@ -1251,16 +1287,29 @@ int filter_refs(struct ref_array *array, struct ref_filter *filter, unsigned int
 {
 	struct ref_filter_cbdata ref_cbdata;
 	int ret = 0;
+	unsigned int broken = 0;
 
 	ref_cbdata.array = array;
 	ref_cbdata.filter = filter;
 
 	/*  Simple per-ref filtering */
-	if (type & (FILTER_REFS_ALL | FILTER_REFS_INCLUDE_BROKEN))
-		ret = for_each_rawref(ref_filter_handler, &ref_cbdata);
-	else if (type & FILTER_REFS_ALL)
-		ret = for_each_ref(ref_filter_handler, &ref_cbdata);
-	else if (type)
+	if (type & FILTER_REFS_INCLUDE_BROKEN) {
+		type &= ~FILTER_REFS_INCLUDE_BROKEN;
+		broken = 1;
+	}
+
+	filter->kind = type;
+	if (type == FILTER_REFS_BRANCHES)
+		ret = for_each_reftype_fullpath(ref_filter_handler, "refs/heads/", broken, &ref_cbdata);
+	else if (type == FILTER_REFS_REMOTES)
+		ret = for_each_reftype_fullpath(ref_filter_handler, "refs/remotes/", broken, &ref_cbdata);
+	else if (type == FILTER_REFS_TAGS)
+		ret = for_each_reftype_fullpath(ref_filter_handler, "refs/tags/", broken, &ref_cbdata);
+	else if (type & FILTER_REFS_ALL) {
+		ret = for_each_reftype_fullpath(ref_filter_handler, "", broken, &ref_cbdata);
+		if (type & FILTER_REFS_DETACHED_HEAD)
+			head_ref(ref_filter_handler, &ref_cbdata);
+	} else
 		die("filter_refs: invalid type");
 
 	/*  Filters that need revision walking */
