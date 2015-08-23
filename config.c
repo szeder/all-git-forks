@@ -670,7 +670,7 @@ int git_config_string(const char **dest, const char *var, const char *value)
 	return 0;
 }
 
-int git_config_hex_string(const char **dest, const char *var, const char *value)
+int git_config_hex_string(const unsigned char **dest, const char *var, const char *value)
 {
 	char str[32], *p;
 	int i;

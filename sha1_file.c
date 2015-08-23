@@ -2925,20 +2925,6 @@ void *read_object_with_reference(const unsigned char *sha1,
 	}
 }
 
-static unsigned char key[32] = {
-	0xc0, 0xf2, 0x09, 0x14, 0xf6, 0xa1, 0xa5, 0x0f,
-	0x9e, 0xdc, 0x1e, 0x2d, 0x34, 0x4f, 0x3a, 0x96,
-	0x67, 0x9a, 0xd9, 0x0d, 0x29, 0x2d, 0xe1, 0x3c,
-	0x9d, 0x6b, 0xe3, 0x06, 0x6d, 0x4b, 0x37, 0xe4
-};
-
-static unsigned char iv[32] = {
-	0x01, 0xc8, 0x2a, 0x5b, 0x98, 0x13, 0x4f, 0x6b,
-	0x28, 0xe7, 0xfb, 0x2a, 0xe1, 0x36, 0x78, 0x60,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
-
 #define EVP_BLOCK_SIZE	4096
 
 static void write_sha1_file_prepare_blob(const void *buf, unsigned long len,
@@ -2962,7 +2948,7 @@ static void write_sha1_file_prepare_blob(const void *buf, unsigned long len,
 	git_SHA1_Update(&c, hdr, *hdrlen);
 
 	EVP_CIPHER_CTX_init(&ec);
-	EVP_EncryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, key, iv);
+	EVP_EncryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, encrypt_crypt_key, encrypt_crypt_iv);
 
 	while(offset < len) {
 		blen = (len - offset) > EVP_BLOCK_SIZE ? EVP_BLOCK_SIZE : (len - offset);
@@ -3158,7 +3144,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 		int blen, outlen, foutlen;
 
 		EVP_CIPHER_CTX_init(&ec);
-		EVP_EncryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, key, iv);
+		EVP_EncryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, encrypt_crypt_key, encrypt_crypt_iv);
 
 		// write header to file first
 		if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)

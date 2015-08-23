@@ -497,19 +497,6 @@ static open_method_decl(incore)
 /****************************************************************
  * Users of streaming interface
  ****************************************************************/
-static unsigned char key[32] = {
-	0xc0, 0xf2, 0x09, 0x14, 0xf6, 0xa1, 0xa5, 0x0f,
-	0x9e, 0xdc, 0x1e, 0x2d, 0x34, 0x4f, 0x3a, 0x96,
-	0x67, 0x9a, 0xd9, 0x0d, 0x29, 0x2d, 0xe1, 0x3c,
-	0x9d, 0x6b, 0xe3, 0x06, 0x6d, 0x4b, 0x37, 0xe4
-};
-
-static unsigned char iv[32] = {
-	0x01, 0xc8, 0x2a, 0x5b, 0x98, 0x13, 0x4f, 0x6b,
-	0x28, 0xe7, 0xfb, 0x2a, 0xe1, 0x36, 0x78, 0x60,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-};
 
 int stream_blob_to_fd(int fd, unsigned const char *sha1, struct stream_filter *filter,
 		      int can_seek)
@@ -520,8 +507,8 @@ int stream_blob_to_fd(int fd, unsigned const char *sha1, struct stream_filter *f
 	ssize_t kept = 0;
 	int result = -1;
 	EVP_CIPHER_CTX ec;
-	int outlen, flen, i;
-	char plaintext[1024 * 16];
+	int outlen, flen;
+	unsigned char plaintext[1024 * 16];
 
 	st = open_istream(sha1, &type, &sz, filter);
 	if (!st) {
@@ -533,7 +520,7 @@ int stream_blob_to_fd(int fd, unsigned const char *sha1, struct stream_filter *f
 		goto close_and_exit;
 
 	EVP_CIPHER_CTX_init(&ec);
-	EVP_DecryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, key, iv);
+	EVP_DecryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, encrypt_crypt_key, encrypt_crypt_iv);
 
 	for (;;) {
 		char buf[1024 * 16];
@@ -559,7 +546,7 @@ int stream_blob_to_fd(int fd, unsigned const char *sha1, struct stream_filter *f
 		else
 			kept = 0;
 
-		EVP_DecryptUpdate(&ec, plaintext, &outlen, buf, readlen);
+		EVP_DecryptUpdate(&ec, plaintext, &outlen, (unsigned char *)buf, readlen);
 		wrote = write_in_full(fd, plaintext, outlen);
 
 		if (wrote != outlen)
