@@ -139,7 +139,7 @@ To stop tracking a file that is currently tracked, use
 'git rm --cached'.
 
 To re-include a file when its parent directory is excluded, the
-following conditions must match:
+following conditions must be met:
 
  - The directory part in the re-include rules must be literal (i.e. no
    wildcards)
