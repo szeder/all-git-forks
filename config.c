@@ -670,6 +670,34 @@ int git_config_string(const char **dest, const char *var, const char *value)
 	return 0;
 }
 
+int git_config_hex_string(const char **dest, const char *var, const char *value)
+{
+	char str[32], *p;
+	int i;
+
+	if (!value)
+		return config_error_nonbool(var);
+
+	memset(str, 0, sizeof(str));
+	p = str;
+	for (i = 0; i < sizeof(str); i++) {
+		unsigned int val;
+
+		if (!value[0])
+			die(_("bad hex string config value '%s' for '%s'"),
+				value, var);
+		val = (hexval(value[0]) << 4) | hexval(value[1]);
+		if (val & ~0xff)
+			die(_("bad hex string config value '%s' for '%s'"),
+				value, var);
+		*p++ = val;
+		value += 2;
+	}
+
+	*dest = xmemdupz(str, sizeof(str));
+	return 0;
+}
+
 int git_config_pathname(const char **dest, const char *var, const char *value)
 {
 	if (!value)
@@ -997,6 +1025,23 @@ static int git_default_mailmap_config(const char *var, const char *value)
 	return 0;
 }
 
+static int git_default_encrypt_config(const char *var, const char *value)
+{
+	if (!strcmp(var, "encrypt.enable")) {
+		encrypt_enable = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "encrypt.cryptKey"))
+		return git_config_hex_string(&encrypt_crypt_key, var, value);
+
+	if (!strcmp(var, "encrypt.cryptIV"))
+		return git_config_hex_string(&encrypt_crypt_iv, var, value);
+
+	/* Add other config variables here and to Documentation/config.txt. */
+	return 0;
+}
+
 int git_default_config(const char *var, const char *value, void *dummy)
 {
 	if (starts_with(var, "core."))
@@ -1029,6 +1074,10 @@ int git_default_config(const char *var, const char *value, void *dummy)
 		pack_size_limit_cfg = git_config_ulong(var, value);
 		return 0;
 	}
+
+	if (starts_with(var, "encrypt."))
+		return git_default_encrypt_config(var, value);
+
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
 }

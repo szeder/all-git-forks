@@ -621,6 +621,9 @@ extern size_t packed_git_limit;
 extern size_t delta_base_cache_limit;
 extern unsigned long big_file_threshold;
 extern unsigned long pack_size_limit_cfg;
+extern int encrypt_enable;
+extern const char *encrypt_crypt_key;
+extern const char *encrypt_crypt_iv;
 
 /*
  * Do replace refs need to be checked this run?  This variable is
