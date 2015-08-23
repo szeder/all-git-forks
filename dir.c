@@ -833,7 +833,7 @@ int match_basename(const char *basename, int basenamelen,
 int match_pathname(const char *pathname, int pathlen,
 		   const char *base, int baselen,
 		   const char *pattern, int prefix, int patternlen,
-		   int flags)
+		   int flags, int dtype)
 {
 	const char *name;
 	int namelen;
@@ -880,8 +880,12 @@ int match_pathname(const char *pathname, int pathlen,
 		 * then our prefix match is all we need; we
 		 * do not need to call fnmatch at all.
 		 */
-		if (!patternlen && !namelen)
+		if (!patternlen && !namelen) {
+			if ((flags & EXC_FLAG_MUSTBEDIR_DELAYED) &&
+			    dtype != DT_DIR)
+				return 0;
 			return 1;
+		}
 		/*
 		 * This can happen when we ignore some exclude rules
 		 * on directories in other to see if negative rules
@@ -902,6 +906,9 @@ int match_pathname(const char *pathname, int pathlen,
 		if (!patternlen && namelen && *name == '/')
 			return 1;
 	}
+
+	if ((flags & EXC_FLAG_MUSTBEDIR_DELAYED) && dtype != DT_DIR)
+		return 0;
 
 	return fnmatch_icase_mem(pattern, patternlen,
 				 name, namelen,
@@ -976,7 +983,9 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 		if (x->flags & EXC_FLAG_MUSTBEDIR) {
 			if (*dtype == DT_UNKNOWN)
 				*dtype = get_dtype(NULL, pathname, pathlen);
-			if (*dtype != DT_DIR)
+			if (*dtype != DT_DIR &&
+			    (!(x->flags & EXC_FLAG_MUSTBEDIR_DELAYED) ||
+			     (x->flags & EXC_FLAG_NODIR)))
 				continue;
 		}
 
@@ -994,7 +1003,8 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 		assert(x->baselen == 0 || x->base[x->baselen - 1] == '/');
 		if (match_pathname(pathname, pathlen,
 				   x->base, x->baselen ? x->baselen - 1 : 0,
-				   exclude, prefix, x->patternlen, x->flags)) {
+				   exclude, prefix, x->patternlen,
+				   x->flags, *dtype)) {
 			exc = x;
 			break;
 		}
@@ -1008,8 +1018,14 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 	if (exc &&
 	    !(exc->flags & EXC_FLAG_NEGATIVE) &&
 	    !(exc->flags & EXC_FLAG_NODIR) &&
-	    matched_negative_path)
+	    matched_negative_path) {
+		for (i = 0; i < el->nr; i++) {
+			struct exclude *x = el->excludes[i];
+			if (x->flags & EXC_FLAG_MUSTBEDIR)
+				x->flags |= EXC_FLAG_MUSTBEDIR_DELAYED;
+		}
 		exc = NULL;
+	}
 	return exc;
 }
 

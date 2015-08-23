@@ -14,6 +14,7 @@ struct dir_entry {
 #define EXC_FLAG_ENDSWITH 4
 #define EXC_FLAG_MUSTBEDIR 8
 #define EXC_FLAG_NEGATIVE 16
+#define EXC_FLAG_MUSTBEDIR_DELAYED 32
 
 struct exclude {
 	/*
@@ -229,7 +230,7 @@ extern int match_basename(const char *, int,
 			  const char *, int, int, int);
 extern int match_pathname(const char *, int,
 			  const char *, int,
-			  const char *, int, int, int);
+			  const char *, int, int, int, int);
 
 extern struct exclude *last_exclude_matching(struct dir_struct *dir,
 					     const char *name, int *dtype);

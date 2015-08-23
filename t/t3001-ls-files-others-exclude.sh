@@ -325,4 +325,16 @@ test_expect_success 'negative patterns' '
 	)
 '
 
+test_expect_success 'negative patterns with MUSTBEDIR' '
+	(
+		cd reinclude &&
+		cat >.gitignore <<-\EOF &&
+		/foo/
+		!foo/bar/bar
+		EOF
+		git ls-files -o --exclude-standard >../actual &&
+		test_cmp ../expected ../actual
+	)
+'
+
 test_done

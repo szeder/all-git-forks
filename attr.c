@@ -651,7 +651,7 @@ static int path_matches(const char *pathname, int pathlen,
 	}
 	return match_pathname(pathname, pathlen - isdir,
 			      base, baselen,
-			      pattern, prefix, pat->patternlen, pat->flags);
+			      pattern, prefix, pat->patternlen, pat->flags, 0);
 }
 
 static int macroexpand_one(int attr_nr, int rem);
