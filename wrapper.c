@@ -621,17 +621,25 @@ char *xgetcwd(void)
 	return strbuf_detach(&sb, NULL);
 }
 
-static int write_file_v(const char *path, int fatal,
+
+#define WRITE_FILE_GENTLY (1 << 0)
+#define WRITE_FILE_BINARY (1 << 1)
+
+static int write_file_v(const char *path, unsigned flags,
 			const char *fmt, va_list params)
 {
+	int fatal = !(flags & WRITE_FILE_GENTLY);
 	struct strbuf sb = STRBUF_INIT;
 	int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
+
 	if (fd < 0) {
 		if (fatal)
 			die_errno(_("could not open %s for writing"), path);
 		return -1;
 	}
 	strbuf_vaddf(&sb, fmt, params);
+	if (!(flags & WRITE_FILE_BINARY))
+		strbuf_complete_line(&sb);
 	if (write_in_full(fd, sb.buf, sb.len) != sb.len) {
 		int err = errno;
 		close(fd);
@@ -656,7 +664,7 @@ int write_file(const char *path, const char *fmt, ...)
 	va_list params;
 
 	va_start(params, fmt);
-	status = write_file_v(path, 1, fmt, params);
+	status = write_file_v(path, 0, fmt, params);
 	va_end(params);
 	return status;
 }
@@ -667,7 +675,7 @@ int write_file_gently(const char *path, const char *fmt, ...)
 	va_list params;
 
 	va_start(params, fmt);
-	status = write_file_v(path, 0, fmt, params);
+	status = write_file_v(path, WRITE_FILE_GENTLY, fmt, params);
 	va_end(params);
 	return status;
 }
