@@ -6,5 +6,5 @@ printf "%s%c%s%s\n" \
 	"00a58681d9f286a48b08f37b3a095330da16689e3693 HEAD" \
 	0 \
 	" include-tag multi_ack_detailed multi_ack ofs-delta" \
-	" side-band side-band-64k thin-pack no-progress shallow no-done "
+	" thin-pack no-progress shallow no-done "
 printf "%s"   "0000"

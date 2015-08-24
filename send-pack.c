@@ -360,8 +360,6 @@ int send_pack(struct send_pack_args *args,
 		allow_deleting_refs = 1;
 	if (server_supports("ofs-delta"))
 		args->use_ofs_delta = 1;
-	if (server_supports("side-band-64k"))
-		use_sideband = 1;
 	if (server_supports("quiet"))
 		quiet_supported = 1;
 	if (server_supports("agent"))
@@ -392,8 +390,6 @@ int send_pack(struct send_pack_args *args,
 
 	if (status_report)
 		strbuf_addstr(&cap_buf, " report-status");
-	if (use_sideband)
-		strbuf_addstr(&cap_buf, " side-band-64k");
 	if (quiet_supported && (args->quiet || !args->progress))
 		strbuf_addstr(&cap_buf, " quiet");
 	if (use_atomic)

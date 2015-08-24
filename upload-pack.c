@@ -49,7 +49,7 @@ static int keepalive = 5;
 /* 0 for no sideband,
  * otherwise maximum packet size (up to 65520 bytes).
  */
-static int use_sideband;
+static int use_sideband = 0;
 static int advertise_refs;
 static int stateless_rpc;
 
@@ -596,10 +596,6 @@ static void receive_needs(void)
 			use_thin_pack = 1;
 		if (parse_feature_request(features, "ofs-delta"))
 			use_ofs_delta = 1;
-		if (parse_feature_request(features, "side-band-64k"))
-			use_sideband = LARGE_PACKET_MAX;
-		else if (parse_feature_request(features, "side-band"))
-			use_sideband = DEFAULT_PACKET_MAX;
 		if (parse_feature_request(features, "no-progress"))
 			no_progress = 1;
 		if (parse_feature_request(features, "include-tag"))
@@ -722,8 +718,8 @@ static void format_symref_info(struct strbuf *buf, struct string_list *symref)
 static int send_ref(const char *refname, const struct object_id *oid,
 		    int flag, void *cb_data)
 {
-	static const char *capabilities = "multi_ack thin-pack side-band"
-		" side-band-64k ofs-delta shallow no-progress"
+	static const char *capabilities = "multi_ack thin-pack"
+		" ofs-delta shallow no-progress"
 		" include-tag multi_ack_detailed";
 	const char *refname_nons = strip_namespace(refname);
 	struct object_id peeled;

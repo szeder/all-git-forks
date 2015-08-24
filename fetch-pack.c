@@ -43,7 +43,8 @@ static int marked;
 #define MAX_IN_VAIN 256
 
 static struct prio_queue rev_list = { compare_commits_by_commit_date };
-static int non_common_revs, multi_ack, use_sideband;
+static int non_common_revs, multi_ack;
+static int use_sideband = 0;
 /* Allow specifying sha1 if it is a ref tip. */
 #define ALLOW_TIP_SHA1	01
 /* Allow request of a sha1 if it is reachable from a ref (possibly hidden ref). */
@@ -305,8 +306,6 @@ static int find_common(struct fetch_pack_args *args,
 			if (multi_ack == 2)     strbuf_addstr(&c, " multi_ack_detailed");
 			if (multi_ack == 1)     strbuf_addstr(&c, " multi_ack");
 			if (no_done)            strbuf_addstr(&c, " no-done");
-			if (use_sideband == 2)  strbuf_addstr(&c, " side-band-64k");
-			if (use_sideband == 1)  strbuf_addstr(&c, " side-band");
 			if (args->use_thin_pack) strbuf_addstr(&c, " thin-pack");
 			if (args->no_progress)   strbuf_addstr(&c, " no-progress");
 			if (args->include_tag)   strbuf_addstr(&c, " include-tag");
@@ -826,16 +825,6 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 		if (args->verbose)
 			fprintf(stderr, "Server supports multi_ack\n");
 		multi_ack = 1;
-	}
-	if (server_supports("side-band-64k")) {
-		if (args->verbose)
-			fprintf(stderr, "Server supports side-band-64k\n");
-		use_sideband = 2;
-	}
-	else if (server_supports("side-band")) {
-		if (args->verbose)
-			fprintf(stderr, "Server supports side-band\n");
-		use_sideband = 1;
 	}
 	if (server_supports("allow-tip-sha1-in-want")) {
 		if (args->verbose)
