@@ -356,17 +356,6 @@ static void parse_treeish_arg(const char **argv,
 	const struct commit *commit;
 	struct object_id oid;
 
-	/* Remotes are only allowed to fetch actual refs */
-	if (remote && !remote_allow_unreachable) {
-		char *ref = NULL;
-		const char *colon = strchrnul(name, ':');
-		int refnamelen = colon - name;
-
-		if (!dwim_ref(name, refnamelen, oid.hash, &ref))
-			die("no such ref: %.*s", refnamelen, name);
-		free(ref);
-	}
-
 	if (get_sha1(name, oid.hash))
 		die("Not a valid object name");
 
