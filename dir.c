@@ -16,6 +16,9 @@
 #include "varint.h"
 #include "ewah/ewok.h"
 
+static struct exclude_list encrypt_exclude_list;
+static unsigned int encrypt_exclude_inited = 0;
+
 struct path_simplify {
 	int len;
 	const char *path;
@@ -1160,6 +1163,27 @@ int is_excluded(struct dir_struct *dir, const char *pathname, int *dtype_p)
 	return 0;
 }
 
+int is_encrypt_excluded(const char *pathname)
+{
+	struct exclude *exclude;
+	int pathlen = strlen(pathname);
+	const char *basename = strrchr(pathname, '/');
+	int dtype = DT_UNKNOWN;
+
+	if (!encrypt_enable)
+		return 1;
+
+	setup_encrypt_excludes(&encrypt_exclude_list);
+
+	basename = (basename) ? basename+1 : pathname;
+	exclude = last_exclude_matching_from_list(
+			pathname, pathlen, basename, &dtype,
+			&encrypt_exclude_list);
+	if (exclude)
+		return exclude->flags & EXC_FLAG_NEGATIVE ? 0 : 1;
+	return 0;
+}
+
 static struct dir_entry *dir_entry_new(const char *pathname, int len)
 {
 	struct dir_entry *ent;
@@ -2194,6 +2218,23 @@ void setup_standard_excludes(struct dir_struct *dir)
 	if (!access_or_warn(path, R_OK, 0))
 		add_excludes_from_file_1(dir, path,
 					 dir->untracked ? &dir->ss_info_exclude : NULL);
+}
+
+void setup_encrypt_excludes(struct exclude_list *el)
+{
+	const char *fname = ".gitcryptignore";
+	struct stat st;
+
+	if (!encrypt_enable || encrypt_exclude_inited)
+		return;
+
+	if (stat(fname, &st) < 0)
+		return;
+
+	if (add_excludes(fname, "", 0, el, 0, NULL) < 0)
+		die("cannot use %s as an exclude file", fname);
+
+	encrypt_exclude_inited = 1;
 }
 
 int remove_path(const char *name)

@@ -235,6 +235,7 @@ extern struct exclude *last_exclude_matching(struct dir_struct *dir,
 					     const char *name, int *dtype);
 
 extern int is_excluded(struct dir_struct *dir, const char *name, int *dtype);
+extern int is_encrypt_excluded(const char *name);
 
 extern struct exclude_list *add_exclude_list(struct dir_struct *dir,
 					     int group_type, const char *src);
@@ -261,6 +262,7 @@ static inline int is_dot_or_dotdot(const char *name)
 extern int is_empty_dir(const char *dir);
 
 extern void setup_standard_excludes(struct dir_struct *dir);
+extern void setup_encrypt_excludes(struct exclude_list *el);
 
 #define REMOVE_DIR_EMPTY_ONLY 01
 #define REMOVE_DIR_KEEP_NESTED_GIT 02

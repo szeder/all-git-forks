@@ -1032,10 +1032,10 @@ static int git_default_encrypt_config(const char *var, const char *value)
 		return 0;
 	}
 
-	if (!strcmp(var, "encrypt.cryptKey"))
+	if (!strcmp(var, "encrypt.cryptkey"))
 		return git_config_hex_string(&encrypt_crypt_key, var, value);
 
-	if (!strcmp(var, "encrypt.cryptIV"))
+	if (!strcmp(var, "encrypt.cryptiv"))
 		return git_config_hex_string(&encrypt_crypt_iv, var, value);
 
 	/* Add other config variables here and to Documentation/config.txt. */

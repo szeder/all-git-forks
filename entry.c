@@ -127,7 +127,11 @@ static int streaming_write_entry(const struct cache_entry *ce, char *path,
 	if (fd < 0)
 		return -1;
 
-	result |= stream_blob_to_fd(fd, ce->sha1, filter, 1);
+	if (!is_encrypt_excluded(path)) {
+		result |= stream_encrypt_blob_to_fd(fd, ce->sha1, filter, 1);
+	} else {
+		result |= stream_blob_to_fd(fd, ce->sha1, filter, 1);
+	}
 	*fstat_done = fstat_output(fd, state, statbuf);
 	result |= close(fd);
 

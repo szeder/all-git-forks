@@ -2927,9 +2927,9 @@ void *read_object_with_reference(const unsigned char *sha1,
 
 #define EVP_BLOCK_SIZE	4096
 
-static void write_sha1_file_prepare_blob(const void *buf, unsigned long len,
-					 const char *type, unsigned char *sha1,
-					 char *hdr, int *hdrlen)
+static void write_sha1_file_prepare_encrypt(const void *buf, unsigned long len,
+					    const char *type, unsigned char *sha1,
+					    char *hdr, int *hdrlen)
 {
 	git_SHA_CTX c;
 	unsigned char ciphertext[EVP_BLOCK_SIZE];
@@ -2964,9 +2964,9 @@ static void write_sha1_file_prepare_blob(const void *buf, unsigned long len,
 	git_SHA1_Final(sha1, &c);
 }
 
-static void write_sha1_file_prepare_other(const void *buf, unsigned long len,
-					  const char *type, unsigned char *sha1,
-					  char *hdr, int *hdrlen)
+static void write_sha1_file_prepare(const void *buf, unsigned long len,
+				    const char *type, unsigned char *sha1,
+				    char *hdr, int *hdrlen)
 {
 	git_SHA_CTX c;
 
@@ -2978,18 +2978,6 @@ static void write_sha1_file_prepare_other(const void *buf, unsigned long len,
 	git_SHA1_Update(&c, hdr, *hdrlen);
 	git_SHA1_Update(&c, buf, len);
 	git_SHA1_Final(sha1, &c);
-}
-
-
-static void write_sha1_file_prepare(const void *buf, unsigned long len,
-				    const char *type, unsigned char *sha1,
-				    char *hdr, int *hdrlen)
-{
-	if (!strcmp(type, "blob")) {
-		write_sha1_file_prepare_blob(buf, len, type, sha1, hdr, hdrlen);
-	} else {
-		write_sha1_file_prepare_other(buf, len, type, sha1, hdr, hdrlen);
-	}
 }
 
 /*
@@ -3048,6 +3036,15 @@ int hash_sha1_file(const void *buf, unsigned long len, const char *type,
 	char hdr[32];
 	int hdrlen;
 	write_sha1_file_prepare(buf, len, type, sha1, hdr, &hdrlen);
+	return 0;
+}
+
+int hash_sha1_file_encrypt(const void *buf, unsigned long len, const char *type,
+			   unsigned char *sha1)
+{
+	char hdr[32];
+	int hdrlen;
+	write_sha1_file_prepare_encrypt(buf, len, type, sha1, hdr, &hdrlen);
 	return 0;
 }
 
@@ -3136,67 +3133,115 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	git_SHA1_Update(&c, hdr, hdrlen);
 
 	/* Then the data itself.. */
-	if (!strncmp(hdr, "blob", 4)) {
-		unsigned char ciphertext[EVP_BLOCK_SIZE];
-		EVP_CIPHER_CTX ec;
-		unsigned char *ptr = (unsigned char *)buf;
-		unsigned long offset = 0;
-		int blen, outlen, foutlen;
-
-		EVP_CIPHER_CTX_init(&ec);
-		EVP_EncryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, encrypt_crypt_key, encrypt_crypt_iv);
-
-		// write header to file first
+	stream.next_in = (void *)buf;
+	stream.avail_in = len;
+	do {
+		unsigned char *in0 = stream.next_in;
+		ret = git_deflate(&stream, Z_FINISH);
+		git_SHA1_Update(&c, in0, stream.next_in - in0);
 		if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)
 			die("unable to write sha1 file");
+		stream.next_out = compressed;
+		stream.avail_out = sizeof(compressed);
+	} while (ret == Z_OK);
 
-		while(offset < len) {
-			blen = (len - offset) > EVP_BLOCK_SIZE ? EVP_BLOCK_SIZE : (len - offset);
-			EVP_EncryptUpdate(&ec, ciphertext, &outlen, ptr + offset, blen);
-			git_SHA1_Update(&c, ciphertext, outlen);
+	if (ret != Z_STREAM_END)
+		die("unable to deflate new object %s (%d)", sha1_to_hex(sha1), ret);
+	ret = git_deflate_end_gently(&stream);
+	if (ret != Z_OK)
+		die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
+	git_SHA1_Final(parano_sha1, &c);
+	if (hashcmp(sha1, parano_sha1) != 0)
+		die("confused by unstable object source data for %s", sha1_to_hex(sha1));
 
-			stream.next_in = (void *)ciphertext;
-			stream.avail_in = outlen;
-			do {
-				stream.next_out = compressed;
-				stream.avail_out = sizeof(compressed);
+	close_sha1_file(fd);
 
-				ret = git_deflate(&stream, (offset + blen == len) ? Z_FINISH: Z_NO_FLUSH);
-				if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)
-					die("unable to write sha1 file");
-			} while (ret == Z_OK);
+	if (mtime) {
+		struct utimbuf utb;
+		utb.actime = mtime;
+		utb.modtime = mtime;
+		if (utime(tmp_file, &utb) < 0)
+			warning("failed utime() on %s: %s",
+				tmp_file, strerror(errno));
+	}
 
-			offset += EVP_BLOCK_SIZE;
-		}
+	return finalize_object_file(tmp_file, filename);
+}
 
-		EVP_EncryptFinal_ex(&ec, ciphertext, &foutlen);
-		EVP_CIPHER_CTX_cleanup(&ec);
+static int write_loose_object_encrypt(const unsigned char *sha1, char *hdr, int hdrlen,
+				      const void *buf, unsigned long len, time_t mtime)
+{
+	int fd, ret;
+	unsigned char compressed[4096];
+	unsigned char ciphertext[EVP_BLOCK_SIZE];
+	git_zstream stream;
+	git_SHA_CTX c;
+	EVP_CIPHER_CTX ec;
+	unsigned char *ptr = (unsigned char *)buf;
+	unsigned long offset = 0;
+	int blen, outlen, foutlen;
+	unsigned char parano_sha1[20];
+	static char tmp_file[PATH_MAX];
+	const char *filename = sha1_file_name(sha1);
 
-		if (ret != Z_STREAM_END)
-			die("unable to deflate new object %s (%d)", sha1_to_hex(sha1), ret);
+	fd = create_tmpfile(tmp_file, sizeof(tmp_file), filename);
+	if (fd < 0) {
+		if (errno == EACCES)
+			return error("insufficient permission for adding an object to repository database %s", get_object_directory());
+		else
+			return error("unable to create temporary file: %s", strerror(errno));
+	}
 
-		ret = git_deflate_end_gently(&stream);
-		if (ret != Z_OK)
-			die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
-	} else {
-		stream.next_in = (void *)buf;
-		stream.avail_in = len;
+	/* Set it up */
+	git_deflate_init(&stream, zlib_compression_level);
+	stream.next_out = compressed;
+	stream.avail_out = sizeof(compressed);
+	git_SHA1_Init(&c);
+
+	/* First header.. */
+	stream.next_in = (unsigned char *)hdr;
+	stream.avail_in = hdrlen;
+	while (git_deflate(&stream, 0) == Z_OK)
+		; /* nothing */
+	git_SHA1_Update(&c, hdr, hdrlen);
+
+	/* Then the data itself.. */
+	EVP_CIPHER_CTX_init(&ec);
+	EVP_EncryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, encrypt_crypt_key, encrypt_crypt_iv);
+
+	// write header to file first
+	if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)
+		die("unable to write sha1 file");
+
+	while(offset < len) {
+		blen = (len - offset) > EVP_BLOCK_SIZE ? EVP_BLOCK_SIZE : (len - offset);
+		EVP_EncryptUpdate(&ec, ciphertext, &outlen, ptr + offset, blen);
+		git_SHA1_Update(&c, ciphertext, outlen);
+
+		stream.next_in = (void *)ciphertext;
+		stream.avail_in = outlen;
 		do {
-			unsigned char *in0 = stream.next_in;
-			ret = git_deflate(&stream, Z_FINISH);
-			git_SHA1_Update(&c, in0, stream.next_in - in0);
-			if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)
-				die("unable to write sha1 file");
 			stream.next_out = compressed;
 			stream.avail_out = sizeof(compressed);
+
+			ret = git_deflate(&stream, (offset + blen == len) ? Z_FINISH: Z_NO_FLUSH);
+			if (write_buffer(fd, compressed, stream.next_out - compressed) < 0)
+				die("unable to write sha1 file");
 		} while (ret == Z_OK);
 
-		if (ret != Z_STREAM_END)
-			die("unable to deflate new object %s (%d)", sha1_to_hex(sha1), ret);
-		ret = git_deflate_end_gently(&stream);
-		if (ret != Z_OK)
-			die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
+		offset += EVP_BLOCK_SIZE;
 	}
+
+	EVP_EncryptFinal_ex(&ec, ciphertext, &foutlen);
+	EVP_CIPHER_CTX_cleanup(&ec);
+
+	if (ret != Z_STREAM_END)
+		die("unable to deflate new object %s (%d)", sha1_to_hex(sha1), ret);
+
+	ret = git_deflate_end_gently(&stream);
+	if (ret != Z_OK)
+		die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
+
 	git_SHA1_Final(parano_sha1, &c);
 	if (hashcmp(sha1, parano_sha1) != 0)
 		die("confused by unstable object source data for %s", sha1_to_hex(sha1));
@@ -3245,6 +3290,20 @@ int write_sha1_file(const void *buf, unsigned long len, const char *type, unsign
 	if (freshen_packed_object(sha1) || freshen_loose_object(sha1))
 		return 0;
 	return write_loose_object(sha1, hdr, hdrlen, buf, len, 0);
+}
+
+int write_sha1_file_encrypt(const void *buf, unsigned long len, const char *type, unsigned char *sha1)
+{
+	char hdr[32];
+	int hdrlen;
+
+	/* Normally if we have it in the pack then we do not bother writing
+	 * it out into .git/objects/??/?{38} file.
+	 */
+	write_sha1_file_prepare_encrypt(buf, len, type, sha1, hdr, &hdrlen);
+	if (freshen_packed_object(sha1) || freshen_loose_object(sha1))
+		return 0;
+	return write_loose_object_encrypt(sha1, hdr, hdrlen, buf, len, 0);
 }
 
 int hash_sha1_file_literally(const void *buf, unsigned long len, const char *type,
@@ -3351,6 +3410,7 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 {
 	int ret, re_allocated = 0;
 	int write_object = flags & HASH_WRITE_OBJECT;
+	int encrypt_blob = 0;
 
 	if (!type)
 		type = OBJ_BLOB;
@@ -3365,7 +3425,11 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 			buf = strbuf_detach(&nbuf, &size);
 			re_allocated = 1;
 		}
+
+		if (!is_encrypt_excluded(path))
+			encrypt_blob = 1;
 	}
+
 	if (flags & HASH_FORMAT_CHECK) {
 		if (type == OBJ_TREE)
 			check_tree(buf, size);
@@ -3375,10 +3439,17 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 			check_tag(buf, size);
 	}
 
-	if (write_object)
-		ret = write_sha1_file(buf, size, typename(type), sha1);
-	else
-		ret = hash_sha1_file(buf, size, typename(type), sha1);
+	if (write_object) {
+		if (encrypt_blob)
+			ret = write_sha1_file_encrypt(buf, size, typename(type), sha1);
+		else
+			ret = write_sha1_file(buf, size, typename(type), sha1);
+	} else {
+		if (encrypt_blob)
+			ret = hash_sha1_file_encrypt(buf, size, typename(type), sha1);
+		else
+			ret = hash_sha1_file(buf, size, typename(type), sha1);
+	}
 	if (re_allocated)
 		free(buf);
 	return ret;
