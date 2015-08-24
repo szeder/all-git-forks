@@ -774,7 +774,7 @@ static int edit_branch_description(const char *branch_name)
 	strbuf_commented_addf(&buf,
 		    "Please edit the description for the branch\n"
 		    "  %s\n"
-		    "Lines starting with '%c' will be stripped.\n",
+		    "Lines starting with '%c' will be stripped.",
 		    branch_name, comment_line_char);
 	if (write_file_gently(git_path(edit_description), "%s", buf.buf)) {
 		strbuf_release(&buf);
