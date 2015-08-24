@@ -1018,6 +1018,7 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 	if (exc &&
 	    !(exc->flags & EXC_FLAG_NEGATIVE) &&
 	    !(exc->flags & EXC_FLAG_NODIR) &&
+	    !(exc->flags & EXC_FLAG_MUSTBEDIR) &&
 	    matched_negative_path) {
 		for (i = 0; i < el->nr; i++) {
 			struct exclude *x = el->excludes[i];
