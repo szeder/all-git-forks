@@ -1648,12 +1648,65 @@ static int unpack_sha1_header_to_strbuf(git_zstream *stream, unsigned char *map,
 	return -1;
 }
 
-static void *unpack_sha1_rest(git_zstream *stream, void *buffer, unsigned long size, const unsigned char *sha1)
+static void *unpack_sha1_rest_encrypt(git_zstream *stream, void *buffer, unsigned long size,
+				      const unsigned char *sha1)
+{
+	int bytes = strlen(buffer) + 1;
+	unsigned char *buf = xmallocz(size);
+	unsigned char *ebuf = xmallocz(size);
+	unsigned long n;
+	int status = Z_OK;
+	EVP_CIPHER_CTX ec;
+	int outlen;
+
+	n = stream->total_out - bytes;
+	if (n > size)
+		n = size;
+
+	EVP_CIPHER_CTX_init(&ec);
+	EVP_DecryptInit_ex(&ec, EVP_aes_256_cfb(), NULL, encrypt_crypt_key, encrypt_crypt_iv);
+
+	memcpy(buf, (char *) buffer + bytes, n);
+	bytes = n;
+	if (bytes <= size) {
+		stream->next_out = buf + bytes;
+		stream->avail_out = size - bytes;
+		while (status == Z_OK)
+			status = git_inflate(stream, Z_FINISH);
+	}
+
+	EVP_DecryptUpdate(&ec, ebuf, &outlen, buf, size);
+	EVP_DecryptFinal_ex(&ec, ebuf + outlen, &outlen);
+	EVP_CIPHER_CTX_cleanup(&ec);
+
+	if (status == Z_STREAM_END && !stream->avail_in) {
+		git_inflate_end(stream);
+
+		free(buf);
+		return ebuf;
+	}
+
+	if (status < 0)
+		error("corrupt loose object '%s'", sha1_to_hex(sha1));
+	else if (stream->avail_in)
+		error("garbage at end of loose object '%s'",
+		      sha1_to_hex(sha1));
+
+	free(buf);
+	free(ebuf);
+	return NULL;
+}
+
+static void *unpack_sha1_rest(git_zstream *stream, void *buffer, unsigned long size,
+			      const unsigned char *sha1, unsigned int encrypt)
 {
 	int bytes = strlen(buffer) + 1;
 	unsigned char *buf = xmallocz(size);
 	unsigned long n;
 	int status = Z_OK;
+
+	if (encrypt)
+		return unpack_sha1_rest_encrypt(stream, buffer, size, sha1);
 
 	n = stream->total_out - bytes;
 	if (n > size)
@@ -1767,7 +1820,8 @@ int parse_sha1_header(const char *hdr, unsigned long *sizep)
 	return parse_sha1_header_extended(hdr, &oi, LOOKUP_REPLACE_OBJECT);
 }
 
-static void *unpack_sha1_file(void *map, unsigned long mapsize, enum object_type *type, unsigned long *size, const unsigned char *sha1)
+static void *unpack_sha1_file(void *map, unsigned long mapsize, enum object_type *type,
+			      unsigned long *size, const unsigned char *sha1, unsigned int encrypt)
 {
 	int ret;
 	git_zstream stream;
@@ -1777,7 +1831,7 @@ static void *unpack_sha1_file(void *map, unsigned long mapsize, enum object_type
 	if (ret < Z_OK || (*type = parse_sha1_header(hdr, size)) < 0)
 		return NULL;
 
-	return unpack_sha1_rest(&stream, hdr, *size, sha1);
+	return unpack_sha1_rest(&stream, hdr, *size, sha1, encrypt);
 }
 
 unsigned long get_size_from_delta(struct packed_git *p,
@@ -2158,7 +2212,8 @@ static void clear_delta_base_cache_entry(struct delta_base_cache_entry *ent)
 }
 
 static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
-	unsigned long *base_size, enum object_type *type, int keep_cache)
+	unsigned long *base_size, enum object_type *type, int keep_cache,
+	unsigned int encrypt)
 {
 	struct delta_base_cache_entry *ent;
 	void *ret;
@@ -2235,7 +2290,7 @@ static void add_delta_base_cache(struct packed_git *p, off_t base_offset,
 }
 
 static void *read_object(const unsigned char *sha1, enum object_type *type,
-			 unsigned long *size);
+			 unsigned long *size, unsigned int encrypt);
 
 static void write_pack_access_log(struct packed_git *p, off_t obj_offset)
 {
@@ -2383,7 +2438,7 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 				      sha1_to_hex(base_sha1), (uintmax_t)obj_offset,
 				      p->pack_name);
 				mark_bad_packed_object(p, base_sha1);
-				base = read_object(base_sha1, &type, &base_size);
+				base = read_object(base_sha1, &type, &base_size, 0);
 			}
 		}
 
@@ -2768,14 +2823,15 @@ int sha1_object_info(const unsigned char *sha1, unsigned long *sizep)
 }
 
 static void *read_packed_sha1(const unsigned char *sha1,
-			      enum object_type *type, unsigned long *size)
+			      enum object_type *type, unsigned long *size,
+			      unsigned int encrypt)
 {
 	struct pack_entry e;
 	void *data;
 
 	if (!find_pack_entry(sha1, &e))
 		return NULL;
-	data = cache_or_unpack_entry(e.p, e.offset, size, type, 1);
+	data = cache_or_unpack_entry(e.p, e.offset, size, type, 1, encrypt);
 	if (!data) {
 		/*
 		 * We're probably in deep shit, but let's try to fetch
@@ -2786,7 +2842,7 @@ static void *read_packed_sha1(const unsigned char *sha1,
 		error("failed to read object %s at offset %"PRIuMAX" from %s",
 		      sha1_to_hex(sha1), (uintmax_t)e.offset, e.p->pack_name);
 		mark_bad_packed_object(e.p, sha1);
-		data = read_object(sha1, type, size);
+		data = read_object(sha1, type, size, encrypt);
 	}
 	return data;
 }
@@ -2810,7 +2866,7 @@ int pretend_sha1_file(void *buf, unsigned long len, enum object_type type,
 }
 
 static void *read_object(const unsigned char *sha1, enum object_type *type,
-			 unsigned long *size)
+			 unsigned long *size, unsigned int encrypt)
 {
 	unsigned long mapsize;
 	void *map, *buf;
@@ -2823,17 +2879,17 @@ static void *read_object(const unsigned char *sha1, enum object_type *type,
 		return xmemdupz(co->buf, co->size);
 	}
 
-	buf = read_packed_sha1(sha1, type, size);
+	buf = read_packed_sha1(sha1, type, size, encrypt);
 	if (buf)
 		return buf;
 	map = map_sha1_file(sha1, &mapsize);
 	if (map) {
-		buf = unpack_sha1_file(map, mapsize, type, size, sha1);
+		buf = unpack_sha1_file(map, mapsize, type, size, sha1, encrypt);
 		munmap(map, mapsize);
 		return buf;
 	}
 	reprepare_packed_git();
-	return read_packed_sha1(sha1, type, size);
+	return read_packed_sha1(sha1, type, size, encrypt);
 }
 
 /*
@@ -2851,7 +2907,43 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 	const unsigned char *repl = lookup_replace_object_extended(sha1, flag);
 
 	errno = 0;
-	data = read_object(repl, type, size);
+	data = read_object(repl, type, size, 0);
+	if (data)
+		return data;
+
+	if (errno && errno != ENOENT)
+		die_errno("failed to read object %s", sha1_to_hex(sha1));
+
+	/* die if we replaced an object with one that does not exist */
+	if (repl != sha1)
+		die("replacement %s not found for %s",
+		    sha1_to_hex(repl), sha1_to_hex(sha1));
+
+	if (has_loose_object(repl)) {
+		const char *path = sha1_file_name(sha1);
+
+		die("loose object %s (stored in %s) is corrupt",
+		    sha1_to_hex(repl), path);
+	}
+
+	if ((p = has_packed_and_bad(repl)) != NULL)
+		die("packed object %s (stored in %s) is corrupt",
+		    sha1_to_hex(repl), p->pack_name);
+
+	return NULL;
+}
+
+void *read_sha1_file_extended_encrypt(const unsigned char *sha1,
+				      enum object_type *type,
+				      unsigned long *size,
+				      unsigned flag)
+{
+	void *data;
+	const struct packed_git *p;
+	const unsigned char *repl = lookup_replace_object_extended(sha1, flag);
+
+	errno = 0;
+	data = read_object(repl, type, size, 1);
 	if (data)
 		return data;
 
@@ -3171,7 +3263,7 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 static int write_loose_object_encrypt(const unsigned char *sha1, char *hdr, int hdrlen,
 				      const void *buf, unsigned long len, time_t mtime)
 {
-	int fd, ret;
+	int fd, ret = Z_STREAM_END;
 	unsigned char compressed[4096];
 	unsigned char ciphertext[EVP_BLOCK_SIZE];
 	git_zstream stream;
@@ -3338,7 +3430,7 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 
 	if (has_loose_object(sha1))
 		return 0;
-	buf = read_packed_sha1(sha1, &type, &len);
+	buf = read_packed_sha1(sha1, &type, &len, 0);
 	if (!buf)
 		return error("cannot read sha1_file for %s", sha1_to_hex(sha1));
 	hdrlen = sprintf(hdr, "%s %lu", typename(type), len) + 1;

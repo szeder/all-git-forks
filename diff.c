@@ -17,6 +17,7 @@
 #include "ll-merge.h"
 #include "string-list.h"
 #include "argv-array.h"
+#include "dir.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -2814,7 +2815,11 @@ int diff_populate_filespec(struct diff_filespec *s, unsigned int flags)
 				return 0;
 			}
 		}
-		s->data = read_sha1_file(s->sha1, &type, &s->size);
+		if (!is_encrypt_excluded(s->path)) {
+			s->data = read_sha1_file_encrypt(s->sha1, &type, &s->size);
+		} else {
+			s->data = read_sha1_file(s->sha1, &type, &s->size);
+		}
 		if (!s->data)
 			die("unable to read %s", sha1_to_hex(s->sha1));
 		s->should_free = 1;

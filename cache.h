@@ -942,6 +942,12 @@ static inline void *read_sha1_file(const unsigned char *sha1, enum object_type *
 	return read_sha1_file_extended(sha1, type, size, LOOKUP_REPLACE_OBJECT);
 }
 
+extern void *read_sha1_file_extended_encrypt(const unsigned char *sha1, enum object_type *type, unsigned long *size, unsigned flag);
+static inline void *read_sha1_file_encrypt(const unsigned char *sha1, enum object_type *type, unsigned long *size)
+{
+	return read_sha1_file_extended_encrypt(sha1, type, size, LOOKUP_REPLACE_OBJECT);
+}
+
 /*
  * This internal function is only declared here for the benefit of
  * lookup_replace_object().  Please do not call it directly.
