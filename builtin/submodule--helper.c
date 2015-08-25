@@ -220,7 +220,6 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 
 	strbuf_addf(&sb, "%s/modules/%s", get_git_dir(), name);
 	sm_gitdir = strbuf_detach(&sb, NULL);
-	strbuf_reset(&sb);
 
 	if (!file_exists(sm_gitdir)) {
 		safe_create_leading_directories_const(sm_gitdir);
@@ -259,12 +258,16 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	/* Redirect the worktree of the submodule in the superprojects config */
 	if (!is_absolute_path(sm_gitdir)) {
 		char *s = (char*)sm_gitdir;
-		strbuf_addf(&sb, "%s/%s", xgetcwd(), sm_gitdir);
+		if (strbuf_getcwd(&sb))
+			die_errno("unable to get current working directory");
+		strbuf_addf(&sb, "/%s", sm_gitdir);
 		sm_gitdir = strbuf_detach(&sb, NULL);
-		strbuf_reset(&sb);
 		free(s);
 	}
-	strbuf_addf(&sb, "%s/%s", xgetcwd(), path);
+
+	if (strbuf_getcwd(&sb))
+		die_errno("unable to get current working directory");
+	strbuf_addf(&sb, "/%s", path);
 
 	p = git_pathdup_submodule(path, "config");
 	if (!p)
