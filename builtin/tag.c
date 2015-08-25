@@ -42,7 +42,7 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 
 	if (!format) {
 		if (filter->lines)
-			format = "%(align:16,left)%(refname:short)%(end)";
+			format = "%(align:15)%(refname:short)%(end) ";
 		else
 			format = "%(refname:short)";
 	}
