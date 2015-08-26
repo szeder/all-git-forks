@@ -210,7 +210,7 @@ bisect_write() {
 		*)
 			die "$(eval_gettext "Bad bisect_write argument: \$state")" ;;
 	esac
-	git update-ref "refs/bisect/$tag" "$rev" || exit
+	git update-ref "refs/worktree/bisect/$tag" "$rev" || exit
 	echo "# $state: $(git show-branch $rev)" >>"$GIT_DIR/BISECT_LOG"
 	test -n "$nolog" || echo "git bisect $state $rev" >>"$GIT_DIR/BISECT_LOG"
 }
@@ -282,8 +282,8 @@ bisect_state() {
 
 bisect_next_check() {
 	missing_good= missing_bad=
-	git show-ref -q --verify refs/bisect/$TERM_BAD || missing_bad=t
-	test -n "$(git for-each-ref "refs/bisect/$TERM_GOOD-*")" || missing_good=t
+	git show-ref -q --verify refs/worktree/bisect/$TERM_BAD || missing_bad=t
+	test -n "$(git for-each-ref "refs/worktree/bisect/$TERM_GOOD-*")" || missing_good=t
 
 	case "$missing_good,$missing_bad,$1" in
 	,,*)
@@ -341,15 +341,15 @@ bisect_next() {
 	# Check if we should exit because bisection is finished
 	if test $res -eq 10
 	then
-		bad_rev=$(git show-ref --hash --verify refs/bisect/$TERM_BAD)
+		bad_rev=$(git show-ref --hash --verify refs/worktree/bisect/$TERM_BAD)
 		bad_commit=$(git show-branch $bad_rev)
 		echo "# first $TERM_BAD commit: $bad_commit" >>"$GIT_DIR/BISECT_LOG"
 		exit 0
 	elif test $res -eq 2
 	then
 		echo "# only skipped commits left to test" >>"$GIT_DIR/BISECT_LOG"
-		good_revs=$(git for-each-ref --format="%(objectname)" "refs/bisect/$TERM_GOOD-*")
-		for skipped in $(git rev-list refs/bisect/$TERM_BAD --not $good_revs)
+		good_revs=$(git for-each-ref --format="%(objectname)" "refs/worktree/bisect/$TERM_GOOD-*")
+		for skipped in $(git rev-list refs/worktree/bisect/$TERM_BAD --not $good_revs)
 		do
 			skipped_commit=$(git show-branch $skipped)
 			echo "# possible first $TERM_BAD commit: $skipped_commit" >>"$GIT_DIR/BISECT_LOG"
@@ -412,7 +412,7 @@ Try 'git bisect reset <commit>'.")"
 
 bisect_clean_state() {
 	# There may be some refs packed during bisection.
-	git for-each-ref --format='%(refname) %(objectname)' refs/bisect/\* |
+	git for-each-ref --format='%(refname) %(objectname)' refs/worktree/bisect/\* |
 	while read ref hash
 	do
 		git update-ref -d $ref $hash || exit
