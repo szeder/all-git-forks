@@ -68,7 +68,7 @@ test_expect_success 'bisect fails if given any junk instead of revs' '
 	git bisect reset &&
 	test_must_fail git bisect start foo $HASH1 -- &&
 	test_must_fail git bisect start $HASH4 $HASH1 bar -- &&
-	test -z "$(git for-each-ref "refs/bisect/*")" &&
+	test -z "$(git for-each-ref "refs/worktree/bisect/*")" &&
 	test -z "$(ls .git/BISECT_* 2>/dev/null)" &&
 	git bisect start &&
 	test_must_fail git bisect good foo $HASH1 &&
@@ -77,7 +77,7 @@ test_expect_success 'bisect fails if given any junk instead of revs' '
 	test_must_fail git bisect bad $HASH3 $HASH4 &&
 	test_must_fail git bisect skip bar $HASH3 &&
 	test_must_fail git bisect skip $HASH1 foo &&
-	test -z "$(git for-each-ref "refs/bisect/*")" &&
+	test -z "$(git for-each-ref "refs/worktree/bisect/*")" &&
 	git bisect good $HASH1 &&
 	git bisect bad $HASH4
 '
@@ -115,7 +115,7 @@ test_expect_success 'bisect reset removes packed refs' '
 	git pack-refs --all --prune &&
 	git bisect next &&
 	git bisect reset &&
-	test -z "$(git for-each-ref "refs/bisect/*")" &&
+	test -z "$(git for-each-ref "refs/worktree/bisect/*")" &&
 	test -z "$(git for-each-ref "refs/heads/bisect")"
 '
 
@@ -126,7 +126,7 @@ test_expect_success 'bisect reset removes bisect state after --no-checkout' '
 	git bisect bad $HASH3 &&
 	git bisect next &&
 	git bisect reset &&
-	test -z "$(git for-each-ref "refs/bisect/*")" &&
+	test -z "$(git for-each-ref "refs/worktree/bisect/*")" &&
 	test -z "$(git for-each-ref "refs/heads/bisect")" &&
 	test -z "$(git for-each-ref "BISECT_HEAD")"
 '
@@ -176,7 +176,7 @@ test_expect_success 'bisect start: no ".git/BISECT_START" if checkout error' '
 	git branch > branch.output &&
 	grep "* other" branch.output > /dev/null &&
 	test_must_fail test -e .git/BISECT_START &&
-	test -z "$(git for-each-ref "refs/bisect/*")" &&
+	test -z "$(git for-each-ref "refs/worktree/bisect/*")" &&
 	git checkout HEAD hello
 '
 
@@ -671,7 +671,7 @@ test_expect_success 'bisect: --no-checkout - target before breakage' '
 	git bisect bad BISECT_HEAD &&
 	check_same BROKEN_HASH5 BISECT_HEAD &&
 	git bisect bad BISECT_HEAD &&
-	check_same BROKEN_HASH5 bisect/bad &&
+	check_same BROKEN_HASH5 refs/worktree/bisect/bad &&
 	git bisect reset
 '
 
@@ -682,7 +682,7 @@ test_expect_success 'bisect: --no-checkout - target in breakage' '
 	git bisect bad BISECT_HEAD &&
 	check_same BROKEN_HASH5 BISECT_HEAD &&
 	git bisect good BISECT_HEAD &&
-	check_same BROKEN_HASH6 bisect/bad &&
+	check_same BROKEN_HASH6 refs/worktree/bisect/bad &&
 	git bisect reset
 '
 
@@ -693,7 +693,7 @@ test_expect_success 'bisect: --no-checkout - target after breakage' '
 	git bisect good BISECT_HEAD &&
 	check_same BROKEN_HASH8 BISECT_HEAD &&
 	git bisect good BISECT_HEAD &&
-	check_same BROKEN_HASH9 bisect/bad &&
+	check_same BROKEN_HASH9 refs/worktree/bisect/bad &&
 	git bisect reset
 '
 
@@ -702,13 +702,13 @@ test_expect_success 'bisect: demonstrate identification of damage boundary' "
 	git checkout broken &&
 	git bisect start broken master --no-checkout &&
 	git bisect run \"\$SHELL_PATH\" -c '
-		GOOD=\$(git for-each-ref \"--format=%(objectname)\" refs/bisect/good-*) &&
+		GOOD=\$(git for-each-ref \"--format=%(objectname)\" refs/worktree/bisect/good-*) &&
 		git rev-list --objects BISECT_HEAD --not \$GOOD >tmp.\$\$ &&
 		git pack-objects --stdout >/dev/null < tmp.\$\$
 		rc=\$?
 		rm -f tmp.\$\$
 		test \$rc = 0' &&
-	check_same BROKEN_HASH6 bisect/bad &&
+	check_same BROKEN_HASH6 refs/worktree/bisect/bad &&
 	git bisect reset
 "
 
