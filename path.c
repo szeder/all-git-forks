@@ -133,12 +133,13 @@ struct common_dir common_list[] = {
  * definition
  *
  * The trie would look look like:
- * root: len = 0, value = (something), children a and d non-NULL.
- *    a: len = 2, contents = bc
- *    d: len = 2, contents = ef, children i non-NULL, value = (something)
+ * root: len = 0, children a and d non-NULL, value = NULL.
+ *    a: len = 2, contents = bc, value = (data for "abc")
+ *    d: len = 2, contents = ef, children i non-NULL, value = (data for "def")
  *       i: len = 3, contents = nit, children e and i non-NULL, value = NULL
- *           e: len = 0, children all NULL, value = (something)
- *           i: len = 2, contents = on, children all NULL, value = (something)
+ *           e: len = 0, children all NULL, value = (data for "definite")
+ *           i: len = 2, contents = on, children all NULL,
+ *              value = (data for "definition")
  */
 struct trie {
 	struct trie *children[256];
@@ -189,7 +190,7 @@ static void *add_to_trie(struct trie *root, const char *key, void *value)
 
 		child->len = root->len - i - 1;
 		if (child->len) {
-			child->contents = strndup(root->contents + i + 1,
+			child->contents = xstrndup(root->contents + i + 1,
 						   child->len);
 		}
 		child->value = root->value;
