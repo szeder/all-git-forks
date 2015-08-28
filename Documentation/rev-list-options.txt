@@ -185,9 +185,9 @@ explicitly.
 
 ifndef::git-rev-list[]
 --bisect::
-	Pretend as if the bad bisection ref `refs/bisect/bad`
+	Pretend as if the bad bisection ref `refs/worktree/bisect/bad`
 	was listed and as if it was followed by `--not` and the good
-	bisection refs `refs/bisect/good-*` on the command
+	bisection refs `refs/worktree/bisect/good-*` on the command
 	line. Cannot be combined with --first-parent.
 endif::git-rev-list[]
 
@@ -550,10 +550,10 @@ Bisection Helpers
 --bisect::
 	Limit output to the one commit object which is roughly halfway between
 	included and excluded commits. Note that the bad bisection ref
-	`refs/bisect/bad` is added to the included commits (if it
-	exists) and the good bisection refs `refs/bisect/good-*` are
+	`refs/worktree/bisect/bad` is added to the included commits (if it
+	exists) and the good bisection refs `refs/worktree/bisect/good-*` are
 	added to the excluded commits (if they exist). Thus, supposing there
-	are no refs in `refs/bisect/`, if
+	are no refs in `refs/worktree/bisect/`, if
 +
 -----------------------------------------------------------------------
 	$ git rev-list --bisect foo ^bar ^baz
@@ -573,7 +573,7 @@ one. Cannot be combined with --first-parent.
 
 --bisect-vars::
 	This calculates the same as `--bisect`, except that refs in
-	`refs/bisect/` are not used, and except that this outputs
+	`refs/worktree/bisect/` are not used, and except that this outputs
 	text ready to be eval'ed by the shell. These lines will assign the
 	name of the midpoint revision to the variable `bisect_rev`, and the
 	expected number of commits to be tested after `bisect_rev` is tested
@@ -586,7 +586,7 @@ one. Cannot be combined with --first-parent.
 --bisect-all::
 	This outputs all the commit objects between the included and excluded
 	commits, ordered by their distance to the included and excluded
-	commits. Refs in `refs/bisect/` are not used. The farthest
+	commits. Refs in `refs/worktree/bisect/` are not used. The farthest
 	from them is displayed first. (This is the only one displayed by
 	`--bisect`.)
 +

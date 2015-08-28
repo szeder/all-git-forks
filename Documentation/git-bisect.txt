@@ -91,7 +91,7 @@ to ask for the next commit that needs testing.
 
 Eventually there will be no more revisions left to inspect, and the
 command will print out a description of the first bad commit. The
-reference `refs/bisect/bad` will be left pointing at that commit.
+reference `refs/worktree/bisect/bad` will be left pointing at that commit.
 
 
 Bisect reset
@@ -455,7 +455,7 @@ on a single line.
 ------------
 $ git bisect start HEAD <known-good-commit> [ <boundary-commit> ... ] --no-checkout
 $ git bisect run sh -c '
-	GOOD=$(git for-each-ref "--format=%(objectname)" refs/bisect/good-*) &&
+	GOOD=$(git for-each-ref "--format=%(objectname)" refs/worktree/bisect/good-*) &&
 	git rev-list --objects BISECT_HEAD --not $GOOD >tmp.$$ &&
 	git pack-objects --stdout >/dev/null <tmp.$$
 	rc=$?
