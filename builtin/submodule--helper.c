@@ -90,11 +90,10 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	for (i = 0; i < ce_used; i++) {
 		const struct cache_entry *ce = ce_entries[i];
 
-		if (ce_stage(ce)) {
+		if (ce_stage(ce))
 			printf("%06o %s U\t", ce->ce_mode, sha1_to_hex(null_sha1));
-		} else {
+		else
 			printf("%06o %s %d\t", ce->ce_mode, sha1_to_hex(ce->sha1), ce_stage(ce));
-		}
 
 		utf8_fprintf(stdout, "%s\n", ce->name);
 	}
