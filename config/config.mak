@@ -23,7 +23,6 @@ CC = ccache $(COMPILER)
 export CCACHE_CPP2=1
 CFLAGS += -g -O$(O)
 CFLAGS += -Wall -Werror
-CFLAGS += -Wno-format-zero-length
 CFLAGS += -Wdeclaration-after-statement
 CFLAGS += -Wpointer-arith
 CFLAGS += -Wstrict-prototypes
