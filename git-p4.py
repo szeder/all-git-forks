@@ -1981,6 +1981,8 @@ class P4Sync(Command, P4UserMap):
                 optparse.make_option("--silent", dest="silent", action="store_true"),
                 optparse.make_option("--detect-labels", dest="detectLabels", action="store_true"),
                 optparse.make_option("--import-labels", dest="importLabels", action="store_true"),
+                optparse.make_option("--path-encoding", dest="pathEncoding", type="string",
+                                     help="Encoding to use for paths"),
                 optparse.make_option("--import-local", dest="importIntoRemotes", action="store_false",
                                      help="Import into refs/heads/ , not refs/remotes"),
                 optparse.make_option("--max-changes", dest="maxChanges",
@@ -2025,6 +2027,7 @@ class P4Sync(Command, P4UserMap):
         self.clientSpecDirs = None
         self.tempBranches = []
         self.tempBranchLocation = "git-p4-tmp"
+        self.pathEncoding = None
 
         if gitConfig("git-p4.syncFromOrigin") == "false":
             self.syncWithOrigin = False
@@ -2212,6 +2215,9 @@ class P4Sync(Command, P4UserMap):
             text = ''.join(contents)
             text = regexp.sub(r'$\1$', text)
             contents = [ text ]
+
+        if self.pathEncoding:
+            relPath = relPath.decode(self.pathEncoding).encode('utf8', 'replace')
 
         self.gitStream.write("M %s inline %s\n" % (git_mode, relPath))
 
