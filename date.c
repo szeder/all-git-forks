@@ -817,9 +817,7 @@ void parse_date_format(const char *format, struct date_mode *mode)
 		if (!skip_prefix(p, ":", &p))
 			die("date format missing colon separator: %s", format);
 		mode->strftime_fmt = xstrdup(p);
-	}
-
-	if (*p)
+	} else if (*p)
 		die("unknown date-mode modifier: %s", p);
 }
 
