@@ -425,7 +425,7 @@ static int register_ref(const char *refname, const struct object_id *oid,
 
 static int read_bisect_refs(void)
 {
-	return for_each_ref_in("refs/bisect/", register_ref, NULL);
+	return for_each_ref_in("refs/worktree/bisect/", register_ref, NULL);
 }
 
 static GIT_PATH_FUNC(git_path_bisect_names, "BISECT_NAMES")

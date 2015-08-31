@@ -1130,4 +1130,23 @@ test_expect_success ULIMIT_FILE_DESCRIPTORS 'large transaction deleting branches
 )
 '
 
+test_expect_success 'handle per-worktree refs in refs/worktree' '
+	git commit --allow-empty -m "initial commit" &&
+	git worktree add -b branch worktree &&
+	(
+		cd worktree &&
+		git commit --allow-empty -m "test commit"  &&
+		git for-each-ref >for-each-ref.out &&
+		! grep refs/worktree for-each-ref.out &&
+		git update-ref refs/worktree/something HEAD &&
+		git rev-parse refs/worktree/something >../worktree-head &&
+		git for-each-ref | grep refs/worktree/something
+	) &&
+	test_path_is_missing .git/refs/worktree &&
+	test_must_fail git rev-parse refs/worktree/something &&
+	git update-ref refs/worktree/something HEAD &&
+	git rev-parse refs/worktree/something >main-head &&
+	! test_cmp main-head worktree-head
+'
+
 test_done
