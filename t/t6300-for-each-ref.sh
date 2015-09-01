@@ -196,6 +196,10 @@ test_expect_success 'Check format "rfc2822" date fields output' '
 	test_date rfc2822 "Tue, 4 Jul 2006 01:18:43 +0200" "Tue, 4 Jul 2006 01:18:44 +0200" "Tue, 4 Jul 2006 01:18:45 +0200"
 '
 
+test_expect_success 'Check format "raw" date fields output' '
+	test_date raw "1151968723 +0200" "1151968724 +0200" "1151968725 +0200"
+'
+
 test_expect_success 'Check format of strftime date fields' '
 	echo "my date is 2006-07-04" >expected &&
 	git for-each-ref \
