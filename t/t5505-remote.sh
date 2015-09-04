@@ -919,6 +919,18 @@ test_expect_success 'new remote' '
 	cmp expect actual
 '
 
+test_expect_success 'get-url on new remote' '
+	echo foo >expect &&
+	git remote get-url someremote >actual &&
+	cmp expect actual &&
+	git remote get-url --all someremote >actual &&
+	cmp expect actual &&
+	git remote get-url --push someremote >actual &&
+	cmp expect actual &&
+	git remote get-url --push --all someremote >actual &&
+	cmp expect actual
+'
+
 test_expect_success 'remote set-url bar' '
 	git remote set-url someremote bar &&
 	echo bar >expect &&
@@ -961,6 +973,24 @@ test_expect_success 'remote set-url --push zot' '
 	cmp expect actual
 '
 
+test_expect_success 'get-url with different urls' '
+	echo baz >expect &&
+	echo "YYY" >>expect &&
+	echo baz >>expect &&
+	echo "YYY" >>expect &&
+	echo zot >>expect &&
+	echo "YYY" >>expect &&
+	echo zot >>expect &&
+	git remote get-url someremote >actual &&
+	echo "YYY" >>actual &&
+	git remote get-url --all someremote >>actual &&
+	echo "YYY" >>actual &&
+	git remote get-url --push someremote >>actual &&
+	echo "YYY" >>actual &&
+	git remote get-url --push --all someremote >>actual &&
+	cmp expect actual
+'
+
 test_expect_success 'remote set-url --push qux zot' '
 	git remote set-url --push someremote qux zot &&
 	echo qux >expect &&
@@ -992,6 +1022,17 @@ test_expect_success 'remote set-url --push --add aaa' '
 	git config --get-all remote.someremote.pushurl >actual &&
 	echo "YYY" >>actual &&
 	git config --get-all remote.someremote.url >>actual &&
+	cmp expect actual
+'
+
+test_expect_success 'get-url on multi push remote' '
+	echo foo >expect &&
+	echo "YYY" >>expect &&
+	echo foo >>expect &&
+	echo aaa >>expect &&
+	git remote get-url --push someremote >actual &&
+	echo "YYY" >>actual &&
+	git remote get-url --push --all someremote >>actual &&
 	cmp expect actual
 '
 
@@ -1036,6 +1077,17 @@ test_expect_success 'remote set-url --add bbb' '
 	test_must_fail git config --get-all remote.someremote.pushurl >actual &&
 	echo "YYY" >>actual &&
 	git config --get-all remote.someremote.url >>actual &&
+	cmp expect actual
+'
+
+test_expect_success 'get-url on multi fetch remote' '
+	echo baz >expect &&
+	echo "YYY" >>expect &&
+	echo baz >>expect &&
+	echo bbb >>expect &&
+	git remote get-url someremote >actual &&
+	echo "YYY" >>actual &&
+	git remote get-url --all someremote >>actual &&
 	cmp expect actual
 '
 
@@ -1108,6 +1160,7 @@ test_extra_arg rename origin newname
 test_extra_arg remove origin
 test_extra_arg set-head origin master
 # set-branches takes any number of args
+test_extra_arg get-url origin newurl
 test_extra_arg set-url origin newurl oldurl
 # show takes any number of args
 # prune takes any number of args
