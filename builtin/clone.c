@@ -820,7 +820,11 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		die(_("destination path '%s' already exists and is not "
 			"an empty directory."), dir);
 
-	strbuf_addf(&reflog_msg, "clone: from %s", repo);
+	if (option_branch)
+		strbuf_addf(&reflog_msg, "clone: from %s branch %s",
+				repo, option_branch);
+	else
+		strbuf_addf(&reflog_msg, "clone: from %s", repo);
 
 	if (option_bare)
 		work_tree = NULL;
