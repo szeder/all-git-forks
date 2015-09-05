@@ -37,8 +37,8 @@
 #define RESET "\033[0m"
 
 static const char *messages[] = {
-	"Nothing to commit. Why not commit to your significant other instead?",
-	"Nothing to commit, working directory clean."
+	"Why not commit to your significant other instead?",
+	"What is a commitment, really?"
 };
 
 static const char *messages2[] = {
