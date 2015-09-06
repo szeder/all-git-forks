@@ -41,7 +41,7 @@ static const char *messages[] = {
 	"What is a commitment, really?"
 };
 
-static const char *messages2[] = {
+static const char *messagesStatus[] = {
 	"Maybe it’s time to DTR?"
 };
 
@@ -1407,7 +1407,7 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	}
 
 
-	printf(KCYN "%s\n" RESET, messages[rand() % 1]);
+	printf(KCYN "%s\n" RESET, messagesStatus[rand() % 1]);
 
 	return 0;
 }
