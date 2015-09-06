@@ -4,13 +4,30 @@
 body {
 	font-family: 'Open Sans', Arial, sans-serif;
 	font-weight: 300;
-	color: #fff;
-	background: #444;
+	color: #999;
+	background: #fff;
 	text-align: center;
+}
+
+h1 {
+	margin: 0;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
 }
 
 .wrap {
 	margin: 0 40px;
+}
+
+.dave {
+	color: #5DCBB8;
+}
+
+.sara {
+	color: #D25B89;
 }
 
 .logo {
@@ -18,28 +35,26 @@ body {
 	font-size: .9em;
 }
 
-.pane {
-	margin: 20px;
-}
-
 pre {
 	padding: 1em 1.5em;
 	border: 1px solid #fff;
 	border-radius: 10px;
 	background: rgba(255, 255, 255, 0.2);
-	display: inline;
+	display: inline-block;
 }
 
 .pane {
 	font-size: 2em;
+	padding: 50px;
+	margin: 20px;
 }
 
 .splash {
 	font-size: 5em;
 	background: url(../img/bg.jpg);
-	padding-top: 50px;
 	padding-bottom: 6em;
 	position: relative;
+	color: #fff;
 }
 
 .splash .title {
@@ -59,8 +74,48 @@ pre {
 	content: '';
 }
 
-.git-started {
+.non-pane {
+	font-size: 2.5em;
+	padding: 20px 80px;
+}
 
+.img-holder {
+	display: inline-block;
+	width: 100px;
+	height: 100px;
+	margin-right: 10px;
+	float: left;
+	border: 8px solid #fff;
+	-webkit-transform: rotate(5deg);
+	box-shadow: 0 0 10px;
+	margin-top: -20px;
+}
+
+.meet-sara .img-holder {
+	-webkit-transform: rotate(-3deg);
+	margin-top: -40px;
+	margin-left: -20px;
+}
+
+.git-started {
+	background: url(../img/flowers2.jpg) 40% 0%;
+	color: #fff;
+	padding-bottom: 8em;
+}
+
+.pink-pane {
+	background: #D25B89;
+	color: #fff;
+}
+
+.teal-pane {
+	background: #5DCBB8;
+	color: #fff;
+}
+
+.purple-pane {
+	background: #4A34A2;
+	color: #fff;
 }
 
 @media only screen and (max-width: 1200px) {
@@ -78,6 +133,10 @@ pre {
 		background-size: 130%;	
 		background-position: 30% 0;
 	}
+	.non-pane {
+		font-size: 2em;
+		padding: 0 50px;
+	}
 }
 
 @media only screen and (max-width: 767px) {
@@ -91,14 +150,21 @@ pre {
 	
 		background-size: 200%;
 		background-position: 38% 0%;
-}
+	}
 	.splash span {
 		display: block;
+	}
+	.non-pane {
+		font-size: 1.8em;
+		padding: 0 20px;
 	}
 }
 
 @media only screen and (max-width: 600px) {
 	.splash {
 		font-size: 2.8em;
+	}
+	.non-pane {
+		font-size: 1.5em;
 	}
 }
