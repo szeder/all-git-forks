@@ -7,7 +7,7 @@ client = TwilioRestClient(account_sid, auth_token)
 
 def message():
 	message = client.messages.create(body="Hi! Just wanted to let you know that I'm thinking about you. Love you!",
-		to="+19177517628",
+		to="Your num",
 	  from_="+16464806816")
 	return message.sid
 
