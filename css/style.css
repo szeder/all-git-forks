@@ -58,6 +58,10 @@ div.install {
 	padding: 200px 110px;
 }
 
+footer { 
+	padding: 100px 50px;
+}
+
 .splash {
 	font-size: 5em;
 	background: url(../img/bg.jpg);
