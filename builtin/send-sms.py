@@ -5,7 +5,7 @@ auth_token  = "3b499cb1aeed9cc7dd392295f661910d"
 client = TwilioRestClient(account_sid, auth_token)
 
 message = client.messages.create(body="Hi! Just wanted to let you know that I'm thinking about you. Love you!",
-	to="+19177517628",
+	to="Your num",
 	from_="+16464806816")
 print message.sid
 
