@@ -116,9 +116,8 @@ static void update_common_dir(struct strbuf *buf, int git_dir_len, const char *c
 			is_dir = 1;
 		}
 
-		if (!common_dir) {
+		if (!common_dir)
 			common_dir = get_git_common_dir();
-		}
 
 		if (is_dir && dir_prefix(base, path)) {
 			replace_dir(buf, git_dir_len, common_dir);
@@ -251,9 +250,8 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 
 	strbuf_vaddf(buf, fmt, args);
 
-	if (get_common_dir_noenv(&git_submodule_common_dir, git_submodule_dir.buf)) {
+	if (get_common_dir_noenv(&git_submodule_common_dir, git_submodule_dir.buf))
 		update_common_dir(buf, git_submodule_dir.len, git_submodule_common_dir.buf);
-	}
 
 	strbuf_cleanup_path(buf);
 
