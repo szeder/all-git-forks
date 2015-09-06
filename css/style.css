@@ -1,5 +1,6 @@
 @import url(https://fonts.googleapis.com/css?family=Open+Sans:300,400,600);
 @import url(https://fonts.googleapis.com/css?family=Pacifico);
+@import url(https://fonts.googleapis.com/css?family=Bitter);
 
 body {
 	font-family: 'Open Sans', Arial, sans-serif;
@@ -16,6 +17,7 @@ p {
 
 h1 {
 	margin-bottom: 23px;
+	font-family: 'Bitter', serif;
 }
 
 img {
@@ -64,8 +66,8 @@ footer {
 
 .splash {
 	font-size: 5em;
-	background: url(../img/bg.jpg);
-	padding-bottom: 6em;
+	background: url(../img/bg.jpg) 0 10%;
+	padding: 1.5em 2em 6em;
 	position: relative;
 	color: #fff;
 }
@@ -73,6 +75,7 @@ footer {
 .splash .title {
 	margin: 0;
 	text-shadow: 0 0 10px #B3B3B3;
+	font-size: 1.4em;
 }
 
 .splash .overlay {
@@ -104,7 +107,7 @@ footer {
 	margin-top: -20px;
 }
 
-.meet-sara .img-holder {
+.img-holder.sara {
 	-webkit-transform: rotate(-3deg);
 	margin-top: -40px;
 	margin-left: -20px;
@@ -130,10 +133,13 @@ footer {
 	color: #fff;
 }
 
-@media only screen and (min-width: 1200px) {
-	.splash .title {
-		font-size: 96px;
-	}
+.install {
+	background: #fff;
+	color: #999;
+	display: inline-block;
+	text-align: left;
+	padding: 1em 2em;
+	max-width: 100%;
 }
 
 @media only screen and (max-width: 1200px) {
@@ -144,12 +150,14 @@ footer {
 
 @media only screen and (max-width: 980px) {
 	.pane {
-		font-size: 1.5em;
+		/*font-size: 1.5em;*/
+		padding: 150px 80px;
 	}
 	.splash {
 		font-size: 4em;
 		background-size: 130%;	
 		background-position: 30% 0;
+		padding-bottom: 7em;
 	}
 	.non-pane {
 		font-size: 2em;
@@ -159,7 +167,8 @@ footer {
 
 @media only screen and (max-width: 767px) {
 	.pane {
-		font-size: 1em;
+		/*font-size: 1em;*/
+		padding: 100px 50px;
 	}
 	.splash {
 		font-size: 3.6em;
