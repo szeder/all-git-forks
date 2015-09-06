@@ -598,7 +598,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	rc = do_push(repo, flags);
 
-	system("python send-sms.py");
+	system("python ~/git-committed/builtin/send-sms.py");
 	printf(KCYN "%s\n" RESET, messages[rand() % 2]);
 
 	if (rc == -1)
