@@ -1,11 +1,15 @@
 from twilio.rest import TwilioRestClient
  
 # Your Account Sid and Auth Token from twilio.com/user/account
-account_sid = "ACfc927d066ae91adf7dd19dbbe9b9ba46"
+account_sid = "AC2323da24819dfe91a84a3a9c8632d770"
 auth_token  = ""
 client = TwilioRestClient(account_sid, auth_token)
- 
-message = client.messages.create(body="Jenny please?! I love you <3",
-    to="+13472608289",    # Replace with your phone number
-    from_="") # Replace with your Twilio number
-print message.sid
+
+def message():
+	message = client.messages.create(body="Hi! Just wanted to let you know that I'm thinking about you. Love you!",
+		to="+19177517628",
+	  from_="+16464806816")
+	return message.sid
+
+print(message())
+
