@@ -515,7 +515,9 @@ git-p4.largeFileSystem::
 	Please note that most of these large file systems depend on the
 	Git clean/smudge filters. These filters are not applied through
 	git-p4. You need to create a fresh clone of the repository after
-	running git-p4.
+	running git-p4. Only Git LFS [1] is supported right now. Download
+	and install the Git LFS command line extension to use this option.
+	[1] https://git-lfs.github.com/
 
 git-p4.largeFileExtensions::
 	All files matching a file extension in the list will be processed

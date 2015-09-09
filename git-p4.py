@@ -968,6 +968,58 @@ class MockLFS:
             os.makedirs(remotePath)
         shutil.copyfile(localLargeFile, os.path.join(remotePath, os.path.basename(localLargeFile)))
 
+class GitLFS:
+    """Git LFS as backend for the git-p4 large file system.
+       See https://git-lfs.github.com/ for details."""
+
+    @staticmethod
+    def attributeDescription():
+        """Return a description which is used to mark LFS entries in the
+           .gitattributes file."""
+        return 'Git LFS (see https://git-lfs.github.com/)'
+
+    @staticmethod
+    def attributeFilter():
+        """Return the name of the filter which is used for LFS entries in the
+           .gitattributes file."""
+        return 'lfs'
+
+    @staticmethod
+    def generatePointer(cloneDestination, contentFile):
+        """Generate a Git LFS pointer for the content. Return LFS Pointer file
+           mode and content which is stored in the Git repository instead of
+           the actual content. Return also the new location of the actual
+           content.
+           """
+        pointerProcess = subprocess.Popen(
+            ['git', 'lfs', 'pointer', '--file=' + contentFile],
+            stdout=subprocess.PIPE
+        )
+        pointerFile = pointerProcess.stdout.read()
+        if pointerProcess.wait():
+            os.remove(contentFile)
+            die('git-lfs pointer command failed. Did you install the extension?')
+        pointerContents = [i+'\n' for i in pointerFile.split('\n')[2:][:-1]]
+        oid = pointerContents[1].split(' ')[1].split(':')[1][:-1]
+        localLargeFile = os.path.join(
+            cloneDestination,
+            '.git', 'lfs', 'objects', oid[:2], oid[2:4],
+            oid,
+        )
+        # LFS Spec states that pointer files should not have the executable bit set.
+        gitMode = '100644'
+        return (gitMode, pointerContents, localLargeFile)
+
+    @staticmethod
+    def pushFile(localLargeFile):
+        """Push the actual content which is not stored in the Git repository to
+        a server."""
+        uploadProcess = subprocess.Popen(
+            ['git', 'lfs', 'push', '--object-id', 'origin', os.path.basename(localLargeFile)]
+        )
+        if uploadProcess.wait():
+            die('git-lfs push command failed. Did you define a remote?')
+
 class Command:
     def __init__(self):
         self.usage = "usage: %prog [options]"
