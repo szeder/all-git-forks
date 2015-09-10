@@ -195,7 +195,7 @@ static int match_atom_name(const char *name, const char *atom_name, const char *
 
 	if (!skip_prefix(name, atom_name, &body))
 		return 0; /* doesn't even begin with "atom_name" */
-	if (!body[0] || !body[1]) {
+	if (!body[0]) {
 		*val = NULL; /* %(atom_name) and no customization */
 		return 1;
 	}
