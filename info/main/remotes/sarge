@@ -1,4 +1,0 @@
-URL: /chroot/sarge/build/git/.git
-Push: master:origin
-Push: +pu
-Push: maint
