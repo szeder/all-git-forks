@@ -299,7 +299,7 @@ EOF
 
 test_expect_success 'right alignment formatting at the nth column' '
 	git log --pretty="tformat:%h %>|(40)%s" >actual &&
-	qz_to_tab_space <<EOF >expected &&
+	cat <<EOF >expected &&
 $head1                      message two
 $head2                      message one
 $head3                          add bar
@@ -310,7 +310,7 @@ EOF
 
 test_expect_success 'right alignment formatting at the nth column. i18n.logOutputEncoding' '
 	git -c i18n.logOutputEncoding=$test_encoding log --pretty="tformat:%h %>|(40)%s" >actual &&
-	qz_to_tab_space <<EOF | iconv -f utf-8 -t $test_encoding >expected &&
+	iconv -f utf-8 -t $test_encoding <<EOF >expected &&
 $head1                      message two
 $head2                      message one
 $head3                          add bar
@@ -322,7 +322,7 @@ EOF
 # Note: Space between 'message' and 'two' should be in the same column as in previous test.
 test_expect_success 'right alignment formatting at the nth column with --graph. i18n.logOutputEncoding' '
 	git -c i18n.logOutputEncoding=$test_encoding log --graph --pretty="tformat:%h %>|(40)%s" >actual &&
-	qz_to_tab_space <<EOF | iconv -f utf-8 -t $test_encoding >expected &&
+	iconv -f utf-8 -t $test_encoding <<EOF >expected &&
 * $head1                    message two
 * $head2                    message one
 * $head3                        add bar
@@ -423,7 +423,7 @@ EOF
 old_head1=$(git rev-parse --verify HEAD~0)
 test_expect_success 'center alignment formatting with no padding. i18n.logOutputEncoding' '
 	git -c i18n.logOutputEncoding=$test_encoding log --pretty="tformat:%><(1)%s" >actual &&
-	cat <<EOF | iconv -f utf-8 -t $test_encoding >expected &&
+	iconv -f utf-8 -t $test_encoding <<EOF >expected &&
 message two
 message one
 add bar
