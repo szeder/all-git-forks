@@ -124,13 +124,7 @@ static int add_submodule_odb(const char *path)
 	int ret = 0;
 	const char *git_dir;
 
-	strbuf_addf(&objects_directory, "%s/.git", path);
-	git_dir = read_gitfile(objects_directory.buf);
-	if (git_dir) {
-		strbuf_reset(&objects_directory);
-		strbuf_addstr(&objects_directory, git_dir);
-	}
-	strbuf_addstr(&objects_directory, "/objects/");
+	strbuf_git_path_submodule(&objects_directory, path, "objects/");
 	if (!is_directory(objects_directory.buf)) {
 		ret = -1;
 		goto done;
