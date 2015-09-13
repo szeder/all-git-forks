@@ -2038,25 +2038,14 @@ int git_config_set_multivar_in_file(const char *config_filename,
 
 	store.multi_replace = multi_replace;
 
-	if (git_common_dir_env && is_config_local(key)) {
-		if (!config_filename)
-			config_filename = filename_buf = git_pathdup("config.worktree");
-		/* cheap trick, but should work 90% of time */
-		else if (!ends_with(config_filename, ".worktree"))
-			die("%s can only be stored in %s",
-			    key, git_path("config.worktree"));
-		else {
-			struct strbuf sb = STRBUF_INIT;
-			strbuf_addstr(&sb, real_path(config_filename));
-			if (strcmp_icase(sb.buf,
-					 real_path(git_path("config.worktree"))))
-				die("%s can only be stored in %s",
-				    key, git_path("config.worktree"));
-			strbuf_release(&sb);
+	if (!config_filename) {
+		if (git_common_dir_env && is_config_local(key)) {
+			if (!config_filename)
+				config_filename = filename_buf = git_pathdup("config.worktree");
+		} else {
+			config_filename = filename_buf = git_pathdup("config");
 		}
 	}
-	if (!config_filename)
-		config_filename = filename_buf = git_pathdup("config");
 
 	/*
 	 * The lock serves a purpose in addition to locking: the new
