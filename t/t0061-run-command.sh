@@ -47,4 +47,20 @@ test_expect_success POSIXPERM,SANITY 'unreadable directory in PATH' '
 	test_cmp expect actual
 '
 
+cat >expect <<-EOF
+Now running instance 0
+Hello World
+Now running instance 1
+Hello World
+Now running instance 2
+Hello World
+Now running instance 3
+Hello World
+EOF
+
+test_expect_success 'run_command runs in parallel' '
+	test-run-command run-command-async sh -c "echo Hello World >&2;" 2>actual &&
+	test_cmp expect actual
+'
+
 test_done
