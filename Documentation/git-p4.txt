@@ -517,6 +517,34 @@ git-p4.pathEncoding::
 	to transcode the paths to UTF-8. As an example, Perforce on Windows
 	often uses “cp1252” to encode path names.
 
+git-p4.largeFileSystem::
+	Specify the system that is used used for large (binary) files.
+	Please note that most of these large file systems depend on the
+	Git clean/smudge filters. These filters are not applied through
+	git-p4. You need to create a fresh clone of the repository after
+	running git-p4. Only Git LFS [1] is supported right now. Download
+	and install the Git LFS command line extension to use this option.
+	[1] https://git-lfs.github.com/
+
+git-p4.largeFileExtensions::
+	All files matching a file extension in the list will be processed
+	by the large file system. Do not prefix the extensions with '.'.
+
+git-p4.largeFileThreshold::
+	All files with an uncompressed size exceeding the threshold will be
+	processed by the large file system. By default the threshold is
+	defined in bytes. Add the suffix k, m, or g to change the unit.
+
+git-p4.largeFileCompressedThreshold::
+	All files with a compressed size exceeding the threshold will be
+	processed by the large file system. This option might significantly
+	slow down your clone/sync process. By default the threshold is
+	defined in bytes. Add the suffix k, m, or g to change the unit.
+
+git-p4.pushLargeFiles::
+	Boolean variable which defines if large files are automatically
+	pushed to a server.
+
 Submit variables
 ~~~~~~~~~~~~~~~~
 git-p4.detectRenames::
