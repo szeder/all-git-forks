@@ -921,10 +921,8 @@ test_expect_success 'new remote' '
 
 get_url_test () {
 	cat >expect &&
-	test_expect_success "get-url $*" "
-		git remote get-url $* >actual &&
-		test_cmp expect actual
-	"
+	git remote get-url "$@" >actual &&
+	test_cmp expect actual
 }
 
 test_expect_success 'get-url on new remote' '
