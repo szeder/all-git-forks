@@ -862,3 +862,147 @@ int capture_command(struct child_process *cmd, struct strbuf *buf, size_t hint)
 	close(cmd->out);
 	return finish_command(cmd);
 }
+
+int run_processes_async(int n, get_next_task fn, void *data)
+{
+	int i, wait_status;
+	pid_t pid;
+
+	/* no more tasks. Also set when aborting early. */
+	int all_tasks_started = 0;
+	int nr_processes = 0;
+	int child_in_foreground = 0;
+	struct timeval timeout;
+	struct child_process *children = xcalloc(n, sizeof(*children));
+	char *slots = xcalloc(n, sizeof(*slots));
+	struct strbuf *err = xcalloc(n, sizeof(*err));
+	fd_set fdset;
+	int maxfd;
+	struct strbuf finished_children = STRBUF_INIT;
+	int flags;
+	for (i = 0; i < n; i++)
+		strbuf_init(&err[i], 0);
+
+	while (!all_tasks_started || nr_processes > 0) {
+		/* Start new processes. */
+		while (!all_tasks_started && nr_processes < n) {
+			for (i = 0; i < n; i++)
+				if (!slots[i])
+					break; /* found an empty slot */
+			if (i == n)
+				die("BUG: bookkeeping is hard");
+
+			if (fn(data, &children[i], &err[i])) {
+				all_tasks_started = 1;
+				break;
+			}
+			if (start_command(&children[i]))
+				die(_("Could not start child process"));
+			flags = fcntl(children[i].err, F_GETFL);
+			fcntl(children[i].err, F_SETFL, flags | O_NONBLOCK);
+			nr_processes++;
+			slots[i] = 1;
+		}
+
+		/* prepare data for select call */
+		FD_ZERO(&fdset);
+		maxfd = 0;
+		for (i = 0; i < n; i++) {
+			if (!slots[i])
+				continue;
+			FD_SET(children[i].err, &fdset);
+			if (children[i].err > maxfd)
+				maxfd = children[i].err;
+		}
+		timeout.tv_sec = 0;
+		timeout.tv_usec = 500000;
+
+		i = select(maxfd + 1, &fdset, NULL, NULL, &timeout);
+		if (i < 0) {
+			if (errno == EINTR)
+				/* A signal was caught; try again */
+				continue;
+			else if (errno == ENOMEM)
+				die_errno("BUG: keeping track of fds is hard");
+			else if (errno == EINVAL)
+				die_errno("BUG: invalid arguments to select");
+			else if (errno == EBADF)
+				die_errno("BUG: keeping track of fds is hard");
+			else
+				die_errno("Unknown error with select");
+		}
+
+		/* Buffer output from all pipes. */
+		for (i = 0; i < n; i++) {
+			if (!slots[i])
+				continue;
+			if (FD_ISSET(children[i].err, &fdset))
+				strbuf_read_noblock(&err[i], children[i].err, 0);
+			if (child_in_foreground == i) {
+				fputs(err[i].buf, stderr);
+				strbuf_reset(&err[i]);
+				fflush(stderr);
+			}
+		}
+
+		/* Collect finished child processes. */
+		while (nr_processes > 0) {
+			pid = waitpid(-1, &wait_status, WNOHANG);
+			if (pid == 0)
+				/* no child finished */
+				break;
+
+			if (pid < 0) {
+				if (errno == EINTR)
+					break; /* just try again  next time */
+				if (errno == EINVAL || errno == ECHILD)
+					die_errno("wait");
+			} else {
+				/* Find the finished child. */
+				for (i = 0; i < n; i++)
+					if (slots[i] && pid == children[i].pid)
+						break;
+				if (i == n)
+					/* waitpid returned another process id which
+					 * we are not waiting on, so ignore it*/
+					break;
+			}
+
+			strbuf_read_noblock(&err[i], children[i].err, 0);
+			argv_array_clear(&children[i].args);
+			argv_array_clear(&children[i].env_array);
+
+			slots[i] = 0;
+			nr_processes--;
+
+			if (i != child_in_foreground) {
+				strbuf_addbuf(&finished_children, &err[i]);
+				strbuf_reset(&err[i]);
+			} else {
+				fputs(err[i].buf, stderr);
+				strbuf_reset(&err[i]);
+
+				/* Output all other finished child processes */
+				fputs(finished_children.buf, stderr);
+				strbuf_reset(&finished_children);
+
+				/*
+				 * Pick next process to output live.
+				 * There can be no active process if n==1
+				 * NEEDSWORK:
+				 * For now we pick it randomly by doing a round
+				 * robin. Later we may want to pick the one with
+				 * the most output or the longest or shortest
+				 * running process time.
+				 */
+				for (i = 0; i < n; i++)
+					if (slots[(child_in_foreground + i) % n])
+						break;
+				child_in_foreground = (child_in_foreground + i) % n;
+				fputs(err[child_in_foreground].buf, stderr);
+				strbuf_reset(&err[child_in_foreground]);
+			}
+		}
+	}
+	return 0;
+}
