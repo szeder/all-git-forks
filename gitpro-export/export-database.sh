@@ -6,6 +6,7 @@ command="sqlite3 ../.git/gitpro.db -batch -csv"
 
 cat > "temp-file" << \EOF
 .output temp1
+.mode list
 SELECT * FROM GP_TAREA;
 .quit
 EOF

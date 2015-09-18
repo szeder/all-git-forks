@@ -50,18 +50,11 @@ printf "* Input format: %s\n" "$in_format"
 printf "+ Generating file in %s format\n" "$out_format"
 
 ./$analyzer < "$in_file" 
-if [ $? -eq 0 ]
-then			
-	./$translator "standard-file"
-	if [ $? -eq 0 ]
-	then 
-		printf "+ Output %s generated\n" "$out_format"
-	else
-		printf "[ERROR] Unexpected error generating %s file\n" "$out_format"
-	fi
-else
-	printf "[ERROR] Unexpected error parsing input file\n"
-fi
+		
+./$translator "standard-file"
+
+printf "+ Output %s generated\n" "$out_format"
+
 
 if [ -f "gitpro-db.csv" ]; then
 	rm "gitpro-db.csv"
