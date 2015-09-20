@@ -638,6 +638,11 @@ proc git_write {args} {
 }
 
 proc githook_read {hook_name args} {
+	global is_disabled_run_hooks
+	if {$is_disabled_run_hooks} {
+		return {}
+	}
+
 	set pchook [gitdir hooks $hook_name]
 	lappend args 2>@1
 
@@ -1363,6 +1368,7 @@ set is_3way_diff 0
 set is_submodule_diff 0
 set is_conflict_diff 0
 set selected_commit_type new
+set is_disabled_run_hooks 0
 set diff_empty_count 0
 
 set nullid "0000000000000000000000000000000000000000"
@@ -2840,6 +2846,12 @@ if {[is_enabled multicommit] || [is_enabled singlecommit]} {
 		lappend disable_on_lock \
 			[list .mbar.commit entryconf [.mbar.commit index last] -state]
 
+		.mbar.commit add checkbutton \
+			-label [mc "No hooks"] \
+			-variable is_disabled_run_hooks
+		lappend disable_on_lock \
+			[list .mbar.commit entryconf [.mbar.commit index last] -state]
+
 		.mbar.commit add separator
 	}
 
@@ -3319,6 +3331,11 @@ if {![is_enabled nocommit]} {
 		-value amend
 	lappend disable_on_lock \
 		[list .vpane.lower.commarea.buffer.header.amend conf -state]
+	${NS}::checkbutton .vpane.lower.commarea.buffer.header.no_hooks \
+		-text [mc "No hooks"] \
+		-variable is_disabled_run_hooks
+	lappend disable_on_lock \
+		[list .vpane.lower.commarea.buffer.header.no_hooks conf -state]
 }
 
 ${NS}::label $ui_coml \
@@ -3342,6 +3359,7 @@ pack $ui_coml -side left -fill x
 if {![is_enabled nocommit]} {
 	pack .vpane.lower.commarea.buffer.header.amend -side right
 	pack .vpane.lower.commarea.buffer.header.new -side right
+	pack .vpane.lower.commarea.buffer.header.no_hooks -side right
 }
 
 text $ui_comm -background white -foreground black \
