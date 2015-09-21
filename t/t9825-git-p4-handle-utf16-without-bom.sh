@@ -22,8 +22,8 @@ test_expect_success 'init depot with UTF-16 encoded file and artificially remove
 		cd "db" &&
 		p4d -jc &&
 		# P4D automatically adds a BOM. Remove it here to make the file invalid.
-		sed -e "$ d" depot/file1,v >depot/file1,v.new &&
-		mv -- depot/file1,v.new depot/file1,v &&
+		sed -e "\$d" depot/file1,v >depot/file1,v.new &&
+		mv depot/file1,v.new depot/file1,v &&
 		printf "@$UTF16@" >>depot/file1,v &&
 		p4d -jrF checkpoint.1
 	)
