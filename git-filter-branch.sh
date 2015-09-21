@@ -277,9 +277,8 @@ test $commits -eq 0 && die "Found nothing to rewrite"
 # Rewrite the commits
 report_progress ()
 {
-if test -n "$progress"
-then
-	if test $git_filter_branch__commit_count -gt $next_sample_at
+	if test -n "$progress" &&
+		test $git_filter_branch__commit_count -gt $next_sample_at
 	then
 		now_timestamp=$(date +%s)
 		elapsed_seconds=$(($now_timestamp - $start_timestamp))
@@ -292,8 +291,7 @@ then
 		fi
 		progress=" ($elapsed_seconds seconds passed, remaining $remaining_second predicted)"
 	fi
-fi
-printf "\rRewrite $commit ($git_filter_branch__commit_count/$commits)$progress"
+	printf "\rRewrite $commit ($git_filter_branch__commit_count/$commits)$progress    "
 }
 
 git_filter_branch__commit_count=0
