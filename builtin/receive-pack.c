@@ -19,6 +19,7 @@
 #include "tag.h"
 #include "gpg-interface.h"
 #include "sigchain.h"
+#include "fsck.h"
 
 static const char receive_pack_usage[] = "git receive-pack <git-dir>";
 
@@ -36,6 +37,7 @@ static enum deny_action deny_current_branch = DENY_UNCONFIGURED;
 static enum deny_action deny_delete_current = DENY_UNCONFIGURED;
 static int receive_fsck_objects = -1;
 static int transfer_fsck_objects = -1;
+static struct strbuf fsck_msg_types = STRBUF_INIT;
 static int receive_unpack_limit = -1;
 static int transfer_unpack_limit = -1;
 static int advertise_atomic_push = 1;
@@ -112,6 +114,26 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 	if (strcmp(var, "transfer.unpacklimit") == 0) {
 		transfer_unpack_limit = git_config_int(var, value);
+		return 0;
+	}
+
+	if (strcmp(var, "receive.fsck.skiplist") == 0) {
+		const char *path;
+
+		if (git_config_pathname(&path, var, value))
+			return 1;
+		strbuf_addf(&fsck_msg_types, "%cskiplist=%s",
+			fsck_msg_types.len ? ',' : '=', path);
+		free((char *)path);
+		return 0;
+	}
+
+	if (skip_prefix(var, "receive.fsck.", &var)) {
+		if (is_valid_msg_type(var, value))
+			strbuf_addf(&fsck_msg_types, "%c%s=%s",
+				fsck_msg_types.len ? ',' : '=', var, value);
+		else
+			warning("Skipping unknown msg id '%s'", var);
 		return 0;
 	}
 
@@ -197,7 +219,7 @@ static void show_ref(const char *path, const unsigned char *sha1)
 	}
 }
 
-static int show_ref_cb(const char *path, const unsigned char *sha1, int flag, void *unused)
+static int show_ref_cb(const char *path, const struct object_id *oid, int flag, void *unused)
 {
 	path = strip_namespace(path);
 	/*
@@ -210,7 +232,7 @@ static int show_ref_cb(const char *path, const unsigned char *sha1, int flag, vo
 	 */
 	if (!path)
 		path = ".have";
-	show_ref(path, sha1);
+	show_ref(path, oid->hash);
 	return 0;
 }
 
@@ -228,6 +250,7 @@ static void collect_one_alternate_ref(const struct ref *ref, void *data)
 static void write_head_info(void)
 {
 	struct sha1_array sa = SHA1_ARRAY_INIT;
+
 	for_each_alternate_ref(collect_one_alternate_ref, &sa);
 	sha1_array_for_each_unique(&sa, show_one_alternate_sha1, NULL);
 	sha1_array_clear(&sa);
@@ -743,6 +766,22 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 	return 0;
 }
 
+/*
+ * NEEDSWORK: we should consolidate various implementions of "are we
+ * on an unborn branch?" test into one, and make the unified one more
+ * robust. !get_sha1() based check used here and elsewhere would not
+ * allow us to tell an unborn branch from corrupt ref, for example.
+ * For the purpose of fixing "deploy-to-update does not work when
+ * pushing into an empty repository" issue, this should suffice for
+ * now.
+ */
+static int head_has_history(void)
+{
+	unsigned char sha1[20];
+
+	return !get_sha1("HEAD", sha1);
+}
+
 static const char *push_to_deploy(unsigned char *sha1,
 				  struct argv_array *env,
 				  const char *work_tree)
@@ -755,7 +794,7 @@ static const char *push_to_deploy(unsigned char *sha1,
 	};
 	const char *diff_index[] = {
 		"diff-index", "--quiet", "--cached", "--ignore-submodules",
-		"HEAD", "--", NULL
+		NULL, "--", NULL
 	};
 	const char *read_tree[] = {
 		"read-tree", "-u", "-m", NULL, NULL
@@ -781,6 +820,9 @@ static const char *push_to_deploy(unsigned char *sha1,
 	child.git_cmd = 1;
 	if (run_command(&child))
 		return "Working directory has unstaged changes";
+
+	/* diff-index with either HEAD or an empty tree */
+	diff_index[4] = head_has_history() ? "HEAD" : EMPTY_TREE_SHA1_HEX;
 
 	child_process_init(&child);
 	child.argv = diff_index;
@@ -891,7 +933,7 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			return "deletion prohibited";
 		}
 
-		if (!strcmp(namespaced_name, head_name)) {
+		if (head_name && !strcmp(namespaced_name, head_name)) {
 			switch (deny_delete_current) {
 			case DENY_IGNORE:
 				break;
@@ -989,7 +1031,7 @@ static void run_update_post_hook(struct command *commands)
 	int argc;
 	const char **argv;
 	struct child_process proc = CHILD_PROCESS_INIT;
-	char *hook;
+	const char *hook;
 
 	hook = find_hook("post-update");
 	for (argc = 0, cmd = commands; cmd; cmd = cmd->next) {
@@ -1470,7 +1512,8 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 		if (quiet)
 			argv_array_push(&child.args, "-q");
 		if (fsck_objects)
-			argv_array_push(&child.args, "--strict");
+			argv_array_pushf(&child.args, "--strict%s",
+				fsck_msg_types.buf);
 		child.no_stdout = 1;
 		child.err = err_fd;
 		child.git_cmd = 1;
@@ -1488,7 +1531,8 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 		argv_array_pushl(&child.args, "index-pack",
 				 "--stdin", hdr_arg, keep_arg, NULL);
 		if (fsck_objects)
-			argv_array_push(&child.args, "--strict");
+			argv_array_pushf(&child.args, "--strict%s",
+				fsck_msg_types.buf);
 		if (fix_thin)
 			argv_array_push(&child.args, "--fix-thin");
 		child.out = -1;

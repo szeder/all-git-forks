@@ -25,8 +25,8 @@
 #include "argv-array.h"
 
 static const char *pack_usage[] = {
-	N_("git pack-objects --stdout [options...] [< ref-list | < object-list]"),
-	N_("git pack-objects [options...] base-name [< ref-list | < object-list]"),
+	N_("git pack-objects --stdout [<options>...] [< <ref-list> | < <object-list>]"),
+	N_("git pack-objects [<options>...] <base-name> [< <ref-list> | < <object-list>]"),
 	NULL
 };
 
@@ -540,11 +540,11 @@ static enum write_one_status write_one(struct sha1file *f,
 	return WRITE_ONE_WRITTEN;
 }
 
-static int mark_tagged(const char *path, const unsigned char *sha1, int flag,
+static int mark_tagged(const char *path, const struct object_id *oid, int flag,
 		       void *cb_data)
 {
 	unsigned char peeled[20];
-	struct object_entry *entry = packlist_find(&to_pack, sha1, NULL);
+	struct object_entry *entry = packlist_find(&to_pack, oid->hash, NULL);
 
 	if (entry)
 		entry->tagged = 1;
@@ -961,10 +961,8 @@ static int want_object_in_pack(const unsigned char *sha1,
 		off_t offset = find_pack_entry_one(sha1, p);
 		if (offset) {
 			if (!*found_pack) {
-				if (!is_pack_valid(p)) {
-					warning("packfile %s cannot be accessed", p->pack_name);
+				if (!is_pack_valid(p))
 					continue;
-				}
 				*found_offset = offset;
 				*found_pack = p;
 			}
@@ -2099,14 +2097,14 @@ static void ll_find_deltas(struct object_entry **list, unsigned list_size,
 #define ll_find_deltas(l, s, w, d, p)	find_deltas(l, &s, w, d, p)
 #endif
 
-static int add_ref_tag(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int add_ref_tag(const char *path, const struct object_id *oid, int flag, void *cb_data)
 {
-	unsigned char peeled[20];
+	struct object_id peeled;
 
 	if (starts_with(path, "refs/tags/") && /* is a tag? */
-	    !peel_ref(path, peeled)        && /* peelable? */
-	    packlist_find(&to_pack, peeled, NULL))      /* object packed? */
-		add_object_entry(sha1, OBJ_TAG, NULL, 0);
+	    !peel_ref(path, peeled.hash)    && /* peelable? */
+	    packlist_find(&to_pack, peeled.hash, NULL))      /* object packed? */
+		add_object_entry(oid->hash, OBJ_TAG, NULL, 0);
 	return 0;
 }
 
@@ -2590,23 +2588,6 @@ static int option_parse_unpack_unreachable(const struct option *opt,
 	return 0;
 }
 
-static int option_parse_ulong(const struct option *opt,
-			      const char *arg, int unset)
-{
-	if (unset)
-		die(_("option %s does not accept negative form"),
-		    opt->long_name);
-
-	if (!git_parse_ulong(arg, opt->value))
-		die(_("unable to parse value '%s' for option %s"),
-		    arg, opt->long_name);
-	return 0;
-}
-
-#define OPT_ULONG(s, l, v, h) \
-	{ OPTION_CALLBACK, (s), (l), (v), "n", (h),	\
-	  PARSE_OPT_NONEG, option_parse_ulong }
-
 int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 {
 	int use_internal_rev_list = 0;
@@ -2629,16 +2610,16 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		{ OPTION_CALLBACK, 0, "index-version", NULL, N_("version[,offset]"),
 		  N_("write the pack index file in the specified idx format version"),
 		  0, option_parse_index_version },
-		OPT_ULONG(0, "max-pack-size", &pack_size_limit,
-			  N_("maximum size of each output pack file")),
+		OPT_MAGNITUDE(0, "max-pack-size", &pack_size_limit,
+			      N_("maximum size of each output pack file")),
 		OPT_BOOL(0, "local", &local,
 			 N_("ignore borrowed objects from alternate object store")),
 		OPT_BOOL(0, "incremental", &incremental,
 			 N_("ignore packed objects")),
 		OPT_INTEGER(0, "window", &window,
 			    N_("limit pack window by objects")),
-		OPT_ULONG(0, "window-memory", &window_memory_limit,
-			  N_("limit pack window by memory in addition to object limit")),
+		OPT_MAGNITUDE(0, "window-memory", &window_memory_limit,
+			      N_("limit pack window by memory in addition to object limit")),
 		OPT_INTEGER(0, "depth", &depth,
 			    N_("maximum length of delta chain allowed in the resulting pack")),
 		OPT_BOOL(0, "reuse-delta", &reuse_delta,

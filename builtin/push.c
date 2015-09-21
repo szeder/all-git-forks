@@ -9,6 +9,7 @@
 #include "transport.h"
 #include "parse-options.h"
 #include "submodule.h"
+#include "send-pack.h"
 
 static const char * const push_usage[] = {
 	N_("git push [<options>] [<repository> [<refspec>...]]"),
@@ -471,23 +472,67 @@ static int option_parse_recurse_submodules(const struct option *opt,
 	return 0;
 }
 
+static void set_push_cert_flags(int *flags, int v)
+{
+	switch (v) {
+	case SEND_PACK_PUSH_CERT_NEVER:
+		*flags &= ~(TRANSPORT_PUSH_CERT_ALWAYS | TRANSPORT_PUSH_CERT_IF_ASKED);
+		break;
+	case SEND_PACK_PUSH_CERT_ALWAYS:
+		*flags |= TRANSPORT_PUSH_CERT_ALWAYS;
+		*flags &= ~TRANSPORT_PUSH_CERT_IF_ASKED;
+		break;
+	case SEND_PACK_PUSH_CERT_IF_ASKED:
+		*flags |= TRANSPORT_PUSH_CERT_IF_ASKED;
+		*flags &= ~TRANSPORT_PUSH_CERT_ALWAYS;
+		break;
+	}
+}
+
+
 static int git_push_config(const char *k, const char *v, void *cb)
 {
-	struct wt_status *s = cb;
+	int *flags = cb;
 	int status;
 
 	status = git_gpg_config(k, v, NULL);
 	if (status)
 		return status;
-	return git_default_config(k, v, s);
+
+	if (!strcmp(k, "push.followtags")) {
+		if (git_config_bool(k, v))
+			*flags |= TRANSPORT_PUSH_FOLLOW_TAGS;
+		else
+			*flags &= ~TRANSPORT_PUSH_FOLLOW_TAGS;
+		return 0;
+	} else if (!strcmp(k, "push.gpgsign")) {
+		const char *value;
+		if (!git_config_get_value("push.gpgsign", &value)) {
+			switch (git_config_maybe_bool("push.gpgsign", value)) {
+			case 0:
+				set_push_cert_flags(flags, SEND_PACK_PUSH_CERT_NEVER);
+				break;
+			case 1:
+				set_push_cert_flags(flags, SEND_PACK_PUSH_CERT_ALWAYS);
+				break;
+			default:
+				if (value && !strcasecmp(value, "if-asked"))
+					set_push_cert_flags(flags, SEND_PACK_PUSH_CERT_IF_ASKED);
+				else
+					return error("Invalid value for '%s'", k);
+			}
+		}
+	}
+
+	return git_default_config(k, v, NULL);
 }
 
 int cmd_push(int argc, const char **argv, const char *prefix)
 {
 	int flags = 0;
 	int tags = 0;
+	int push_cert = -1;
 	int rc;
-	int atomic = 0;
 	const char *repo = NULL;	/* default repository */
 	struct option options[] = {
 		OPT__VERBOSITY(&verbosity),
@@ -518,14 +563,17 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		OPT_BIT(0, "no-verify", &flags, N_("bypass pre-push hook"), TRANSPORT_PUSH_NO_HOOK),
 		OPT_BIT(0, "follow-tags", &flags, N_("push missing but relevant tags"),
 			TRANSPORT_PUSH_FOLLOW_TAGS),
-		OPT_BIT(0, "signed", &flags, N_("GPG sign the push"), TRANSPORT_PUSH_CERT),
-		OPT_BOOL(0, "atomic", &atomic, N_("request atomic transaction on remote side")),
+		{ OPTION_CALLBACK,
+		  0, "signed", &push_cert, "yes|no|if-asked", N_("GPG sign the push"),
+		  PARSE_OPT_OPTARG, option_parse_push_signed },
+		OPT_BIT(0, "atomic", &flags, N_("request atomic transaction on remote side"), TRANSPORT_PUSH_ATOMIC),
 		OPT_END()
 	};
 
 	packet_trace_identity("push");
-	git_config(git_push_config, NULL);
+	git_config(git_push_config, &flags);
 	argc = parse_options(argc, argv, prefix, options, push_usage, 0);
+	set_push_cert_flags(&flags, push_cert);
 
 	if (deleterefs && (tags || (flags & (TRANSPORT_PUSH_ALL | TRANSPORT_PUSH_MIRROR))))
 		die(_("--delete is incompatible with --all, --mirror and --tags"));
@@ -534,9 +582,6 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	if (tags)
 		add_refspec("refs/tags/*");
-
-	if (atomic)
-		flags |= TRANSPORT_PUSH_ATOMIC;
 
 	if (argc > 0) {
 		repo = argv[0];

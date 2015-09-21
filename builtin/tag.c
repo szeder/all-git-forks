@@ -176,7 +176,7 @@ static enum contains_result contains(struct commit *candidate,
 	return contains_test(candidate, want);
 }
 
-static void show_tag_lines(const unsigned char *sha1, int lines)
+static void show_tag_lines(const struct object_id *oid, int lines)
 {
 	int i;
 	unsigned long size;
@@ -184,14 +184,14 @@ static void show_tag_lines(const unsigned char *sha1, int lines)
 	char *buf, *sp, *eol;
 	size_t len;
 
-	buf = read_sha1_file(sha1, &type, &size);
+	buf = read_sha1_file(oid->hash, &type, &size);
 	if (!buf)
-		die_errno("unable to read object %s", sha1_to_hex(sha1));
+		die_errno("unable to read object %s", oid_to_hex(oid));
 	if (type != OBJ_COMMIT && type != OBJ_TAG)
 		goto free_return;
 	if (!size)
 		die("an empty %s object %s?",
-		    typename(type), sha1_to_hex(sha1));
+		    typename(type), oid_to_hex(oid));
 
 	/* skip header */
 	sp = strstr(buf, "\n\n");
@@ -215,7 +215,7 @@ free_return:
 	free(buf);
 }
 
-static int show_reference(const char *refname, const unsigned char *sha1,
+static int show_reference(const char *refname, const struct object_id *oid,
 			  int flag, void *cb_data)
 {
 	struct tag_filter *filter = cb_data;
@@ -224,14 +224,14 @@ static int show_reference(const char *refname, const unsigned char *sha1,
 		if (filter->with_commit) {
 			struct commit *commit;
 
-			commit = lookup_commit_reference_gently(sha1, 1);
+			commit = lookup_commit_reference_gently(oid->hash, 1);
 			if (!commit)
 				return 0;
 			if (!contains(commit, filter->with_commit))
 				return 0;
 		}
 
-		if (points_at.nr && !match_points_at(refname, sha1))
+		if (points_at.nr && !match_points_at(refname, oid->hash))
 			return 0;
 
 		if (!filter->lines) {
@@ -242,7 +242,7 @@ static int show_reference(const char *refname, const unsigned char *sha1,
 			return 0;
 		}
 		printf("%-15s ", refname);
-		show_tag_lines(sha1, filter->lines);
+		show_tag_lines(oid, filter->lines);
 		putchar('\n');
 	}
 
@@ -268,7 +268,7 @@ static int list_tags(const char **patterns, int lines,
 	memset(&filter.tags, 0, sizeof(filter.tags));
 	filter.tags.strdup_strings = 1;
 
-	for_each_tag_ref(show_reference, (void *) &filter);
+	for_each_tag_ref(show_reference, (void *)&filter);
 	if (sort) {
 		int i;
 		if ((sort & SORT_MASK) == VERCMP_SORT)
@@ -579,6 +579,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct create_tag_options opt;
 	char *cleanup_arg = NULL;
 	int annotate = 0, force = 0, lines = -1;
+	int create_reflog = 0;
 	int cmdmode = 0;
 	const char *msgfile = NULL, *keyid = NULL;
 	struct msg_arg msg = { 0, STRBUF_INIT };
@@ -605,13 +606,14 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		OPT_STRING('u', "local-user", &keyid, N_("key-id"),
 					N_("use another key to sign the tag")),
 		OPT__FORCE(&force, N_("replace the tag if exists")),
+		OPT_BOOL(0, "create-reflog", &create_reflog, N_("create a reflog")),
+
+		OPT_GROUP(N_("Tag listing options")),
 		OPT_COLUMN(0, "column", &colopts, N_("show tag list in columns")),
 		{
 			OPTION_CALLBACK, 0, "sort", &tag_sort, N_("type"), N_("sort tags"),
 			PARSE_OPT_NONEG, parse_opt_sort
 		},
-
-		OPT_GROUP(N_("Tag listing options")),
 		{
 			OPTION_CALLBACK, 0, "contains", &with_commit, N_("commit"),
 			N_("print only tags that contain the commit"),
@@ -733,7 +735,8 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	transaction = ref_transaction_begin(&err);
 	if (!transaction ||
 	    ref_transaction_update(transaction, ref.buf, object, prev,
-				   0, NULL, &err) ||
+				   create_reflog ? REF_FORCE_CREATE_REFLOG : 0,
+				   NULL, &err) ||
 	    ref_transaction_commit(transaction, &err))
 		die("%s", err.buf);
 	ref_transaction_free(transaction);

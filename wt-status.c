@@ -1,5 +1,4 @@
 #include "cache.h"
-#include "pathspec.h"
 #include "wt-status.h"
 #include "object.h"
 #include "dir.h"
@@ -585,6 +584,8 @@ static void wt_status_collect_untracked(struct wt_status *s)
 			DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
 	if (s->show_ignored_files)
 		dir.flags |= DIR_SHOW_IGNORED_TOO;
+	else
+		dir.untracked = the_index.untracked;
 	setup_standard_excludes(&dir);
 
 	fill_directory(&dir, &s->pathspec);
@@ -729,7 +730,6 @@ static void wt_status_print_submodule_summary(struct wt_status *s, int uncommitt
 	struct strbuf cmd_stdout = STRBUF_INIT;
 	struct strbuf summary = STRBUF_INIT;
 	char *summary_content;
-	size_t len;
 
 	argv_array_pushf(&sm_summary.env_array, "GIT_INDEX_FILE=%s",
 			 s->index_file);
@@ -745,15 +745,11 @@ static void wt_status_print_submodule_summary(struct wt_status *s, int uncommitt
 
 	sm_summary.git_cmd = 1;
 	sm_summary.no_stdin = 1;
-	fflush(s->fp);
-	sm_summary.out = -1;
 
-	run_command(&sm_summary);
-
-	len = strbuf_read(&cmd_stdout, sm_summary.out, 1024);
+	capture_command(&sm_summary, &cmd_stdout, 1024);
 
 	/* prepend header, only if there's an actual output */
-	if (len) {
+	if (cmd_stdout.len) {
 		if (uncommitted)
 			strbuf_addstr(&summary, _("Submodules changed but not updated:"));
 		else
@@ -764,6 +760,7 @@ static void wt_status_print_submodule_summary(struct wt_status *s, int uncommitt
 	strbuf_release(&cmd_stdout);
 
 	if (s->display_comment_prefix) {
+		size_t len;
 		summary_content = strbuf_detach(&summary, &len);
 		strbuf_add_commented_lines(&summary, summary_content, len);
 		free(summary_content);
@@ -827,10 +824,11 @@ void wt_status_truncate_message_at_cut_line(struct strbuf *buf)
 	const char *p;
 	struct strbuf pattern = STRBUF_INIT;
 
-	strbuf_addf(&pattern, "%c %s", comment_line_char, cut_line);
-	p = strstr(buf->buf, pattern.buf);
-	if (p && (p == buf->buf || p[-1] == '\n'))
-		strbuf_setlen(buf, p - buf->buf);
+	strbuf_addf(&pattern, "\n%c %s", comment_line_char, cut_line);
+	if (starts_with(buf->buf, pattern.buf + 1))
+		strbuf_setlen(buf, 0);
+	else if ((p = strstr(buf->buf, pattern.buf)))
+		strbuf_setlen(buf, p - buf->buf + 1);
 	strbuf_release(&pattern);
 }
 
@@ -1028,21 +1026,142 @@ static int split_commit_in_progress(struct wt_status *s)
 	return split_in_progress;
 }
 
+/*
+ * Turn
+ * "pick d6a2f0303e897ec257dd0e0a39a5ccb709bc2047 some message"
+ * into
+ * "pick d6a2f03 some message"
+ *
+ * The function assumes that the line does not contain useless spaces
+ * before or after the command.
+ */
+static void abbrev_sha1_in_line(struct strbuf *line)
+{
+	struct strbuf **split;
+	int i;
+
+	if (starts_with(line->buf, "exec ") ||
+	    starts_with(line->buf, "x "))
+		return;
+
+	split = strbuf_split_max(line, ' ', 3);
+	if (split[0] && split[1]) {
+		unsigned char sha1[20];
+		const char *abbrev;
+
+		/*
+		 * strbuf_split_max left a space. Trim it and re-add
+		 * it after abbreviation.
+		 */
+		strbuf_trim(split[1]);
+		if (!get_sha1(split[1]->buf, sha1)) {
+			abbrev = find_unique_abbrev(sha1, DEFAULT_ABBREV);
+			strbuf_reset(split[1]);
+			strbuf_addf(split[1], "%s ", abbrev);
+			strbuf_reset(line);
+			for (i = 0; split[i]; i++)
+				strbuf_addf(line, "%s", split[i]->buf);
+		}
+	}
+	for (i = 0; split[i]; i++)
+		strbuf_release(split[i]);
+
+}
+
+static void read_rebase_todolist(const char *fname, struct string_list *lines)
+{
+	struct strbuf line = STRBUF_INIT;
+	FILE *f = fopen(git_path("%s", fname), "r");
+
+	if (!f)
+		die_errno("Could not open file %s for reading",
+			  git_path("%s", fname));
+	while (!strbuf_getline(&line, f, '\n')) {
+		if (line.len && line.buf[0] == comment_line_char)
+			continue;
+		strbuf_trim(&line);
+		if (!line.len)
+			continue;
+		abbrev_sha1_in_line(&line);
+		string_list_append(lines, line.buf);
+	}
+}
+
+static void show_rebase_information(struct wt_status *s,
+					struct wt_status_state *state,
+					const char *color)
+{
+	if (state->rebase_interactive_in_progress) {
+		int i;
+		int nr_lines_to_show = 2;
+
+		struct string_list have_done = STRING_LIST_INIT_DUP;
+		struct string_list yet_to_do = STRING_LIST_INIT_DUP;
+
+		read_rebase_todolist("rebase-merge/done", &have_done);
+		read_rebase_todolist("rebase-merge/git-rebase-todo", &yet_to_do);
+
+		if (have_done.nr == 0)
+			status_printf_ln(s, color, _("No commands done."));
+		else {
+			status_printf_ln(s, color,
+				Q_("Last command done (%d command done):",
+					"Last commands done (%d commands done):",
+					have_done.nr),
+				have_done.nr);
+			for (i = (have_done.nr > nr_lines_to_show)
+				? have_done.nr - nr_lines_to_show : 0;
+				i < have_done.nr;
+				i++)
+				status_printf_ln(s, color, "   %s", have_done.items[i].string);
+			if (have_done.nr > nr_lines_to_show && s->hints)
+				status_printf_ln(s, color,
+					_("  (see more in file %s)"), git_path("rebase-merge/done"));
+		}
+
+		if (yet_to_do.nr == 0)
+			status_printf_ln(s, color,
+					 _("No commands remaining."));
+		else {
+			status_printf_ln(s, color,
+				Q_("Next command to do (%d remaining command):",
+					"Next commands to do (%d remaining commands):",
+					yet_to_do.nr),
+				yet_to_do.nr);
+			for (i = 0; i < nr_lines_to_show && i < yet_to_do.nr; i++)
+				status_printf_ln(s, color, "   %s", yet_to_do.items[i].string);
+			if (s->hints)
+				status_printf_ln(s, color,
+					_("  (use \"git rebase --edit-todo\" to view and edit)"));
+		}
+		string_list_clear(&yet_to_do, 0);
+		string_list_clear(&have_done, 0);
+	}
+}
+
+static void print_rebase_state(struct wt_status *s,
+				struct wt_status_state *state,
+				const char *color)
+{
+	if (state->branch)
+		status_printf_ln(s, color,
+				 _("You are currently rebasing branch '%s' on '%s'."),
+				 state->branch,
+				 state->onto);
+	else
+		status_printf_ln(s, color,
+				 _("You are currently rebasing."));
+}
+
 static void show_rebase_in_progress(struct wt_status *s,
 				struct wt_status_state *state,
 				const char *color)
 {
 	struct stat st;
 
+	show_rebase_information(s, state, color);
 	if (has_unmerged(s)) {
-		if (state->branch)
-			status_printf_ln(s, color,
-					 _("You are currently rebasing branch '%s' on '%s'."),
-					 state->branch,
-					 state->onto);
-		else
-			status_printf_ln(s, color,
-					 _("You are currently rebasing."));
+		print_rebase_state(s, state, color);
 		if (s->hints) {
 			status_printf_ln(s, color,
 				_("  (fix conflicts and then run \"git rebase --continue\")"));
@@ -1051,15 +1170,8 @@ static void show_rebase_in_progress(struct wt_status *s,
 			status_printf_ln(s, color,
 				_("  (use \"git rebase --abort\" to check out the original branch)"));
 		}
-	} else if (state->rebase_in_progress || !stat(git_path("MERGE_MSG"), &st)) {
-		if (state->branch)
-			status_printf_ln(s, color,
-					 _("You are currently rebasing branch '%s' on '%s'."),
-					 state->branch,
-					 state->onto);
-		else
-			status_printf_ln(s, color,
-					 _("You are currently rebasing."));
+	} else if (state->rebase_in_progress || !stat(git_path_merge_msg(), &st)) {
+		print_rebase_state(s, state, color);
 		if (s->hints)
 			status_printf_ln(s, color,
 				_("  (all conflicts fixed: run \"git rebase --continue\")"));
@@ -1255,7 +1367,7 @@ void wt_status_get_state(struct wt_status_state *state,
 	struct stat st;
 	unsigned char sha1[20];
 
-	if (!stat(git_path("MERGE_HEAD"), &st)) {
+	if (!stat(git_path_merge_head(), &st)) {
 		state->merge_in_progress = 1;
 	} else if (!stat(git_path("rebase-apply"), &st)) {
 		if (!stat(git_path("rebase-apply/applying"), &st)) {
@@ -1274,7 +1386,7 @@ void wt_status_get_state(struct wt_status_state *state,
 			state->rebase_in_progress = 1;
 		state->branch = read_and_strip_branch("rebase-merge/head-name");
 		state->onto = read_and_strip_branch("rebase-merge/onto");
-	} else if (!stat(git_path("CHERRY_PICK_HEAD"), &st) &&
+	} else if (!stat(git_path_cherry_pick_head(), &st) &&
 			!get_sha1("CHERRY_PICK_HEAD", sha1)) {
 		state->cherry_pick_in_progress = 1;
 		hashcpy(state->cherry_pick_head_sha1, sha1);
@@ -1283,7 +1395,7 @@ void wt_status_get_state(struct wt_status_state *state,
 		state->bisect_in_progress = 1;
 		state->branch = read_and_strip_branch("BISECT_START");
 	}
-	if (!stat(git_path("REVERT_HEAD"), &st) &&
+	if (!stat(git_path_revert_head(), &st) &&
 	    !get_sha1("REVERT_HEAD", sha1)) {
 		state->revert_in_progress = 1;
 		hashcpy(state->revert_head_sha1, sha1);
@@ -1329,7 +1441,10 @@ void wt_status_print(struct wt_status *s)
 		else if (!strcmp(branch_name, "HEAD")) {
 			branch_status_color = color(WT_STATUS_NOBRANCH, s);
 			if (state.rebase_in_progress || state.rebase_interactive_in_progress) {
-				on_what = _("rebase in progress; onto ");
+				if (state.rebase_interactive_in_progress)
+					on_what = _("interactive rebase in progress; onto ");
+				else
+					on_what = _("rebase in progress; onto ");
 				branch_name = state.onto;
 			} else if (state.detached_from) {
 				branch_name = state.detached_from;
@@ -1536,24 +1651,19 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 
 	color_fprintf(s->fp, branch_color_local, "%s", branch_name);
 
-	switch (stat_tracking_info(branch, &num_ours, &num_theirs)) {
-	case 0:
-		/* no base */
-		fputc(s->null_termination ? '\0' : '\n', s->fp);
-		return;
-	case -1:
-		/* with "gone" base */
+	if (stat_tracking_info(branch, &num_ours, &num_theirs, &base) < 0) {
+		if (!base) {
+			fputc(s->null_termination ? '\0' : '\n', s->fp);
+			return;
+		}
+
 		upstream_is_gone = 1;
-		break;
-	default:
-		/* with base */
-		break;
 	}
 
-	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
 	color_fprintf(s->fp, header_color, "...");
 	color_fprintf(s->fp, branch_color_remote, "%s", base);
+	free((char *)base);
 
 	if (!upstream_is_gone && !num_ours && !num_theirs) {
 		fputc(s->null_termination ? '\0' : '\n', s->fp);

@@ -42,7 +42,7 @@ test_expect_success GPG 'create signed commits' '
 	git tag seventh-unsigned &&
 
 	test_tick && git rebase -f HEAD^^ && git tag sixth-signed HEAD^ &&
-	git tag seventh-signed
+	git tag seventh-signed &&
 
 	echo 8 >file && test_tick && git commit -a -m eighth -SB7227189 &&
 	git tag eighth-signed-alt
@@ -76,6 +76,44 @@ test_expect_success GPG 'verify and show signatures' '
 			grep "Good signature from" actual &&
 			! grep "BAD signature from" actual &&
 			grep "not certified" actual &&
+			echo $commit OK || exit 1
+		done
+	)
+'
+
+test_expect_success GPG 'verify-commit exits success on untrusted signature' '
+	git verify-commit eighth-signed-alt 2>actual &&
+	grep "Good signature from" actual &&
+	! grep "BAD signature from" actual &&
+	grep "not certified" actual
+'
+
+test_expect_success GPG 'verify signatures with --raw' '
+	(
+		for commit in initial second merge fourth-signed fifth-signed sixth-signed seventh-signed
+		do
+			git verify-commit --raw $commit 2>actual &&
+			grep "GOODSIG" actual &&
+			! grep "BADSIG" actual &&
+			echo $commit OK || exit 1
+		done
+	) &&
+	(
+		for commit in merge^2 fourth-unsigned sixth-unsigned seventh-unsigned
+		do
+			test_must_fail git verify-commit --raw $commit 2>actual &&
+			! grep "GOODSIG" actual &&
+			! grep "BADSIG" actual &&
+			echo $commit OK || exit 1
+		done
+	) &&
+	(
+		for commit in eighth-signed-alt
+		do
+			git verify-commit --raw $commit 2>actual &&
+			grep "GOODSIG" actual &&
+			! grep "BADSIG" actual &&
+			grep "TRUST_UNDEFINED" actual &&
 			echo $commit OK || exit 1
 		done
 	)

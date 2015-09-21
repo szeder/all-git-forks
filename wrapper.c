@@ -189,6 +189,41 @@ void *xcalloc(size_t nmemb, size_t size)
 # endif
 #endif
 
+/**
+ * xopen() is the same as open(), but it die()s if the open() fails.
+ */
+int xopen(const char *path, int oflag, ...)
+{
+	mode_t mode = 0;
+	va_list ap;
+
+	/*
+	 * va_arg() will have undefined behavior if the specified type is not
+	 * compatible with the argument type. Since integers are promoted to
+	 * ints, we fetch the next argument as an int, and then cast it to a
+	 * mode_t to avoid undefined behavior.
+	 */
+	va_start(ap, oflag);
+	if (oflag & O_CREAT)
+		mode = va_arg(ap, int);
+	va_end(ap);
+
+	for (;;) {
+		int fd = open(path, oflag, mode);
+		if (fd >= 0)
+			return fd;
+		if (errno == EINTR)
+			continue;
+
+		if ((oflag & O_RDWR) == O_RDWR)
+			die_errno(_("could not open '%s' for reading and writing"), path);
+		else if ((oflag & O_WRONLY) == O_WRONLY)
+			die_errno(_("could not open '%s' for writing"), path);
+		else
+			die_errno(_("could not open '%s' for reading"), path);
+	}
+}
+
 /*
  * xread() is the same a read(), but it automatically restarts read()
  * operations with a recoverable error (EAGAIN and EINTR). xread()
@@ -309,6 +344,27 @@ int xdup(int fd)
 	if (ret < 0)
 		die_errno("dup failed");
 	return ret;
+}
+
+/**
+ * xfopen() is the same as fopen(), but it die()s if the fopen() fails.
+ */
+FILE *xfopen(const char *path, const char *mode)
+{
+	for (;;) {
+		FILE *fp = fopen(path, mode);
+		if (fp)
+			return fp;
+		if (errno == EINTR)
+			continue;
+
+		if (*mode && mode[1] == '+')
+			die_errno(_("could not open '%s' for reading and writing"), path);
+		else if (*mode == 'w' || *mode == 'a')
+			die_errno(_("could not open '%s' for writing"), path);
+		else
+			die_errno(_("could not open '%s' for reading"), path);
+	}
 }
 
 FILE *xfdopen(int fd, const char *mode)
@@ -563,4 +619,61 @@ char *xgetcwd(void)
 	if (strbuf_getcwd(&sb))
 		die_errno(_("unable to get current working directory"));
 	return strbuf_detach(&sb, NULL);
+}
+
+static int write_file_v(const char *path, int fatal,
+			const char *fmt, va_list params)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
+	if (fd < 0) {
+		if (fatal)
+			die_errno(_("could not open %s for writing"), path);
+		return -1;
+	}
+	strbuf_vaddf(&sb, fmt, params);
+	strbuf_complete_line(&sb);
+	if (write_in_full(fd, sb.buf, sb.len) != sb.len) {
+		int err = errno;
+		close(fd);
+		strbuf_release(&sb);
+		errno = err;
+		if (fatal)
+			die_errno(_("could not write to %s"), path);
+		return -1;
+	}
+	strbuf_release(&sb);
+	if (close(fd)) {
+		if (fatal)
+			die_errno(_("could not close %s"), path);
+		return -1;
+	}
+	return 0;
+}
+
+int write_file(const char *path, const char *fmt, ...)
+{
+	int status;
+	va_list params;
+
+	va_start(params, fmt);
+	status = write_file_v(path, 1, fmt, params);
+	va_end(params);
+	return status;
+}
+
+int write_file_gently(const char *path, const char *fmt, ...)
+{
+	int status;
+	va_list params;
+
+	va_start(params, fmt);
+	status = write_file_v(path, 0, fmt, params);
+	va_end(params);
+	return status;
+}
+
+void sleep_millisec(int millisec)
+{
+	poll(NULL, 0, millisec);
 }

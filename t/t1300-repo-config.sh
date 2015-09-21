@@ -353,12 +353,34 @@ test_expect_success '--list without repo produces empty output' '
 '
 
 cat > expect << EOF
+beta.noindent
+nextsection.nonewline
+123456.a123
+version.1.2.3eX.alpha
+EOF
+
+test_expect_success '--name-only --list' '
+	git config --name-only --list >output &&
+	test_cmp expect output
+'
+
+cat > expect << EOF
 beta.noindent sillyValue
 nextsection.nonewline wow2 for me
 EOF
 
 test_expect_success '--get-regexp' '
 	git config --get-regexp in >output &&
+	test_cmp expect output
+'
+
+cat > expect << EOF
+beta.noindent
+nextsection.nonewline
+EOF
+
+test_expect_success '--name-only --get-regexp' '
+	git config --name-only --get-regexp in >output &&
 	test_cmp expect output
 '
 
@@ -677,7 +699,7 @@ test_expect_success 'invalid unit' '
 	echo 1auto >expect &&
 	git config aninvalid.unit >actual &&
 	test_cmp expect actual &&
-	cat >expect <<-\EOF
+	cat >expect <<-\EOF &&
 	fatal: bad numeric config value '\''1auto'\'' for '\''aninvalid.unit'\'' in .git/config: invalid unit
 	EOF
 	test_must_fail git config --int --get aninvalid.unit 2>actual &&
@@ -1165,7 +1187,7 @@ test_expect_failure 'adding a key into an empty section reuses header' '
 	Qkey = value
 	EOF
 
-	git config section.key value
+	git config section.key value &&
 	test_cmp expect .git/config
 '
 

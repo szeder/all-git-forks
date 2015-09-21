@@ -214,16 +214,6 @@ static struct trailer_item *remove_first(struct trailer_item **first)
 	return item;
 }
 
-static int read_from_command(struct child_process *cp, struct strbuf *buf)
-{
-	if (run_command(cp))
-		return error("running trailer command '%s' failed", cp->argv[0]);
-	if (strbuf_read(buf, cp->out, 1024) < 1)
-		return error("reading from trailer command '%s' failed", cp->argv[0]);
-	strbuf_trim(buf);
-	return 0;
-}
-
 static const char *apply_command(const char *command, const char *arg)
 {
 	struct strbuf cmd = STRBUF_INIT;
@@ -240,14 +230,16 @@ static const char *apply_command(const char *command, const char *arg)
 	cp.argv = argv;
 	cp.env = local_repo_env;
 	cp.no_stdin = 1;
-	cp.out = -1;
 	cp.use_shell = 1;
 
-	if (read_from_command(&cp, &buf)) {
+	if (capture_command(&cp, &buf, 1024)) {
+		error("running trailer command '%s' failed", cmd.buf);
 		strbuf_release(&buf);
 		result = xstrdup("");
-	} else
+	} else {
+		strbuf_trim(&buf);
 		result = strbuf_detach(&buf, NULL);
+	}
 
 	strbuf_release(&cmd);
 	return result;
@@ -743,13 +735,22 @@ static int find_patch_start(struct strbuf **lines, int count)
  */
 static int find_trailer_start(struct strbuf **lines, int count)
 {
-	int start, only_spaces = 1;
+	int start, end_of_title, only_spaces = 1;
+
+	/* The first paragraph is the title and cannot be trailers */
+	for (start = 0; start < count; start++) {
+		if (lines[start]->buf[0] == comment_line_char)
+			continue;
+		if (contains_only_spaces(lines[start]->buf))
+			break;
+	}
+	end_of_title = start;
 
 	/*
 	 * Get the start of the trailers by looking starting from the end
 	 * for a line with only spaces before lines with one separator.
 	 */
-	for (start = count - 1; start >= 0; start--) {
+	for (start = count - 1; start >= end_of_title; start--) {
 		if (lines[start]->buf[0] == comment_line_char)
 			continue;
 		if (contains_only_spaces(lines[start]->buf)) {

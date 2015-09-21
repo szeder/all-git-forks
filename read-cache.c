@@ -5,6 +5,7 @@
  */
 #define NO_THE_INDEX_COMPATIBILITY_MACROS
 #include "cache.h"
+#include "tempfile.h"
 #include "lockfile.h"
 #include "cache-tree.h"
 #include "refs.h"
@@ -39,11 +40,12 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 #define CACHE_EXT_TREE 0x54524545	/* "TREE" */
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
 #define CACHE_EXT_LINK 0x6c696e6b	  /* "link" */
+#define CACHE_EXT_UNTRACKED 0x554E5452	  /* "UNTR" */
 
 /* changes that can be kept in $GIT_DIR/index (basically all extensions) */
 #define EXTMASK (RESOLVE_UNDO_CHANGED | CACHE_TREE_CHANGED | \
 		 CE_ENTRY_ADDED | CE_ENTRY_REMOVED | CE_ENTRY_CHANGED | \
-		 SPLIT_INDEX_ORDERED)
+		 SPLIT_INDEX_ORDERED | UNTRACKED_CHANGED)
 
 struct index_state the_index;
 static const char *alternate_index_output;
@@ -79,6 +81,7 @@ void rename_index_entry_at(struct index_state *istate, int nr, const char *new_n
 	memcpy(new->name, new_name, namelen + 1);
 
 	cache_tree_invalidate_path(istate, old->name);
+	untracked_cache_remove_from_index(istate, old->name);
 	remove_index_entry_at(istate, nr);
 	add_index_entry(istate, new, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE);
 }
@@ -270,20 +273,34 @@ static int ce_match_stat_basic(const struct cache_entry *ce, struct stat *st)
 	return changed;
 }
 
+static int is_racy_stat(const struct index_state *istate,
+			const struct stat_data *sd)
+{
+	return (istate->timestamp.sec &&
+#ifdef USE_NSEC
+		 /* nanosecond timestamped files can also be racy! */
+		(istate->timestamp.sec < sd->sd_mtime.sec ||
+		 (istate->timestamp.sec == sd->sd_mtime.sec &&
+		  istate->timestamp.nsec <= sd->sd_mtime.nsec))
+#else
+		istate->timestamp.sec <= sd->sd_mtime.sec
+#endif
+		);
+}
+
 static int is_racy_timestamp(const struct index_state *istate,
 			     const struct cache_entry *ce)
 {
 	return (!S_ISGITLINK(ce->ce_mode) &&
-		istate->timestamp.sec &&
-#ifdef USE_NSEC
-		 /* nanosecond timestamped files can also be racy! */
-		(istate->timestamp.sec < ce->ce_stat_data.sd_mtime.sec ||
-		 (istate->timestamp.sec == ce->ce_stat_data.sd_mtime.sec &&
-		  istate->timestamp.nsec <= ce->ce_stat_data.sd_mtime.nsec))
-#else
-		istate->timestamp.sec <= ce->ce_stat_data.sd_mtime.sec
-#endif
-		 );
+		is_racy_stat(istate, &ce->ce_stat_data));
+}
+
+int match_stat_data_racy(const struct index_state *istate,
+			 const struct stat_data *sd, struct stat *st)
+{
+	if (is_racy_stat(istate, sd))
+		return MTIME_CHANGED;
+	return match_stat_data(sd, st);
 }
 
 int ie_match_stat(const struct index_state *istate,
@@ -538,6 +555,7 @@ int remove_file_from_index(struct index_state *istate, const char *path)
 	if (pos < 0)
 		pos = -pos-1;
 	cache_tree_invalidate_path(istate, path);
+	untracked_cache_remove_from_index(istate, path);
 	while (pos < istate->cache_nr && !strcmp(istate->cache[pos]->name, path))
 		remove_index_entry_at(istate, pos);
 	return 0;
@@ -681,15 +699,18 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	alias = index_file_exists(istate, ce->name, ce_namelen(ce), ignore_case);
 	if (alias && !ce_stage(alias) && !ie_match_stat(istate, alias, st, ce_option)) {
 		/* Nothing changed, really */
-		free(ce);
 		if (!S_ISGITLINK(alias->ce_mode))
 			ce_mark_uptodate(alias);
 		alias->ce_flags |= CE_ADDED;
+
+		free(ce);
 		return 0;
 	}
 	if (!intent_only) {
-		if (index_path(ce->sha1, path, st, HASH_WRITE_OBJECT))
+		if (index_path(ce->sha1, path, st, HASH_WRITE_OBJECT)) {
+			free(ce);
 			return error("unable to index file %s", path);
+		}
 	} else
 		set_object_name_for_intent_to_add_entry(ce);
 
@@ -704,9 +725,11 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 		    ce->ce_mode == alias->ce_mode);
 
 	if (pretend)
-		;
-	else if (add_index_entry(istate, ce, add_option))
-		return error("unable to add %s to index",path);
+		free(ce);
+	else if (add_index_entry(istate, ce, add_option)) {
+		free(ce);
+		return error("unable to add %s to index", path);
+	}
 	if (verbose && !was_same)
 		printf("add '%s'\n", path);
 	return 0;
@@ -743,12 +766,9 @@ struct cache_entry *make_cache_entry(unsigned int mode,
 	ce->ce_mode = create_ce_mode(mode);
 
 	ret = refresh_cache_entry(ce, refresh_options);
-	if (!ret) {
+	if (ret != ce)
 		free(ce);
-		return NULL;
-	} else {
-		return ret;
-	}
+	return ret;
 }
 
 int ce_same_name(const struct cache_entry *a, const struct cache_entry *b)
@@ -979,6 +999,9 @@ static int add_index_entry_with_check(struct index_state *istate, struct cache_e
 		return 0;
 	}
 	pos = -pos-1;
+
+	if (!(option & ADD_CACHE_KEEP_CACHE_TREE))
+		untracked_cache_add_to_index(istate, ce->name);
 
 	/*
 	 * Inserting a merged entry ("stage 0") into the index
@@ -1370,6 +1393,9 @@ static int read_index_extension(struct index_state *istate,
 		if (read_link_extension(istate, data, sz))
 			return -1;
 		break;
+	case CACHE_EXT_UNTRACKED:
+		istate->untracked = read_untracked_extension(data, sz);
+		break;
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
 			return error("index uses %.4s extension, which we do not understand",
@@ -1486,18 +1512,25 @@ static struct cache_entry *create_from_disk(struct ondisk_cache_entry *ondisk,
 	return ce;
 }
 
-static void check_ce_order(struct cache_entry *ce, struct cache_entry *next_ce)
+static void check_ce_order(struct index_state *istate)
 {
-	int name_compare = strcmp(ce->name, next_ce->name);
-	if (0 < name_compare)
-		die("unordered stage entries in index");
-	if (!name_compare) {
-		if (!ce_stage(ce))
-			die("multiple stage entries for merged file '%s'",
-				ce->name);
-		if (ce_stage(ce) > ce_stage(next_ce))
-			die("unordered stage entries for '%s'",
-				ce->name);
+	unsigned int i;
+
+	for (i = 1; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i - 1];
+		struct cache_entry *next_ce = istate->cache[i];
+		int name_compare = strcmp(ce->name, next_ce->name);
+
+		if (0 < name_compare)
+			die("unordered stage entries in index");
+		if (!name_compare) {
+			if (!ce_stage(ce))
+				die("multiple stage entries for merged file '%s'",
+				    ce->name);
+			if (ce_stage(ce) > ce_stage(next_ce))
+				die("unordered stage entries for '%s'",
+				    ce->name);
+		}
 	}
 }
 
@@ -1531,7 +1564,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	if (mmap_size < sizeof(struct cache_header) + 20)
 		die("index file smaller than expected");
 
-	mmap = xmmap(NULL, mmap_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+	mmap = xmmap(NULL, mmap_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (mmap == MAP_FAILED)
 		die_errno("unable to map index file");
 	close(fd);
@@ -1561,9 +1594,6 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		disk_ce = (struct ondisk_cache_entry *)((char *)mmap + src_offset);
 		ce = create_from_disk(disk_ce, &consumed, previous_name);
 		set_index_entry(istate, i, ce);
-
-		if (i > 0)
-			check_ce_order(istate->cache[i - 1], ce);
 
 		src_offset += consumed;
 	}
@@ -1608,11 +1638,10 @@ int read_index_from(struct index_state *istate, const char *path)
 
 	ret = do_read_index(istate, path, 0);
 	split_index = istate->split_index;
-	if (!split_index)
+	if (!split_index || is_null_sha1(split_index->base_sha1)) {
+		check_ce_order(istate);
 		return ret;
-
-	if (is_null_sha1(split_index->base_sha1))
-		return ret;
+	}
 
 	if (split_index->base)
 		discard_index(split_index->base);
@@ -1625,9 +1654,10 @@ int read_index_from(struct index_state *istate, const char *path)
 		die("broken index, expect %s in %s, got %s",
 		    sha1_to_hex(split_index->base_sha1),
 		    git_path("sharedindex.%s",
-				     sha1_to_hex(split_index->base_sha1)),
+			     sha1_to_hex(split_index->base_sha1)),
 		    sha1_to_hex(split_index->base->sha1));
 	merge_base_index(istate);
+	check_ce_order(istate);
 	return ret;
 }
 
@@ -1661,6 +1691,8 @@ int discard_index(struct index_state *istate)
 	istate->cache = NULL;
 	istate->cache_alloc = 0;
 	discard_split_index(istate);
+	free_untracked_cache(istate->untracked);
+	istate->untracked = NULL;
 	return 0;
 }
 
@@ -2047,6 +2079,17 @@ static int do_write_index(struct index_state *istate, int newfd,
 		if (err)
 			return -1;
 	}
+	if (!strip_extensions && istate->untracked) {
+		struct strbuf sb = STRBUF_INIT;
+
+		write_untracked_extension(&sb, istate->untracked);
+		err = write_index_ext_header(&c, newfd, CACHE_EXT_UNTRACKED,
+					     sb.len) < 0 ||
+			ce_write(&c, newfd, sb.buf, sb.len) < 0;
+		strbuf_release(&sb);
+		if (err)
+			return -1;
+	}
 
 	if (ce_flush(&c, newfd, istate->sha1) || fstat(newfd, &st))
 		return -1;
@@ -2071,7 +2114,7 @@ static int commit_locked_index(struct lock_file *lk)
 static int do_write_locked_index(struct index_state *istate, struct lock_file *lock,
 				 unsigned flags)
 {
-	int ret = do_write_index(istate, lock->fd, 0);
+	int ret = do_write_index(istate, get_lock_file_fd(lock), 0);
 	if (ret)
 		return ret;
 	assert((flags & (COMMIT_LOCK | CLOSE_LOCK)) !=
@@ -2095,54 +2138,27 @@ static int write_split_index(struct index_state *istate,
 	return ret;
 }
 
-static char *temporary_sharedindex;
-
-static void remove_temporary_sharedindex(void)
-{
-	if (temporary_sharedindex) {
-		unlink_or_warn(temporary_sharedindex);
-		free(temporary_sharedindex);
-		temporary_sharedindex = NULL;
-	}
-}
-
-static void remove_temporary_sharedindex_on_signal(int signo)
-{
-	remove_temporary_sharedindex();
-	sigchain_pop(signo);
-	raise(signo);
-}
+static struct tempfile temporary_sharedindex;
 
 static int write_shared_index(struct index_state *istate,
 			      struct lock_file *lock, unsigned flags)
 {
 	struct split_index *si = istate->split_index;
-	static int installed_handler;
 	int fd, ret;
 
-	temporary_sharedindex = git_pathdup("sharedindex_XXXXXX");
-	fd = mkstemp(temporary_sharedindex);
+	fd = mks_tempfile(&temporary_sharedindex, git_path("sharedindex_XXXXXX"));
 	if (fd < 0) {
-		free(temporary_sharedindex);
-		temporary_sharedindex = NULL;
 		hashclr(si->base_sha1);
 		return do_write_locked_index(istate, lock, flags);
 	}
-	if (!installed_handler) {
-		atexit(remove_temporary_sharedindex);
-		sigchain_push_common(remove_temporary_sharedindex_on_signal);
-	}
 	move_cache_to_base_index(istate);
 	ret = do_write_index(si->base, fd, 1);
-	close(fd);
 	if (ret) {
-		remove_temporary_sharedindex();
+		delete_tempfile(&temporary_sharedindex);
 		return ret;
 	}
-	ret = rename(temporary_sharedindex,
-		     git_path("sharedindex.%s", sha1_to_hex(si->base->sha1)));
-	free(temporary_sharedindex);
-	temporary_sharedindex = NULL;
+	ret = rename_tempfile(&temporary_sharedindex,
+			      git_path("sharedindex.%s", sha1_to_hex(si->base->sha1)));
 	if (!ret)
 		hashcpy(si->base_sha1, si->base->sha1);
 	return ret;

@@ -51,7 +51,19 @@ test_expect_success 'creating a tag using default HEAD should succeed' '
 	echo foo >foo &&
 	git add foo &&
 	git commit -m Foo &&
-	git tag mytag
+	git tag mytag &&
+	test_must_fail git reflog exists refs/tags/mytag
+'
+
+test_expect_success 'creating a tag with --create-reflog should create reflog' '
+	test_when_finished "git tag -d tag_with_reflog" &&
+	git tag --create-reflog tag_with_reflog &&
+	git reflog exists refs/tags/tag_with_reflog
+'
+
+test_expect_success '--create-reflog does not create reflog on failure' '
+	test_must_fail git tag --create-reflog mytag &&
+	test_must_fail git reflog exists refs/tags/mytag
 '
 
 test_expect_success 'listing all tags if one exists should succeed' '
@@ -1180,8 +1192,8 @@ test_expect_success 'message in editor has initial comment: first line' '
 test_expect_success \
 	'message in editor has initial comment: remainder' '
 	# remove commented lines from the remainder -- should be empty
-	>rest.expect
-	sed -e 1d -e '/^#/d' <actual >rest.actual &&
+	>rest.expect &&
+	sed -e 1d -e "/^#/d" <actual >rest.actual &&
 	test_cmp rest.expect rest.actual
 '
 
@@ -1491,10 +1503,10 @@ run_with_limited_stack () {
 	(ulimit -s 128 && "$@")
 }
 
-test_lazy_prereq ULIMIT 'run_with_limited_stack true'
+test_lazy_prereq ULIMIT_STACK_SIZE 'run_with_limited_stack true'
 
 # we require ulimit, this excludes Windows
-test_expect_success ULIMIT '--contains works in a deep repo' '
+test_expect_success ULIMIT_STACK_SIZE '--contains works in a deep repo' '
 	>expect &&
 	i=1 &&
 	while test $i -lt 8000

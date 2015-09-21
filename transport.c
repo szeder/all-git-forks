@@ -278,12 +278,11 @@ static int fetch_objs_via_rsync(struct transport *transport,
 	return run_command(&rsync);
 }
 
-static int write_one_ref(const char *name, const unsigned char *sha1,
-		int flags, void *data)
+static int write_one_ref(const char *name, const struct object_id *oid,
+			 int flags, void *data)
 {
 	struct strbuf *buf = data;
 	int len = buf->len;
-	FILE *f;
 
 	/* when called via for_each_ref(), flags is non-zero */
 	if (flags && !starts_with(name, "refs/heads/") &&
@@ -292,27 +291,26 @@ static int write_one_ref(const char *name, const unsigned char *sha1,
 
 	strbuf_addstr(buf, name);
 	if (safe_create_leading_directories(buf->buf) ||
-			!(f = fopen(buf->buf, "w")) ||
-			fprintf(f, "%s\n", sha1_to_hex(sha1)) < 0 ||
-			fclose(f))
-		return error("problems writing temporary file %s", buf->buf);
+	    write_file_gently(buf->buf, "%s", oid_to_hex(oid)))
+		return error("problems writing temporary file %s: %s",
+			     buf->buf, strerror(errno));
 	strbuf_setlen(buf, len);
 	return 0;
 }
 
 static int write_refs_to_temp_dir(struct strbuf *temp_dir,
-		int refspec_nr, const char **refspec)
+				  int refspec_nr, const char **refspec)
 {
 	int i;
 
 	for (i = 0; i < refspec_nr; i++) {
-		unsigned char sha1[20];
+		struct object_id oid;
 		char *ref;
 
-		if (dwim_ref(refspec[i], strlen(refspec[i]), sha1, &ref) != 1)
+		if (dwim_ref(refspec[i], strlen(refspec[i]), oid.hash, &ref) != 1)
 			return error("Could not get ref %s", refspec[i]);
 
-		if (write_one_ref(ref, sha1, 0, temp_dir)) {
+		if (write_one_ref(ref, &oid, 0, temp_dir)) {
 			free(ref);
 			return -1;
 		}
@@ -478,9 +476,6 @@ static int set_git_option(struct git_transport_options *opts,
 				die("transport: invalid depth option '%s'", value);
 		}
 		return 0;
-	} else if (!strcmp(name, TRANS_OPT_PUSH_CERT)) {
-		opts->push_cert = !!value;
-		return 0;
 	}
 	return 1;
 }
@@ -519,7 +514,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 			       int nr_heads, struct ref **to_fetch)
 {
 	struct git_transport_data *data = transport->data;
-	const struct ref *refs;
+	struct ref *refs;
 	char *dest = xstrdup(transport->url);
 	struct fetch_pack_args args;
 	struct ref *refs_tmp = NULL;
@@ -552,15 +547,17 @@ static int fetch_refs_via_pack(struct transport *transport,
 			  &transport->pack_lockfile);
 	close(data->fd[0]);
 	close(data->fd[1]);
-	if (finish_connect(data->conn))
+	if (finish_connect(data->conn)) {
+		free_refs(refs);
 		refs = NULL;
+	}
 	data->conn = NULL;
 	data->got_remote_heads = 0;
 	data->options.self_contained_and_connected =
 		args.self_contained_and_connected;
 
 	free_refs(refs_tmp);
-
+	free_refs(refs);
 	free(dest);
 	return (refs ? 0 : -1);
 }
@@ -829,9 +826,15 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	args.progress = transport->progress;
 	args.dry_run = !!(flags & TRANSPORT_PUSH_DRY_RUN);
 	args.porcelain = !!(flags & TRANSPORT_PUSH_PORCELAIN);
-	args.push_cert = !!(flags & TRANSPORT_PUSH_CERT);
 	args.atomic = !!(flags & TRANSPORT_PUSH_ATOMIC);
 	args.url = transport->url;
+
+	if (flags & TRANSPORT_PUSH_CERT_ALWAYS)
+		args.push_cert = SEND_PACK_PUSH_CERT_ALWAYS;
+	else if (flags & TRANSPORT_PUSH_CERT_IF_ASKED)
+		args.push_cert = SEND_PACK_PUSH_CERT_IF_ASKED;
+	else
+		args.push_cert = SEND_PACK_PUSH_CERT_NEVER;
 
 	ret = send_pack(&args, data->fd, data->conn, remote_refs,
 			&data->extra_have);

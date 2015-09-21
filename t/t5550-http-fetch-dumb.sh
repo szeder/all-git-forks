@@ -2,12 +2,6 @@
 
 test_description='test dumb fetching over http via static file'
 . ./test-lib.sh
-
-if test -n "$NO_CURL"; then
-	skip_all='skipping test, git built without http support'
-	test_done
-fi
-
 . "$TEST_DIRECTORY"/lib-httpd.sh
 start_httpd
 
@@ -15,7 +9,7 @@ test_expect_success 'setup repository' '
 	git config push.default matching &&
 	echo content1 >file &&
 	git add file &&
-	git commit -m one
+	git commit -m one &&
 	echo content2 >file &&
 	git add file &&
 	git commit -m two
@@ -184,8 +178,8 @@ test_expect_success 'fetch can handle previously-fetched .idx files' '
 '
 
 test_expect_success 'did not use upload-pack service' '
-	grep '/git-upload-pack' <"$HTTPD_ROOT_PATH"/access.log >act
-	: >exp
+	test_might_fail grep '/git-upload-pack' <"$HTTPD_ROOT_PATH"/access.log >act &&
+	: >exp &&
 	test_cmp exp act
 '
 
