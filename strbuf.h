@@ -365,6 +365,7 @@ extern size_t strbuf_fread(struct strbuf *, size_t, FILE *);
  * any partial read is undone.
  */
 extern ssize_t strbuf_read(struct strbuf *, int fd, size_t hint);
+extern ssize_t strbuf_read_noblock(struct strbuf *, int fd, size_t hint);
 
 /**
  * Read the contents of a file, specified by its path. The third argument

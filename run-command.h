@@ -121,4 +121,33 @@ int start_async(struct async *async);
 int finish_async(struct async *async);
 int in_async(void);
 
+/**
+ * Return 0 if the next child is ready to run.
+ * This callback takes care to initialize the child process and preload the
+ * out and error channel. The preloading of these outpout channels is useful
+ * if you want to have a message printed directly before the output of the
+ * child process.
+ *
+ * Return != 0 if there are no more tasks to be processed.
+ */
+typedef int (*get_next_task)(void *data,
+			     struct child_process *cp,
+			     struct strbuf *err);
+
+/**
+ * Runs up to n processes at the same time. Whenever a process can
+ * be started, the callback `get_next_task` is called to obtain the
+ * data fed to the child process.
+ *
+ * The children started via this function run in parallel and their output
+ * to both stdout and stderr is buffered, while one of the children will
+ * directly output to stdout/stderr.
+ *
+ * This leads to a problem with output from processes which put out to
+ * stdout/err alternatingly as the buffering will not be able to replay
+ * the
+ */
+
+int run_processes_async(int n, get_next_task fn, void *data);
+
 #endif
