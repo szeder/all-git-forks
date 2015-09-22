@@ -19,7 +19,6 @@
 #include "string-list.h"
 #include "notes-merge.h"
 #include "notes-utils.h"
-#include "branch.h"
 #include "worktree.h"
 
 static const char * const git_notes_usage[] = {
