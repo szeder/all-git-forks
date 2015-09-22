@@ -416,15 +416,16 @@ static int list(int ac, const char **av, const char *prefix)
 	else {
 		struct worktree **worktrees = get_worktrees();
 		int path_maxlen = 0;
+		int i;
 
 		if (!porcelain) {
-			for (int i = 0; worktrees[i]; i++) {
+			for (i = 0; worktrees[i]; i++) {
 				int len = strlen(worktrees[i]->path);
 				if (len > path_maxlen)
 					path_maxlen = len;
 			}
 		}
-		for (int i = 0; worktrees[i]; i++) {
+		for (i = 0; worktrees[i]; i++) {
 			if (porcelain)
 				show_worktree_porcelain(worktrees[i]);
 			else

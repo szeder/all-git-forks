@@ -5,7 +5,9 @@
 
 void free_worktrees(struct worktree **worktrees)
 {
-	for (int i = 0; worktrees[i]; i++) {
+	int i;
+
+	for (i = 0; worktrees[i]; i++) {
 		free(worktrees[i]->path);
 		free(worktrees[i]->git_dir);
 		free(worktrees[i]->head_ref);
@@ -63,7 +65,7 @@ static void add_head_info(struct strbuf *head_ref, struct worktree *worktree)
 /**
  * get the main worktree
  */
-static struct worktree *get_main_worktree()
+static struct worktree *get_main_worktree(void)
 {
 	struct worktree *worktree = NULL;
 	struct strbuf path = STRBUF_INIT;
@@ -147,7 +149,7 @@ done:
  * file count in $GIT_COMMON_DIR/worktrees includes '.' and '..' so the
  * minimum is satisfied by counting those entries.
  */
-static int get_estimated_worktree_count()
+static int get_estimated_worktree_count(void)
 {
 	struct strbuf path = STRBUF_INIT;
 	DIR *dir;
@@ -207,8 +209,9 @@ char *find_shared_symref(const char *symref, const char *target)
 	struct strbuf sb = STRBUF_INIT;
 	struct worktree **worktrees = get_worktrees();
 	int symref_is_head = !strcmp("HEAD", symref);
+	int i;
 
-	for (int i = 0; worktrees[i]; i++) {
+	for (i = 0; worktrees[i]; i++) {
 		if (!symref_is_head) {
 			strbuf_reset(&path);
 			strbuf_reset(&sb);
