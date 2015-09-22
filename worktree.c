@@ -63,7 +63,7 @@ static void add_head_info(struct strbuf *head_ref, struct worktree *worktree)
 /**
  * get the main worktree
  */
-static struct worktree *get_main_worktree()
+static struct worktree *get_main_worktree(void)
 {
 	struct worktree *worktree = NULL;
 	struct strbuf path = STRBUF_INIT;
@@ -147,7 +147,7 @@ done:
  * file count in $GIT_COMMON_DIR/worktrees includes '.' and '..' so the
  * minimum is satisfied by counting those entries.
  */
-static int get_estimated_worktree_count()
+static int get_estimated_worktree_count(void)
 {
 	struct strbuf path = STRBUF_INIT;
 	DIR *dir;
