@@ -3,6 +3,8 @@
 #include "exec_cmd.h"
 #include "sigchain.h"
 #include "argv-array.h"
+#include "thread-utils.h"
+#include "strbuf.h"
 
 void child_process_init(struct child_process *child)
 {
@@ -863,4 +865,266 @@ int capture_command(struct child_process *cmd, struct strbuf *buf, size_t hint)
 
 	close(cmd->out);
 	return finish_command(cmd);
+}
+
+struct parallel_processes {
+	void *data;
+
+	int max_processes;
+	int nr_processes;
+
+	get_next_task_fn get_next_task;
+	start_failure_fn start_failure;
+	return_value_fn return_value;
+
+	struct {
+		unsigned in_use : 1;
+		struct child_process process;
+		struct strbuf err;
+	} *children;
+	/*
+	 * The struct pollfd is logically part of *children,
+	 * but the system call expects it as its own array.
+	 */
+	struct pollfd *pfd;
+
+	int output_owner;
+	struct strbuf buffered_output; /* of finished children */
+};
+
+void default_start_failure(void *data,
+			   struct child_process *cp,
+			   struct strbuf *err)
+{
+	int i;
+	struct strbuf sb = STRBUF_INIT;
+
+	for (i = 0; cp->argv[i]; i++)
+		strbuf_addf(&sb, " %s", cp->argv[i]);
+
+	die_errno("Starting a child failed:%s", sb.buf);
+}
+
+void default_return_value(void *data,
+			  struct child_process *cp,
+			  int result)
+{
+	int i;
+	struct strbuf sb = STRBUF_INIT;
+
+	if (!result)
+		return;
+
+	for (i = 0; cp->argv[i]; i++)
+		strbuf_addf(&sb, " %s", cp->argv[i]);
+
+	die_errno("A child failed with return code %d:%s", result, sb.buf);
+}
+
+static void pp_init(struct parallel_processes *pp,
+					int n, void *data,
+					get_next_task_fn get_next_task,
+					start_failure_fn start_failure,
+					return_value_fn return_value)
+{
+	int i;
+
+	if (n < 1)
+		n = online_cpus();
+
+	pp->max_processes = n;
+	pp->data = data;
+	if (!get_next_task)
+		die("BUG: you need to specify a get_next_task function");
+	pp->get_next_task = get_next_task;
+
+	pp->start_failure = start_failure ? start_failure : default_start_failure;
+	pp->return_value = return_value ? return_value : default_return_value;
+
+	pp->nr_processes = 0;
+	pp->output_owner = 0;
+	pp->children = xcalloc(n, sizeof(*pp->children));
+	pp->pfd = xcalloc(n, sizeof(*pp->pfd));
+	strbuf_init(&pp->buffered_output, 0);
+
+	for (i = 0; i < n; i++) {
+		strbuf_init(&pp->children[i].err, 0);
+		pp->pfd[i].events = POLLIN;
+		pp->pfd[i].fd = -1;
+	}
+}
+
+static void pp_cleanup(struct parallel_processes *pp)
+{
+	int i;
+
+	for (i = 0; i < pp->max_processes; i++)
+		strbuf_release(&pp->children[i].err);
+
+	free(pp->children);
+	free(pp->pfd);
+	strbuf_release(&pp->buffered_output);
+}
+
+static void set_nonblocking(int fd)
+{
+	int flags = fcntl(fd, F_GETFL);
+	if (flags < 0)
+		warning("Could not get file status flags, "
+			"output will be degraded");
+	else if (fcntl(fd, F_SETFL, flags | O_NONBLOCK))
+		warning("Could not set file status flags, "
+			"output will be degraded");
+}
+
+/* returns 1 if a process was started, 0 otherwise */
+static int pp_start_one(struct parallel_processes *pp)
+{
+	int i;
+
+	for (i = 0; i < pp->max_processes; i++)
+		if (!pp->children[i].in_use)
+			break;
+	if (i == pp->max_processes)
+		die("BUG: bookkeeping is hard");
+
+	if (!pp->get_next_task(pp->data,
+			       &pp->children[i].process,
+			       &pp->children[i].err))
+		return 1;
+
+	if (start_command(&pp->children[i].process))
+		pp->start_failure(pp->data,
+				  &pp->children[i].process,
+				  &pp->children[i].err);
+
+	set_nonblocking(pp->children[i].process.err);
+
+	pp->nr_processes++;
+	pp->children[i].in_use = 1;
+	pp->pfd[i].fd = pp->children[i].process.err;
+	return 0;
+}
+
+static void pp_buffer_stderr(struct parallel_processes *pp)
+{
+	int i;
+
+	while ((i = poll(pp->pfd, pp->max_processes, 100)) < 0) {
+		if (errno == EINTR)
+			continue;
+		pp_cleanup(pp);
+		die_errno("poll");
+	}
+
+	/* Buffer output from all pipes. */
+	for (i = 0; i < pp->max_processes; i++) {
+		if (pp->children[i].in_use &&
+		    pp->pfd[i].revents & POLLIN)
+			if (strbuf_read_once(&pp->children[i].err,
+					     pp->children[i].process.err, 0) < 0)
+				if (errno != EAGAIN)
+					die_errno("read");
+	}
+}
+
+static void pp_output(struct parallel_processes *pp)
+{
+	int i = pp->output_owner;
+	if (pp->children[i].in_use &&
+	    pp->children[i].err.len) {
+		fputs(pp->children[i].err.buf, stderr);
+		strbuf_reset(&pp->children[i].err);
+	}
+}
+
+static void pp_collect_finished(struct parallel_processes *pp)
+{
+	int i = 0;
+	pid_t pid;
+	int wait_status, code;
+	int n = pp->max_processes;
+
+	while (pp->nr_processes > 0) {
+		pid = waitpid(-1, &wait_status, WNOHANG);
+		if (pid == 0)
+			return;
+
+		if (pid < 0)
+			die_errno("wait");
+
+		for (i = 0; i < pp->max_processes; i++)
+			if (pp->children[i].in_use &&
+			    pid == pp->children[i].process.pid)
+				break;
+		if (i == pp->max_processes)
+			die("BUG: found a child process we were not aware of");
+
+		if (strbuf_read(&pp->children[i].err,
+				pp->children[i].process.err, 0) < 0)
+			die_errno("strbuf_read");
+
+		if (determine_return_value(wait_status, &code, &errno,
+					   pp->children[i].process.argv[0]) < 0)
+			error("waitpid is confused (%s)",
+			      pp->children[i].process.argv[0]);
+
+		pp->return_value(pp->data, &pp->children[i].process, code);
+
+		argv_array_clear(&pp->children[i].process.args);
+		argv_array_clear(&pp->children[i].process.env_array);
+
+		pp->nr_processes--;
+		pp->children[i].in_use = 0;
+		pp->pfd[i].fd = -1;
+
+		if (i != pp->output_owner) {
+			strbuf_addbuf(&pp->buffered_output, &pp->children[i].err);
+			strbuf_reset(&pp->children[i].err);
+		} else {
+			fputs(pp->children[i].err.buf, stderr);
+			strbuf_reset(&pp->children[i].err);
+
+			/* Output all other finished child processes */
+			fputs(pp->buffered_output.buf, stderr);
+			strbuf_reset(&pp->buffered_output);
+
+			/*
+			 * Pick next process to output live.
+			 * NEEDSWORK:
+			 * For now we pick it randomly by doing a round
+			 * robin. Later we may want to pick the one with
+			 * the most output or the longest or shortest
+			 * running process time.
+			 */
+			for (i = 0; i < n; i++)
+				if (pp->children[(pp->output_owner + i) % n].in_use)
+					break;
+			pp->output_owner = (pp->output_owner + i) % n;
+		}
+	}
+}
+
+int run_processes_parallel(int n, void *data,
+			   get_next_task_fn get_next_task,
+			   start_failure_fn start_failure,
+			   return_value_fn return_value)
+{
+	struct parallel_processes pp;
+	pp_init(&pp, n, data, get_next_task, start_failure, return_value);
+
+	while (1) {
+		while (pp.nr_processes < pp.max_processes &&
+		       !pp_start_one(&pp))
+			; /* nothing */
+		if (!pp.nr_processes)
+			break;
+		pp_buffer_stderr(&pp);
+		pp_output(&pp);
+		pp_collect_finished(&pp);
+	}
+
+	pp_cleanup(&pp);
+
+	return 0;
 }
