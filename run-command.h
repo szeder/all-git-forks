@@ -138,6 +138,7 @@ typedef void (*start_failure_fn)(void *data,
 
 typedef void (*return_value_fn)(void *data,
 				struct child_process *cp,
+				struct strbuf *err,
 				int result);
 
 /**

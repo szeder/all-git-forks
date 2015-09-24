@@ -907,6 +907,7 @@ void default_start_failure(void *data,
 
 void default_return_value(void *data,
 			  struct child_process *cp,
+			  struct strbuf *err,
 			  int result)
 {
 	int i;
@@ -977,7 +978,7 @@ static void set_nonblocking(int fd)
 			"output will be degraded");
 }
 
-/* returns 1 if a process was started, 0 otherwise */
+/* return 0 if get_next_task() ran out of things to do, non-zero otherwise */
 static int pp_start_one(struct parallel_processes *pp)
 {
 	int i;
@@ -991,26 +992,30 @@ static int pp_start_one(struct parallel_processes *pp)
 	if (!pp->get_next_task(pp->data,
 			       &pp->children[i].process,
 			       &pp->children[i].err))
-		return 1;
+		return 0;
 
-	if (start_command(&pp->children[i].process))
+	if (start_command(&pp->children[i].process)) {
 		pp->start_failure(pp->data,
 				  &pp->children[i].process,
 				  &pp->children[i].err);
+		strbuf_addbuf(&pp->buffered_output, &pp->children[i].err);
+		strbuf_reset(&pp->children[i].err);
+		return -1;
+	}
 
 	set_nonblocking(pp->children[i].process.err);
 
 	pp->nr_processes++;
 	pp->children[i].in_use = 1;
 	pp->pfd[i].fd = pp->children[i].process.err;
-	return 0;
+	return 1;
 }
 
-static void pp_buffer_stderr(struct parallel_processes *pp)
+static void pp_buffer_stderr(struct parallel_processes *pp, int output_timeout)
 {
 	int i;
 
-	while ((i = poll(pp->pfd, pp->max_processes, 100)) < 0) {
+	while ((i = poll(pp->pfd, pp->max_processes, output_timeout)) < 0) {
 		if (errno == EINTR)
 			continue;
 		pp_cleanup(pp);
@@ -1069,7 +1074,8 @@ static void pp_collect_finished(struct parallel_processes *pp)
 			error("waitpid is confused (%s)",
 			      pp->children[i].process.argv[0]);
 
-		pp->return_value(pp->data, &pp->children[i].process, code);
+		pp->return_value(pp->data, &pp->children[i].process,
+				 &pp->children[i].err, code);
 
 		argv_array_clear(&pp->children[i].process.args);
 		argv_array_clear(&pp->children[i].process.env_array);
@@ -1111,15 +1117,26 @@ int run_processes_parallel(int n, void *data,
 			   return_value_fn return_value)
 {
 	struct parallel_processes pp;
-	pp_init(&pp, n, data, get_next_task, start_failure, return_value);
 
+	pp_init(&pp, n, data, get_next_task, start_failure, return_value);
 	while (1) {
-		while (pp.nr_processes < pp.max_processes &&
-		       !pp_start_one(&pp))
-			; /* nothing */
-		if (!pp.nr_processes)
+		int no_more_task, cnt;
+		int output_timeout = 100;
+		int spawn_cap = 4;
+
+		for (cnt = spawn_cap, no_more_task = 0;
+		     cnt && pp.nr_processes < pp.max_processes;
+		     cnt--) {
+			if (!pp_start_one(&pp)) {
+				no_more_task = 1;
+				break;
+			}
+		}
+
+		if (no_more_task && !pp.nr_processes)
 			break;
-		pp_buffer_stderr(&pp);
+		pp_buffer_stderr(&pp, output_timeout);
+
 		pp_output(&pp);
 		pp_collect_finished(&pp);
 	}
