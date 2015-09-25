@@ -439,7 +439,7 @@ const char *enter_repo(const char *path, int strict)
 		path = validated_path;
 	}
 	else {
-		const char *gitfile = read_gitfile(used_path);
+		const char *gitfile = read_gitfile(path);
 		if (gitfile)
 			path = gitfile;
 		if (chdir(path))
