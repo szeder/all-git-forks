@@ -892,9 +892,9 @@ struct parallel_processes {
 	struct strbuf buffered_output; /* of finished children */
 };
 
-void default_start_failure(void *data,
-			   struct child_process *cp,
-			   struct strbuf *err)
+static void default_start_failure(void *data,
+				  struct child_process *cp,
+				  struct strbuf *err)
 {
 	int i;
 	struct strbuf sb = STRBUF_INIT;
@@ -905,10 +905,10 @@ void default_start_failure(void *data,
 	die_errno("Starting a child failed:%s", sb.buf);
 }
 
-void default_return_value(void *data,
-			  struct child_process *cp,
-			  struct strbuf *err,
-			  int result)
+static void default_return_value(void *data,
+				 struct child_process *cp,
+				 struct strbuf *err,
+				 int result)
 {
 	int i;
 	struct strbuf sb = STRBUF_INIT;

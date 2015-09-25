@@ -627,18 +627,18 @@ struct submodule_parallel_fetch {
 };
 #define SPF_INIT {0, ARGV_ARRAY_INIT, NULL, NULL, 0, 0, 0}
 
-int get_next_submodule(void *data, struct child_process *cp,
-		       struct strbuf *err);
+static int get_next_submodule(void *data, struct child_process *cp,
+			      struct strbuf *err);
 
-void handle_submodule_fetch_start_err(void *data, struct child_process *cp,
-				      struct strbuf *err)
+static void handle_submodule_fetch_start_err(void *data, struct child_process *cp,
+					     struct strbuf *err)
 {
 	struct submodule_parallel_fetch *spf = data;
 	spf->result = 1;
 }
 
-void handle_submodule_fetch_finish(void *data, struct child_process *cp,
-				   struct strbuf *err, int retvalue)
+static void handle_submodule_fetch_finish(void *data, struct child_process *cp,
+					  struct strbuf *err, int retvalue)
 {
 	struct submodule_parallel_fetch *spf = data;
 
@@ -682,8 +682,8 @@ out:
 	return spf.result;
 }
 
-int get_next_submodule(void *data, struct child_process *cp,
-		       struct strbuf *err)
+static int get_next_submodule(void *data, struct child_process *cp,
+			      struct strbuf *err)
 {
 	int ret = 0;
 	struct submodule_parallel_fetch *spf = data;

@@ -16,9 +16,9 @@
 #include <errno.h>
 
 static int number_callbacks;
-int parallel_next(void *data,
-		  struct child_process *cp,
-		  struct strbuf *err)
+static int parallel_next(void *data,
+			 struct child_process *cp,
+			 struct strbuf *err)
 {
 	struct child_process *d = data;
 	if (number_callbacks >= 4)
