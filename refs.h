@@ -571,6 +571,10 @@ enum ref_type ref_type(const char *refname);
 
 int copy_reflog_msg(char *buf, const char *msg);
 
+const char *find_descendant_ref(const char *refname,
+				const struct string_list *extras,
+				const struct string_list *skip);
+
 int files_log_ref_write(const char *refname, const unsigned char *old_sha1,
 			const unsigned char *new_sha1, const char *msg,
 			int flags, struct strbuf *err);
