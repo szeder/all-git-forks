@@ -3218,7 +3218,8 @@ enum ref_transaction_state {
  * consist of checks and updates to multiple references, carried out
  * as atomically as possible.  This structure is opaque to callers.
  */
-struct ref_transaction {
+struct files_ref_transaction {
+	struct ref_transaction base;
 	struct ref_update **updates;
 	size_t alloc;
 	size_t nr;
@@ -3229,12 +3230,15 @@ static struct ref_transaction *files_transaction_begin(struct strbuf *err)
 {
 	assert(err);
 
-	return xcalloc(1, sizeof(struct ref_transaction));
+	return xcalloc(1, sizeof(struct files_ref_transaction));
 }
 
-static void files_transaction_free(struct ref_transaction *transaction)
+static void files_transaction_free(struct ref_transaction *trans)
 {
 	int i;
+
+	struct files_ref_transaction *transaction =
+		(struct files_ref_transaction *)trans;
 
 	if (!transaction)
 		return;
@@ -3247,7 +3251,7 @@ static void files_transaction_free(struct ref_transaction *transaction)
 	free(transaction);
 }
 
-static struct ref_update *add_update(struct ref_transaction *transaction,
+static struct ref_update *add_update(struct files_ref_transaction *transaction,
 				     const char *refname)
 {
 	size_t len = strlen(refname) + 1;
@@ -3259,7 +3263,7 @@ static struct ref_update *add_update(struct ref_transaction *transaction,
 	return update;
 }
 
-static int files_transaction_update(struct ref_transaction *transaction,
+static int files_transaction_update(struct ref_transaction *trans,
 				  const char *refname,
 				  const unsigned char *new_sha1,
 				  const unsigned char *old_sha1,
@@ -3267,6 +3271,8 @@ static int files_transaction_update(struct ref_transaction *transaction,
 				  struct strbuf *err)
 {
 	struct ref_update *update;
+	struct files_ref_transaction *transaction =
+		(struct files_ref_transaction *)trans;
 
 	assert(err);
 
@@ -3350,10 +3356,12 @@ static int ref_update_reject_duplicates(struct string_list *refnames,
 	return 0;
 }
 
-static int files_transaction_commit(struct ref_transaction *transaction,
+static int files_transaction_commit(struct ref_transaction *trans,
 				  struct strbuf *err)
 {
 	int ret = 0, i;
+	struct files_ref_transaction *transaction =
+		(struct files_ref_transaction *)trans;
 	int n = transaction->nr;
 	struct ref_update **updates = transaction->updates;
 	struct string_list refs_to_delete = STRING_LIST_INIT_NODUP;
@@ -3517,10 +3525,12 @@ static int ref_present(const char *refname,
 	return string_list_has_string(affected_refnames, refname);
 }
 
-static int files_initial_transaction_commit(struct ref_transaction *transaction,
+static int files_initial_transaction_commit(struct ref_transaction *trans,
 					    struct strbuf *err)
 {
 	int ret = 0, i;
+	struct files_ref_transaction *transaction =
+		(struct files_ref_transaction *)trans;
 	int n = transaction->nr;
 	struct ref_update **updates = transaction->updates;
 	struct string_list affected_refnames = STRING_LIST_INIT_NODUP;
