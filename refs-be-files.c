@@ -3633,12 +3633,12 @@ static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	return 0;
 }
 
-int reflog_expire(const char *refname, const unsigned char *sha1,
-		  unsigned int flags,
-		  reflog_expiry_prepare_fn prepare_fn,
-		  reflog_expiry_should_prune_fn should_prune_fn,
-		  reflog_expiry_cleanup_fn cleanup_fn,
-		  void *policy_cb_data)
+static int files_reflog_expire(const char *refname, const unsigned char *sha1,
+			       unsigned int flags,
+			       reflog_expiry_prepare_fn prepare_fn,
+			       reflog_expiry_should_prune_fn should_prune_fn,
+			       reflog_expiry_cleanup_fn cleanup_fn,
+			       void *policy_cb_data)
 {
 	static struct lock_file reflog_lock;
 	struct expire_reflog_cb cb;
@@ -3755,6 +3755,7 @@ struct ref_be refs_be_files = {
 	files_reflog_exists,
 	files_create_reflog,
 	files_delete_reflog,
+	files_reflog_expire,
 	files_resolve_ref_unsafe,
 	files_verify_refname_available,
 	files_pack_refs,
