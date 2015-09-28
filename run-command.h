@@ -119,4 +119,5 @@ struct async {
 int start_async(struct async *async);
 int finish_async(struct async *async);
 
+extern int total_commands_run;
 #endif
