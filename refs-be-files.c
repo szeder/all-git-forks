@@ -2727,6 +2727,14 @@ static int log_ref_write(const char *refname, const unsigned char *old_sha1,
 			 const unsigned char *new_sha1, const char *msg,
 			 int flags, struct strbuf *err)
 {
+	return files_log_ref_write(refname, old_sha1, new_sha1, msg, flags,
+				   err);
+}
+
+int files_log_ref_write(const char *refname, const unsigned char *old_sha1,
+			const unsigned char *new_sha1, const char *msg,
+			int flags, struct strbuf *err)
+{
 	struct strbuf sb = STRBUF_INIT;
 	int ret = log_ref_write_1(refname, old_sha1, new_sha1, msg, &sb, flags,
 				  err);
@@ -2902,7 +2910,7 @@ static int files_create_symref(struct ref_transaction *trans,
 	return 0;
 }
 
-static int files_reflog_exists(const char *refname)
+int files_reflog_exists(const char *refname)
 {
 	struct stat st;
 
@@ -2910,7 +2918,7 @@ static int files_reflog_exists(const char *refname)
 		S_ISREG(st.st_mode);
 }
 
-static int files_delete_reflog(const char *refname)
+int files_delete_reflog(const char *refname)
 {
 	return remove_path(git_path("logs/%s", refname));
 }
@@ -2954,9 +2962,9 @@ static char *find_beginning_of_line(char *bob, char *scan)
 	return scan;
 }
 
-static int files_for_each_reflog_ent_reverse(const char *refname,
-					     each_reflog_ent_fn fn,
-					     void *cb_data)
+int files_for_each_reflog_ent_reverse(const char *refname,
+				      each_reflog_ent_fn fn,
+				      void *cb_data)
 {
 	struct strbuf sb = STRBUF_INIT;
 	FILE *logfp;
@@ -3058,8 +3066,8 @@ static int files_for_each_reflog_ent_reverse(const char *refname,
 	return ret;
 }
 
-static int files_for_each_reflog_ent(const char *refname,
-				     each_reflog_ent_fn fn, void *cb_data)
+int files_for_each_reflog_ent(const char *refname,
+			      each_reflog_ent_fn fn, void *cb_data)
 {
 	FILE *logfp;
 	struct strbuf sb = STRBUF_INIT;
@@ -3604,12 +3612,12 @@ static int expire_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	return 0;
 }
 
-static int files_reflog_expire(const char *refname, const unsigned char *sha1,
-			       unsigned int flags,
-			       reflog_expiry_prepare_fn prepare_fn,
-			       reflog_expiry_should_prune_fn should_prune_fn,
-			       reflog_expiry_cleanup_fn cleanup_fn,
-			       void *policy_cb_data)
+int files_reflog_expire(const char *refname, const unsigned char *sha1,
+			unsigned int flags,
+			reflog_expiry_prepare_fn prepare_fn,
+			reflog_expiry_should_prune_fn should_prune_fn,
+			reflog_expiry_cleanup_fn cleanup_fn,
+			void *policy_cb_data)
 {
 	static struct lock_file reflog_lock;
 	struct expire_reflog_cb cb;

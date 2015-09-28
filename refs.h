@@ -571,6 +571,10 @@ enum ref_type ref_type(const char *refname);
 
 int copy_reflog_msg(char *buf, const char *msg);
 
+int files_log_ref_write(const char *refname, const unsigned char *old_sha1,
+			const unsigned char *new_sha1, const char *msg,
+			int flags, struct strbuf *err);
+
 enum expire_reflog_flags {
 	EXPIRE_REFLOGS_DRY_RUN = 1 << 0,
 	EXPIRE_REFLOGS_UPDATE_REF = 1 << 1,
@@ -603,6 +607,22 @@ typedef int reflog_expiry_should_prune_fn(unsigned char *osha1,
 					  unsigned long timestamp, int tz,
 					  const char *message, void *cb_data);
 typedef void reflog_expiry_cleanup_fn(void *cb_data);
+
+int files_reflog_expire(const char *refname, const unsigned char *sha1,
+			unsigned int flags,
+			reflog_expiry_prepare_fn prepare_fn,
+			reflog_expiry_should_prune_fn should_prune_fn,
+			reflog_expiry_cleanup_fn cleanup_fn,
+			void *policy_cb_data);
+
+int files_for_each_reflog_ent(const char *refname,
+			      each_reflog_ent_fn fn, void *cb_data);
+
+int files_for_each_reflog_ent_reverse(const char *refname,
+				      each_reflog_ent_fn fn, void *cb_data);
+
+int files_delete_reflog(const char *refname);
+int files_reflog_exists(const char *refname);
 
 /*
  * Expire reflog entries for the specified reference. sha1 is the old
