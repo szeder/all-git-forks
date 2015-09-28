@@ -764,5 +764,6 @@ struct ref_be {
 
 extern struct ref_be refs_be_files;
 int set_refs_backend(const char *name, void *init_data);
+void register_refs_backend(struct ref_be *be);
 
 #endif /* REFS_H */
