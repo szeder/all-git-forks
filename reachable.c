@@ -15,6 +15,11 @@ struct connectivity_progress {
 	unsigned long count;
 };
 
+struct add_one_data {
+	struct rev_info *revs;
+	struct string_list *broken_symrefs;
+};
+
 static void update_progress(struct connectivity_progress *cp)
 {
 	cp->count++;
@@ -24,16 +29,19 @@ static void update_progress(struct connectivity_progress *cp)
 
 static int add_one_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
 {
-	struct rev_info *revs = (struct rev_info *)cb_data;
+	struct add_one_data *data = (struct add_one_data *)cb_data;
 	struct object *object;
 
 	if ((flag & REF_ISSYMREF) && (flag & REF_ISBROKEN)) {
-		warning("ref is broken: %s", path);
+		if (data->broken_symrefs)
+			string_list_append(data->broken_symrefs, path);
+		else
+			warning("ref is broken: %s", path);
 		return 0;
 	}
 
 	object = parse_object_or_die(sha1, path);
-	add_pending_object(revs, object, "");
+	add_pending_object(data->revs, object, "");
 
 	return 0;
 }
@@ -158,9 +166,11 @@ int add_unseen_recent_objects_to_traversal(struct rev_info *revs,
 
 void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 			    unsigned long mark_recent,
-			    struct progress *progress)
+			    struct progress *progress,
+			    struct string_list *broken_symrefs)
 {
 	struct connectivity_progress cp;
+	struct add_one_data data;
 
 	/*
 	 * Set up revision parsing, and mark us as being interested
@@ -173,11 +183,14 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	/* Add all refs from the index file */
 	add_index_objects_to_pending(revs, 0);
 
+	data.revs = revs;
+	data.broken_symrefs = broken_symrefs;
+
 	/* Add all external refs */
-	for_each_ref(add_one_ref, revs);
+	for_each_ref(add_one_ref, &data);
 
 	/* detached HEAD is not included in the list above */
-	head_ref(add_one_ref, revs);
+	head_ref(add_one_ref, &data);
 
 	/* Add all reflog info */
 	if (mark_reflog)
