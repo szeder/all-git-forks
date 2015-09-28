@@ -7,6 +7,7 @@
 #include "parse-options.h"
 #include "progress.h"
 #include "dir.h"
+#include "refs.h"
 
 static const char * const prune_usage[] = {
 	N_("git prune [-n] [-v] [--expire <time>] [--] [<head>...]"),
@@ -101,6 +102,7 @@ static void remove_temporary_files(const char *path)
 int cmd_prune(int argc, const char **argv, const char *prefix)
 {
 	struct rev_info revs;
+	struct string_list broken_symrefs = STRING_LIST_INIT_DUP;
 	struct progress *progress = NULL;
 	const struct option options[] = {
 		OPT__DRY_RUN(&show_only, N_("do not remove, show only")),
@@ -111,6 +113,7 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 	char *s;
+	int i;
 
 	expire = ULONG_MAX;
 	save_commit_buffer = 0;
@@ -136,7 +139,13 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 	if (show_progress)
 		progress = start_progress_delay(_("Checking connectivity"), 0, 0, 2);
 
-	mark_reachable_objects(&revs, 1, expire, progress, NULL);
+	mark_reachable_objects(&revs, 1, expire, progress, &broken_symrefs);
+	for (i = 0; i < broken_symrefs.nr; i++) {
+		char *path = broken_symrefs.items[i].string;
+		printf("Removing stale ref %s\n", path);
+		if (!show_only && delete_ref(path, NULL, REF_NODEREF))
+			die("Could not remove stale ref %s", path);
+	}
 	stop_progress(&progress);
 	for_each_loose_file_in_objdir(get_object_directory(), prune_object,
 				      prune_cruft, prune_subdir, NULL);

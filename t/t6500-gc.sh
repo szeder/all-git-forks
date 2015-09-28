@@ -30,7 +30,7 @@ test_expect_success 'gc -h with invalid configuration' '
 	test_i18ngrep "[Uu]sage" broken/usage
 '
 
-test_expect_failure 'gc removes broken refs/remotes/<name>/HEAD' '
+test_expect_success 'gc removes broken refs/remotes/<name>/HEAD' '
 	git init remote &&
 	(
 		cd remote &&
