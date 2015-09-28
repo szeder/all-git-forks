@@ -508,6 +508,8 @@ enum ref_type {
 
 enum ref_type ref_type(const char *refname);
 
+int copy_reflog_msg(char *buf, const char *msg);
+
 enum expire_reflog_flags {
 	EXPIRE_REFLOGS_DRY_RUN = 1 << 0,
 	EXPIRE_REFLOGS_UPDATE_REF = 1 << 1,
