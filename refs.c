@@ -1056,3 +1056,10 @@ int for_each_replace_ref(each_ref_fn fn, void *cb_data)
 {
 	return the_refs_backend->for_each_replace_ref(fn, cb_data);
 }
+
+int for_each_reftype_fullpath(each_ref_fn fn, char *type, unsigned int broken,
+			      void *cb_data)
+{
+	return the_refs_backend->for_each_reftype_fullpath(fn, type, broken,
+							   cb_data);
+}

@@ -580,6 +580,8 @@ typedef int (*for_each_ref_in_submodule_fn)(const char *submodule,
 typedef int (*for_each_rawref_fn)(each_ref_fn fn, void *cb_data);
 typedef int (*for_each_namespaced_ref_fn)(each_ref_fn fn, void *cb_data);
 typedef int (*for_each_replace_ref_fn)(each_ref_fn fn, void *cb_data);
+typedef int (*for_each_reftype_fullpath_fn)(each_ref_fn fn, char *type,
+					    unsigned int broken, void *cb_data);
 
 struct ref_be {
 	struct ref_be *next;
@@ -607,6 +609,7 @@ struct ref_be {
 	for_each_rawref_fn for_each_rawref;
 	for_each_namespaced_ref_fn for_each_namespaced_ref;
 	for_each_replace_ref_fn for_each_replace_ref;
+	for_each_reftype_fullpath_fn for_each_reftype_fullpath;
 };
 
 
