@@ -1961,6 +1961,16 @@ static int files_for_each_replace_ref(each_ref_fn fn, void *cb_data)
 			       strlen(git_replace_ref_base), 0, cb_data);
 }
 
+static int files_for_each_reftype_fullpath(each_ref_fn fn, char *type,
+					   unsigned int broken, void *cb_data)
+{
+	unsigned int flag = 0;
+
+	if (broken)
+		flag = DO_FOR_EACH_INCLUDE_BROKEN;
+	return do_for_each_ref(&ref_cache, type, fn, 0, flag, cb_data);
+}
+
 static int files_for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -3863,4 +3873,5 @@ struct ref_be refs_be_files = {
 	files_for_each_rawref,
 	files_for_each_namespaced_ref,
 	files_for_each_replace_ref,
+	files_for_each_reftype_fullpath,
 };
