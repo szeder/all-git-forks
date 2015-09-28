@@ -672,6 +672,7 @@ struct ref_be {
 	ref_transaction_delete_fn transaction_delete;
 	ref_transaction_verify_fn transaction_verify;
 	ref_transaction_commit_fn transaction_commit;
+	ref_transaction_commit_fn initial_transaction_commit;
 	ref_transaction_free_fn transaction_free;
 	for_each_reflog_ent_fn for_each_reflog_ent;
 	for_each_reflog_ent_reverse_fn for_each_reflog_ent_reverse;
