@@ -193,6 +193,30 @@ struct ref_transaction {
 #define DO_FOR_EACH_PER_WORKTREE_ONLY 0x02
 
 /*
+ * Flag passed to lock_ref_sha1_basic() telling it to tolerate broken
+ * refs (i.e., because the reference is about to be deleted anyway).
+ */
+#define REF_DELETING	0x02
+
+/*
+ * Used as a flag in ref_update::flags when a loose ref is being
+ * pruned.
+ */
+#define REF_ISPRUNING	0x04
+
+/*
+ * Used as a flag in ref_update::flags when the reference should be
+ * updated to new_sha1.
+ */
+#define REF_HAVE_NEW	0x08
+
+/*
+ * Used as a flag in ref_update::flags when old_sha1 should be
+ * checked.
+ */
+#define REF_HAVE_OLD	0x10
+
+/*
  * The signature for the callback function for the for_each_*()
  * functions below.  The memory pointed to by the refname and sha1
  * arguments is only guaranteed to be valid for the duration of a
