@@ -586,6 +586,7 @@ extern int reflog_expire(const char *refname, const unsigned char *sha1,
 			 void *policy_cb_data);
 
 /* refs backends */
+typedef void (*ref_backend_init_fn)(void *data);
 typedef struct ref_transaction *(*ref_transaction_begin_fn)(struct strbuf *err);
 typedef int (*ref_transaction_update_fn)(struct ref_transaction *transaction,
 		const char *refname, const unsigned char *new_sha1,
@@ -641,6 +642,7 @@ typedef int (*for_each_reftype_fullpath_fn)(each_ref_fn fn, char *type,
 struct ref_be {
 	struct ref_be *next;
 	const char *name;
+	ref_backend_init_fn init_backend;
 	ref_transaction_begin_fn transaction_begin;
 	ref_transaction_update_fn transaction_update;
 	ref_transaction_create_fn transaction_create;
@@ -669,6 +671,6 @@ struct ref_be {
 
 
 extern struct ref_be refs_be_files;
-int set_refs_backend(const char *name);
+int set_refs_backend(const char *name, void *init_data);
 
 #endif /* REFS_H */
