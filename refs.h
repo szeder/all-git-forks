@@ -130,7 +130,7 @@ extern int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
  *
  * Calling sequence
  * ----------------
- * - Allocate and initialize a `struct ref_transaction` by calling
+ * - Allocate and initialize a transaction by calling
  *   `ref_transaction_begin()`.
  *
  * - List intended ref updates by calling functions like
@@ -156,7 +156,10 @@ extern int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
  * The message is appended to err without first clearing err.
  * err will not be '\n' terminated.
  */
-struct ref_transaction;
+
+struct ref_transaction {
+	/* ref backends should extend this */
+};
 
 /*
  * Bit values set in the flags argument passed to each_ref_fn():
@@ -629,6 +632,7 @@ typedef int (*reflog_expire_fn)(const char *refname, const unsigned char *sha1,
 				void *policy_cb_data);
 
 /* resolution functions */
+typedef void (*ref_transaction_free_fn)(struct ref_transaction *transaction);
 typedef const char *(*resolve_ref_unsafe_fn)(const char *ref,
 					     int resolve_flags,
 					     unsigned char *sha1, int *flags);
