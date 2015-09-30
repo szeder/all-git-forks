@@ -50,3 +50,12 @@ void sigchain_push_common(sigchain_fun f)
 	sigchain_push(SIGQUIT, f);
 	sigchain_push(SIGPIPE, f);
 }
+
+void sigchain_pop_common(void)
+{
+	sigchain_pop(SIGINT);
+	sigchain_pop(SIGHUP);
+	sigchain_pop(SIGTERM);
+	sigchain_pop(SIGQUIT);
+	sigchain_pop(SIGPIPE);
+}
