@@ -1300,6 +1300,7 @@ static enum path_treatment treat_directory(struct dir_struct *dir,
 	const char *dirname, int len, int baselen, int exclude,
 	const struct path_simplify *simplify)
 {
+	dir->flags |= DIR_NO_GITLINKS;
 	/* The "len-1" is to strip the final '/' */
 	switch (directory_exists_in_index(dirname, len-1)) {
 	case index_directory:
@@ -2182,7 +2183,7 @@ void setup_standard_excludes(struct dir_struct *dir)
 {
 	const char *path;
 
-	dir->exclude_per_dir = ".gitignore";
+	dir->exclude_per_dir = ".cwpignore";
 
 	/* core.excludefile defaulting to $XDG_HOME/git/ignore */
 	if (!excludes_file)
