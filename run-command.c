@@ -1087,6 +1087,8 @@ static int pp_collect_finished(struct parallel_processes *pp)
 				pp->children[i].process.err, 0) < 0)
 			die_errno("strbuf_read");
 
+		code = 0;
+
 		if (WIFSIGNALED(wait_status)) {
 			code = WTERMSIG(wait_status);
 			if (!pp->shutdown &&
