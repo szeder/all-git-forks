@@ -294,4 +294,12 @@ void string_list_add_refs_from_colon_sep(struct string_list *list,
 /* Expand inplace a note ref like "foo" or "notes/foo" into "refs/notes/foo" */
 void expand_notes_ref(struct strbuf *sb);
 
+/*
+ * Similar to expand_notes_ref, but allows arbitrary refs to be expanded via
+ * get_sha1 first. If get_sha1 fails to find a ref, fall back to traditional
+ * expand_notes_ref. The contents of the strbuf will be suitable to attempt
+ * passing to get_sha1 again inside the notes machinery.
+ */
+void expand_loose_notes_ref(struct strbuf *sb);
+
 #endif
