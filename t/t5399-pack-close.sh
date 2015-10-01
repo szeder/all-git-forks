@@ -17,9 +17,9 @@ test_expect_success 'pack exists' 'test_path_is_file "$pack_path"'
 
 test_expect_success TTY 'pack removed by pager' '
 	test_terminal env pack_path="$pack_path" \
-		PAGER="/bin/sh -c '\''cat >/dev/null && rm -- \"\$pack_path\"'\''" \
+		PAGER="/bin/sh -c '\''cat >/dev/null && lsof -- \"\$pack_path\" >pack_opened'\''" \
 		git log &&
-	test_path_is_missing "$pack_path"
+	test_must_be_empty pack_opened
 '
 
 test_done
