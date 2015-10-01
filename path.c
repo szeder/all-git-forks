@@ -781,15 +781,19 @@ int normalize_path_copy(char *dst, const char *src)
 int longest_ancestor_length(const char *path, struct string_list *prefixes)
 {
 	int i, max_len = -1;
+	const char *sysroot = getenv("SYSROOT");
 
-	if (!strcmp(path, "/"))
+	if (sysroot == NULL)
+		sysroot = "/";
+
+	if (!strcmp(path, sysroot))
 		return -1;
 
 	for (i = 0; i < prefixes->nr; i++) {
 		const char *ceil = prefixes->items[i].string;
 		int len = strlen(ceil);
 
-		if (len == 1 && ceil[0] == '/')
+		if (len == strlen(sysroot) && !strcmp(ceil, sysroot))
 			len = 0; /* root matches anything, with length 0 */
 		else if (!strncmp(path, ceil, len) && path[len] == '/')
 			; /* match of length len */

@@ -35,13 +35,15 @@ rootoff=$(test-path-utils normalize_path_copy / | wc -c)
 if test $rootoff = 2; then
 	rootoff=	# we are on Unix
 else
-	rootoff=$(($rootoff-1))
+	rootoff=$(($rootoff-2))
 fi
 
 ancestor() {
 	# We do some math with the expected ancestor length.
 	expected=$3
-	if test -n "$rootoff" && test "x$expected" != x-1; then
+	if test -n "$rootoff" && \
+	   test "x$expected" != x-1 && \
+	   test "x$expected" != x0; then
 		expected=$(($expected+$rootoff))
 	fi
 	test_expect_success "longest ancestor: $1 $2 => $expected" \
@@ -53,6 +55,7 @@ ancestor() {
 # on POSIX-style absolute paths
 case $(uname -s) in
 *MINGW*)
+	export SYSROOT=$(cygpath -m /)
 	;;
 *)
 	test_set_prereq POSIX
