@@ -376,8 +376,8 @@ static void show_worktree_porcelain(struct worktree *worktree)
 	}
 	printf("\n");
 }
-static void show_worktree(
-		struct worktree *worktree, int path_maxlen, int abbrev_len)
+
+static void show_worktree(struct worktree *worktree, int path_maxlen, int abbrev_len)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int cur_path_len = strlen(worktree->path);
@@ -399,6 +399,22 @@ static void show_worktree(
 	strbuf_release(&sb);
 }
 
+static void measure_widths(struct worktree **wt, int *abbrev, int *maxlen)
+{
+	int i;
+
+	for (i = 0; wt[i]; i++) {
+		int sha1_len;
+		int path_len = strlen(wt[i]->path);
+
+		if (path_len > *maxlen)
+			*maxlen = path_len;
+		sha1_len = strlen(find_unique_abbrev(wt[i]->head_sha1, *abbrev));
+		if (sha1_len > *abbrev)
+			*abbrev = sha1_len;
+	}
+}
+
 static int list(int ac, const char **av, const char *prefix)
 {
 	int porcelain = 0;
@@ -413,21 +429,11 @@ static int list(int ac, const char **av, const char *prefix)
 		usage_with_options(worktree_usage, options);
 	else {
 		struct worktree **worktrees = get_worktrees();
-		int path_maxlen = 0;
-		int abbrev = 0;
-		int i;
+		int path_maxlen = 0, abbrev = DEFAULT_ABBREV, i;
 
-		if (!porcelain) {
-			for (i = 0; worktrees[i]; i++) {
-				int path_len = strlen(worktrees[i]->path);
-				if (path_len > path_maxlen)
-					path_maxlen = path_len;
-				int sha1_len = strlen(
-						find_unique_abbrev(worktrees[i]->head_sha1, DEFAULT_ABBREV));
-				if (sha1_len > abbrev)
-					abbrev = sha1_len;
-			}
-		}
+		if (!porcelain)
+			measure_widths(worktrees, &abbrev, &path_maxlen);
+
 		for (i = 0; worktrees[i]; i++) {
 			if (porcelain)
 				show_worktree_porcelain(worktrees[i]);
