@@ -1104,7 +1104,7 @@ static void write_accept_language(struct strbuf *buf)
 		     decimal_places++, max_q *= 10)
 			;
 
-		sprintf(q_format, ";q=0.%%0%dd", decimal_places);
+		xsnprintf(q_format, sizeof(q_format), ";q=0.%%0%dd", decimal_places);
 
 		strbuf_addstr(buf, "Accept-Language: ");
 
@@ -1511,6 +1511,7 @@ int finish_http_pack_request(struct http_pack_request *preq)
 	struct packed_git **lst;
 	struct packed_git *p = preq->target;
 	char *tmp_idx;
+	size_t len;
 	struct child_process ip = CHILD_PROCESS_INIT;
 	const char *ip_argv[8];
 
@@ -1524,9 +1525,9 @@ int finish_http_pack_request(struct http_pack_request *preq)
 		lst = &((*lst)->next);
 	*lst = (*lst)->next;
 
-	tmp_idx = xstrdup(preq->tmpfile);
-	strcpy(tmp_idx + strlen(tmp_idx) - strlen(".pack.temp"),
-	       ".idx.temp");
+	if (!strip_suffix(preq->tmpfile, ".pack.temp", &len))
+		die("BUG: pack tmpfile does not end in .pack.temp?");
+	tmp_idx = xstrfmt("%.*s.idx.temp", (int)len, preq->tmpfile);
 
 	ip_argv[0] = "index-pack";
 	ip_argv[1] = "-o";
@@ -1601,7 +1602,7 @@ struct http_pack_request *new_http_pack_request(
 			fprintf(stderr,
 				"Resuming fetch of pack %s at byte %ld\n",
 				sha1_to_hex(target->sha1), prev_posn);
-		sprintf(range, "Range: bytes=%ld-", prev_posn);
+		xsnprintf(range, sizeof(range), "Range: bytes=%ld-", prev_posn);
 		preq->range_header = curl_slist_append(NULL, range);
 		curl_easy_setopt(preq->slot->curl, CURLOPT_HTTPHEADER,
 			preq->range_header);
@@ -1761,7 +1762,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 			fprintf(stderr,
 				"Resuming fetch of object %s at byte %ld\n",
 				hex, prev_posn);
-		sprintf(range, "Range: bytes=%ld-", prev_posn);
+		xsnprintf(range, sizeof(range), "Range: bytes=%ld-", prev_posn);
 		range_header = curl_slist_append(range_header, range);
 		curl_easy_setopt(freq->slot->curl,
 				 CURLOPT_HTTPHEADER, range_header);
