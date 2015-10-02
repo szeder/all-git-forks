@@ -58,6 +58,7 @@ static struct {
 	{ "if" },
 	{ "then" },
 	{ "else" },
+	{ "path" },
 };
 
 #define REF_FORMATTING_STATE_INIT  { 0, NULL }
@@ -1041,6 +1042,22 @@ static void populate_value(struct ref_array_item *ref)
 			continue;
 		} else if (!strcmp(name, "else")) {
 			v->handler = else_atom_handler;
+			continue;
+		} else if (match_atom_name(name, "path", &valp)) {
+			const char *sp, *ep;
+
+			if (ref->kind & FILTER_REFS_DETACHED_HEAD)
+				continue;
+
+			sp = strchr(ref->refname, '/');
+			ep = strchr(++sp, '/');
+
+			if (!valp)
+				sp = ref->refname;
+			else if (strcmp(valp, "short"))
+				die(_("format: invalid value given path:%s"), valp);
+
+			v->s = xstrndup(sp, ep - sp);
 			continue;
 		} else
 			continue;

@@ -312,11 +312,50 @@ test_expect_success 'check %(if:equals=<string>)' '
 	test_cmp expect actual
 '
 
+
 test_expect_success 'check %(if:notequals=<string>)' '
 	git for-each-ref --format="%(if:notequals=master)%(refname:short)%(then)Not master%(else)Found master%(end)" refs/heads/ >actual &&
 	cat >expect <<-\EOF &&
 	Found master
 	Not master
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'check %(path)' '
+	git for-each-ref --format="%(path)" >actual &&
+	cat >expect <<-\EOF &&
+	refs/heads
+	refs/heads
+	refs/odd
+	refs/tags
+	refs/tags
+	refs/tags
+	refs/tags
+	refs/tags
+	refs/tags
+	refs/tags
+	refs/tags
+	refs/tags
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'check %(path:short)' '
+	git for-each-ref --format="%(path:short)" >actual &&
+	cat >expect <<-\EOF &&
+	heads
+	heads
+	odd
+	tags
+	tags
+	tags
+	tags
+	tags
+	tags
+	tags
+	tags
+	tags
 	EOF
 	test_cmp expect actual
 '
