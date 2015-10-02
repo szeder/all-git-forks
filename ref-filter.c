@@ -454,14 +454,37 @@ static void *get_obj(const unsigned char *sha1, struct object **obj, unsigned lo
 static int grab_objectname(const char *name, const unsigned char *sha1,
 			    struct atom_value *v)
 {
-	if (!strcmp(name, "objectname")) {
-		char *s = xmalloc(41);
-		strcpy(s, sha1_to_hex(sha1));
-		v->s = s;
-		return 1;
-	}
-	if (!strcmp(name, "objectname:short")) {
-		v->s = xstrdup(find_unique_abbrev(sha1, DEFAULT_ABBREV));
+	const char *p;
+
+	if (match_atom_name(name, "objectname", &p)) {
+		struct strbuf **s, **to_free;
+		int length = DEFAULT_ABBREV;
+
+		/*  No arguments given, copy the entire objectname */
+		if (!p) {
+			char *s = xmalloc(41);
+			strcpy(s, sha1_to_hex(sha1));
+			v->s = s;
+		} else {
+			s = to_free = strbuf_split_str(p, ',', 0);
+			while (*s) {
+				/*  Strip trailing comma */
+				if (s[1])
+					strbuf_setlen(s[0], s[0]->len - 1);
+				if (!strtoul_ui(s[0]->buf, 10, (unsigned int *)&length))
+					;
+				/*  The `short` argument uses the default length */
+				else if (!strcmp("short", s[0]->buf))
+					;
+				else
+					die(_("format: unknown option entered with objectname:%s"), s[0]->buf);
+				s++;
+			}
+			if (length < MINIMUM_ABBREV)
+				length = MINIMUM_ABBREV;
+			v->s = xstrdup(find_unique_abbrev(sha1, length));
+			free(to_free);
+		}
 		return 1;
 	}
 	return 0;

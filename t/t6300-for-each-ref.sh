@@ -385,6 +385,28 @@ test_expect_success 'Check short objectname format' '
 	test_cmp expected actual
 '
 
+cat >expected <<EOF
+$(git rev-parse --short=1 HEAD)
+EOF
+
+test_expect_success 'Check objectname:short format when size is less than MINIMUM_ABBREV' '
+	git for-each-ref --format="%(objectname:short,1)" refs/heads >actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<EOF
+$(git rev-parse --short=10 HEAD)
+EOF
+
+test_expect_success 'Check objectname:short format' '
+	git for-each-ref --format="%(objectname:short,10)" refs/heads >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'Check objectname:short format for invalid input' '
+	test_must_fail git for-each-ref --format="%(objectname:short,-1)" refs/heads
+'
+
 test_expect_success 'Check for invalid refname format' '
 	test_must_fail git for-each-ref --format="%(refname:INVALID)"
 '
