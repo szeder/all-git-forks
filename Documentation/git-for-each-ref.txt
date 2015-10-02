@@ -134,9 +134,14 @@ align::
 	`<position>` is either left, right or middle, default being
 	left and `<width>` is the total length of the content with
 	alignment. If the contents length is more than the width then
-	no alignment is performed. If used with '--quote' everything
-	in between %(align:...) and %(end) is quoted, but if nested
-	then only the topmost level performs quoting.
+	no alignment is performed.
+
+if::
+	Used as %(if)..%(then)..(%end) or %(if)..%(then)..%(else)..%(end).
+	If there is an atom with value or string literal after the
+	%(if) then everything after the %(then) is printed, else if
+	the %(else) atom is used, then everything after %(else) is
+	printed.
 
 In addition to the above, for commit and tag objects, the header
 field names (`tree`, `parent`, `object`, `type`, and `tag`) can
@@ -169,6 +174,18 @@ the date by adding one of `:default`, `:relative`, `:short`, `:local`,
 `:iso8601`, `:rfc2822` or `:raw` to the end of the fieldname; e.g.
 `%(taggerdate:relative)`.
 
+Some atoms like %(align) and %(if) always require a matching %(end).
+We call them "opening atoms" and sometimes denote them as %($open).
+
+When a scripting language specific quoting is in effect, except for
+opening atoms, replacement from every %(atom) is quoted when and only
+when it appears at the top-level (that is, when it appears outside
+%($open)...%(end)).
+
+When a scripting language specific quoting is in effect, everything
+between a top-level opening atom and its matching %(end) is evaluated
+according to the semantics of the opening atom and its result is
+quoted.
 
 EXAMPLES
 --------
