@@ -355,6 +355,10 @@ static void add_verbose_info(struct strbuf *out, struct ref_array_item *item,
 	strbuf_release(&subject);
 }
 
+/*
+ * This is duplicated in ref-filter.c, will be removed when we adopt
+ * ref-filter's printing APIs.
+ */
 static char *get_head_description(void)
 {
 	struct strbuf desc = STRBUF_INIT;
