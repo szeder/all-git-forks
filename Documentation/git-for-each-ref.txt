@@ -141,7 +141,9 @@ if::
 	If there is an atom with value or string literal after the
 	%(if) then everything after the %(then) is printed, else if
 	the %(else) atom is used, then everything after %(else) is
-	printed.
+	printed. Append ":equals=<string>" or ":notequals=<string>" to
+	compare the value between the %(if:...) and %(then) atoms with the
+	given string.
 
 In addition to the above, for commit and tag objects, the header
 field names (`tree`, `parent`, `object`, `type`, and `tag`) can

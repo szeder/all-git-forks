@@ -73,6 +73,8 @@ struct contents {
 };
 
 struct if_then_else {
+	const char *if_equals,
+		*not_equals;
 	unsigned int if_atom : 1,
 		then_atom : 1,
 		else_atom : 1,
@@ -277,8 +279,16 @@ static void if_atom_handler(struct atom_value *atomv, struct ref_formatting_stat
 {
 	struct ref_formatting_stack *new;
 	struct if_then_else *if_then_else = xcalloc(sizeof(struct if_then_else), 1);
+	const char *valp;
 
 	if_then_else->if_atom = 1;
+	if (skip_prefix(atomv->s, "equals=", &valp))
+		if_then_else->if_equals = valp;
+	else if (skip_prefix(atomv->s, "notequals=", &valp))
+		if_then_else->not_equals = valp;
+	else if (atomv->s[0])
+		die(_("format: unknown format if:%s"), atomv->s);
+
 	push_stack_element(&state->stack);
 	new = state->stack;
 	new->at_end = if_then_else_handler;
@@ -302,11 +312,19 @@ static void then_atom_handler(struct atom_value *atomv, struct ref_formatting_st
 	if (!if_then_else)
 		die(_("format: %%(then) atom used without an %%(if) atom"));
 	if_then_else->then_atom = 1;
+
 	/*
-	 * If there exists non-empty string between the 'if' and
-	 * 'then' atom then the 'if' condition is satisfied.
+	 * If the 'equals' or 'notequals' attribute is used then
+	 * perform the required comparison. If not, only non-empty
+	 * strings satisfy the 'if' condition.
 	 */
-	if (cur->output.len && !is_empty(cur->output.buf))
+	if (if_then_else->if_equals) {
+		if (!strcmp(if_then_else->if_equals, cur->output.buf))
+			if_then_else->condition_satisfied = 1;
+	} else 	if (if_then_else->not_equals) {
+		if (strcmp(if_then_else->not_equals, cur->output.buf))
+			if_then_else->condition_satisfied = 1;
+	} else if (cur->output.len && !is_empty(cur->output.buf))
 		if_then_else->condition_satisfied = 1;
 	strbuf_reset(&cur->output);
 }
@@ -1013,8 +1031,10 @@ static void populate_value(struct ref_array_item *ref)
 		} else if (!strcmp(name, "end")) {
 			v->handler = end_atom_handler;
 			continue;
-		} else if (!strcmp(name, "if")) {
+		} else if (match_atom_name(name, "if", &valp)) {
 			v->handler = if_atom_handler;
+			if (valp)
+				v->s = xstrdup(valp);
 			continue;
 		} else if (!strcmp(name, "then")) {
 			v->handler = then_atom_handler;
