@@ -1133,8 +1133,10 @@ static void populate_value(struct ref_array_item *ref)
 				char buf[40];
 
 				if (stat_tracking_info(branch, &num_ours,
-						       &num_theirs, NULL))
+						       &num_theirs, NULL)) {
+					v->s = xstrdup("[gone]");
 					continue;
+				}
 
 				if (!num_ours && !num_theirs)
 					v->s = "";
