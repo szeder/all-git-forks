@@ -245,6 +245,7 @@ void post_assignment(){
 }
 
 void function_atid(char *atid){
+	atid[strlen(atid)-1] = '\0';
 	write(ganttproject_file," task-id=\"%s\"",atid);
 }
 
