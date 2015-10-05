@@ -86,11 +86,9 @@ static int lmdb_initdb(struct strbuf *err, int shared)
 	   it to live in; lmdb will do the rest. */
 
 	assert(db_path);
-	if (mkdir(db_path, 0775)) {
-		if (errno != EEXIST) {
-			strbuf_addf(err, "%s", strerror(errno));
-			return -1;
-		}
+	if (mkdir(db_path, 0775) && errno != EEXIST) {
+		strbuf_addf(err, "%s", strerror(errno));
+		return -1;
 	}
 	return 0;
 }
