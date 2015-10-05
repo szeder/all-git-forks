@@ -1827,7 +1827,7 @@ int test_refdb_raw_delete(const char *key)
 
 	ret = mdb_del_or_die(&transaction.info, &key_val, NULL);
 
-	assert(lmdb_transaction_commit((struct lmdb_transaction *)&transaction,
+	assert(lmdb_transaction_commit((struct ref_transaction *)&transaction,
 				       &err) == 0);
 
 	free(keydup);
@@ -1955,7 +1955,7 @@ void test_refdb_raw_append_reflog(const char *refname)
 		input.len = 0;
 	}
 
-	assert(lmdb_transaction_commit(&transaction, &err) == 0);
+	assert(lmdb_transaction_commit((struct ref_transaction *)&transaction, &err) == 0);
 	free(key.mv_data);
 }
 
