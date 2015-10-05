@@ -192,11 +192,8 @@ static int del_per_worktree_ref(const char *submodule, const char *refname,
 
 	result = unlink(path.buf);
 	strbuf_release(&path);
-	if (result) {
-		if (errno == ENOENT)
-			return 0;
+	if (result && (errno != ENOENT))
 		return 1;
-	}
 
 	return 0;
 }
