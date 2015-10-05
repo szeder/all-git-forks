@@ -66,13 +66,17 @@ static void init_env(MDB_env **env, const char *path)
 	if (*env)
 		return;
 
-	if ((ret = mdb_env_create(env)) != MDB_SUCCESS)
+	ret = mdb_env_create(env);
+	if (ret != MDB_SUCCESS)
 		die("mdb_env_create failed: %s", mdb_strerror(ret));
-	if ((ret = mdb_env_set_maxreaders(*env, 1000)) != MDB_SUCCESS)
+	ret = mdb_env_set_maxreaders(*env, 1000);
+	if (ret != MDB_SUCCESS)
 		die("BUG: mdb_env_set_maxreaders failed: %s", mdb_strerror(ret));
-	if ((ret = mdb_env_set_mapsize(*env, (1<<30))) != MDB_SUCCESS)
+	ret = mdb_env_set_mapsize(*env, 1<<30);
+	if (ret != MDB_SUCCESS)
 		die("BUG: mdb_set_mapsize failed: %s", mdb_strerror(ret));
-	if ((ret = mdb_env_open(*env, path, 0 , 0664)) != MDB_SUCCESS)
+	ret = mdb_env_open(*env, path, 0, 0664);
+	if (ret != MDB_SUCCESS)
 		die("BUG: mdb_env_open (%s) failed: %s", path, mdb_strerror(ret));
 }
 
@@ -320,12 +324,14 @@ int lmdb_transaction_begin_flags(struct strbuf *err, unsigned int flags)
 
 	if (!transaction.info.txn) {
 		hashmap_init(&transaction.updated_refs, ref_update_cmp, 0);
-		if ((ret = mdb_txn_begin(env, NULL, flags, &txn)) != MDB_SUCCESS) {
+		ret = mdb_txn_begin(env, NULL, flags, &txn);
+		if (ret != MDB_SUCCESS) {
 			strbuf_addf(err, "mdb_txn_begin failed: %s",
 				    mdb_strerror(ret));
 			return -1;
 		}
-		if ((ret = mdb_dbi_open(txn, NULL, 0, &transaction.info.dbi)) != MDB_SUCCESS) {
+		ret = mdb_dbi_open(txn, NULL, 0, &transaction.info.dbi);
+		if (ret != MDB_SUCCESS) {
 			strbuf_addf(err, "mdb_txn_open failed: %s",
 				    mdb_strerror(ret));
 			return -1;
@@ -345,12 +351,14 @@ int lmdb_transaction_begin_flags(struct strbuf *err, unsigned int flags)
 		 * from downstream processes.
 		 */
 		mdb_txn_abort(transaction.info.txn);
-		if ((ret = mdb_txn_begin(env, NULL, flags, &txn)) != MDB_SUCCESS) {
+		ret = mdb_txn_begin(env, NULL, flags, &txn);
+		if (ret != MDB_SUCCESS) {
 			strbuf_addf(err, "restarting txn: mdb_txn_begin failed: %s",
 				    mdb_strerror(ret));
 			return -1;
 		}
-		if ((ret = mdb_dbi_open(txn, NULL, 0, &transaction.info.dbi)) != MDB_SUCCESS) {
+		ret = mdb_dbi_open(txn, NULL, 0, &transaction.info.dbi);
+		if (ret != MDB_SUCCESS) {
 			strbuf_addf(err, "mdb_txn_open failed: %s",
 				    mdb_strerror(ret));
 			return -1;
@@ -1519,13 +1527,13 @@ MDB_env *submodule_txn_begin(struct lmdb_transaction_info *info)
 
 	init_env(&submodule_env, path.buf);
 
-	if ((ret = mdb_txn_begin(submodule_env, NULL, MDB_RDONLY, &info->txn)) != MDB_SUCCESS) {
+	ret = mdb_txn_begin(submodule_env, NULL, MDB_RDONLY, &info->txn);
+	if (ret != MDB_SUCCESS)
 		die("mdb_txn_begin failed: %s", mdb_strerror(ret));
 
-	}
-	if ((ret = mdb_dbi_open(info->txn, NULL, 0, &info->dbi)) != MDB_SUCCESS) {
+	ret = mdb_dbi_open(info->txn, NULL, 0, &info->dbi);
+	if (ret != MDB_SUCCESS)
 		die("mdb_txn_open failed: %s", mdb_strerror(ret));
-	}
 
 done:
 	strbuf_release(&path);
