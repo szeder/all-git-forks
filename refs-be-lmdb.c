@@ -823,7 +823,7 @@ static int lmdb_transaction_delete(struct ref_transaction *transaction,
 				   unsigned int flags, const char *msg,
 				   struct strbuf *err)
 {
-		if (old_sha1 && is_null_sha1(old_sha1))
+	if (old_sha1 && is_null_sha1(old_sha1))
 		die("BUG: delete called with old_sha1 set to zeros");
 	return ref_transaction_update(transaction, refname,
 				      null_sha1, old_sha1,
@@ -831,12 +831,12 @@ static int lmdb_transaction_delete(struct ref_transaction *transaction,
 }
 
 static int lmdb_transaction_verify(struct ref_transaction *transaction,
-				  const char *refname,
-				  const unsigned char *old_sha1,
-				  unsigned int flags,
-				  struct strbuf *err)
+				   const char *refname,
+				   const unsigned char *old_sha1,
+				   unsigned int flags,
+				   struct strbuf *err)
 {
-		if (!old_sha1)
+	if (!old_sha1)
 		die("BUG: verify called with old_sha1 set to NULL");
 	return ref_transaction_update(transaction, refname,
 				      NULL, old_sha1,
@@ -1088,7 +1088,7 @@ static int lmdb_rename_ref(const char *oldref, const char *newref, const char *l
 				    orig_sha1, &flag);
 	if (flag & REF_ISSYMREF)
 		return error("refname %s is a symbolic ref, renaming it is not supported",
-			oldref);
+			     oldref);
 	if (!symref)
 		return error("refname %s not found", oldref);
 
@@ -1122,7 +1122,7 @@ static int lmdb_rename_ref(const char *oldref, const char *newref, const char *l
 	}
 
 	if (ref_transaction_delete(ref_transaction, oldref,
-		orig_sha1, REF_NODEREF, NULL, &err)) {
+				   orig_sha1, REF_NODEREF, NULL, &err)) {
 		error("unable to delete old %s", oldref);
 		return 1;
 	}
@@ -1294,7 +1294,7 @@ static int lmdb_for_each_reflog(each_ref_fn fn, void *cb_data)
 	struct wrapped_each_ref_fn wrapped = {fn, cb_data};
 	int result = head_ref(fn, cb_data);
 	if (result)
-	    return result;
+		return result;
 	return for_each_ref(check_reflog, &wrapped);
 }
 
@@ -1535,7 +1535,7 @@ done:
 }
 
 static int lmdb_resolve_gitlink_ref(const char *submodule, const char *refname,
-				     unsigned char *sha1)
+				    unsigned char *sha1)
 {
 	struct lmdb_transaction_info info;
 	MDB_env *submodule_env;
@@ -1578,7 +1578,7 @@ static int lmdb_head_ref(each_ref_fn fn, void *cb_data)
 }
 
 static int lmdb_head_ref_submodule(const char *submodule, each_ref_fn fn,
-				    void *cb_data)
+				   void *cb_data)
 {
 	return do_head_ref(submodule, fn, cb_data);
 }
@@ -1663,7 +1663,7 @@ static int lmdb_for_each_ref(each_ref_fn fn, void *cb_data)
 }
 
 static int lmdb_for_each_ref_submodule(const char *submodule, each_ref_fn fn,
-					void *cb_data)
+				       void *cb_data)
 {
 	struct lmdb_transaction_info info;
 	MDB_env *submodule_env;
@@ -1685,7 +1685,7 @@ static int lmdb_for_each_ref_submodule(const char *submodule, each_ref_fn fn,
 }
 
 static int lmdb_for_each_ref_in(const char *prefix, each_ref_fn fn,
-				 void *cb_data)
+				void *cb_data)
 {
 	lmdb_transaction_begin_flags_or_die(MDB_RDONLY);
 	return do_for_each_ref(&transaction.info, prefix, fn, strlen(prefix),
@@ -1693,7 +1693,7 @@ static int lmdb_for_each_ref_in(const char *prefix, each_ref_fn fn,
 }
 
 static int lmdb_for_each_fullref_in(const char *prefix, each_ref_fn fn,
-				     void *cb_data, unsigned int broken)
+				    void *cb_data, unsigned int broken)
 {
 	unsigned int flag = 0;
 
@@ -1704,8 +1704,8 @@ static int lmdb_for_each_fullref_in(const char *prefix, each_ref_fn fn,
 }
 
 static int lmdb_for_each_ref_in_submodule(const char *submodule,
-					   const char *prefix,
-					   each_ref_fn fn, void *cb_data)
+					  const char *prefix,
+					  each_ref_fn fn, void *cb_data)
 {
 	struct lmdb_transaction_info info = {NULL};
 	MDB_env *submodule_env;
