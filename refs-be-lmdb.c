@@ -675,8 +675,10 @@ static void format_reflog_entry(struct strbuf *buf,
 	len = buf->len;
 	msglen = msg ? strlen(msg) : 0;
 	if (msglen) {
+		int copied;
+
 		strbuf_grow(buf, msglen + 1);
-		int copied = copy_reflog_msg(buf->buf + 40 + strlen(committer), msg) - 1;
+		copied = copy_reflog_msg(buf->buf + 40 + strlen(committer), msg) - 1;
 		buf->len = len + copied;
 		buf->buf[buf->len] = 0;
 	}
