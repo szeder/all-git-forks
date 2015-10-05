@@ -391,7 +391,6 @@ static const char *parse_ref_data(struct lmdb_transaction_info *info,
 	static struct strbuf refname_buffer = STRBUF_INIT;
 	static struct strbuf refdata_buffer = STRBUF_INIT;
 	MDB_val key, val;
-	const char *ret;
 
 	strbuf_reset(&refname_buffer);
 	strbuf_reset(&refdata_buffer);
@@ -1850,12 +1849,6 @@ static int print_raw_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 /* For testing only! */
 int test_refdb_raw_reflog(const char *refname)
 {
-	MDB_val key, val;
-	char *search_key;
-	char *log_path;
-	int len;
-	MDB_cursor *cursor;
-	int result = 1;
 	int any = 0;
 
 	for_each_reflog_ent(refname, print_raw_reflog_ent, &any);
