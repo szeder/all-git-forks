@@ -738,7 +738,7 @@ static int log_ref_write(const char *refname,
 
 	key.mv_data = log_key;
 
-	write_u64(key.mv_data + refname_len + 6, htonll(now));
+	write_u64((char *)key.mv_data + refname_len + 6, htonll(now));
 
 	format_reflog_entry(&buf, old_sha1, new_sha1,
 			    git_committer_info(0), msg);
@@ -1057,8 +1057,9 @@ static int rename_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	new_key.mv_size = strlen(newrefname) + 5 + 1 + 8;
 	new_key.mv_data = xmalloc(new_key.mv_size);
 	strcpy(new_key.mv_data, "logs/");
-	strcpy(new_key.mv_data + 5, newrefname);
-	memcpy(new_key.mv_data + new_key.mv_size - 8, key.mv_data + key.mv_size - 8, 8);
+	strcpy((char *)new_key.mv_data + 5, newrefname);
+	memcpy((char *)new_key.mv_data + new_key.mv_size - 8,
+	       (char *)key.mv_data + key.mv_size - 8, 8);
 	mdb_put_or_die(&transaction.info, &new_key, &val, 0);
 	mdb_cursor_del_or_die(transaction.cursor, 0);
 	free(new_key.mv_data);
@@ -1632,13 +1633,14 @@ static int do_for_each_ref(struct lmdb_transaction_info *info,
 		if (memcmp(key.mv_data, base, baselen))
 			break;
 
-		parse_ref_data(info, key.mv_data + (trim ? baselen : 0),
-			       val.mv_data, oid.hash, 0, &parsed_flags, 0);
+		parse_ref_data(info, (char *)key.mv_data + (trim ? baselen : 0),
+			       (char *)val.mv_data, oid.hash, 0, &parsed_flags, 0);
 
 		if (flags & DO_FOR_EACH_INCLUDE_BROKEN ||
 		    (!(parsed_flags & REF_ISBROKEN) &&
 		     has_sha1_file(oid.hash))) {
-			retval = fn(key.mv_data + (trim ? baselen : 0), &oid, parsed_flags, cb_data);
+			retval = fn((char *)key.mv_data + (trim ? baselen : 0),
+				    &oid, parsed_flags, cb_data);
 			if (retval)
 				break;
 		}
@@ -1938,7 +1940,7 @@ void test_refdb_raw_append_reflog(const char *refname)
 		struct strbuf sb = STRBUF_INIT;
 
 		/* "logs/" + \0 + 8-byte timestamp for sorting and expiry */
-		write_u64(key.mv_data + key.mv_size - 8, htonll(now++));
+		write_u64((char *)key.mv_data + key.mv_size - 8, htonll(now++));
 
 		/* Convert the input from files-reflog format to
 		 * lmdb-reflog-format */
