@@ -424,7 +424,7 @@ static const char *parse_ref_data(struct lmdb_transaction_info *info,
 		buf = ref_data + 4;
 		while (isspace(*buf))
 			buf++;
-		strbuf_addf(&refname_buffer, buf);
+		strbuf_addstr(&refname_buffer, buf);
 		refname = refname_buffer.buf;
 		if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
 			hashclr(sha1);
