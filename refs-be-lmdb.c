@@ -82,9 +82,10 @@ static void init_env(MDB_env **env, const char *path)
 
 static int lmdb_initdb(struct strbuf *err, int shared)
 {
-	/* To create a db, all we need to do is make a directory for
-	   it to live in; lmdb will do the rest. */
-
+	/*
+	 * To create a db, all we need to do is make a directory for
+	 * it to live in; lmdb will do the rest.
+	 */
 	assert(db_path);
 	if (mkdir(db_path, 0775) && errno != EEXIST) {
 		strbuf_addf(err, "%s", strerror(errno));
@@ -489,9 +490,7 @@ static int verify_refname_available_txn(struct lmdb_transaction_info *info,
 	search_key[refname_len - 1] = 0;
 	key.mv_data = search_key;
 
-	/*
-	 * Check for subdirs of refname: we start at refname/
-	 */
+	/* Check for subdirs of refname: we start at refname/ */
 	mdb_ret = mdb_cursor_get_or_die(cursor, &key, &val, MDB_SET_RANGE);
 
 	while (!mdb_ret) {
@@ -1935,18 +1934,20 @@ void test_refdb_raw_append_reflog(const char *refname)
 
 	lmdb_transaction_begin_flags_or_die(0);
 
-	/* We do not remove the header here, because this is just for
-	 * tests, so it's OK to be a bit inefficient */
-
+	/*
+	 * We do not remove the header here, because this is just for
+	 * tests, so it's OK to be a bit inefficient
+	 */
 	while (strbuf_getwholeline(&input, stdin, '\n') != EOF) {
 		struct strbuf sb = STRBUF_INIT;
 
 		/* "logs/" + \0 + 8-byte timestamp for sorting and expiry */
 		write_u64((char *)key.mv_data + key.mv_size - 8, htonll(now++));
 
-		/* Convert the input from files-reflog format to
-		 * lmdb-reflog-format */
-
+		/*
+		 * Convert the input from files-reflog format to
+		 * lmdb-reflog-format
+		 */
 		format_lmdb_reflog_ent(&sb, &input);
 		val.mv_data = sb.buf;
 		val.mv_size = sb.len + 1;
