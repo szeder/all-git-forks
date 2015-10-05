@@ -336,9 +336,8 @@ int lmdb_transaction_begin_flags(struct strbuf *err, unsigned int flags)
 		return 0;
 	}
 
-	if (transaction.flags == flags && !(flags & MDB_RDONLY)) {
+	if (transaction.flags == flags && !(flags & MDB_RDONLY))
 		die("BUG: rw transaction started during another rw txn");
-	}
 
 	if (force_restart || (transaction.flags != flags && transaction.flags & MDB_RDONLY)) {
 		/*
@@ -398,9 +397,8 @@ static const char *parse_ref_data(struct lmdb_transaction_info *info,
 	strbuf_reset(&refdata_buffer);
 
 	for (;;) {
-		if (--depth < 0) {
+		if (--depth < 0)
 			return NULL;
-		}
 
 		if (!starts_with(ref_data, "ref:")) {
 			if (get_sha1_hex(ref_data, sha1) ||
@@ -704,10 +702,9 @@ static int log_ref_write(const char *refname,
 	if (log_all_ref_updates < 0)
 		log_all_ref_updates = !is_bare_repository();
 
-	if (ref_type(refname) != REF_TYPE_NORMAL) {
+	if (ref_type(refname) != REF_TYPE_NORMAL)
 		return files_log_ref_write(refname, old_sha1, new_sha1,
 					   msg, flags, err);
-	}
 
 	/* it is assumed that we are in a ref transaction here */
 	assert(transaction.info.txn);
@@ -786,9 +783,8 @@ static const char *check_ref(MDB_txn *txn, const char *refname,
 				     resolved_sha1, &type);
 	if (type_p)
 		*type_p = type;
-	if (!refname) {
+	if (!refname)
 		return NULL;
-	}
 
 	if (old_sha1) {
 		if (flags & REF_NODEREF) {
@@ -1262,11 +1258,10 @@ static int lmdb_reflog_exists(const char *refname)
 	lmdb_transaction_begin_flags_or_die(MDB_RDONLY);
 	mdb_cursor_open_or_die(&transaction.info, &cursor);
 
-	if (mdb_cursor_get_or_die(cursor, &key, &val, MDB_SET_RANGE)) {
+	if (mdb_cursor_get_or_die(cursor, &key, &val, MDB_SET_RANGE))
 		ret = 0;
-	} else if (!starts_with(key.mv_data, log_path)) {
+	else if (!starts_with(key.mv_data, log_path))
 		ret = 0;
-	}
 
 	free(log_path);
 	mdb_cursor_close(cursor);
