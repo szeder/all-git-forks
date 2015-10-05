@@ -93,8 +93,10 @@ static int lmdb_initdb(struct strbuf *err, int shared)
 	return 0;
 }
 
-static void lmdb_init_backend(struct refdb_config_data *data)
+static void lmdb_init_backend(void *cbdata)
 {
+	struct refdb_config_data *data = (struct refdb_config_data *)cbdata;
+
 	if (db_path)
 		return;
 
