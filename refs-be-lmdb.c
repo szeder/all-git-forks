@@ -67,16 +67,16 @@ static void init_env(MDB_env **env, const char *path)
 		return;
 
 	ret = mdb_env_create(env);
-	if (ret != MDB_SUCCESS)
+	if (ret)
 		die("mdb_env_create failed: %s", mdb_strerror(ret));
 	ret = mdb_env_set_maxreaders(*env, 1000);
-	if (ret != MDB_SUCCESS)
+	if (ret)
 		die("BUG: mdb_env_set_maxreaders failed: %s", mdb_strerror(ret));
 	ret = mdb_env_set_mapsize(*env, 1<<30);
-	if (ret != MDB_SUCCESS)
+	if (ret)
 		die("BUG: mdb_set_mapsize failed: %s", mdb_strerror(ret));
 	ret = mdb_env_open(*env, path, 0, 0664);
-	if (ret != MDB_SUCCESS)
+	if (ret)
 		die("BUG: mdb_env_open (%s) failed: %s", path, mdb_strerror(ret));
 }
 
@@ -322,13 +322,13 @@ int lmdb_transaction_begin_flags(struct strbuf *err, unsigned int flags)
 	if (!transaction.info.txn) {
 		hashmap_init(&transaction.updated_refs, ref_update_cmp, 0);
 		ret = mdb_txn_begin(env, NULL, flags, &txn);
-		if (ret != MDB_SUCCESS) {
+		if (ret) {
 			strbuf_addf(err, "mdb_txn_begin failed: %s",
 				    mdb_strerror(ret));
 			return -1;
 		}
 		ret = mdb_dbi_open(txn, NULL, 0, &transaction.info.dbi);
-		if (ret != MDB_SUCCESS) {
+		if (ret) {
 			strbuf_addf(err, "mdb_txn_open failed: %s",
 				    mdb_strerror(ret));
 			return -1;
@@ -348,13 +348,13 @@ int lmdb_transaction_begin_flags(struct strbuf *err, unsigned int flags)
 		 */
 		mdb_txn_abort(transaction.info.txn);
 		ret = mdb_txn_begin(env, NULL, flags, &txn);
-		if (ret != MDB_SUCCESS) {
+		if (ret) {
 			strbuf_addf(err, "restarting txn: mdb_txn_begin failed: %s",
 				    mdb_strerror(ret));
 			return -1;
 		}
 		ret = mdb_dbi_open(txn, NULL, 0, &transaction.info.dbi);
-		if (ret != MDB_SUCCESS) {
+		if (ret) {
 			strbuf_addf(err, "mdb_txn_open failed: %s",
 				    mdb_strerror(ret));
 			return -1;
@@ -1522,11 +1522,11 @@ MDB_env *submodule_txn_begin(struct lmdb_transaction_info *info)
 	init_env(&submodule_env, path.buf);
 
 	ret = mdb_txn_begin(submodule_env, NULL, MDB_RDONLY, &info->txn);
-	if (ret != MDB_SUCCESS)
+	if (ret)
 		die("mdb_txn_begin failed: %s", mdb_strerror(ret));
 
 	ret = mdb_dbi_open(info->txn, NULL, 0, &info->dbi);
-	if (ret != MDB_SUCCESS)
+	if (ret)
 		die("mdb_txn_open failed: %s", mdb_strerror(ret));
 
 done:
