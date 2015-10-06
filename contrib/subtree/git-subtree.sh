@@ -305,7 +305,7 @@ copy_commit()
 	# We're going to set some environment vars here, so
 	# do it in a subshell to get rid of them safely later
 	debug copy_commit "{$1}" "{$2}" "{$3}"
-	git log -1 --pretty=format:'%an%n%ae%n%ad%n%cn%n%ce%n%cd%n%B' "$1" |
+	git log -1 --pretty=format:'%an%n%ae%n%aD%n%cn%n%ce%n%cD%n%B' "$1" |
 	(
 		read GIT_AUTHOR_NAME
 		read GIT_AUTHOR_EMAIL
@@ -648,7 +648,7 @@ cmd_split()
 		debug "Merging split branch into HEAD..."
 		latest_old=$(cache_get latest_old)
 		git merge -s ours \
-			-m "$(rejoin_msg $dir $latest_old $latest_new)" \
+			-m "$(rejoin_msg "$dir" $latest_old $latest_new)" \
 			$latest_new >&2 || exit $?
 	fi
 	if [ -n "$branch" ]; then
@@ -735,7 +735,7 @@ cmd_push()
 	    refspec=$2
 	    echo "git push using: " $repository $refspec
 	    localrev=$(git subtree split --prefix="$prefix") || die
-	    git push $repository $localrev:refs/heads/$refspec
+	    git push "$repository" $localrev:refs/heads/$refspec
 	else
 	    die "'$dir' must already exist. Try 'git subtree add'."
 	fi
