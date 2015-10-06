@@ -178,12 +178,13 @@ struct worktree **get_worktrees(void)
 				continue;
 
 				if ((linked = get_linked_worktree(d->d_name))) {
-					ALLOC_GROW(list, alloc + 1, alloc);
+					ALLOC_GROW(list, counter + 1, alloc);
 					list[counter++] = linked;
 				}
 		}
 		closedir(dir);
 	}
+	ALLOC_GROW(list, counter + 1, alloc);
 	list[counter] = NULL;
 	return list;
 }
