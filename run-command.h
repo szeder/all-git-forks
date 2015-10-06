@@ -199,4 +199,5 @@ int run_processes_parallel(int n,
 			   task_finished_fn,
 			   void *pp_cb);
 
+extern int total_commands_run;
 #endif
