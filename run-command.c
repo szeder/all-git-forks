@@ -19,6 +19,7 @@ struct child_to_clean {
 };
 static struct child_to_clean *children_to_clean;
 static int installed_child_cleanup_handler;
+int total_commands_run = 0;
 
 static void cleanup_children(int sig, int in_signal)
 {
@@ -337,6 +338,7 @@ fail_pipe:
 		cmd->err = fderr[0];
 	}
 
+	total_commands_run++;
 	trace_argv_printf(cmd->argv, "trace: run_command:");
 	fflush(NULL);
 
