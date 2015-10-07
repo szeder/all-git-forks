@@ -10,6 +10,11 @@
 #include "attr.h"
 #include "split-index.h"
 
+#ifdef USE_WATCHMAN
+#include "fs_cache.h"
+#include "watchman-support.h"
+#endif
+
 /*
  * Error messages expected by scripts out of plumbing commands such as
  * read-tree.  Non-scripted Porcelain is not required to use these messages
@@ -75,7 +80,6 @@ void setup_unpack_trees_porcelain(struct unpack_trees_options *opts,
 			"Please move or remove them before you can %s.";
 	else
 		msg = "The following untracked working tree files would be %s by %s:\n%%s";
-
 	msgs[ERROR_WOULD_LOSE_UNTRACKED_REMOVED] = xstrfmt(msg, "removed", cmd, cmd2);
 	msgs[ERROR_WOULD_LOSE_UNTRACKED_OVERWRITTEN] = xstrfmt(msg, "overwritten", cmd, cmd2);
 
@@ -174,33 +178,40 @@ static void display_error_msgs(struct unpack_trees_options *o)
  * Unlink the last component and schedule the leading directories for
  * removal, such that empty directories get removed.
  */
-static void unlink_entry(const struct cache_entry *ce)
+static int unlink_entry(const struct cache_entry *ce)
 {
 	if (!check_leading_path(ce->name, ce_namelen(ce)))
-		return;
+		return -1;
 	if (remove_or_warn(ce->ce_mode, ce->name))
-		return;
+		return -1;
 	schedule_dir_for_removal(ce->name, ce_namelen(ce));
+	return 0;
 }
 
-static struct checkout state;
+static struct checkout state; /* always pre-initialized by unpack_trees */
 static int check_updates(struct unpack_trees_options *o)
 {
-	unsigned cnt = 0, total = 0;
+	unsigned cnt = 0, total_remove = 0, total_update = 0;
 	struct progress *progress = NULL;
 	struct index_state *index = &o->result;
 	int i;
 	int errs = 0;
 
+#ifdef USE_WATCHMAN
+	int attempt_fs_cache_load = core_use_watchman;
+#endif
+
 	if (o->update && o->verbose_update) {
-		for (total = cnt = 0; cnt < index->cache_nr; cnt++) {
+		for (cnt = 0; cnt < index->cache_nr; cnt++) {
 			const struct cache_entry *ce = index->cache[cnt];
-			if (ce->ce_flags & (CE_UPDATE | CE_WT_REMOVE))
-				total++;
+			if (ce->ce_flags & CE_WT_REMOVE)
+				total_remove++;
+			if (ce->ce_flags & CE_UPDATE && !(ce->ce_flags & CE_WT_REMOVE))
+				total_update++;
 		}
 
-		progress = start_progress_delay(_("Checking out files"),
-						total, 50, 1);
+		progress = start_progress_delay(_("Eliminating some files from your work tree"),
+						total_remove, 50, 1);
 		cnt = 0;
 	}
 
@@ -211,18 +222,40 @@ static int check_updates(struct unpack_trees_options *o)
 
 		if (ce->ce_flags & CE_WT_REMOVE) {
 			display_progress(progress, ++cnt);
-			if (o->update && !o->dry_run)
-				unlink_entry(ce);
+			if (o->update && !o->dry_run) {
+				if (unlink_entry(ce))
+					continue;
+#ifdef USE_WATCHMAN
+				if (attempt_fs_cache_load && !fs_cache_is_valid()) {
+					read_fs_cache();
+				}
+				attempt_fs_cache_load = 0;
+
+				if (fs_cache_is_valid()) {
+					struct fsc_entry *old_fe = fs_cache_file_exists(ce->name, ce_namelen(ce));
+					if (old_fe) {
+						fe_set_deleted(old_fe);
+					}
+				}
+#endif
+			}
 			continue;
 		}
 	}
+	stop_progress(&progress);
+
 	remove_marked_cache_entries(&o->result);
 	remove_scheduled_dirs();
 
+	if (o->update && o->verbose_update) {
+		progress = start_progress_delay(_("Updating files in your work tree"),
+						total_update, 50, 1);
+		cnt = 0;
+	}
 	for (i = 0; i < index->cache_nr; i++) {
 		struct cache_entry *ce = index->cache[i];
 
-		if (ce->ce_flags & CE_UPDATE) {
+		if (ce->ce_flags & CE_UPDATE && !(ce->ce_flags & CE_WT_REMOVE)) {
 			display_progress(progress, ++cnt);
 			ce->ce_flags &= ~CE_UPDATE;
 			if (o->update && !o->dry_run) {
@@ -231,8 +264,15 @@ static int check_updates(struct unpack_trees_options *o)
 		}
 	}
 	stop_progress(&progress);
-	if (o->update)
+	if (o->update) {
 		git_attr_set_direction(GIT_ATTR_CHECKIN, NULL);
+#ifdef USE_WATCHMAN
+		if (core_use_watchman && fs_cache_is_valid()) {
+			watchman_fast_forward_clock();
+		}
+#endif
+	}
+
 	return errs != 0;
 }
 
@@ -601,8 +641,9 @@ static int unpack_nondirectories(int n, unsigned long mask,
 					o);
 		for (i = 0; i < n; i++) {
 			struct cache_entry *ce = src[i + o->merge];
-			if (ce != o->df_conflict_entry)
-				free(ce);
+			if (ce != o->df_conflict_entry) {
+				src[i + o->merge] = NULL;
+			}
 		}
 		return rc;
 	}
@@ -964,7 +1005,7 @@ static int clear_ce_flags(struct cache_entry **cache, int nr,
 }
 
 /*
- * Set/Clear CE_NEW_SKIP_WORKTREE according to $GIT_DIR/info/sparse-checkout
+ * Set/Clear CE_NEW_SKIP_WORKTREE according to sparse-checkout file
  */
 static void mark_new_skip_worktree(struct exclude_list *el,
 				   struct index_state *the_index,
@@ -1024,10 +1065,11 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	if (!core_apply_sparse_checkout || !o->update)
 		o->skip_sparse_checkout = 1;
 	if (!o->skip_sparse_checkout) {
-		if (add_excludes_from_file_to_list(git_path("info/sparse-checkout"), "", 0, &el, 0) < 0)
+		if (add_excludes_from_file_to_list(git_path(SPARSE_CHECKOUT_FILE), "", 0, &el, 0) < 0)
 			o->skip_sparse_checkout = 1;
-		else
+		else {
 			o->el = &el;
+		}
 	}
 
 	memset(&o->result, 0, sizeof(o->result));
@@ -1155,6 +1197,13 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	o->src_index = NULL;
 	ret = check_updates(o) ? (-2) : 0;
 	if (o->dst_index) {
+		if (!o->result.cache_tree)
+			o->result.cache_tree = cache_tree();
+
+		if (!cache_tree_fully_valid(o->result.cache_tree)) {
+			cache_tree_update(&o->result, WRITE_TREE_SILENT | WRITE_TREE_REPAIR);
+		}
+
 		discard_index(o->dst_index);
 		*o->dst_index = o->result;
 	} else {

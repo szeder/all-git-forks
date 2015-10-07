@@ -312,6 +312,7 @@ extern struct index_state the_index;
 extern void add_name_hash(struct index_state *istate, struct cache_entry *ce);
 extern void remove_name_hash(struct index_state *istate, struct cache_entry *ce);
 extern void free_name_hash(struct index_state *istate);
+extern void init_name_hash(struct index_state *istate);
 
 
 #ifndef NO_THE_INDEX_COMPATIBILITY_MACROS
@@ -376,6 +377,7 @@ static inline enum object_type object_type(unsigned int mode)
 #define DEFAULT_GIT_DIR_ENVIRONMENT ".git"
 #define DB_ENVIRONMENT "GIT_OBJECT_DIRECTORY"
 #define INDEX_ENVIRONMENT "GIT_INDEX_FILE"
+#define FS_CACHE_ENVIRONMENT "GIT_FS_CACHE_FILE"
 #define GRAFT_ENVIRONMENT "GIT_GRAFT_FILE"
 #define GIT_SHALLOW_FILE_ENVIRONMENT "GIT_SHALLOW_FILE"
 #define TEMPLATE_DIR_ENVIRONMENT "GIT_TEMPLATE_DIR"
@@ -608,6 +610,13 @@ extern int check_replace_refs;
 
 extern int fsync_object_files;
 extern int core_preload_index;
+extern int core_use_watchman;
+extern int core_lockout_watchman;
+extern struct string_list core_watchman_ignored_dirs;
+extern int core_watchman_sync_timeout;
+extern int core_watchman_query_timeout;
+extern int core_async_fs_cache_load;
+extern int core_pack_object_edges_only_shallow;
 extern int core_apply_sparse_checkout;
 extern int precomposed_unicode;
 extern int protect_hfs;

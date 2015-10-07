@@ -22,6 +22,7 @@
 #include "merge-recursive.h"
 #include "dir.h"
 #include "submodule.h"
+#include "fs_cache.h"
 
 static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 				      const char *subtree_shift)
@@ -207,6 +208,7 @@ static int add_cacheinfo(unsigned int mode, const unsigned char *sha1,
 					  CE_MATCH_IGNORE_MISSING) : 0 ));
 	if (!ce)
 		return error(_("addinfo_cache failed for path '%s'"), path);
+
 	return add_cache_entry(ce, options);
 }
 
@@ -800,7 +802,14 @@ static void update_file_flags(struct merge_options *o,
 			die(_("do not know what to do with %06o %s '%s'"),
 			    mode, sha1_to_hex(sha), path);
 		free(buf);
+#ifdef USE_WATCHMAN
+		if (core_use_watchman && fs_cache_is_valid()) {
+			insert_leading_dirs_in_fscache(path);
+			insert_path_in_fscache(path);
+		}
+#endif
 	}
+
  update_index:
 	if (update_cache)
 		add_cacheinfo(mode, sha, path, 0, update_wd, ADD_CACHE_OK_TO_ADD);

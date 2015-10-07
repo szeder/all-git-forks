@@ -85,6 +85,16 @@ int auto_comment_line_char;
 /* Parallel index stat data preload? */
 int core_preload_index = 1;
 
+/* Use Watchman for faster status queries */
+int core_use_watchman = 0;
+int core_lockout_watchman = 0;
+int core_watchman_sync_timeout = 6000;
+int core_watchman_query_timeout = 6000;
+struct string_list core_watchman_ignored_dirs;
+
+/* Load the FS cache on a background thread. */
+int core_async_fs_cache_load = 1;
+
 /* This is set by setup_git_dir_gently() and/or git_default_config() */
 char *git_work_tree_cfg;
 static char *work_tree;
@@ -93,7 +103,8 @@ static const char *namespace;
 static size_t namespace_len;
 
 static const char *git_dir;
-static char *git_object_dir, *git_index_file, *git_graft_file;
+static int fs_cache_file_relative = 1;
+static char *git_object_dir, *git_index_file, *git_graft_file, *git_fs_cache_file;
 
 /*
  * Repository-local GIT_* environment variables; see cache.h for details.
@@ -108,6 +119,7 @@ const char * const local_repo_env[] = {
 	GIT_IMPLICIT_WORK_TREE_ENVIRONMENT,
 	GRAFT_ENVIRONMENT,
 	INDEX_ENVIRONMENT,
+	FS_CACHE_ENVIRONMENT,
 	NO_REPLACE_OBJECTS_ENVIRONMENT,
 	GIT_PREFIX_ENVIRONMENT,
 	GIT_SHALLOW_FILE_ENVIRONMENT,
@@ -153,6 +165,7 @@ static void setup_git_env(void)
 	git_dir = xstrdup(gitfile ? gitfile : git_dir);
 	git_object_dir = git_path_from_env(DB_ENVIRONMENT, "objects");
 	git_index_file = git_path_from_env(INDEX_ENVIRONMENT, "index");
+	git_fs_cache_file = git_path_from_env(FS_CACHE_ENVIRONMENT, "fs_cache");
 	git_graft_file = git_path_from_env(GRAFT_ENVIRONMENT, "info/grafts");
 	if (getenv(NO_REPLACE_OBJECTS_ENVIRONMENT))
 		check_replace_refs = 0;
@@ -272,6 +285,19 @@ char *get_graft_file(void)
 	if (!git_graft_file)
 		setup_git_env();
 	return git_graft_file;
+}
+
+char *get_fs_cache_file(void)
+{
+	if (!git_fs_cache_file)
+		setup_git_env();
+	if (fs_cache_file_relative) {
+		char *abs_fs_cache_file = strdup(real_path(git_fs_cache_file));
+		free(git_fs_cache_file);
+		git_fs_cache_file = abs_fs_cache_file;
+		fs_cache_file_relative = 0;
+	}
+	return git_fs_cache_file;
 }
 
 int set_git_dir(const char *path)

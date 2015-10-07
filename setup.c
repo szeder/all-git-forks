@@ -2,6 +2,10 @@
 #include "dir.h"
 #include "string-list.h"
 
+#ifdef USE_WATCHMAN
+#include "watchman-support.h"
+#endif
+
 static int inside_git_dir = -1;
 static int inside_work_tree = -1;
 
@@ -743,6 +747,11 @@ const char *setup_git_directory_gently(int *nongit_ok)
 		startup_info->have_repository = !nongit_ok || !*nongit_ok;
 		startup_info->prefix = prefix;
 	}
+
+#ifdef USE_WATCHMAN
+	check_run_watchman();
+#endif
+
 	return prefix;
 }
 

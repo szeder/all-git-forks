@@ -5,6 +5,7 @@
  */
 #define NO_THE_INDEX_COMPATIBILITY_MACROS
 #include "cache.h"
+#include "fs_cache.h"
 #include "lockfile.h"
 #include "cache-tree.h"
 #include "refs.h"
@@ -18,6 +19,11 @@
 #include "split-index.h"
 #include "sigchain.h"
 #include "utf8.h"
+#include "hash-io.h"
+
+#ifdef USE_WATCHMAN
+#include "watchman-support.h"
+#endif
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
@@ -60,7 +66,6 @@ static void replace_index_entry(struct index_state *istate, int nr, struct cache
 
 	replace_index_entry_in_base(istate, old, ce);
 	remove_name_hash(istate, old);
-	free(old);
 	set_index_entry(istate, nr, ce);
 	ce->ce_flags |= CE_UPDATE_IN_BASE;
 	istate->cache_changed |= CE_ENTRY_CHANGED;
@@ -1039,6 +1044,52 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 }
 
 /*
+ * Checks that a file the cache entry corresponds to, exists, and
+ * doesn't lead with a symlink prefix.
+ */
+static int fs_cache_exists(struct cache_entry *ce, struct stat *st)
+{
+	const char *name = ce->name;
+	int len = ce_namelen(ce);
+
+	struct fsc_entry *fe;
+
+	/*
+	 * Eagerly initialize the Index's name hash, so we can use the hash code
+	 * calculated for this cache_entry instance to look up the path in the
+	 * FS cache. We're able to do this because the Index and the FS cache
+	 * use the same hash function.
+	 */
+	if (!the_index.name_hash_initialized)
+		init_name_hash(&the_index);
+	if (!ce->ent.hash) {
+		fe = fs_cache_file_exists(ce->name, ce->ce_namelen);
+	} else {
+		fe = fs_cache_file_exists_prehash(name, len, ce->ent.hash);
+	}
+	if (!fe) {
+		errno = ENOENT;
+		return -1;
+	} else {
+		/*
+		 * Save the fact that we looked up an Index entry in the FS cache
+		 * and found one. We use it later, while computing untracked files,
+		 * to answer "is in index?" queries without having to do an expensive
+		 * hash look up.
+		 */
+		fe->in_index = 1;
+	}
+
+	if (fe_deleted(fe)) {
+		errno = ENOENT;
+		return -1;
+	} else {
+		*st = fe->st;
+	}
+	return 0;
+}
+
+/*
  * "refresh" does not calculate a new sha1 file or bring the
  * cache up-to-date for mode/content changes. But what it
  * _does_ do is to "re-match" the stat information of a file
@@ -1079,20 +1130,29 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 		return ce;
 	}
 
-	if (has_symlink_leading_path(ce->name, ce_namelen(ce))) {
-		if (ignore_missing)
-			return ce;
-		if (err)
-			*err = ENOENT;
-		return NULL;
-	}
-
-	if (lstat(ce->name, &st) < 0) {
-		if (ignore_missing && errno == ENOENT)
-			return ce;
-		if (err)
-			*err = errno;
-		return NULL;
+	if (fs_cache_is_valid()) {
+		if (fs_cache_exists(ce, &st) < 0) {
+			if (ignore_missing && errno == ENOENT)
+				return ce;
+			if (err)
+				*err = errno;
+			return NULL;
+		}
+	} else {
+		if (has_symlink_leading_path(ce->name, ce_namelen(ce))) {
+			if (ignore_missing)
+				return ce;
+			if (err)
+				*err = ENOENT;
+			return NULL;
+		}
+		if (lstat(ce->name, &st) < 0) {
+			if (ignore_missing && errno == ENOENT)
+				return ce;
+			if (err)
+				*err = errno;
+			return NULL;
+		}
 	}
 
 	changed = ie_match_stat(istate, ce, &st, options);
@@ -1528,8 +1588,9 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	istate->timestamp.nsec = 0;
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		if (!must_exist && errno == ENOENT)
+		if (!must_exist && errno == ENOENT) {
 			return 0;
+		}
 		die_errno("%s: index file open failed", path);
 	}
 
@@ -1595,6 +1656,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		src_offset += 8;
 		src_offset += extsize;
 	}
+
 	munmap(mmap, mmap_size);
 	return istate->cache_nr;
 
@@ -1603,7 +1665,7 @@ unmap:
 	die("index file corrupt");
 }
 
-int read_index_from(struct index_state *istate, const char *path)
+int do_read_index_from(struct index_state *istate, const char *path)
 {
 	struct split_index *split_index;
 	int ret;
@@ -1635,6 +1697,49 @@ int read_index_from(struct index_state *istate, const char *path)
 	merge_base_index(istate);
 	check_ce_order(istate);
 	return ret;
+}
+
+struct read_index_args {
+	struct index_state *istate; /* in */
+	const char         *path;   /* in */
+	int                 result; /* out */
+};
+
+#ifdef USE_WATCHMAN
+static void read_index_from_continuation(void *args_)
+{
+	struct read_index_args *args = (struct read_index_args *)(args_);
+	assert(args);
+
+	args->result = do_read_index_from(args->istate, args->path);
+}
+#endif /* USE_WATCHMAN */
+
+int read_index_from(struct index_state *istate, const char *path)
+{
+	assert(istate);
+	assert(path);
+
+#ifdef USE_WATCHMAN
+	if (core_use_watchman) {
+		struct read_index_args args = {0};
+		args.istate = istate;
+		args.path = path;
+
+		if (fs_cache_is_valid()) {
+			goto read_cache;
+		} else {
+			watchman_async_load_fs_cache(read_index_from_continuation, &args);
+		}
+
+		return args.result;
+	} else {
+	read_cache:
+		return do_read_index_from(istate, path);
+	}
+#else
+	return do_read_index_from(istate, path);
+#endif /* USE_WATCHMAN */
 }
 
 int is_index_unborn(struct index_state *istate)

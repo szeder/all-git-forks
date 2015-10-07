@@ -65,6 +65,7 @@ valid_ref "$(printf 'heads/fu\303\237')"
 invalid_ref 'heads/*foo/bar' --refspec-pattern
 invalid_ref 'heads/foo*/bar' --refspec-pattern
 invalid_ref 'heads/f*o/bar' --refspec-pattern
+invalid_ref 'heads/foo*//bar' --refspec-pattern
 
 ref='foo'
 invalid_ref "$ref"
@@ -128,6 +129,20 @@ invalid_ref !MINGW "$ref" --normalize
 valid_ref !MINGW "$ref" '--allow-onelevel --normalize'
 invalid_ref !MINGW "$ref" '--refspec-pattern --normalize'
 valid_ref !MINGW "$ref" '--refspec-pattern --allow-onelevel --normalize'
+
+
+valid_ref 'refs/heads/a-very-long-refname'
+invalid_ref 'refs/heads/.a-very-long-refname'
+invalid_ref 'refs/heads/abcdefgh0123..'
+invalid_ref 'refs/heads/abcdefgh01234..'
+invalid_ref 'refs/heads/abcdefgh012345..'
+invalid_ref 'refs/heads/abcdefgh0123456..'
+invalid_ref 'refs/heads/abcdefgh01234567..'
+valid_ref 'refs/heads/abcdefgh0123.a'
+valid_ref 'refs/heads/abcdefgh01234.a'
+valid_ref 'refs/heads/abcdefgh012345.a'
+valid_ref 'refs/heads/abcdefgh0123456.a'
+valid_ref 'refs/heads/abcdefgh01234567.a'
 
 test_expect_success "check-ref-format --branch @{-1}" '
 	T=$(git write-tree) &&

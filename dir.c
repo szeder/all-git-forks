@@ -8,6 +8,7 @@
  *		 Junio Hamano, 2005-2006
  */
 #include "cache.h"
+#include "fs_cache.h"
 #include "dir.h"
 #include "refs.h"
 #include "wildmatch.h"
@@ -35,7 +36,17 @@ enum path_treatment {
 static enum path_treatment read_directory_recursive(struct dir_struct *dir,
 	const char *path, int len,
 	int check_only, const struct path_simplify *simplify);
-static int get_dtype(struct dirent *de, const char *path, int len);
+
+static enum path_treatment fsc_read_directory_recursive(struct dir_struct *dir,
+	struct fsc_entry *parent,
+	int check_only,
+	const struct path_simplify *simplify);
+
+static void add_to_result_list(struct dir_struct *dir,
+	enum path_treatment state,
+	const char *path,
+	int length,
+	const struct path_simplify *simplify);
 
 /* helper string functions with support for the ignore_case flag */
 int strcmp_icase(const char *a, const char *b)
@@ -584,7 +595,7 @@ int add_excludes_from_file_to_list(const char *fname,
 	size_t size = 0;
 	char *buf, *entry;
 
-	fd = open(fname, O_RDONLY);
+	fd = open_using_fs_cache(fname, O_RDONLY);
 	if (fd < 0 || fstat(fd, &st) < 0) {
 		if (errno != ENOENT)
 			warn_on_inaccessible(fname);
@@ -649,6 +660,8 @@ struct exclude_list *add_exclude_list(struct dir_struct *dir,
 	el = &group->el[group->nr++];
 	memset(el, 0, sizeof(*el));
 	el->src = src;
+	if (group_type == EXC_FILE)
+		dir->flags &= ~DIR_STD_EXCLUDES;
 	return el;
 }
 
@@ -661,6 +674,7 @@ void add_excludes_from_file(struct dir_struct *dir, const char *fname)
 	el = add_exclude_list(dir, EXC_FILE, fname);
 	if (add_excludes_from_file_to_list(fname, "", 0, el, 0) < 0)
 		die("cannot use %s as an exclude file", fname);
+	dir->flags &= ~DIR_STD_EXCLUDES;
 }
 
 int match_basename(const char *basename, int basenamelen,
@@ -802,10 +816,12 @@ int is_excluded_from_list(const char *pathname,
 			  struct exclude_list *el)
 {
 	struct exclude *exclude;
-	exclude = last_exclude_matching_from_list(pathname, pathlen, basename, dtype, el);
-	if (exclude)
-		return exclude->flags & EXC_FLAG_NEGATIVE ? 0 : 1;
-	return -1; /* undecided */
+	{
+		exclude = last_exclude_matching_from_list(pathname, pathlen, basename, dtype, el);
+		if (exclude)
+			return exclude->flags & EXC_FLAG_NEGATIVE ? 0 : 1;
+		return -1; /* undecided */
+	}
 }
 
 static struct exclude *last_exclude_matching_from_lists(struct dir_struct *dir,
@@ -815,7 +831,9 @@ static struct exclude *last_exclude_matching_from_lists(struct dir_struct *dir,
 	int i, j;
 	struct exclude_list_group *group;
 	struct exclude *exclude;
-	for (i = EXC_CMDL; i <= EXC_FILE; i++) {
+	int last = dir->flags & DIR_EXCLUDE_CMDL_ONLY ? EXC_CMDL : EXC_FILE;
+
+	for (i = EXC_CMDL; i <= last; i++) {
 		group = &dir->exclude_list_group[i];
 		for (j = group->nr - 1; j >= 0; j--) {
 			exclude = last_exclude_matching_from_list(
@@ -968,6 +986,17 @@ int is_excluded(struct dir_struct *dir, const char *pathname, int *dtype_p)
 		last_exclude_matching(dir, pathname, dtype_p);
 	if (exclude)
 		return exclude->flags & EXC_FLAG_NEGATIVE ? 0 : 1;
+	return 0;
+}
+
+static int fs_cache_is_excluded(struct dir_struct *dir, const char *pathname, int *dtype_p, struct fsc_entry *fe)
+{
+	struct exclude *exclude;
+	exclude = last_exclude_matching(dir, pathname, dtype_p);
+	if (exclude)
+		return exclude->flags & EXC_FLAG_NEGATIVE ? 0 : 1;
+	if (dir->flags & DIR_STD_EXCLUDES && fe)
+		return fe_excluded(fe);
 	return 0;
 }
 
@@ -1137,6 +1166,38 @@ static enum path_treatment treat_directory(struct dir_struct *dir,
 	return read_directory_recursive(dir, dirname, len, 1, simplify);
 }
 
+static enum path_treatment fsc_treat_directory(struct dir_struct *dir,
+	struct fsc_entry *fe,
+	int exclude,
+	const struct path_simplify *simplify)
+{
+	/* Callee expects us to have stripped the final '/' */
+	switch (directory_exists_in_index(fe->path, fe->pathlen)) {
+	case index_directory:
+		return path_recurse;
+
+	case index_gitdir:
+		return path_none;
+
+	case index_nonexistent:
+		if (dir->flags & DIR_SHOW_OTHER_DIRECTORIES)
+			break;
+		if (!(dir->flags & DIR_NO_GITLINKS)) {
+			unsigned char sha1[20];
+			if (resolve_gitlink_ref(fe->path, "HEAD", sha1) == 0)
+				return path_untracked;
+		}
+		return path_recurse;
+	}
+
+	/* This is the "show_other_directories" case */
+
+	if (!(dir->flags & DIR_HIDE_EMPTY_DIRECTORIES))
+		return exclude ? path_excluded : path_untracked;
+
+	return fsc_read_directory_recursive(dir, fe, /* check_only = */ 1, simplify);
+}
+
 /*
  * This is an inexact early pruning of any recursive directory
  * reading - if the path cannot possibly be in the pathspec,
@@ -1228,7 +1289,7 @@ static int get_index_dtype(const char *path, int len)
 	return DT_UNKNOWN;
 }
 
-static int get_dtype(struct dirent *de, const char *path, int len)
+int get_dtype(struct dirent *de, const char *path, int len)
 {
 	int dtype = de ? DTYPE(de) : DT_UNKNOWN;
 	struct stat st;
@@ -1239,6 +1300,27 @@ static int get_dtype(struct dirent *de, const char *path, int len)
 	if (dtype != DT_UNKNOWN)
 		return dtype;
 	if (lstat(path, &st))
+		return dtype;
+	if (S_ISREG(st.st_mode))
+		return DT_REG;
+	if (S_ISDIR(st.st_mode))
+		return DT_DIR;
+	if (S_ISLNK(st.st_mode))
+		return DT_LNK;
+	return dtype;
+}
+
+static int fsc_get_dtype(struct fsc_entry *fe)
+{
+	int dtype = fe_dtype(fe);
+	struct stat st;
+
+	if (dtype != DT_UNKNOWN)
+		return dtype;
+	dtype = get_index_dtype(fe->path, fe->pathlen);
+	if (dtype != DT_UNKNOWN)
+		return dtype;
+	if (lstat(fe->path, &st))
 		return dtype;
 	if (S_ISREG(st.st_mode))
 		return DT_REG;
@@ -1329,6 +1411,190 @@ static enum path_treatment treat_path(struct dir_struct *dir,
 	return treat_one_path(dir, path, simplify, dtype, de);
 }
 
+static void add_to_result_list(struct dir_struct *dir,
+	enum path_treatment state,
+	const char *path,
+	int length,
+	const struct path_simplify *simplify)
+{
+	/* add the path to the appropriate result list */
+	switch (state) {
+	case path_excluded:
+		if (dir->flags & DIR_SHOW_IGNORED)
+			dir_add_name(dir, path, length);
+		else if ((dir->flags & DIR_SHOW_IGNORED_TOO) ||
+			 ((dir->flags & DIR_COLLECT_IGNORED) &&
+			  exclude_matches_pathspec(path, length,
+				simplify)))
+			dir_add_ignored(dir, path, length);
+		break;
+
+	case path_untracked:
+		if (!(dir->flags & DIR_SHOW_IGNORED))
+			dir_add_name(dir, path, length);
+		break;
+
+	default:
+		break;
+	}
+}
+
+static int handle(struct dir_struct *dir, const char *base, int baselen,
+		  int check_only, const struct path_simplify *simplify,
+		  struct dirent *de, enum path_treatment *dir_state,
+		  struct strbuf *path)
+{
+	enum path_treatment state, subdir_state;
+
+	/* check how the file or directory should be treated */
+	state = treat_path(dir, de, path, baselen, simplify);
+
+	if (state > *dir_state)
+		*dir_state = state;
+
+	/* recurse into subdir if instructed by treat_path */
+	if (state == path_recurse) {
+		subdir_state = read_directory_recursive(dir, path->buf,
+			path->len, check_only, simplify);
+		if (subdir_state > *dir_state)
+			*dir_state = subdir_state;
+	}
+
+	if (check_only) {
+		/* abort early if maximum state has been reached */
+		if (*dir_state == path_untracked)
+			return 1;
+		/* skip the dir_add_* part */
+		return 0;
+	}
+
+	add_to_result_list(dir, state, path->buf, path->len, simplify);
+
+	return 0;
+}
+
+static enum path_treatment fsc_treat_one_path(struct dir_struct *dir,
+	struct fsc_entry *fe,
+	const struct path_simplify *simplify)
+{
+	int exclude;
+	int has_path_in_index = fe->in_index || (!!cache_file_exists(fe->path, fe->pathlen, ignore_case));
+	int dtype = fe_dtype(fe);
+
+	if (dtype == DT_UNKNOWN)
+		dtype = fsc_get_dtype(fe);
+
+	if (dtype != DT_DIR && has_path_in_index)
+		return path_none;
+
+	/*
+	 * See comment in treat_one_path for how we handle the different
+	 * cases while looking at a directory in the working tree.
+	 */
+	if ((dir->flags & DIR_COLLECT_KILLED_ONLY) &&
+	    (dtype == DT_DIR) &&
+	    !has_path_in_index &&
+	    (directory_exists_in_index(fe->path, fe->pathlen) == index_nonexistent))
+		return path_none;
+
+	exclude = fs_cache_is_excluded(dir, fe->path, &dtype, fe);
+
+	/*
+	 * Excluded? If we don't explicitly want to show
+	 * ignored files, ignore it
+	 */
+	if (exclude && !(dir->flags & (DIR_SHOW_IGNORED|DIR_SHOW_IGNORED_TOO)))
+		return path_excluded;
+
+	switch (dtype) {
+	default:
+		return path_none;
+
+	case DT_DIR:
+		return fsc_treat_directory(dir, fe, exclude, simplify);
+	case DT_REG:
+	case DT_LNK:
+		return exclude ? path_excluded : path_untracked;
+	}
+
+	assert(0); /* Should not reach here. */
+}
+
+static enum path_treatment fsc_treat_path(struct dir_struct *dir,
+	struct fsc_entry *fe,
+	const struct path_simplify *simplify)
+{
+	const char *base_name = basename(fe->path);
+
+	if (base_name[0] == '.') {
+		if (is_dot_or_dotdot(base_name) || !strcmp(base_name, ".git"))
+			return path_none;
+	}
+
+	if (simplify_away(fe->path, fe->pathlen, simplify))
+		return path_none;
+
+	return fsc_treat_one_path(dir, fe, simplify);
+}
+
+static enum path_treatment fsc_read_directory_recursive(struct dir_struct *dir,
+	struct fsc_entry *parent,
+	int check_only,
+	const struct path_simplify *simplify)
+
+{
+	struct fsc_entry *fe;
+	enum path_treatment dir_state = path_none;
+
+	assert(fs_cache_is_valid());
+
+	if (!parent)
+		return path_none;
+
+	for (fe = parent->first_child; fe; fe = fe->next_sibling) {
+		if (fe_deleted(fe))
+			continue;
+
+		/* handle */ {
+			enum path_treatment subdir_state;
+			enum path_treatment state = fsc_treat_path(dir, fe, simplify);
+			if (state > dir_state)
+				dir_state = state;
+
+			if (state == path_recurse) {
+				subdir_state = fsc_read_directory_recursive(dir, fe, check_only, simplify);
+				if (subdir_state > dir_state)
+					dir_state = subdir_state;
+			}
+
+			if (check_only) {
+				/* abort early if maximum state has been reached */
+				if (dir_state == path_untracked)
+					break;
+				/* skip the dir_add_* part */
+				continue;
+			}
+
+			if (fe_dtype(fe) == DT_DIR &&
+			    (state != path_excluded ||
+			      (dir->flags & (DIR_SHOW_IGNORED|DIR_SHOW_IGNORED_TOO)))) {
+				struct strbuf path = STRBUF_INIT;
+
+				/* Add a trailing / to dirs */
+				strbuf_add(&path, fe->path, fe->pathlen);
+				strbuf_addch(&path, '/');
+				add_to_result_list(dir, state, path.buf, path.len, simplify);
+				strbuf_release(&path);
+			} else {
+				add_to_result_list(dir, state, fe->path, fe->pathlen, simplify);
+			}
+
+		}
+	}
+
+	return dir_state;
+}
+
 /*
  * Read a directory tree. We currently ignore anything but
  * directories, regular files and symlinks. That's because git
@@ -1346,60 +1612,21 @@ static enum path_treatment read_directory_recursive(struct dir_struct *dir,
 				    const struct path_simplify *simplify)
 {
 	DIR *fdir;
-	enum path_treatment state, subdir_state, dir_state = path_none;
-	struct dirent *de;
+	enum path_treatment dir_state = path_none;
 	struct strbuf path = STRBUF_INIT;
+	struct dirent *de;
 
 	strbuf_add(&path, base, baselen);
-
 	fdir = opendir(path.len ? path.buf : ".");
 	if (!fdir)
 		goto out;
 
 	while ((de = readdir(fdir)) != NULL) {
-		/* check how the file or directory should be treated */
-		state = treat_path(dir, de, &path, baselen, simplify);
-		if (state > dir_state)
-			dir_state = state;
-
-		/* recurse into subdir if instructed by treat_path */
-		if (state == path_recurse) {
-			subdir_state = read_directory_recursive(dir, path.buf,
-				path.len, check_only, simplify);
-			if (subdir_state > dir_state)
-				dir_state = subdir_state;
-		}
-
-		if (check_only) {
-			/* abort early if maximum state has been reached */
-			if (dir_state == path_untracked)
-				break;
-			/* skip the dir_add_* part */
-			continue;
-		}
-
-		/* add the path to the appropriate result list */
-		switch (state) {
-		case path_excluded:
-			if (dir->flags & DIR_SHOW_IGNORED)
-				dir_add_name(dir, path.buf, path.len);
-			else if ((dir->flags & DIR_SHOW_IGNORED_TOO) ||
-				((dir->flags & DIR_COLLECT_IGNORED) &&
-				exclude_matches_pathspec(path.buf, path.len,
-					simplify)))
-				dir_add_ignored(dir, path.buf, path.len);
+		if (handle(dir, base, baselen, check_only, simplify, de, &dir_state, &path))
 			break;
-
-		case path_untracked:
-			if (!(dir->flags & DIR_SHOW_IGNORED))
-				dir_add_name(dir, path.buf, path.len);
-			break;
-
-		default:
-			break;
-		}
 	}
 	closedir(fdir);
+
  out:
 	strbuf_release(&path);
 
@@ -1482,9 +1709,12 @@ static int treat_leading_path(struct dir_struct *dir,
 	return rc;
 }
 
+
 int read_directory(struct dir_struct *dir, const char *path, int len, const struct pathspec *pathspec)
 {
 	struct path_simplify *simplify;
+	int saved_flags = dir->flags;
+	struct fsc_entry *fe = NULL;
 
 	/*
 	 * Check out create_simplify()
@@ -1508,11 +1738,41 @@ int read_directory(struct dir_struct *dir, const char *path, int len, const stru
 	 * create_simplify().
 	 */
 	simplify = create_simplify(pathspec ? pathspec->_raw : NULL);
-	if (!len || treat_leading_path(dir, path, len, simplify))
-		read_directory_recursive(dir, path, len, 0, simplify);
+
+	/*
+	  Check for standard excludes.
+	  Standard excludes means: exclude_per_dir
+	 */
+	if (!dir->exclude_per_dir || strcmp(dir->exclude_per_dir, ".gitignore"))
+		dir->flags &= ~DIR_STD_EXCLUDES;
+
+	if (fs_cache_is_valid() && dir->flags & DIR_STD_EXCLUDES) {
+		dir->flags |= DIR_EXCLUDE_CMDL_ONLY;
+	}
+
+	if (fs_cache_is_valid()) {
+		int len_no_slash = len;
+		if (len && path[len - 1] == '/')
+			len_no_slash --;
+		fe = fs_cache_file_exists(path, len_no_slash);
+	}
+
+	if (!len || treat_leading_path(dir, path, len, simplify)) {
+		if (fs_cache_is_valid()) {
+			if (fe) {
+				fsc_read_directory_recursive(dir, fe, 0, simplify);
+			} else {
+				warning("Unable to find %.*s in the fs_cache.  Falling back to the filesystem", len, path);
+				read_directory_recursive(dir, path, len, 0, simplify);
+			}
+		} else {
+			read_directory_recursive(dir, path, len, 0, simplify);
+		}
+	}
 	free_simplify(simplify);
 	qsort(dir->entries, dir->nr, sizeof(struct dir_entry *), cmp_name);
 	qsort(dir->ignored, dir->ignored_nr, sizeof(struct dir_entry *), cmp_name);
+	dir->flags = saved_flags;
 	return dir->nr;
 }
 
@@ -1672,6 +1932,7 @@ void setup_standard_excludes(struct dir_struct *dir)
 {
 	const char *path;
 	char *xdg_path;
+	int previously_empty;
 
 	dir->exclude_per_dir = ".gitignore";
 	path = git_path("info/exclude");
@@ -1679,10 +1940,13 @@ void setup_standard_excludes(struct dir_struct *dir)
 		home_config_paths(NULL, &xdg_path, "ignore");
 		excludes_file = xdg_path;
 	}
+	previously_empty = dir->exclude_list_group[EXC_FILE].nr == 0;
 	if (!access_or_warn(path, R_OK, 0))
 		add_excludes_from_file(dir, path);
 	if (excludes_file && !access_or_warn(excludes_file, R_OK, 0))
 		add_excludes_from_file(dir, excludes_file);
+	if (previously_empty)
+		dir->flags |= DIR_STD_EXCLUDES;
 }
 
 int remove_path(const char *name)

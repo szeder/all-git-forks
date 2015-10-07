@@ -857,6 +857,8 @@ static void interactive_main_loop(void)
 	}
 }
 
+extern int do_read_index_from(struct index_state *istate, const char *path);
+
 int cmd_clean(int argc, const char **argv, const char *prefix)
 {
 	int i, res;
@@ -916,7 +918,8 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 
 	dir.flags |= DIR_SHOW_OTHER_DIRECTORIES;
 
-	if (read_cache() < 0)
+	/* We don't call read_cache here to avoid the watchman hit */
+	if (do_read_index_from(&the_index, get_index_file()) < 0)
 		die(_("index file corrupt"));
 
 	if (!ignored)

@@ -1,0 +1,161 @@
+How git uses watchman
+---------------------
+
+Git status (and some other commands) have to determine which files
+have changed between the working copy and the index.  Ordinarily, this
+requires checking every file in the working directory.  But if you
+have watchman (https://github.com/facebook/watchman) installed, git
+can cache the state of the working directory and use watchman to track
+file changes, making commands like git status faster.
+
+set core.usewatchman = true to use watchman.
+You can also set
+core.watchmansynctimeout = [number of milliseconds]
+to change watchman's sync timeout; see the watchman docs for details
+on this.  You should only change this if you see watchman timeout
+error messages.
+
+Internals
+---------
+
+The filesystem cache stores information about every file in the
+working tree.  In almost every case where git calls lstat or
+opendir/readdir, the modified file cache can be consulted instead.
+
+The file system cache is stored on disk in .git/fs_cache.  It is
+stored very similarly to the index, except without path prefix
+compression.
+
+All binary numbers are in network byte order.
+
+A cache_time is two 4-byte numbers:
+   a 4-byte number of seconds, and a 4-byte number of nanoseconds.
+
+There are two versions of the filesystem cache:
+
+Version 1 is obsolete; version 3 is slightly faster to load.  Version 2
+doesn't exist; I screwed up and older gits will crash when they try
+to load a "v2" index, so I've called it v3.
+
+The format for v1 is:
+   - A 16-byte header consisting of
+
+     4-byte signature:
+       The signature is { 'M', 'O', 'D', 'C' }
+
+     4-byte version number:
+       This is version 1
+
+     4-byte number of entries.
+
+     32-bit flags.  Presently unused.
+
+   - Validity data:
+
+     20-byte SHA1: of .git/info/exclude
+
+     20-byte SHA1: of user's exclude file
+
+     0-terminated string:
+       For the last update time from watchman.
+
+     0-terminated string:
+       The path to the git repository (in case you move it)
+
+     0-terminated string:
+       The path to the user's exclude file
+
+   - A list of entries, in depth-first order from the root.  Each
+     entry consists of:
+
+     8-byte inode (but only the lower 4 bytes are used, due to a bug)
+
+     8-byte dev (ditto)
+
+     8-byte cache-time ctime (seconds and nanoseconds)
+
+     8-byte cache-time mtime (seconds and nanoseconds)
+
+     4-byte mode
+
+     4-byte size (That seems like an error; it should be 8-byte).
+
+     32-bit flags:
+       The only flag that matters is FE_DELETED=1; this marks that a
+       file has been deleted (We eliminate deleted cache entries on
+       read because otherwise we have to count them in advance to fill
+       in nr, and that would be expensive.
+
+     4-byte uid (this is not strictly necessary for git)
+
+     4-byte gid (this is not strictly necessary for git)
+
+     0-terminated path (relative to git directory)
+
+   - Checksum:
+     16-byte VMAC hash of the contents of the rest of the file with the key
+     "abcdefghijklmnop".  See: https://en.wikipedia.org/wiki/VMAC.  VMAC is
+     designed to be super-fast; we're using it for its speed, not (obviously)
+     for its security.
+
+v3:
+   - A 16-byte header consisting of
+
+     4-byte signature:
+       The signature is { 'M', 'O', 'D', 'C' }
+
+     4-byte version number:
+       This is version 3
+
+     4-byte number of entries.
+
+     32-bit flags.  Presently unused.
+
+   - Validity data:
+
+     20-byte SHA1: of .git/info/exclude
+
+     20-byte SHA1: of user's exclude file
+
+     0-terminated string:
+       For the last update time from watchman.
+
+     0-terminated string:
+       The path to the git repository (in case you move it)
+
+     0-terminated string:
+       The path to the user's exclude file
+
+   - A list of entries, in depth-first order from the root.  Each
+     entry consists of:
+
+     4-byte hash
+       (using memihash, to save computing it on load)
+
+     4-byte path length
+       (the length of the decompressed path, see below)
+
+     4-byte inode (the low bits of the inode; the index uses the same strategy)
+
+     4-byte dev (ditto)
+
+     4-byte cache-time ctime (just seconds; nanoseconds were not useful)
+
+     4-byte cache-time mtime (ditto)
+
+     4-byte mode
+
+     4-byte size (gonna stick with this error, because changing it
+     requires writing htonq/ntohq and we'll get bored waiting to
+     sha1sum a file that big anyway)
+
+     32-bit flags:
+       as per v1
+
+     1-byte count of path bytes shared with previous entry.  If more
+     than 255 bytes are shared, the shared number is truncated to 255.
+
+     0-terminated path (relative to git directory), minus shared bytes.
+
+   - Checksum:
+     as per v1

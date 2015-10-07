@@ -34,7 +34,7 @@ void setup_unpack_trees_porcelain(struct unpack_trees_options *opts,
 struct unpack_trees_options {
 	unsigned int reset,
 		     merge,
-		     update,
+		     update, /* 1 = update the working tree, 0 = only modify the index */
 		     index_only,
 		     nontrivial_merge,
 		     trivial_merges_only,

@@ -390,6 +390,11 @@ AS_HELP_STRING([],[Tcl/Tk interpreter will be found in a system.]),
 GIT_PARSE_WITH(tcltk))
 #
 
+# Declare the with-sse/without-sse options.
+AC_ARG_WITH(sse,
+AS_HELP_STRING([--with-sse],[use SSE instructions (default is YES)]),
+GIT_PARSE_WITH(sse))
+
 
 ## Checks for programs.
 AC_MSG_NOTICE([CHECKS for programs])
@@ -401,6 +406,18 @@ case $ac_cv_c_inline in
   *)                 INLINE=$ac_cv_c_inline ;;
 esac
 GIT_CONF_SUBST([INLINE])
+
+# Check to see if the compiler accepts -msse4 (if requested)
+if test x"$NO_SSE" = x; then
+  save_CFLAGS="$CFLAGS"
+  CFLAGS="$CFLAGS -msse4"
+  AC_MSG_CHECKING([whether cc accepts -msse4])
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]])],
+       [NO_SSE=; AC_MSG_RESULT([yes])],
+       [NO_SSE=YesPlease; AC_MSG_RESULT([no])])
+  CFLAGS="$save_CFLAGS"
+fi
+
 
 # which switch to pass runtime path to dynamic libraries to the linker
 AC_CACHE_CHECK([if linker supports -R], git_cv_ld_dashr, [
@@ -457,6 +474,7 @@ else
   fi
 fi
 GIT_CONF_SUBST([TCLTK_PATH])
+GIT_CONF_SUBST([NO_SSE])
 AC_CHECK_PROGS(ASCIIDOC, [asciidoc])
 if test -n "$ASCIIDOC"; then
 	AC_MSG_CHECKING([for asciidoc version])
@@ -1045,6 +1063,21 @@ GIT_CONF_SUBST([NO_INITGROUPS])
 # Define NO_MMAP if you want to avoid mmap.
 #
 # Define NO_ICONV if your libc does not properly support iconv.
+
+# Check for watchman client library
+AC_CHECK_LIB([watchman], [watchman_connect],
+  [WATCHMAN_LIBS="-lwatchman"
+  USE_WATCHMAN=YesPlease],
+  [USE_WATCHMAN=])
+GIT_CONF_SUBST([WATCHMAN_LIBS])
+GIT_CONF_SUBST([USE_WATCHMAN])
+
+AC_CHECK_LIB([jansson], [json_array],
+  [JANSSON_LIBS="-ljansson"
+  JANSSON_LIB=YesPlease],
+  [JANSSON_LIB=])
+GIT_CONF_SUBST([JANSSON_LIBS])
+GIT_CONF_SUBST([JANSSON_LIB])
 
 AC_DEFUN([BSD_SYSCTL_SRC], [
 AC_LANG_PROGRAM([[

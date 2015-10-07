@@ -60,6 +60,7 @@
 /git-fmt-merge-msg
 /git-for-each-ref
 /git-format-patch
+/git-fs_cache-dump
 /git-fsck
 /git-fsck-objects
 /git-gc

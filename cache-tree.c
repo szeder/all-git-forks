@@ -592,6 +592,8 @@ static struct cache_tree *cache_tree_find(struct cache_tree *it, const char *pat
 	return it;
 }
 
+extern int do_read_index_from(struct index_state *istate, const char *path);
+
 int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 {
 	int entries, was_valid, newfd;
@@ -605,7 +607,8 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 
 	newfd = hold_locked_index(lock_file, 1);
 
-	entries = read_cache();
+	/* We don't call read_cache here to avoid the watchman hit */
+	entries = do_read_index_from(&the_index, get_index_file());
 	if (entries < 0)
 		return WRITE_TREE_UNREADABLE_INDEX;
 	if (flags & WRITE_TREE_IGNORE_CACHE_TREE)

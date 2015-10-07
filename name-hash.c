@@ -92,7 +92,8 @@ static void remove_dir_entry(struct index_state *istate, struct cache_entry *ce)
 	struct dir_entry *dir = hash_dir_entry(istate, ce, ce_namelen(ce));
 	while (dir && !(--dir->nr)) {
 		struct dir_entry *parent = dir->parent;
-		hashmap_remove(&istate->dir_hash, dir, NULL);
+		struct dir_entry *removed = hashmap_remove(&istate->dir_hash, dir, NULL);
+		assert(removed == dir);
 		free(dir);
 		dir = parent;
 	}
@@ -121,7 +122,7 @@ static int cache_entry_cmp(const struct cache_entry *ce1,
 	return remove ? !(ce1 == ce2) : 0;
 }
 
-static void lazy_init_name_hash(struct index_state *istate)
+void init_name_hash(struct index_state *istate)
 {
 	int nr;
 
@@ -133,6 +134,11 @@ static void lazy_init_name_hash(struct index_state *istate)
 	for (nr = 0; nr < istate->cache_nr; nr++)
 		hash_index_entry(istate, istate->cache[nr]);
 	istate->name_hash_initialized = 1;
+}
+
+static void lazy_init_name_hash(struct index_state *istate)
+{
+	init_name_hash(istate);
 }
 
 void add_name_hash(struct index_state *istate, struct cache_entry *ce)

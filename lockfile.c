@@ -187,6 +187,43 @@ int hold_lock_file_for_update(struct lock_file *lk, const char *path, int flags)
 	return fd;
 }
 
+#define STALE_LOCKFILE_AGE_SECS 120
+
+int hold_lock_file_for_update_retry_stale(struct lock_file *lk, const char *path, int flags)
+{
+	int fd = lock_file(lk, path, flags);
+	struct strbuf sb = STRBUF_INIT;
+	struct stat st;
+	size_t pathlen = strlen(path);
+
+	if (fd >= 0)
+		return fd;
+
+	strbuf_init(&sb, pathlen + 5);
+
+	strbuf_add(&sb, path, pathlen);
+	strbuf_add(&sb, ".lock", 5);
+
+	if (lstat(sb.buf, &st)) {
+		if (errno == ENOENT) {
+			/*
+			 * It was deleted befor the lstat, so we can
+			 * retry locking
+			 */
+			fd = lock_file(lk, path, flags);
+		}
+	} else {
+		time_t now = time(NULL);
+		if (now - st.st_mtime >= STALE_LOCKFILE_AGE_SECS) {
+			/* stale lock */
+			unlink(sb.buf);
+			fd = lock_file(lk, path, flags);
+		}
+	}
+
+	strbuf_release(&sb);
+	return fd;
+}
 int hold_lock_file_for_append(struct lock_file *lk, const char *path, int flags)
 {
 	int fd, orig_fd;

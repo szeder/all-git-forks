@@ -75,6 +75,7 @@ extern void unable_to_lock_message(const char *path, int err,
 				   struct strbuf *buf);
 extern NORETURN void unable_to_lock_die(const char *path, int err);
 extern int hold_lock_file_for_update(struct lock_file *, const char *path, int);
+extern int hold_lock_file_for_update_retry_stale(struct lock_file *lk, const char *path, int flags);
 extern int hold_lock_file_for_append(struct lock_file *, const char *path, int);
 extern FILE *fdopen_lock_file(struct lock_file *, const char *mode);
 extern char *get_locked_file_path(struct lock_file *);

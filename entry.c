@@ -2,6 +2,7 @@
 #include "blob.h"
 #include "dir.h"
 #include "streaming.h"
+#include "fs_cache.h"
 
 static void create_directories(const char *path, int path_len,
 			       const struct checkout *state)
@@ -35,11 +36,18 @@ static void create_directories(const char *path, int path_len,
 		 * one more time to create the directory.
 		 */
 		if (mkdir(buf, 0777)) {
-			if (errno == EEXIST && state->force &&
-			    !unlink_or_warn(buf) && !mkdir(buf, 0777))
-				continue;
-			die_errno("cannot create directory at '%s'", buf);
+			if (errno != EEXIST || !state->force ||
+			    unlink_or_warn(buf) || mkdir(buf, 0777)) {
+				die_errno("cannot create directory at '%s'", buf);
+			}
 		}
+
+#ifdef USE_WATCHMAN
+		if (core_use_watchman && fs_cache_is_valid()) {
+			insert_path_in_fscache(buf);
+		}
+#endif
+
 	}
 	free(buf);
 }
@@ -49,6 +57,7 @@ static void remove_subtree(struct strbuf *path)
 	DIR *dir = opendir(path->buf);
 	struct dirent *de;
 	int origlen = path->len;
+	struct fsc_entry *fe;
 
 	if (!dir)
 		die_errno("cannot opendir '%s'", path->buf);
@@ -66,11 +75,25 @@ static void remove_subtree(struct strbuf *path)
 			remove_subtree(path);
 		else if (unlink(path->buf))
 			die_errno("cannot unlink '%s'", path->buf);
+		if (fs_cache_is_valid()) {
+			fe = fs_cache_file_exists(path->buf, path->len);
+			if (fe)
+				fs_cache_remove(fe);
+		}
 		strbuf_setlen(path, origlen);
 	}
 	closedir(dir);
 	if (rmdir(path->buf))
 		die_errno("cannot rmdir '%s'", path->buf);
+
+	if (fs_cache_is_valid()) {
+		fe = fs_cache_file_exists(path->buf, path->len);
+		if (fe) {
+			if (fe->first_child)
+				die("expected dir '%s' to be empty, but contained at least: %s\n", path->buf, fe->first_child->path);
+			fs_cache_remove(fe);
+		}
+	}
 }
 
 static int create_file(const char *path, unsigned int mode)
@@ -248,6 +271,7 @@ static int check_path(const char *path, int len, struct stat *st, int skiplen)
 int checkout_entry(struct cache_entry *ce,
 		   const struct checkout *state, char *topath)
 {
+	int ret = 0;
 	static struct strbuf path = STRBUF_INIT;
 	struct stat st;
 
@@ -290,5 +314,15 @@ int checkout_entry(struct cache_entry *ce,
 		return 0;
 
 	create_directories(path.buf, path.len, state);
-	return write_entry(ce, path.buf, state, 0);
+
+	ret = write_entry(ce, path.buf, state, 0);
+
+#ifdef USE_WATCHMAN
+	if (core_use_watchman && fs_cache_is_valid()) {
+		if (!ret && !strncmp(state->base_dir, get_git_work_tree(), state->base_dir_len))
+			insert_ce_in_fs_cache(ce);
+	}
+#endif
+
+	return ret;
 }
