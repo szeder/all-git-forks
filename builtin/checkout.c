@@ -18,12 +18,12 @@
 #include "xdiff-interface.h"
 #include "ll-merge.h"
 #include "resolve-undo.h"
+#include "submodule-config.h"
 #include "submodule.h"
-#include "argv-array.h"
 
 static const char * const checkout_usage[] = {
-	N_("git checkout [options] <branch>"),
-	N_("git checkout [options] [<branch>] -- <file>..."),
+	N_("git checkout [<options>] <branch>"),
+	N_("git checkout [<options>] [<branch>] -- <file>..."),
 	NULL,
 };
 
@@ -36,6 +36,7 @@ struct checkout_opts {
 	int writeout_stage;
 	int overwrite_ignore;
 	int ignore_skipworktree;
+	int ignore_other_worktrees;
 
 	const char *new_branch;
 	const char *new_branch_force;
@@ -280,7 +281,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	if (opts->source_tree)
 		read_tree_some(opts->source_tree, &opts->pathspec);
 
-	ps_matched = xcalloc(1, opts->pathspec.nr);
+	ps_matched = xcalloc(opts->pathspec.nr, 1);
 
 	/*
 	 * Make sure all pathspecs participated in locating the paths
@@ -441,6 +442,11 @@ struct branch_info {
 	const char *name; /* The short name used */
 	const char *path; /* The full name of a real branch */
 	struct commit *commit; /* The named commit */
+	/*
+	 * if not null the branch is detached because it's already
+	 * checked out in this checkout
+	 */
+	char *checkout;
 };
 
 static void setup_branch_path(struct branch_info *branch)
@@ -605,19 +611,20 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 	if (opts->new_branch) {
 		if (opts->new_orphan_branch) {
 			if (opts->new_branch_log && !log_all_ref_updates) {
-				int temp;
-				char log_file[PATH_MAX];
-				char *ref_name = mkpath("refs/heads/%s", opts->new_orphan_branch);
+				int ret;
+				char *refname;
+				struct strbuf err = STRBUF_INIT;
 
-				temp = log_all_ref_updates;
-				log_all_ref_updates = 1;
-				if (log_ref_setup(ref_name, log_file, sizeof(log_file))) {
-					fprintf(stderr, _("Can not do reflog for '%s'\n"),
-					    opts->new_orphan_branch);
-					log_all_ref_updates = temp;
+				refname = mkpathdup("refs/heads/%s", opts->new_orphan_branch);
+				ret = safe_create_reflog(refname, 1, &err);
+				free(refname);
+				if (ret) {
+					fprintf(stderr, _("Can not do reflog for '%s': %s\n"),
+						opts->new_orphan_branch, err.buf);
+					strbuf_release(&err);
 					return;
 				}
-				log_all_ref_updates = temp;
+				strbuf_release(&err);
 			}
 		}
 		else
@@ -685,10 +692,10 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 }
 
 static int add_pending_uninteresting_ref(const char *refname,
-					 const unsigned char *sha1,
+					 const struct object_id *oid,
 					 int flags, void *cb_data)
 {
-	add_pending_sha1(cb_data, refname, sha1, UNINTERESTING);
+	add_pending_sha1(cb_data, refname, oid->hash, UNINTERESTING);
 	return 0;
 }
 
@@ -743,10 +750,17 @@ static void suggest_reattach(struct commit *commit, struct rev_info *revs)
 
 	if (advice_detached_head)
 		fprintf(stderr,
-			_(
+			Q_(
+			/* The singular version */
+			"If you want to keep it by creating a new branch, "
+			"this may be a good time\nto do so with:\n\n"
+			" git branch <new-branch-name> %s\n\n",
+			/* The plural version */
 			"If you want to keep them by creating a new branch, "
 			"this may be a good time\nto do so with:\n\n"
-			" git branch new_branch_name %s\n\n"),
+			" git branch <new-branch-name> %s\n\n",
+			/* Give ngettext() the count */
+			lost),
 			find_unique_abbrev(commit->object.sha1, DEFAULT_ABBREV));
 }
 
@@ -883,10 +897,11 @@ static const char *unique_tracking_name(const char *name, unsigned char *sha1)
 static int parse_branchname_arg(int argc, const char **argv,
 				int dwim_new_local_branch_ok,
 				struct branch_info *new,
-				struct tree **source_tree,
-				unsigned char rev[20],
-				const char **new_branch)
+				struct checkout_opts *opts,
+				unsigned char rev[20])
 {
+	struct tree **source_tree = &opts->source_tree;
+	const char **new_branch = &opts->new_branch;
 	int argcount = 0;
 	unsigned char branch_rev[20];
 	const char *arg;
@@ -1086,6 +1101,17 @@ static int checkout_branch(struct checkout_opts *opts,
 		die(_("Cannot switch branch to a non-commit '%s'"),
 		    new->name);
 
+	if (new->path && !opts->force_detach && !opts->new_branch &&
+	    !opts->ignore_other_worktrees) {
+		unsigned char sha1[20];
+		int flag;
+		char *head_ref = resolve_refdup("HEAD", 0, sha1, &flag);
+		if (head_ref &&
+		    (!(flag & REF_ISSYMREF) || strcmp(head_ref, new->path)))
+			die_if_checked_out(new->path);
+		free(head_ref);
+	}
+
 	if (!new->commit && opts->new_branch) {
 		unsigned char rev[20];
 		int flag;
@@ -1127,7 +1153,9 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "ignore-skip-worktree-bits", &opts.ignore_skipworktree,
 			 N_("do not limit pathspecs to sparse entries only")),
 		OPT_HIDDEN_BOOL(0, "guess", &dwim_new_local_branch,
-				N_("second guess 'git checkout no-such-branch'")),
+				N_("second guess 'git checkout <no-such-branch>'")),
+		OPT_BOOL(0, "ignore-other-worktrees", &opts.ignore_other_worktrees,
+			 N_("do not check if another worktree is holding the given ref")),
 		OPT_END(),
 	};
 
@@ -1197,8 +1225,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 			opts.track == BRANCH_TRACK_UNSPECIFIED &&
 			!opts.new_branch;
 		int n = parse_branchname_arg(argc, argv, dwim_ok,
-					     &new, &opts.source_tree,
-					     rev, &opts.new_branch);
+					     &new, &opts, rev);
 		argv += n;
 		argc -= n;
 	}

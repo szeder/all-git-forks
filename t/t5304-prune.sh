@@ -218,6 +218,7 @@ test_expect_success 'gc: prune old objects after local clone' '
 '
 
 test_expect_success 'garbage report in count-objects -v' '
+	test_when_finished "rm -f .git/objects/pack/fake*" &&
 	: >.git/objects/pack/foo &&
 	: >.git/objects/pack/foo.bar &&
 	: >.git/objects/pack/foo.keep &&
@@ -251,6 +252,14 @@ test_expect_success 'prune .git/shallow' '
 	grep $SHA1 out &&
 	git prune &&
 	test_path_is_missing .git/shallow
+'
+
+test_expect_success 'prune: handle alternate object database' '
+	test_create_repo A &&
+	git -C A commit --allow-empty -m "initial commit" &&
+	git clone --shared A B &&
+	git -C B commit --allow-empty -m "next commit" &&
+	git -C B prune
 '
 
 test_done

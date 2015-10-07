@@ -312,13 +312,19 @@ test_expect_success $PREREQ,!AUTOIDENT 'broken implicit ident aborts send-email'
 	)
 '
 
+test_expect_success $PREREQ 'setup tocmd and cccmd scripts' '
+	write_script tocmd-sed <<-\EOF &&
+	sed -n -e "s/^tocmd--//p" "$1"
+	EOF
+	write_script cccmd-sed <<-\EOF
+	sed -n -e "s/^cccmd--//p" "$1"
+	EOF
+'
+
 test_expect_success $PREREQ 'tocmd works' '
 	clean_fake_sendmail &&
 	cp $patches tocmd.patch &&
 	echo tocmd--tocmd@example.com >>tocmd.patch &&
-	write_script tocmd-sed <<-\EOF &&
-	sed -n -e "s/^tocmd--//p" "$1"
-	EOF
 	git send-email \
 		--from="Example <nobody@example.com>" \
 		--to-cmd=./tocmd-sed \
@@ -332,9 +338,6 @@ test_expect_success $PREREQ 'cccmd works' '
 	clean_fake_sendmail &&
 	cp $patches cccmd.patch &&
 	echo "cccmd--  cccmd@example.com" >>cccmd.patch &&
-	write_script cccmd-sed <<-\EOF &&
-	sed -n -e "s/^cccmd--//p" "$1"
-	EOF
 	git send-email \
 		--from="Example <nobody@example.com>" \
 		--to=nobody@example.com \
@@ -392,7 +395,7 @@ test_expect_success $PREREQ 'allow long lines with --no-validate' '
 		--from="Example <nobody@example.com>" \
 		--to=nobody@example.com \
 		--smtp-server="$(pwd)/fake.sendmail" \
-		--novalidate \
+		--no-validate \
 		$patches longline.patch \
 		2>errors
 '
@@ -426,7 +429,7 @@ test_expect_success $PREREQ 'In-Reply-To without --chain-reply-to' '
 	git send-email \
 		--from="Example <nobody@example.com>" \
 		--to=nobody@example.com \
-		--nochain-reply-to \
+		--no-chain-reply-to \
 		--in-reply-to="$(cat expect)" \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		$patches $patches $patches \
@@ -519,6 +522,12 @@ Result: OK
 EOF
 "
 
+replace_variable_fields () {
+	sed	-e "s/^\(Date:\).*/\1 DATE-STRING/" \
+		-e "s/^\(Message-Id:\).*/\1 MESSAGE-ID-STRING/" \
+		-e "s/^\(X-Mailer:\).*/\1 X-MAILER-STRING/"
+}
+
 test_suppression () {
 	git send-email \
 		--dry-run \
@@ -526,10 +535,7 @@ test_suppression () {
 		--from="Example <from@example.com>" \
 		--to=to@example.com \
 		--smtp-server relay.example.com \
-		$patches |
-	sed	-e "s/^\(Date:\).*/\1 DATE-STRING/" \
-		-e "s/^\(Message-Id:\).*/\1 MESSAGE-ID-STRING/" \
-		-e "s/^\(X-Mailer:\).*/\1 X-MAILER-STRING/" \
+		$patches | replace_variable_fields \
 		>actual-suppress-$1${2+"-$2"} &&
 	test_cmp expected-suppress-$1${2+"-$2"} actual-suppress-$1${2+"-$2"}
 }
@@ -818,25 +824,19 @@ test_expect_success $PREREQ '--confirm=compose' '
 '
 
 test_expect_success $PREREQ 'confirm by default (due to cc)' '
-	CONFIRM=$(git config --get sendemail.confirm) &&
+	test_when_finished git config sendemail.confirm never &&
 	git config --unset sendemail.confirm &&
 	test_confirm
-	ret="$?"
-	git config sendemail.confirm ${CONFIRM:-never}
-	test $ret = "0"
 '
 
 test_expect_success $PREREQ 'confirm by default (due to --compose)' '
-	CONFIRM=$(git config --get sendemail.confirm) &&
+	test_when_finished git config sendemail.confirm never &&
 	git config --unset sendemail.confirm &&
 	test_confirm --suppress-cc=all --compose
-	ret="$?"
-	git config sendemail.confirm ${CONFIRM:-never}
-	test $ret = "0"
 '
 
 test_expect_success $PREREQ 'confirm detects EOF (inform assumes y)' '
-	CONFIRM=$(git config --get sendemail.confirm) &&
+	test_when_finished git config sendemail.confirm never &&
 	git config --unset sendemail.confirm &&
 	rm -fr outdir &&
 	git format-patch -2 -o outdir &&
@@ -846,13 +846,10 @@ test_expect_success $PREREQ 'confirm detects EOF (inform assumes y)' '
 			--to=nobody@example.com \
 			--smtp-server="$(pwd)/fake.sendmail" \
 			outdir/*.patch </dev/null
-	ret="$?"
-	git config sendemail.confirm ${CONFIRM:-never}
-	test $ret = "0"
 '
 
 test_expect_success $PREREQ 'confirm detects EOF (auto causes failure)' '
-	CONFIRM=$(git config --get sendemail.confirm) &&
+	test_when_finished git config sendemail.confirm never &&
 	git config sendemail.confirm auto &&
 	GIT_SEND_EMAIL_NOTTY=1 &&
 	export GIT_SEND_EMAIL_NOTTY &&
@@ -861,13 +858,10 @@ test_expect_success $PREREQ 'confirm detects EOF (auto causes failure)' '
 			--to=nobody@example.com \
 			--smtp-server="$(pwd)/fake.sendmail" \
 			$patches </dev/null
-	ret="$?"
-	git config sendemail.confirm ${CONFIRM:-never}
-	test $ret = "0"
 '
 
 test_expect_success $PREREQ 'confirm does not loop forever' '
-	CONFIRM=$(git config --get sendemail.confirm) &&
+	test_when_finished git config sendemail.confirm never &&
 	git config sendemail.confirm auto &&
 	GIT_SEND_EMAIL_NOTTY=1 &&
 	export GIT_SEND_EMAIL_NOTTY &&
@@ -876,9 +870,6 @@ test_expect_success $PREREQ 'confirm does not loop forever' '
 			--to=nobody@example.com \
 			--smtp-server="$(pwd)/fake.sendmail" \
 			$patches
-	ret="$?"
-	git config sendemail.confirm ${CONFIRM:-never}
-	test $ret = "0"
 '
 
 test_expect_success $PREREQ 'utf8 Cc is rfc2047 encoded' '
@@ -1067,7 +1058,7 @@ test_expect_success $PREREQ 'in-reply-to but no threading' '
 		--from="Example <nobody@example.com>" \
 		--to=nobody@example.com \
 		--in-reply-to="<in-reply-id@example.com>" \
-		--nothread \
+		--no-thread \
 		$patches |
 	grep "In-Reply-To: <in-reply-id@example.com>"
 '
@@ -1077,7 +1068,7 @@ test_expect_success $PREREQ 'no in-reply-to and no threading' '
 		--dry-run \
 		--from="Example <nobody@example.com>" \
 		--to=nobody@example.com \
-		--nothread \
+		--no-thread \
 		$patches $patches >stdout &&
 	! grep "In-Reply-To: " stdout
 '
@@ -1088,7 +1079,7 @@ test_expect_success $PREREQ 'threading but no chain-reply-to' '
 		--from="Example <nobody@example.com>" \
 		--to=nobody@example.com \
 		--thread \
-		--nochain-reply-to \
+		--no-chain-reply-to \
 		$patches $patches >stdout &&
 	grep "In-Reply-To: " stdout
 '
@@ -1325,7 +1316,7 @@ test_expect_success $PREREQ 'sendemail.transferencoding=7bit fails on 8bit data'
 
 test_expect_success $PREREQ '--transfer-encoding overrides sendemail.transferEncoding' '
 	clean_fake_sendmail &&
-	git config sendemail.transferEncoding 8bit
+	git config sendemail.transferEncoding 8bit &&
 	test_must_fail git send-email \
 		--transfer-encoding=7bit \
 		--smtp-server="$(pwd)/fake.sendmail" \
@@ -1552,7 +1543,7 @@ test_expect_success $PREREQ 'sendemail.aliasfiletype=mailrc' '
 
 test_expect_success $PREREQ 'sendemail.aliasfile=~/.mailrc' '
 	clean_fake_sendmail &&
-	echo "alias sbd  someone@example.org" >~/.mailrc &&
+	echo "alias sbd  someone@example.org" >"$HOME/.mailrc" &&
 	git config --replace-all sendemail.aliasesfile "~/.mailrc" &&
 	git config sendemail.aliasfiletype mailrc &&
 	git send-email \
@@ -1560,6 +1551,138 @@ test_expect_success $PREREQ 'sendemail.aliasfile=~/.mailrc' '
 		--to=sbd \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		outdir/0001-*.patch \
+		2>errors >out &&
+	grep "^!someone@example\.org!$" commandline1
+'
+
+test_sendmail_aliases () {
+	msg="$1" && shift &&
+	expect="$@" &&
+	cat >.tmp-email-aliases &&
+
+	test_expect_success $PREREQ "$msg" '
+		clean_fake_sendmail && rm -fr outdir &&
+		git format-patch -1 -o outdir &&
+		git config --replace-all sendemail.aliasesfile \
+			"$(pwd)/.tmp-email-aliases" &&
+		git config sendemail.aliasfiletype sendmail &&
+		git send-email \
+			--from="Example <nobody@example.com>" \
+			--to=alice --to=bcgrp \
+			--smtp-server="$(pwd)/fake.sendmail" \
+			outdir/0001-*.patch \
+			2>errors >out &&
+		for i in $expect
+		do
+			grep "^!$i!$" commandline1 || return 1
+		done
+	'
+}
+
+test_sendmail_aliases 'sendemail.aliasfiletype=sendmail' \
+	'awol@example\.com' \
+	'bob@example\.com' \
+	'chloe@example\.com' \
+	'o@example\.com' <<-\EOF
+	alice: Alice W Land <awol@example.com>
+	bob: Robert Bobbyton <bob@example.com>
+	# this is a comment
+	   # this is also a comment
+	chloe: chloe@example.com
+	abgroup: alice, bob
+	bcgrp: bob, chloe, Other <o@example.com>
+	EOF
+
+test_sendmail_aliases 'sendmail aliases line folding' \
+	alice1 \
+	bob1 bob2 \
+	chuck1 chuck2 \
+	darla1 darla2 darla3 \
+	elton1 elton2 elton3 \
+	fred1 fred2 \
+	greg1 <<-\EOF
+	alice: alice1
+	bob: bob1,\
+	bob2
+	chuck: chuck1,
+	    chuck2
+	darla: darla1,\
+	darla2,
+	    darla3
+	elton: elton1,
+	    elton2,\
+	elton3
+	fred: fred1,\
+	    fred2
+	greg: greg1
+	bcgrp: bob, chuck, darla, elton, fred, greg
+	EOF
+
+test_sendmail_aliases 'sendmail aliases tolerate bogus line folding' \
+	alice1 bob1 <<-\EOF
+	    alice: alice1
+	bcgrp: bob1\
+	EOF
+
+test_sendmail_aliases 'sendmail aliases empty' alice bcgrp <<-\EOF
+	EOF
+
+test_expect_success $PREREQ 'alias support in To header' '
+	clean_fake_sendmail &&
+	echo "alias sbd  someone@example.org" >.mailrc &&
+	test_config sendemail.aliasesfile ".mailrc" &&
+	test_config sendemail.aliasfiletype mailrc &&
+	git format-patch --stdout -1 --to=sbd >aliased.patch &&
+	git send-email \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		aliased.patch \
+		2>errors >out &&
+	grep "^!someone@example\.org!$" commandline1
+'
+
+test_expect_success $PREREQ 'alias support in Cc header' '
+	clean_fake_sendmail &&
+	echo "alias sbd  someone@example.org" >.mailrc &&
+	test_config sendemail.aliasesfile ".mailrc" &&
+	test_config sendemail.aliasfiletype mailrc &&
+	git format-patch --stdout -1 --cc=sbd >aliased.patch &&
+	git send-email \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		aliased.patch \
+		2>errors >out &&
+	grep "^!someone@example\.org!$" commandline1
+'
+
+test_expect_success $PREREQ 'tocmd works with aliases' '
+	clean_fake_sendmail &&
+	echo "alias sbd  someone@example.org" >.mailrc &&
+	test_config sendemail.aliasesfile ".mailrc" &&
+	test_config sendemail.aliasfiletype mailrc &&
+	git format-patch --stdout -1 >tocmd.patch &&
+	echo tocmd--sbd >>tocmd.patch &&
+	git send-email \
+		--from="Example <nobody@example.com>" \
+		--to-cmd=./tocmd-sed \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		tocmd.patch \
+		2>errors >out &&
+	grep "^!someone@example\.org!$" commandline1
+'
+
+test_expect_success $PREREQ 'cccmd works with aliases' '
+	clean_fake_sendmail &&
+	echo "alias sbd  someone@example.org" >.mailrc &&
+	test_config sendemail.aliasesfile ".mailrc" &&
+	test_config sendemail.aliasfiletype mailrc &&
+	git format-patch --stdout -1 >cccmd.patch &&
+	echo cccmd--sbd >>cccmd.patch &&
+	git send-email \
+		--from="Example <nobody@example.com>" \
+		--cc-cmd=./cccmd-sed \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		cccmd.patch \
 		2>errors >out &&
 	grep "^!someone@example\.org!$" commandline1
 '
@@ -1595,6 +1718,74 @@ test_expect_success $PREREQ '--[no-]xmailer with sendemail.xmailer=false' '
 	do_xmailer_test 0 "" &&
 	do_xmailer_test 0 "--no-xmailer" &&
 	do_xmailer_test 1 "--xmailer"
+'
+
+test_expect_success $PREREQ 'setup expected-list' '
+	git send-email \
+	--dry-run \
+	--from="Example <from@example.com>" \
+	--to="To 1 <to1@example.com>" \
+	--to="to2@example.com" \
+	--to="to3@example.com" \
+	--cc="Cc 1 <cc1@example.com>" \
+	--cc="Cc2 <cc2@example.com>" \
+	--bcc="bcc1@example.com" \
+	--bcc="bcc2@example.com" \
+	0001-add-master.patch | replace_variable_fields \
+	>expected-list
+'
+
+test_expect_success $PREREQ 'use email list in --cc --to and --bcc' '
+	git send-email \
+	--dry-run \
+	--from="Example <from@example.com>" \
+	--to="To 1 <to1@example.com>, to2@example.com" \
+	--to="to3@example.com" \
+	--cc="Cc 1 <cc1@example.com>, Cc2 <cc2@example.com>" \
+	--bcc="bcc1@example.com, bcc2@example.com" \
+	0001-add-master.patch | replace_variable_fields \
+	>actual-list &&
+	test_cmp expected-list actual-list
+'
+
+test_expect_success $PREREQ 'aliases work with email list' '
+	echo "alias to2 to2@example.com" >.mutt &&
+	echo "alias cc1 Cc 1 <cc1@example.com>" >>.mutt &&
+	test_config sendemail.aliasesfile ".mutt" &&
+	test_config sendemail.aliasfiletype mutt &&
+	git send-email \
+	--dry-run \
+	--from="Example <from@example.com>" \
+	--to="To 1 <to1@example.com>, to2, to3@example.com" \
+	--cc="cc1, Cc2 <cc2@example.com>" \
+	--bcc="bcc1@example.com, bcc2@example.com" \
+	0001-add-master.patch | replace_variable_fields \
+	>actual-list &&
+	test_cmp expected-list actual-list
+'
+
+test_expect_success $PREREQ 'leading and trailing whitespaces are removed' '
+	echo "alias to2 to2@example.com" >.mutt &&
+	echo "alias cc1 Cc 1 <cc1@example.com>" >>.mutt &&
+	test_config sendemail.aliasesfile ".mutt" &&
+	test_config sendemail.aliasfiletype mutt &&
+	TO1=$(echo "QTo 1 <to1@example.com>" | q_to_tab) &&
+	TO2=$(echo "QZto2" | qz_to_tab_space) &&
+	CC1=$(echo "cc1" | append_cr) &&
+	BCC1=$(echo "Q bcc1@example.com Q" | q_to_nul) &&
+	git send-email \
+	--dry-run \
+	--from="	Example <from@example.com>" \
+	--to="$TO1" \
+	--to="$TO2" \
+	--to="  to3@example.com   " \
+	--cc="$CC1" \
+	--cc="Cc2 <cc2@example.com>" \
+	--bcc="$BCC1" \
+	--bcc="bcc2@example.com" \
+	0001-add-master.patch | replace_variable_fields \
+	>actual-list &&
+	test_cmp expected-list actual-list
 '
 
 test_done

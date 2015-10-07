@@ -200,9 +200,11 @@ static int interpret_target(struct walker *walker, char *target, unsigned char *
 	return -1;
 }
 
-static int mark_complete(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int mark_complete(const char *path, const struct object_id *oid,
+			 int flag, void *cb_data)
 {
-	struct commit *commit = lookup_commit_reference_gently(sha1, 1);
+	struct commit *commit = lookup_commit_reference_gently(oid->hash, 1);
+
 	if (commit) {
 		commit->object.flags |= COMPLETE;
 		commit_list_insert(commit, &complete);
@@ -232,7 +234,7 @@ int walker_targets_stdin(char ***target, const char ***write_ref)
 			REALLOC_ARRAY(*write_ref, targets_alloc);
 		}
 		(*target)[targets] = xstrdup(tg_one);
-		(*write_ref)[targets] = rf_one ? xstrdup(rf_one) : NULL;
+		(*write_ref)[targets] = xstrdup_or_null(rf_one);
 		targets++;
 	}
 	strbuf_release(&buf);
@@ -299,7 +301,7 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		strbuf_reset(&refname);
 		strbuf_addf(&refname, "refs/%s", write_ref[i]);
 		if (ref_transaction_update(transaction, refname.buf,
-					   &sha1[20 * i], NULL, 0, 0,
+					   &sha1[20 * i], NULL, 0,
 					   msg ? msg : "fetch (unknown)",
 					   &err)) {
 			error("%s", err.buf);

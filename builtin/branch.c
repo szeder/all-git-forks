@@ -21,10 +21,10 @@
 #include "wt-status.h"
 
 static const char * const builtin_branch_usage[] = {
-	N_("git branch [options] [-r | -a] [--merged | --no-merged]"),
-	N_("git branch [options] [-l] [-f] <branchname> [<start-point>]"),
-	N_("git branch [options] [-r] (-d | -D) <branchname>..."),
-	N_("git branch [options] (-m | -M) [<oldbranch>] <newbranch>"),
+	N_("git branch [<options>] [-r | -a] [--merged | --no-merged]"),
+	N_("git branch [<options>] [-l] [-f] <branch-name> [<start-point>]"),
+	N_("git branch [<options>] [-r] (-d | -D) <branch-name>..."),
+	N_("git branch [<options>] (-m | -M) [<old-branch>] <new-branch>"),
 	NULL
 };
 
@@ -123,14 +123,12 @@ static int branch_merged(int kind, const char *name,
 
 	if (kind == REF_LOCAL_BRANCH) {
 		struct branch *branch = branch_get(name);
+		const char *upstream = branch_get_upstream(branch, NULL);
 		unsigned char sha1[20];
 
-		if (branch &&
-		    branch->merge &&
-		    branch->merge[0] &&
-		    branch->merge[0]->dst &&
+		if (upstream &&
 		    (reference_name = reference_name_to_free =
-		     resolve_refdup(branch->merge[0]->dst, RESOLVE_REF_READING,
+		     resolve_refdup(upstream, RESOLVE_REF_READING,
 				    sha1, NULL)) != NULL)
 			reference_rev = lookup_commit_reference(sha1);
 	}
@@ -162,7 +160,7 @@ static int branch_merged(int kind, const char *name,
 }
 
 static int check_branch_commit(const char *branchname, const char *refname,
-			       unsigned char *sha1, struct commit *head_rev,
+			       const unsigned char *sha1, struct commit *head_rev,
 			       int kinds, int force)
 {
 	struct commit *rev = lookup_commit_reference(sha1);
@@ -242,7 +240,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 					    sha1, &flags);
 		if (!target) {
 			error(remote_branch
-			      ? _("remote branch '%s' not found.")
+			      ? _("remote-tracking branch '%s' not found.")
 			      : _("branch '%s' not found."), bname.buf);
 			ret = 1;
 			continue;
@@ -255,9 +253,10 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 			continue;
 		}
 
-		if (delete_ref(name, sha1, REF_NODEREF)) {
+		if (delete_ref(name, is_null_sha1(sha1) ? NULL : sha1,
+			       REF_NODEREF)) {
 			error(remote_branch
-			      ? _("Error deleting remote branch '%s'")
+			      ? _("Error deleting remote-tracking branch '%s'")
 			      : _("Error deleting branch '%s'"),
 			      bname.buf);
 			ret = 1;
@@ -265,7 +264,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 		}
 		if (!quiet) {
 			printf(remote_branch
-			       ? _("Deleted remote branch %s (was %s).\n")
+			       ? _("Deleted remote-tracking branch %s (was %s).\n")
 			       : _("Deleted branch %s (was %s).\n"),
 			       bname.buf,
 			       (flags & REF_ISBROKEN) ? "broken"
@@ -328,7 +327,7 @@ static int match_patterns(const char **pattern, const char *refname)
 	return 0;
 }
 
-static int append_ref(const char *refname, const unsigned char *sha1, int flags, void *cb_data)
+static int append_ref(const char *refname, const struct object_id *oid, int flags, void *cb_data)
 {
 	struct append_ref_cb *cb = (struct append_ref_cb *)(cb_data);
 	struct ref_list *ref_list = cb->ref_list;
@@ -365,7 +364,7 @@ static int append_ref(const char *refname, const unsigned char *sha1, int flags,
 
 	commit = NULL;
 	if (ref_list->verbose || ref_list->with_commit || merge_filter != NO_FILTER) {
-		commit = lookup_commit_reference_gently(sha1, 1);
+		commit = lookup_commit_reference_gently(oid->hash, 1);
 		if (!commit) {
 			cb->ret = error(_("branch '%s' does not point at a commit"), refname);
 			return 0;
@@ -427,25 +426,19 @@ static void fill_tracking_info(struct strbuf *stat, const char *branch_name,
 	int ours, theirs;
 	char *ref = NULL;
 	struct branch *branch = branch_get(branch_name);
+	const char *upstream;
 	struct strbuf fancy = STRBUF_INIT;
 	int upstream_is_gone = 0;
 	int added_decoration = 1;
 
-	switch (stat_tracking_info(branch, &ours, &theirs)) {
-	case 0:
-		/* no base */
-		return;
-	case -1:
-		/* with "gone" base */
+	if (stat_tracking_info(branch, &ours, &theirs, &upstream) < 0) {
+		if (!upstream)
+			return;
 		upstream_is_gone = 1;
-		break;
-	default:
-		/* with base */
-		break;
 	}
 
 	if (show_upstream_ref) {
-		ref = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+		ref = shorten_unambiguous_ref(upstream, 0);
 		if (want_color(branch_use_color))
 			strbuf_addf(&fancy, "%s%s%s",
 					branch_get_color(BRANCH_COLOR_UPSTREAM),
@@ -589,9 +582,16 @@ static char *get_head_description(void)
 	else if (state.bisect_in_progress)
 		strbuf_addf(&desc, _("(no branch, bisect started on %s)"),
 			    state.branch);
-	else if (state.detached_from)
-		strbuf_addf(&desc, _("(detached from %s)"),
-			    state.detached_from);
+	else if (state.detached_from) {
+		/* TRANSLATORS: make sure these match _("HEAD detached at ")
+		   and _("HEAD detached from ") in wt-status.c */
+		if (state.detached_at)
+			strbuf_addf(&desc, _("(HEAD detached at %s)"),
+				state.detached_from);
+		else
+			strbuf_addf(&desc, _("(HEAD detached from %s)"),
+				state.detached_from);
+	}
 	else
 		strbuf_addstr(&desc, _("(no branch)"));
 	free(state.branch);
@@ -636,6 +636,10 @@ static int print_ref_list(int kinds, int detached, int verbose, int abbrev, stru
 	cb.pattern = pattern;
 	cb.ret = 0;
 	for_each_rawref(append_ref, &cb);
+	/*
+	 * The following implementation is currently duplicated in ref-filter. It
+	 * will eventually be removed when we port branch.c to use ref-filter APIs.
+	 */
 	if (merge_filter != NO_FILTER) {
 		struct commit *filter;
 		filter = lookup_commit_reference_gently(merge_filter_ref, 0);
@@ -746,6 +750,10 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 	strbuf_release(&newsection);
 }
 
+/*
+ * This function is duplicated in ref-filter. It will eventually be removed
+ * when we port branch.c to use ref-filter APIs.
+ */
 static int opt_parse_merge_filter(const struct option *opt, const char *arg, int unset)
 {
 	merge_filter = ((opt->long_name[0] == 'n')
@@ -764,7 +772,6 @@ static const char edit_description[] = "BRANCH_DESCRIPTION";
 
 static int edit_branch_description(const char *branch_name)
 {
-	FILE *fp;
 	int status;
 	struct strbuf buf = STRBUF_INIT;
 	struct strbuf name = STRBUF_INIT;
@@ -777,8 +784,7 @@ static int edit_branch_description(const char *branch_name)
 		    "  %s\n"
 		    "Lines starting with '%c' will be stripped.\n",
 		    branch_name, comment_line_char);
-	fp = fopen(git_path(edit_description), "w");
-	if ((fwrite(buf.buf, 1, buf.len, fp) < buf.len) || fclose(fp)) {
+	if (write_file_gently(git_path(edit_description), "%s", buf.buf)) {
 		strbuf_release(&buf);
 		return error(_("could not write branch description template: %s"),
 			     strerror(errno));
@@ -823,18 +829,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		OPT__COLOR(&branch_use_color, N_("use colored output")),
 		OPT_SET_INT('r', "remotes",     &kinds, N_("act on remote-tracking branches"),
 			REF_REMOTE_BRANCH),
-		{
-			OPTION_CALLBACK, 0, "contains", &with_commit, N_("commit"),
-			N_("print only branches that contain the commit"),
-			PARSE_OPT_LASTARG_DEFAULT,
-			parse_opt_with_commit, (intptr_t)"HEAD",
-		},
-		{
-			OPTION_CALLBACK, 0, "with", &with_commit, N_("commit"),
-			N_("print only branches that contain the commit"),
-			PARSE_OPT_HIDDEN | PARSE_OPT_LASTARG_DEFAULT,
-			parse_opt_with_commit, (intptr_t) "HEAD",
-		},
+		OPT_CONTAINS(&with_commit, N_("print only branches that contain the commit")),
+		OPT_WITH(&with_commit, N_("print only branches that contain the commit")),
 		OPT__ABBREV(&abbrev),
 
 		OPT_GROUP(N_("Specific git-branch actions:")),

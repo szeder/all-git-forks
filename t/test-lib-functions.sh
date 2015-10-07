@@ -201,7 +201,14 @@ test_chmod () {
 
 # Unset a configuration variable, but don't fail if it doesn't exist.
 test_unconfig () {
-	git config --unset-all "$@"
+	config_dir=
+	if test "$1" = -C
+	then
+		shift
+		config_dir=$1
+		shift
+	fi
+	git ${config_dir:+-C "$config_dir"} config --unset-all "$@"
 	config_status=$?
 	case "$config_status" in
 	5) # ok, nothing to unset
@@ -213,8 +220,15 @@ test_unconfig () {
 
 # Set git config, automatically unsetting it after the test is over.
 test_config () {
-	test_when_finished "test_unconfig '$1'" &&
-	git config "$@"
+	config_dir=
+	if test "$1" = -C
+	then
+		shift
+		config_dir=$1
+		shift
+	fi
+	test_when_finished "test_unconfig ${config_dir:+-C '$config_dir'} '$1'" &&
+	git ${config_dir:+-C "$config_dir"} config "$@"
 }
 
 test_config_global () {
@@ -348,11 +362,18 @@ test_declared_prereq () {
 	return 1
 }
 
+test_verify_prereq () {
+	test -z "$test_prereq" ||
+	expr >/dev/null "$test_prereq" : '[A-Z0-9_,!]*$' ||
+	error "bug in the test script: '$test_prereq' does not look like a prereq"
+}
+
 test_expect_failure () {
 	test_start_
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-failure"
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$@"
 	then
@@ -372,6 +393,7 @@ test_expect_success () {
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||
 	error "bug in the test script: not 2 or 3 parameters to test-expect-success"
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$@"
 	then
@@ -400,6 +422,7 @@ test_external () {
 	error >&5 "bug in the test script: not 3 or 4 parameters to test_external"
 	descr="$1"
 	shift
+	test_verify_prereq
 	export test_prereq
 	if ! test_skip "$descr" "$@"
 	then
@@ -478,7 +501,7 @@ test_external_without_stderr () {
 test_path_is_file () {
 	if ! test -f "$1"
 	then
-		echo "File $1 doesn't exist. $*"
+		echo "File $1 doesn't exist. $2"
 		false
 	fi
 }
@@ -486,7 +509,7 @@ test_path_is_file () {
 test_path_is_dir () {
 	if ! test -d "$1"
 	then
-		echo "Directory $1 doesn't exist. $*"
+		echo "Directory $1 doesn't exist. $2"
 		false
 	fi
 }
@@ -713,6 +736,11 @@ test_seq () {
 # what went wrong.
 
 test_when_finished () {
+	# We cannot detect when we are in a subshell in general, but by
+	# doing so on Bash is better than nothing (the test will
+	# silently pass on other shells).
+	test "${BASH_SUBSHELL-0}" = 0 ||
+	error "bug in test script: test_when_finished does nothing in a subshell"
 	test_cleanup="{ $*
 		} && (exit \"\$eval_ret\"); eval_ret=\$?; $test_cleanup"
 }
@@ -745,7 +773,9 @@ test_ln_s_add () {
 	else
 		printf '%s' "$1" >"$2" &&
 		ln_s_obj=$(git hash-object -w "$2") &&
-		git update-index --add --cacheinfo 120000 $ln_s_obj "$2"
+		git update-index --add --cacheinfo 120000 $ln_s_obj "$2" &&
+		# pick up stat info from the file
+		git update-index "$2"
 	fi
 }
 

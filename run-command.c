@@ -4,10 +4,6 @@
 #include "sigchain.h"
 #include "argv-array.h"
 
-#ifndef SHELL_PATH
-# define SHELL_PATH "/bin/sh"
-#endif
-
 void child_process_init(struct child_process *child)
 {
 	memset(child, 0, sizeof(*child));
@@ -204,7 +200,6 @@ static int execv_shell_cmd(const char **argv)
 #endif
 
 #ifndef GIT_WINDOWS_NATIVE
-static int child_err = 2;
 static int child_notifier = -1;
 
 static void notify_parent(void)
@@ -215,17 +210,6 @@ static void notify_parent(void)
 	 * otherwise, finish_command will still report the error.
 	 */
 	xwrite(child_notifier, "", 1);
-}
-
-static NORETURN void die_child(const char *err, va_list params)
-{
-	vwritef(child_err, "fatal: ", err, params);
-	exit(128);
-}
-
-static void error_child(const char *err, va_list params)
-{
-	vwritef(child_err, "error: ", err, params);
 }
 #endif
 
@@ -366,11 +350,10 @@ fail_pipe:
 		 * in subsequent call paths use the parent's stderr.
 		 */
 		if (cmd->no_stderr || need_err) {
-			child_err = dup(2);
+			int child_err = dup(2);
 			set_cloexec(child_err);
+			set_error_handle(fdopen(child_err, "w"));
 		}
-		set_die_routine(die_child);
-		set_error_routine(error_child);
 
 		close(notify_pipe[0]);
 		set_cloexec(notify_pipe[1]);
@@ -561,7 +544,12 @@ int finish_command(struct child_process *cmd)
 
 int run_command(struct child_process *cmd)
 {
-	int code = start_command(cmd);
+	int code;
+
+	if (cmd->out < 0 || cmd->err < 0)
+		die("BUG: run_command with a pipe can cause deadlock");
+
+	code = start_command(cmd);
 	if (code)
 		return code;
 	return finish_command(cmd);
@@ -607,7 +595,7 @@ static NORETURN void die_async(const char *err, va_list params)
 {
 	vreportf("fatal: ", err, params);
 
-	if (!pthread_equal(main_thread, pthread_self())) {
+	if (in_async()) {
 		struct async *async = pthread_getspecific(async_key);
 		if (async->proc_in >= 0)
 			close(async->proc_in);
@@ -624,6 +612,13 @@ static int async_die_is_recursing(void)
 	void *ret = pthread_getspecific(async_die_counter);
 	pthread_setspecific(async_die_counter, (void *)1);
 	return ret != NULL;
+}
+
+int in_async(void)
+{
+	if (!main_thread_set)
+		return 0; /* no asyncs started yet */
+	return !pthread_equal(main_thread, pthread_self());
 }
 
 #else
@@ -664,6 +659,12 @@ int git_atexit(void (*handler)(void))
 	return 0;
 }
 #define atexit git_atexit
+
+static int process_is_async;
+int in_async(void)
+{
+	return process_is_async;
+}
 
 #endif
 
@@ -724,6 +725,7 @@ int start_async(struct async *async)
 		if (need_out)
 			close(fdout[0]);
 		git_atexit_clear();
+		process_is_async = 1;
 		exit(!!async->proc(proc_in, proc_out, async->data));
 	}
 
@@ -794,13 +796,15 @@ int finish_async(struct async *async)
 #endif
 }
 
-char *find_hook(const char *name)
+const char *find_hook(const char *name)
 {
-	char *path = git_path("hooks/%s", name);
-	if (access(path, X_OK) < 0)
-		path = NULL;
+	static struct strbuf path = STRBUF_INIT;
 
-	return path;
+	strbuf_reset(&path);
+	strbuf_git_path(&path, "hooks/%s", name);
+	if (access(path.buf, X_OK) < 0)
+		return NULL;
+	return path.buf;
 }
 
 int run_hook_ve(const char *const *env, const char *name, va_list args)
@@ -832,4 +836,20 @@ int run_hook_le(const char *const *env, const char *name, ...)
 	va_end(args);
 
 	return ret;
+}
+
+int capture_command(struct child_process *cmd, struct strbuf *buf, size_t hint)
+{
+	cmd->out = -1;
+	if (start_command(cmd) < 0)
+		return -1;
+
+	if (strbuf_read(buf, cmd->out, hint) < 0) {
+		close(cmd->out);
+		finish_command(cmd); /* throw away exit code */
+		return -1;
+	}
+
+	close(cmd->out);
+	return finish_command(cmd);
 }

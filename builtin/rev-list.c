@@ -42,6 +42,7 @@ static const char rev_list_usage[] =
 "    --abbrev=<n> | --no-abbrev\n"
 "    --abbrev-commit\n"
 "    --left-right\n"
+"    --count\n"
 "  special purpose:\n"
 "    --bisect\n"
 "    --bisect-vars\n"
@@ -349,13 +350,16 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 	    revs.diff)
 		usage(rev_list_usage);
 
+	if (revs.show_notes)
+		die(_("rev-list does not support display of notes"));
+
 	save_commit_buffer = (revs.verbose_header ||
 			      revs.grep_filter.pattern_list ||
 			      revs.grep_filter.header_list);
 	if (bisect_list)
 		revs.limited = 1;
 
-	if (use_bitmap_index) {
+	if (use_bitmap_index && !revs.prune) {
 		if (revs.count && !revs.left_right && !revs.cherry_mark) {
 			uint32_t commit_count;
 			if (!prepare_bitmap_walk(&revs)) {

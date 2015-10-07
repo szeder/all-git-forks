@@ -1,5 +1,6 @@
 #include "builtin.h"
 #include "cache.h"
+#include "refs.h"
 #include "commit.h"
 #include "diff.h"
 #include "revision.h"
@@ -10,7 +11,7 @@
 #include "gpg-interface.h"
 
 static const char * const fmt_merge_msg_usage[] = {
-	N_("git fmt-merge-msg [-m <message>] [--log[=<n>]|--no-log] [--file <file>]"),
+	N_("git fmt-merge-msg [-m <message>] [--log[=<n>] | --no-log] [--file <file>]"),
 	NULL
 };
 
@@ -223,16 +224,14 @@ static void add_branch_desc(struct strbuf *out, const char *name)
 
 #define util_as_integral(elem) ((intptr_t)((elem)->util))
 
-static void record_person(int which, struct string_list *people,
-			  struct commit *commit)
+static void record_person_from_buf(int which, struct string_list *people,
+				   const char *buffer)
 {
-	const char *buffer;
 	char *name_buf, *name, *name_end;
 	struct string_list_item *elem;
 	const char *field;
 
 	field = (which == 'a') ? "\nauthor " : "\ncommitter ";
-	buffer = get_commit_buffer(commit, NULL);
 	name = strstr(buffer, field);
 	if (!name)
 		return;
@@ -245,7 +244,6 @@ static void record_person(int which, struct string_list *people,
 	if (name_end < name)
 		return;
 	name_buf = xmemdupz(name, name_end - name + 1);
-	unuse_commit_buffer(commit, buffer);
 
 	elem = string_list_lookup(people, name_buf);
 	if (!elem) {
@@ -254,6 +252,15 @@ static void record_person(int which, struct string_list *people,
 	}
 	elem->util = (void*)(util_as_integral(elem) + 1);
 	free(name_buf);
+}
+
+
+static void record_person(int which, struct string_list *people,
+			  struct commit *commit)
+{
+	const char *buffer = get_commit_buffer(commit, NULL);
+	record_person_from_buf(which, people, buffer);
+	unuse_commit_buffer(commit, buffer);
 }
 
 static int cmp_string_list_util_as_integral(const void *a_, const void *b_)
