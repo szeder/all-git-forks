@@ -9,6 +9,12 @@ test_description='Test lmdb refs backend'
 TEST_NO_CREATE_REPO=1
 . ./test-lib.sh
 
+if ! test -f $GIT_BUILD_DIR/test-refs-be-lmdb
+then
+	skip_all="lmdb ref backend not available"
+	test_done
+fi
+
 raw_ref() {
 	test-refs-be-lmdb "$1"
 }

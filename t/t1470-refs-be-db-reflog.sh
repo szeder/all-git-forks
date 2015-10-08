@@ -8,6 +8,12 @@ test_description='Test prune and reflog expiration'
 TEST_NO_CREATE_REPO=1
 . ./test-lib.sh
 
+if ! test -f $GIT_BUILD_DIR/test-refs-be-lmdb
+then
+	skip_all="lmdb ref backend not available"
+	test_done
+fi
+
 raw_reflog() {
 	cat .git/logs/$1 2>/dev/null || test-refs-be-lmdb -l "$1"
 }
