@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Import constants
+source constants.sh
+
 # Create sql script to clean up database
 cat > task-clean.sql << \EOF
 DELETE FROM GP_TAREA;
@@ -12,7 +15,7 @@ DELETE FROM GP_TIME_LOG;
 EOF
 
 # Launch clean action
-sqlite3 ../../.git/gitpro.db -batch < task-clean.sql
+sqlite3 $TEST_DB -batch < task-clean.sql
 
 rm task-clean.sql
 

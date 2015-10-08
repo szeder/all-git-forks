@@ -1,37 +1,11 @@
 #!/bin/bash
 
-input="test_input"
-output="test_output"
+source constants.sh
 
 ###########################
 # 	ROLE SEARCH TESTS
 ###########################
 echo "testing: git role -r"
-
-cat > "clean-roles.sql" <<\EOF
-DELETE FROM GP_ROL WHERE NOMBRE_ROL='TEST_A';
-DELETE FROM GP_ROL WHERE NOMBRE_ROL='TEST_B';
-EOF
-
-cat > "delete-roles.sh" << \EOF
-sqlite3 ../../.git/gitpro.db -batch < clean-roles.sql
-exit 0
-EOF
-chmod +x delete-roles.sh
-./delete-roles.sh
-
-rm clean-roles.sql delete-roles.sh
-
-# Insert previous data into roles to run following tests
-cat > "test-data.sql" << \EOF
-INSERT INTO GP_ROL(nombre_rol,crear_rol,asignar_rol) values ('TEST_A',1,1);
-INSERT INTO GP_ROL(nombre_rol) values ('TEST_B');
-EOF
-
-chmod +x insert-data.sh
-
-./clean-db.sh
-./insert-data.sh
 
 # TEST 1 --- rread001 --- Read valid role
 cat > "$input/rread001.in" << \EOF
@@ -82,9 +56,8 @@ cat > "$input/rread005.in" << \EOF
 EOF
 cat > "$output/rread005.out" << \EOF
 Existent roles:
-> PUBLIC
-> EXAMPLE
 > TEST_A
 > TEST_B
+> EXAMPLE
 EOF
 ./launch-test.sh 'git role --show-all' 'rread005'

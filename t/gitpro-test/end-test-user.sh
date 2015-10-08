@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source constants.sh
+
 # Create sql script to clean up database
 cat > user-clean.sql << \EOF
 DELETE FROM GP_ROL WHERE NOMBRE_ROL = 'EXAMPLE';
@@ -14,7 +16,7 @@ DELETE FROM GP_TIME_LOG;
 EOF
 
 # Launch clean action
-sqlite3 ../../.git/gitpro.db -batch < user-clean.sql
+sqlite3 $TEST_DB -batch < user-clean.sql
 
 rm user-clean.sql
 

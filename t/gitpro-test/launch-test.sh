@@ -1,5 +1,7 @@
 #!/bin/bash
 
+./before-test.sh
+
 # If number of arguments less then 1; print usage and exit
 if [ $# -lt 1 ]; then
     printf "Usage: $0 <application> <test_file_name>\n"
@@ -46,6 +48,8 @@ if [ $e_code != 0 ]; then
 else
     printf "%s ok\n" "$file_base"
 fi
+
+./after-test.sh
 
 # Clean exit with status 0
 exit 0
