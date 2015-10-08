@@ -1,5 +1,5 @@
 //DB NAME
-#define DB_NAME ".git/gitpro.db"
+#define DB_NAME ".db/gitpro.db"
 
 //PUBLIC ROLE
 #define PUBLIC "PUBLIC"
