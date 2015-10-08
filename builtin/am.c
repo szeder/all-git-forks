@@ -1653,6 +1653,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 
 	init_merge_options(&o);
 
+	o.gentle = 1;
 	o.branch1 = "HEAD";
 	his_tree_name = xstrfmt("%.*s", linelen(state->msg), state->msg);
 	o.branch2 = his_tree_name;
