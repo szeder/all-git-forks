@@ -44,7 +44,7 @@ b1 [ahead 1, behind 1] d
 b2 [ahead 1, behind 1] d
 b3 [behind 1] b
 b4 [ahead 2] f
-b5 g
+b5 [gone] g
 b6 c
 EOF
 
@@ -58,11 +58,11 @@ test_expect_success 'branch -v' '
 '
 
 cat >expect <<\EOF
-b1 [origin/master: ahead 1, behind 1] d
-b2 [origin/master: ahead 1, behind 1] d
-b3 [origin/master: behind 1] b
-b4 [origin/master: ahead 2] f
-b5 [brokenbase: gone] g
+b1 [origin/master] [ahead 1, behind 1] d
+b2 [origin/master] [ahead 1, behind 1] d
+b3 [origin/master] [behind 1] b
+b4 [origin/master] [ahead 2] f
+b5 [brokenbase] [gone] g
 b6 [origin/master] c
 EOF
 
