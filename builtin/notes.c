@@ -230,8 +230,8 @@ static int parse_file_arg(const struct option *opt, const char *arg, int unset)
 	if (!strcmp(arg, "-")) {
 		if (strbuf_read(&d->buf, 0, 1024) < 0)
 			die_errno(_("cannot read '%s'"), arg);
-	} else if (strbuf_read_file(&d->buf, arg, 1024) < 0)
-		die_errno(_("could not open or read '%s'"), arg);
+	} else
+		strbuf_read_file_or_die(&(d->buf), arg, 0);
 	stripspace(&d->buf, 0);
 
 	d->given = 1;

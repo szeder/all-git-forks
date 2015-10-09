@@ -703,9 +703,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 			die_errno(_("could not read log from standard input"));
 		hook_arg1 = "message";
 	} else if (logfile) {
-		if (strbuf_read_file(&sb, logfile, 0) < 0)
-			die_errno(_("could not read log file '%s'"),
-				  logfile);
+		strbuf_read_file_or_die(&sb, logfile, 0);
 		hook_arg1 = "message";
 	} else if (use_message) {
 		char *buffer;
@@ -725,16 +723,13 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 				      &sb, &ctx);
 		hook_arg1 = "message";
 	} else if (!stat(git_path_merge_msg(), &statbuf)) {
-		if (strbuf_read_file(&sb, git_path_merge_msg(), 0) < 0)
-			die_errno(_("could not read MERGE_MSG"));
+		strbuf_read_file_or_die(&sb, git_path_merge_msg(), 0);
 		hook_arg1 = "merge";
 	} else if (!stat(git_path_squash_msg(), &statbuf)) {
-		if (strbuf_read_file(&sb, git_path_squash_msg(), 0) < 0)
-			die_errno(_("could not read SQUASH_MSG"));
+		strbuf_read_file_or_die(&sb, git_path_squash_msg(), 0);
 		hook_arg1 = "squash";
 	} else if (template_file) {
-		if (strbuf_read_file(&sb, template_file, 0) < 0)
-			die_errno(_("could not read '%s'"), template_file);
+		strbuf_read_file_or_die(&sb, template_file, 0);
 		hook_arg1 = "template";
 		clean_message_contents = 0;
 	}
@@ -1699,8 +1694,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		fclose(fp);
 		strbuf_release(&m);
 		if (!stat(git_path_merge_mode(), &statbuf)) {
-			if (strbuf_read_file(&sb, git_path_merge_mode(), 0) < 0)
-				die_errno(_("could not read MERGE_MODE"));
+			strbuf_read_file_or_die(&sb, git_path_merge_mode(), 0);
 			if (!strcmp(sb.buf, "no-ff"))
 				allow_fast_forward = 0;
 		}

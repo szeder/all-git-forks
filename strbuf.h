@@ -497,6 +497,7 @@ static inline void strbuf_complete_line(struct strbuf *sb)
 		strbuf_addch(sb, '\n');
 }
 
+extern void strbuf_read_file_or_die(struct strbuf *sb, const char *path, size_t size);
 extern int strbuf_branchname(struct strbuf *sb, const char *name);
 extern int strbuf_check_branch_ref(struct strbuf *sb, const char *name);
 

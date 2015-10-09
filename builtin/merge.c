@@ -768,8 +768,7 @@ static void read_merge_msg(struct strbuf *msg)
 {
 	const char *filename = git_path_merge_msg();
 	strbuf_reset(msg);
-	if (strbuf_read_file(msg, filename, 0) < 0)
-		die_errno(_("Could not read from '%s'"), filename);
+	strbuf_read_file_or_die(msg, filename, 0);
 }
 
 static void write_merge_state(struct commit_list *);
