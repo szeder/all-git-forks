@@ -1,7 +1,6 @@
 #!/bin/bash
 
-input="test_input"
-output="test_output"
+source constants.sh
 
 ###########################
 # 	TASK SHOW TESTS
@@ -14,15 +13,12 @@ cat > "$input/showtypes001.in" << \EOF
 EOF
 cat > "$output/showtypes001.out" << \EOF
 Available task types:
-> ANALYSIS
-> DESIGN
-> MANAGEMENT
-> QUALITY
-> DEVELOPMENT
-> TEST
-> MAINTENANCE
 > SUPPORT
+> DEVELOPMENT
+> ANALYSIS
+> MANAGEMENT
 > CONFIGURATION
+> TEST
 EOF
 ./launch-test.sh 'git task --show-types' 'showtypes001'
 
@@ -35,8 +31,8 @@ cat > "$output/showstates001.out" << \EOF
 Available task states:
 > NEW
 > IN PROGRESS
-> REJECTED
 > RESOLVED
+> REJECTED
 EOF
 ./launch-test.sh 'git task --show-states' 'showstates001'
 
@@ -47,15 +43,12 @@ cat > "$input/showpriorities001.in" << \EOF
 EOF
 cat > "$output/showpriorities001.out" << \EOF
 Available task priorities:
-> VERY LOW
-> LOW
-> MINOR
-> MAJOR
-> HIGH
-> VERY HIGH
-> URGENT
-> INMEDIATE
-> CRITICAL
 > BLOCKER
+> URGENT
+> VERY HIGH
+> HIGH
+> MAJOR
+> LOW
+> VERY LOW
 EOF
 ./launch-test.sh 'git task --show-priorities' 'showpriorities001'

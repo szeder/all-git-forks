@@ -1,32 +1,12 @@
 #!/bin/bash
 
-input="test_input"
-output="test_output"
+source constants.sh
 
 ###########################
 # 	TASK SEARCH TESTS
 ###########################
 echo "testing: git task -r"
 
-# Insert previous data into tasks to run following tests until --TEST 95--
-cat > "test-data.sql" << \EOF
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (1,'task 1','NEW','my desc','my notes','20/12/2014','21/12/2014',null,null,'HIGH','TEST',12,14);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'task 2','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (3,'task 3','IN PROGRESS',null,null,null,'26/12/2014',null,'28/12/2014','MAJOR','MANAGEMENT',null,18);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (4,'task 4','REJECTED',null,null,null,'27/12/2014',null,null,'URGENT','DEVELOPMENT',29,20);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',null,null,'VERY HIGH','CONFIGURATION',null,null);
-.quit
-EOF
-
-chmod +x insert-data.sh
-
-./clean-db.sh
-./insert-data.sh
 
 # TEST 1 --- read001 --- Search all task (no filters) (multiple tasks exists)
 cat > "$input/read001.in" << \EOF
@@ -34,10 +14,13 @@ EOF
 cat > "$output/read001.out" << \EOF
 Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 4 | Name: task 4   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+7 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r' 'read001'
 
@@ -66,6 +49,7 @@ cat > "$output/read004.out" << \EOF
 Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r -s "in progress"' 'read004'
 
@@ -86,10 +70,17 @@ Tasks found
 	Start	Estimated: empty	Real: empty
 	End  	Estimated: 26/12/2014	Real: 28/12/2014
 	Time 	Estimated: 18	Real: -1
+	Assigned to: usertest   	No associated files yet
+	Description: empty
+	Notes: empty
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+	Start	Estimated: empty	Real: 21/12/2014
+	End  	Estimated: 24/12/2014	Real: empty
+	Time 	Estimated: -1	Real: 12
 	No assigned yet
 	No associated files yet
 	Description: empty
-	Notes: empty
+	Notes: my personal notes
 EOF
 ./launch-test.sh 'git task -r -s "IN PROGRESS" -v' 'read005'
 
@@ -100,6 +91,7 @@ cat > "$output/read006.out" << \EOF
 Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r -s "iN proGrEss"' 'read006'
 
@@ -142,6 +134,7 @@ EOF
 cat > "$output/read011.out" << \EOF
 Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
@@ -515,30 +508,33 @@ Incorrect data. Check it all and try again
 EOF
 ./launch-test.sh 'git task -r --end 15/11/-2014' 'read055'
 
-# TEST 56 --- read056 --- Search by estimated init date (valid) (one task matching)
+# TEST 56 --- read056 --- Search by estimated init date (valid)
 cat > "$input/read056.in" << \EOF
 EOF
 cat > "$output/read056.out" << \EOF
 Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r --est_start 30/12/2014' 'read056'
 
-# TEST 57 --- read057 --- Search by estimated final date (valid) (one task matching)
+# TEST 57 --- read057 --- Search by estimated final date (valid)
 cat > "$input/read057.in" << \EOF
 EOF
 cat > "$output/read057.out" << \EOF
 Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r --est_end 24/12/2014' 'read057'
 
-# TEST 58 --- read058 --- Search by real init date (valid) (one task matching)
+# TEST 58 --- read058 --- Search by real init date (valid)
 cat > "$input/read058.in" << \EOF
 EOF
 cat > "$output/read058.out" << \EOF
 Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r --start 21/12/2014' 'read058'
 
@@ -597,6 +593,7 @@ EOF
 cat > "$output/read065.out" << \EOF
 Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r -p "very high"' 'read065'
 
@@ -614,6 +611,7 @@ EOF
 cat > "$output/read067.out" << \EOF
 Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r -p "VERY HIGH"' 'read067'
 
@@ -631,6 +629,7 @@ EOF
 cat > "$output/read069.out" << \EOF
 Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r -p "veRy hIgH"' 'read069'
 
@@ -732,6 +731,7 @@ EOF
 cat > "$output/read081.out" << \EOF
 Tasks found
 4 | Name: task 4   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
+7 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r --time 29' 'read081'
 
@@ -839,13 +839,6 @@ No task matching
 EOF
 ./launch-test.sh 'git task -r -s ResOlVEd' 'read094'
 
-./clean-db.sh
-cat > "test-data.sql" << \EOF
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'task 2','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-.quit
-EOF
-./insert-data.sh
 # TEST 95 --- read095 --- Search all tasks (only one in database)
 cat > "$input/read095.in" << \EOF
 EOF
@@ -853,38 +846,25 @@ cat > "$output/read095.out" << \EOF
 Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
-./launch-test.sh 'git task -r' 'read095'
+./launch-test.sh 'git task -r' 'read095' 'only-one'
 
-./clean-db.sh
-cat > "test-data.sql" << \EOF
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'same name','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (4,'same name','REJECTED',null,null,null,'27/12/2014',null,null,'URGENT','DEVELOPMENT',29,20);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',null,null,'VERY HIGH','CONFIGURATION',null,null);
-.quit
-EOF
-./insert-data.sh
 # TEST 96 --- read096 --- Search tasks by name (multiple tasks with same name)
 cat > "$input/read096.in" << \EOF
 EOF
 cat > "$output/read096.out" << \EOF
 Tasks found
-2 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
-4 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+7 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r -n "same name"' 'read096'
 
-
-./clean-db.sh
 # TEST 97 --- read097 --- Search all tasks (empty database)
 cat > "$input/read097.in" << \EOF
 EOF
 cat > "$output/read097.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r' 'read097'
+./launch-test.sh 'git task -r' 'read097' 'empty'
 
 # TEST 98 --- read098 --- Search task by valid state (empty database) (minus)
 cat > "$input/read098.in" << \EOF
@@ -892,7 +872,7 @@ EOF
 cat > "$output/read098.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -s new' 'read098'
+./launch-test.sh 'git task -r -s new' 'read098' 'empty'
 
 # TEST 99 --- read099 --- Search task by valid state (empty database) (mayus)
 cat > "$input/read099.in" << \EOF
@@ -900,7 +880,7 @@ EOF
 cat > "$output/read099.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -s NEW' 'read099'
+./launch-test.sh 'git task -r -s NEW' 'read099' 'empty'
 
 # TEST 100 --- read100 --- Search task by valid state (empty database) (mixed [mayus | minus])
 cat > "$input/read100.in" << \EOF
@@ -908,7 +888,7 @@ EOF
 cat > "$output/read100.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -s nEw' 'read100'
+./launch-test.sh 'git task -r -s nEw' 'read100' 'empty'
 
 # TEST 101 --- read101 --- Search task by valid priority (empty database) (minus)
 cat > "$input/read101.in" << \EOF
@@ -916,7 +896,7 @@ EOF
 cat > "$output/read101.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -p high' 'read101'
+./launch-test.sh 'git task -r -p high' 'read101' 'empty'
 
 # TEST 102 --- read102 --- Search task by valid priority (empty database) (mayus)
 cat > "$input/read102.in" << \EOF
@@ -924,7 +904,7 @@ EOF
 cat > "$output/read102.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -p HIGH' 'read102'
+./launch-test.sh 'git task -r -p HIGH' 'read102' 'empty'
 
 # TEST 103 --- read103 --- Search task by valid priority (empty database) (mixed [mayus | minus])
 cat > "$input/read103.in" << \EOF
@@ -932,7 +912,7 @@ EOF
 cat > "$output/read103.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -p hIGh' 'read103'
+./launch-test.sh 'git task -r -p hIGh' 'read103' 'empty'
 
 # TEST 104 --- read104 --- Search task by valid type (empty database) (mixed [mayus | minus])
 cat > "$input/read104.in" << \EOF
@@ -940,7 +920,7 @@ EOF
 cat > "$output/read104.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -t tEsT' 'read104'
+./launch-test.sh 'git task -r -t tEsT' 'read104' 'empty'
 
 # TEST 105 --- read105 --- Search task by valid type (empty database) (mayus)
 cat > "$input/read105.in" << \EOF
@@ -948,7 +928,7 @@ EOF
 cat > "$output/read105.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -t TEST' 'read105'
+./launch-test.sh 'git task -r -t TEST' 'read105' 'empty'
 
 # TEST 106 --- read106 --- Search task by valid type (empty database) (minus)
 cat > "$input/read106.in" << \EOF
@@ -956,5 +936,4 @@ EOF
 cat > "$output/read106.out" << \EOF
 No task matching
 EOF
-./launch-test.sh 'git task -r -t test' 'read106'
-./clean-db.sh
+./launch-test.sh 'git task -r -t test' 'read106' 'empty'

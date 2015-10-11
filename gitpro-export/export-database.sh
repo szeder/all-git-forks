@@ -2,7 +2,7 @@
 
 final_name="gitpro-db.csv"
 
-command="sqlite3 ../.git/gitpro.db -batch -csv"
+command="sqlite3 ../.db/gitpro.db -batch -csv"
 
 cat > "temp-file" << \EOF
 .output temp1

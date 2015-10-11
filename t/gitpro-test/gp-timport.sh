@@ -1,14 +1,12 @@
 #!/bin/bash
 
-input="test_input"
-output="test_output"
+source constants.sh
 
 ###########################
 # 	TASK IMPORT TESTS
 ###########################
 echo "testing: git task --import"
 
-./clean-db.sh
 
 # TEST 1 --- import001 --- Import with no input file and without input format
 cat > "$input/import001.in" << \EOF
@@ -16,8 +14,7 @@ EOF
 cat > "$output/import001.out" << \EOF
 Input format not specified
 EOF
-./launch-test.sh 'git task --import' 'import001'
-./clean-db.sh
+./launch-test.sh 'git task --import' 'import001' 
 
 # TEST 2 --- import002 --- Import with input file (inexistent) and without input format
 cat > "$input/import002.in" << \EOF
@@ -25,8 +22,7 @@ EOF
 cat > "$output/import002.out" << \EOF
 Input format not specified
 EOF
-./launch-test.sh 'git task --import --input-file inexistent' 'import002'
-./clean-db.sh
+./launch-test.sh 'git task --import --input-file inexistent' 'import002' 
 
 # TEST 3 --- import003 --- Import without input file and with input format (inexistent)
 cat > "$input/import003.in" << \EOF
@@ -35,7 +31,6 @@ cat > "$output/import003.out" << \EOF
 Input file not specified
 EOF
 ./launch-test.sh 'git task --import --in inexistent' 'import003'
-./clean-db.sh
 
 # TEST 4 --- import004 --- Import from csv
 cat > "$input/test-csv.csv" << \EOF
@@ -59,8 +54,7 @@ cat > "$output/import004.out" << \EOF
 + Importing assignations...OK
 + Data imported to gitpro database
 EOF
-./launch-test.sh 'git task --import --in csv --input-file ../t/gitpro-test/test_input/test-csv.csv' 'import004'
-./clean-db.sh
+./launch-test.sh 'git task --import --in csv --input-file ../t/gitpro-test/test_input/test-csv.csv' 'import004' 'empty'
 rm "$input/test-csv.csv"
 
 # TEST 5 --- import005 --- Import from ganttproject
@@ -101,6 +95,5 @@ cat > "$output/import005.out" << \EOF
 + Importing assignations...OK
 + Data imported to gitpro database
 EOF
-./launch-test.sh 'git task --import --in ganttproject --input-file ../t/gitpro-test/test_input/test-ganttproject.gan' 'import005'
-./clean-db.sh
+./launch-test.sh 'git task --import --in ganttproject --input-file ../t/gitpro-test/test_input/test-ganttproject.gan' 'import005' 'empty'
 rm "$input/test-ganttproject.gan"

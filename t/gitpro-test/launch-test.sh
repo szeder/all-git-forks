@@ -1,7 +1,7 @@
 #!/bin/bash
 
-./before-test.sh
-
+./before-test.sh $3
+ 
 # If number of arguments less then 1; print usage and exit
 if [ $# -lt 1 ]; then
     printf "Usage: $0 <application> <test_file_name>\n"

@@ -7,3 +7,9 @@ source constants.sh
 mkdir $input
 mkdir $output
 #################################
+
+# Remove all data in database
+# Run here exceptionally
+#################################
+./after-test.sh
+#################################

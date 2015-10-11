@@ -1,32 +1,12 @@
 #!/bin/bash
 
-input="test_input"
-output="test_output"
+source constants.sh
 
 ###########################
 # 	TASK SEARCH TESTS
 ###########################
 echo "testing: git task -r --assist"
 
-# Insert previous data into tasks to run following tests until --TEST 95--
-cat > "test-data.sql" << \EOF
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (1,'task 1','NEW','my desc','my notes','20/12/2014','21/12/2014',null,null,'HIGH','TEST',12,14);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'task 2','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (3,'task 3','IN PROGRESS',null,null,null,'26/12/2014',null,'28/12/2014','MAJOR','MANAGEMENT',null,18);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (4,'task 4','REJECTED',null,null,null,'27/12/2014',null,null,'URGENT','DEVELOPMENT',29,20);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',null,null,'VERY HIGH','CONFIGURATION',null,null);
-.quit
-EOF
-
-chmod +x insert-data.sh
-
-./clean-db.sh
-./insert-data.sh
 
 # TEST 1 --- assistread001 --- Search all task (no filters) (multiple tasks exists)
 cat > "$input/assistread001.in" << \EOF
@@ -46,10 +26,13 @@ cat > "$output/assistread001.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
 4 | Name: task 4   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+7 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r --assist --assist' 'assistread001'
 
@@ -114,6 +97,7 @@ All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r --assist --assist' 'assistread004'
 
@@ -146,10 +130,17 @@ task id: task name (contained text): task state: task estimated start date: task
 	Start	Estimated: empty	Real: empty
 	End  	Estimated: 26/12/2014	Real: 28/12/2014
 	Time 	Estimated: 18	Real: -1
+	Assigned to: usertest   	No associated files yet
+	Description: empty
+	Notes: empty
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+	Start	Estimated: empty	Real: 21/12/2014
+	End  	Estimated: 24/12/2014	Real: empty
+	Time 	Estimated: -1	Real: 12
 	No assigned yet
 	No associated files yet
 	Description: empty
-	Notes: empty
+	Notes: my personal notes
 EOF
 ./launch-test.sh 'git task -r --assist --assist -v' 'assistread005'
 
@@ -172,6 +163,7 @@ All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r --assist --assist' 'assistread006'
 
@@ -274,6 +266,7 @@ cat > "$output/assistread011.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 1 | Name: task 1   State: NEW   Priority: HIGH   Type: TEST
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 3 | Name: task 3   State: IN PROGRESS   Priority: MAJOR   Type: MANAGEMENT
@@ -1191,10 +1184,11 @@ cat > "$output/assistread056.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread056'
 
-# TEST 57 --- assistread057 --- Search by estimated final date (valid) (one task matching)
+# TEST 57 --- assistread057 --- Search by estimated final date (valid)
 cat > "$input/assistread057.in" << \EOF
 
 
@@ -1212,10 +1206,11 @@ cat > "$output/assistread057.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread057'
 
-# TEST 58 --- assistread058 --- Search by real init date (valid) (one task matching)
+# TEST 58 --- assistread058 --- Search by real init date (valid)
 cat > "$input/assistread058.in" << \EOF
 
 
@@ -1233,6 +1228,7 @@ cat > "$output/assistread058.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread058'
 
@@ -1375,6 +1371,7 @@ cat > "$output/assistread065.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread065'
 
@@ -1416,6 +1413,7 @@ cat > "$output/assistread067.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread067'
 
@@ -1457,6 +1455,7 @@ cat > "$output/assistread069.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 5 | Name: task 5   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
+8 | Name: task 8   State: REJECTED   Priority: VERY HIGH   Type: CONFIGURATION
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread069'
 
@@ -1702,6 +1701,7 @@ cat > "$output/assistread081.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 4 | Name: task 4   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
+7 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread081'
 
@@ -1965,13 +1965,7 @@ task id: task name (contained text): task state: task estimated start date: task
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread094'
 
-./clean-db.sh
-cat > "test-data.sql" << \EOF
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'task 2','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-.quit
-EOF
-./insert-data.sh
+# TODO: fix this test
 # TEST 95 --- assistread095 --- Search all tasks (only one in database)
 cat > "$input/assistread095.in" << \EOF
 
@@ -1991,19 +1985,8 @@ All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
 2 | Name: task 2   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread095'
+./launch-test.sh 'git task -r --assist' 'assistread095' 'only-one'
 
-./clean-db.sh
-cat > "test-data.sql" << \EOF
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (2,'same name','IN PROGRESS',null,'my personal notes',null,'24/12/2014','21/12/2014',null,'VERY LOW','ANALYSIS',12,null);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (4,'same name','REJECTED',null,null,null,'27/12/2014',null,null,'URGENT','DEVELOPMENT',29,20);
-INSERT INTO GP_TAREA(id,nombre_tarea,estado_tarea,descripcion,notas,fecha_inicio_estimada,fecha_final_estimada,fecha_inicio_real,fecha_final_real,prioridad_tarea,tipo_tarea,tiempo_real,tiempo_estimado) 
-values (5,'task 5','REJECTED','my brief desc',null,'30/12/2014','21/12/2014',null,null,'VERY HIGH','CONFIGURATION',null,null);
-.quit
-EOF
-./insert-data.sh
 # TEST 96 --- assistread096 --- Search tasks by name (multiple tasks with same name)
 cat > "$input/assistread096.in" << \EOF
 
@@ -2021,13 +2004,12 @@ EOF
 cat > "$output/assistread096.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: Tasks found
-2 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
-4 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
+6 | Name: same name   State: IN PROGRESS   Priority: VERY LOW   Type: ANALYSIS
+7 | Name: same name   State: REJECTED   Priority: URGENT   Type: DEVELOPMENT
 EOF
 ./launch-test.sh 'git task -r --assist' 'assistread096'
 
 
-./clean-db.sh
 # TEST 97 --- assistread097 --- Search all tasks (empty database)
 cat > "$input/assistread097.in" << \EOF
 
@@ -2046,7 +2028,7 @@ cat > "$output/assistread097.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread097'
+./launch-test.sh 'git task -r --assist' 'assistread097' 'empty'
 
 # TEST 98 --- assistread098 --- Search task by valid state (empty database) (minus)
 cat > "$input/assistread098.in" << \EOF
@@ -2066,7 +2048,7 @@ cat > "$output/assistread098.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread098'
+./launch-test.sh 'git task -r --assist' 'assistread098' 'empty'
 
 # TEST 99 --- assistread099 --- Search task by valid state (empty database) (mayus)
 cat > "$input/assistread099.in" << \EOF
@@ -2086,7 +2068,7 @@ cat > "$output/assistread099.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread099'
+./launch-test.sh 'git task -r --assist' 'assistread099' 'empty'
 
 # TEST 100 --- assistread100 --- Search task by valid state (empty database) (mixed [mayus | minus])
 cat > "$input/assistread100.in" << \EOF
@@ -2106,7 +2088,7 @@ cat > "$output/assistread100.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread100'
+./launch-test.sh 'git task -r --assist' 'assistread100' 'empty'
 
 # TEST 101 --- assistread101 --- Search task by valid priority (empty database) (minus)
 cat > "$input/assistread101.in" << \EOF
@@ -2126,7 +2108,7 @@ cat > "$output/assistread101.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread101'
+./launch-test.sh 'git task -r --assist' 'assistread101' 'empty'
 
 # TEST 102 --- assistread102 --- Search task by valid priority (empty database) (mayus)
 cat > "$input/assistread102.in" << \EOF
@@ -2146,7 +2128,7 @@ cat > "$output/assistread102.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread102'
+./launch-test.sh 'git task -r --assist' 'assistread102' 'empty'
 
 # TEST 103 --- assistread103 --- Search task by valid priority (empty database) (mixed [mayus | minus])
 cat > "$input/assistread103.in" << \EOF
@@ -2166,7 +2148,7 @@ cat > "$output/assistread103.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread103'
+./launch-test.sh 'git task -r --assist' 'assistread103' 'empty'
 
 # TEST 104 --- assistread104 --- Search task by valid type (empty database) (mixed [mayus | minus])
 cat > "$input/assistread104.in" << \EOF
@@ -2186,7 +2168,7 @@ cat > "$output/assistread104.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread104'
+./launch-test.sh 'git task -r --assist' 'assistread104' 'empty'
 
 # TEST 105 --- assistread105 --- Search task by valid type (empty database) (mayus)
 cat > "$input/assistread105.in" << \EOF
@@ -2206,7 +2188,7 @@ cat > "$output/assistread105.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread105'
+./launch-test.sh 'git task -r --assist' 'assistread105' 'empty'
 
 # TEST 106 --- assistread106 --- Search task by valid type (empty database) (minus)
 cat > "$input/assistread106.in" << \EOF
@@ -2226,5 +2208,4 @@ cat > "$output/assistread106.out" << \EOF
 All filters are by equality
 task id: task name (contained text): task state: task estimated start date: task estimated end date: task real start date: task real end date: task priority: task type: task estimated time: task real time: No task matching
 EOF
-./launch-test.sh 'git task -r --assist' 'assistread106'
-./clean-db.sh
+./launch-test.sh 'git task -r --assist' 'assistread106' 'empty'

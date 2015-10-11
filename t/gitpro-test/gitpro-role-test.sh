@@ -25,15 +25,4 @@ echo '   Starting role assign tests'
 echo '***********************************'
 ./gp-rassign.sh
 
-echo 'Your username has been changed to run this tests...'
-echo 'Use git config --global to update your username'
-echo 'Do you want to restore now? (y/n) (default=n)'
-
-read OPT
-if [ "$OPT" == "y" ]; then
-	echo 'Type your username: '
-	read NAME
-	eval "git config --global user.name $NAME"
-fi
-
 ./after-env.sh
