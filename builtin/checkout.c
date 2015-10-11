@@ -404,40 +404,6 @@ static void describe_detached_head(const char *msg, struct commit *commit)
 	strbuf_release(&sb);
 }
 
-static int reset_tree(struct tree *tree, const struct checkout_opts *o,
-		      int worktree, int *writeout_error)
-{
-	struct unpack_trees_options opts;
-	struct tree_desc tree_desc;
-
-	memset(&opts, 0, sizeof(opts));
-	opts.head_idx = -1;
-	opts.update = worktree;
-	opts.skip_unmerged = !worktree;
-	opts.reset = 1;
-	opts.merge = 1;
-	opts.fn = oneway_merge;
-	opts.verbose_update = !o->quiet && isatty(2);
-	opts.src_index = &the_index;
-	opts.dst_index = &the_index;
-	parse_tree(tree);
-	init_tree_desc(&tree_desc, tree->buffer, tree->size);
-	switch (unpack_trees(1, &tree_desc, &opts)) {
-	case -2:
-		*writeout_error = 1;
-		/*
-		 * We return 0 nevertheless, as the index is all right
-		 * and more importantly we have made best efforts to
-		 * update paths in the work tree, and we cannot revert
-		 * them.
-		 */
-	case 0:
-		return 0;
-	default:
-		return 128;
-	}
-}
-
 struct branch_info {
 	const char *name; /* The short name used */
 	const char *path; /* The full name of a real branch */
@@ -474,7 +440,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 
 	resolve_undo_clear();
 	if (opts->force) {
-		ret = reset_tree(new->commit->tree, opts, 1, writeout_error);
+		ret = reset_tree(new->commit->tree, opts->quiet, 1, writeout_error);
 		if (ret)
 			return ret;
 	} else {
@@ -560,7 +526,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			o.verbosity = 0;
 			work = write_tree_from_memory(&o);
 
-			ret = reset_tree(new->commit->tree, opts, 1,
+			ret = reset_tree(new->commit->tree, opts->quiet, 1,
 					 writeout_error);
 			if (ret)
 				return ret;
@@ -569,7 +535,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			o.branch2 = "local";
 			merge_trees(&o, new->commit->tree, work,
 				old->commit->tree, &result);
-			ret = reset_tree(new->commit->tree, opts, 0,
+			ret = reset_tree(new->commit->tree, opts->quiet, 0,
 					 writeout_error);
 			if (ret)
 				return ret;

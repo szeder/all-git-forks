@@ -280,33 +280,18 @@ static void read_empty(unsigned const char *sha1, int verbose)
 		die(_("read-tree failed"));
 }
 
-static void reset_hard(unsigned const char *sha1, int verbose)
-{
-	int i = 0;
-	const char *args[6];
-
-	args[i++] = "read-tree";
-	if (verbose)
-		args[i++] = "-v";
-	args[i++] = "--reset";
-	args[i++] = "-u";
-	args[i++] = sha1_to_hex(sha1);
-	args[i] = NULL;
-
-	if (run_command_v_opt(args, RUN_GIT_CMD))
-		die(_("read-tree failed"));
-}
-
-static void restore_state(const unsigned char *head,
+static void restore_state(struct commit *head_commit,
 			  const unsigned char *stash)
 {
 	struct strbuf sb = STRBUF_INIT;
 	const char *args[] = { "stash", "apply", NULL, NULL };
+	int error = 0;
 
 	if (is_null_sha1(stash))
 		return;
 
-	reset_hard(head, 1);
+	if (reset_tree(head_commit->tree, 0, 1, &error) || error)
+		die(_("read-tree failed"));
 
 	args[2] = sha1_to_hex(stash);
 
@@ -1521,7 +1506,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		int ret;
 		if (i) {
 			printf(_("Rewinding the tree to pristine...\n"));
-			restore_state(head_commit->object.sha1, stash);
+			restore_state(head_commit, stash);
 		}
 		if (use_strategies_nr != 1)
 			printf(_("Trying merge strategy %s...\n"),
@@ -1587,7 +1572,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * it up.
 	 */
 	if (!best_strategy) {
-		restore_state(head_commit->object.sha1, stash);
+		restore_state(head_commit, stash);
 		if (use_strategies_nr > 1)
 			fprintf(stderr,
 				_("No merge strategy handled the merge.\n"));
@@ -1600,7 +1585,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		; /* We already have its result in the working tree. */
 	else {
 		printf(_("Rewinding the tree to pristine...\n"));
-		restore_state(head_commit->object.sha1, stash);
+		restore_state(head_commit, stash);
 		printf(_("Using the %s to prepare resolving by hand.\n"),
 			best_strategy);
 		try_merge_strategy(best_strategy, common, remoteheads,

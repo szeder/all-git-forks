@@ -86,4 +86,8 @@ int bind_merge(const struct cache_entry * const *src,
 int oneway_merge(const struct cache_entry * const *src,
 		 struct unpack_trees_options *o);
 
+struct tree;
+extern int reset_tree(struct tree *tree, int quiet,
+			int worktree, int *writeout_error);
+
 #endif
