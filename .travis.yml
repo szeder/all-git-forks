@@ -1,0 +1,46 @@
+language: c
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - clang
+  - gcc
+
+before_install:
+  - >
+    export GIT_TEST_OPTS=" --quiet";
+    case "${TRAVIS_OS_NAME:-linux}" in
+    linux)
+      wget -q https://package.perforce.com/perforce.pubkey -O - \
+        | sudo apt-key add -
+      echo 'deb http://package.perforce.com/apt/ubuntu precise release' \
+        | sudo tee -a /etc/apt/sources.list
+      wget -q https://packagecloud.io/gpg.key -O - | sudo apt-key add -
+      echo 'deb https://packagecloud.io/github/git-lfs/debian/ jessie main' \
+        | sudo tee -a /etc/apt/sources.list
+      sudo apt-get update -qq
+      sudo apt-get install -y apt-transport-https
+      sudo apt-get install perforce-server git-lfs
+      ;;
+    osx)
+      brew_force_set_latest_binary_hash () {
+        FORUMULA=$1
+        SHA=$(brew fetch --force $FORUMULA 2>&1 | grep ^SHA256: | cut -d ' ' -f 2)
+        sed -E -i.bak "s/sha256 \"[0-9a-f]{64}\"/sha256 \"$SHA\"/g" \
+          /usr/local/Library/Taps/homebrew/homebrew-binary/$FORUMULA.rb
+      }
+      brew update
+      brew tap homebrew/binary
+      brew_force_set_latest_binary_hash perforce
+      brew_force_set_latest_binary_hash perforce-server
+      brew install git-lfs perforce-server perforce
+      ;;
+    esac
+
+install: make configure && ./configure
+
+before_script: make
+
+script: make --quiet test
