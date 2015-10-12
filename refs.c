@@ -1101,6 +1101,28 @@ enum peel_status peel_object(const unsigned char *name, unsigned char *sha1)
 	return PEEL_PEELED;
 }
 
+const char *find_descendant_ref(const char *refname,
+				const struct string_list *extras,
+				const struct string_list *skip)
+{
+	int pos;
+	if (!extras)
+		return NULL;
+
+	/* Look for the place where "$refname/" would be inserted in extras. */
+	for (pos = string_list_find_insert_index(extras, refname, 0);
+	     pos < extras->nr; pos++) {
+		const char *extra_refname = extras->items[pos].string;
+
+		if (!starts_with(extra_refname, refname))
+			break;
+
+		if (!skip || !string_list_has_string(skip, extra_refname))
+			return extra_refname;
+	}
+	return NULL;
+}
+
 /* backend functions */
 int refs_initdb(struct strbuf *err, int shared)
 {
