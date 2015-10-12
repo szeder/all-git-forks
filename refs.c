@@ -4,6 +4,29 @@
 #include "cache.h"
 #include "refs.h"
 #include "lockfile.h"
+/*
+ * We always have a files backend and it is the default.
+ */
+struct ref_be *the_refs_backend = &refs_be_files;
+/*
+ * List of all available backends
+ */
+struct ref_be *refs_backends = &refs_be_files;
+
+/*
+ * This function is used to switch to an alternate backend.
+ */
+int set_refs_backend(const char *name)
+{
+	struct ref_be *be;
+
+	for (be = refs_backends; be; be = be->next)
+		if (!strcmp(be->name, name)) {
+			the_refs_backend = be;
+			return 0;
+		}
+	return 1;
+}
 
 static int is_per_worktree_ref(const char *refname)
 {
@@ -984,4 +1007,11 @@ int ref_transaction_verify(struct ref_transaction *transaction,
 	return ref_transaction_update(transaction, refname,
 				      NULL, old_sha1,
 				      flags, NULL, err);
+}
+
+/* backend functions */
+int ref_transaction_commit(struct ref_transaction *transaction,
+			   struct strbuf *err)
+{
+	return the_refs_backend->transaction_commit(transaction, err);
 }

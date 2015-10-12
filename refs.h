@@ -619,4 +619,19 @@ extern int reflog_expire(const char *refname, const unsigned char *sha1,
 			 reflog_expiry_cleanup_fn cleanup_fn,
 			 void *policy_cb_data);
 
+/* refs backends */
+typedef int ref_transaction_commit_fn(struct ref_transaction *transaction,
+				      struct strbuf *err);
+typedef void ref_transaction_free_fn(struct ref_transaction *transaction);
+
+struct ref_be {
+	struct ref_be *next;
+	const char *name;
+	ref_transaction_commit_fn *transaction_commit;
+};
+
+
+extern struct ref_be refs_be_files;
+int set_refs_backend(const char *name);
+
 #endif /* REFS_H */
