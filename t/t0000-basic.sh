@@ -41,14 +41,17 @@ test_expect_success '.git/objects should have 3 subdirectories' '
 test_expect_success 'success is reported like this' '
 	:
 '
-test_expect_failure 'pretend we have a known breakage' '
-	false
-'
 
-run_sub_test_lib_test () {
-	name="$1" descr="$2" # stdin is the body of the test code
+_run_sub_test_lib_test_common () {
+	neg="$1" name="$2" descr="$3" # stdin is the body of the test code
+	shift 3
 	mkdir "$name" &&
 	(
+		# Pretend we're not running under a test harness, whether we
+		# are or not. The test-lib output depends on the setting of
+		# this variable, so we need a stable setting under which to run
+		# the sub-test.
+		sane_unset HARNESS_ACTIVE &&
 		cd "$name" &&
 		cat >"$name.sh" <<-EOF &&
 		#!$SHELL_PATH
@@ -65,8 +68,23 @@ run_sub_test_lib_test () {
 		cat >>"$name.sh" &&
 		chmod +x "$name.sh" &&
 		export TEST_DIRECTORY &&
-		./"$name.sh" >out 2>err
+		TEST_OUTPUT_DIRECTORY=$(pwd) &&
+		export TEST_OUTPUT_DIRECTORY &&
+		if test -z "$neg"
+		then
+			./"$name.sh" "$@" >out 2>err
+		else
+			!  ./"$name.sh" "$@" >out 2>err
+		fi
 	)
+}
+
+run_sub_test_lib_test () {
+	_run_sub_test_lib_test_common '' "$@"
+}
+
+run_sub_test_lib_test_err () {
+	_run_sub_test_lib_test_common '!' "$@"
 }
 
 check_sub_test_lib_test () {
@@ -76,6 +94,18 @@ check_sub_test_lib_test () {
 		! test -s err &&
 		sed -e 's/^> //' -e 's/Z$//' >expect &&
 		test_cmp expect out
+	)
+}
+
+check_sub_test_lib_test_err () {
+	name="$1" # stdin is the expected output output from the test
+	# expected error output is in descriptior 3
+	(
+		cd "$name" &&
+		sed -e 's/^> //' -e 's/Z$//' >expect.out &&
+		test_cmp expect.out out &&
+		sed -e 's/^> //' -e 's/Z$//' <&3 >expect.err &&
+		test_cmp expect.err err
 	)
 }
 
@@ -214,6 +244,448 @@ test_expect_success 'pretend we have a mix of all possible results' "
 	> 1..10
 	EOF
 "
+
+test_expect_success 'test --verbose' '
+	test_must_fail run_sub_test_lib_test \
+		test-verbose "test verbose" --verbose <<-\EOF &&
+	test_expect_success "passing test" true
+	test_expect_success "test with output" "echo foo"
+	test_expect_success "failing test" false
+	test_done
+	EOF
+	mv test-verbose/out test-verbose/out+ &&
+	grep -v "^Initialized empty" test-verbose/out+ >test-verbose/out &&
+	check_sub_test_lib_test test-verbose <<-\EOF
+	> expecting success: true
+	> ok 1 - passing test
+	> Z
+	> expecting success: echo foo
+	> foo
+	> ok 2 - test with output
+	> Z
+	> expecting success: false
+	> not ok 3 - failing test
+	> #	false
+	> Z
+	> # failed 1 among 3 test(s)
+	> 1..3
+	EOF
+'
+
+test_expect_success 'test --verbose-only' '
+	test_must_fail run_sub_test_lib_test \
+		test-verbose-only-2 "test verbose-only=2" \
+		--verbose-only=2 <<-\EOF &&
+	test_expect_success "passing test" true
+	test_expect_success "test with output" "echo foo"
+	test_expect_success "failing test" false
+	test_done
+	EOF
+	check_sub_test_lib_test test-verbose-only-2 <<-\EOF
+	> ok 1 - passing test
+	> Z
+	> expecting success: echo foo
+	> foo
+	> ok 2 - test with output
+	> Z
+	> not ok 3 - failing test
+	> #	false
+	> # failed 1 among 3 test(s)
+	> 1..3
+	EOF
+'
+
+test_expect_success 'GIT_SKIP_TESTS' "
+	(
+		GIT_SKIP_TESTS='git.2' && export GIT_SKIP_TESTS &&
+		run_sub_test_lib_test git-skip-tests-basic \
+			'GIT_SKIP_TESTS' <<-\\EOF &&
+		for i in 1 2 3
+		do
+			test_expect_success \"passing test #\$i\" 'true'
+		done
+		test_done
+		EOF
+		check_sub_test_lib_test git-skip-tests-basic <<-\\EOF
+		> ok 1 - passing test #1
+		> ok 2 # skip passing test #2 (GIT_SKIP_TESTS)
+		> ok 3 - passing test #3
+		> # passed all 3 test(s)
+		> 1..3
+		EOF
+	)
+"
+
+test_expect_success 'GIT_SKIP_TESTS several tests' "
+	(
+		GIT_SKIP_TESTS='git.2 git.5' && export GIT_SKIP_TESTS &&
+		run_sub_test_lib_test git-skip-tests-several \
+			'GIT_SKIP_TESTS several tests' <<-\\EOF &&
+		for i in 1 2 3 4 5 6
+		do
+			test_expect_success \"passing test #\$i\" 'true'
+		done
+		test_done
+		EOF
+		check_sub_test_lib_test git-skip-tests-several <<-\\EOF
+		> ok 1 - passing test #1
+		> ok 2 # skip passing test #2 (GIT_SKIP_TESTS)
+		> ok 3 - passing test #3
+		> ok 4 - passing test #4
+		> ok 5 # skip passing test #5 (GIT_SKIP_TESTS)
+		> ok 6 - passing test #6
+		> # passed all 6 test(s)
+		> 1..6
+		EOF
+	)
+"
+
+test_expect_success 'GIT_SKIP_TESTS sh pattern' "
+	(
+		GIT_SKIP_TESTS='git.[2-5]' && export GIT_SKIP_TESTS &&
+		run_sub_test_lib_test git-skip-tests-sh-pattern \
+			'GIT_SKIP_TESTS sh pattern' <<-\\EOF &&
+		for i in 1 2 3 4 5 6
+		do
+			test_expect_success \"passing test #\$i\" 'true'
+		done
+		test_done
+		EOF
+		check_sub_test_lib_test git-skip-tests-sh-pattern <<-\\EOF
+		> ok 1 - passing test #1
+		> ok 2 # skip passing test #2 (GIT_SKIP_TESTS)
+		> ok 3 # skip passing test #3 (GIT_SKIP_TESTS)
+		> ok 4 # skip passing test #4 (GIT_SKIP_TESTS)
+		> ok 5 # skip passing test #5 (GIT_SKIP_TESTS)
+		> ok 6 - passing test #6
+		> # passed all 6 test(s)
+		> 1..6
+		EOF
+	)
+"
+
+test_expect_success '--run basic' "
+	run_sub_test_lib_test run-basic \
+		'--run basic' --run='1 3 5' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-basic <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 # skip passing test #2 (--run)
+	> ok 3 - passing test #3
+	> ok 4 # skip passing test #4 (--run)
+	> ok 5 - passing test #5
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run with a range' "
+	run_sub_test_lib_test run-range \
+		'--run with a range' --run='1-3' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-range <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 - passing test #2
+	> ok 3 - passing test #3
+	> ok 4 # skip passing test #4 (--run)
+	> ok 5 # skip passing test #5 (--run)
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run with two ranges' "
+	run_sub_test_lib_test run-two-ranges \
+		'--run with two ranges' --run='1-2 5-6' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-two-ranges <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 - passing test #2
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 # skip passing test #4 (--run)
+	> ok 5 - passing test #5
+	> ok 6 - passing test #6
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run with a left open range' "
+	run_sub_test_lib_test run-left-open-range \
+		'--run with a left open range' --run='-3' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-left-open-range <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 - passing test #2
+	> ok 3 - passing test #3
+	> ok 4 # skip passing test #4 (--run)
+	> ok 5 # skip passing test #5 (--run)
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run with a right open range' "
+	run_sub_test_lib_test run-right-open-range \
+		'--run with a right open range' --run='4-' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-right-open-range <<-\\EOF
+	> ok 1 # skip passing test #1 (--run)
+	> ok 2 # skip passing test #2 (--run)
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 - passing test #4
+	> ok 5 - passing test #5
+	> ok 6 - passing test #6
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run with basic negation' "
+	run_sub_test_lib_test run-basic-neg \
+		'--run with basic negation' --run='"'!3'"' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-basic-neg <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 - passing test #2
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 - passing test #4
+	> ok 5 - passing test #5
+	> ok 6 - passing test #6
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run with two negations' "
+	run_sub_test_lib_test run-two-neg \
+		'--run with two negations' --run='"'!3 !6'"' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-two-neg <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 - passing test #2
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 - passing test #4
+	> ok 5 - passing test #5
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run a range and negation' "
+	run_sub_test_lib_test run-range-and-neg \
+		'--run a range and negation' --run='"'-4 !2'"' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-range-and-neg <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 # skip passing test #2 (--run)
+	> ok 3 - passing test #3
+	> ok 4 - passing test #4
+	> ok 5 # skip passing test #5 (--run)
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run range negation' "
+	run_sub_test_lib_test run-range-neg \
+		'--run range negation' --run='"'!1-3'"' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-range-neg <<-\\EOF
+	> ok 1 # skip passing test #1 (--run)
+	> ok 2 # skip passing test #2 (--run)
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 - passing test #4
+	> ok 5 - passing test #5
+	> ok 6 - passing test #6
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run include, exclude and include' "
+	run_sub_test_lib_test run-inc-neg-inc \
+		'--run include, exclude and include' \
+		--run='"'1-5 !1-3 2'"' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-inc-neg-inc <<-\\EOF
+	> ok 1 # skip passing test #1 (--run)
+	> ok 2 - passing test #2
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 - passing test #4
+	> ok 5 - passing test #5
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run include, exclude and include, comma separated' "
+	run_sub_test_lib_test run-inc-neg-inc-comma \
+		'--run include, exclude and include, comma separated' \
+		--run=1-5,\!1-3,2 <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-inc-neg-inc-comma <<-\\EOF
+	> ok 1 # skip passing test #1 (--run)
+	> ok 2 - passing test #2
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 - passing test #4
+	> ok 5 - passing test #5
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run exclude and include' "
+	run_sub_test_lib_test run-neg-inc \
+		'--run exclude and include' \
+		--run='"'!3- 5'"' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-neg-inc <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 - passing test #2
+	> ok 3 # skip passing test #3 (--run)
+	> ok 4 # skip passing test #4 (--run)
+	> ok 5 - passing test #5
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run empty selectors' "
+	run_sub_test_lib_test run-empty-sel \
+		'--run empty selectors' \
+		--run='1,,3,,,5' <<-\\EOF &&
+	for i in 1 2 3 4 5 6
+	do
+		test_expect_success \"passing test #\$i\" 'true'
+	done
+	test_done
+	EOF
+	check_sub_test_lib_test run-empty-sel <<-\\EOF
+	> ok 1 - passing test #1
+	> ok 2 # skip passing test #2 (--run)
+	> ok 3 - passing test #3
+	> ok 4 # skip passing test #4 (--run)
+	> ok 5 - passing test #5
+	> ok 6 # skip passing test #6 (--run)
+	> # passed all 6 test(s)
+	> 1..6
+	EOF
+"
+
+test_expect_success '--run invalid range start' "
+	run_sub_test_lib_test_err run-inv-range-start \
+		'--run invalid range start' \
+		--run='a-5' <<-\\EOF &&
+	test_expect_success \"passing test #1\" 'true'
+	test_done
+	EOF
+	check_sub_test_lib_test_err run-inv-range-start \
+		<<-\\EOF_OUT 3<<-\\EOF_ERR
+	> FATAL: Unexpected exit with code 1
+	EOF_OUT
+	> error: --run: invalid non-numeric in range start: 'a-5'
+	EOF_ERR
+"
+
+test_expect_success '--run invalid range end' "
+	run_sub_test_lib_test_err run-inv-range-end \
+		'--run invalid range end' \
+		--run='1-z' <<-\\EOF &&
+	test_expect_success \"passing test #1\" 'true'
+	test_done
+	EOF
+	check_sub_test_lib_test_err run-inv-range-end \
+		<<-\\EOF_OUT 3<<-\\EOF_ERR
+	> FATAL: Unexpected exit with code 1
+	EOF_OUT
+	> error: --run: invalid non-numeric in range end: '1-z'
+	EOF_ERR
+"
+
+test_expect_success '--run invalid selector' "
+	run_sub_test_lib_test_err run-inv-selector \
+		'--run invalid selector' \
+		--run='1?' <<-\\EOF &&
+	test_expect_success \"passing test #1\" 'true'
+	test_done
+	EOF
+	check_sub_test_lib_test_err run-inv-selector \
+		<<-\\EOF_OUT 3<<-\\EOF_ERR
+	> FATAL: Unexpected exit with code 1
+	EOF_OUT
+	> error: --run: invalid non-numeric in test selector: '1?'
+	EOF_ERR
+"
+
 
 test_set_prereq HAVEIT
 haveit=no
@@ -367,22 +839,6 @@ test_expect_success 'validate object ID of a known tree' '
 
 # Various types of objects
 
-# Some filesystems do not support symblic links; on such systems
-# some expected values are different
-if test_have_prereq SYMLINKS
-then
-	expectfilter=cat
-	expectedtree=087704a96baf1c2d1c869a8b084481e121c88b5b
-	expectedptree1=21ae8269cacbe57ae09138dcc3a2887f904d02b3
-	expectedptree2=3c5e5399f3a333eddecce7a9b9465b63f65f51e2
-else
-	expectfilter='grep -v sym'
-	expectedtree=8e18edf7d7edcf4371a3ac6ae5f07c2641db7c46
-	expectedptree1=cfb8591b2f65de8b8cc1020cd7d9e67e7793b325
-	expectedptree2=ce580448f0148b985a513b693fdf7d802cacb44f
-fi
-
-
 test_expect_success 'adding various types of objects with git update-index --add' '
 	mkdir path2 path3 path3/subp3 &&
 	paths="path0 path2/file2 path3/file3 path3/subp3/file3" &&
@@ -390,10 +846,7 @@ test_expect_success 'adding various types of objects with git update-index --add
 		for p in $paths
 		do
 			echo "hello $p" >$p || exit 1
-			if test_have_prereq SYMLINKS
-			then
-				ln -s "hello $p" ${p}sym || exit 1
-			fi
+			test_ln_s_add "hello $p" ${p}sym || exit 1
 		done
 	) &&
 	find path* ! -type d -print | xargs git update-index --add
@@ -405,7 +858,7 @@ test_expect_success 'showing stage with git ls-files --stage' '
 '
 
 test_expect_success 'validate git ls-files output for a known tree' '
-	$expectfilter >expected <<-\EOF &&
+	cat >expected <<-\EOF &&
 	100644 f87290f8eb2cbbea7857214459a0739927eab154 0	path0
 	120000 15a98433ae33114b085f3eb3bb03b832b3180a01 0	path0sym
 	100644 3feff949ed00a62d9f7af97c15cd8a30595e7ac7 0	path2/file2
@@ -423,14 +876,14 @@ test_expect_success 'writing tree out with git write-tree' '
 '
 
 test_expect_success 'validate object ID for a known tree' '
-	test "$tree" = "$expectedtree"
+	test "$tree" = 087704a96baf1c2d1c869a8b084481e121c88b5b
 '
 
 test_expect_success 'showing tree with git ls-tree' '
     git ls-tree $tree >current
 '
 
-test_expect_success SYMLINKS 'git ls-tree output for a known tree' '
+test_expect_success 'git ls-tree output for a known tree' '
 	cat >expected <<-\EOF &&
 	100644 blob f87290f8eb2cbbea7857214459a0739927eab154	path0
 	120000 blob 15a98433ae33114b085f3eb3bb03b832b3180a01	path0sym
@@ -447,7 +900,7 @@ test_expect_success 'showing tree with git ls-tree -r' '
 '
 
 test_expect_success 'git ls-tree -r output for a known tree' '
-	$expectfilter >expected <<-\EOF &&
+	cat >expected <<-\EOF &&
 	100644 blob f87290f8eb2cbbea7857214459a0739927eab154	path0
 	120000 blob 15a98433ae33114b085f3eb3bb03b832b3180a01	path0sym
 	100644 blob 3feff949ed00a62d9f7af97c15cd8a30595e7ac7	path2/file2
@@ -465,7 +918,7 @@ test_expect_success 'showing tree with git ls-tree -r -t' '
 	git ls-tree -r -t $tree >current
 '
 
-test_expect_success SYMLINKS 'git ls-tree -r output for a known tree' '
+test_expect_success 'git ls-tree -r output for a known tree' '
 	cat >expected <<-\EOF &&
 	100644 blob f87290f8eb2cbbea7857214459a0739927eab154	path0
 	120000 blob 15a98433ae33114b085f3eb3bb03b832b3180a01	path0sym
@@ -487,7 +940,7 @@ test_expect_success 'writing partial tree out with git write-tree --prefix' '
 '
 
 test_expect_success 'validate object ID for a known tree' '
-	test "$ptree" = "$expectedptree1"
+	test "$ptree" = 21ae8269cacbe57ae09138dcc3a2887f904d02b3
 '
 
 test_expect_success 'writing partial tree out with git write-tree --prefix' '
@@ -495,7 +948,7 @@ test_expect_success 'writing partial tree out with git write-tree --prefix' '
 '
 
 test_expect_success 'validate object ID for a known tree' '
-	test "$ptree" = "$expectedptree2"
+	test "$ptree" = 3c5e5399f3a333eddecce7a9b9465b63f65f51e2
 '
 
 test_expect_success 'put invalid objects into the index' '
@@ -521,7 +974,7 @@ test_expect_success 'writing this tree with --missing-ok' '
 
 ################################################################
 test_expect_success 'git read-tree followed by write-tree should be idempotent' '
-	rm -f .git/index
+	rm -f .git/index &&
 	git read-tree $tree &&
 	test -f .git/index &&
 	newtree=$(git write-tree) &&
@@ -529,7 +982,7 @@ test_expect_success 'git read-tree followed by write-tree should be idempotent' 
 '
 
 test_expect_success 'validate git diff-files output for a know cache/work tree state' '
-	$expectfilter >expected <<\EOF &&
+	cat >expected <<\EOF &&
 :100644 100644 f87290f8eb2cbbea7857214459a0739927eab154 0000000000000000000000000000000000000000 M	path0
 :120000 120000 15a98433ae33114b085f3eb3bb03b832b3180a01 0000000000000000000000000000000000000000 M	path0sym
 :100644 100644 3feff949ed00a62d9f7af97c15cd8a30595e7ac7 0000000000000000000000000000000000000000 M	path2/file2
@@ -553,7 +1006,7 @@ test_expect_success 'no diff after checkout and git update-index --refresh' '
 '
 
 ################################################################
-P=$expectedtree
+P=087704a96baf1c2d1c869a8b084481e121c88b5b
 
 test_expect_success 'git commit-tree records the correct tree in a commit' '
 	commit0=$(echo NO | git commit-tree $P) &&

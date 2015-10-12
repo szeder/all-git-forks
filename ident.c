@@ -9,7 +9,7 @@
 
 static struct strbuf git_default_name = STRBUF_INIT;
 static struct strbuf git_default_email = STRBUF_INIT;
-static char git_default_date[50];
+static struct strbuf git_default_date = STRBUF_INIT;
 
 #define IDENT_NAME_GIVEN 01
 #define IDENT_MAIL_GIVEN 02
@@ -102,7 +102,7 @@ static void copy_email(const struct passwd *pw, struct strbuf *email)
 	add_domainname(email);
 }
 
-static const char *ident_default_name(void)
+const char *ident_default_name(void)
 {
 	if (!git_default_name.len) {
 		copy_gecos(xgetpwuid_self(), &git_default_name);
@@ -129,9 +129,9 @@ const char *ident_default_email(void)
 
 static const char *ident_default_date(void)
 {
-	if (!git_default_date[0])
-		datestamp(git_default_date, sizeof(git_default_date));
-	return git_default_date;
+	if (!git_default_date.len)
+		datestamp(&git_default_date);
+	return git_default_date.buf;
 }
 
 static int crud(unsigned char c)
@@ -233,7 +233,21 @@ int split_ident_line(struct ident_split *split, const char *line, int len)
 	if (!split->mail_end)
 		return status;
 
-	for (cp = split->mail_end + 1; cp < line + len && isspace(*cp); cp++)
+	/*
+	 * Look from the end-of-line to find the trailing ">" of the mail
+	 * address, even though we should already know it as split->mail_end.
+	 * This can help in cases of broken idents with an extra ">" somewhere
+	 * in the email address.  Note that we are assuming the timestamp will
+	 * never have a ">" in it.
+	 *
+	 * Note that we will always find some ">" before going off the front of
+	 * the string, because will always hit the split->mail_end closing
+	 * bracket.
+	 */
+	for (cp = line + len - 1; *cp != '>'; cp--)
+		;
+
+	for (cp = cp + 1; cp < line + len && isspace(*cp); cp++)
 		;
 	if (line + len <= cp)
 		goto person_only;
@@ -278,7 +292,6 @@ const char *fmt_ident(const char *name, const char *email,
 		      const char *date_str, int flag)
 {
 	static struct strbuf ident = STRBUF_INIT;
-	char date[50];
 	int strict = (flag & IDENT_STRICT);
 	int want_date = !(flag & IDENT_NO_DATE);
 	int want_name = !(flag & IDENT_NO_NAME);
@@ -306,15 +319,6 @@ const char *fmt_ident(const char *name, const char *email,
 		die("unable to auto-detect email address (got '%s')", email);
 	}
 
-	if (want_date) {
-		if (date_str && date_str[0]) {
-			if (parse_date(date_str, date, sizeof(date)) < 0)
-				die("invalid date format: %s", date_str);
-		}
-		else
-			strcpy(date, ident_default_date());
-	}
-
 	strbuf_reset(&ident);
 	if (want_name) {
 		strbuf_addstr_without_crud(&ident, name);
@@ -325,8 +329,14 @@ const char *fmt_ident(const char *name, const char *email,
 			strbuf_addch(&ident, '>');
 	if (want_date) {
 		strbuf_addch(&ident, ' ');
-		strbuf_addstr_without_crud(&ident, date);
+		if (date_str && date_str[0]) {
+			if (parse_date(date_str, &ident) < 0)
+				die("invalid date format: %s", date_str);
+		}
+		else
+			strbuf_addstr(&ident, ident_default_date());
 	}
+
 	return ident.buf;
 }
 
@@ -401,4 +411,33 @@ int git_ident_config(const char *var, const char *value, void *data)
 	}
 
 	return 0;
+}
+
+static int buf_cmp(const char *a_begin, const char *a_end,
+		   const char *b_begin, const char *b_end)
+{
+	int a_len = a_end - a_begin;
+	int b_len = b_end - b_begin;
+	int min = a_len < b_len ? a_len : b_len;
+	int cmp;
+
+	cmp = memcmp(a_begin, b_begin, min);
+	if (cmp)
+		return cmp;
+
+	return a_len - b_len;
+}
+
+int ident_cmp(const struct ident_split *a,
+	      const struct ident_split *b)
+{
+	int cmp;
+
+	cmp = buf_cmp(a->mail_begin, a->mail_end,
+		      b->mail_begin, b->mail_end);
+	if (cmp)
+		return cmp;
+
+	return buf_cmp(a->name_begin, a->name_end,
+		       b->name_begin, b->name_end);
 }

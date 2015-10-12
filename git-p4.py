@@ -43,6 +43,9 @@ verbose = False
 # Only labels/tags matching this will be imported/exported
 defaultLabelRegexp = r'[a-zA-Z0-9_\-.]+$'
 
+# Grab changes in blocks of this many revisions, unless otherwise requested
+defaultBlockSize = 512
+
 def p4_build_cmd(cmd):
     """Build a suitable p4 command line.
 
@@ -264,6 +267,10 @@ def p4_reopen(type, f):
 def p4_move(src, dest):
     p4_system(["move", "-k", wildcard_encode(src), wildcard_encode(dest)])
 
+def p4_last_change():
+    results = p4CmdList(["changes", "-m", "1"])
+    return int(results[0]['change'])
+
 def p4_describe(change):
     """Make sure it returns a valid result by checking for
        the presence of field "time".  Return a dict of the
@@ -325,8 +332,8 @@ def split_p4_type(p4type):
 #
 # return the raw p4 type of a file (text, text+ko, etc)
 #
-def p4_type(file):
-    results = p4CmdList(["fstat", "-T", "headType", file])
+def p4_type(f):
+    results = p4CmdList(["fstat", "-T", "headType", wildcard_encode(f)])
     return results[0]['headType']
 
 #
@@ -383,7 +390,7 @@ def getP4OpenedType(file):
     # Returns the perforce file type for the given file.
 
     result = p4_read_pipe(["opened", wildcard_encode(file)])
-    match = re.match(".*\((.+)\)\r?$", result)
+    match = re.match(".*\((.+)\)( \*exclusive\*)?\r?$", result)
     if match:
         return match.group(1)
     else:
@@ -518,12 +525,14 @@ def p4Cmd(cmd):
 def p4Where(depotPath):
     if not depotPath.endswith("/"):
         depotPath += "/"
-    depotPath = depotPath + "..."
-    outputList = p4CmdList(["where", depotPath])
+    depotPathLong = depotPath + "..."
+    outputList = p4CmdList(["where", depotPathLong])
     output = None
     for entry in outputList:
         if "depotFile" in entry:
-            if entry["depotFile"] == depotPath:
+            # Search for the base client side depot path, as long as it starts with the branch's P4 path.
+            # The base path always ends with "/...".
+            if entry["depotFile"].find(depotPath) == 0 and entry["depotFile"][-4:] == "/...":
                 output = entry
                 break
         elif "data" in entry:
@@ -771,17 +780,77 @@ def createOrUpdateBranchesFromOrigin(localRefPrefix = "refs/remotes/p4/", silent
 def originP4BranchesExist():
         return gitBranchExists("origin") or gitBranchExists("origin/p4") or gitBranchExists("origin/p4/master")
 
-def p4ChangesForPaths(depotPaths, changeRange):
-    assert depotPaths
-    cmd = ['changes']
-    for p in depotPaths:
-        cmd += ["%s...%s" % (p, changeRange)]
-    output = p4_read_pipe_lines(cmd)
 
+def p4ParseNumericChangeRange(parts):
+    changeStart = int(parts[0][1:])
+    if parts[1] == '#head':
+        changeEnd = p4_last_change()
+    else:
+        changeEnd = int(parts[1])
+
+    return (changeStart, changeEnd)
+
+def chooseBlockSize(blockSize):
+    if blockSize:
+        return blockSize
+    else:
+        return defaultBlockSize
+
+def p4ChangesForPaths(depotPaths, changeRange, requestedBlockSize):
+    assert depotPaths
+
+    # Parse the change range into start and end. Try to find integer
+    # revision ranges as these can be broken up into blocks to avoid
+    # hitting server-side limits (maxrows, maxscanresults). But if
+    # that doesn't work, fall back to using the raw revision specifier
+    # strings, without using block mode.
+
+    if changeRange is None or changeRange == '':
+        changeStart = 1
+        changeEnd = p4_last_change()
+        block_size = chooseBlockSize(requestedBlockSize)
+    else:
+        parts = changeRange.split(',')
+        assert len(parts) == 2
+        try:
+            (changeStart, changeEnd) = p4ParseNumericChangeRange(parts)
+            block_size = chooseBlockSize(requestedBlockSize)
+        except:
+            changeStart = parts[0][1:]
+            changeEnd = parts[1]
+            if requestedBlockSize:
+                die("cannot use --changes-block-size with non-numeric revisions")
+            block_size = None
+
+    # Accumulate change numbers in a dictionary to avoid duplicates
     changes = {}
-    for line in output:
-        changeNum = int(line.split(" ")[1])
-        changes[changeNum] = True
+
+    for p in depotPaths:
+        # Retrieve changes a block at a time, to prevent running
+        # into a MaxResults/MaxScanRows error from the server.
+
+        while True:
+            cmd = ['changes']
+
+            if block_size:
+                end = min(changeEnd, changeStart + block_size)
+                revisionRange = "%d,%d" % (changeStart, end)
+            else:
+                revisionRange = "%s,%s" % (changeStart, changeEnd)
+
+            cmd += ["%s...@%s" % (p, revisionRange)]
+
+            for line in p4_read_pipe_lines(cmd):
+                changeNum = int(line.split(" ")[1])
+                changes[changeNum] = True
+
+            if not block_size:
+                break
+
+            if end >= changeEnd:
+                break
+
+            changeStart = end + 1
 
     changelist = changes.keys()
     changelist.sort()
@@ -814,11 +883,14 @@ def getClientSpec():
     # dictionary of all client parameters
     entry = specList[0]
 
+    # the //client/ name
+    client_name = entry["Client"]
+
     # just the keys that start with "View"
     view_keys = [ k for k in entry.keys() if k.startswith("View") ]
 
     # hold this new View
-    view = View()
+    view = View(client_name)
 
     # append the lines, in order, to the view
     for view_num in range(len(view_keys)):
@@ -1253,7 +1325,7 @@ class P4Submit(Command, P4UserMap):
             editor = os.environ.get("P4EDITOR")
         else:
             editor = read_pipe("git var GIT_EDITOR").strip()
-        system(editor + " " + template_file)
+        system(["sh", "-c", ('%s "$@"' % editor), editor, template_file])
 
         # If the file was not saved, prompt to see if this patch should
         # be skipped.  But skip this verification step if configured so.
@@ -1270,6 +1342,28 @@ class P4Submit(Command, P4UserMap):
                 return True
             if response == 'n':
                 return False
+
+    def get_diff_description(self, editedFiles, filesToAdd):
+        # diff
+        if os.environ.has_key("P4DIFF"):
+            del(os.environ["P4DIFF"])
+        diff = ""
+        for editedFile in editedFiles:
+            diff += p4_read_pipe(['diff', '-du',
+                                  wildcard_encode(editedFile)])
+
+        # new file diff
+        newdiff = ""
+        for newFile in filesToAdd:
+            newdiff += "==== new file ====\n"
+            newdiff += "--- /dev/null\n"
+            newdiff += "+++ %s\n" % newFile
+            f = open(newFile, "r")
+            for line in f.readlines():
+                newdiff += "+" + line
+            f.close()
+
+        return (diff + newdiff).replace('\r\n', '\n')
 
     def applyCommit(self, id):
         """Apply one commit, return True if it succeeded."""
@@ -1362,7 +1456,7 @@ class P4Submit(Command, P4UserMap):
             else:
                 die("unknown modifier %s for %s" % (modifier, path))
 
-        diffcmd = "git format-patch -k --stdout \"%s^\"..\"%s\"" % (id, id)
+        diffcmd = "git diff-tree --full-index -p \"%s\"" % (id)
         tryPatchCmd = "git apply --check -"
         applyPatchCmd = "git apply --check --apply -"
         
@@ -1453,34 +1547,15 @@ class P4Submit(Command, P4UserMap):
             submitTemplate += "######## Variable git-p4.skipUserNameCheck hides this message.\n"
 
         separatorLine = "######## everything below this line is just the diff #######\n"
+        if not self.prepare_p4_only:
+            submitTemplate += separatorLine
+            submitTemplate += self.get_diff_description(editedFiles, filesToAdd)
 
-        # diff
-        if os.environ.has_key("P4DIFF"):
-            del(os.environ["P4DIFF"])
-        diff = ""
-        for editedFile in editedFiles:
-            diff += p4_read_pipe(['diff', '-du',
-                                  wildcard_encode(editedFile)])
-
-        # new file diff
-        newdiff = ""
-        for newFile in filesToAdd:
-            newdiff += "==== new file ====\n"
-            newdiff += "--- /dev/null\n"
-            newdiff += "+++ %s\n" % newFile
-            f = open(newFile, "r")
-            for line in f.readlines():
-                newdiff += "+" + line
-            f.close()
-
-        # change description file: submitTemplate, separatorLine, diff, newdiff
         (handle, fileName) = tempfile.mkstemp()
-        tmpFile = os.fdopen(handle, "w+")
+        tmpFile = os.fdopen(handle, "w+b")
         if self.isWindows:
             submitTemplate = submitTemplate.replace("\n", "\r\n")
-            separatorLine = separatorLine.replace("\n", "\r\n")
-            newdiff = newdiff.replace("\n", "\r\n")
-        tmpFile.write(submitTemplate + separatorLine + diff + newdiff)
+        tmpFile.write(submitTemplate)
         tmpFile.close()
 
         if self.prepare_p4_only:
@@ -1494,7 +1569,7 @@ class P4Submit(Command, P4UserMap):
             print "  " + self.clientPath
             print
             print "To submit, use \"p4 submit\" to write a new description,"
-            print "or \"p4 submit -i %s\" to use the one prepared by" \
+            print "or \"p4 submit -i <%s\" to use the one prepared by" \
                   " \"git p4\"." % fileName
             print "You can delete the file \"%s\" when finished." % fileName
 
@@ -1527,9 +1602,9 @@ class P4Submit(Command, P4UserMap):
             tmpFile = open(fileName, "rb")
             message = tmpFile.read()
             tmpFile.close()
-            submitTemplate = message[:message.index(separatorLine)]
             if self.isWindows:
-                submitTemplate = submitTemplate.replace("\r\n", "\n")
+                message = message.replace("\r\n", "\n")
+            submitTemplate = message[:message.index(separatorLine)]
             p4_write_pipe(['submit', '-i'], submitTemplate)
 
             if self.preserveUser:
@@ -1613,8 +1688,8 @@ class P4Submit(Command, P4UserMap):
             for b in body:
                 labelTemplate += "\t" + b + "\n"
             labelTemplate += "View:\n"
-            for mapping in clientSpec.mappings:
-                labelTemplate += "\t%s\n" % mapping.depot_side.path
+            for depot_side in clientSpec.mappings:
+                labelTemplate += "\t%s\n" % depot_side
 
             if self.dry_run:
                 print "Would create p4 label %s for tag" % name
@@ -1626,7 +1701,7 @@ class P4Submit(Command, P4UserMap):
 
                 # Use the label
                 p4_system(["tag", "-l", name] +
-                          ["%s@%s" % (mapping.depot_side.path, changelist) for mapping in clientSpec.mappings])
+                          ["%s@%s" % (depot_side, changelist) for depot_side in clientSpec.mappings])
 
                 if verbose:
                     print "created p4 label for tag %s" % name
@@ -1680,7 +1755,10 @@ class P4Submit(Command, P4UserMap):
         if self.useClientSpec:
             self.clientSpecDirs = getClientSpec()
 
-        if self.useClientSpec:
+        # Check for the existance of P4 branches
+        branchesDetected = (len(p4BranchesInGit().keys()) > 1)
+
+        if self.useClientSpec and not branchesDetected:
             # all files are relative to the client spec
             self.clientPath = getClientRoot()
         else:
@@ -1845,7 +1923,7 @@ class P4Submit(Command, P4UserMap):
             missingGitTags = gitTags - p4Labels
             self.exportGitTags(missingGitTags)
 
-        # exit with error unless everything applied perfecly
+        # exit with error unless everything applied perfectly
         if len(commits) != len(applied):
                 sys.exit(1)
 
@@ -1855,117 +1933,16 @@ class View(object):
     """Represent a p4 view ("p4 help views"), and map files in a
        repo according to the view."""
 
-    class Path(object):
-        """A depot or client path, possibly containing wildcards.
-           The only one supported is ... at the end, currently.
-           Initialize with the full path, with //depot or //client."""
-
-        def __init__(self, path, is_depot):
-            self.path = path
-            self.is_depot = is_depot
-            self.find_wildcards()
-            # remember the prefix bit, useful for relative mappings
-            m = re.match("(//[^/]+/)", self.path)
-            if not m:
-                die("Path %s does not start with //prefix/" % self.path)
-            prefix = m.group(1)
-            if not self.is_depot:
-                # strip //client/ on client paths
-                self.path = self.path[len(prefix):]
-
-        def find_wildcards(self):
-            """Make sure wildcards are valid, and set up internal
-               variables."""
-
-            self.ends_triple_dot = False
-            # There are three wildcards allowed in p4 views
-            # (see "p4 help views").  This code knows how to
-            # handle "..." (only at the end), but cannot deal with
-            # "%%n" or "*".  Only check the depot_side, as p4 should
-            # validate that the client_side matches too.
-            if re.search(r'%%[1-9]', self.path):
-                die("Can't handle %%n wildcards in view: %s" % self.path)
-            if self.path.find("*") >= 0:
-                die("Can't handle * wildcards in view: %s" % self.path)
-            triple_dot_index = self.path.find("...")
-            if triple_dot_index >= 0:
-                if triple_dot_index != len(self.path) - 3:
-                    die("Can handle only single ... wildcard, at end: %s" %
-                        self.path)
-                self.ends_triple_dot = True
-
-        def ensure_compatible(self, other_path):
-            """Make sure the wildcards agree."""
-            if self.ends_triple_dot != other_path.ends_triple_dot:
-                 die("Both paths must end with ... if either does;\n" +
-                     "paths: %s %s" % (self.path, other_path.path))
-
-        def match_wildcards(self, test_path):
-            """See if this test_path matches us, and fill in the value
-               of the wildcards if so.  Returns a tuple of
-               (True|False, wildcards[]).  For now, only the ... at end
-               is supported, so at most one wildcard."""
-            if self.ends_triple_dot:
-                dotless = self.path[:-3]
-                if test_path.startswith(dotless):
-                    wildcard = test_path[len(dotless):]
-                    return (True, [ wildcard ])
-            else:
-                if test_path == self.path:
-                    return (True, [])
-            return (False, [])
-
-        def match(self, test_path):
-            """Just return if it matches; don't bother with the wildcards."""
-            b, _ = self.match_wildcards(test_path)
-            return b
-
-        def fill_in_wildcards(self, wildcards):
-            """Return the relative path, with the wildcards filled in
-               if there are any."""
-            if self.ends_triple_dot:
-                return self.path[:-3] + wildcards[0]
-            else:
-                return self.path
-
-    class Mapping(object):
-        def __init__(self, depot_side, client_side, overlay, exclude):
-            # depot_side is without the trailing /... if it had one
-            self.depot_side = View.Path(depot_side, is_depot=True)
-            self.client_side = View.Path(client_side, is_depot=False)
-            self.overlay = overlay  # started with "+"
-            self.exclude = exclude  # started with "-"
-            assert not (self.overlay and self.exclude)
-            self.depot_side.ensure_compatible(self.client_side)
-
-        def __str__(self):
-            c = " "
-            if self.overlay:
-                c = "+"
-            if self.exclude:
-                c = "-"
-            return "View.Mapping: %s%s -> %s" % \
-                   (c, self.depot_side.path, self.client_side.path)
-
-        def map_depot_to_client(self, depot_path):
-            """Calculate the client path if using this mapping on the
-               given depot path; does not consider the effect of other
-               mappings in a view.  Even excluded mappings are returned."""
-            matches, wildcards = self.depot_side.match_wildcards(depot_path)
-            if not matches:
-                return ""
-            client_path = self.client_side.fill_in_wildcards(wildcards)
-            return client_path
-
-    #
-    # View methods
-    #
-    def __init__(self):
+    def __init__(self, client_name):
         self.mappings = []
+        self.client_prefix = "//%s/" % client_name
+        # cache results of "p4 where" to lookup client file locations
+        self.client_spec_path_cache = {}
 
     def append(self, view_line):
         """Parse a view line, splitting it into depot and client
-           sides.  Append to self.mappings, preserving order."""
+           sides.  Append to self.mappings, preserving order.  This
+           is only needed for tag creation."""
 
         # Split the view line into exactly two words.  P4 enforces
         # structure on these lines that simplifies this quite a bit.
@@ -1993,76 +1970,69 @@ class View(object):
             depot_side = view_line[0:space_index]
             rhs_index = space_index + 1
 
-        if view_line[rhs_index] == '"':
-            # Second word is double quoted.  Make sure there is a
-            # double quote at the end too.
-            if not view_line.endswith('"'):
-                die("View line with rhs quote should end with one: %s" %
-                    view_line)
-            # skip the quotes
-            client_side = view_line[rhs_index+1:-1]
-        else:
-            client_side = view_line[rhs_index:]
-
         # prefix + means overlay on previous mapping
-        overlay = False
         if depot_side.startswith("+"):
-            overlay = True
             depot_side = depot_side[1:]
 
-        # prefix - means exclude this path
+        # prefix - means exclude this path, leave out of mappings
         exclude = False
         if depot_side.startswith("-"):
             exclude = True
             depot_side = depot_side[1:]
 
-        m = View.Mapping(depot_side, client_side, overlay, exclude)
-        self.mappings.append(m)
+        if not exclude:
+            self.mappings.append(depot_side)
+
+    def convert_client_path(self, clientFile):
+        # chop off //client/ part to make it relative
+        if not clientFile.startswith(self.client_prefix):
+            die("No prefix '%s' on clientFile '%s'" %
+                (self.client_prefix, clientFile))
+        return clientFile[len(self.client_prefix):]
+
+    def update_client_spec_path_cache(self, files):
+        """ Caching file paths by "p4 where" batch query """
+
+        # List depot file paths exclude that already cached
+        fileArgs = [f['path'] for f in files if f['path'] not in self.client_spec_path_cache]
+
+        if len(fileArgs) == 0:
+            return  # All files in cache
+
+        where_result = p4CmdList(["-x", "-", "where"], stdin=fileArgs)
+        for res in where_result:
+            if "code" in res and res["code"] == "error":
+                # assume error is "... file(s) not in client view"
+                continue
+            if "clientFile" not in res:
+                die("No clientFile in 'p4 where' output")
+            if "unmap" in res:
+                # it will list all of them, but only one not unmap-ped
+                continue
+            if gitConfigBool("core.ignorecase"):
+                res['depotFile'] = res['depotFile'].lower()
+            self.client_spec_path_cache[res['depotFile']] = self.convert_client_path(res["clientFile"])
+
+        # not found files or unmap files set to ""
+        for depotFile in fileArgs:
+            if gitConfigBool("core.ignorecase"):
+                depotFile = depotFile.lower()
+            if depotFile not in self.client_spec_path_cache:
+                self.client_spec_path_cache[depotFile] = ""
 
     def map_in_client(self, depot_path):
         """Return the relative location in the client where this
            depot file should live.  Returns "" if the file should
            not be mapped in the client."""
 
-        paths_filled = []
-        client_path = ""
+        if gitConfigBool("core.ignorecase"):
+            depot_path = depot_path.lower()
 
-        # look at later entries first
-        for m in self.mappings[::-1]:
+        if depot_path in self.client_spec_path_cache:
+            return self.client_spec_path_cache[depot_path]
 
-            # see where will this path end up in the client
-            p = m.map_depot_to_client(depot_path)
-
-            if p == "":
-                # Depot path does not belong in client.  Must remember
-                # this, as previous items should not cause files to
-                # exist in this path either.  Remember that the list is
-                # being walked from the end, which has higher precedence.
-                # Overlap mappings do not exclude previous mappings.
-                if not m.overlay:
-                    paths_filled.append(m.client_side)
-
-            else:
-                # This mapping matched; no need to search any further.
-                # But, the mapping could be rejected if the client path
-                # has already been claimed by an earlier mapping (i.e.
-                # one later in the list, which we are walking backwards).
-                already_mapped_in_client = False
-                for f in paths_filled:
-                    # this is View.Path.match
-                    if f.match(p):
-                        already_mapped_in_client = True
-                        break
-                if not already_mapped_in_client:
-                    # Include this file, unless it is from a line that
-                    # explicitly said to exclude it.
-                    if not m.exclude:
-                        client_path = p
-
-                # a match, even if rejected, always stops the search
-                break
-
-        return client_path
+        die( "Error: %s is not found in client spec path" % depot_path )
+        return ""
 
 class P4Sync(Command, P4UserMap):
     delete_actions = ( "delete", "move/delete", "purge" )
@@ -2079,12 +2049,16 @@ class P4Sync(Command, P4UserMap):
                 optparse.make_option("--import-labels", dest="importLabels", action="store_true"),
                 optparse.make_option("--import-local", dest="importIntoRemotes", action="store_false",
                                      help="Import into refs/heads/ , not refs/remotes"),
-                optparse.make_option("--max-changes", dest="maxChanges"),
+                optparse.make_option("--max-changes", dest="maxChanges",
+                                     help="Maximum number of changes to import"),
+                optparse.make_option("--changes-block-size", dest="changes_block_size", type="int",
+                                     help="Internal block size to use when iteratively calling p4 changes"),
                 optparse.make_option("--keep-path", dest="keepRepoPath", action='store_true',
                                      help="Keep entire BRANCH/DIR/SUBDIR prefix during import"),
                 optparse.make_option("--use-client-spec", dest="useClientSpec", action='store_true',
                                      help="Only sync files that are included in the Perforce Client Spec"),
-                optparse.make_option("-/", dest="cloneExclude", action="append", type="string",
+                optparse.make_option("-/", dest="cloneExclude",
+                                     action="append", type="string",
                                      help="exclude depot path"),
                 optparse.make_option("--exclude", dest="patternExclude", action="append", type="string",
                                      help="regex patterns to exclude depot paths"),
@@ -2110,6 +2084,7 @@ class P4Sync(Command, P4UserMap):
         self.syncWithOrigin = True
         self.importIntoRemotes = True
         self.maxChanges = ""
+        self.changes_block_size = None
         self.keepRepoPath = False
         self.depotPaths = None
         self.p4BranchesInGit = []
@@ -2201,6 +2176,10 @@ class P4Sync(Command, P4UserMap):
         """Look at each depotFile in the commit to figure out to what
            branch it belongs."""
 
+        if self.clientSpecDirs:
+            files = self.extractFilesFromCommit(commit)
+            self.clientSpecDirs.update_client_spec_path_cache(files)
+
         branches = {}
         fnum = 0
         while commit.has_key("depotFile%s" % fnum):
@@ -2251,9 +2230,20 @@ class P4Sync(Command, P4UserMap):
             git_mode = "100755"
         if type_base == "symlink":
             git_mode = "120000"
-            # p4 print on a symlink contains "target\n"; remove the newline
+            # p4 print on a symlink sometimes contains "target\n";
+            # if it does, remove the newline
             data = ''.join(contents)
-            contents = [data[:-1]]
+            if not data:
+                # Some version of p4 allowed creating a symlink that pointed
+                # to nothing.  This causes p4 errors when checking out such
+                # a change, and errors here too.  Work around it by ignoring
+                # the bad symlink; hopefully a future change fixes it.
+                print "\nIgnoring empty symlink in %s" % file['depotFile']
+                return
+            elif data[-1] == '\n':
+                contents = [data[:-1]]
+            else:
+                contents = [data]
 
         if type_base == "utf16":
             # p4 delivers different text in the python output to -G
@@ -2266,7 +2256,7 @@ class P4Sync(Command, P4UserMap):
             # them back too.  This is not needed to the cygwin windows version,
             # just the native "NT" type.
             #
-            text = p4_read_pipe(['print', '-q', '-o', '-', file['depotFile']])
+            text = p4_read_pipe(['print', '-q', '-o', '-', "%s@%s" % (file['depotFile'], file['change']) ])
             if p4_version_string().find("/NT") >= 0:
                 text = text.replace("\r\n", "\n")
             contents = [ text ]
@@ -2292,6 +2282,16 @@ class P4Sync(Command, P4UserMap):
             text = ''.join(contents)
             text = regexp.sub(r'$\1$', text)
             contents = [ text ]
+
+        try:
+            relPath.decode('ascii')
+        except:
+            encoding = 'utf8'
+            if gitConfig('git-p4.pathEncoding'):
+                encoding = gitConfig('git-p4.pathEncoding')
+            relPath = relPath.decode(encoding, 'replace').encode('utf8', 'replace')
+            if self.verbose:
+                print 'Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, relPath)
 
         self.gitStream.write("M %s inline %s\n" % (git_mode, relPath))
 
@@ -2402,8 +2402,11 @@ class P4Sync(Command, P4UserMap):
         else:
             return "%s <a@b>" % userid
 
-    # Stream a p4 tag
     def streamTag(self, gitStream, labelName, labelDetails, commit, epoch):
+        """ Stream a p4 tag.
+        commit is either a git commit, or a fast-import mark, ":<p4commit>"
+        """
+
         if verbose:
             print "writing tag %s for commit %s" % (labelName, commit)
         gitStream.write("tag %s\n" % labelName)
@@ -2459,8 +2462,11 @@ class P4Sync(Command, P4UserMap):
                 else:
                     print("Ignoring file outside of prefix: %s" % f['path'])
                         
+        if self.clientSpecDirs:
+            self.clientSpecDirs.update_client_spec_path_cache(files)
+
         self.gitStream.write("commit %s\n" % branch)
-#        gitStream.write("mark :%s\n" % details["change"])
+        self.gitStream.write("mark :%s\n" % details["change"])
         self.committedChanges.add(int(details["change"]))
         committer = ""
         if author not in self.users:
@@ -2579,13 +2585,19 @@ class P4Sync(Command, P4UserMap):
             if change.has_key('change'):
                 # find the corresponding git commit; take the oldest commit
                 changelist = int(change['change'])
-                gitCommit = read_pipe(["git", "rev-list", "--max-count=1",
-                     "--reverse", ':/\[git-p4:.*change = %d\]' % changelist])
-                if len(gitCommit) == 0:
-                    print "could not find git commit for changelist %d" % changelist
-                else:
-                    gitCommit = gitCommit.strip()
+                if changelist in self.committedChanges:
+                    gitCommit = ":%d" % changelist       # use a fast-import mark
                     commitFound = True
+                else:
+                    gitCommit = read_pipe(["git", "rev-list", "--max-count=1",
+                        "--reverse", ":/\[git-p4:.*change = %d\]" % changelist], ignore_error=True)
+                    if len(gitCommit) == 0:
+                        print "importing label %s: could not find git commit for changelist %d" % (name, changelist)
+                    else:
+                        commitFound = True
+                        gitCommit = gitCommit.strip()
+
+                if commitFound:
                     # Convert from p4 time format
                     try:
                         tmwhen = time.strptime(labelDetails['Update'], "%Y/%m/%d %H:%M:%S")
@@ -2753,7 +2765,7 @@ class P4Sync(Command, P4UserMap):
         branchPrefix = self.depotPaths[0] + branch + "/"
         range = "@1,%s" % maxChange
         #print "prefix" + branchPrefix
-        changes = p4ChangesForPaths([branchPrefix], range)
+        changes = p4ChangesForPaths([branchPrefix], range, self.changes_block_size)
         if len(changes) <= 0:
             return False
         firstChange = changes[0]
@@ -3201,7 +3213,7 @@ class P4Sync(Command, P4UserMap):
                 if self.verbose:
                     print "Getting p4 changes for %s...%s" % (', '.join(self.depotPaths),
                                                               self.changeRange)
-                changes = p4ChangesForPaths(self.depotPaths, self.changeRange)
+                changes = p4ChangesForPaths(self.depotPaths, self.changeRange, self.changes_block_size)
 
                 if len(self.maxChanges) > 0:
                     changes = changes[:min(int(self.maxChanges), len(changes))]
@@ -3286,7 +3298,7 @@ class P4Rebase(Command):
         if os.system("git update-index --refresh") != 0:
             die("Some files in your working directory are modified and different than what is in your index. You can use git update-index <filename> to bring the index up-to-date or stash away all your changes with git stash.");
         if len(read_pipe("git diff-index HEAD --")) > 0:
-            die("You have uncommited changes. Please commit them before rebasing or stash them away with git stash.");
+            die("You have uncommitted changes. Please commit them before rebasing or stash them away with git stash.");
 
         [upstream, settings] = findUpstreamBranchPoint()
         if len(upstream) == 0:
@@ -3298,7 +3310,7 @@ class P4Rebase(Command):
         print "Rebasing the current branch onto %s" % upstream
         oldHead = read_pipe("git rev-parse HEAD").strip()
         system("git rebase %s" % upstream)
-        system("git diff-tree --stat --summary -M %s HEAD" % oldHead)
+        system("git diff-tree --stat --summary -M %s HEAD --" % oldHead)
         return True
 
 class P4Clone(P4Sync):

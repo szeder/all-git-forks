@@ -5,6 +5,8 @@
 #define DIFF_H
 
 #include "tree-walk.h"
+#include "pathspec.h"
+#include "object.h"
 
 struct rev_info;
 struct diff_options;
@@ -14,6 +16,10 @@ struct diff_filespec;
 struct userdiff_driver;
 struct sha1_array;
 struct commit;
+struct combine_diff_path;
+
+typedef int (*pathchange_fn_t)(struct diff_options *options,
+		 struct combine_diff_path *path);
 
 typedef void (*change_fn_t)(struct diff_options *options,
 		 unsigned old_mode, unsigned new_mode,
@@ -85,10 +91,12 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_OPT_DIRSTAT_BY_LINE     (1 << 28)
 #define DIFF_OPT_FUNCCONTEXT         (1 << 29)
 #define DIFF_OPT_PICKAXE_IGNORE_CASE (1 << 30)
+#define DIFF_OPT_DEFAULT_FOLLOW_RENAMES (1 << 31)
 
 #define DIFF_OPT_TST(opts, flag)    ((opts)->flags & DIFF_OPT_##flag)
-#define DIFF_OPT_SET(opts, flag)    ((opts)->flags |= DIFF_OPT_##flag)
-#define DIFF_OPT_CLR(opts, flag)    ((opts)->flags &= ~DIFF_OPT_##flag)
+#define DIFF_OPT_TOUCHED(opts, flag)    ((opts)->touched_flags & DIFF_OPT_##flag)
+#define DIFF_OPT_SET(opts, flag)    (((opts)->flags |= DIFF_OPT_##flag),((opts)->touched_flags |= DIFF_OPT_##flag))
+#define DIFF_OPT_CLR(opts, flag)    (((opts)->flags &= ~DIFF_OPT_##flag),((opts)->touched_flags |= DIFF_OPT_##flag))
 #define DIFF_XDL_TST(opts, flag)    ((opts)->xdl_opts & XDF_##flag)
 #define DIFF_XDL_SET(opts, flag)    ((opts)->xdl_opts |= XDF_##flag)
 #define DIFF_XDL_CLR(opts, flag)    ((opts)->xdl_opts &= ~XDF_##flag)
@@ -103,12 +111,16 @@ enum diff_words_type {
 };
 
 struct diff_options {
-	const char *filter;
 	const char *orderfile;
 	const char *pickaxe;
 	const char *single_follow;
 	const char *a_prefix, *b_prefix;
 	unsigned flags;
+	unsigned touched_flags;
+
+	/* diff-filter bits */
+	unsigned int filter;
+
 	int use_color;
 	int context;
 	int interhunkcontext;
@@ -127,6 +139,11 @@ struct diff_options {
 	int dirstat_permille;
 	int setup;
 	int abbrev;
+/* white-space error highlighting */
+#define WSEH_NEW 1
+#define WSEH_CONTEXT 2
+#define WSEH_OLD 4
+	unsigned ws_error_highlight;
 	const char *prefix;
 	int prefix_length;
 	const char *stat_sep;
@@ -145,10 +162,13 @@ struct diff_options {
 	/* to support internal diff recursion by --follow hack*/
 	int found_follow;
 
+	void (*set_default)(struct diff_options *);
+
 	FILE *file;
 	int close_file;
 
 	struct pathspec pathspec;
+	pathchange_fn_t pathchange;
 	change_fn_t change;
 	add_remove_fn_t add_remove;
 	diff_format_fn_t format_callback;
@@ -156,11 +176,13 @@ struct diff_options {
 	diff_prefix_fn_t output_prefix;
 	int output_prefix_length;
 	void *output_prefix_data;
+
+	int diff_path_counter;
 };
 
 enum color_diff {
 	DIFF_RESET = 0,
-	DIFF_PLAIN = 1,
+	DIFF_CONTEXT = 1,
 	DIFF_METAINFO = 2,
 	DIFF_FRAGINFO = 3,
 	DIFF_FILE_OLD = 4,
@@ -179,10 +201,10 @@ const char *diff_line_prefix(struct diff_options *);
 
 extern const char mime_boundary_leader[];
 
-extern void diff_tree_setup_paths(const char **paths, struct diff_options *);
-extern void diff_tree_release_paths(struct diff_options *);
-extern int diff_tree(struct tree_desc *t1, struct tree_desc *t2,
-		     const char *base, struct diff_options *opt);
+extern struct combine_diff_path *diff_tree_paths(
+	struct combine_diff_path *p, const unsigned char *sha1,
+	const unsigned char **parent_sha1, int nparent,
+	struct strbuf *base, struct diff_options *opt);
 extern int diff_tree_sha1(const unsigned char *old, const unsigned char *new,
 			  const char *base, struct diff_options *opt);
 extern int diff_root_tree_sha1(const unsigned char *new, const char *base,
@@ -190,14 +212,13 @@ extern int diff_root_tree_sha1(const unsigned char *new, const char *base,
 
 struct combine_diff_path {
 	struct combine_diff_path *next;
-	int len;
 	char *path;
 	unsigned int mode;
-	unsigned char sha1[20];
+	struct object_id oid;
 	struct combine_diff_parent {
 		char status;
 		unsigned int mode;
-		unsigned char sha1[20];
+		struct object_id oid;
 	} parent[FLEX_ARRAY];
 };
 #define combine_diff_path_size(n, l) \
@@ -238,7 +259,7 @@ extern struct diff_filepair *diff_unmerge(struct diff_options *, const char *pat
 #define DIFF_SETUP_USE_SIZE_CACHE	4
 
 /*
- * Poor man's alternative to parse-option, to allow both sticked form
+ * Poor man's alternative to parse-option, to allow both stuck form
  * (--option=value) and separate form (--option value).
  */
 extern int parse_long_opt(const char *opt, const char **argv,
@@ -324,7 +345,7 @@ extern int diff_flush_patch_id(struct diff_options *, unsigned char *);
 
 extern int diff_result_code(struct diff_options *, int);
 
-extern void diff_no_index(struct rev_info *, int, const char **, int, const char *);
+extern void diff_no_index(struct rev_info *, int, const char **, const char *);
 
 extern int index_differs_from(const char *def, int diff_flags);
 

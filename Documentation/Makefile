@@ -2,6 +2,10 @@
 MAN1_TXT =
 MAN5_TXT =
 MAN7_TXT =
+TECH_DOCS =
+ARTICLES =
+SP_ARTICLES =
+OBSOLETE_HTML =
 
 MAN1_TXT += $(filter-out \
 		$(addsuffix .txt, $(ARTICLES) $(SP_ARTICLES)), \
@@ -23,6 +27,7 @@ MAN7_TXT += gitcore-tutorial.txt
 MAN7_TXT += gitcredentials.txt
 MAN7_TXT += gitcvs-migration.txt
 MAN7_TXT += gitdiffcore.txt
+MAN7_TXT += giteveryday.txt
 MAN7_TXT += gitglossary.txt
 MAN7_TXT += gitnamespaces.txt
 MAN7_TXT += gitrevisions.txt
@@ -31,18 +36,18 @@ MAN7_TXT += gittutorial.txt
 MAN7_TXT += gitworkflows.txt
 
 MAN_TXT = $(MAN1_TXT) $(MAN5_TXT) $(MAN7_TXT)
-MAN_XML=$(patsubst %.txt,%.xml,$(MAN_TXT))
-MAN_HTML=$(patsubst %.txt,%.html,$(MAN_TXT))
+MAN_XML = $(patsubst %.txt,%.xml,$(MAN_TXT))
+MAN_HTML = $(patsubst %.txt,%.html,$(MAN_TXT))
 
-OBSOLETE_HTML = git-remote-helpers.html
-DOC_HTML=$(MAN_HTML) $(OBSOLETE_HTML)
+OBSOLETE_HTML += everyday.html
+OBSOLETE_HTML += git-remote-helpers.html
+DOC_HTML = $(MAN_HTML) $(OBSOLETE_HTML)
 
-ARTICLES = howto-index
-ARTICLES += everyday
+ARTICLES += howto-index
 ARTICLES += git-tools
 ARTICLES += git-bisect-lk2009
 # with their own formatting rules.
-SP_ARTICLES = user-manual
+SP_ARTICLES += user-manual
 SP_ARTICLES += howto/new-command
 SP_ARTICLES += howto/revert-branch-rebase
 SP_ARTICLES += howto/using-merge-subtree
@@ -53,13 +58,16 @@ SP_ARTICLES += howto/setup-git-server-over-http
 SP_ARTICLES += howto/separating-topic-branches
 SP_ARTICLES += howto/revert-a-faulty-merge
 SP_ARTICLES += howto/recover-corrupted-blob-object
+SP_ARTICLES += howto/recover-corrupted-object-harder
 SP_ARTICLES += howto/rebuild-from-update-hook
 SP_ARTICLES += howto/rebase-from-internal-branch
+SP_ARTICLES += howto/keep-canonical-history-correct
 SP_ARTICLES += howto/maintain-git
 API_DOCS = $(patsubst %.txt,%,$(filter-out technical/api-index-skel.txt technical/api-index.txt, $(wildcard technical/api-*.txt)))
 SP_ARTICLES += $(API_DOCS)
 
-TECH_DOCS = technical/index-format
+TECH_DOCS += technical/http-protocol
+TECH_DOCS += technical/index-format
 TECH_DOCS += technical/pack-format
 TECH_DOCS += technical/pack-heuristics
 TECH_DOCS += technical/pack-protocol
@@ -74,35 +82,43 @@ SP_ARTICLES += technical/api-index
 
 DOC_HTML += $(patsubst %,%.html,$(ARTICLES) $(SP_ARTICLES))
 
-DOC_MAN1=$(patsubst %.txt,%.1,$(MAN1_TXT))
-DOC_MAN5=$(patsubst %.txt,%.5,$(MAN5_TXT))
-DOC_MAN7=$(patsubst %.txt,%.7,$(MAN7_TXT))
+DOC_MAN1 = $(patsubst %.txt,%.1,$(MAN1_TXT))
+DOC_MAN5 = $(patsubst %.txt,%.5,$(MAN5_TXT))
+DOC_MAN7 = $(patsubst %.txt,%.7,$(MAN7_TXT))
 
-prefix?=$(HOME)
-bindir?=$(prefix)/bin
-htmldir?=$(prefix)/share/doc/git-doc
-pdfdir?=$(prefix)/share/doc/git-doc
-mandir?=$(prefix)/share/man
-man1dir=$(mandir)/man1
-man5dir=$(mandir)/man5
-man7dir=$(mandir)/man7
-# DESTDIR=
+prefix ?= $(HOME)
+bindir ?= $(prefix)/bin
+htmldir ?= $(prefix)/share/doc/git-doc
+infodir ?= $(prefix)/share/info
+pdfdir ?= $(prefix)/share/doc/git-doc
+mandir ?= $(prefix)/share/man
+man1dir = $(mandir)/man1
+man5dir = $(mandir)/man5
+man7dir = $(mandir)/man7
+# DESTDIR =
 
 ASCIIDOC = asciidoc
 ASCIIDOC_EXTRA =
+ASCIIDOC_HTML = xhtml11
+ASCIIDOC_DOCBOOK = docbook
+ASCIIDOC_CONF = -f asciidoc.conf
+ASCIIDOC_COMMON = $(ASCIIDOC) $(ASCIIDOC_EXTRA) $(ASCIIDOC_CONF) \
+		-agit_version=$(GIT_VERSION)
+TXT_TO_HTML = $(ASCIIDOC_COMMON) -b $(ASCIIDOC_HTML)
+TXT_TO_XML = $(ASCIIDOC_COMMON) -b $(ASCIIDOC_DOCBOOK)
 MANPAGE_XSL = manpage-normal.xsl
 XMLTO = xmlto
 XMLTO_EXTRA =
-INSTALL?=install
+INSTALL ?= install
 RM ?= rm -f
 MAN_REPO = ../../git-manpages
 HTML_REPO = ../../git-htmldocs
 
-infodir?=$(prefix)/share/info
-MAKEINFO=makeinfo
-INSTALL_INFO=install-info
-DOCBOOK2X_TEXI=docbook2x-texi
-DBLATEX=dblatex
+MAKEINFO = makeinfo
+INSTALL_INFO = install-info
+DOCBOOK2X_TEXI = docbook2x-texi
+DBLATEX = dblatex
+ASCIIDOC_DBLATEX_DIR = /etc/asciidoc/dblatex
 ifndef PERL_PATH
 	PERL_PATH = /usr/bin/perl
 endif
@@ -297,14 +313,12 @@ clean:
 
 $(MAN_HTML): %.html : %.txt asciidoc.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
-	$(ASCIIDOC) -b xhtml11 -d manpage -f asciidoc.conf \
-		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
+	$(TXT_TO_HTML) -d manpage -o $@+ $< && \
 	mv $@+ $@
 
 $(OBSOLETE_HTML): %.html : %.txto asciidoc.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
-	$(ASCIIDOC) -b xhtml11 -f asciidoc.conf \
-		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
+	$(TXT_TO_HTML) -o $@+ $< && \
 	mv $@+ $@
 
 manpage-base-url.xsl: manpage-base-url.xsl.in
@@ -316,13 +330,12 @@ manpage-base-url.xsl: manpage-base-url.xsl.in
 
 %.xml : %.txt asciidoc.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
-	$(ASCIIDOC) -b docbook -d manpage -f asciidoc.conf \
-		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) -o $@+ $< && \
+	$(TXT_TO_XML) -d manpage -o $@+ $< && \
 	mv $@+ $@
 
 user-manual.xml: user-manual.txt user-manual.conf
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
-	$(ASCIIDOC) $(ASCIIDOC_EXTRA) -b docbook -d book -o $@+ $< && \
+	$(TXT_TO_XML) -d article -o $@+ $< && \
 	mv $@+ $@
 
 technical/api-index.txt: technical/api-index-skel.txt \
@@ -331,8 +344,7 @@ technical/api-index.txt: technical/api-index-skel.txt \
 
 technical/%.html: ASCIIDOC_EXTRA += -a git-relative-html-prefix=../
 $(patsubst %,%.html,$(API_DOCS) technical/api-index $(TECH_DOCS)): %.html : %.txt asciidoc.conf
-	$(QUIET_ASCIIDOC)$(ASCIIDOC) -b xhtml11 -f asciidoc.conf \
-		$(ASCIIDOC_EXTRA) -agit_version=$(GIT_VERSION) $*.txt
+	$(QUIET_ASCIIDOC)$(TXT_TO_HTML) $*.txt
 
 XSLT = docbook.xsl
 XSLTOPTS = --xinclude --stringparam html.stylesheet docbook-xsl.css
@@ -354,7 +366,7 @@ user-manual.texi: user-manual.xml
 
 user-manual.pdf: user-manual.xml
 	$(QUIET_DBLATEX)$(RM) $@+ $@ && \
-	$(DBLATEX) -o $@+ -p /etc/asciidoc/dblatex/asciidoc-dblatex.xsl -s /etc/asciidoc/dblatex/asciidoc-dblatex.sty $< && \
+	$(DBLATEX) -o $@+ -p $(ASCIIDOC_DBLATEX_DIR)/asciidoc-dblatex.xsl -s $(ASCIIDOC_DBLATEX_DIR)/asciidoc-dblatex.sty $< && \
 	mv $@+ $@
 
 gitman.texi: $(MAN_XML) cat-texi.perl
@@ -379,14 +391,15 @@ howto-index.txt: howto-index.sh $(wildcard howto/*.txt)
 	mv $@+ $@
 
 $(patsubst %,%.html,$(ARTICLES)) : %.html : %.txt
-	$(QUIET_ASCIIDOC)$(ASCIIDOC) $(ASCIIDOC_EXTRA) -b xhtml11 $*.txt
+	$(QUIET_ASCIIDOC)$(TXT_TO_HTML) $*.txt
 
 WEBDOC_DEST = /pub/software/scm/git/docs
 
 howto/%.html: ASCIIDOC_EXTRA += -a git-relative-html-prefix=../
 $(patsubst %.txt,%.html,$(wildcard howto/*.txt)): %.html : %.txt
 	$(QUIET_ASCIIDOC)$(RM) $@+ $@ && \
-	sed -e '1,/^$$/d' $< | $(ASCIIDOC) $(ASCIIDOC_EXTRA) -b xhtml11 - >$@+ && \
+	sed -e '1,/^$$/d' $< | \
+	$(TXT_TO_HTML) - >$@+ && \
 	mv $@+ $@
 
 install-webdoc : html

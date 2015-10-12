@@ -8,11 +8,6 @@ test_description='Test remote-helper import and export commands'
 . ./test-lib.sh
 . "$TEST_DIRECTORY"/lib-gpg.sh
 
-if ! type "${BASH-bash}" >/dev/null 2>&1; then
-	skip_all='skipping remote-testgit tests, bash not available'
-	test_done
-fi
-
 compare_refs() {
 	git --git-dir="$1/.git" rev-parse --verify $2 >expect &&
 	git --git-dir="$3/.git" rev-parse --verify $4 >actual &&
@@ -92,48 +87,66 @@ test_expect_success 'push new branch by name' '
 	compare_refs local HEAD server refs/heads/new-name
 '
 
-test_expect_failure 'push new branch with old:new refspec' '
+test_expect_success 'push new branch with old:new refspec' '
 	(cd local &&
 	 git push origin new-name:new-refspec
 	) &&
 	compare_refs local HEAD server refs/heads/new-refspec
 '
 
+test_expect_success 'push new branch with HEAD:new refspec' '
+	(cd local &&
+	 git checkout new-name
+	 git push origin HEAD:new-refspec-2
+	) &&
+	compare_refs local HEAD server refs/heads/new-refspec-2
+'
+
+test_expect_success 'push delete branch' '
+	(cd local &&
+	 git push origin :new-name
+	) &&
+	test_must_fail git --git-dir="server/.git" \
+	 rev-parse --verify refs/heads/new-name
+'
+
+test_expect_success 'forced push' '
+	(cd local &&
+	git checkout -b force-test &&
+	echo content >> file &&
+	git commit -a -m eight &&
+	git push origin force-test &&
+	echo content >> file &&
+	git commit -a --amend -m eight-modified &&
+	git push --force origin force-test
+	) &&
+	compare_refs local refs/heads/force-test server refs/heads/force-test
+'
+
 test_expect_success 'cloning without refspec' '
 	GIT_REMOTE_TESTGIT_REFSPEC="" \
-	git clone "testgit::${PWD}/server" local2 &&
+	git clone "testgit::${PWD}/server" local2 2>error &&
+	grep "This remote helper should implement refspec capability" error &&
 	compare_refs local2 HEAD server HEAD
 '
 
 test_expect_success 'pulling without refspecs' '
 	(cd local2 &&
 	git reset --hard &&
-	GIT_REMOTE_TESTGIT_REFSPEC="" git pull) &&
+	GIT_REMOTE_TESTGIT_REFSPEC="" git pull 2>../error) &&
+	grep "This remote helper should implement refspec capability" error &&
 	compare_refs local2 HEAD server HEAD
 '
 
-test_expect_failure 'pushing without refspecs' '
+test_expect_success 'pushing without refspecs' '
 	test_when_finished "(cd local2 && git reset --hard origin)" &&
 	(cd local2 &&
 	echo content >>file &&
 	git commit -a -m ten &&
-	GIT_REMOTE_TESTGIT_REFSPEC="" git push) &&
-	compare_refs local2 HEAD server HEAD
-'
-
-test_expect_success 'pulling with straight refspec' '
-	(cd local2 &&
-	GIT_REMOTE_TESTGIT_REFSPEC="*:*" git pull) &&
-	compare_refs local2 HEAD server HEAD
-'
-
-test_expect_failure 'pushing with straight refspec' '
-	test_when_finished "(cd local2 && git reset --hard origin)" &&
-	(cd local2 &&
-	echo content >>file &&
-	git commit -a -m eleven &&
-	GIT_REMOTE_TESTGIT_REFSPEC="*:*" git push) &&
-	compare_refs local2 HEAD server HEAD
+	GIT_REMOTE_TESTGIT_REFSPEC="" &&
+	export GIT_REMOTE_TESTGIT_REFSPEC &&
+	test_must_fail git push 2>../error) &&
+	grep "remote-helper doesn.t support push; refspec needed" error
 '
 
 test_expect_success 'pulling without marks' '
@@ -186,6 +199,70 @@ test_expect_success GPG 'push signed tag with signed-tags capability' '
 	compare_refs local signed-tag-2 server signed-tag-2
 '
 
+test_expect_success 'push update refs' '
+	(cd local &&
+	git checkout -b update master &&
+	echo update >>file &&
+	git commit -a -m update &&
+	git push origin update &&
+	git rev-parse --verify remotes/origin/update >expect &&
+	git rev-parse --verify testgit/origin/heads/update >actual &&
+	test_cmp expect actual
+	)
+'
+
+test_expect_success 'push update refs disabled by no-private-update' '
+	(cd local &&
+	echo more-update >>file &&
+	git commit -a -m more-update &&
+	git rev-parse --verify testgit/origin/heads/update >expect &&
+	GIT_REMOTE_TESTGIT_NO_PRIVATE_UPDATE=t git push origin update &&
+	git rev-parse --verify testgit/origin/heads/update >actual &&
+	test_cmp expect actual
+	)
+'
+
+test_expect_success 'push update refs failure' '
+	(cd local &&
+	git checkout update &&
+	echo "update fail" >>file &&
+	git commit -a -m "update fail" &&
+	git rev-parse --verify testgit/origin/heads/update >expect &&
+	test_expect_code 1 env GIT_REMOTE_TESTGIT_FAILURE="non-fast forward" \
+		git push origin update &&
+	git rev-parse --verify testgit/origin/heads/update >actual &&
+	test_cmp expect actual
+	)
+'
+
+clean_mark () {
+	cut -f 2 -d ' ' "$1" |
+	git cat-file --batch-check |
+	grep commit |
+	sort >$(basename "$1")
+}
+
+test_expect_success 'proper failure checks for fetching' '
+	(cd local &&
+	test_must_fail env GIT_REMOTE_TESTGIT_FAILURE=1 git fetch 2>error &&
+	cat error &&
+	grep -q "Error while running fast-import" error
+	)
+'
+
+test_expect_success 'proper failure checks for pushing' '
+	test_when_finished "rm -rf local/git.marks local/testgit.marks" &&
+	(cd local &&
+	git checkout -b crash master &&
+	echo crash >>file &&
+	git commit -a -m crash &&
+	test_must_fail env GIT_REMOTE_TESTGIT_FAILURE=1 git push --all &&
+	clean_mark ".git/testgit/origin/git.marks" &&
+	clean_mark ".git/testgit/origin/testgit.marks" &&
+	test_cmp git.marks testgit.marks
+	)
+'
+
 test_expect_success 'push messages' '
 	(cd local &&
 	git checkout -b new_branch master &&
@@ -198,6 +275,30 @@ test_expect_success 'push messages' '
 	git push origin new_branch 2> msg &&
 	! grep "\[new branch\]" msg
 	)
+'
+
+test_expect_success 'fetch HEAD' '
+	(cd server &&
+	git checkout master &&
+	echo more >>file &&
+	git commit -a -m more
+	) &&
+	(cd local &&
+	git fetch origin HEAD
+	) &&
+	compare_refs server HEAD local FETCH_HEAD
+'
+
+test_expect_success 'fetch url' '
+	(cd server &&
+	git checkout master &&
+	echo more >>file &&
+	git commit -a -m more
+	) &&
+	(cd local &&
+	git fetch "testgit::${PWD}/../server"
+	) &&
+	compare_refs server HEAD local FETCH_HEAD
 '
 
 test_done

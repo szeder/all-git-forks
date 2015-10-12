@@ -7,7 +7,7 @@ Verify that plumbing commands work when .git is a file
 . ./test-lib.sh
 
 objpath() {
-    echo "$1" | sed -e 's|\(..\)|\1/|'
+	echo "$1" | sed -e 's|\(..\)|\1/|'
 }
 
 objck() {
@@ -18,7 +18,6 @@ objck() {
 		false
 	fi
 }
-
 
 test_expect_success 'initial setup' '
 	REAL="$(pwd)/.real" &&
@@ -98,6 +97,23 @@ test_expect_success 'check commit-tree' '
 test_expect_success 'check rev-list' '
 	echo $SHA >"$REAL/HEAD" &&
 	test "$SHA" = "$(git rev-list HEAD)"
+'
+
+test_expect_success 'setup_git_dir twice in subdir' '
+	git init sgd &&
+	(
+		cd sgd &&
+		git config alias.lsfi ls-files &&
+		mv .git .realgit &&
+		echo "gitdir: .realgit" >.git &&
+		mkdir subdir &&
+		cd subdir &&
+		>foo &&
+		git add foo &&
+		git lsfi >actual &&
+		echo foo >expected &&
+		test_cmp expected actual
+	)
 '
 
 test_done

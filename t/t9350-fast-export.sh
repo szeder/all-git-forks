@@ -396,7 +396,7 @@ test_expect_success 'tree_tag-obj'    'git fast-export tree_tag-obj'
 test_expect_success 'tag-obj_tag'     'git fast-export tag-obj_tag'
 test_expect_success 'tag-obj_tag-obj' 'git fast-export tag-obj_tag-obj'
 
-test_expect_success SYMLINKS 'directory becomes symlink'        '
+test_expect_success 'directory becomes symlink'        '
 	git init dirtosymlink &&
 	git init result &&
 	(
@@ -408,8 +408,7 @@ test_expect_success SYMLINKS 'directory becomes symlink'        '
 		git add foo/world bar/world &&
 		git commit -q -mone &&
 		git rm -r foo &&
-		ln -s bar foo &&
-		git add foo &&
+		test_ln_s_add bar foo &&
 		git commit -q -mtwo
 	) &&
 	(
@@ -430,7 +429,7 @@ test_expect_success 'fast-export quotes pathnames' '
 		--cacheinfo 100644 $blob "path with \\backslash" \
 		--cacheinfo 100644 $blob "path with space" &&
 	 git commit -m addition &&
-	 git ls-files -z -s | "$PERL_PATH" -0pe "s{\\t}{$&subdir/}" >index &&
+	 git ls-files -z -s | perl -0pe "s{\\t}{$&subdir/}" >index &&
 	 git read-tree --empty &&
 	 git update-index -z --index-info <index &&
 	 git commit -m rename &&
@@ -502,6 +501,24 @@ test_expect_success 'refs are updated even if no commits need to be exported' '
 		--export-marks=tmp-marks master > /dev/null &&
 	git fast-export --import-marks=tmp-marks \
 		--export-marks=tmp-marks master > actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'use refspec' '
+	git fast-export --refspec refs/heads/master:refs/heads/foobar master | \
+		grep "^commit " | sort | uniq > actual &&
+	echo "commit refs/heads/foobar" > expected &&
+	test_cmp expected actual
+'
+
+test_expect_success 'delete refspec' '
+	git branch to-delete &&
+	git fast-export --refspec :refs/heads/to-delete to-delete ^to-delete > actual &&
+	cat > expected <<-EOF &&
+	reset refs/heads/to-delete
+	from 0000000000000000000000000000000000000000
+
+	EOF
 	test_cmp expected actual
 '
 

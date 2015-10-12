@@ -1,6 +1,4 @@
 /*
- * builtin-help.c
- *
  * Builtin help command
  */
 #include "cache.h"
@@ -51,7 +49,7 @@ static struct option builtin_help_options[] = {
 };
 
 static const char * const builtin_help_usage[] = {
-	N_("git help [--all] [--guides] [--man|--web|--info] [command]"),
+	N_("git help [--all] [--guides] [--man | --web | --info] [<command>]"),
 	NULL
 };
 
@@ -81,12 +79,11 @@ static const char *get_man_viewer_info(const char *name)
 static int check_emacsclient_version(void)
 {
 	struct strbuf buffer = STRBUF_INIT;
-	struct child_process ec_process;
+	struct child_process ec_process = CHILD_PROCESS_INIT;
 	const char *argv_ec[] = { "emacsclient", "--version", NULL };
 	int version;
 
 	/* emacsclient prints its version number on stderr */
-	memset(&ec_process, 0, sizeof(ec_process));
 	ec_process.argv = argv_ec;
 	ec_process.err = -1;
 	ec_process.stdout_to_stderr = 1;
@@ -102,7 +99,7 @@ static int check_emacsclient_version(void)
 	 */
 	finish_command(&ec_process);
 
-	if (prefixcmp(buffer.buf, "emacsclient")) {
+	if (!starts_with(buffer.buf, "emacsclient")) {
 		strbuf_release(&buffer);
 		return error(_("Failed to parse emacsclient version."));
 	}
@@ -174,7 +171,7 @@ static void exec_man_cmd(const char *cmd, const char *page)
 {
 	struct strbuf shell_cmd = STRBUF_INIT;
 	strbuf_addf(&shell_cmd, "%s %s", cmd, page);
-	execl("/bin/sh", "sh", "-c", shell_cmd.buf, (char *)NULL);
+	execl(SHELL_PATH, SHELL_PATH, "-c", shell_cmd.buf, (char *)NULL);
 	warning(_("failed to exec '%s': %s"), cmd, strerror(errno));
 }
 
@@ -260,7 +257,7 @@ static int add_man_viewer_info(const char *var, const char *value)
 
 static int git_help_config(const char *var, const char *value, void *cb)
 {
-	if (!prefixcmp(var, "column."))
+	if (starts_with(var, "column."))
 		return git_column_config(var, value, "help", &colopts);
 	if (!strcmp(var, "help.format")) {
 		if (!value)
@@ -280,7 +277,7 @@ static int git_help_config(const char *var, const char *value, void *cb)
 		add_man_viewer(value);
 		return 0;
 	}
-	if (!prefixcmp(var, "man."))
+	if (starts_with(var, "man."))
 		return add_man_viewer_info(var, value);
 
 	return git_default_config(var, value, cb);
@@ -290,6 +287,10 @@ static struct cmdnames main_cmds, other_cmds;
 
 static int is_git_command(const char *s)
 {
+	if (is_builtin(s))
+		return 1;
+
+	load_command_list("git-", &main_cmds, &other_cmds);
 	return is_in_cmdlist(&main_cmds, s) ||
 		is_in_cmdlist(&other_cmds, s);
 }
@@ -308,7 +309,7 @@ static const char *cmd_to_page(const char *git_cmd)
 {
 	if (!git_cmd)
 		return "git";
-	else if (!prefixcmp(git_cmd, "git"))
+	else if (starts_with(git_cmd, "git"))
 		return git_cmd;
 	else if (is_git_command(git_cmd))
 		return prepend("git-", git_cmd);
@@ -320,16 +321,18 @@ static void setup_man_path(void)
 {
 	struct strbuf new_path = STRBUF_INIT;
 	const char *old_path = getenv("MANPATH");
+	char *git_man_path = system_path(GIT_MAN_PATH);
 
 	/* We should always put ':' after our path. If there is no
 	 * old_path, the ':' at the end will let 'man' to try
 	 * system-wide paths after ours to find the manual page. If
 	 * there is old_path, we need ':' as delimiter. */
-	strbuf_addstr(&new_path, system_path(GIT_MAN_PATH));
+	strbuf_addstr(&new_path, git_man_path);
 	strbuf_addch(&new_path, ':');
 	if (old_path)
 		strbuf_addstr(&new_path, old_path);
 
+	free(git_man_path);
 	setenv("MANPATH", new_path.buf, 1);
 
 	strbuf_release(&new_path);
@@ -379,8 +382,10 @@ static void show_info_page(const char *git_cmd)
 static void get_html_page_path(struct strbuf *page_path, const char *page)
 {
 	struct stat st;
+	char *to_free = NULL;
+
 	if (!html_path)
-		html_path = system_path(GIT_HTML_PATH);
+		html_path = to_free = system_path(GIT_HTML_PATH);
 
 	/* Check that we have a git documentation directory. */
 	if (!strstr(html_path, "://")) {
@@ -391,6 +396,7 @@ static void get_html_page_path(struct strbuf *page_path, const char *page)
 
 	strbuf_init(page_path, 0);
 	strbuf_addf(page_path, "%s/%s.html", html_path, page);
+	free(to_free);
 }
 
 /*
@@ -420,6 +426,7 @@ static struct {
 	const char *help;
 } common_guides[] = {
 	{ "attributes", N_("Defining attributes per path") },
+	{ "everyday", N_("Everyday Git With 20 Commands Or So") },
 	{ "glossary", N_("A Git glossary") },
 	{ "ignore", N_("Specifies intentionally untracked files to ignore") },
 	{ "modules", N_("Defining submodule properties") },
@@ -449,9 +456,8 @@ static void list_common_guides_help(void)
 int cmd_help(int argc, const char **argv, const char *prefix)
 {
 	int nongit;
-	const char *alias;
+	char *alias;
 	enum help_format parsed_help_format;
-	load_command_list("git-", &main_cmds, &other_cmds);
 
 	argc = parse_options(argc, argv, prefix, builtin_help_options,
 			builtin_help_usage, 0);
@@ -460,6 +466,7 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 	if (show_all) {
 		git_config(git_help_config, NULL);
 		printf(_("usage: %s%s"), _(git_usage_string), "\n\n");
+		load_command_list("git-", &main_cmds, &other_cmds);
 		list_commands(colopts, &main_cmds, &other_cmds);
 	}
 
@@ -492,6 +499,7 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 	alias = alias_lookup(argv[0]);
 	if (alias && !is_git_command(argv[0])) {
 		printf_ln(_("`git %s' is aliased to `%s'"), argv[0], alias);
+		free(alias);
 		return 0;
 	}
 

@@ -4,18 +4,17 @@
 #
 # Copyright (c) 2012-2013 Felipe Contreras <felipe.contreras@gmail.com>
 #
-# You need git's bash completion script installed somewhere, by default on the
-# same directory as this script.
+# You need git's bash completion script installed somewhere, by default it
+# would be the location bash-completion uses.
 #
-# If your script is on ~/.git-completion.sh instead, you can configure it on
-# your ~/.zshrc:
+# If your script is somewhere else, you can configure it on your ~/.zshrc:
 #
-#  zstyle ':completion:*:*:git:*' script ~/.git-completion.sh
+#  zstyle ':completion:*:*:git:*' script ~/.git-completion.zsh
 #
-# The recommended way to install this script is to copy to
-# '~/.zsh/completion/_git', and then add the following to your ~/.zshrc file:
+# The recommended way to install this script is to copy to '~/.zsh/_git', and
+# then add the following to your ~/.zshrc file:
 #
-#  fpath=(~/.zsh/completion $fpath)
+#  fpath=(~/.zsh $fpath)
 
 complete ()
 {
@@ -27,7 +26,19 @@ zstyle -T ':completion:*:*:git:*' tag-order && \
 	zstyle ':completion:*:*:git:*' tag-order 'common-commands'
 
 zstyle -s ":completion:*:*:git:*" script script
-test -z "$script" && script="$(dirname ${funcsourcetrace[1]%:*})"/git-completion.bash
+if [ -z "$script" ]; then
+	local -a locations
+	local e
+	locations=(
+		$(dirname ${funcsourcetrace[1]%:*})/git-completion.bash
+		'/etc/bash_completion.d/git' # fedora, old debian
+		'/usr/share/bash-completion/completions/git' # arch, ubuntu, new debian
+		'/usr/share/bash-completion/git' # gentoo
+		)
+	for e in $locations; do
+		test -f $e && script="$e" && break
+	done
+fi
 ZSH_VERSION='' . "$script"
 
 __gitcomp ()
@@ -65,6 +76,14 @@ __gitcomp_nl ()
 	compadd -Q -S "${4- }" -p "${2-}" -- ${=1} && _ret=0
 }
 
+__gitcomp_nl_append ()
+{
+	emulate -L zsh
+
+	local IFS=$'\n'
+	compadd -Q -S "${4- }" -p "${2-}" -- ${=1} && _ret=0
+}
+
 __gitcomp_file ()
 {
 	emulate -L zsh
@@ -85,6 +104,7 @@ __git_zsh_bash_func ()
 
 	local expansion=$(__git_aliased_command "$command")
 	if [ -n "$expansion" ]; then
+		words[1]=$expansion
 		completion_func="_git_${expansion//-/_}"
 		declare -f $completion_func >/dev/null && $completion_func
 	fi

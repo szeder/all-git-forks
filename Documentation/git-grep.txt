@@ -9,7 +9,7 @@ git-grep - Print lines matching a pattern
 SYNOPSIS
 --------
 [verse]
-'git grep' [-a | --text] [-I] [-i | --ignore-case] [-w | --word-regexp]
+'git grep' [-a | --text] [-I] [--textconv] [-i | --ignore-case] [-w | --word-regexp]
 	   [-v | --invert-match] [-h|-H] [--full-name]
 	   [-E | --extended-regexp] [-G | --basic-regexp]
 	   [-P | --perl-regexp]
@@ -53,6 +53,9 @@ grep.extendedRegexp::
 	option is ignored when the 'grep.patternType' option is set to a value
 	other than 'default'.
 
+grep.fullName::
+	If set to true, enable '--full-name' option by default.
+
 
 OPTIONS
 -------
@@ -79,6 +82,13 @@ OPTIONS
 -a::
 --text::
 	Process binary files as if they were text.
+
+--textconv::
+	Honor textconv filter settings.
+
+--no-textconv::
+	Do not honor textconv filter settings.
+	This is the default.
 
 -i::
 --ignore-case::
@@ -150,12 +160,15 @@ OPTIONS
 	For better compatibility with 'git diff', `--name-only` is a
 	synonym for `--files-with-matches`.
 
--O [<pager>]::
---open-files-in-pager [<pager>]::
+-O[<pager>]::
+--open-files-in-pager[=<pager>]::
 	Open the matching files in the pager (not the output of 'grep').
 	If the pager happens to be "less" or "vi", and the user
 	specified only one pattern, the first file is positioned at
-	the first match automatically.
+	the first match automatically. The `pager` argument is
+	optional; if specified, it must be stuck to the option
+	without a space. If `pager` is unspecified, the default pager
+	will be used (see `core.pager` in linkgit:git-config[1]).
 
 -z::
 --null::

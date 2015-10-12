@@ -103,8 +103,10 @@ test_expect_success 'confuses pattern as remote when no remote specified' '
 '
 
 test_expect_success 'die with non-2 for wrong repository even with --exit-code' '
-	git ls-remote --exit-code ./no-such-repository ;# not &&
-	status=$? &&
+	{
+		git ls-remote --exit-code ./no-such-repository
+		status=$?
+	} &&
 	test $status != 2 && test $status != 0
 '
 
@@ -126,6 +128,11 @@ test_expect_success 'Report match with --exit-code' '
 	test_cmp expect actual
 '
 
+test_expect_success 'set up some extra tags for ref hiding' '
+	git tag magic/one &&
+	git tag magic/two
+'
+
 for configsection in transfer uploadpack
 do
 	test_expect_success "Hide some refs with $configsection.hiderefs" '
@@ -136,6 +143,24 @@ do
 		sed -e "/	refs\/tags\//d" >expect &&
 		test_cmp expect actual
 	'
+
+	test_expect_success "Override hiding of $configsection.hiderefs" '
+		test_when_finished "test_unconfig $configsection.hiderefs" &&
+		git config --add $configsection.hiderefs refs/tags &&
+		git config --add $configsection.hiderefs "!refs/tags/magic" &&
+		git config --add $configsection.hiderefs refs/tags/magic/one &&
+		git ls-remote . >actual &&
+		grep refs/tags/magic/two actual &&
+		! grep refs/tags/magic/one actual
+	'
+
 done
+
+test_expect_success 'overrides work between mixed transfer/upload-pack hideRefs' '
+	test_config uploadpack.hiderefs refs/tags &&
+	test_config transfer.hiderefs "!refs/tags/magic" &&
+	git ls-remote . >actual &&
+	grep refs/tags/magic actual
+'
 
 test_done

@@ -3,7 +3,6 @@
 test_description='test fetching over git protocol'
 . ./test-lib.sh
 
-LIB_GIT_DAEMON_PORT=${LIB_GIT_DAEMON_PORT-5570}
 . "$TEST_DIRECTORY"/lib-git-daemon.sh
 start_git_daemon
 
@@ -37,7 +36,7 @@ test_expect_success 'fetch changes via git protocol' '
 	test_cmp file clone/file
 '
 
-test_expect_failure 'remote detects correct HEAD' '
+test_expect_success 'remote detects correct HEAD' '
 	git push public master:other &&
 	(cd clone &&
 	 git remote set-head -d origin &&
@@ -122,8 +121,7 @@ test_remote_error()
 	fi
 
 	test_must_fail git "$cmd" "$GIT_DAEMON_URL/$repo" "$@" 2>output &&
-	echo "fatal: remote error: $msg: /$repo" >expect &&
-	test_cmp expect output
+	test_i18ngrep "fatal: remote error: $msg: /$repo" output &&
 	ret=$?
 	chmod +x "$GIT_DAEMON_DOCUMENT_ROOT_PATH/repo.git"
 	(exit $ret)
@@ -142,6 +140,33 @@ test_expect_success 'clone non-existent' "test_remote_error    'no such reposito
 test_expect_success 'push disabled'      "test_remote_error    'service not enabled'     push  repo.git master"
 test_expect_success 'read access denied' "test_remote_error -x 'no such repository'      fetch repo.git       "
 test_expect_success 'not exported'       "test_remote_error -n 'repository not exported' fetch repo.git       "
+
+stop_git_daemon
+start_git_daemon --interpolated-path="$GIT_DAEMON_DOCUMENT_ROOT_PATH/%H%D"
+
+test_expect_success 'access repo via interpolated hostname' '
+	repo="$GIT_DAEMON_DOCUMENT_ROOT_PATH/localhost/interp.git" &&
+	git init --bare "$repo" &&
+	git push "$repo" HEAD &&
+	>"$repo"/git-daemon-export-ok &&
+	rm -rf tmp.git &&
+	GIT_OVERRIDE_VIRTUAL_HOST=localhost \
+		git clone --bare "$GIT_DAEMON_URL/interp.git" tmp.git &&
+	rm -rf tmp.git &&
+	GIT_OVERRIDE_VIRTUAL_HOST=LOCALHOST \
+		git clone --bare "$GIT_DAEMON_URL/interp.git" tmp.git
+'
+
+test_expect_success 'hostname cannot break out of directory' '
+	rm -rf tmp.git &&
+	repo="$GIT_DAEMON_DOCUMENT_ROOT_PATH/../escape.git" &&
+	git init --bare "$repo" &&
+	git push "$repo" HEAD &&
+	>"$repo"/git-daemon-export-ok &&
+	test_must_fail \
+		env GIT_OVERRIDE_VIRTUAL_HOST=.. \
+		git clone --bare "$GIT_DAEMON_URL/escape.git" tmp.git
+'
 
 stop_git_daemon
 test_done

@@ -57,11 +57,10 @@ create_merge_msgs () {
 		git log --no-merges ^HEAD c2 c3
 	} >squash.1-5-9 &&
 	: >msg.nologff &&
-	echo >msg.nolognoff &&
+	: >msg.nolognoff &&
 	{
 		echo "* tag 'c3':" &&
-		echo "  commit 3" &&
-		echo
+		echo "  commit 3"
 	} >msg.log
 }
 
@@ -71,7 +70,7 @@ verify_merge () {
 	git diff --exit-code &&
 	if test -n "$3"
 	then
-		git show -s --pretty=format:%s HEAD >msg.act &&
+		git show -s --pretty=tformat:%s HEAD >msg.act &&
 		test_cmp "$3" msg.act
 	fi
 }
@@ -134,7 +133,7 @@ test_expect_success 'setup' '
 	test_tick &&
 	git commit -m "commit 3" &&
 	git tag c3 &&
-	c3=$(git rev-parse HEAD)
+	c3=$(git rev-parse HEAD) &&
 	git reset --hard "$c0" &&
 	create_merge_msgs
 '
@@ -316,7 +315,7 @@ test_expect_success 'merge c1 with c2 (squash)' '
 
 test_debug 'git log --graph --decorate --oneline --all'
 
-test_expect_success 'unsuccesful merge of c1 with c2 (squash, ff-only)' '
+test_expect_success 'unsuccessful merge of c1 with c2 (squash, ff-only)' '
 	git reset --hard c1 &&
 	test_must_fail git merge --squash --ff-only c2
 '
@@ -497,9 +496,15 @@ test_expect_success 'combining --squash and --no-ff is refused' '
 	test_must_fail git merge --no-ff --squash c1
 '
 
-test_expect_success 'combining --ff-only and --no-ff is refused' '
-	test_must_fail git merge --ff-only --no-ff c1 &&
-	test_must_fail git merge --no-ff --ff-only c1
+test_expect_success 'option --ff-only overwrites --no-ff' '
+	git merge --no-ff --ff-only c1 &&
+	test_must_fail git merge --no-ff --ff-only c2
+'
+
+test_expect_success 'option --no-ff overrides merge.ff=only config' '
+	git reset --hard c0 &&
+	test_config merge.ff only &&
+	git merge --no-ff c1
 '
 
 test_expect_success 'merge c0 with c1 (ff overrides no-ff)' '
@@ -614,10 +619,10 @@ test_expect_success 'merge early part of c2' '
 	git tag c6 &&
 	git branch -f c5-branch c5 &&
 	git merge c5-branch~1 &&
-	git show -s --pretty=format:%s HEAD >actual.branch &&
+	git show -s --pretty=tformat:%s HEAD >actual.branch &&
 	git reset --keep HEAD^ &&
 	git merge c5~1 &&
-	git show -s --pretty=format:%s HEAD >actual.tag &&
+	git show -s --pretty=tformat:%s HEAD >actual.tag &&
 	test_cmp expected.branch actual.branch &&
 	test_cmp expected.tag actual.tag
 '

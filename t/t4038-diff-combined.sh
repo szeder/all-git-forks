@@ -94,7 +94,7 @@ test_expect_success 'setup for --cc --raw' '
 	blob=$(echo file | git hash-object --stdin -w) &&
 	base_tree=$(echo "100644 blob $blob	file" | git mktree) &&
 	trees= &&
-	for i in `test_seq 1 40`
+	for i in $(test_seq 1 40)
 	do
 		blob=$(echo file$i | git hash-object --stdin -w) &&
 		trees="$trees$(echo "100644 blob $blob	file" | git mktree)$LF"
@@ -351,6 +351,88 @@ test_expect_failure 'combine diff coalesce three parents' '
 	---4
 	EOF
 	compare_diff_patch expected actual
+'
+
+# Test for a bug reported at
+# http://thread.gmane.org/gmane.comp.version-control.git/224410
+# where a delete lines were missing from combined diff output when they
+# occurred exactly before the context lines of a later change.
+test_expect_success 'combine diff missing delete bug' '
+	git commit -m initial --allow-empty &&
+	cat <<-\EOF >test &&
+	1
+	2
+	3
+	4
+	EOF
+	git add test &&
+	git commit -a -m side1 &&
+	git checkout -B side1 &&
+	git checkout HEAD^ &&
+	cat <<-\EOF >test &&
+	0
+	1
+	2
+	3
+	4modified
+	EOF
+	git add test &&
+	git commit -m side2 &&
+	git branch -f side2 &&
+	test_must_fail git merge --no-commit side1 &&
+	cat <<-\EOF >test &&
+	1
+	2
+	3
+	4modified
+	EOF
+	git add test &&
+	git commit -a -m merge &&
+	git diff-tree -c -p HEAD >actual.tmp &&
+	sed -e "1,/^@@@/d" < actual.tmp >actual &&
+	tr -d Q <<-\EOF >expected &&
+	- 0
+	  1
+	  2
+	  3
+	 -4
+	 +4modified
+	EOF
+	compare_diff_patch expected actual
+'
+
+test_expect_success 'combine diff gets tree sorting right' '
+	# create a directory and a file that sort differently in trees
+	# versus byte-wise (implied "/" sorts after ".")
+	git checkout -f master &&
+	mkdir foo &&
+	echo base >foo/one &&
+	echo base >foo/two &&
+	echo base >foo.ext &&
+	git add foo foo.ext &&
+	git commit -m base &&
+
+	# one side modifies a file in the directory, along with the root
+	# file...
+	echo master >foo/one &&
+	echo master >foo.ext &&
+	git commit -a -m master &&
+
+	# the other side modifies the other file in the directory
+	git checkout -b other HEAD^ &&
+	echo other >foo/two &&
+	git commit -a -m other &&
+
+	# And now we merge. The files in the subdirectory will resolve cleanly,
+	# meaning that a combined diff will not find them interesting. But it
+	# will find the tree itself interesting, because it had to be merged.
+	git checkout master &&
+	git merge other &&
+
+	printf "MM\tfoo\n" >expect &&
+	git diff-tree -c --name-status -t HEAD >actual.tmp &&
+	sed 1d <actual.tmp >actual &&
+	test_cmp expect actual
 '
 
 test_done

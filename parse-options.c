@@ -14,8 +14,12 @@ static int parse_options_usage(struct parse_opt_ctx_t *ctx,
 
 int optbug(const struct option *opt, const char *reason)
 {
-	if (opt->long_name)
+	if (opt->long_name) {
+		if (opt->short_name)
+			return error("BUG: switch '%c' (--%s) %s",
+				     opt->short_name, opt->long_name, reason);
 		return error("BUG: option '%s' %s", opt->long_name, reason);
+	}
 	return error("BUG: switch '%c' %s", opt->short_name, reason);
 }
 
@@ -43,8 +47,42 @@ static void fix_filename(const char *prefix, const char **file)
 	*file = xstrdup(prefix_filename(prefix, strlen(prefix), *file));
 }
 
+static int opt_command_mode_error(const struct option *opt,
+				  const struct option *all_opts,
+				  int flags)
+{
+	const struct option *that;
+	struct strbuf message = STRBUF_INIT;
+	struct strbuf that_name = STRBUF_INIT;
+
+	/*
+	 * Find the other option that was used to set the variable
+	 * already, and report that this is not compatible with it.
+	 */
+	for (that = all_opts; that->type != OPTION_END; that++) {
+		if (that == opt ||
+		    that->type != OPTION_CMDMODE ||
+		    that->value != opt->value ||
+		    that->defval != *(int *)opt->value)
+			continue;
+
+		if (that->long_name)
+			strbuf_addf(&that_name, "--%s", that->long_name);
+		else
+			strbuf_addf(&that_name, "-%c", that->short_name);
+		strbuf_addf(&message, ": incompatible with %s", that_name.buf);
+		strbuf_release(&that_name);
+		opterror(opt, message.buf, flags);
+		strbuf_release(&message);
+		return -1;
+	}
+	return opterror(opt, ": incompatible with something else", flags);
+}
+
 static int get_value(struct parse_opt_ctx_t *p,
-		     const struct option *opt, int flags)
+		     const struct option *opt,
+		     const struct option *all_opts,
+		     int flags)
 {
 	const char *s, *arg;
 	const int unset = flags & OPT_UNSET;
@@ -83,8 +121,14 @@ static int get_value(struct parse_opt_ctx_t *p,
 		*(int *)opt->value = unset ? 0 : opt->defval;
 		return 0;
 
-	case OPTION_SET_PTR:
-		*(void **)opt->value = unset ? NULL : (void *)opt->defval;
+	case OPTION_CMDMODE:
+		/*
+		 * Giving the same mode option twice, although is unnecessary,
+		 * is not a grave error, so let it pass.
+		 */
+		if (*(int *)opt->value && *(int *)opt->value != opt->defval)
+			return opt_command_mode_error(opt, all_opts, flags);
+		*(int *)opt->value = opt->defval;
 		return 0;
 
 	case OPTION_STRING:
@@ -136,6 +180,23 @@ static int get_value(struct parse_opt_ctx_t *p,
 			return opterror(opt, "expects a numerical value", flags);
 		return 0;
 
+	case OPTION_MAGNITUDE:
+		if (unset) {
+			*(unsigned long *)opt->value = 0;
+			return 0;
+		}
+		if (opt->flags & PARSE_OPT_OPTARG && !p->opt) {
+			*(unsigned long *)opt->value = opt->defval;
+			return 0;
+		}
+		if (get_arg(p, opt, flags, &arg))
+			return -1;
+		if (!git_parse_ulong(arg, opt->value))
+			return opterror(opt,
+				"expects a non-negative integer value with an optional k/m/g suffix",
+				flags);
+		return 0;
+
 	default:
 		die("should not happen, someone must be hit on the forehead");
 	}
@@ -143,12 +204,13 @@ static int get_value(struct parse_opt_ctx_t *p,
 
 static int parse_short_opt(struct parse_opt_ctx_t *p, const struct option *options)
 {
+	const struct option *all_opts = options;
 	const struct option *numopt = NULL;
 
 	for (; options->type != OPTION_END; options++) {
 		if (options->short_name == *p->opt) {
 			p->opt = p->opt[1] ? p->opt + 1 : NULL;
-			return get_value(p, options, OPT_SHORT);
+			return get_value(p, options, all_opts, OPT_SHORT);
 		}
 
 		/*
@@ -177,12 +239,10 @@ static int parse_short_opt(struct parse_opt_ctx_t *p, const struct option *optio
 static int parse_long_opt(struct parse_opt_ctx_t *p, const char *arg,
                           const struct option *options)
 {
-	const char *arg_end = strchr(arg, '=');
+	const struct option *all_opts = options;
+	const char *arg_end = strchrnul(arg, '=');
 	const struct option *abbrev_option = NULL, *ambiguous_option = NULL;
 	int abbrev_flags = 0, ambiguous_flags = 0;
-
-	if (!arg_end)
-		arg_end = arg + strlen(arg);
 
 	for (; options->type != OPTION_END; options++) {
 		const char *rest, *long_name = options->long_name;
@@ -192,7 +252,8 @@ static int parse_long_opt(struct parse_opt_ctx_t *p, const char *arg,
 			continue;
 
 again:
-		rest = skip_prefix(arg, long_name);
+		if (!skip_prefix(arg, long_name, &rest))
+			rest = NULL;
 		if (options->type == OPTION_ARGUMENT) {
 			if (!rest)
 				continue;
@@ -227,13 +288,13 @@ is_abbreviated:
 			if (options->flags & PARSE_OPT_NONEG)
 				continue;
 			/* negated and abbreviated very much? */
-			if (!prefixcmp("no-", arg)) {
+			if (starts_with("no-", arg)) {
 				flags |= OPT_UNSET;
 				goto is_abbreviated;
 			}
 			/* negated? */
-			if (prefixcmp(arg, "no-")) {
-				if (!prefixcmp(long_name, "no-")) {
+			if (!starts_with(arg, "no-")) {
+				if (starts_with(long_name, "no-")) {
 					long_name += 3;
 					opt_flags |= OPT_UNSET;
 					goto again;
@@ -241,19 +302,20 @@ is_abbreviated:
 				continue;
 			}
 			flags |= OPT_UNSET;
-			rest = skip_prefix(arg + 3, long_name);
-			/* abbreviated and negated? */
-			if (!rest && !prefixcmp(long_name, arg + 3))
-				goto is_abbreviated;
-			if (!rest)
-				continue;
+			if (!skip_prefix(arg + 3, long_name, &rest)) {
+				/* abbreviated and negated? */
+				if (starts_with(long_name, arg + 3))
+					goto is_abbreviated;
+				else
+					continue;
+			}
 		}
 		if (*rest) {
 			if (*rest != '=')
 				continue;
 			p->opt = rest + 1;
 		}
-		return get_value(p, options, flags ^ opt_flags);
+		return get_value(p, options, all_opts, flags ^ opt_flags);
 	}
 
 	if (ambiguous_option)
@@ -265,18 +327,20 @@ is_abbreviated:
 			(abbrev_flags & OPT_UNSET) ?  "no-" : "",
 			abbrev_option->long_name);
 	if (abbrev_option)
-		return get_value(p, abbrev_option, abbrev_flags);
+		return get_value(p, abbrev_option, all_opts, abbrev_flags);
 	return -2;
 }
 
 static int parse_nodash_opt(struct parse_opt_ctx_t *p, const char *arg,
 			    const struct option *options)
 {
+	const struct option *all_opts = options;
+
 	for (; options->type != OPTION_END; options++) {
 		if (!(options->flags & PARSE_OPT_NODASH))
 			continue;
 		if (options->short_name == arg[0] && arg[1] == '\0')
-			return get_value(p, options, OPT_SHORT);
+			return get_value(p, options, all_opts, OPT_SHORT);
 	}
 	return -2;
 }
@@ -286,7 +350,7 @@ static void check_typos(const char *arg, const struct option *options)
 	if (strlen(arg) < 3)
 		return;
 
-	if (!prefixcmp(arg, "no-")) {
+	if (starts_with(arg, "no-")) {
 		error ("did you mean `--%s` (with two dashes ?)", arg);
 		exit(129);
 	}
@@ -294,7 +358,7 @@ static void check_typos(const char *arg, const struct option *options)
 	for (; options->type != OPTION_END; options++) {
 		if (!options->long_name)
 			continue;
-		if (!prefixcmp(options->long_name, arg)) {
+		if (starts_with(options->long_name, arg)) {
 			error ("did you mean `--%s` (with two dashes ?)", arg);
 			exit(129);
 		}
@@ -304,12 +368,20 @@ static void check_typos(const char *arg, const struct option *options)
 static void parse_options_check(const struct option *opts)
 {
 	int err = 0;
+	char short_opts[128];
 
+	memset(short_opts, '\0', sizeof(short_opts));
 	for (; opts->type != OPTION_END; opts++) {
 		if ((opts->flags & PARSE_OPT_LASTARG_DEFAULT) &&
 		    (opts->flags & PARSE_OPT_OPTARG))
 			err |= optbug(opts, "uses incompatible flags "
 					"LASTARG_DEFAULT and OPTARG");
+		if (opts->short_name) {
+			if (0x7F <= opts->short_name)
+				err |= optbug(opts, "invalid short name");
+			else if (short_opts[opts->short_name]++)
+				err |= optbug(opts, "short name already used");
+		}
 		if (opts->flags & PARSE_OPT_NODASH &&
 		    ((opts->flags & PARSE_OPT_OPTARG) ||
 		     !(opts->flags & PARSE_OPT_NOARG) ||
@@ -322,7 +394,6 @@ static void parse_options_check(const struct option *opts)
 		case OPTION_BIT:
 		case OPTION_NEGBIT:
 		case OPTION_SET_INT:
-		case OPTION_SET_PTR:
 		case OPTION_NUMBER:
 			if ((opts->flags & PARSE_OPT_OPTARG) ||
 			    !(opts->flags & PARSE_OPT_NOARG))
@@ -330,6 +401,9 @@ static void parse_options_check(const struct option *opts)
 		default:
 			; /* ok. (usually accepts an argument) */
 		}
+		if (opts->argh &&
+		    strcspn(opts->argh, " _") != strlen(opts->argh))
+			err |= optbug(opts, "multi-word argh should use dash to separate words");
 	}
 	if (err)
 		exit(128);

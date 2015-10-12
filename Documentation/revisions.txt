@@ -58,6 +58,9 @@ the '$GIT_DIR/refs' directory or from the '$GIT_DIR/packed-refs' file.
 While the ref name encoding is unspecified, UTF-8 is preferred as
 some output processing may assume ref names in UTF-8.
 
+'@'::
+  '@' alone is a shortcut for 'HEAD'.
+
 '<refname>@\{<date>\}', e.g. 'master@\{yesterday\}', 'HEAD@\{5 minutes ago\}'::
   A ref followed by the suffix '@' with a date specification
   enclosed in a brace
@@ -85,13 +88,40 @@ some output processing may assume ref names in UTF-8.
   branch 'blabla' then '@\{1\}' means the same as 'blabla@\{1\}'.
 
 '@\{-<n>\}', e.g. '@\{-1\}'::
-  The construct '@\{-<n>\}' means the <n>th branch checked out
+  The construct '@\{-<n>\}' means the <n>th branch/commit checked out
   before the current one.
 
 '<branchname>@\{upstream\}', e.g. 'master@\{upstream\}', '@\{u\}'::
   The suffix '@\{upstream\}' to a branchname (short form '<branchname>@\{u\}')
   refers to the branch that the branch specified by branchname is set to build on
-  top of.  A missing branchname defaults to the current one.
+  top of (configured with `branch.<name>.remote` and
+  `branch.<name>.merge`).  A missing branchname defaults to the
+  current one.
+
+'<branchname>@\{push\}', e.g. 'master@\{push\}', '@\{push\}'::
+  The suffix '@\{push}' reports the branch "where we would push to" if
+  `git push` were run while `branchname` was checked out (or the current
+  'HEAD' if no branchname is specified). Since our push destination is
+  in a remote repository, of course, we report the local tracking branch
+  that corresponds to that branch (i.e., something in 'refs/remotes/').
++
+Here's an example to make it more clear:
++
+------------------------------
+$ git config push.default current
+$ git config remote.pushdefault myfork
+$ git checkout -b mybranch origin/master
+
+$ git rev-parse --symbolic-full-name @{upstream}
+refs/remotes/origin/master
+
+$ git rev-parse --symbolic-full-name @{push}
+refs/remotes/myfork/mybranch
+------------------------------
++
+Note in the example that we set up a triangular workflow, where we pull
+from one location and push to another. In a non-triangular workflow,
+'@\{push}' is the same as '@\{upstream}', and there is no need for it.
 
 '<rev>{caret}', e.g. 'HEAD{caret}, v1.5.1{caret}0'::
   A suffix '{caret}' to a revision parameter means the first parent of
@@ -111,16 +141,23 @@ some output processing may assume ref names in UTF-8.
 
 '<rev>{caret}\{<type>\}', e.g. 'v0.99.8{caret}\{commit\}'::
   A suffix '{caret}' followed by an object type name enclosed in
-  brace pair means the object
-  could be a tag, and dereference the tag recursively until an
-  object of that type is found or the object cannot be
-  dereferenced anymore (in which case, barf).  '<rev>{caret}0'
+  brace pair means dereference the object at '<rev>' recursively until
+  an object of type '<type>' is found or the object cannot be
+  dereferenced anymore (in which case, barf).
+  For example, if '<rev>' is a commit-ish, '<rev>{caret}\{commit\}'
+  describes the corresponding commit object.
+  Similarly, if '<rev>' is a tree-ish, '<rev>{caret}\{tree\}'
+  describes the corresponding tree object.
+  '<rev>{caret}0'
   is a short-hand for '<rev>{caret}\{commit\}'.
 +
 'rev{caret}\{object\}' can be used to make sure 'rev' names an
 object that exists, without requiring 'rev' to be a tag, and
 without dereferencing 'rev'; because a tag is already an object,
 it does not have to be dereferenced even once to get to an object.
++
+'rev{caret}\{tag\}' can be used to ensure that 'rev' identifies an
+existing tag object.
 
 '<rev>{caret}\{\}', e.g. 'v0.99.8{caret}\{\}'::
   A suffix '{caret}' followed by an empty brace pair

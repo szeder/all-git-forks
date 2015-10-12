@@ -16,15 +16,19 @@
 
 #define REACHABLE 0x0001
 #define SEEN      0x0002
+#define HAS_OBJ   0x0004
 
 static int show_root;
 static int show_tags;
 static int show_unreachable;
 static int include_reflogs = 1;
 static int check_full = 1;
+static int connectivity_only;
 static int check_strict;
 static int keep_cache_objects;
-static unsigned char head_sha1[20];
+static struct fsck_options fsck_walk_options = FSCK_OPTIONS_DEFAULT;
+static struct fsck_options fsck_obj_options = FSCK_OPTIONS_DEFAULT;
+static struct object_id head_oid;
 static const char *head_points_at;
 static int errors_found;
 static int write_lost_and_found;
@@ -43,39 +47,52 @@ static int show_dangling = 1;
 #define DIRENT_SORT_HINT(de) ((de)->d_ino)
 #endif
 
-static void objreport(struct object *obj, const char *severity,
-                      const char *err, va_list params)
+static int fsck_config(const char *var, const char *value, void *cb)
 {
-	fprintf(stderr, "%s in %s %s: ",
-	        severity, typename(obj->type), sha1_to_hex(obj->sha1));
-	vfprintf(stderr, err, params);
-	fputs("\n", stderr);
+	if (strcmp(var, "fsck.skiplist") == 0) {
+		const char *path;
+		struct strbuf sb = STRBUF_INIT;
+
+		if (git_config_pathname(&path, var, value))
+			return 1;
+		strbuf_addf(&sb, "skiplist=%s", path);
+		free((char *)path);
+		fsck_set_msg_types(&fsck_obj_options, sb.buf);
+		strbuf_release(&sb);
+		return 0;
+	}
+
+	if (skip_prefix(var, "fsck.", &var)) {
+		fsck_set_msg_type(&fsck_obj_options, var, value);
+		return 0;
+	}
+
+	return git_default_config(var, value, cb);
 }
 
-__attribute__((format (printf, 2, 3)))
-static int objerror(struct object *obj, const char *err, ...)
+static void objreport(struct object *obj, const char *msg_type,
+			const char *err)
 {
-	va_list params;
-	va_start(params, err);
+	fprintf(stderr, "%s in %s %s: %s\n",
+		msg_type, typename(obj->type), sha1_to_hex(obj->sha1), err);
+}
+
+static int objerror(struct object *obj, const char *err)
+{
 	errors_found |= ERROR_OBJECT;
-	objreport(obj, "error", err, params);
-	va_end(params);
+	objreport(obj, "error", err);
 	return -1;
 }
 
-__attribute__((format (printf, 3, 4)))
-static int fsck_error_func(struct object *obj, int type, const char *err, ...)
+static int fsck_error_func(struct object *obj, int type, const char *message)
 {
-	va_list params;
-	va_start(params, err);
-	objreport(obj, (type == FSCK_WARN) ? "warning" : "error", err, params);
-	va_end(params);
+	objreport(obj, (type == FSCK_WARN) ? "warning" : "error", message);
 	return (type == FSCK_WARN) ? 0 : 1;
 }
 
 static struct object_array pending;
 
-static int mark_object(struct object *obj, int type, void *data)
+static int mark_object(struct object *obj, int type, void *data, struct fsck_options *options)
 {
 	struct object *parent = data;
 
@@ -101,7 +118,7 @@ static int mark_object(struct object *obj, int type, void *data)
 	if (obj->flags & REACHABLE)
 		return 0;
 	obj->flags |= REACHABLE;
-	if (!obj->parsed) {
+	if (!(obj->flags & HAS_OBJ)) {
 		if (parent && !has_sha1_file(obj->sha1)) {
 			printf("broken link from %7s %s\n",
 				 typename(parent->type), sha1_to_hex(parent->sha1));
@@ -112,13 +129,13 @@ static int mark_object(struct object *obj, int type, void *data)
 		return 1;
 	}
 
-	add_object_array(obj, (void *) parent, &pending);
+	add_object_array(obj, NULL, &pending);
 	return 0;
 }
 
 static void mark_object_reachable(struct object *obj)
 {
-	mark_object(obj, OBJ_ANY, NULL);
+	mark_object(obj, OBJ_ANY, NULL, NULL);
 }
 
 static int traverse_one_object(struct object *obj)
@@ -127,16 +144,13 @@ static int traverse_one_object(struct object *obj)
 	struct tree *tree = NULL;
 
 	if (obj->type == OBJ_TREE) {
-		obj->parsed = 0;
 		tree = (struct tree *)obj;
 		if (parse_tree(tree) < 0)
 			return 1; /* error already displayed */
 	}
-	result = fsck_walk(obj, mark_object, obj);
-	if (tree) {
-		free(tree->buffer);
-		tree->buffer = NULL;
-	}
+	result = fsck_walk(obj, obj, &fsck_walk_options);
+	if (tree)
+		free_tree_buffer(tree);
 	return result;
 }
 
@@ -146,7 +160,7 @@ static int traverse_reachable(void)
 	unsigned int nr = 0;
 	int result = 0;
 	if (show_progress)
-		progress = start_progress_delay("Checking connectivity", 0, 0, 2);
+		progress = start_progress_delay(_("Checking connectivity"), 0, 0, 2);
 	while (pending.nr) {
 		struct object_array_entry *entry;
 		struct object *obj;
@@ -160,7 +174,7 @@ static int traverse_reachable(void)
 	return !!result;
 }
 
-static int mark_used(struct object *obj, int type, void *data)
+static int mark_used(struct object *obj, int type, void *data, struct fsck_options *options)
 {
 	if (!obj)
 		return 1;
@@ -178,9 +192,11 @@ static void check_reachable_object(struct object *obj)
 	 * except if it was in a pack-file and we didn't
 	 * do a full fsck
 	 */
-	if (!obj->parsed) {
+	if (!(obj->flags & HAS_OBJ)) {
 		if (has_sha1_pack(obj->sha1))
 			return; /* it is in pack - forget about it */
+		if (connectivity_only && has_sha1_file(obj->sha1))
+			return;
 		printf("missing %s %s\n", typename(obj->type), sha1_to_hex(obj->sha1));
 		errors_found |= ERROR_REACHABLE;
 		return;
@@ -227,13 +243,14 @@ static void check_unreachable_object(struct object *obj)
 			printf("dangling %s %s\n", typename(obj->type),
 			       sha1_to_hex(obj->sha1));
 		if (write_lost_and_found) {
-			char *filename = git_path("lost-found/%s/%s",
+			char *filename = git_pathdup("lost-found/%s/%s",
 				obj->type == OBJ_COMMIT ? "commit" : "other",
 				sha1_to_hex(obj->sha1));
 			FILE *f;
 
-			if (safe_create_leading_directories(filename)) {
+			if (safe_create_leading_directories_const(filename)) {
 				error("Could not create lost-found");
+				free(filename);
 				return;
 			}
 			if (!(f = fopen(filename, "w")))
@@ -246,6 +263,7 @@ static void check_unreachable_object(struct object *obj)
 			if (fclose(f))
 				die_errno("Could not finish '%s'",
 					  filename);
+			free(filename);
 		}
 		return;
 	}
@@ -298,23 +316,21 @@ static int fsck_obj(struct object *obj)
 		fprintf(stderr, "Checking %s %s\n",
 			typename(obj->type), sha1_to_hex(obj->sha1));
 
-	if (fsck_walk(obj, mark_used, NULL))
+	if (fsck_walk(obj, NULL, &fsck_obj_options))
 		objerror(obj, "broken links");
-	if (fsck_object(obj, check_strict, fsck_error_func))
+	if (fsck_object(obj, NULL, 0, &fsck_obj_options))
 		return -1;
 
 	if (obj->type == OBJ_TREE) {
 		struct tree *item = (struct tree *) obj;
 
-		free(item->buffer);
-		item->buffer = NULL;
+		free_tree_buffer(item);
 	}
 
 	if (obj->type == OBJ_COMMIT) {
 		struct commit *commit = (struct commit *) obj;
 
-		free(commit->buffer);
-		commit->buffer = NULL;
+		free_commit_buffer(commit);
 
 		if (!commit->parents && show_root)
 			printf("root %s\n", sha1_to_hex(commit->object.sha1));
@@ -340,6 +356,7 @@ static int fsck_sha1(const unsigned char *sha1)
 		return error("%s: object corrupt or missing",
 			     sha1_to_hex(sha1));
 	}
+	obj->flags |= HAS_OBJ;
 	return fsck_obj(obj);
 }
 
@@ -352,6 +369,7 @@ static int fsck_obj_buffer(const unsigned char *sha1, enum object_type type,
 		errors_found |= ERROR_OBJECT;
 		return error("%s: object corrupt or missing", sha1_to_hex(sha1));
 	}
+	obj->flags = HAS_OBJ;
 	return fsck_obj(obj);
 }
 
@@ -390,7 +408,8 @@ static void fsck_sha1_list(void)
 		unsigned char *sha1 = entry->sha1;
 
 		sha1_list.entry[i] = NULL;
-		fsck_sha1(sha1);
+		if (fsck_sha1(sha1))
+			errors_found |= ERROR_OBJECT;
 		free(entry);
 	}
 	sha1_list.nr = 0;
@@ -443,7 +462,7 @@ static void fsck_dir(int i, char *path)
 			add_sha1_list(sha1, DIRENT_SORT_HINT(de));
 			continue;
 		}
-		if (!prefixcmp(de->d_name, "tmp_obj_"))
+		if (starts_with(de->d_name, "tmp_obj_"))
 			continue;
 		fprintf(stderr, "bad sha1 file: %s/%s\n", path, de->d_name);
 	}
@@ -452,49 +471,53 @@ static void fsck_dir(int i, char *path)
 
 static int default_refs;
 
+static void fsck_handle_reflog_sha1(const char *refname, unsigned char *sha1)
+{
+	struct object *obj;
+
+	if (!is_null_sha1(sha1)) {
+		obj = lookup_object(sha1);
+		if (obj) {
+			obj->used = 1;
+			mark_object_reachable(obj);
+		} else {
+			error("%s: invalid reflog entry %s", refname, sha1_to_hex(sha1));
+			errors_found |= ERROR_REACHABLE;
+		}
+	}
+}
+
 static int fsck_handle_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 		const char *email, unsigned long timestamp, int tz,
 		const char *message, void *cb_data)
 {
-	struct object *obj;
+	const char *refname = cb_data;
 
 	if (verbose)
 		fprintf(stderr, "Checking reflog %s->%s\n",
 			sha1_to_hex(osha1), sha1_to_hex(nsha1));
 
-	if (!is_null_sha1(osha1)) {
-		obj = lookup_object(osha1);
-		if (obj) {
-			obj->used = 1;
-			mark_object_reachable(obj);
-		}
-	}
-	obj = lookup_object(nsha1);
-	if (obj) {
-		obj->used = 1;
-		mark_object_reachable(obj);
-	}
+	fsck_handle_reflog_sha1(refname, osha1);
+	fsck_handle_reflog_sha1(refname, nsha1);
 	return 0;
 }
 
-static int fsck_handle_reflog(const char *logname, const unsigned char *sha1, int flag, void *cb_data)
+static int fsck_handle_reflog(const char *logname, const struct object_id *oid,
+			      int flag, void *cb_data)
 {
-	for_each_reflog_ent(logname, fsck_handle_reflog_ent, NULL);
+	for_each_reflog_ent(logname, fsck_handle_reflog_ent, (void *)logname);
 	return 0;
 }
 
-static int is_branch(const char *refname)
-{
-	return !strcmp(refname, "HEAD") || !prefixcmp(refname, "refs/heads/");
-}
-
-static int fsck_handle_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+static int fsck_handle_ref(const char *refname, const struct object_id *oid,
+			   int flag, void *cb_data)
 {
 	struct object *obj;
 
-	obj = parse_object(sha1);
+	obj = parse_object(oid->hash);
 	if (!obj) {
-		error("%s: invalid sha1 pointer %s", refname, sha1_to_hex(sha1));
+		error("%s: invalid sha1 pointer %s", refname, oid_to_hex(oid));
+		errors_found |= ERROR_REACHABLE;
 		/* We'll continue with the rest despite the error.. */
 		return 0;
 	}
@@ -509,9 +532,9 @@ static int fsck_handle_ref(const char *refname, const unsigned char *sha1, int f
 
 static void get_default_heads(void)
 {
-	if (head_points_at && !is_null_sha1(head_sha1))
-		fsck_handle_ref("HEAD", head_sha1, 0, NULL);
-	for_each_ref(fsck_handle_ref, NULL);
+	if (head_points_at && !is_null_oid(&head_oid))
+		fsck_handle_ref("HEAD", &head_oid, 0, NULL);
+	for_each_rawref(fsck_handle_ref, NULL);
 	if (include_reflogs)
 		for_each_reflog(fsck_handle_reflog, NULL);
 
@@ -542,7 +565,7 @@ static void fsck_object_dir(const char *path)
 		fprintf(stderr, "Checking object directory\n");
 
 	if (show_progress)
-		progress = start_progress("Checking object directories", 256);
+		progress = start_progress(_("Checking object directories"), 256);
 	for (i = 0; i < 256; i++) {
 		static char dir[4096];
 		sprintf(dir, "%s/%02x", path, i);
@@ -561,16 +584,16 @@ static int fsck_head_link(void)
 	if (verbose)
 		fprintf(stderr, "Checking HEAD link\n");
 
-	head_points_at = resolve_ref_unsafe("HEAD", head_sha1, 0, &flag);
+	head_points_at = resolve_ref_unsafe("HEAD", 0, head_oid.hash, &flag);
 	if (!head_points_at)
 		return error("Invalid HEAD");
 	if (!strcmp(head_points_at, "HEAD"))
 		/* detached HEAD */
 		null_is_error = 1;
-	else if (prefixcmp(head_points_at, "refs/heads/"))
+	else if (!starts_with(head_points_at, "refs/heads/"))
 		return error("HEAD points to something strange (%s)",
 			     head_points_at);
-	if (is_null_sha1(head_sha1)) {
+	if (is_null_oid(&head_oid)) {
 		if (null_is_error)
 			return error("HEAD: detached HEAD points at nothing");
 		fprintf(stderr, "notice: HEAD points to an unborn branch (%s)\n",
@@ -605,21 +628,22 @@ static int fsck_cache_tree(struct cache_tree *it)
 }
 
 static char const * const fsck_usage[] = {
-	N_("git fsck [options] [<object>...]"),
+	N_("git fsck [<options>] [<object>...]"),
 	NULL
 };
 
 static struct option fsck_opts[] = {
 	OPT__VERBOSE(&verbose, N_("be verbose")),
-	OPT_BOOLEAN(0, "unreachable", &show_unreachable, N_("show unreachable objects")),
+	OPT_BOOL(0, "unreachable", &show_unreachable, N_("show unreachable objects")),
 	OPT_BOOL(0, "dangling", &show_dangling, N_("show dangling objects")),
-	OPT_BOOLEAN(0, "tags", &show_tags, N_("report tags")),
-	OPT_BOOLEAN(0, "root", &show_root, N_("report root nodes")),
-	OPT_BOOLEAN(0, "cache", &keep_cache_objects, N_("make index objects head nodes")),
-	OPT_BOOLEAN(0, "reflogs", &include_reflogs, N_("make reflogs head nodes (default)")),
-	OPT_BOOLEAN(0, "full", &check_full, N_("also consider packs and alternate objects")),
-	OPT_BOOLEAN(0, "strict", &check_strict, N_("enable more strict checking")),
-	OPT_BOOLEAN(0, "lost-found", &write_lost_and_found,
+	OPT_BOOL(0, "tags", &show_tags, N_("report tags")),
+	OPT_BOOL(0, "root", &show_root, N_("report root nodes")),
+	OPT_BOOL(0, "cache", &keep_cache_objects, N_("make index objects head nodes")),
+	OPT_BOOL(0, "reflogs", &include_reflogs, N_("make reflogs head nodes (default)")),
+	OPT_BOOL(0, "full", &check_full, N_("also consider packs and alternate objects")),
+	OPT_BOOL(0, "connectivity-only", &connectivity_only, N_("check only connectivity")),
+	OPT_BOOL(0, "strict", &check_strict, N_("enable more strict checking")),
+	OPT_BOOL(0, "lost-found", &write_lost_and_found,
 				N_("write dangling objects in .git/lost-found")),
 	OPT_BOOL(0, "progress", &show_progress, N_("show progress")),
 	OPT_END(),
@@ -631,9 +655,15 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 	struct alternate_object_database *alt;
 
 	errors_found = 0;
-	read_replace_refs = 0;
+	check_replace_refs = 0;
 
 	argc = parse_options(argc, argv, prefix, fsck_opts, fsck_usage, 0);
+
+	fsck_walk_options.walk = mark_object;
+	fsck_obj_options.walk = mark_used;
+	fsck_obj_options.error_func = fsck_error_func;
+	if (check_strict)
+		fsck_obj_options.strict = 1;
 
 	if (show_progress == -1)
 		show_progress = isatty(2);
@@ -645,8 +675,11 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 		include_reflogs = 0;
 	}
 
+	git_config(fsck_config, NULL);
+
 	fsck_head_link();
-	fsck_object_dir(get_object_directory());
+	if (!connectivity_only)
+		fsck_object_dir(get_object_directory());
 
 	prepare_alt_odb();
 	for (alt = alt_odb_list; alt; alt = alt->next) {
@@ -671,7 +704,7 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 				total += p->num_objects;
 			}
 
-			progress = start_progress("Checking objects", total);
+			progress = start_progress(_("Checking objects"), total);
 		}
 		for (p = packed_git; p; p = p->next) {
 			/* verify gives error messages itself */
