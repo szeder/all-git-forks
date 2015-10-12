@@ -3317,8 +3317,8 @@ void files_init_backend(void *data)
 	/* do nothing */
 }
 
-int initial_ref_transaction_commit(struct ref_transaction *transaction,
-				   struct strbuf *err)
+static int files_initial_transaction_commit(struct ref_transaction *transaction,
+					    struct strbuf *err)
 {
 	int ret = 0, i;
 	int n = transaction->nr;
@@ -3543,6 +3543,7 @@ struct ref_be refs_be_files = {
 	"files",
 	files_init_backend,
 	files_transaction_commit,
+	files_initial_transaction_commit,
 	files_for_each_reflog_ent,
 	files_for_each_reflog_ent_reverse,
 	files_for_each_reflog,
