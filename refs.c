@@ -2816,8 +2816,9 @@ int pack_refs(unsigned int flags)
 
 /*
  * Rewrite the packed-refs file, omitting any refs listed in
- * 'refnames'. On error, leave packed-refs unchanged, write an error
- * message to 'err', and return a nonzero value.
+ * 'refnames'. On error, packed-refs will be unchanged, the return
+ * value is nonzero, and a message about the error is written to the
+ * 'err' strbuf.
  *
  * The refs in 'refnames' needn't be sorted. `err` must not be NULL.
  */
