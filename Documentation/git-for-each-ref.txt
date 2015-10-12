@@ -103,6 +103,8 @@ objectsize::
 objectname::
 	The object name (aka SHA-1).
 	For a non-ambiguous abbreviation of the object name append `:short`.
+	The length can be explicitly specified by appending either
+	`:short,<length>` or `:<length>,short`.  Minimum length is 4.
 
 upstream::
 	The name of a local ref which can be considered ``upstream''
@@ -134,9 +136,21 @@ align::
 	`<position>` is either left, right or middle, default being
 	left and `<width>` is the total length of the content with
 	alignment. If the contents length is more than the width then
-	no alignment is performed. If used with '--quote' everything
-	in between %(align:...) and %(end) is quoted, but if nested
-	then only the topmost level performs quoting.
+	no alignment is performed.
+
+if::
+	Used as %(if)..%(then)..(%end) or %(if)..%(then)..%(else)..%(end).
+	If there is an atom with value or string literal after the
+	%(if) then everything after the %(then) is printed, else if
+	the %(else) atom is used, then everything after %(else) is
+	printed. Append ":equals=<string>" or ":notequals=<string>" to
+	compare the value between the %(if:...) and %(then) atoms with the
+	given string.
+
+path::
+	The path of the given ref. For a shortened version listing
+	only the name of the directory the ref is under append
+	`:short`.
 
 In addition to the above, for commit and tag objects, the header
 field names (`tree`, `parent`, `object`, `type`, and `tag`) can
@@ -168,6 +182,18 @@ As a special case for the date-type fields, you may specify a format for
 the date by adding `:` followed by date format name (see the
 values the `--date` option to linkgit::git-rev-list[1] takes).
 
+Some atoms like %(align) and %(if) always require a matching %(end).
+We call them "opening atoms" and sometimes denote them as %($open).
+
+When a scripting language specific quoting is in effect, except for
+opening atoms, replacement from every %(atom) is quoted when and only
+when it appears at the top-level (that is, when it appears outside
+%($open)...%(end)).
+
+When a scripting language specific quoting is in effect, everything
+between a top-level opening atom and its matching %(end) is evaluated
+according to the semantics of the opening atom and its result is
+quoted.
 
 EXAMPLES
 --------
