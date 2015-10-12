@@ -695,6 +695,7 @@ extern int reflog_expire(const char *refname, const unsigned char *sha1,
 typedef void ref_backend_init_fn(void *data);
 typedef int ref_backend_initdb_fn(struct strbuf *err, int shared);
 typedef int ref_transaction_commit_fn(struct ref_transaction *transaction,
+				      struct string_list *affected_refnames,
 				      struct strbuf *err);
 typedef void ref_transaction_free_fn(struct ref_transaction *transaction);
 
