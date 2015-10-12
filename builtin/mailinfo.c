@@ -787,18 +787,46 @@ static int is_scissors_line(const struct strbuf *line)
 
 static int handle_commit_msg(struct strbuf *line)
 {
+	/*
+	 * Are we still scanning and discarding in-body headers?
+	 * It is initially set to 1, set to 2 when we do see a
+	 * valid in-body header.
+	 */
 	static int still_looking = 1;
+	int is_empty_line;
 
 	if (!cmitmsg)
 		return 0;
 
-	if (still_looking) {
-		if (!line->len || (line->len == 1 && line->buf[0] == '\n'))
+	is_empty_line = (!line->len || (line->len == 1 && line->buf[0] == '\n'));
+	if (still_looking == 1) {
+		/*
+		 * Haven't seen a known in-body header; discard an empty line.
+		 */
+		if (is_empty_line)
 			return 0;
 	}
 
 	if (use_inbody_headers && still_looking) {
-		still_looking = check_header(line, s_hdr_data, 0);
+		int is_known_header = check_header(line, s_hdr_data, 0);
+
+		if (still_looking == 2) {
+			/*
+			 * an empty line after the in-body header block,
+			 * or a line obviously not an attempt to invent
+			 * an unsupported in-body header.
+			 */
+			if (is_empty_line || !is_rfc2822_header(line))
+				still_looking = 0;
+			if (is_empty_line)
+				return 0;
+			/* otherwise do not discard the line, but keep going */
+		} else if (is_known_header) {
+			still_looking = 2;
+		} else if (still_looking != 2) {
+			still_looking = 0;
+		}
+
 		if (still_looking)
 			return 0;
 	} else
