@@ -149,6 +149,7 @@ struct stat_data {
 
 struct cache_entry {
 	struct hashmap_entry ent;
+	unsigned int ref_count; /* count the number of refs to this in dir_hash */
 	struct stat_data ce_stat_data;
 	unsigned int ce_mode;
 	unsigned int ce_flags;
@@ -211,6 +212,32 @@ struct cache_entry {
 #endif
 
 struct pathspec;
+
+/*
+ * Increment the cache_entry reference count.  Should be called
+ * whenever a pointer to a cache_entry is retained in a data structure,
+ * thus marking it as alive.
+ */
+static inline void add_ce_ref(struct cache_entry *ce)
+{
+	assert(ce != NULL && ce->ref_count >= 0);
+	ce->ref_count++;
+}
+
+/*
+ * Decrement the cache_entry reference count.  Should be called whenever
+ * a pointer to a cache_entry is dropped.  Once the counter drops to 0
+ * the cache_entry memory will be safely freed.
+ */
+static inline void drop_ce_ref(struct cache_entry *ce)
+{
+	if (ce != NULL) {
+		assert(ce->ref_count >= 0);
+		if (--ce->ref_count < 1) {
+			free(ce);
+		}
+	}
+}
 
 /*
  * Copy the sha1 and stat state of a cache entry from one to
