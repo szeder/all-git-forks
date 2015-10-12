@@ -79,3 +79,8 @@ The defined extensions are:
 
 This extension does not change git's behavior at all. It is useful only
 for testing format-1 compatibility.
+
+`refbackend`
+
+This extension allows the user of alternate ref backends.  The only
+defined value is `lmdb`.

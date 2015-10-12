@@ -757,7 +757,7 @@ static void write_config(struct string_list *config)
 	}
 
 	if (refs_backend_type &&
-	    write_one_config("core.refs-backend-type",
+	    write_one_config("core.refsBackendType",
 			     refs_backend_type, NULL) < 0)
 			die("unable to write backend parameter to config file");
 }
