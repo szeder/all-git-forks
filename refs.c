@@ -19,13 +19,14 @@ struct ref_be *refs_backends = &refs_be_files;
 /*
  * This function is used to switch to an alternate backend.
  */
-int set_refs_backend(const char *name)
+int set_refs_backend(const char *name, void *init_data)
 {
 	struct ref_be *be;
 
 	for (be = refs_backends; be; be = be->next)
 		if (!strcmp(be->name, name)) {
 			the_refs_backend = be;
+			be->init_backend(init_data);
 			return 0;
 		}
 	return 1;

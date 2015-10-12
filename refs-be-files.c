@@ -3308,6 +3308,11 @@ static int ref_present(const char *refname,
 	return string_list_has_string(affected_refnames, refname);
 }
 
+void files_init_backend(void *data)
+{
+	/* do nothing */
+}
+
 int initial_ref_transaction_commit(struct ref_transaction *transaction,
 				   struct strbuf *err)
 {
@@ -3532,6 +3537,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 struct ref_be refs_be_files = {
 	NULL,
 	"files",
+	files_init_backend,
 	files_transaction_commit,
 	files_resolve_ref_unsafe,
 	files_verify_refname_available,
