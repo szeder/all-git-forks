@@ -1102,6 +1102,11 @@ enum peel_status peel_object(const unsigned char *name, unsigned char *sha1)
 }
 
 /* backend functions */
+int refs_initdb(struct strbuf *err, int shared)
+{
+	return the_refs_backend->initdb(err, shared);
+}
+
 int ref_transaction_commit(struct ref_transaction *transaction,
 			   struct strbuf *err)
 {

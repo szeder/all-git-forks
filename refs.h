@@ -68,6 +68,8 @@ extern int ref_exists(const char *refname);
 
 extern int is_branch(const char *refname);
 
+extern int refs_initdb(struct strbuf *err, int shared);
+
 /*
  * If refname is a non-symbolic reference that refers to a tag object,
  * and the tag can be (recursively) dereferenced to a non-tag object,
@@ -676,6 +678,7 @@ extern int reflog_expire(const char *refname, const unsigned char *sha1,
 
 /* refs backends */
 typedef void ref_backend_init_fn(void *data);
+typedef int ref_backend_initdb_fn(struct strbuf *err, int shared);
 typedef int ref_transaction_commit_fn(struct ref_transaction *transaction,
 				      struct strbuf *err);
 typedef void ref_transaction_free_fn(struct ref_transaction *transaction);
@@ -737,6 +740,7 @@ struct ref_be {
 	struct ref_be *next;
 	const char *name;
 	ref_backend_init_fn *init_backend;
+	ref_backend_initdb_fn *initdb;
 	ref_transaction_commit_fn *transaction_commit;
 	ref_transaction_commit_fn *initial_transaction_commit;
 	for_each_reflog_ent_fn *for_each_reflog_ent;
