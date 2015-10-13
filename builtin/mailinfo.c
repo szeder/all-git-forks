@@ -37,6 +37,7 @@ struct mailinfo {
 	struct strbuf **s_hdr_data;
 
 	struct strbuf log_message;
+	int input_error;
 };
 
 #define MAX_HDR_PARSED 10
@@ -192,8 +193,10 @@ static void handle_content_type(struct mailinfo *mi, struct strbuf *line)
 	if (slurp_attr(line->buf, "boundary=", boundary)) {
 		strbuf_insert(boundary, 0, "--", 2);
 		if (++mi->content_top >= &mi->content[MAX_BOUNDARIES]) {
-			fprintf(stderr, "Too many boundaries to handle\n");
-			exit(1);
+			error("Too many boundaries to handle");
+			mi->input_error = -1;
+			mi->content_top = mi->content + MAX_BOUNDARIES - 1;
+			return;
 		}
 		*(mi->content_top) = boundary;
 		boundary = NULL;
@@ -532,9 +535,11 @@ static int convert_to_utf8(struct mailinfo *mi,
 	if (same_encoding(mi->metainfo_charset, charset))
 		return 0;
 	out = reencode_string(line->buf, mi->metainfo_charset, charset);
-	if (!out)
+	if (!out) {
+		mi->input_error = -1;
 		return error("cannot convert from %s to %s",
 			     charset, mi->metainfo_charset);
+	}
 	strbuf_attach(line, out, strlen(out), strlen(out));
 	return 0;
 }
@@ -781,7 +786,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 	/* normalize the log message to UTF-8. */
 	if (convert_to_utf8(mi, line, mi->charset.buf))
-		exit(128);
+		return 0; /* the caller will reject this input */
 
 	if (mi->use_scissors && is_scissors_line(line)) {
 		int i;
@@ -820,6 +825,9 @@ static void handle_patch(struct mailinfo *mi, const struct strbuf *line)
 
 static void handle_filter(struct mailinfo *mi, struct strbuf *line)
 {
+	if (mi->input_error)
+		return;
+
 	switch (mi->filter_stage) {
 	case 0:
 		if (!handle_commit_msg(mi, line))
@@ -858,12 +866,15 @@ again:
 		   will fail first.  But just in case..
 		 */
 		if (--mi->content_top < mi->content) {
-			fprintf(stderr, "Detected mismatched boundaries, "
-					"can't recover\n");
-			exit(1);
+			error("Detected mismatched boundaries, can't recover");
+			mi->input_error = -1;
+			mi->content_top = mi->content;
+			return 0;
 		}
 		handle_filter(mi, &newline);
 		strbuf_release(&newline);
+		if (mi->input_error)
+			return 0; /* punt to the end */
 
 		/* skip to the next boundary */
 		if (!find_boundary(mi, line))
@@ -948,6 +959,8 @@ static void handle_body(struct mailinfo *mi, struct strbuf *line)
 			handle_filter(mi, line);
 		}
 
+		if (mi->input_error)
+			break;
 	} while (!strbuf_getwholeline(line, mi->input, '\n'));
 
 handle_body_out:
@@ -1035,12 +1048,13 @@ static int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 		check_header(mi, &line, mi->p_hdr_data, 1);
 
 	handle_body(mi, &line);
-	handle_info(mi);
-
-	fwrite(mi->log_message.buf, 1, mi->log_message.len, cmitmsg);
+	if (!mi->input_error) {
+		handle_info(mi);
+		fwrite(mi->log_message.buf, 1, mi->log_message.len, cmitmsg);
+	}
 	fclose(cmitmsg);
 
-	return 0;
+	return mi->input_error;
 }
 
 static int git_mailinfo_config(const char *var, const char *value, void *mi_)
