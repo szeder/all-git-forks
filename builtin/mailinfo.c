@@ -9,8 +9,6 @@
 
 static FILE *cmitmsg, *patchfile;
 
-static const char *metainfo_charset;
-
 struct mailinfo {
 	FILE *input;
 	FILE *output;
@@ -22,6 +20,7 @@ struct mailinfo {
 	int add_message_id;
 	int use_scissors;
 	int use_inbody_headers; /* defaults to 1 */
+	const char *metainfo_charset;
 
 	char *message_id;
 	int patch_lines;
@@ -293,7 +292,7 @@ static void cleanup_space(struct strbuf *sb)
 	}
 }
 
-static void decode_header(struct strbuf *line);
+static void decode_header(struct mailinfo *mi, struct strbuf *line);
 static const char *header[MAX_HDR_PARSED] = {
 	"From","Subject","Date",
 };
@@ -336,7 +335,7 @@ static int check_header(struct mailinfo *mi,
 			 * normalize the meta information to utf8.
 			 */
 			strbuf_add(&sb, line->buf + len + 2, line->len - len - 2);
-			decode_header(&sb);
+			decode_header(mi, &sb);
 			handle_header(&hdr_data[i], &sb);
 			ret = 1;
 			goto check_header_out;
@@ -347,7 +346,7 @@ static int check_header(struct mailinfo *mi,
 	if (cmp_header(line, "Content-Type")) {
 		len = strlen("Content-Type: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(&sb);
+		decode_header(mi, &sb);
 		strbuf_insert(&sb, 0, "Content-Type: ", len);
 		handle_content_type(&sb);
 		ret = 1;
@@ -356,7 +355,7 @@ static int check_header(struct mailinfo *mi,
 	if (cmp_header(line, "Content-Transfer-Encoding")) {
 		len = strlen("Content-Transfer-Encoding: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(&sb);
+		decode_header(mi, &sb);
 		handle_content_transfer_encoding(&sb);
 		ret = 1;
 		goto check_header_out;
@@ -364,7 +363,7 @@ static int check_header(struct mailinfo *mi,
 	if (cmp_header(line, "Message-Id")) {
 		len = strlen("Message-Id: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(&sb);
+		decode_header(mi, &sb);
 		handle_message_id(mi, &sb);
 		ret = 1;
 		goto check_header_out;
@@ -520,23 +519,24 @@ static struct strbuf *decode_b_segment(const struct strbuf *b_seg)
 	return out;
 }
 
-static void convert_to_utf8(struct strbuf *line, const char *charset)
+static void convert_to_utf8(struct mailinfo *mi,
+			    struct strbuf *line, const char *charset)
 {
 	char *out;
 
-	if (!charset || !*charset)
+	if (!mi->metainfo_charset || !charset || !*charset)
 		return;
 
-	if (same_encoding(metainfo_charset, charset))
+	if (same_encoding(mi->metainfo_charset, charset))
 		return;
-	out = reencode_string(line->buf, metainfo_charset, charset);
+	out = reencode_string(line->buf, mi->metainfo_charset, charset);
 	if (!out)
 		die("cannot convert from %s to %s",
-		    charset, metainfo_charset);
+		    charset, mi->metainfo_charset);
 	strbuf_attach(line, out, strlen(out), strlen(out));
 }
 
-static void decode_header(struct strbuf *it)
+static void decode_header(struct mailinfo *mi, struct strbuf *it)
 {
 	char *in, *ep, *cp;
 	struct strbuf outbuf = STRBUF_INIT, *dec;
@@ -599,8 +599,7 @@ static void decode_header(struct strbuf *it)
 			dec = decode_q_segment(&piecebuf, 1);
 			break;
 		}
-		if (metainfo_charset)
-			convert_to_utf8(dec, charset_q.buf);
+		convert_to_utf8(mi, dec, charset_q.buf);
 
 		strbuf_addbuf(&outbuf, dec);
 		strbuf_release(dec);
@@ -774,8 +773,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 		mi->header_stage = 0;
 
 	/* normalize the log message to UTF-8. */
-	if (metainfo_charset)
-		convert_to_utf8(line, charset.buf);
+	convert_to_utf8(mi, line, charset.buf);
 
 	if (mi->use_scissors && is_scissors_line(line)) {
 		int i;
@@ -1074,7 +1072,7 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 	setup_mailinfo(&mi);
 
 	def_charset = get_commit_output_encoding();
-	metainfo_charset = def_charset;
+	mi.metainfo_charset = def_charset;
 
 	while (1 < argc && argv[1][0] == '-') {
 		if (!strcmp(argv[1], "-k"))
@@ -1084,11 +1082,11 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 		else if (!strcmp(argv[1], "-m") || !strcmp(argv[1], "--message-id"))
 			mi.add_message_id = 1;
 		else if (!strcmp(argv[1], "-u"))
-			metainfo_charset = def_charset;
+			mi.metainfo_charset = def_charset;
 		else if (!strcmp(argv[1], "-n"))
-			metainfo_charset = NULL;
+			mi.metainfo_charset = NULL;
 		else if (starts_with(argv[1], "--encoding="))
-			metainfo_charset = argv[1] + 11;
+			mi.metainfo_charset = argv[1] + 11;
 		else if (!strcmp(argv[1], "--scissors"))
 			mi.use_scissors = 1;
 		else if (!strcmp(argv[1], "--no-scissors"))
