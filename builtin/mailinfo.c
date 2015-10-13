@@ -12,7 +12,7 @@ static FILE *cmitmsg, *patchfile, *fin, *fout;
 static int keep_subject;
 static int keep_non_patch_brackets_in_subject;
 static const char *metainfo_charset;
-static struct strbuf line = STRBUF_INIT;
+static struct strbuf line_global = STRBUF_INIT;
 static struct strbuf name = STRBUF_INIT;
 static struct strbuf email = STRBUF_INIT;
 static char *message_id;
@@ -817,23 +817,23 @@ static void handle_filter(struct strbuf *line, int *filter_stage, int *header_st
 	}
 }
 
-static int find_boundary(void)
+static int find_boundary(struct strbuf *line)
 {
-	while (!strbuf_getline(&line, fin, '\n')) {
-		if (*content_top && is_multipart_boundary(&line))
+	while (!strbuf_getline(line, fin, '\n')) {
+		if (*content_top && is_multipart_boundary(line))
 			return 1;
 	}
 	return 0;
 }
 
-static int handle_boundary(int *filter_stage, int *header_stage)
+static int handle_boundary(struct strbuf *line, int *filter_stage, int *header_stage)
 {
 	struct strbuf newline = STRBUF_INIT;
 
 	strbuf_addch(&newline, '\n');
 again:
-	if (line.len >= (*content_top)->len + 2 &&
-	    !memcmp(line.buf + (*content_top)->len, "--", 2)) {
+	if (line->len >= (*content_top)->len + 2 &&
+	    !memcmp(line->buf + (*content_top)->len, "--", 2)) {
 		/* we hit an end boundary */
 		/* pop the current boundary off the stack */
 		strbuf_release(*content_top);
@@ -852,7 +852,7 @@ again:
 		strbuf_release(&newline);
 
 		/* skip to the next boundary */
-		if (!find_boundary())
+		if (!find_boundary(line))
 			return 0;
 		goto again;
 	}
@@ -862,18 +862,18 @@ again:
 	strbuf_reset(&charset);
 
 	/* slurp in this section's info */
-	while (read_one_header_line(&line, fin))
-		check_header(&line, p_hdr_data, 0);
+	while (read_one_header_line(line, fin))
+		check_header(line, p_hdr_data, 0);
 
 	strbuf_release(&newline);
 	/* replenish line */
-	if (strbuf_getline(&line, fin, '\n'))
+	if (strbuf_getline(line, fin, '\n'))
 		return 0;
-	strbuf_addch(&line, '\n');
+	strbuf_addch(line, '\n');
 	return 1;
 }
 
-static void handle_body(void)
+static void handle_body(struct strbuf *line)
 {
 	struct strbuf prev = STRBUF_INIT;
 	int filter_stage = 0;
@@ -881,24 +881,24 @@ static void handle_body(void)
 
 	/* Skip up to the first boundary */
 	if (*content_top) {
-		if (!find_boundary())
+		if (!find_boundary(line))
 			goto handle_body_out;
 	}
 
 	do {
 		/* process any boundary lines */
-		if (*content_top && is_multipart_boundary(&line)) {
+		if (*content_top && is_multipart_boundary(line)) {
 			/* flush any leftover */
 			if (prev.len) {
 				handle_filter(&prev, &filter_stage, &header_stage);
 				strbuf_reset(&prev);
 			}
-			if (!handle_boundary(&filter_stage, &header_stage))
+			if (!handle_boundary(line, &filter_stage, &header_stage))
 				goto handle_body_out;
 		}
 
 		/* Unwrap transfer encoding */
-		decode_transfer_encoding(&line);
+		decode_transfer_encoding(line);
 
 		switch (transfer_encoding) {
 		case TE_BASE64:
@@ -907,7 +907,7 @@ static void handle_body(void)
 			struct strbuf **lines, **it, *sb;
 
 			/* Prepend any previous partial lines */
-			strbuf_insert(&line, 0, prev.buf, prev.len);
+			strbuf_insert(line, 0, prev.buf, prev.len);
 			strbuf_reset(&prev);
 
 			/*
@@ -915,7 +915,7 @@ static void handle_body(void)
 			 * multiple new lines.  Pass only one chunk
 			 * at a time to handle_filter()
 			 */
-			lines = strbuf_split(&line, '\n');
+			lines = strbuf_split(line, '\n');
 			for (it = lines; (sb = *it); it++) {
 				if (*(it + 1) == NULL) /* The last line */
 					if (sb->buf[sb->len - 1] != '\n') {
@@ -933,10 +933,10 @@ static void handle_body(void)
 			break;
 		}
 		default:
-			handle_filter(&line, &filter_stage, &header_stage);
+			handle_filter(line, &filter_stage, &header_stage);
 		}
 
-	} while (!strbuf_getwholeline(&line, fin, '\n'));
+	} while (!strbuf_getwholeline(line, fin, '\n'));
 
 handle_body_out:
 	strbuf_release(&prev);
@@ -1019,10 +1019,10 @@ static int mailinfo(FILE *in, FILE *out, const char *msg, const char *patch)
 	ungetc(peek, in);
 
 	/* process the email header */
-	while (read_one_header_line(&line, fin))
-		check_header(&line, p_hdr_data, 1);
+	while (read_one_header_line(&line_global, fin))
+		check_header(&line_global, p_hdr_data, 1);
 
-	handle_body();
+	handle_body(&line_global);
 	handle_info();
 
 	return 0;
