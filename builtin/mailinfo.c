@@ -7,11 +7,11 @@
 #include "utf8.h"
 #include "strbuf.h"
 
-static FILE *cmitmsg, *patchfile;
-
 struct mailinfo {
 	FILE *input;
 	FILE *output;
+	FILE *cmitmsg;
+	FILE *patchfile;
 
 	struct strbuf name;
 	struct strbuf email;
@@ -775,9 +775,9 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 	if (mi->use_scissors && is_scissors_line(line)) {
 		int i;
-		if (fseek(cmitmsg, 0L, SEEK_SET))
+		if (fseek(mi->cmitmsg, 0L, SEEK_SET))
 			die_errno("Could not rewind output message file");
-		if (ftruncate(fileno(cmitmsg), 0))
+		if (ftruncate(fileno(mi->cmitmsg), 0))
 			die_errno("Could not truncate output message file at scissors");
 		mi->header_stage = 1;
 
@@ -795,19 +795,19 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 	if (patchbreak(line)) {
 		if (mi->message_id)
-			fprintf(cmitmsg, "Message-Id: %s\n", mi->message_id);
-		fclose(cmitmsg);
-		cmitmsg = NULL;
+			fprintf(mi->cmitmsg, "Message-Id: %s\n", mi->message_id);
+		fclose(mi->cmitmsg);
+		mi->cmitmsg = NULL;
 		return 1;
 	}
 
-	fputs(line->buf, cmitmsg);
+	fputs(line->buf, mi->cmitmsg);
 	return 0;
 }
 
 static void handle_patch(struct mailinfo *mi, const struct strbuf *line)
 {
-	fwrite(line->buf, 1, line->len, patchfile);
+	fwrite(line->buf, 1, line->len, mi->patchfile);
 	mi->patch_lines++;
 }
 
@@ -1002,15 +1002,15 @@ static int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 	int peek;
 	struct strbuf line = STRBUF_INIT;
 
-	cmitmsg = fopen(msg, "w");
-	if (!cmitmsg) {
+	mi->cmitmsg = fopen(msg, "w");
+	if (!mi->cmitmsg) {
 		perror(msg);
 		return -1;
 	}
-	patchfile = fopen(patch, "w");
-	if (!patchfile) {
+	mi->patchfile = fopen(patch, "w");
+	if (!mi->patchfile) {
 		perror(patch);
-		fclose(cmitmsg);
+		fclose(mi->cmitmsg);
 		return -1;
 	}
 
