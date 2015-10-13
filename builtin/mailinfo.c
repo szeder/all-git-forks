@@ -10,7 +10,6 @@
 struct mailinfo {
 	FILE *input;
 	FILE *output;
-	FILE *cmitmsg;
 	FILE *patchfile;
 
 	struct strbuf name;
@@ -32,6 +31,8 @@ struct mailinfo {
 	int header_stage; /* still checking in-body headers? */
 	struct strbuf **p_hdr_data;
 	struct strbuf **s_hdr_data;
+
+	struct strbuf log_message;
 };
 
 #define MAX_HDR_PARSED 10
@@ -775,10 +776,8 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 	if (mi->use_scissors && is_scissors_line(line)) {
 		int i;
-		if (fseek(mi->cmitmsg, 0L, SEEK_SET))
-			die_errno("Could not rewind output message file");
-		if (ftruncate(fileno(mi->cmitmsg), 0))
-			die_errno("Could not truncate output message file at scissors");
+
+		strbuf_setlen(&mi->log_message, 0);
 		mi->header_stage = 1;
 
 		/*
@@ -795,13 +794,12 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 	if (patchbreak(line)) {
 		if (mi->message_id)
-			fprintf(mi->cmitmsg, "Message-Id: %s\n", mi->message_id);
-		fclose(mi->cmitmsg);
-		mi->cmitmsg = NULL;
+			strbuf_addf(&mi->log_message,
+				    "Message-Id: %s\n", mi->message_id);
 		return 1;
 	}
 
-	fputs(line->buf, mi->cmitmsg);
+	strbuf_addbuf(&mi->log_message, line);
 	return 0;
 }
 
@@ -999,18 +997,19 @@ static void handle_info(struct mailinfo *mi)
 
 static int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 {
+	FILE *cmitmsg;
 	int peek;
 	struct strbuf line = STRBUF_INIT;
 
-	mi->cmitmsg = fopen(msg, "w");
-	if (!mi->cmitmsg) {
+	cmitmsg = fopen(msg, "w");
+	if (!cmitmsg) {
 		perror(msg);
 		return -1;
 	}
 	mi->patchfile = fopen(patch, "w");
 	if (!mi->patchfile) {
 		perror(patch);
-		fclose(mi->cmitmsg);
+		fclose(cmitmsg);
 		return -1;
 	}
 
@@ -1028,6 +1027,9 @@ static int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 
 	handle_body(mi, &line);
 	handle_info(mi);
+
+	fwrite(mi->log_message.buf, 1, mi->log_message.len, cmitmsg);
+	fclose(cmitmsg);
 
 	return 0;
 }
@@ -1052,9 +1054,18 @@ static void setup_mailinfo(struct mailinfo *mi)
 	strbuf_init(&mi->name, 0);
 	strbuf_init(&mi->email, 0);
 	strbuf_init(&mi->charset, 0);
+	strbuf_init(&mi->log_message, 0);
 	mi->header_stage = 1;
 	mi->use_inbody_headers = 1;
 	git_config(git_mailinfo_config, &mi);
+}
+
+static void clear_mailinfo(struct mailinfo *mi)
+{
+	strbuf_release(&mi->name);
+	strbuf_release(&mi->email);
+	strbuf_release(&mi->charset);
+	strbuf_release(&mi->log_message);
 }
 
 static const char mailinfo_usage[] =
@@ -1064,6 +1075,7 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 {
 	const char *def_charset;
 	struct mailinfo mi;
+	int status;
 
 	/* NEEDSWORK: might want to do the optional .git/ directory
 	 * discovery
@@ -1102,5 +1114,8 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 
 	mi.input = stdin;
 	mi.output = stdout;
-	return !!mailinfo(&mi, argv[1], argv[2]);
+	status = !!mailinfo(&mi, argv[1], argv[2]);
+	clear_mailinfo(&mi);
+
+	return status;
 }
