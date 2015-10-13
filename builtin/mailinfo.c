@@ -731,8 +731,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 	 */
 	int is_empty_line;
 
-	if (!cmitmsg)
-		return 0;
+	assert(!mi->filter_stage);
 
 	is_empty_line = (!line->len || (line->len == 1 && line->buf[0] == '\n'));
 	if (mi->header_stage == 1) {
