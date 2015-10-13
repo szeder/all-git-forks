@@ -293,7 +293,7 @@ static void cleanup_space(struct strbuf *sb)
 	}
 }
 
-static void decode_header(struct mailinfo *mi, struct strbuf *line);
+static int decode_header(struct mailinfo *mi, struct strbuf *line);
 static const char *header[MAX_HDR_PARSED] = {
 	"From","Subject","Date",
 };
@@ -336,8 +336,8 @@ static int check_header(struct mailinfo *mi,
 			 * normalize the meta information to utf8.
 			 */
 			strbuf_add(&sb, line->buf + len + 2, line->len - len - 2);
-			decode_header(mi, &sb);
-			handle_header(&hdr_data[i], &sb);
+			if (!decode_header(mi, &sb))
+				handle_header(&hdr_data[i], &sb);
 			ret = 1;
 			goto check_header_out;
 		}
@@ -347,25 +347,26 @@ static int check_header(struct mailinfo *mi,
 	if (cmp_header(line, "Content-Type")) {
 		len = strlen("Content-Type: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(mi, &sb);
-		strbuf_insert(&sb, 0, "Content-Type: ", len);
-		handle_content_type(mi, &sb);
+		if (!decode_header(mi, &sb)) {
+			strbuf_insert(&sb, 0, "Content-Type: ", len);
+			handle_content_type(mi, &sb);
+		}
 		ret = 1;
 		goto check_header_out;
 	}
 	if (cmp_header(line, "Content-Transfer-Encoding")) {
 		len = strlen("Content-Transfer-Encoding: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(mi, &sb);
-		handle_content_transfer_encoding(mi, &sb);
+		if (!decode_header(mi, &sb))
+			handle_content_transfer_encoding(mi, &sb);
 		ret = 1;
 		goto check_header_out;
 	}
 	if (cmp_header(line, "Message-Id")) {
 		len = strlen("Message-Id: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
-		decode_header(mi, &sb);
-		handle_message_id(mi, &sb);
+		if (!decode_header(mi, &sb))
+			handle_message_id(mi, &sb);
 		ret = 1;
 		goto check_header_out;
 	}
@@ -537,11 +538,12 @@ static void convert_to_utf8(struct mailinfo *mi,
 	strbuf_attach(line, out, strlen(out), strlen(out));
 }
 
-static void decode_header(struct mailinfo *mi, struct strbuf *it)
+static int decode_header(struct mailinfo *mi, struct strbuf *it)
 {
 	char *in, *ep, *cp;
 	struct strbuf outbuf = STRBUF_INIT, *dec;
 	struct strbuf charset_q = STRBUF_INIT, piecebuf = STRBUF_INIT;
+	int found_error = -1; /* pessimism */
 
 	in = it->buf;
 	while (in - it->buf <= it->len && (ep = strstr(in, "=?")) != NULL) {
@@ -610,10 +612,13 @@ static void decode_header(struct mailinfo *mi, struct strbuf *it)
 	strbuf_addstr(&outbuf, in);
 	strbuf_reset(it);
 	strbuf_addbuf(it, &outbuf);
+	found_error = 0;
 release_return:
 	strbuf_release(&outbuf);
 	strbuf_release(&charset_q);
 	strbuf_release(&piecebuf);
+
+	return found_error;
 }
 
 static void decode_transfer_encoding(struct mailinfo *mi, struct strbuf *line)
