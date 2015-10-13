@@ -19,12 +19,13 @@ struct mailinfo {
 	struct strbuf email;
 	int keep_subject;
 	int keep_non_patch_brackets_in_subject;
+	int add_message_id;
 
+	char *message_id;
 	int patch_lines;
 	int filter_stage; /* still reading log or are we copying patch? */
 	int header_stage; /* still checking in-body headers? */
 };
-static char *message_id;
 
 static enum  {
 	TE_DONTCARE, TE_QP, TE_BASE64
@@ -34,7 +35,6 @@ static struct strbuf charset = STRBUF_INIT;
 
 static struct strbuf **p_hdr_data, **s_hdr_data;
 static int use_scissors;
-static int add_message_id;
 static int use_inbody_headers = 1;
 
 #define MAX_HDR_PARSED 10
@@ -209,10 +209,10 @@ static void handle_content_type(struct strbuf *line)
 	}
 }
 
-static void handle_message_id(const struct strbuf *line)
+static void handle_message_id(struct mailinfo *mi, const struct strbuf *line)
 {
-	if (add_message_id)
-		message_id = strdup(line->buf);
+	if (mi->add_message_id)
+		mi->message_id = strdup(line->buf);
 }
 
 static void handle_content_transfer_encoding(const struct strbuf *line)
@@ -321,11 +321,13 @@ static int is_format_patch_separator(const char *line, int len)
 	return !memcmp(SAMPLE + (cp - line), cp, strlen(SAMPLE) - (cp - line));
 }
 
-static int check_header(const struct strbuf *line,
-				struct strbuf *hdr_data[], int overwrite)
+static int check_header(struct mailinfo *mi,
+			const struct strbuf *line,
+			struct strbuf *hdr_data[], int overwrite)
 {
 	int i, ret = 0, len;
 	struct strbuf sb = STRBUF_INIT;
+
 	/* search for the interesting parts */
 	for (i = 0; header[i]; i++) {
 		int len = strlen(header[i]);
@@ -363,7 +365,7 @@ static int check_header(const struct strbuf *line,
 		len = strlen("Message-Id: ");
 		strbuf_add(&sb, line->buf + len, line->len - len);
 		decode_header(&sb);
-		handle_message_id(&sb);
+		handle_message_id(mi, &sb);
 		ret = 1;
 		goto check_header_out;
 	}
@@ -744,7 +746,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 	}
 
 	if (use_inbody_headers && mi->header_stage) {
-		int is_known_header = check_header(line, s_hdr_data, 0);
+		int is_known_header = check_header(mi, line, s_hdr_data, 0);
 
 		if (mi->header_stage == 2) {
 			/*
@@ -796,8 +798,8 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 	}
 
 	if (patchbreak(line)) {
-		if (message_id)
-			fprintf(cmitmsg, "Message-Id: %s\n", message_id);
+		if (mi->message_id)
+			fprintf(cmitmsg, "Message-Id: %s\n", mi->message_id);
 		fclose(cmitmsg);
 		cmitmsg = NULL;
 		return 1;
@@ -872,7 +874,7 @@ again:
 
 	/* slurp in this section's info */
 	while (read_one_header_line(line, mi->input))
-		check_header(line, p_hdr_data, 0);
+		check_header(mi, line, p_hdr_data, 0);
 
 	strbuf_release(&newline);
 	/* replenish line */
@@ -1026,7 +1028,7 @@ static int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 
 	/* process the email header */
 	while (read_one_header_line(&line, mi->input))
-		check_header(&line, p_hdr_data, 1);
+		check_header(mi, &line, p_hdr_data, 1);
 
 	handle_body(mi, &line);
 	handle_info(mi);
@@ -1077,7 +1079,7 @@ int cmd_mailinfo(int argc, const char **argv, const char *prefix)
 		else if (!strcmp(argv[1], "-b"))
 			mi.keep_non_patch_brackets_in_subject = 1;
 		else if (!strcmp(argv[1], "-m") || !strcmp(argv[1], "--message-id"))
-			add_message_id = 1;
+			mi.add_message_id = 1;
 		else if (!strcmp(argv[1], "-u"))
 			metainfo_charset = def_charset;
 		else if (!strcmp(argv[1], "-n"))
