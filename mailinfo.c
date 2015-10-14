@@ -1013,7 +1013,7 @@ int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 		fwrite(mi->log_message.buf, 1, mi->log_message.len, cmitmsg);
 	}
 	fclose(cmitmsg);
-
+	fclose(mi->patchfile);
 	return mi->input_error;
 }
 
