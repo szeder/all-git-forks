@@ -12,7 +12,6 @@ static FILE *cmitmsg, *patchfile, *fin, *fout;
 static int keep_subject;
 static int keep_non_patch_brackets_in_subject;
 static const char *metainfo_charset;
-static struct strbuf line_global = STRBUF_INIT;
 static struct strbuf name = STRBUF_INIT;
 static struct strbuf email = STRBUF_INIT;
 static char *message_id;
@@ -966,6 +965,8 @@ static void handle_info(void)
 static int mailinfo(FILE *in, FILE *out, const char *msg, const char *patch)
 {
 	int peek;
+	struct strbuf line = STRBUF_INIT;
+
 	fin = in;
 	fout = out;
 
@@ -990,10 +991,10 @@ static int mailinfo(FILE *in, FILE *out, const char *msg, const char *patch)
 	ungetc(peek, in);
 
 	/* process the email header */
-	while (read_one_header_line(&line_global, fin))
-		check_header(&line_global, p_hdr_data, 1);
+	while (read_one_header_line(&line, fin))
+		check_header(&line, p_hdr_data, 1);
 
-	handle_body(&line_global);
+	handle_body(&line);
 	fclose(patchfile);
 
 	handle_info();
