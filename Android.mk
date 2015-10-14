@@ -630,7 +630,6 @@ ifeq ($(optional_libcurl),libcurl)
     LOCAL_REQUIRED_MODULES += git-remote-http
 endif
 
-LOCAL_MODULE_PATH := $(TARGET_OUT_OPTIONAL_EXECUTABLES)
 include $(BUILD_EXECUTABLE)
 
 # we want the 'git' package ?
