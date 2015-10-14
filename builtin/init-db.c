@@ -8,6 +8,7 @@
 #include "builtin.h"
 #include "exec_cmd.h"
 #include "parse-options.h"
+#include "refs.h"
 
 #ifndef DEFAULT_GIT_TEMPLATE_DIR
 #define DEFAULT_GIT_TEMPLATE_DIR "/usr/share/git-core/templates"
@@ -23,18 +24,6 @@ static int init_is_bare_repository = 0;
 static int init_shared_repository = -1;
 static const char *init_db_template_dir;
 static const char *git_link;
-
-static void safe_create_dir(const char *dir, int share)
-{
-	if (mkdir(dir, 0777) < 0) {
-		if (errno != EEXIST) {
-			perror(dir);
-			exit(1);
-		}
-	}
-	else if (share && adjust_shared_perm(dir))
-		die(_("Could not make %s writable by group"), dir);
-}
 
 static void copy_templates_1(struct strbuf *path, struct strbuf *template,
 			     DIR *dir)
@@ -189,13 +178,8 @@ static int create_default_files(const char *template_path)
 	char junk[2];
 	int reinit;
 	int filemode;
-
-	/*
-	 * Create .git/refs/{heads,tags}
-	 */
-	safe_create_dir(git_path_buf(&buf, "refs"), 1);
-	safe_create_dir(git_path_buf(&buf, "refs/heads"), 1);
-	safe_create_dir(git_path_buf(&buf, "refs/tags"), 1);
+	struct strbuf err = STRBUF_INIT;
+	int repo_version = 0;
 
 	/* Just look for `init.templatedir` */
 	git_config(git_init_db_config, NULL);
@@ -219,10 +203,25 @@ static int create_default_files(const char *template_path)
 	 */
 	if (shared_repository) {
 		adjust_shared_perm(get_git_dir());
-		adjust_shared_perm(git_path_buf(&buf, "refs"));
-		adjust_shared_perm(git_path_buf(&buf, "refs/heads"));
-		adjust_shared_perm(git_path_buf(&buf, "refs/tags"));
 	}
+
+	if (refs_backend_type) {
+		struct refdb_config_data config_data = {NULL};
+		git_config_set("core.refsBackendType", refs_backend_type);
+		config_data.refs_backend_type = refs_backend_type;
+		config_data.refs_base = get_git_dir();
+#ifdef USE_LIBLMDB
+		register_refs_backend(&refs_be_lmdb);
+#endif
+		set_refs_backend(refs_backend_type, &config_data);
+		if (!strcmp(refs_backend_type, "lmdb")) {
+			git_config_set("extensions.refbackend", "lmdb");
+			repo_version = 1;
+		}
+	}
+
+	if (refs_initdb(&err, shared_repository))
+		die("failed to set up refs db: %s", err.buf);
 
 	/*
 	 * Create the default symlink from ".git/HEAD" to the "master"
@@ -238,7 +237,7 @@ static int create_default_files(const char *template_path)
 
 	/* This forces creation of new config file */
 	xsnprintf(repo_version_string, sizeof(repo_version_string),
-		  "%d", GIT_REPO_VERSION);
+		  "%d", repo_version);
 	git_config_set("core.repositoryformatversion", repo_version_string);
 
 	/* Check filemode trustability */
@@ -486,6 +485,8 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 		OPT_BIT('q', "quiet", &flags, N_("be quiet"), INIT_DB_QUIET),
 		OPT_STRING(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
 			   N_("separate git dir from working tree")),
+		OPT_STRING(0, "refs-backend-type", &refs_backend_type,
+			   N_("name"), N_("name of backend type to use")),
 		OPT_END()
 	};
 
