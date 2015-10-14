@@ -30,9 +30,9 @@ struct mailinfo {
 	int patch_lines;
 	int filter_stage; /* still reading log or are we copying patch? */
 	int header_stage; /* still checking in-body headers? */
+	struct strbuf **p_hdr_data;
+	struct strbuf **s_hdr_data;
 };
-
-static struct strbuf **p_hdr_data, **s_hdr_data;
 
 #define MAX_HDR_PARSED 10
 #define MAX_BOUNDARIES 5
@@ -732,7 +732,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 	}
 
 	if (mi->use_inbody_headers && mi->header_stage) {
-		mi->header_stage = check_header(mi, line, s_hdr_data, 0);
+		mi->header_stage = check_header(mi, line, mi->s_hdr_data, 0);
 		if (mi->header_stage)
 			return 0;
 	} else
@@ -757,9 +757,9 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 		 * them to give ourselves a clean restart.
 		 */
 		for (i = 0; header[i]; i++) {
-			if (s_hdr_data[i])
-				strbuf_release(s_hdr_data[i]);
-			s_hdr_data[i] = NULL;
+			if (mi->s_hdr_data[i])
+				strbuf_release(mi->s_hdr_data[i]);
+			mi->s_hdr_data[i] = NULL;
 		}
 		return 0;
 	}
@@ -841,7 +841,7 @@ again:
 
 	/* slurp in this section's info */
 	while (read_one_header_line(line, mi->input))
-		check_header(mi, line, p_hdr_data, 0);
+		check_header(mi, line, mi->p_hdr_data, 0);
 
 	strbuf_release(&newline);
 	/* replenish line */
@@ -942,10 +942,10 @@ static void handle_info(struct mailinfo *mi)
 
 	for (i = 0; header[i]; i++) {
 		/* only print inbody headers if we output a patch file */
-		if (mi->patch_lines && s_hdr_data[i])
-			hdr = s_hdr_data[i];
-		else if (p_hdr_data[i])
-			hdr = p_hdr_data[i];
+		if (mi->patch_lines && mi->s_hdr_data[i])
+			hdr = mi->s_hdr_data[i];
+		else if (mi->p_hdr_data[i])
+			hdr = mi->p_hdr_data[i];
 		else
 			continue;
 
@@ -985,8 +985,8 @@ static int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 		return -1;
 	}
 
-	p_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*p_hdr_data));
-	s_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*s_hdr_data));
+	mi->p_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*(mi->p_hdr_data)));
+	mi->s_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*(mi->s_hdr_data)));
 
 	do {
 		peek = fgetc(mi->input);
@@ -995,7 +995,7 @@ static int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 
 	/* process the email header */
 	while (read_one_header_line(&line, mi->input))
-		check_header(mi, &line, p_hdr_data, 1);
+		check_header(mi, &line, mi->p_hdr_data, 1);
 
 	handle_body(mi, &line);
 	fclose(mi->patchfile);
