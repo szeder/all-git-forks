@@ -294,7 +294,7 @@ one/a.1
 one/two/a.1
 three/a.1
 EOF
-	git ls-files -o -i --exclude "**/a.1" >actual
+	git ls-files -o -i --exclude "**/a.1" >actual &&
 	test_cmp expect actual
 '
 
@@ -303,6 +303,31 @@ test_expect_success 'ls-files with "**" patterns and no slashes' '
 	: >expect &&
 	git ls-files -o -i --exclude "one**a.1" >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'negative patterns' '
+	git init reinclude &&
+	(
+		cd reinclude &&
+		cat >.gitignore <<-\EOF &&
+		/fooo
+		/foo
+		!foo/bar/bar
+		EOF
+		mkdir fooo &&
+		cat >fooo/.gitignore <<-\EOF &&
+		!/*
+		EOF
+		mkdir -p foo/bar &&
+		touch abc foo/def foo/bar/ghi foo/bar/bar &&
+		git ls-files -o --exclude-standard >../actual &&
+		cat >../expected <<-\EOF &&
+		.gitignore
+		abc
+		foo/bar/bar
+		EOF
+		test_cmp ../expected ../actual
+	)
 '
 
 test_done

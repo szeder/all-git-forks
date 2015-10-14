@@ -48,7 +48,8 @@ static struct complete_reflogs *read_complete_reflog(const char *ref)
 		unsigned char sha1[20];
 		const char *name;
 		void *name_to_free;
-		name = name_to_free = resolve_refdup(ref, sha1, 1, NULL);
+		name = name_to_free = resolve_refdup(ref, RESOLVE_REF_READING,
+						     sha1, NULL);
 		if (name) {
 			for_each_reflog_ent(name, read_one_reflog, reflogs);
 			free(name_to_free);
@@ -133,7 +134,7 @@ struct reflog_walk_info {
 	struct commit_reflog *last_commit_reflog;
 };
 
-void init_reflog_walk(struct reflog_walk_info** info)
+void init_reflog_walk(struct reflog_walk_info **info)
 {
 	*info = xcalloc(1, sizeof(struct reflog_walk_info));
 }
@@ -174,7 +175,7 @@ int add_reflog_for_walk(struct reflog_walk_info *info,
 		if (*branch == '\0') {
 			unsigned char sha1[20];
 			free(branch);
-			branch = resolve_refdup("HEAD", sha1, 0, NULL);
+			branch = resolve_refdup("HEAD", 0, sha1, NULL);
 			if (!branch)
 				die ("No current branch");
 
@@ -248,7 +249,7 @@ void fake_reflog_parent(struct reflog_walk_info *info, struct commit *commit)
 
 void get_reflog_selector(struct strbuf *sb,
 			 struct reflog_walk_info *reflog_info,
-			 enum date_mode dmode, int force_date,
+			 const struct date_mode *dmode, int force_date,
 			 int shorten)
 {
 	struct commit_reflog *commit_reflog = reflog_info->last_commit_reflog;
@@ -310,7 +311,7 @@ const char *get_reflog_ident(struct reflog_walk_info *reflog_info)
 }
 
 void show_reflog_message(struct reflog_walk_info *reflog_info, int oneline,
-			 enum date_mode dmode, int force_date)
+			 const struct date_mode *dmode, int force_date)
 {
 	if (reflog_info && reflog_info->last_commit_reflog) {
 		struct commit_reflog *commit_reflog = reflog_info->last_commit_reflog;

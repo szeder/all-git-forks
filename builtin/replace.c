@@ -13,10 +13,12 @@
 #include "refs.h"
 #include "parse-options.h"
 #include "run-command.h"
+#include "tag.h"
 
 static const char * const git_replace_usage[] = {
 	N_("git replace [-f] <object> <replacement>"),
 	N_("git replace [-f] --edit <object>"),
+	N_("git replace [-f] --graft <commit> [<parent>...]"),
 	N_("git replace -d <object>..."),
 	N_("git replace [--format=<format>] [-l [<pattern>]]"),
 	NULL
@@ -33,7 +35,7 @@ struct show_data {
 	enum replace_format format;
 };
 
-static int show_reference(const char *refname, const unsigned char *sha1,
+static int show_reference(const char *refname, const struct object_id *oid,
 			  int flag, void *cb_data)
 {
 	struct show_data *data = cb_data;
@@ -42,19 +44,19 @@ static int show_reference(const char *refname, const unsigned char *sha1,
 		if (data->format == REPLACE_FORMAT_SHORT)
 			printf("%s\n", refname);
 		else if (data->format == REPLACE_FORMAT_MEDIUM)
-			printf("%s -> %s\n", refname, sha1_to_hex(sha1));
+			printf("%s -> %s\n", refname, oid_to_hex(oid));
 		else { /* data->format == REPLACE_FORMAT_LONG */
-			unsigned char object[20];
+			struct object_id object;
 			enum object_type obj_type, repl_type;
 
-			if (get_sha1(refname, object))
+			if (get_sha1(refname, object.hash))
 				return error("Failed to resolve '%s' as a valid ref.", refname);
 
-			obj_type = sha1_object_info(object, NULL);
-			repl_type = sha1_object_info(sha1, NULL);
+			obj_type = sha1_object_info(object.hash, NULL);
+			repl_type = sha1_object_info(oid->hash, NULL);
 
 			printf("%s (%s) -> %s (%s)\n", refname, typename(obj_type),
-			       sha1_to_hex(sha1), typename(repl_type));
+			       oid_to_hex(oid), typename(repl_type));
 		}
 	}
 
@@ -80,7 +82,7 @@ static int list_replace_refs(const char *pattern, const char *format)
 		    "valid formats are 'short', 'medium' and 'long'\n",
 		    format);
 
-	for_each_replace_ref(show_reference, (void *) &data);
+	for_each_replace_ref(show_reference, (void *)&data);
 
 	return 0;
 }
@@ -102,9 +104,9 @@ static int for_each_replace_name(const char **argv, each_replace_name_fn fn)
 			continue;
 		}
 		full_hex = sha1_to_hex(sha1);
-		snprintf(ref, sizeof(ref), "refs/replace/%s", full_hex);
+		snprintf(ref, sizeof(ref), "%s%s", git_replace_ref_base, full_hex);
 		/* read_ref() may reuse the buffer */
-		full_hex = ref + strlen("refs/replace/");
+		full_hex = ref + strlen(git_replace_ref_base);
 		if (read_ref(ref, sha1)) {
 			error("replace ref '%s' not found.", full_hex);
 			had_error = 1;
@@ -132,7 +134,7 @@ static void check_ref_valid(unsigned char object[20],
 			    int force)
 {
 	if (snprintf(ref, ref_size,
-		     "refs/replace/%s",
+		     "%s%s", git_replace_ref_base,
 		     sha1_to_hex(object)) > ref_size - 1)
 		die("replace ref name too long: %.*s...", 50, ref);
 	if (check_refname_format(ref, 0))
@@ -153,7 +155,8 @@ static int replace_object_sha1(const char *object_ref,
 	unsigned char prev[20];
 	enum object_type obj_type, repl_type;
 	char ref[PATH_MAX];
-	struct ref_lock *lock;
+	struct ref_transaction *transaction;
+	struct strbuf err = STRBUF_INIT;
 
 	obj_type = sha1_object_info(object, NULL);
 	repl_type = sha1_object_info(repl, NULL);
@@ -166,12 +169,14 @@ static int replace_object_sha1(const char *object_ref,
 
 	check_ref_valid(object, prev, ref, sizeof(ref), force);
 
-	lock = lock_any_ref_for_update(ref, prev, 0, NULL);
-	if (!lock)
-		die("%s: cannot lock the ref", ref);
-	if (write_ref_sha1(lock, repl, NULL) < 0)
-		die("%s: cannot update the ref", ref);
+	transaction = ref_transaction_begin(&err);
+	if (!transaction ||
+	    ref_transaction_update(transaction, ref, repl, prev,
+				   0, NULL, &err) ||
+	    ref_transaction_commit(transaction, &err))
+		die("%s", err.buf);
 
+	ref_transaction_free(transaction);
 	return 0;
 }
 
@@ -195,7 +200,7 @@ static int replace_object(const char *object_ref, const char *replace_ref, int f
 static void export_object(const unsigned char *sha1, enum object_type type,
 			  int raw, const char *filename)
 {
-	struct child_process cmd = { NULL };
+	struct child_process cmd = CHILD_PROCESS_INIT;
 	int fd;
 
 	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
@@ -232,7 +237,7 @@ static void import_object(unsigned char *sha1, enum object_type type,
 
 	if (!raw && type == OBJ_TREE) {
 		const char *argv[] = { "mktree", NULL };
-		struct child_process cmd = { argv };
+		struct child_process cmd = CHILD_PROCESS_INIT;
 		struct strbuf result = STRBUF_INIT;
 
 		cmd.argv = argv;
@@ -299,6 +304,117 @@ static int edit_and_replace(const char *object_ref, int force, int raw)
 	return replace_object_sha1(object_ref, old, "replacement", new, force);
 }
 
+static void replace_parents(struct strbuf *buf, int argc, const char **argv)
+{
+	struct strbuf new_parents = STRBUF_INIT;
+	const char *parent_start, *parent_end;
+	int i;
+
+	/* find existing parents */
+	parent_start = buf->buf;
+	parent_start += 46; /* "tree " + "hex sha1" + "\n" */
+	parent_end = parent_start;
+
+	while (starts_with(parent_end, "parent "))
+		parent_end += 48; /* "parent " + "hex sha1" + "\n" */
+
+	/* prepare new parents */
+	for (i = 0; i < argc; i++) {
+		unsigned char sha1[20];
+		if (get_sha1(argv[i], sha1) < 0)
+			die(_("Not a valid object name: '%s'"), argv[i]);
+		lookup_commit_or_die(sha1, argv[i]);
+		strbuf_addf(&new_parents, "parent %s\n", sha1_to_hex(sha1));
+	}
+
+	/* replace existing parents with new ones */
+	strbuf_splice(buf, parent_start - buf->buf, parent_end - parent_start,
+		      new_parents.buf, new_parents.len);
+
+	strbuf_release(&new_parents);
+}
+
+struct check_mergetag_data {
+	int argc;
+	const char **argv;
+};
+
+static void check_one_mergetag(struct commit *commit,
+			       struct commit_extra_header *extra,
+			       void *data)
+{
+	struct check_mergetag_data *mergetag_data = (struct check_mergetag_data *)data;
+	const char *ref = mergetag_data->argv[0];
+	unsigned char tag_sha1[20];
+	struct tag *tag;
+	int i;
+
+	hash_sha1_file(extra->value, extra->len, typename(OBJ_TAG), tag_sha1);
+	tag = lookup_tag(tag_sha1);
+	if (!tag)
+		die(_("bad mergetag in commit '%s'"), ref);
+	if (parse_tag_buffer(tag, extra->value, extra->len))
+		die(_("malformed mergetag in commit '%s'"), ref);
+
+	/* iterate over new parents */
+	for (i = 1; i < mergetag_data->argc; i++) {
+		unsigned char sha1[20];
+		if (get_sha1(mergetag_data->argv[i], sha1) < 0)
+			die(_("Not a valid object name: '%s'"), mergetag_data->argv[i]);
+		if (!hashcmp(tag->tagged->sha1, sha1))
+			return; /* found */
+	}
+
+	die(_("original commit '%s' contains mergetag '%s' that is discarded; "
+	      "use --edit instead of --graft"), ref, sha1_to_hex(tag_sha1));
+}
+
+static void check_mergetags(struct commit *commit, int argc, const char **argv)
+{
+	struct check_mergetag_data mergetag_data;
+
+	mergetag_data.argc = argc;
+	mergetag_data.argv = argv;
+	for_each_mergetag(check_one_mergetag, commit, &mergetag_data);
+}
+
+static int create_graft(int argc, const char **argv, int force)
+{
+	unsigned char old[20], new[20];
+	const char *old_ref = argv[0];
+	struct commit *commit;
+	struct strbuf buf = STRBUF_INIT;
+	const char *buffer;
+	unsigned long size;
+
+	if (get_sha1(old_ref, old) < 0)
+		die(_("Not a valid object name: '%s'"), old_ref);
+	commit = lookup_commit_or_die(old, old_ref);
+
+	buffer = get_commit_buffer(commit, &size);
+	strbuf_add(&buf, buffer, size);
+	unuse_commit_buffer(commit, buffer);
+
+	replace_parents(&buf, argc - 1, &argv[1]);
+
+	if (remove_signature(&buf)) {
+		warning(_("the original commit '%s' has a gpg signature."), old_ref);
+		warning(_("the signature will be removed in the replacement commit!"));
+	}
+
+	check_mergetags(commit, argc, argv);
+
+	if (write_sha1_file(buf.buf, buf.len, commit_type, new))
+		die(_("could not write replacement commit for: '%s'"), old_ref);
+
+	strbuf_release(&buf);
+
+	if (!hashcmp(old, new))
+		return error("new commit is the same as the old one: '%s'", sha1_to_hex(old));
+
+	return replace_object_sha1(old_ref, old, "replacement", new, force);
+}
+
 int cmd_replace(int argc, const char **argv, const char *prefix)
 {
 	int force = 0;
@@ -309,12 +425,14 @@ int cmd_replace(int argc, const char **argv, const char *prefix)
 		MODE_LIST,
 		MODE_DELETE,
 		MODE_EDIT,
+		MODE_GRAFT,
 		MODE_REPLACE
 	} cmdmode = MODE_UNSPECIFIED;
 	struct option options[] = {
 		OPT_CMDMODE('l', "list", &cmdmode, N_("list replace refs"), MODE_LIST),
 		OPT_CMDMODE('d', "delete", &cmdmode, N_("delete replace refs"), MODE_DELETE),
 		OPT_CMDMODE('e', "edit", &cmdmode, N_("edit existing object"), MODE_EDIT),
+		OPT_CMDMODE('g', "graft", &cmdmode, N_("change a commit's parents"), MODE_GRAFT),
 		OPT_BOOL('f', "force", &force, N_("replace the ref if it exists")),
 		OPT_BOOL(0, "raw", &raw, N_("do not pretty-print contents for --edit")),
 		OPT_STRING(0, "format", &format, N_("format"), N_("use this format")),
@@ -332,7 +450,10 @@ int cmd_replace(int argc, const char **argv, const char *prefix)
 		usage_msg_opt("--format cannot be used when not listing",
 			      git_replace_usage, options);
 
-	if (force && cmdmode != MODE_REPLACE && cmdmode != MODE_EDIT)
+	if (force &&
+	    cmdmode != MODE_REPLACE &&
+	    cmdmode != MODE_EDIT &&
+	    cmdmode != MODE_GRAFT)
 		usage_msg_opt("-f only makes sense when writing a replacement",
 			      git_replace_usage, options);
 
@@ -358,6 +479,12 @@ int cmd_replace(int argc, const char **argv, const char *prefix)
 			usage_msg_opt("-e needs exactly one argument",
 				      git_replace_usage, options);
 		return edit_and_replace(argv[0], force, raw);
+
+	case MODE_GRAFT:
+		if (argc < 1)
+			usage_msg_opt("-g needs at least one argument",
+				      git_replace_usage, options);
+		return create_graft(argc, argv, force);
 
 	case MODE_LIST:
 		if (argc > 1)

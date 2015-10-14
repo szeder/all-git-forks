@@ -8,6 +8,7 @@
  * Copyright (c) 2005, 2006 Linus Torvalds and Junio C Hamano
  */
 #include "builtin.h"
+#include "lockfile.h"
 #include "tag.h"
 #include "object.h"
 #include "commit.h"
@@ -35,7 +36,7 @@ static const char *reset_type_names[] = {
 
 static inline int is_merge(void)
 {
-	return !access(git_path("MERGE_HEAD"), F_OK);
+	return !access(git_path_merge_head(), F_OK);
 }
 
 static int reset_index(const unsigned char *sha1, int reset_type, int quiet)

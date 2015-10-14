@@ -12,6 +12,16 @@
 #include "sha1-array.h"
 #include "revision.h"
 
+static int compare_paths(const struct combine_diff_path *one,
+			  const struct diff_filespec *two)
+{
+	if (!S_ISDIR(one->mode) && !S_ISDIR(two->mode))
+		return strcmp(one->path, two->path);
+
+	return base_name_compare(one->path, strlen(one->path), one->mode,
+				 two->path, strlen(two->path), two->mode);
+}
+
 static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr, int n, int num_parent)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
@@ -34,9 +44,9 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 			memset(p->parent, 0,
 			       sizeof(p->parent[0]) * num_parent);
 
-			hashcpy(p->sha1, q->queue[i]->two->sha1);
+			hashcpy(p->oid.hash, q->queue[i]->two->sha1);
 			p->mode = q->queue[i]->two->mode;
-			hashcpy(p->parent[n].sha1, q->queue[i]->one->sha1);
+			hashcpy(p->parent[n].oid.hash, q->queue[i]->one->sha1);
 			p->parent[n].mode = q->queue[i]->one->mode;
 			p->parent[n].status = q->queue[i]->status;
 			*tail = p;
@@ -52,7 +62,7 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 	i = 0;
 	while ((p = *tail) != NULL) {
 		cmp = ((i >= q->nr)
-		       ? -1 : strcmp(p->path, q->queue[i]->two->path));
+		       ? -1 : compare_paths(p, q->queue[i]->two));
 
 		if (cmp < 0) {
 			/* p->path not in q->queue[]; drop it */
@@ -67,7 +77,7 @@ static struct combine_diff_path *intersect_paths(struct combine_diff_path *curr,
 			continue;
 		}
 
-		hashcpy(p->parent[n].sha1, q->queue[i]->one->sha1);
+		hashcpy(p->parent[n].oid.hash, q->queue[i]->one->sha1);
 		p->parent[n].mode = q->queue[i]->one->mode;
 		p->parent[n].status = q->queue[i]->status;
 
@@ -274,7 +284,7 @@ static struct lline *coalesce_lines(struct lline *base, int *lenbase,
 	return base;
 }
 
-static char *grab_blob(const unsigned char *sha1, unsigned int mode,
+static char *grab_blob(const struct object_id *oid, unsigned int mode,
 		       unsigned long *size, struct userdiff_driver *textconv,
 		       const char *path)
 {
@@ -284,20 +294,20 @@ static char *grab_blob(const unsigned char *sha1, unsigned int mode,
 	if (S_ISGITLINK(mode)) {
 		blob = xmalloc(100);
 		*size = snprintf(blob, 100,
-				 "Subproject commit %s\n", sha1_to_hex(sha1));
-	} else if (is_null_sha1(sha1)) {
+				 "Subproject commit %s\n", oid_to_hex(oid));
+	} else if (is_null_oid(oid)) {
 		/* deleted blob */
 		*size = 0;
 		return xcalloc(1, 1);
 	} else if (textconv) {
 		struct diff_filespec *df = alloc_filespec(path);
-		fill_filespec(df, sha1, 1, mode);
+		fill_filespec(df, oid->hash, 1, mode);
 		*size = fill_textconv(textconv, df, &blob);
 		free_filespec(df);
 	} else {
-		blob = read_sha1_file(sha1, &type, size);
+		blob = read_sha1_file(oid->hash, &type, size);
 		if (type != OBJ_BLOB)
-			die("object '%s' is not a blob!", sha1_to_hex(sha1));
+			die("object '%s' is not a blob!", oid_to_hex(oid));
 	}
 	return blob;
 }
@@ -379,7 +389,7 @@ static void consume_line(void *state_, char *line, unsigned long len)
 	}
 }
 
-static void combine_diff(const unsigned char *parent, unsigned int mode,
+static void combine_diff(const struct object_id *parent, unsigned int mode,
 			 mmfile_t *result_file,
 			 struct sline *sline, unsigned int cnt, int n,
 			 int num_parent, int result_deleted,
@@ -409,8 +419,10 @@ static void combine_diff(const unsigned char *parent, unsigned int mode,
 	state.num_parent = num_parent;
 	state.n = n;
 
-	xdi_diff_outf(&parent_file, result_file, consume_line, &state,
-		      &xpp, &xecfg);
+	if (xdi_diff_outf(&parent_file, result_file, consume_line, &state,
+			  &xpp, &xecfg))
+		die("unable to generate combined diff for %s",
+		    oid_to_hex(parent));
 	free(parent_file.ptr);
 
 	/* Assign line numbers for this parent.
@@ -720,7 +732,7 @@ static void dump_sline(struct sline *sline, const char *line_prefix,
 	const char *c_func = diff_get_color(use_color, DIFF_FUNCINFO);
 	const char *c_new = diff_get_color(use_color, DIFF_FILE_NEW);
 	const char *c_old = diff_get_color(use_color, DIFF_FILE_OLD);
-	const char *c_plain = diff_get_color(use_color, DIFF_PLAIN);
+	const char *c_context = diff_get_color(use_color, DIFF_CONTEXT);
 	const char *c_reset = diff_get_color(use_color, DIFF_RESET);
 
 	if (result_deleted)
@@ -783,7 +795,7 @@ static void dump_sline(struct sline *sline, const char *line_prefix,
 			}
 			if (comment_end)
 				printf("%s%s %s%s", c_reset,
-						    c_plain, c_reset,
+						    c_context, c_reset,
 						    c_func);
 			for (i = 0; i < comment_end; i++)
 				putchar(hunk_comment[i]);
@@ -818,7 +830,7 @@ static void dump_sline(struct sline *sline, const char *line_prefix,
 				 */
 				if (!context)
 					continue;
-				fputs(c_plain, stdout);
+				fputs(c_context, stdout);
 			}
 			else
 				fputs(c_new, stdout);
@@ -887,7 +899,7 @@ static void show_combined_header(struct combine_diff_path *elem,
 				 int show_file_header)
 {
 	struct diff_options *opt = &rev->diffopt;
-	int abbrev = DIFF_OPT_TST(opt, FULL_INDEX) ? 40 : DEFAULT_ABBREV;
+	int abbrev = DIFF_OPT_TST(opt, FULL_INDEX) ? GIT_SHA1_HEXSZ : DEFAULT_ABBREV;
 	const char *a_prefix = opt->a_prefix ? opt->a_prefix : "a/";
 	const char *b_prefix = opt->b_prefix ? opt->b_prefix : "b/";
 	const char *c_meta = diff_get_color_opt(opt, DIFF_METAINFO);
@@ -904,11 +916,11 @@ static void show_combined_header(struct combine_diff_path *elem,
 			 "", elem->path, line_prefix, c_meta, c_reset);
 	printf("%s%sindex ", line_prefix, c_meta);
 	for (i = 0; i < num_parent; i++) {
-		abb = find_unique_abbrev(elem->parent[i].sha1,
+		abb = find_unique_abbrev(elem->parent[i].oid.hash,
 					 abbrev);
 		printf("%s%s", i ? "," : "", abb);
 	}
-	abb = find_unique_abbrev(elem->sha1, abbrev);
+	abb = find_unique_abbrev(elem->oid.hash, abbrev);
 	printf("..%s%s\n", abb, c_reset);
 
 	if (mode_differs) {
@@ -981,7 +993,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 
 	/* Read the result of merge first */
 	if (!working_tree_file)
-		result = grab_blob(elem->sha1, elem->mode, &result_size,
+		result = grab_blob(&elem->oid, elem->mode, &result_size,
 				   textconv, elem->path);
 	else {
 		/* Used by diff-tree to read from the working tree */
@@ -1003,12 +1015,12 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 			result = strbuf_detach(&buf, NULL);
 			elem->mode = canon_mode(st.st_mode);
 		} else if (S_ISDIR(st.st_mode)) {
-			unsigned char sha1[20];
-			if (resolve_gitlink_ref(elem->path, "HEAD", sha1) < 0)
-				result = grab_blob(elem->sha1, elem->mode,
+			struct object_id oid;
+			if (resolve_gitlink_ref(elem->path, "HEAD", oid.hash) < 0)
+				result = grab_blob(&elem->oid, elem->mode,
 						   &result_size, NULL, NULL);
 			else
-				result = grab_blob(sha1, elem->mode,
+				result = grab_blob(&oid, elem->mode,
 						   &result_size, NULL, NULL);
 		} else if (textconv) {
 			struct diff_filespec *df = alloc_filespec(elem->path);
@@ -1080,7 +1092,7 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 		for (i = 0; !is_binary && i < num_parent; i++) {
 			char *buf;
 			unsigned long size;
-			buf = grab_blob(elem->parent[i].sha1,
+			buf = grab_blob(&elem->parent[i].oid,
 					elem->parent[i].mode,
 					&size, NULL, NULL);
 			if (buffer_is_binary(buf, size))
@@ -1129,14 +1141,14 @@ static void show_patch_diff(struct combine_diff_path *elem, int num_parent,
 	for (i = 0; i < num_parent; i++) {
 		int j;
 		for (j = 0; j < i; j++) {
-			if (!hashcmp(elem->parent[i].sha1,
-				     elem->parent[j].sha1)) {
+			if (!oidcmp(&elem->parent[i].oid,
+				     &elem->parent[j].oid)) {
 				reuse_combine_diff(sline, cnt, i, j);
 				break;
 			}
 		}
 		if (i <= j)
-			combine_diff(elem->parent[i].sha1,
+			combine_diff(&elem->parent[i].oid,
 				     elem->parent[i].mode,
 				     &result_file, sline,
 				     cnt, i, num_parent, result_deleted,
@@ -1196,9 +1208,9 @@ static void show_raw_diff(struct combine_diff_path *p, int num_parent, struct re
 
 		/* Show sha1's */
 		for (i = 0; i < num_parent; i++)
-			printf(" %s", diff_unique_abbrev(p->parent[i].sha1,
+			printf(" %s", diff_unique_abbrev(p->parent[i].oid.hash,
 							 opt->abbrev));
-		printf(" %s ", diff_unique_abbrev(p->sha1, opt->abbrev));
+		printf(" %s ", diff_unique_abbrev(p->oid.hash, opt->abbrev));
 	}
 
 	if (opt->output_format & (DIFF_FORMAT_RAW | DIFF_FORMAT_NAME_STATUS)) {
@@ -1261,16 +1273,16 @@ static struct diff_filepair *combined_pair(struct combine_diff_path *p,
 	for (i = 0; i < num_parent; i++) {
 		pair->one[i].path = p->path;
 		pair->one[i].mode = p->parent[i].mode;
-		hashcpy(pair->one[i].sha1, p->parent[i].sha1);
-		pair->one[i].sha1_valid = !is_null_sha1(p->parent[i].sha1);
+		hashcpy(pair->one[i].sha1, p->parent[i].oid.hash);
+		pair->one[i].sha1_valid = !is_null_oid(&p->parent[i].oid);
 		pair->one[i].has_more_entries = 1;
 	}
 	pair->one[num_parent - 1].has_more_entries = 0;
 
 	pair->two->path = p->path;
 	pair->two->mode = p->mode;
-	hashcpy(pair->two->sha1, p->sha1);
-	pair->two->sha1_valid = !is_null_sha1(p->sha1);
+	hashcpy(pair->two->sha1, p->oid.hash);
+	pair->two->sha1_valid = !is_null_oid(&p->oid);
 	return pair;
 }
 
@@ -1397,7 +1409,8 @@ void diff_tree_combined(const unsigned char *sha1,
 		show_log(rev);
 
 		if (rev->verbose_header && opt->output_format &&
-		    opt->output_format != DIFF_FORMAT_NO_OUTPUT)
+		    opt->output_format != DIFF_FORMAT_NO_OUTPUT &&
+		    !commit_format_is_empty(rev->commit_format))
 			printf("%s%c", diff_line_prefix(opt),
 			       opt->line_termination);
 	}

@@ -120,11 +120,16 @@ static int prepare_trace_line(const char *file, int line,
 	return 1;
 }
 
+void trace_verbatim(struct trace_key *key, const void *buf, unsigned len)
+{
+	if (!trace_want(key))
+		return;
+	write_or_whine_pipe(get_trace_fd(key), buf, len, err_msg);
+}
+
 static void print_trace_line(struct trace_key *key, struct strbuf *buf)
 {
-	/* append newline if missing */
-	if (buf->len && buf->buf[buf->len - 1] != '\n')
-		strbuf_addch(buf, '\n');
+	strbuf_complete_line(buf);
 
 	write_or_whine_pipe(get_trace_fd(key), buf->buf, buf->len, err_msg);
 	strbuf_release(buf);
@@ -216,7 +221,7 @@ void trace_argv_printf(const char **argv, const char *format, ...)
 	va_end(ap);
 }
 
-void trace_strbuf(const char *key, const struct strbuf *data)
+void trace_strbuf(struct trace_key *key, const struct strbuf *data)
 {
 	trace_strbuf_fl(NULL, 0, key, data);
 }
@@ -298,13 +303,12 @@ void trace_repo_setup(const char *prefix)
 {
 	static struct trace_key key = TRACE_KEY_INIT(SETUP);
 	const char *git_work_tree;
-	char cwd[PATH_MAX];
+	char *cwd;
 
 	if (!trace_want(&key))
 		return;
 
-	if (!getcwd(cwd, PATH_MAX))
-		die("Unable to get current working directory");
+	cwd = xgetcwd();
 
 	if (!(git_work_tree = get_git_work_tree()))
 		git_work_tree = "(null)";
@@ -313,9 +317,12 @@ void trace_repo_setup(const char *prefix)
 		prefix = "(null)";
 
 	trace_printf_key(&key, "setup: git_dir: %s\n", quote_crnl(get_git_dir()));
+	trace_printf_key(&key, "setup: git_common_dir: %s\n", quote_crnl(get_git_common_dir()));
 	trace_printf_key(&key, "setup: worktree: %s\n", quote_crnl(git_work_tree));
 	trace_printf_key(&key, "setup: cwd: %s\n", quote_crnl(cwd));
 	trace_printf_key(&key, "setup: prefix: %s\n", quote_crnl(prefix));
+
+	free(cwd);
 }
 
 int trace_want(struct trace_key *key)
@@ -323,7 +330,7 @@ int trace_want(struct trace_key *key)
 	return !!get_trace_fd(key);
 }
 
-#ifdef HAVE_CLOCK_GETTIME
+#if defined(HAVE_CLOCK_GETTIME) && defined(HAVE_CLOCK_MONOTONIC)
 
 static inline uint64_t highres_nanos(void)
 {
@@ -384,7 +391,7 @@ static inline uint64_t gettimeofday_nanos(void)
  * Returns nanoseconds since the epoch (01/01/1970), for performance tracing
  * (i.e. favoring high precision over wall clock time accuracy).
  */
-inline uint64_t getnanotime(void)
+uint64_t getnanotime(void)
 {
 	static uint64_t offset;
 	if (offset > 1) {

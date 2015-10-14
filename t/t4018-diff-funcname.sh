@@ -31,6 +31,7 @@ diffpatterns="
 	cpp
 	csharp
 	fortran
+	fountain
 	html
 	java
 	matlab
@@ -52,15 +53,15 @@ do
 		echo "*.java diff=$p" >.gitattributes &&
 		test_expect_code 1 git diff --no-index \
 			A.java B.java 2>msg &&
-		! test_i18ngrep fatal msg &&
-		! test_i18ngrep error msg
+		test_i18ngrep ! fatal msg &&
+		test_i18ngrep ! error msg
 	'
 	test_expect_success "builtin $p wordRegex pattern compiles" '
 		echo "*.java diff=$p" >.gitattributes &&
 		test_expect_code 1 git diff --no-index --word-diff \
 			A.java B.java 2>msg &&
-		! test_i18ngrep fatal msg &&
-		! test_i18ngrep error msg
+		test_i18ngrep ! fatal msg &&
+		test_i18ngrep ! error msg
 	'
 done
 

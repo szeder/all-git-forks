@@ -26,8 +26,10 @@ add_file () {
 			echo "$name" >"$name" &&
 			git add "$name" &&
 			test_tick &&
-			msg_added_iso88591=$(echo "Add $name ($added $name)" | iconv -f utf-8 -t $test_encoding) &&
-			git -c "i18n.commitEncoding=$test_encoding" commit -m "$msg_added_iso88591"
+			# "git commit -m" would break MinGW, as Windows refuse to pass
+			# $test_encoding encoded parameter to git.
+			echo "Add $name ($added $name)" | iconv -f utf-8 -t $test_encoding |
+			git -c "i18n.commitEncoding=$test_encoding" commit -F -
 		done >/dev/null &&
 		git rev-parse --short --verify HEAD
 	)
@@ -526,10 +528,12 @@ test_expect_success 'diff --submodule with objects referenced by alternates' '
 		sha1_before=$(git rev-parse --short HEAD)
 		echo b >b &&
 		git add b &&
-		git commit -m b
-		sha1_after=$(git rev-parse --short HEAD)
-		echo "Submodule sub $sha1_before..$sha1_after:
-  > b" >../expected
+		git commit -m b &&
+		sha1_after=$(git rev-parse --short HEAD) &&
+		{
+			echo "Submodule sub $sha1_before..$sha1_after:" &&
+			echo "  > b"
+		} >../expected
 	) &&
 	(cd super &&
 		(cd sub &&
@@ -537,7 +541,7 @@ test_expect_success 'diff --submodule with objects referenced by alternates' '
 			git checkout origin/master
 		) &&
 		git diff --submodule > ../actual
-	)
+	) &&
 	test_cmp expected actual
 '
 
