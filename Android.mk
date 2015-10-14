@@ -378,7 +378,7 @@ git_INCLUDES := \
 	$(LOCAL_PATH)/xdiff \
 	external/zlib \
 	external/expat/lib \
-	external/openssl/include \
+	external/boringssl/src/include \
 
 git_CFLAGS := \
 	-DNO_ICONV -DNO_GETTEXT \
