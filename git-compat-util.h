@@ -97,7 +97,7 @@
 
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/stat.h>
+#include <asm/stat.h>
 #include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
