@@ -2220,6 +2220,16 @@ class P4Sync(Command, P4UserMap):
             text = regexp.sub(r'$\1$', text)
             contents = [ text ]
 
+        try:
+            relPath.decode('ascii')
+        except:
+            encoding = 'utf8'
+            if gitConfig('git-p4.pathEncoding'):
+                encoding = gitConfig('git-p4.pathEncoding')
+            relPath = relPath.decode(encoding, 'replace').encode('utf8', 'replace')
+            if self.verbose:
+                print 'Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, relPath)
+
         self.gitStream.write("M %s inline %s\n" % (git_mode, relPath))
 
         # total length...
@@ -2329,8 +2339,11 @@ class P4Sync(Command, P4UserMap):
         else:
             return "%s <a@b>" % userid
 
-    # Stream a p4 tag
     def streamTag(self, gitStream, labelName, labelDetails, commit, epoch):
+        """ Stream a p4 tag.
+        commit is either a git commit, or a fast-import mark, ":<p4commit>"
+        """
+
         if verbose:
             print "writing tag %s for commit %s" % (labelName, commit)
         gitStream.write("tag %s\n" % labelName)
@@ -2381,7 +2394,7 @@ class P4Sync(Command, P4UserMap):
             self.clientSpecDirs.update_client_spec_path_cache(files)
 
         self.gitStream.write("commit %s\n" % branch)
-#        gitStream.write("mark :%s\n" % details["change"])
+        self.gitStream.write("mark :%s\n" % details["change"])
         self.committedChanges.add(int(details["change"]))
         committer = ""
         if author not in self.users:
@@ -2500,13 +2513,19 @@ class P4Sync(Command, P4UserMap):
             if change.has_key('change'):
                 # find the corresponding git commit; take the oldest commit
                 changelist = int(change['change'])
-                gitCommit = read_pipe(["git", "rev-list", "--max-count=1",
-                     "--reverse", ":/\[git-p4:.*change = %d\]" % changelist])
-                if len(gitCommit) == 0:
-                    print "could not find git commit for changelist %d" % changelist
-                else:
-                    gitCommit = gitCommit.strip()
+                if changelist in self.committedChanges:
+                    gitCommit = ":%d" % changelist       # use a fast-import mark
                     commitFound = True
+                else:
+                    gitCommit = read_pipe(["git", "rev-list", "--max-count=1",
+                        "--reverse", ":/\[git-p4:.*change = %d\]" % changelist], ignore_error=True)
+                    if len(gitCommit) == 0:
+                        print "importing label %s: could not find git commit for changelist %d" % (name, changelist)
+                    else:
+                        commitFound = True
+                        gitCommit = gitCommit.strip()
+
+                if commitFound:
                     # Convert from p4 time format
                     try:
                         tmwhen = time.strptime(labelDetails['Update'], "%Y/%m/%d %H:%M:%S")
