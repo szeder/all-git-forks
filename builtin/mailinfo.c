@@ -39,8 +39,6 @@ struct mailinfo {
 	struct strbuf log_message;
 };
 
-#define MAX_HDR_PARSED 10
-
 static void cleanup_space(struct strbuf *sb)
 {
 	size_t pos, cnt;
@@ -290,6 +288,7 @@ static void cleanup_subject(struct mailinfo *mi, struct strbuf *subject)
 	strbuf_trim(subject);
 }
 
+#define MAX_HDR_PARSED 10
 static const char *header[MAX_HDR_PARSED] = {
 	"From","Subject","Date",
 };
