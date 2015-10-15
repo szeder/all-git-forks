@@ -7,6 +7,8 @@
 #include "utf8.h"
 #include "strbuf.h"
 
+#define MAX_BOUNDARIES 5
+
 struct mailinfo {
 	FILE *input;
 	FILE *output;
@@ -22,6 +24,8 @@ struct mailinfo {
 	int use_inbody_headers; /* defaults to 1 */
 	const char *metainfo_charset;
 
+	struct strbuf *content[MAX_BOUNDARIES];
+	struct strbuf **content_top;
 	struct strbuf charset;
 	char *message_id;
 	enum  {
@@ -35,7 +39,6 @@ struct mailinfo {
 };
 
 #define MAX_HDR_PARSED 10
-#define MAX_BOUNDARIES 5
 
 static void cleanup_space(struct strbuf *sb);
 
@@ -180,10 +183,6 @@ static int slurp_attr(const char *line, const char *name, struct strbuf *attr)
 	return 1;
 }
 
-static struct strbuf *content[MAX_BOUNDARIES];
-
-static struct strbuf **content_top = content;
-
 static void handle_content_type(struct mailinfo *mi, struct strbuf *line)
 {
 	struct strbuf *boundary = xmalloc(sizeof(struct strbuf));
@@ -191,11 +190,11 @@ static void handle_content_type(struct mailinfo *mi, struct strbuf *line)
 
 	if (slurp_attr(line->buf, "boundary=", boundary)) {
 		strbuf_insert(boundary, 0, "--", 2);
-		if (++content_top >= &content[MAX_BOUNDARIES]) {
+		if (++mi->content_top >= &mi->content[MAX_BOUNDARIES]) {
 			fprintf(stderr, "Too many boundaries to handle\n");
 			exit(1);
 		}
-		*content_top = boundary;
+		*(mi->content_top) = boundary;
 		boundary = NULL;
 	}
 	slurp_attr(line->buf, "charset=", &mi->charset);
@@ -223,10 +222,12 @@ static void handle_content_transfer_encoding(struct mailinfo *mi,
 		mi->transfer_encoding = TE_DONTCARE;
 }
 
-static int is_multipart_boundary(const struct strbuf *line)
+static int is_multipart_boundary(struct mailinfo *mi, const struct strbuf *line)
 {
-	return (((*content_top)->len <= line->len) &&
-		!memcmp(line->buf, (*content_top)->buf, (*content_top)->len));
+	struct strbuf *content_top = *(mi->content_top);
+
+	return ((content_top->len <= line->len) &&
+		!memcmp(line->buf, content_top->buf, content_top->len));
 }
 
 static void cleanup_subject(struct mailinfo *mi, struct strbuf *subject)
@@ -799,7 +800,7 @@ static void handle_filter(struct mailinfo *mi, struct strbuf *line)
 static int find_boundary(struct mailinfo *mi, struct strbuf *line)
 {
 	while (!strbuf_getline(line, mi->input, '\n')) {
-		if (*content_top && is_multipart_boundary(line))
+		if (*(mi->content_top) && is_multipart_boundary(mi, line))
 			return 1;
 	}
 	return 0;
@@ -811,18 +812,18 @@ static int handle_boundary(struct mailinfo *mi, struct strbuf *line)
 
 	strbuf_addch(&newline, '\n');
 again:
-	if (line->len >= (*content_top)->len + 2 &&
-	    !memcmp(line->buf + (*content_top)->len, "--", 2)) {
+	if (line->len >= (*(mi->content_top))->len + 2 &&
+	    !memcmp(line->buf + (*(mi->content_top))->len, "--", 2)) {
 		/* we hit an end boundary */
 		/* pop the current boundary off the stack */
-		strbuf_release(*content_top);
-		free(*content_top);
-		*content_top = NULL;
+		strbuf_release(*(mi->content_top));
+		free(*(mi->content_top));
+		*(mi->content_top) = NULL;
 
 		/* technically won't happen as is_multipart_boundary()
 		   will fail first.  But just in case..
 		 */
-		if (--content_top < content) {
+		if (--mi->content_top < mi->content) {
 			fprintf(stderr, "Detected mismatched boundaries, "
 					"can't recover\n");
 			exit(1);
@@ -857,14 +858,14 @@ static void handle_body(struct mailinfo *mi, struct strbuf *line)
 	struct strbuf prev = STRBUF_INIT;
 
 	/* Skip up to the first boundary */
-	if (*content_top) {
+	if (*(mi->content_top)) {
 		if (!find_boundary(mi, line))
 			goto handle_body_out;
 	}
 
 	do {
 		/* process any boundary lines */
-		if (*content_top && is_multipart_boundary(line)) {
+		if (*(mi->content_top) && is_multipart_boundary(mi, line)) {
 			/* flush any leftover */
 			if (prev.len) {
 				handle_filter(mi, &prev);
@@ -1028,6 +1029,7 @@ static void setup_mailinfo(struct mailinfo *mi)
 	strbuf_init(&mi->charset, 0);
 	mi->header_stage = 1;
 	mi->use_inbody_headers = 1;
+	mi->content_top = mi->content;
 	git_config(git_mailinfo_config, &mi);
 }
 
@@ -1046,6 +1048,11 @@ static void clear_mailinfo(struct mailinfo *mi)
 	for (i = 0; mi->s_hdr_data[i]; i++)
 		strbuf_release(mi->s_hdr_data[i]);
 	free(mi->s_hdr_data);
+
+	while (mi->content < mi->content_top) {
+		free(*(mi->content_top));
+		mi->content_top--;
+	}
 }
 
 static const char mailinfo_usage[] =
