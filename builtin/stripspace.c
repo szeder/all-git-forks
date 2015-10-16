@@ -14,8 +14,8 @@ static void comment_lines(struct strbuf *buf)
 }
 
 static const char * const stripspace_usage[] = {
-	N_("git stripspace [-s | --strip-comments] < input"),
-	N_("git stripspace [-c | --comment-lines] < input"),
+	N_("git stripspace [-s | --strip-comments] [--count-lines] < input"),
+	N_("git stripspace [-c | --comment-lines] [--count-lines] < input"),
 	NULL
 };
 
@@ -29,6 +29,7 @@ int cmd_stripspace(int argc, const char **argv, const char *prefix)
 {
 	struct strbuf buf = STRBUF_INIT;
 	enum stripspace_mode mode = STRIP_DEFAULT;
+	int count_lines = 0;
 
 	const struct option options[] = {
 		OPT_CMDMODE('s', "strip-comments", &mode,
@@ -37,6 +38,7 @@ int cmd_stripspace(int argc, const char **argv, const char *prefix)
 		OPT_CMDMODE('c', "comment-lines", &mode,
 			    N_("prepend comment character and blank to each line"),
 			    COMMENT_LINES),
+		OPT_BOOL(0, "count-lines", &count_lines, N_("print line count")),
 		OPT_END()
 	};
 
@@ -55,7 +57,17 @@ int cmd_stripspace(int argc, const char **argv, const char *prefix)
 	else
 		comment_lines(&buf);
 
-	write_or_die(1, buf.buf, buf.len);
+	if (!count_lines)
+		write_or_die(1, buf.buf, buf.len);
+	else {
+		size_t i, lines;
+
+		for (i = lines = 0; i < buf.len; i++) {
+			if (buf.buf[i] == '\n')
+				lines++;
+		}
+		printf("%lu\n", (unsigned long)lines);
+	}
 	strbuf_release(&buf);
 	return 0;
 }
