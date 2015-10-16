@@ -13,6 +13,7 @@
 #include "utf8.h"
 #include "git-compat-util.h"
 #include "version.h"
+#include "wt-status.h"
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
 
@@ -55,6 +56,10 @@ static struct {
 	{ "color" },
 	{ "align" },
 	{ "end" },
+	{ "if" },
+	{ "then" },
+	{ "else" },
+	{ "path" },
 };
 
 #define REF_FORMATTING_STATE_INIT  { 0, NULL }
@@ -69,10 +74,19 @@ struct contents {
 	struct object_id oid;
 };
 
+struct if_then_else {
+	const char *if_equals,
+		*not_equals;
+	unsigned int if_atom : 1,
+		then_atom : 1,
+		else_atom : 1,
+		condition_satisfied : 1;
+};
+
 struct ref_formatting_stack {
 	struct ref_formatting_stack *prev;
 	struct strbuf output;
-	void (*at_end)(struct ref_formatting_stack *stack);
+	void (*at_end)(struct ref_formatting_stack **stack);
 	void *at_end_data;
 };
 
@@ -216,13 +230,14 @@ static void pop_stack_element(struct ref_formatting_stack **stack)
 	*stack = prev;
 }
 
-static void end_align_handler(struct ref_formatting_stack *stack)
+static void end_align_handler(struct ref_formatting_stack **stack)
 {
-	struct align *align = (struct align *)stack->at_end_data;
+	struct ref_formatting_stack *cur = *stack;
+	struct align *align = (struct align *)cur->at_end_data;
 	struct strbuf s = STRBUF_INIT;
 
-	strbuf_utf8_align(&s, align->position, align->width, stack->output.buf);
-	strbuf_swap(&stack->output, &s);
+	strbuf_utf8_align(&s, align->position, align->width, cur->output.buf);
+	strbuf_swap(&cur->output, &s);
 	strbuf_release(&s);
 }
 
@@ -236,6 +251,101 @@ static void align_atom_handler(struct atom_value *atomv, struct ref_formatting_s
 	new->at_end_data = &atomv->u.align;
 }
 
+static void if_then_else_handler(struct ref_formatting_stack **stack)
+{
+	struct ref_formatting_stack *cur = *stack;
+	struct ref_formatting_stack *prev = cur->prev;
+	struct if_then_else *if_then_else = (struct if_then_else *)cur->at_end_data;
+
+	/*
+	 * If the 'if' condition is satisfied, then if there exists an
+	 * 'else' atom drop the 'else' atom's state. Else we swap the
+	 * buffer of the 'else' atom with the previous state and drop
+	 * that state. If the condition is satisfied and no 'else' atom
+	 * exists, then just clear the buffer.
+	 */
+	if (if_then_else->condition_satisfied && if_then_else->else_atom) {
+		strbuf_reset(&cur->output);
+		pop_stack_element(&cur);
+	} else if (if_then_else->else_atom) {
+		strbuf_swap(&cur->output, &prev->output);
+		strbuf_reset(&cur->output);
+		pop_stack_element(&cur);
+	} else if (!if_then_else->condition_satisfied)
+		strbuf_reset(&cur->output);
+	*stack = cur;
+	free(if_then_else);
+}
+
+static void if_atom_handler(struct atom_value *atomv, struct ref_formatting_state *state)
+{
+	struct ref_formatting_stack *new;
+	struct if_then_else *if_then_else = xcalloc(sizeof(struct if_then_else), 1);
+	const char *valp;
+
+	if_then_else->if_atom = 1;
+	if (skip_prefix(atomv->s, "equals=", &valp))
+		if_then_else->if_equals = valp;
+	else if (skip_prefix(atomv->s, "notequals=", &valp))
+		if_then_else->not_equals = valp;
+	else if (atomv->s[0])
+		die(_("format: unknown format if:%s"), atomv->s);
+
+	push_stack_element(&state->stack);
+	new = state->stack;
+	new->at_end = if_then_else_handler;
+	new->at_end_data = if_then_else;
+}
+
+static int is_empty(const char * s){
+	while (*s != '\0') {
+		if (!isspace(*s))
+			return 0;
+		s++;
+	}
+	return 1;
+}
+
+static void then_atom_handler(struct atom_value *atomv, struct ref_formatting_state *state)
+{
+	struct ref_formatting_stack *cur = state->stack;
+	struct if_then_else *if_then_else = (struct if_then_else *)cur->at_end_data;
+
+	if (!if_then_else)
+		die(_("format: %%(then) atom used without an %%(if) atom"));
+	if_then_else->then_atom = 1;
+
+	/*
+	 * If the 'equals' or 'notequals' attribute is used then
+	 * perform the required comparison. If not, only non-empty
+	 * strings satisfy the 'if' condition.
+	 */
+	if (if_then_else->if_equals) {
+		if (!strcmp(if_then_else->if_equals, cur->output.buf))
+			if_then_else->condition_satisfied = 1;
+	} else 	if (if_then_else->not_equals) {
+		if (strcmp(if_then_else->not_equals, cur->output.buf))
+			if_then_else->condition_satisfied = 1;
+	} else if (cur->output.len && !is_empty(cur->output.buf))
+		if_then_else->condition_satisfied = 1;
+	strbuf_reset(&cur->output);
+}
+
+static void else_atom_handler(struct atom_value *atomv, struct ref_formatting_state *state)
+{
+	struct ref_formatting_stack *prev = state->stack;
+	struct if_then_else *if_then_else = (struct if_then_else *)state->stack->at_end_data;
+
+	if (!if_then_else)
+		die(_("format: %%(else) atom used without an %%(if) atom"));
+	if (!if_then_else->then_atom)
+		die(_("format: %%(else) atom used without a %%(then) atom"));
+	if_then_else->else_atom = 1;
+	push_stack_element(&state->stack);
+	state->stack->at_end_data = prev->at_end_data;
+	state->stack->at_end = prev->at_end;
+}
+
 static void end_atom_handler(struct atom_value *atomv, struct ref_formatting_state *state)
 {
 	struct ref_formatting_stack *current = state->stack;
@@ -243,14 +353,17 @@ static void end_atom_handler(struct atom_value *atomv, struct ref_formatting_sta
 
 	if (!current->at_end)
 		die(_("format: %%(end) atom used without corresponding atom"));
-	current->at_end(current);
+	current->at_end(&state->stack);
+
+	/*  Stack may have been popped, hence reset the current pointer */
+	current = state->stack;
 
 	/*
 	 * Perform quote formatting when the stack element is that of
 	 * a supporting atom. If nested then perform quote formatting
 	 * only on the topmost supporting atom.
 	 */
-	if (!state->stack->prev->prev) {
+	if (!current->prev->prev) {
 		quote_formatting(&s, current->output.buf, state->quote_style);
 		strbuf_swap(&current->output, &s);
 	}
@@ -342,12 +455,35 @@ static void *get_obj(const unsigned char *sha1, struct object **obj, unsigned lo
 static int grab_objectname(const char *name, const unsigned char *sha1,
 			    struct atom_value *v)
 {
-	if (!strcmp(name, "objectname")) {
-		v->s = xstrdup(sha1_to_hex(sha1));
-		return 1;
-	}
-	if (!strcmp(name, "objectname:short")) {
-		v->s = xstrdup(find_unique_abbrev(sha1, DEFAULT_ABBREV));
+	const char *p;
+
+	if (match_atom_name(name, "objectname", &p)) {
+		struct strbuf **s, **to_free;
+		int length = DEFAULT_ABBREV;
+
+		/*  No arguments given, copy the entire objectname */
+		if (!p) {
+			v->s = xstrdup(sha1_to_hex(sha1));
+		} else {
+			s = to_free = strbuf_split_str(p, ',', 0);
+			while (*s) {
+				/*  Strip trailing comma */
+				if (s[1])
+					strbuf_setlen(s[0], s[0]->len - 1);
+				if (!strtoul_ui(s[0]->buf, 10, (unsigned int *)&length))
+					;
+				/*  The `short` argument uses the default length */
+				else if (!strcmp("short", s[0]->buf))
+					;
+				else
+					die(_("format: unknown option entered with objectname:%s"), s[0]->buf);
+				s++;
+			}
+			if (length < MINIMUM_ABBREV)
+				length = MINIMUM_ABBREV;
+			v->s = xstrdup(find_unique_abbrev(sha1, length));
+			free(to_free);
+		}
 		return 1;
 	}
 	return 0;
@@ -763,6 +899,37 @@ static inline char *copy_advance(char *dst, const char *src)
 	return dst;
 }
 
+static char *get_head_description(void)
+{
+	struct strbuf desc = STRBUF_INIT;
+	struct wt_status_state state;
+	memset(&state, 0, sizeof(state));
+	wt_status_get_state(&state, 1);
+	if (state.rebase_in_progress ||
+	    state.rebase_interactive_in_progress)
+		strbuf_addf(&desc, _("(no branch, rebasing %s)"),
+			    state.branch);
+	else if (state.bisect_in_progress)
+		strbuf_addf(&desc, _("(no branch, bisect started on %s)"),
+			    state.branch);
+	else if (state.detached_from) {
+		/* TRANSLATORS: make sure these match _("HEAD detached at ")
+		   and _("HEAD detached from ") in wt-status.c */
+		if (state.detached_at)
+			strbuf_addf(&desc, _("(HEAD detached at %s)"),
+				state.detached_from);
+		else
+			strbuf_addf(&desc, _("(HEAD detached from %s)"),
+				state.detached_from);
+	}
+	else
+		strbuf_addstr(&desc, _("(no branch)"));
+	free(state.branch);
+	free(state.onto);
+	free(state.detached_from);
+	return strbuf_detach(&desc, NULL);
+}
+
 /*
  * Parse the object referred by ref, and grab needed value.
  */
@@ -801,9 +968,11 @@ static void populate_value(struct ref_array_item *ref)
 			name++;
 		}
 
-		if (starts_with(name, "refname"))
+		if (starts_with(name, "refname")) {
 			refname = ref->refname;
-		else if (starts_with(name, "symref"))
+			if (ref->kind & FILTER_REFS_DETACHED_HEAD)
+				refname = get_head_description();
+		} else if (starts_with(name, "symref"))
 			refname = ref->symref ? ref->symref : "";
 		else if (starts_with(name, "upstream")) {
 			const char *branch_name;
@@ -903,6 +1072,33 @@ static void populate_value(struct ref_array_item *ref)
 		} else if (!strcmp(name, "end")) {
 			v->handler = end_atom_handler;
 			continue;
+		} else if (match_atom_name(name, "if", &valp)) {
+			v->handler = if_atom_handler;
+			if (valp)
+				v->s = xstrdup(valp);
+			continue;
+		} else if (!strcmp(name, "then")) {
+			v->handler = then_atom_handler;
+			continue;
+		} else if (!strcmp(name, "else")) {
+			v->handler = else_atom_handler;
+			continue;
+		} else if (match_atom_name(name, "path", &valp)) {
+			const char *sp, *ep;
+
+			if (ref->kind & FILTER_REFS_DETACHED_HEAD)
+				continue;
+
+			sp = strchr(ref->refname, '/');
+			ep = strchr(++sp, '/');
+
+			if (!valp)
+				sp = ref->refname;
+			else if (strcmp(valp, "short"))
+				die(_("format: invalid value given path:%s"), valp);
+
+			v->s = xstrndup(sp, ep - sp);
+			continue;
 		} else
 			continue;
 
@@ -919,8 +1115,10 @@ static void populate_value(struct ref_array_item *ref)
 				  starts_with(name, "push"))) {
 
 				if (stat_tracking_info(branch, &num_ours,
-						       &num_theirs, NULL))
+						       &num_theirs, NULL)) {
+					v->s = xstrdup("[gone]");
 					continue;
+				}
 
 				if (!num_ours && !num_theirs)
 					v->s = "";
@@ -1526,10 +1724,10 @@ static void append_literal(const char *cp, const char *ep, struct ref_formatting
 	}
 }
 
-void show_ref_array_item(struct ref_array_item *info, const char *format, int quote_style)
+void format_ref_array_item(struct ref_array_item *info, const char *format,
+			   int quote_style, struct strbuf *final_buf)
 {
 	const char *cp, *sp, *ep;
-	struct strbuf *final_buf;
 	struct ref_formatting_state state = REF_FORMATTING_STATE_INIT;
 
 	state.quote_style = quote_style;
@@ -1559,9 +1757,17 @@ void show_ref_array_item(struct ref_array_item *info, const char *format, int qu
 	}
 	if (state.stack->prev)
 		die(_("format: %%(end) atom missing"));
-	final_buf = &state.stack->output;
-	fwrite(final_buf->buf, 1, final_buf->len, stdout);
+	strbuf_addbuf(final_buf, &state.stack->output);
 	pop_stack_element(&state.stack);
+}
+
+void show_ref_array_item(struct ref_array_item *info, const char *format, int quote_style)
+{
+	struct strbuf final_buf = STRBUF_INIT;
+
+	format_ref_array_item(info, format, quote_style, &final_buf);
+	fwrite(final_buf.buf, 1, final_buf.len, stdout);
+	strbuf_release(&final_buf);
 	putchar('\n');
 }
 
