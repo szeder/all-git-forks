@@ -9,8 +9,8 @@ git-stripspace - Remove unnecessary whitespace
 SYNOPSIS
 --------
 [verse]
-'git stripspace' [-s | --strip-comments] < input
-'git stripspace' [-c | --comment-lines] < input
+'git stripspace' [-s | --strip-comments] [--count-lines] < input
+'git stripspace' [-c | --comment-lines] [--count-lines] < input
 
 DESCRIPTION
 -----------
@@ -43,6 +43,10 @@ OPTIONS
 	Prepend comment character and blank to each line. Lines will automatically
 	be terminated with a newline. On empty lines, only the comment character
 	will be prepended.
+
+--count-lines::
+	Output the number of resulting lines after stripping. This is equivalent
+	to calling 'git stripspace | wc -l'.
 
 EXAMPLES
 --------
@@ -86,6 +90,12 @@ Use 'git stripspace --strip-comments' to obtain:
 |explaining lots of stuff.$
 |$
 |The end.$
+---------
+
+Use 'git stripspace --count-lines' to obtain:
+
+---------
+5
 ---------
 
 GIT

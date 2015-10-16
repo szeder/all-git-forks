@@ -438,4 +438,40 @@ test_expect_success 'avoid SP-HT sequence in commented line' '
 	test_cmp expect actual
 '
 
+test_expect_success '--count-lines with newline only' '
+	printf "0\n" >expect &&
+	printf "\n" | git stripspace --count-lines >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--count-lines with single line' '
+	printf "1\n" >expect &&
+	printf "foo\n" | git stripspace --count-lines >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--count-lines with single line preceeded by empty line' '
+	printf "1\n" >expect &&
+	printf "\nfoo" | git stripspace --count-lines >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--count-lines with single line followed by empty line' '
+	printf "1\n" >expect &&
+	printf "foo\n\n" | git stripspace --count-lines >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--count-lines with multiple lines and consecutive newlines' '
+	printf "5\n" >expect &&
+	printf "\none\n\n\nthree\nfour\nfive\n" | git stripspace --count-lines >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '--count-lines combined with --strip-comments' '
+	printf "5\n" >expect &&
+	printf "\n# stripped\none\n#stripped\n\nthree\nfour\nfive\n" | git stripspace -s --count-lines >actual &&
+	test_cmp expect actual
+'
+
 test_done
