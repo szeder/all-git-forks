@@ -788,10 +788,10 @@ static void handle_filter(struct strbuf *line, int *filter_stage, int *header_st
 	}
 }
 
-static int find_boundary(void)
+static int find_boundary(struct strbuf *line)
 {
-	while (!strbuf_getline(&line, fin, '\n')) {
-		if (*content_top && is_multipart_boundary(&line))
+	while (!strbuf_getline(line, fin, '\n')) {
+		if (*content_top && is_multipart_boundary(line))
 			return 1;
 	}
 	return 0;
@@ -823,7 +823,7 @@ again:
 		strbuf_release(&newline);
 
 		/* skip to the next boundary */
-		if (!find_boundary())
+		if (!find_boundary(line))
 			return 0;
 		goto again;
 	}
@@ -852,7 +852,7 @@ static void handle_body(struct strbuf *line)
 
 	/* Skip up to the first boundary */
 	if (*content_top) {
-		if (!find_boundary())
+		if (!find_boundary(line))
 			goto handle_body_out;
 	}
 
