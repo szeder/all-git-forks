@@ -47,6 +47,7 @@ static int task_finished(int result,
 int main(int argc, char **argv)
 {
 	struct child_process proc = CHILD_PROCESS_INIT;
+	int jobs;
 
 	if (argc < 3)
 		return 1;
@@ -61,12 +62,15 @@ int main(int argc, char **argv)
 	if (!strcmp(argv[1], "run-command"))
 		exit(run_command(&proc));
 
-	if (!strcmp(argv[1], "run-command-parallel-4"))
-		exit(run_processes_parallel(4, parallel_next,
+	jobs = atoi(argv[2]);
+	proc.argv = (const char **)argv+3;
+
+	if (!strcmp(argv[1], "run-command-parallel"))
+		exit(run_processes_parallel(jobs, parallel_next,
 					    NULL, NULL, &proc));
 
-	if (!strcmp(argv[1], "run-command-abort-3"))
-		exit(run_processes_parallel(3, parallel_next,
+	if (!strcmp(argv[1], "run-command-abort"))
+		exit(run_processes_parallel(jobs, parallel_next,
 					    NULL, task_finished, &proc));
 
 	fprintf(stderr, "check usage\n");
