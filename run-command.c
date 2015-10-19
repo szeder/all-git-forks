@@ -956,6 +956,7 @@ static struct parallel_processes *pp_init(int n,
 
 	pp->nr_processes = 0;
 	pp->output_owner = 0;
+	pp->shutdown = 0;
 	pp->children = xcalloc(n, sizeof(*pp->children));
 	pp->pfd = xcalloc(n, sizeof(*pp->pfd));
 	strbuf_init(&pp->buffered_output, 0);
