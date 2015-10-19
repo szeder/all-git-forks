@@ -1346,7 +1346,7 @@ static int parse_mail(struct am_state *state, const char *mail)
 
 	strbuf_addstr(&msg, "\n\n");
 	strbuf_addbuf(&msg, &mi.log_message);
-	stripspace(&msg, 0);
+	strbuf_stripspace(&msg, 0);
 
 	if (state->signoff)
 		am_signoff(&msg);
