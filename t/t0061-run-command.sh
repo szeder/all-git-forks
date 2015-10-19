@@ -67,4 +67,18 @@ test_expect_success 'run_command runs in parallel' '
 	test_cmp expect actual
 '
 
+cat >expect <<-EOF
+preloaded output of a child
+asking for a quick stop
+preloaded output of a child
+asking for a quick stop
+preloaded output of a child
+asking for a quick stop
+EOF
+
+test_expect_success 'run_command is asked to abort gracefully' '
+	test-run-command run-command-abort-3 false 2>actual &&
+	test_cmp expect actual
+'
+
 test_done

@@ -34,6 +34,16 @@ static int parallel_next(void** task_cb,
 	return 1;
 }
 
+static int task_finished(int result,
+			 struct child_process *cp,
+			 struct strbuf *err,
+			 void *pp_cb,
+			 void *pp_task_cb)
+{
+	strbuf_addf(err, "asking for a quick stop\n");
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	struct child_process proc = CHILD_PROCESS_INIT;
@@ -54,6 +64,10 @@ int main(int argc, char **argv)
 	if (!strcmp(argv[1], "run-command-parallel-4"))
 		exit(run_processes_parallel(4, parallel_next,
 					    NULL, NULL, &proc));
+
+	if (!strcmp(argv[1], "run-command-abort-3"))
+		exit(run_processes_parallel(3, parallel_next,
+					    NULL, task_finished, &proc));
 
 	fprintf(stderr, "check usage\n");
 	return 1;
