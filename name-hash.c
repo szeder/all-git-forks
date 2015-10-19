@@ -66,6 +66,7 @@ static struct dir_entry *hash_dir_entry(struct index_state *istate,
 		dir = xcalloc(1, sizeof(struct dir_entry));
 		hashmap_entry_init(dir, memihash(ce->name, namelen));
 		dir->namelen = namelen;
+		add_ce_ref(ce);
 		dir->ce = ce;
 		hashmap_add(&istate->dir_hash, dir);
 
@@ -92,7 +93,9 @@ static void remove_dir_entry(struct index_state *istate, struct cache_entry *ce)
 	struct dir_entry *dir = hash_dir_entry(istate, ce, ce_namelen(ce));
 	while (dir && !(--dir->nr)) {
 		struct dir_entry *parent = dir->parent;
-		hashmap_remove(&istate->dir_hash, dir, NULL);
+		struct dir_entry *removed = hashmap_remove(&istate->dir_hash, dir, NULL);
+		assert(removed == dir);
+		drop_ce_ref(dir->ce);
 		free(dir);
 		dir = parent;
 	}
@@ -105,6 +108,7 @@ static void hash_index_entry(struct index_state *istate, struct cache_entry *ce)
 	ce->ce_flags |= CE_HASHED;
 	hashmap_entry_init(ce, memihash(ce->name, ce_namelen(ce)));
 	hashmap_add(&istate->name_hash, ce);
+	add_ce_ref(ce);
 
 	if (ignore_case)
 		add_dir_entry(istate, ce);
@@ -147,6 +151,7 @@ void remove_name_hash(struct index_state *istate, struct cache_entry *ce)
 		return;
 	ce->ce_flags &= ~CE_HASHED;
 	hashmap_remove(&istate->name_hash, ce, ce);
+	drop_ce_ref(ce);
 
 	if (ignore_case)
 		remove_dir_entry(istate, ce);
