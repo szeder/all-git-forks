@@ -15,7 +15,6 @@
 #include "lockfile.h"
 #include "parse-options.h"
 #include "run-command.h"
-#include "sigchain.h"
 #include "argv-array.h"
 #include "commit.h"
 
