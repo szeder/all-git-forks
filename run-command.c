@@ -1077,7 +1077,7 @@ static int pp_collect_finished(struct parallel_processes *pp)
 	while (pp->nr_processes > 0) {
 		pid = waitpid(-1, &wait_status, WNOHANG);
 		if (pid == 0)
-			return 0;
+			return result;
 
 		if (pid < 0)
 			die_errno("wait");
