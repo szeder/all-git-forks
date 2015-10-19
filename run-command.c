@@ -1010,6 +1010,8 @@ static int pp_start_one(struct parallel_processes *pp)
 	if (i == pp->max_processes)
 		die("BUG: bookkeeping is hard");
 
+	child_process_init(&pp->children[i].process);
+
 	if (!pp->get_next_task(&pp->children[i].data,
 			       &pp->children[i].process,
 			       &pp->children[i].err,
