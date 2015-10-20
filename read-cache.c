@@ -52,7 +52,9 @@ static const char *alternate_index_output;
 
 static void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce)
 {
+	/* istate->cache[nr] is assumed to not hold a live value */
 	istate->cache[nr] = ce;
+	add_ce_ref(ce);
 	add_name_hash(istate, ce);
 }
 
@@ -62,7 +64,7 @@ static void replace_index_entry(struct index_state *istate, int nr, struct cache
 
 	replace_index_entry_in_base(istate, old, ce);
 	remove_name_hash(istate, old);
-	free(old);
+	drop_ce_ref(old);
 	set_index_entry(istate, nr, ce);
 	ce->ce_flags |= CE_UPDATE_IN_BASE;
 	istate->cache_changed |= CE_ENTRY_CHANGED;
@@ -75,6 +77,7 @@ void rename_index_entry_at(struct index_state *istate, int nr, const char *new_n
 
 	new = xmalloc(cache_entry_size(namelen));
 	copy_cache_entry(new, old);
+	new->ref_count = 0;
 	new->ce_flags &= ~CE_HASHED;
 	new->ce_namelen = namelen;
 	new->index = 0;
@@ -1426,6 +1429,7 @@ static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *on
 {
 	struct cache_entry *ce = xmalloc(cache_entry_size(len));
 
+	ce->ref_count = 0;
 	ce->ce_stat_data.sd_ctime.sec = get_be32(&ondisk->ctime.sec);
 	ce->ce_stat_data.sd_mtime.sec = get_be32(&ondisk->mtime.sec);
 	ce->ce_stat_data.sd_ctime.nsec = get_be32(&ondisk->ctime.nsec);

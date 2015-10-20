@@ -606,8 +606,10 @@ static int unpack_nondirectories(int n, unsigned long mask,
 					o);
 		for (i = 0; i < n; i++) {
 			struct cache_entry *ce = src[i + o->merge];
-			if (ce != o->df_conflict_entry)
-				free(ce);
+			if (ce != o->df_conflict_entry) {
+				drop_ce_ref(ce);
+				src[i + o->merge] = NULL;
+			}
 		}
 		return rc;
 	}
