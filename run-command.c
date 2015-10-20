@@ -966,6 +966,7 @@ static struct parallel_processes *pp_init(int n,
 
 	pp->nr_processes = 0;
 	pp->output_owner = 0;
+	pp->shutdown = 0;
 	pp->children = xcalloc(n, sizeof(*pp->children));
 	pp->pfd = xcalloc(n, sizeof(*pp->pfd));
 	strbuf_init(&pp->buffered_output, 0);
@@ -988,6 +989,12 @@ static void pp_cleanup(struct parallel_processes *pp)
 
 	free(pp->children);
 	free(pp->pfd);
+
+	/*
+	 * When get_next_task added messages to the buffer in its last
+	 * iteration, the buffered output is non empty.
+	 */
+	fputs(pp->buffered_output.buf, stderr);
 	strbuf_release(&pp->buffered_output);
 
 	sigchain_pop_common();
@@ -1020,11 +1027,16 @@ static int pp_start_one(struct parallel_processes *pp)
 	if (i == pp->max_processes)
 		die("BUG: bookkeeping is hard");
 
+	child_process_init(&pp->children[i].process);
+
 	if (!pp->get_next_task(&pp->children[i].data,
 			       &pp->children[i].process,
 			       &pp->children[i].err,
-			       pp->data))
+			       pp->data)) {
+		strbuf_addbuf(&pp->buffered_output, &pp->children[i].err);
+		strbuf_reset(&pp->children[i].err);
 		return 1;
+	}
 
 	if (start_command(&pp->children[i].process)) {
 		int code = pp->start_failure(&pp->children[i].process,
@@ -1087,7 +1099,7 @@ static int pp_collect_finished(struct parallel_processes *pp)
 	while (pp->nr_processes > 0) {
 		pid = waitpid(-1, &wait_status, WNOHANG);
 		if (pid == 0)
-			return 0;
+			return result;
 
 		if (pid < 0)
 			die_errno("wait");
