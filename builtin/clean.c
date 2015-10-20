@@ -466,14 +466,14 @@ static int parse_choice(struct menu_stuff *menu_stuff,
 	int i;
 
 	if (is_single) {
-		choice_list = strbuf_split_max(&input, '\n', 0);
+		choice_list = strbuf_split(&input, '\n');
 	} else {
 		char *p = input.buf;
 		do {
 			if (*p == ',')
 				*p = ' ';
 		} while (*p++);
-		choice_list = strbuf_split_max(&input, ' ', 0);
+		choice_list = strbuf_split(&input, ' ');
 	}
 
 	for (ptr = choice_list; *ptr; ptr++) {
@@ -687,7 +687,7 @@ static int filter_by_patterns_cmd(void)
 
 		memset(&dir, 0, sizeof(dir));
 		el = add_exclude_list(&dir, EXC_CMDL, "manual exclude");
-		ignore_list = strbuf_split_max(&confirm, ' ', 0);
+		ignore_list = strbuf_split(&confirm, ' ');
 
 		for (i = 0; ignore_list[i]; i++) {
 			strbuf_trim(ignore_list[i]);
