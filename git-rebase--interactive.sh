@@ -120,9 +120,9 @@ mark_action_done () {
 	sed -e 1q < "$todo" >> "$done"
 	sed -e 1d < "$todo" >> "$todo".new
 	mv -f "$todo".new "$todo"
-	new_count=$(git stripspace --strip-comments <"$done" | wc -l)
+	new_count=$(git stripspace --strip-comments --count-lines <"$done")
 	echo $new_count >"$msgnum"
-	total=$(($new_count + $(git stripspace --strip-comments <"$todo" | wc -l)))
+	total=$(($new_count + $(git stripspace --strip-comments --count-lines <"$todo")))
 	echo $total >"$end"
 	if test "$last_count" != "$new_count"
 	then
@@ -1243,7 +1243,7 @@ test -s "$todo" || echo noop >> "$todo"
 test -n "$autosquash" && rearrange_squash "$todo"
 test -n "$cmd" && add_exec_commands "$todo"
 
-todocount=$(git stripspace --strip-comments <"$todo" | wc -l)
+todocount=$(git stripspace --strip-comments --count-lines <"$todo")
 todocount=${todocount##* }
 
 cat >>"$todo" <<EOF
