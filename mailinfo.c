@@ -729,6 +729,8 @@ static int is_rfc2822_header(const struct strbuf *line)
 
 static int read_one_header_line(struct strbuf *line, FILE *in)
 {
+	struct strbuf continuation = STRBUF_INIT;
+
 	/* Get the first part of the line. */
 	if (strbuf_getline(line, in, '\n'))
 		return 0;
@@ -750,7 +752,6 @@ static int read_one_header_line(struct strbuf *line, FILE *in)
 	 */
 	for (;;) {
 		int peek;
-		struct strbuf continuation = STRBUF_INIT;
 
 		peek = fgetc(in); ungetc(peek, in);
 		if (peek != ' ' && peek != '\t')
@@ -761,6 +762,7 @@ static int read_one_header_line(struct strbuf *line, FILE *in)
 		strbuf_rtrim(&continuation);
 		strbuf_addbuf(line, &continuation);
 	}
+	strbuf_release(&continuation);
 
 	return 1;
 }
