@@ -979,6 +979,12 @@ static void pp_cleanup(struct parallel_processes *pp)
 
 	free(pp->children);
 	free(pp->pfd);
+
+	/*
+	 * When get_next_task added messages to the buffer in its last
+	 * iteration, the buffered output is non empty.
+	 */
+	fputs(pp->buffered_output.buf, stderr);
 	strbuf_release(&pp->buffered_output);
 
 	sigchain_pop_common();
@@ -1016,8 +1022,11 @@ static int pp_start_one(struct parallel_processes *pp)
 	if (!pp->get_next_task(&pp->children[i].data,
 			       &pp->children[i].process,
 			       &pp->children[i].err,
-			       pp->data))
+			       pp->data)) {
+		strbuf_addbuf(&pp->buffered_output, &pp->children[i].err);
+		strbuf_reset(&pp->children[i].err);
 		return 1;
+	}
 
 	if (start_command(&pp->children[i].process)) {
 		int code = pp->start_failure(&pp->children[i].process,

@@ -34,6 +34,15 @@ static int parallel_next(void** task_cb,
 	return 1;
 }
 
+static int no_job(void** task_cb,
+		  struct child_process *cp,
+		  struct strbuf *err,
+		  void *cb)
+{
+	strbuf_addf(err, "no further jobs available\n");
+	return 0;
+}
+
 static int task_finished(int result,
 			 struct child_process *cp,
 			 struct strbuf *err,
@@ -71,6 +80,10 @@ int main(int argc, char **argv)
 
 	if (!strcmp(argv[1], "run-command-abort"))
 		exit(run_processes_parallel(jobs, parallel_next,
+					    NULL, task_finished, &proc));
+
+	if (!strcmp(argv[1], "run-command-no-jobs"))
+		exit(run_processes_parallel(jobs, no_job,
 					    NULL, task_finished, &proc));
 
 	fprintf(stderr, "check usage\n");
