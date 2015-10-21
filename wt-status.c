@@ -838,7 +838,7 @@ void wt_status_add_cut_line(FILE *fp)
 	struct strbuf buf = STRBUF_INIT;
 
 	fprintf(fp, "%c %s", comment_line_char, cut_line);
-	strbuf_add_commented_lines(&buf, explanation, strlen(explanation));
+	strbuf_addstr_commented_lines(&buf, explanation);
 	fputs(buf.buf, fp);
 	strbuf_release(&buf);
 }
