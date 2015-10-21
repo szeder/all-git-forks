@@ -240,6 +240,25 @@ extern void strbuf_splice(struct strbuf *, size_t pos, size_t len,
  */
 extern void strbuf_add_commented_lines(struct strbuf *out, const char *buf, size_t size);
 
+/**
+ * Add the contents of another buffer at the end of the buffer. Each line will
+ * be prepended by a comment character and a blank.
+ */
+static inline void strbuf_addbuf_commented_lines(struct strbuf *sb1,
+						 const struct strbuf *sb2)
+{
+	strbuf_add_commented_lines(sb1, sb2->buf, sb2->len);
+}
+
+/**
+ * Add a NUL-terminated string to the buffer. Each line will be prepended by a
+ * comment character and a blank.
+ */
+static inline void strbuf_addstr_commented_lines(struct strbuf *sb,
+						 const char *s)
+{
+	strbuf_add_commented_lines(sb, s, strlen(s));
+}
 
 /**
  * Add data of given length to the buffer.
