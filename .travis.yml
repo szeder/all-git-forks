@@ -1,0 +1,21 @@
+language: c
+
+os:
+  - linux
+  - osx
+
+compiler:
+  - clang
+  - gcc
+
+addons:
+  apt:
+    packages:
+    - language-pack-is
+
+before_script: make configure && ./configure && make --jobs=2
+
+script: cd t; for i in {1..200}; do echo "*** $i ***"; ./t7063-status-untracked-cache.sh; done
+
+notifications:
+  email: false
