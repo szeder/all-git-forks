@@ -235,8 +235,8 @@ extern void strbuf_splice(struct strbuf *, size_t pos, size_t len,
 			  const void *, size_t);
 
 /**
- * Add a NUL-terminated string to the buffer. Each line will be prepended
- * by a comment character and a blank.
+ * Add a NUL-terminated string of given length to the buffer. Each line will be
+ * prepended by a comment character and a blank.
  */
 extern void strbuf_add_commented_lines(struct strbuf *out, const char *buf, size_t size);
 
