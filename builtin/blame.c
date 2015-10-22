@@ -2692,8 +2692,6 @@ parse_done:
 	}
 	else if (contents_from)
 		die("--contents and --children do not blend well.");
-	else if (revs.first_parent_only)
-		die("combining --first-parent and --reverse is not supported");
 	else {
 		final_commit_name = prepare_initial(&sb);
 		sb.commits.compare = compare_commits_by_reverse_commit_date;
@@ -2720,6 +2718,15 @@ parse_done:
 	 */
 	if (prepare_revision_walk(&revs))
 		die(_("revision walk setup failed"));
+
+	if (reverse && revs.first_parent_only) {
+		struct commit_list *final_children = lookup_decoration(&revs.children,
+								       &sb.final->object);
+		if (!final_children ||
+		    hashcmp(final_children->item->parents->item->object.sha1,
+			    sb.final->object.sha1))
+			die("--reverse --first-parent together require range along first-parent chain");
+	}
 
 	if (is_null_sha1(sb.final->object.sha1)) {
 		o = sb.final->util;
