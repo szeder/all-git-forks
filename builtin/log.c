@@ -26,7 +26,7 @@
 #include "streaming.h"
 #include "version.h"
 #include "mailmap.h"
-#include "rfc2822.h"
+#include "mailinfo.h"
 #include "gpg-interface.h"
 
 /* Set a default date-time format for git log ("log.date" config variable) */
@@ -1045,8 +1045,11 @@ static void apply_reply_to_message(struct strbuf *headers,
 				   const char *msgstore)
 {
 	struct child_process store = {0};
-	struct rfc2822_options msg_options = {0};
+	struct mailinfo mi;
 	int code;
+
+	setup_mailinfo(&mi);
+	mi.metainfo_charset = get_commit_output_encoding();
 
 	store.in = 0;
 	store.out = -1;
@@ -1062,7 +1065,7 @@ static void apply_reply_to_message(struct strbuf *headers,
 	else if (code != 0)
 		exit(code);
 
-	msg_options.in = xfdopen(store.out, "rb");
+	mi.input = xfdopen(store.out, "rb");
 	msg_options.header_cb = reply_to_msg_header;
 	msg_options.bodyline_cb = reply_to_msg_bodyline;
 	msg_options.metainfo_charset = get_commit_output_encoding();
