@@ -24,7 +24,7 @@ test_expect_failure 'blame --reverse finds B1, not C1' '
 	test_cmp expect actual
 	'
 
-test_expect_failure 'blame --reverse --first-parent finds A1' '
+test_expect_success 'blame --reverse --first-parent finds A1' '
 	git blame --porcelain --reverse --first-parent A0..A3 -- file.t >actual_full &&
 	head -1 <actual_full | sed -e "sX .*XX" >actual &&
 	git rev-parse A1 >expect &&
