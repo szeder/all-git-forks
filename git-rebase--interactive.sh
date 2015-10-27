@@ -77,6 +77,10 @@ amend="$state_dir"/amend
 rewritten_list="$state_dir"/rewritten-list
 rewritten_pending="$state_dir"/rewritten-pending
 
+# Work around a Windows port of shell that does not strip
+# the newline at the end of a line correctly.
+cr=$(printf "\015")
+
 strategy_args=
 if test -n "$do_merge"
 then
@@ -518,6 +522,11 @@ do_next () {
 	"$comment_char"*|''|noop|drop|d)
 		mark_action_done
 		;;
+	"$cr")
+		# Windows port of shell not stripping the newline
+		# at the end of an empty line correctly.
+		mark_action_done
+		;;
 	pick|p)
 		comment_for_reflog pick
 
@@ -895,6 +904,10 @@ check_bad_cmd_and_sha () {
 		case $command in
 		"$comment_char"*|''|noop|x|exec)
 			# Doesn't expect a SHA-1
+			;;
+		"$cr")
+			# Windows port of shell not stripping the newline
+			# at the end of an empty line correctly.
 			;;
 		pick|p|drop|d|reword|r|edit|e|squash|s|fixup|f)
 			if ! check_commit_sha "${rest%%[ 	]*}" "$lineno" "$1"
