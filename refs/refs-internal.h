@@ -148,6 +148,8 @@ struct ref_transaction {
 	enum ref_transaction_state state;
 };
 
+extern int should_autocreate_reflog(const char *refname);
+
 /*
  * Copy the reflog message msg to buf, which has been allocated sufficiently
  * large, while cleaning up the whitespaces.  Especially, convert LF to space,
