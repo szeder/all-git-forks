@@ -1,10 +1,10 @@
-#include "cache.h"
-#include "lockfile.h"
-#include "refs.h"
-#include "object.h"
-#include "tag.h"
-#include "dir.h"
-#include "string-list.h"
+#include "../cache.h"
+#include "../refs.h"
+#include "../lockfile.h"
+#include "../object.h"
+#include "../tag.h"
+#include "../dir.h"
+#include "../string-list.h"
 
 struct ref_lock {
 	char *ref_name;
