@@ -531,8 +531,8 @@ __git_complete_revlist ()
 
 __git_complete_remote_or_refspec ()
 {
-	local cur_="$cur" cmd="${words[1]}"
-	local i c=2 remote="" pfx="" lhs=1 no_complete_refspec=0
+	local cur_="$cur" cmd="${words[command_word_index]}"
+	local i c=$((command_word_index+1)) remote="" pfx="" lhs=1 no_complete_refspec=0
 	if [ "$cmd" = "remote" ]; then
 		((c++))
 	fi
@@ -788,7 +788,7 @@ __git_aliased_command ()
 # __git_find_on_cmdline requires 1 argument
 __git_find_on_cmdline ()
 {
-	local word subcommand c=1
+	local word subcommand c=$command_word_index
 	while [ $c -lt $cword ]; do
 		word="${words[c]}"
 		for subcommand in $1; do
@@ -803,7 +803,7 @@ __git_find_on_cmdline ()
 
 __git_has_doubledash ()
 {
-	local c=1
+	local c=$command_word_index
 	while [ $c -lt $cword ]; do
 		if [ "--" = "${words[c]}" ]; then
 			return 0
@@ -826,8 +826,8 @@ __git_count_arguments ()
 {
 	local word i c=0
 
-	# Skip "git" (first argument)
-	for ((i=1; i < ${#words[@]}; i++)); do
+	# Skip "git" (first argument) and any options such as --git-dir.
+	for ((i=command_word_index; i < ${#words[@]}; i++)); do
 		word="${words[i]}"
 
 		case "$word" in
@@ -957,7 +957,7 @@ _git_bisect ()
 
 _git_branch ()
 {
-	local i c=1 only_local_ref="n" has_r="n"
+	local i c=$command_word_index only_local_ref="n" has_r="n"
 
 	while [ $c -lt $cword ]; do
 		i="${words[c]}"
@@ -992,7 +992,7 @@ _git_branch ()
 
 _git_bundle ()
 {
-	local cmd="${words[2]}"
+	local cmd="${words[command_word_index+1]}"
 	case "$cword" in
 	2)
 		__gitcomp "create list-heads verify unbundle"
@@ -1760,7 +1760,7 @@ _git_stage ()
 __git_config_get_set_variables ()
 {
 	local prevword word config_file= c=$cword
-	while [ $c -gt 1 ]; do
+	while [ $c -gt $command_word_index ]; do
 		word="${words[c]}"
 		case "$word" in
 		--system|--global|--local|--file=*)
@@ -2516,7 +2516,7 @@ _git_svn ()
 
 _git_tag ()
 {
-	local i c=1 f=0
+	local i c=$command_word_index f=0
 	while [ $c -lt $cword ]; do
 		i="${words[c]}"
 		case "$i" in
@@ -2562,7 +2562,7 @@ _git_whatchanged ()
 
 __git_main ()
 {
-	local i c=1 command __git_dir
+	local i c=1 command command_word_index __git_dir
 
 	while [ $c -lt $cword ]; do
 		i="${words[c]}"
@@ -2573,7 +2573,7 @@ __git_main ()
 		--help) command="help"; break ;;
 		-c|--work-tree|--namespace) ((c++)) ;;
 		-*) ;;
-		*) command="$i"; break ;;
+		*) command="$i"; command_word_index=$c; break ;;
 		esac
 		((c++))
 	done
@@ -2608,7 +2608,7 @@ __git_main ()
 
 	local expansion=$(__git_aliased_command "$command")
 	if [ -n "$expansion" ]; then
-		words[1]=$expansion
+		words[command_word_index]=$expansion
 		completion_func="_git_${expansion//-/_}"
 		declare -f $completion_func >/dev/null && $completion_func
 	fi
