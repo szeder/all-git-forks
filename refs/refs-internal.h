@@ -157,4 +157,8 @@ extern int should_autocreate_reflog(const char *refname);
  */
 int copy_reflog_msg(char *buf, const char *msg);
 
+int files_log_ref_write(const char *refname, const unsigned char *old_sha1,
+			const unsigned char *new_sha1, const char *msg,
+			int flags, struct strbuf *err);
+
 #endif /* REFS_REFS_INTERNAL_H */
