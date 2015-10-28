@@ -231,27 +231,23 @@ struct parse_config_parameter {
 	int overwrite;
 };
 
-static int parse_config(const char *var, const char *value, void *data)
+static int parse_generic_submodule_config(const char *var,
+					  const char *key,
+					  const char *value)
 {
-	struct parse_config_parameter *me = data;
-	struct submodule *submodule;
-	int subsection_len, ret = 0;
-	const char *subsection, *key;
-	char *name;
+	return 0;
+}
 
-	if (parse_config_key(var, "submodule", &subsection,
-			     &subsection_len, &key) < 0)
-		return 0;
-
-	if (!subsection_len)
-		return 0;
-
-	/* subsection is not null terminated */
-	name = xmemdupz(subsection, subsection_len);
-	submodule = lookup_or_create_by_name(me->cache,
-					     me->gitmodules_sha1,
-					     name);
-	free(name);
+static int parse_specific_submodule_config(struct parse_config_parameter *me,
+					   const char *name,
+					   const char *key,
+					   const char *value,
+					   const char *var)
+{
+	int ret = 0;
+	struct submodule *submodule = lookup_or_create_by_name(me->cache,
+							       me->gitmodules_sha1,
+							       name);
 
 	if (!strcmp(key, "path")) {
 		if (!value)
@@ -316,6 +312,30 @@ static int parse_config(const char *var, const char *value, void *data)
 	}
 
 	return ret;
+}
+
+static int parse_config(const char *var, const char *value, void *data)
+{
+	struct parse_config_parameter *me = data;
+
+	int subsection_len;
+	const char *subsection, *key;
+	char *name;
+
+	if (parse_config_key(var, "submodule", &subsection,
+			     &subsection_len, &key) < 0)
+		return 0;
+
+	if (!subsection_len)
+		return parse_generic_submodule_config(var, key, value);
+	else {
+		int ret;
+		/* subsection is not null terminated */
+		name = xmemdupz(subsection, subsection_len);
+		ret = parse_specific_submodule_config(me, name, key, value, var);
+		free(name);
+		return ret;
+	}
 }
 
 static int gitmodule_sha1_from_commit(const unsigned char *commit_sha1,
