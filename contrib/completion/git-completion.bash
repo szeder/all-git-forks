@@ -34,24 +34,39 @@ case "$COMP_WORDBREAKS" in
 esac
 
 # __gitdir accepts 0 or 1 arguments (i.e., location)
-# returns location of .git repo
+# outputs location of .git repo if it exists, nothing otherwise.
 __gitdir ()
 {
-	if [ -z "${1-}" ]; then
-		if [ -n "${__git_dir-}" ]; then
-			echo "$__git_dir"
-		elif [ -n "${GIT_DIR-}" ]; then
-			test -d "${GIT_DIR-}" || return 1
-			echo "$GIT_DIR"
-		elif [ -d .git ]; then
-			echo .git
+	local gitdir=${1:-}
+
+	if [ -z "$gitdir" ]; then
+		# Try the first matching --git-dir or GIT_DIR, print nothing if these
+		# directories are invalid.
+		for gitdir in "${__git_dir-}" "${GIT_DIR-}"; do
+			[ -n "$gitdir" ] || continue
+			if [[ "$gitdir" != /* ]]; then
+				gitdir="${__git_cd:-.}/$gitdir"
+			fi
+			if [ -d "$gitdir" ]; then
+				echo "$gitdir"
+			fi
+			return
+		done
+
+		if [ -d "${__git_cd:-.}/.git" ]; then
+			echo "${__git_cd:-.}/.git"
 		else
-			git rev-parse --git-dir 2>/dev/null
+			git -C "$__git_cd" rev-parse --git-dir 2>/dev/null
 		fi
-	elif [ -d "$1/.git" ]; then
-		echo "$1/.git"
 	else
-		echo "$1"
+		if [[ "$gitdir" != /* ]]; then
+			gitdir="${__git_cd:-.}/$gitdir"
+		fi
+		if [ -d "$gitdir/.git" ]; then
+			echo "$gitdir/.git"
+		elif [ -d "$gitdir" ]; then
+			echo "$gitdir"
+		fi
 	fi
 }
 
@@ -2566,11 +2581,12 @@ _git_whatchanged ()
 
 __git_main ()
 {
-	local i c=1 command command_word_index __git_dir __git_options
+	local i c=1 command command_word_index __git_dir __git_options __git_cd=.
 
 	while [ $c -lt $cword ]; do
 		i="${words[c]}"
 		case "$i" in
+		-C)          ((c++)) ; __git_cd="${words[c]}" ;;
 		--git-dir=*) __git_dir="${i#--git-dir=}" ;;
 		--git-dir)   ((c++)) ; __git_dir="${words[c]}" ;;
 		--bare)      __git_dir="." ;;
@@ -2583,6 +2599,7 @@ __git_main ()
 	done
 
 	__git_options=(
+		-C "$__git_cd"
 		--git-dir="$(__gitdir)"
 	)
 
