@@ -114,4 +114,11 @@ struct ref_transaction {
 	enum ref_transaction_state state;
 };
 
+/*
+ * Copy the reflog message msg to buf, which has been allocated sufficiently
+ * large, while cleaning up the whitespaces.  Especially, convert LF to space,
+ * because reflog file is one line per entry.
+ */
+int copy_reflog_msg(char *buf, const char *msg);
+
 #endif /* REFS_REFS_INTERNAL_H */
