@@ -70,15 +70,13 @@ sub use_wt_file
 	my ($repo, $workdir, $file, $sha1) = @_;
 	my $null_sha1 = '0' x 40;
 
-	if (! -e "$workdir/$file") {
-		# If the file doesn't exist in the working tree, we cannot
-		# use it.
-		return (0, $null_sha1);
+	my $workfile = "$workdir/$file";
+	if (-f $workfile && ! -l $workfile) {
+		my $wt_sha1 = $repo->command_oneline('hash-object', $workfile);
+		my $use = ($sha1 eq $null_sha1) || ($sha1 eq $wt_sha1);
+		return ($use, $wt_sha1);
 	}
-
-	my $wt_sha1 = $repo->command_oneline('hash-object', "$workdir/$file");
-	my $use = ($sha1 eq $null_sha1) || ($sha1 eq $wt_sha1);
-	return ($use, $wt_sha1);
+	return (0, $null_sha1);
 }
 
 sub changed_files
