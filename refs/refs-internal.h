@@ -93,6 +93,26 @@ enum peel_status {
  */
 enum peel_status peel_object(const unsigned char *name, unsigned char *sha1);
 
+/*
+ * Return 0 if a reference named refname could be created without
+ * conflicting with the name of an existing reference.
+ * Otherwise, return a negative value and write an explanation to err.
+ * If extras is non-NULL, it is a list of additional refnames with
+ * which refname is not allowed to conflict. If skip is non-NULL,
+ * ignore potential conflicts with refs in skip (e.g., because they
+ * are scheduled for deletion in the same operation). Behavior is
+ * undefined if the same name is listed in both extras and skip.
+ *
+ * Two reference names conflict if one of them exactly matches the
+ * leading components of the other; e.g., "foo/bar" conflicts with
+ * both "foo" and with "foo/bar/baz" but not with "foo/bar" or
+ * "foo/barbados".
+ *
+ * skip must be sorted.
+ */
+int verify_refname_available(const char *newname, struct string_list *extra,
+			     struct string_list *skip, struct strbuf *err);
+
 /**
  * Information needed for a single ref update. Set new_sha1 to the new
  * value or to null_sha1 to delete the ref. To check the old value
