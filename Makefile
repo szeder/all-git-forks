@@ -581,6 +581,7 @@ PROGRAM_OBJS += daemon.o
 PROGRAM_OBJS += fast-import.o
 PROGRAM_OBJS += http-backend.o
 PROGRAM_OBJS += imap-send.o
+PROGRAM_OBJS += index-dump.o
 PROGRAM_OBJS += journal-control.o
 PROGRAM_OBJS += journal-dump.o
 PROGRAM_OBJS += journal-extents-dump.o
