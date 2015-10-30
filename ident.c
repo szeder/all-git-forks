@@ -69,6 +69,34 @@ static int add_mailname_host(struct strbuf *buf)
 	fclose(mailname);
 	return 0;
 }
+#ifndef NO_IPV6
+
+static void add_domainname(struct strbuf *out)
+{
+	char buf[1024];
+	struct addrinfo hints, *ai;
+	int gai;
+
+	if (gethostname(buf, sizeof(buf))) {
+		warning("cannot get host name: %s", strerror(errno));
+		strbuf_addstr(out, "(none)");
+		return;
+	}
+	if (strchr(buf, '.'))
+		strbuf_addstr(out, buf);
+	else	{
+		memset (&hints, '\0', sizeof (hints));
+		hints.ai_flags = AI_CANONNAME;
+		if (!(gai = getaddrinfo(buf, NULL, &hints, &ai)) && ai && strchr(ai->ai_canonname, '.')) {
+			strbuf_addstr(out, ai->ai_canonname);
+			freeaddrinfo(ai);
+		}
+		else
+			strbuf_addf(out, "%s.(none)", buf);
+	}
+}
+#else /* NO_IPV6 */
+
 
 static void add_domainname(struct strbuf *out)
 {
@@ -87,6 +115,8 @@ static void add_domainname(struct strbuf *out)
 	else
 		strbuf_addf(out, "%s.(none)", buf);
 }
+
+#endif /* NO_IPV6 */
 
 static void copy_email(const struct passwd *pw, struct strbuf *email)
 {
