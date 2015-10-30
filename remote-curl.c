@@ -11,6 +11,7 @@
 #include "argv-array.h"
 #include "credential.h"
 #include "sha1-array.h"
+#include "send-pack.h"
 
 static struct remote *remote;
 /* always ends with a trailing slash */
@@ -26,7 +27,8 @@ struct options {
 		followtags : 1,
 		dry_run : 1,
 		thin : 1,
-		push_cert : 1;
+		/* One of the SEND_PACK_PUSH_CERT_* constants. */
+		push_cert : 2;
 };
 static struct options options;
 static struct string_list cas_options = STRING_LIST_INIT_DUP;
@@ -109,9 +111,11 @@ static int set_option(const char *name, const char *value)
 		return 0;
 	} else if (!strcmp(name, "pushcert")) {
 		if (!strcmp(value, "true"))
-			options.push_cert = 1;
+			options.push_cert = SEND_PACK_PUSH_CERT_ALWAYS;
 		else if (!strcmp(value, "false"))
-			options.push_cert = 0;
+			options.push_cert = SEND_PACK_PUSH_CERT_NEVER;
+		else if (!strcmp(value, "if-asked"))
+			options.push_cert = SEND_PACK_PUSH_CERT_IF_ASKED;
 		else
 			return -1;
 		return 0;
@@ -164,10 +168,7 @@ static struct ref *parse_info_refs(struct discovery *heads)
 				    url.buf);
 			data[i] = 0;
 			ref_name = mid + 1;
-			ref = xmalloc(sizeof(struct ref) +
-				      strlen(ref_name) + 1);
-			memset(ref, 0, sizeof(struct ref));
-			strcpy(ref->name, ref_name);
+			ref = alloc_ref(ref_name);
 			get_sha1_hex(start, ref->old_sha1);
 			if (!refs)
 				refs = ref;
@@ -880,8 +881,10 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 		argv_array_push(&args, "--thin");
 	if (options.dry_run)
 		argv_array_push(&args, "--dry-run");
-	if (options.push_cert)
-		argv_array_push(&args, "--signed");
+	if (options.push_cert == SEND_PACK_PUSH_CERT_ALWAYS)
+		argv_array_push(&args, "--signed=yes");
+	else if (options.push_cert == SEND_PACK_PUSH_CERT_IF_ASKED)
+		argv_array_push(&args, "--signed=if-asked");
 	if (options.verbosity == 0)
 		argv_array_push(&args, "--quiet");
 	else if (options.verbosity > 1)

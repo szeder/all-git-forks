@@ -11,6 +11,7 @@
  */
 
 #include "builtin.h"
+#include "tempfile.h"
 #include "lockfile.h"
 #include "parse-options.h"
 #include "run-command.h"
@@ -42,20 +43,8 @@ static struct argv_array prune = ARGV_ARRAY_INIT;
 static struct argv_array prune_worktrees = ARGV_ARRAY_INIT;
 static struct argv_array rerere = ARGV_ARRAY_INIT;
 
-static char *pidfile;
-
-static void remove_pidfile(void)
-{
-	if (pidfile)
-		unlink(pidfile);
-}
-
-static void remove_pidfile_on_signal(int signo)
-{
-	remove_pidfile();
-	sigchain_pop(signo);
-	raise(signo);
-}
+static struct tempfile pidfile;
+static struct lock_file log_lock;
 
 static void git_config_date_string(const char *key, const char **output)
 {
@@ -66,6 +55,28 @@ static void git_config_date_string(const char *key, const char **output)
 		if (approxidate(*output) >= now)
 			git_die_config(key, _("Invalid %s: '%s'"), key, *output);
 	}
+}
+
+static void process_log_file(void)
+{
+	struct stat st;
+	if (!fstat(get_lock_file_fd(&log_lock), &st) && st.st_size)
+		commit_lock_file(&log_lock);
+	else
+		rollback_lock_file(&log_lock);
+}
+
+static void process_log_file_at_exit(void)
+{
+	fflush(stderr);
+	process_log_file();
+}
+
+static void process_log_file_on_signal(int signo)
+{
+	process_log_file();
+	sigchain_pop(signo);
+	raise(signo);
 }
 
 static void gc_config(void)
@@ -85,7 +96,7 @@ static void gc_config(void)
 	git_config_get_int("gc.autopacklimit", &gc_auto_pack_limit);
 	git_config_get_bool("gc.autodetach", &detach_auto);
 	git_config_date_string("gc.pruneexpire", &prune_expire);
-	git_config_date_string("gc.pruneworktreesexpire", &prune_worktrees_expire);
+	git_config_date_string("gc.worktreepruneexpire", &prune_worktrees_expire);
 	git_config(git_default_config, NULL);
 }
 
@@ -199,20 +210,22 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 	uintmax_t pid;
 	FILE *fp;
 	int fd;
+	char *pidfile_path;
 
-	if (pidfile)
+	if (is_tempfile_active(&pidfile))
 		/* already locked */
 		return NULL;
 
 	if (gethostname(my_host, sizeof(my_host)))
-		strcpy(my_host, "unknown");
+		xsnprintf(my_host, sizeof(my_host), "unknown");
 
-	fd = hold_lock_file_for_update(&lock, git_path("gc.pid"),
+	pidfile_path = git_pathdup("gc.pid");
+	fd = hold_lock_file_for_update(&lock, pidfile_path,
 				       LOCK_DIE_ON_ERROR);
 	if (!force) {
 		static char locking_host[128];
 		int should_exit;
-		fp = fopen(git_path("gc.pid"), "r");
+		fp = fopen(pidfile_path, "r");
 		memset(locking_host, 0, sizeof(locking_host));
 		should_exit =
 			fp != NULL &&
@@ -236,6 +249,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 			if (fd >= 0)
 				rollback_lock_file(&lock);
 			*ret_pid = pid;
+			free(pidfile_path);
 			return locking_host;
 		}
 	}
@@ -245,12 +259,27 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 	write_in_full(fd, sb.buf, sb.len);
 	strbuf_release(&sb);
 	commit_lock_file(&lock);
-
-	pidfile = git_pathdup("gc.pid");
-	sigchain_push_common(remove_pidfile_on_signal);
-	atexit(remove_pidfile);
-
+	register_tempfile(&pidfile, pidfile_path);
+	free(pidfile_path);
 	return NULL;
+}
+
+static int report_last_gc_error(void)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int ret;
+
+	ret = strbuf_read_file(&sb, git_path("gc.log"), 0);
+	if (ret > 0)
+		return error(_("The last gc run reported the following. "
+			       "Please correct the root cause\n"
+			       "and remove %s.\n"
+			       "Automatic cleanup will not be performed "
+			       "until the file is removed.\n\n"
+			       "%s"),
+			     git_path("gc.log"), sb.buf);
+	strbuf_release(&sb);
+	return 0;
 }
 
 static int gc_before_repack(void)
@@ -274,6 +303,7 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 	int force = 0;
 	const char *name;
 	pid_t pid;
+	int daemonized = 0;
 
 	struct option builtin_gc_options[] = {
 		OPT__QUIET(&quiet, N_("suppress progress reporting")),
@@ -330,13 +360,16 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 			fprintf(stderr, _("See \"git help gc\" for manual housekeeping.\n"));
 		}
 		if (detach_auto) {
+			if (report_last_gc_error())
+				return -1;
+
 			if (gc_before_repack())
 				return -1;
 			/*
 			 * failure to daemonize is ok, we'll continue
 			 * in foreground
 			 */
-			daemonize();
+			daemonized = !daemonize();
 		}
 	} else
 		add_repack_all_option();
@@ -349,18 +382,29 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		    name, (uintmax_t)pid);
 	}
 
+	if (daemonized) {
+		hold_lock_file_for_update(&log_lock,
+					  git_path("gc.log"),
+					  LOCK_DIE_ON_ERROR);
+		dup2(get_lock_file_fd(&log_lock), 2);
+		sigchain_push_common(process_log_file_on_signal);
+		atexit(process_log_file_at_exit);
+	}
+
 	if (gc_before_repack())
 		return -1;
 
-	if (run_command_v_opt(repack.argv, RUN_GIT_CMD))
-		return error(FAILED_RUN, repack.argv[0]);
+	if (!repository_format_precious_objects) {
+		if (run_command_v_opt(repack.argv, RUN_GIT_CMD))
+			return error(FAILED_RUN, repack.argv[0]);
 
-	if (prune_expire) {
-		argv_array_push(&prune, prune_expire);
-		if (quiet)
-			argv_array_push(&prune, "--no-progress");
-		if (run_command_v_opt(prune.argv, RUN_GIT_CMD))
-			return error(FAILED_RUN, prune.argv[0]);
+		if (prune_expire) {
+			argv_array_push(&prune, prune_expire);
+			if (quiet)
+				argv_array_push(&prune, "--no-progress");
+			if (run_command_v_opt(prune.argv, RUN_GIT_CMD))
+				return error(FAILED_RUN, prune.argv[0]);
+		}
 	}
 
 	if (prune_worktrees_expire) {

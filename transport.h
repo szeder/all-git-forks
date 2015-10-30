@@ -12,7 +12,6 @@ struct git_transport_options {
 	unsigned check_self_contained_and_connected : 1;
 	unsigned self_contained_and_connected : 1;
 	unsigned update_shallow : 1;
-	unsigned push_cert : 1;
 	int depth;
 	const char *uploadpack;
 	const char *receivepack;
@@ -124,14 +123,33 @@ struct transport {
 #define TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND 256
 #define TRANSPORT_PUSH_NO_HOOK 512
 #define TRANSPORT_PUSH_FOLLOW_TAGS 1024
-#define TRANSPORT_PUSH_CERT 2048
-#define TRANSPORT_PUSH_ATOMIC 4096
+#define TRANSPORT_PUSH_CERT_ALWAYS 2048
+#define TRANSPORT_PUSH_CERT_IF_ASKED 4096
+#define TRANSPORT_PUSH_ATOMIC 8192
 
 #define TRANSPORT_SUMMARY_WIDTH (2 * DEFAULT_ABBREV + 3)
 #define TRANSPORT_SUMMARY(x) (int)(TRANSPORT_SUMMARY_WIDTH + strlen(x) - gettext_width(x)), (x)
 
 /* Returns a transport suitable for the url */
 struct transport *transport_get(struct remote *, const char *);
+
+/*
+ * Check whether a transport is allowed by the environment. Type should
+ * generally be the URL scheme, as described in Documentation/git.txt
+ */
+int is_transport_allowed(const char *type);
+
+/*
+ * Check whether a transport is allowed by the environment,
+ * and die otherwise.
+ */
+void transport_check_allowed(const char *type);
+
+/*
+ * Returns true if the user has attempted to turn on protocol
+ * restrictions at all.
+ */
+int transport_restrict_protocols(void);
 
 /* Transport options which apply to git:// and scp-style URLs */
 

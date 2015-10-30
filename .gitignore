@@ -155,6 +155,7 @@
 /git-status
 /git-stripspace
 /git-submodule
+/git-submodule--helper
 /git-svn
 /git-symbolic-ref
 /git-tag
@@ -205,6 +206,7 @@
 /test-sha1-array
 /test-sigchain
 /test-string-list
+/test-submodule-config
 /test-subprocess
 /test-svn-fe
 /test-urlmatch-normalization

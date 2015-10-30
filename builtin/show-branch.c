@@ -743,6 +743,8 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			fake_av[1] = NULL;
 			av = fake_av;
 			ac = 1;
+			if (!*av)
+				die("no branches given, and HEAD is not valid");
 		}
 		if (ac != 1)
 			die("--reflog option needs one branch name");
@@ -784,7 +786,8 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			else
 				msg++;
 			reflog_msg[i] = xstrfmt("(%s) %s",
-						show_date(timestamp, tz, 1),
+						show_date(timestamp, tz,
+							  DATE_MODE(RELATIVE)),
 						msg);
 			free(logmsg);
 
