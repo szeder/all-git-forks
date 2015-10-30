@@ -30,7 +30,7 @@ static CURL *curl_default;
 #endif
 
 #define PREV_BUF_SIZE 4096
-#define RANGE_HEADER_SIZE 30
+#define RANGE_HEADER_SIZE 17
 
 char curl_errorstr[CURL_ERROR_SIZE];
 
@@ -1213,8 +1213,9 @@ static int http_request(const char *url,
 			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
 					 fwrite);
 			if (posn > 0) {
-				strbuf_addf(&buf, "Range: bytes=%ld-", posn);
-				headers = curl_slist_append(headers, buf.buf);
+				strbuf_addf(&buf, "%ld-", posn);
+				curl_easy_setopt(slot->curl, CURLOPT_RANGE,
+						 &buf.buf);
 				strbuf_reset(&buf);
 			}
 		} else
@@ -1526,10 +1527,6 @@ void release_http_pack_request(struct http_pack_request *preq)
 		fclose(preq->packfile);
 		preq->packfile = NULL;
 	}
-	if (preq->range_header != NULL) {
-		curl_slist_free_all(preq->range_header);
-		preq->range_header = NULL;
-	}
 	preq->slot = NULL;
 	free(preq->url);
 	free(preq);
@@ -1631,10 +1628,8 @@ struct http_pack_request *new_http_pack_request(
 			fprintf(stderr,
 				"Resuming fetch of pack %s at byte %ld\n",
 				sha1_to_hex(target->sha1), prev_posn);
-		xsnprintf(range, sizeof(range), "Range: bytes=%ld-", prev_posn);
-		preq->range_header = curl_slist_append(NULL, range);
-		curl_easy_setopt(preq->slot->curl, CURLOPT_HTTPHEADER,
-			preq->range_header);
+		xsnprintf(range, sizeof(range), "%ld-", prev_posn);
+		curl_easy_setopt(preq->slot->curl, CURLOPT_RANGE, range);
 	}
 
 	return preq;
@@ -1685,7 +1680,6 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	ssize_t prev_read = 0;
 	long prev_posn = 0;
 	char range[RANGE_HEADER_SIZE];
-	struct curl_slist *range_header = NULL;
 	struct http_object_request *freq;
 
 	freq = xcalloc(1, sizeof(*freq));
@@ -1791,10 +1785,8 @@ struct http_object_request *new_http_object_request(const char *base_url,
 			fprintf(stderr,
 				"Resuming fetch of object %s at byte %ld\n",
 				hex, prev_posn);
-		xsnprintf(range, sizeof(range), "Range: bytes=%ld-", prev_posn);
-		range_header = curl_slist_append(range_header, range);
-		curl_easy_setopt(freq->slot->curl,
-				 CURLOPT_HTTPHEADER, range_header);
+		xsnprintf(range, sizeof(range), "%ld-", prev_posn);
+		curl_easy_setopt(freq->slot->curl, CURLOPT_RANGE, range);
 	}
 
 	return freq;
