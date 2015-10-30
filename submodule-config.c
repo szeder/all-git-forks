@@ -243,7 +243,7 @@ static int parse_generic_submodule_config(const char *key,
 	if (!strcmp(key, "jobs")) {
 		parallel_jobs = strtol(value, NULL, 10);
 		if (parallel_jobs < 0) {
-			warning("submodule.jobs not allowed to be negative.")
+			warning("submodule.jobs not allowed to be negative.");
 			parallel_jobs = 1;
 			return 1;
 		}
