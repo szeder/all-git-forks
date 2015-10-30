@@ -27,6 +27,8 @@ static const char * const checkout_usage[] = {
 	NULL,
 };
 
+static int option_progress = -1;
+
 struct checkout_opts {
 	int patch_mode;
 	int quiet;
@@ -417,7 +419,19 @@ static int reset_tree(struct tree *tree, const struct checkout_opts *o,
 	opts.reset = 1;
 	opts.merge = 1;
 	opts.fn = oneway_merge;
-	opts.verbose_update = !o->quiet && isatty(2);
+	/**
+	 * Rules to display progress:
+	 * -q is selected
+	 *      no verbiage
+	 * -q is _not_ selected and --no-progress _is_ selected,
+	 *      progress will be skipped
+	 * -q is _not_ selected and --progress _is_ selected,
+	 *      progress will be printed to stderr
+	 * -q is _not_ selected and --progress is 'undefined'
+	 *      progress will be printed to stderr _if_ working on a terminal
+	 */
+	opts.verbose_update = !o->quiet && (option_progress > 0 ||
+					   (option_progress < 0 && isatty(2)));
 	opts.src_index = &the_index;
 	opts.dst_index = &the_index;
 	parse_tree(tree);
@@ -1156,6 +1170,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 				N_("second guess 'git checkout <no-such-branch>'")),
 		OPT_BOOL(0, "ignore-other-worktrees", &opts.ignore_other_worktrees,
 			 N_("do not check if another worktree is holding the given ref")),
+		OPT_BOOL(0, "progress", &option_progress, N_("force progress reporting")),
 		OPT_END(),
 	};
 
