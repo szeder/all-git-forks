@@ -22,6 +22,15 @@ ifeq (,$(shell test -e "$(git_src)/../curl" && echo Y))
     optional_libcurl =
 endif
 
+optional_openssl =
+ifneq (,$(shell test -e "$(git_src)/../openssl" && echo Y))
+    optional_openssl = external/openssl
+endif
+
+ifneq (,$(shell test -e "$(git_src)/../boringssl" && echo Y))
+    optional_openssl = external/boringssl/src
+endif
+
 ###############################################################################
 # /system/etc/gitconfig
 
@@ -382,7 +391,6 @@ git_INCLUDES := \
 	$(LOCAL_PATH)/xdiff \
 	external/zlib \
 	external/expat/lib \
-	external/openssl/include \
 
 git_CFLAGS := \
 	-DNO_ICONV -DNO_GETTEXT \
@@ -404,7 +412,13 @@ git_CFLAGS := \
 	-DDEFAULT_EDITOR=\"$(GIT_EDITOR)\" \
 
 # Hide some noisy warnings
-git_CFLAGS += -Wno-sign-compare -Wno-missing-field-initializers
+git_CFLAGS += -Wno-sign-compare -Wno-missing-field-initializers -Wno-unused-parameter
+
+ifeq ($(optional_openssl),)
+    git_CFLAGS += -DNO_OPENSSL
+else
+    git_INCLUDES += $(optional_openssl)/include
+endif
 
 ifeq ($(optional_libcurl),libcurl)
     git_INCLUDES += external/curl/include
