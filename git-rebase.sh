@@ -186,7 +186,19 @@ run_specific_rebase () {
 		export GIT_EDITOR
 		autosquash=
 	fi
-	. git-rebase--$type
+
+	git_quiet=$GIT_QUIET
+	export GIT_PAGER GIT_QUIET
+	export action allow_rerere_autoupdate git_am_opt git_quiet  keep_empty
+	export onto orig_head rebase_root resolvemsg revisions
+	export state_dir verbose strategy strategy_opts
+	export gpg_sign_opt upstream restrict_revision head_name
+
+	if [ "$type" = merge ]; then 
+		exec git-rebase--merge 
+	else 
+		. git-rebase--$type 
+	fi
 	ret=$?
 	if test $ret -eq 0
 	then
