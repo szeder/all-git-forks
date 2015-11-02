@@ -291,18 +291,12 @@ static void fill_clone_command(struct child_process *cp, int quiet,
 	if (quiet)
 		argv_array_push(&cp->args, "--quiet");
 
-	if (prefix) {
-		argv_array_push(&cp->args, "--prefix");
-		argv_array_push(&cp->args, prefix);
-	}
-	argv_array_push(&cp->args, "--path");
-	argv_array_push(&cp->args, path);
+	if (prefix)
+		argv_array_pushl(&cp->args, "--prefix", prefix, NULL);
 
-	argv_array_push(&cp->args, "--name");
-	argv_array_push(&cp->args, name);
-
-	argv_array_push(&cp->args, "--url");
-	argv_array_push(&cp->args, url);
+	argv_array_pushl(&cp->args, "--path", path, NULL);
+	argv_array_pushl(&cp->args, "--name", name, NULL);
+	argv_array_pushf(&cp->args, "--url", url, NULL);
 	if (reference)
 		argv_array_push(&cp->args, reference);
 	if (depth)
@@ -361,9 +355,8 @@ static int update_clone_get_next_task(void **pp_task_cb,
 
 		/*
 		 * Looking up the url in .git/config.
-		 * We cannot fall back to .gitmodules as we only want to process
-		 * configured submodules. This renders the submodule lookup API
-		 * useless, as it cannot lookup without fallback.
+		 * We must not fall back to .gitmodules as we only want to process
+		 * configured submodules.
 		 */
 		strbuf_reset(&sb);
 		strbuf_addf(&sb, "submodule.%s.url", sub->name);
