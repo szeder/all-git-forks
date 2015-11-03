@@ -120,7 +120,9 @@ int check_refname_format(const char *refname, int flags)
 
 int refname_is_safe(const char *refname)
 {
-	if (starts_with(refname, "refs/")) {
+	const char *tail;
+
+	if (skip_prefix(refname, "refs/", &tail)) {
 		char *buf;
 		int result;
 
@@ -130,7 +132,7 @@ int refname_is_safe(const char *refname)
 		 * For example: refs/foo/../bar is safe but refs/foo/../../bar
 		 * is not.
 		 */
-		result = !normalize_path_copy(buf, refname + strlen("refs/"));
+		result = !normalize_path_copy(buf, tail);
 		free(buf);
 		return result;
 	}
