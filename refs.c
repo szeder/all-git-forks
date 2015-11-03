@@ -126,7 +126,7 @@ int refname_is_safe(const char *refname)
 		char *buf;
 		int result;
 
-		buf = xmalloc(strlen(refname) + 1);
+		buf = xmalloc(strlen(tail) + 1);
 		/*
 		 * Does the refname try to escape refs/?
 		 * For example: refs/foo/../bar is safe but refs/foo/../../bar
