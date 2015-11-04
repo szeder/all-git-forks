@@ -14,7 +14,12 @@
 #ifndef git_SHA_CTX
 #define git_SHA_CTX	SHA_CTX
 #define git_SHA1_Init	SHA1_Init
-#define git_SHA1_Update	SHA1_Update
+#ifdef SHA1_MAX_BLOCK_SIZE
+extern int SHA1_Update_Chunked(SHA_CTX *, const void *, size_t);
+#define git_SHA1_Update SHA1_Update_Chunked
+#else
+#define git_SHA1_Update SHA1_Update
+#endif
 #define git_SHA1_Final	SHA1_Final
 #endif
 
