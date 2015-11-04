@@ -117,16 +117,23 @@ static void read_from_stdin(struct shortlog *log)
 {
 	struct strbuf ident = STRBUF_INIT;
 	struct strbuf oneline = STRBUF_INIT;
-	static const char *author_match[2] = { "Author: ", "author " };
-	static const char *committer_match[2] = { "Commit: ", "committer " };
-	const char **match;
 
-	match = log->committer ? committer_match : author_match;
 	while (strbuf_getline_lf(&ident, stdin) != EOF) {
 		const char *v;
-		if (!skip_prefix(ident.buf, match[0], &v) &&
-		    !skip_prefix(ident.buf, match[1], &v))
-			continue;
+		switch (log->ident_type) {
+		case SHORTLOG_IDENT_AUTHOR:
+			if (!skip_prefix(ident.buf, "Author: ", &v) &&
+			    !skip_prefix(ident.buf, "author ", &v))
+				continue;
+			break;
+		case SHORTLOG_IDENT_COMMITTER:
+			if (!skip_prefix(ident.buf, "Commit: ", &v) &&
+			    !skip_prefix(ident.buf, "committer ", &v))
+				continue;
+			break;
+		default:
+			die("BUG: unhandled ident type");
+		}
 		while (strbuf_getline_lf(&oneline, stdin) != EOF &&
 		       oneline.len)
 			; /* discard headers */
@@ -144,7 +151,6 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
 	struct strbuf ident = STRBUF_INIT;
 	struct strbuf oneline = STRBUF_INIT;
 	struct pretty_print_context ctx = {0};
-	const char *fmt;
 
 	ctx.fmt = CMIT_FMT_USERFORMAT;
 	ctx.abbrev = log->abbrev;
@@ -153,9 +159,15 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
 	ctx.date_mode.type = DATE_NORMAL;
 	ctx.output_encoding = get_log_output_encoding();
 
-	fmt = log->committer ? "%cn <%ce>" : "%an <%ae>";
+	switch (log->ident_type) {
+	case SHORTLOG_IDENT_AUTHOR:
+		format_commit_message(commit, "%an <%ae>", &ident, &ctx);
+		break;
+	case SHORTLOG_IDENT_COMMITTER:
+		format_commit_message(commit, "%cn <%ce>", &ident, &ctx);
+		break;
+	}
 
-	format_commit_message(commit, fmt, &ident, &ctx);
 	if (!log->summary) {
 		if (log->user_format)
 			pretty_print_commit(&ctx, commit, &oneline);
@@ -226,6 +238,21 @@ static int parse_wrap_args(const struct option *opt, const char *arg, int unset)
 	return 0;
 }
 
+static int parse_ident_option(const struct option *opt, const char *arg, int unset)
+{
+	struct shortlog *log = opt->value;
+
+	if (unset || !strcasecmp(arg, "author"))
+		log->ident_type = SHORTLOG_IDENT_AUTHOR;
+	else if (!strcasecmp(arg, "committer"))
+		log->ident_type = SHORTLOG_IDENT_COMMITTER;
+	else
+		die("unknown ident type: %s", arg);
+
+	return 0;
+}
+
+
 void shortlog_init(struct shortlog *log)
 {
 	memset(log, 0, sizeof(*log));
@@ -245,8 +272,9 @@ int cmd_shortlog(int argc, const char **argv, const char *prefix)
 	int nongit = !startup_info->have_repository;
 
 	const struct option options[] = {
-		OPT_BOOL('c', "committer", &log.committer,
-			 N_("Group by committer rather than author")),
+		OPT_SET_INT('c', "committer", &log.ident_type,
+			    N_("Group by committer rather than author"),
+			    SHORTLOG_IDENT_COMMITTER),
 		OPT_BOOL('n', "numbered", &log.sort_by_number,
 			 N_("sort output according to the number of commits per author")),
 		OPT_BOOL('s', "summary", &log.summary,
@@ -255,6 +283,8 @@ int cmd_shortlog(int argc, const char **argv, const char *prefix)
 			 N_("Show the email address of each author")),
 		{ OPTION_CALLBACK, 'w', NULL, &log, N_("w[,i1[,i2]]"),
 			N_("Linewrap output"), PARSE_OPT_OPTARG, &parse_wrap_args },
+		{ OPTION_CALLBACK, 0, "ident", &log, N_("field"),
+			N_("Use ident from field"), 0, parse_ident_option },
 		OPT_END(),
 	};
 
