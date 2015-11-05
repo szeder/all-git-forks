@@ -1006,17 +1006,6 @@ static void pp_cleanup(struct parallel_processes *pp)
 	sigchain_pop_common();
 }
 
-static void set_nonblocking(int fd)
-{
-	int flags = fcntl(fd, F_GETFL);
-	if (flags < 0)
-		warning("Could not get file status flags, "
-			"output will be degraded");
-	else if (fcntl(fd, F_SETFL, flags | O_NONBLOCK))
-		warning("Could not set file status flags, "
-			"output will be degraded");
-}
-
 /* returns
  *  0 if a new task was started.
  *  1 if no new jobs was started (get_next_task ran out of work, non critical
@@ -1051,8 +1040,6 @@ static int pp_start_one(struct parallel_processes *pp)
 		strbuf_reset(&pp->children[i].err);
 		return code ? -1 : 1;
 	}
-
-	set_nonblocking(pp->children[i].process.err);
 
 	pp->nr_processes++;
 	pp->children[i].in_use = 1;
