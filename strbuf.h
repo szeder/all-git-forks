@@ -367,8 +367,7 @@ extern size_t strbuf_fread(struct strbuf *, size_t, FILE *);
 extern ssize_t strbuf_read(struct strbuf *, int fd, size_t hint);
 
 /**
- * Read from a file descriptor that is marked as O_NONBLOCK without
- * blocking.  Returns the number of new bytes appended to the sb.
+ * Returns the number of new bytes appended to the sb.
  * Negative return value signals there was an error returned from
  * underlying read(2), in which case the caller should check errno.
  * e.g. errno == EAGAIN when the read may have blocked.
