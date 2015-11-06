@@ -26,7 +26,7 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 	mmfile_t mmfs[3];
 	mmbuffer_t result = {NULL, 0};
 	xmparam_t xmp = {{0}};
-	int ret = 0, i = 0, to_stdout = 0;
+	int ret = 0, i = 0, to_stdout = 0, mark_all_changes = 0;
 	int quiet = 0;
 	int prefixlen = 0;
 	struct option options[] = {
@@ -43,12 +43,14 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 		OPT__QUIET(&quiet, N_("do not warn about conflicts")),
 		OPT_CALLBACK('L', NULL, names, N_("name"),
 			     N_("set labels for file1/orig-file/file2"), &label_cb),
+		OPT_BOOL(0, "mark-all-changes", &mark_all_changes, N_("mark all changes (not only conflicts)")),
 		OPT_END(),
 	};
 
 	xmp.level = XDL_MERGE_ZEALOUS_ALNUM;
 	xmp.style = 0;
 	xmp.favor = 0;
+	xmp.mark_all = mark_all_changes;
 
 	if (startup_info->have_repository) {
 		/* Read the configuration file */

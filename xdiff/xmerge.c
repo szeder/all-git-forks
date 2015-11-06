@@ -221,12 +221,132 @@ static int fill_conflict_hunk(xdfenv_t *xe1, const char *name1,
 	return size;
 }
 
+static int fill_ours_hunk(xdfenv_t *xe, const char *name,
+			      const char *ancestor_name,
+			      int size, int i, int style,
+			      xdmerge_t *m, char *dest, int marker_size)
+{
+	int marker1_size = (name ? strlen(name) + 1 : 0);
+	int marker2_size = (ancestor_name ? strlen(ancestor_name) + 1 : 0);
+
+	if (marker_size <= 0)
+		marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
+
+	/* Before changed part */
+	size += xdl_recs_copy(xe, i, m->i1 - i, 0,
+			dest ? dest + size : NULL);
+
+	if (!dest) {
+		size += marker_size + 1 + marker1_size;
+	} else {
+		memset(dest + size, '+', marker_size);
+		size += marker_size;
+		if (marker1_size) {
+			dest[size] = ' ';
+			memcpy(dest + size + 1, name, marker1_size - 1);
+			size += marker1_size;
+		}
+		dest[size++] = '\n';
+	}
+	/* Postimage from side #1 */
+	size += xdl_recs_copy(xe, m->i1, m->chg1, 1,
+			      dest ? dest + size : NULL);
+
+	if (style == XDL_MERGE_DIFF3) {
+		/* Shared preimage */
+		if (!dest) {
+			size += marker_size + 1 + marker2_size;
+		} else {
+			memset(dest + size, '|', marker_size);
+			size += marker_size;
+			if (marker2_size) {
+				dest[size] = ' ';
+				memcpy(dest + size + 1, ancestor_name, marker2_size - 1);
+				size += marker2_size;
+			}
+			dest[size++] = '\n';
+		}
+		size += xdl_orig_copy(xe, m->i0, m->chg0, 1,
+				      dest ? dest + size : NULL);
+	}
+
+	if (!dest) {
+		size += marker_size + 1;
+	} else {
+		memset(dest + size, '=', marker_size);
+		size += marker_size;
+		dest[size++] = '\n';
+	}
+
+	return size;
+}
+
+static int fill_theirs_hunk(xdfenv_t *xe, const char *name,
+			      const char *ancestor_name,
+			      int size, int i, int style,
+			      xdmerge_t *m, char *dest, int marker_size)
+{
+	int marker1_size = (name ? strlen(name) + 1 : 0);
+	int marker2_size = (ancestor_name ? strlen(ancestor_name) + 1 : 0);
+
+	if (marker_size <= 0)
+		marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
+
+	/* Before changed part */
+	size += xdl_recs_copy(xe, i, m->i1 - i, 0,
+			dest ? dest + size : NULL);
+	
+	if (style == XDL_MERGE_DIFF3) {
+		/* Shared preimage */
+		if (!dest) {
+			size += marker_size + 1 + marker2_size;
+		} else {
+			memset(dest + size, '|', marker_size);
+			size += marker_size;
+			if (marker2_size) {
+				dest[size] = ' ';
+				memcpy(dest + size + 1, ancestor_name, marker2_size - 1);
+				size += marker2_size;
+			}
+			dest[size++] = '\n';
+		}
+		size += xdl_orig_copy(xe, m->i0, m->chg0, 1,
+				      dest ? dest + size : NULL);
+	}
+
+	if (!dest) {
+		size += marker_size + 1;
+	} else {
+		memset(dest + size, '=', marker_size);
+		size += marker_size;
+		dest[size++] = '\n';
+	}
+
+	/* Postimage from side #2 */
+	size += xdl_recs_copy(xe, m->i2, m->chg2, 1,
+			      dest ? dest + size : NULL);
+	if (!dest) {
+		size += marker_size + 1 + marker1_size;
+	} else {
+		memset(dest + size, '+', marker_size);
+		size += marker_size;
+		if (marker1_size) {
+			dest[size] = ' ';
+			memcpy(dest + size + 1, name, marker1_size - 1);
+			size += marker1_size;
+		}
+		dest[size++] = '\n';
+	}
+
+	return size;
+}
+
 static int xdl_fill_merge_buffer(xdfenv_t *xe1, const char *name1,
 				 xdfenv_t *xe2, const char *name2,
 				 const char *ancestor_name,
 				 int favor,
 				 xdmerge_t *m, char *dest, int style,
-				 int marker_size)
+				 int marker_size, int mark_all)
 {
 	int size, i;
 
@@ -240,19 +360,30 @@ static int xdl_fill_merge_buffer(xdfenv_t *xe1, const char *name1,
 						  size, i, style, m, dest,
 						  marker_size);
 		else if (m->mode & 3) {
-			/* Before conflicting part */
-			size += xdl_recs_copy(xe1, i, m->i1 - i, 0,
-					      dest ? dest + size : NULL);
-			/* Postimage from side #1 */
-			if (m->mode & 1)
-				size += xdl_recs_copy(xe1, m->i1, m->chg1, (m->mode & 2),
+			if (mark_all) {
+				/* Before conflicting part */
+				size += xdl_recs_copy(xe1, i, m->i1 - i, 0,
 						      dest ? dest + size : NULL);
-			/* Postimage from side #2 */
-			if (m->mode & 2)
-				size += xdl_recs_copy(xe2, m->i2, m->chg2, 0,
-						      dest ? dest + size : NULL);
+				/* Postimage from side #1 */
+				if (m->mode & 1)
+					size += xdl_recs_copy(xe1, m->i1, m->chg1, (m->mode & 2),
+							      dest ? dest + size : NULL);
+				/* Postimage from side #2 */
+				if (m->mode & 2)
+					size += xdl_recs_copy(xe2, m->i2, m->chg2, 0,
+							      dest ? dest + size : NULL);
+			} else {
+				if (m->mode & 1)
+					size += fill_ours_hunk(xe1, name1,
+			      	ancestor_name, size, i, style, m,
+							dest, marker_size);
+				if (m->mode & 2)
+					size += fill_theirs_hunk(xe2, name2,
+			      	ancestor_name, size, i, style, m,
+							dest, marker_size);
+			}
 		} else
-			continue;
+		continue;
 		i = m->i1 + m->chg1;
 	}
 	size += xdl_recs_copy(xe1, i, xe1->xdf2.nrec - i, 0,
@@ -551,10 +682,11 @@ static int xdl_do_merge(xdfenv_t *xe1, xdchange_t *xscr1,
 	/* output */
 	if (result) {
 		int marker_size = xmp->marker_size;
+		int mark_all = xmp->mark_all;
 		int size = xdl_fill_merge_buffer(xe1, name1, xe2, name2,
 						 ancestor_name,
 						 favor, changes, NULL, style,
-						 marker_size);
+						 marker_size, mark_all);
 		result->ptr = xdl_malloc(size);
 		if (!result->ptr) {
 			xdl_cleanup_merge(changes);
@@ -563,7 +695,7 @@ static int xdl_do_merge(xdfenv_t *xe1, xdchange_t *xscr1,
 		result->size = size;
 		xdl_fill_merge_buffer(xe1, name1, xe2, name2,
 				      ancestor_name, favor, changes,
-				      result->ptr, style, marker_size);
+				      result->ptr, style, marker_size, mark_all);
 	}
 	return xdl_cleanup_merge(changes);
 }

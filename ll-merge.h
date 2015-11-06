@@ -9,6 +9,7 @@ struct ll_merge_options {
 	unsigned virtual_ancestor : 1;
 	unsigned variant : 2;	/* favor ours, favor theirs, or union merge */
 	unsigned renormalize : 1;
+	unsigned mark_all_changes : 1;
 	long xdl_opts;
 };
 

@@ -23,6 +23,7 @@ struct merge_options {
 	int needed_rename_limit;
 	int show_rename_progress;
 	int call_depth;
+	int mark_all_changes;
 	struct strbuf obuf;
 	struct string_list current_file_set;
 	struct string_list current_directory_set;

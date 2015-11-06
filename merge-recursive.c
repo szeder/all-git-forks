@@ -837,6 +837,7 @@ static int merge_3way(struct merge_options *o,
 
 	ll_opts.renormalize = o->renormalize;
 	ll_opts.xdl_opts = o->xdl_opts;
+	ll_opts.mark_all_changes = o->mark_all_changes;
 
 	if (o->call_depth) {
 		ll_opts.virtual_ancestor = 1;
