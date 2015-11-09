@@ -4,6 +4,7 @@
 #include "../lockfile.h"
 #include "../object.h"
 #include "../dir.h"
+#include "../worktree.h"
 
 struct ref_lock {
 	char *ref_name;
@@ -1748,7 +1749,8 @@ static int do_for_each_ref(struct ref_cache *refs, const char *base,
 static int do_head_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	struct object_id oid;
-	int flag;
+	struct worktree **worktrees;
+	int i, retval;
 
 	if (submodule) {
 		if (resolve_gitlink_ref(submodule, "HEAD", oid.hash) == 0)
@@ -1757,10 +1759,15 @@ static int do_head_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 		return 0;
 	}
 
-	if (!read_ref_full("HEAD", RESOLVE_REF_READING, oid.hash, &flag))
-		return fn("HEAD", &oid, flag, cb_data);
+	worktrees = get_worktrees();
+	retval = 0;
+	for (i=0; worktrees[i]; i++) {
+		hashcpy(oid.hash, worktrees[i]->head_sha1);
+		retval = retval || fn("HEAD", &oid, worktrees[i]->is_detached ? 0 : REF_ISSYMREF, cb_data);
+	}
 
-	return 0;
+	free_worktrees(worktrees);
+	return retval;
 }
 
 int head_ref(each_ref_fn fn, void *cb_data)
