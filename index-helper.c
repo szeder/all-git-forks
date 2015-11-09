@@ -192,7 +192,7 @@ static void prepare_with_watchman(pid_t pid)
 
 static void prepare_index(int sig, siginfo_t *si, void *context)
 {
-	free_watchman_shm(&shm_watchman);
+	release_watchman_shm(&shm_watchman);
 	if (the_index.last_update)
 		prepare_with_watchman(si->si_pid);
 	kill(si->si_pid, SIGHUP); /* stop the waiting in poke_daemon() */
