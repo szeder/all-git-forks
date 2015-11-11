@@ -5,6 +5,8 @@
 #include "run-command.h"
 #include "worktree.h"
 
+int dry_run = 0;
+int no_wt = 0;
 struct worktree **worktrees;
 const char *padding = ".....................................................";
 
@@ -18,6 +20,7 @@ enum ff_result_type {
 	UPDATABLE,
 	REMOTE_MISSING,
 	NON_FAST_FORWARD,
+	SKIPPED,
 	UNABLE_TO_UPDATE
 };
 
@@ -48,11 +51,13 @@ static const char *result_type_str(enum ff_result_type result_type)
 	case UP_TO_DATE:
 		return _("UP-TO-DATE");
 	case UPDATABLE:
-		return _("WOULD-UPDATE");
+		return dry_run ? _("WOULD-UPDATE") : _("UPDATED");
 	case REMOTE_MISSING:
 		return _("REMOTE-MISSING");
 	case NON_FAST_FORWARD:
 		return _("NON-FAST-FORWARD");
+	case SKIPPED:
+		return dry_run ? _("WOULD-SKIP") : _("SKIPPED");
 	default:
 		return _("UNABLE-TO-UPDATE");
 	}
@@ -135,7 +140,7 @@ static void process_refs(struct ff_ref_data *data)
 
 		printf("     %s -> %s%*.*s",
 			details->branch->name, details->shortened_upstream, padLen, padLen, padding);
-		if (details->result_type == UPDATABLE)
+		if (!dry_run && details->result_type == UPDATABLE)
 			do_ref_update(data, details);
 
 		printf("[%s]\n", result_type_str(details->result_type));
@@ -208,6 +213,9 @@ static int analize_refs(const char *refname,
 			else if (!in_merge_bases(details->branch_commit, details->upstream_commit))
 				details->result_type = NON_FAST_FORWARD;
 
+			else if (no_wt && details->wt)
+				details->result_type = SKIPPED;
+
 			else
 				details->result_type = UPDATABLE;
 		}
@@ -233,6 +241,9 @@ int cmd_ff_refs(int argc, const char **argv, const char *prefix)
 	int ret = 0;
 
 	struct option options[] = {
+		OPT_BOOL(0, "dry-run", &dry_run, N_("show what would be fast-forwarded")),
+		OPT_BOOL(0, "skip-worktrees", &no_wt,
+				N_("skip refs checked out in any worktree")),
 		OPT_END()
 	};
 
