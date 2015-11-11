@@ -59,6 +59,43 @@ static const char *result_type_str(enum ff_result_type result_type)
 }
 
 /**
+ * Do the ref update.
+ *  - If the ref is checked out in any worktree, emulate merge --ff-only to
+ *    also update the local work tree (including executing the post-merge hook).
+ *
+ *  - If the ref is not checked out in any worktree, update it
+ *
+ *  - If any of the ref updates fails, the result_type is set to UNABLE-TO-UPDATE
+ */
+static void do_ref_update(struct ff_ref_data *data, struct ff_ref_details *details)
+{
+	const char *refname = details->branch->refname;
+
+	if (details->wt) {
+		struct strbuf path = STRBUF_INIT;
+
+		strbuf_getcwd(&path);
+		chdir(details->wt->path);
+		set_git_dir(details->wt->git_dir);
+		read_index(&the_index);
+
+		if (checkout_fast_forward(details->branch_commit->object.sha1,
+				details->upstream_commit->object.sha1, 1))
+			details->result_type = NON_FAST_FORWARD;
+		else if (update_ref("ff-refs", refname, details->upstream_commit->object.sha1,
+				details->branch_commit->object.sha1, 0, UPDATE_REFS_QUIET_ON_ERR)) {
+			details->result_type = UNABLE_TO_UPDATE;
+			run_hook_le(NULL, "post-merge", "0", NULL);
+		}
+		discard_index(&the_index);
+		chdir(path.buf);
+		strbuf_release(&path);
+	} else if (update_ref("ff-refs", refname, details->upstream_commit->object.sha1,
+			details->branch_commit->object.sha1, 0, UPDATE_REFS_QUIET_ON_ERR))
+		details->result_type = UNABLE_TO_UPDATE;
+}
+
+/**
  * return the worktree with the given refname checked out, or NULL if that
  * ref is not checked out in any branch.
  *
@@ -98,6 +135,9 @@ static void process_refs(struct ff_ref_data *data)
 
 		printf("     %s -> %s%*.*s",
 			details->branch->name, details->shortened_upstream, padLen, padLen, padding);
+		if (details->result_type == UPDATABLE)
+			do_ref_update(data, details);
+
 		printf("[%s]\n", result_type_str(details->result_type));
 	}
 }
