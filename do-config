@@ -1,0 +1,13 @@
+#! /bin/sh
+
+TOPSRCDIR=`dirname $0`
+
+PKG=git-2.6.3
+
+: ${TARGET:=/usr/local}
+PKGDIR=$TARGET/stow/$PKG
+
+OPTS=''
+
+set -x
+exec $TOPSRCDIR/configure --prefix=$PKGDIR $OPTS ${1+"$@"}
