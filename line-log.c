@@ -325,7 +325,7 @@ static int collect_diff_cb(long start_a, long count_a,
 	return 0;
 }
 
-static void collect_diff(mmfile_t *parent, mmfile_t *target, struct diff_ranges *out)
+static int collect_diff(mmfile_t *parent, mmfile_t *target, struct diff_ranges *out)
 {
 	struct collect_diff_cbdata cbdata = {NULL};
 	xpparam_t xpp;
@@ -340,7 +340,7 @@ static void collect_diff(mmfile_t *parent, mmfile_t *target, struct diff_ranges 
 	xecfg.hunk_func = collect_diff_cb;
 	memset(&ecb, 0, sizeof(ecb));
 	ecb.priv = &cbdata;
-	xdi_diff(parent, target, &xpp, &xecfg, &ecb);
+	return xdi_diff(parent, target, &xpp, &xecfg, &ecb);
 }
 
 /*
@@ -893,7 +893,7 @@ static void dump_diff_hacky_one(struct rev_info *rev, struct line_log_data *rang
 	const char *c_meta = diff_get_color(opt->use_color, DIFF_METAINFO);
 	const char *c_old = diff_get_color(opt->use_color, DIFF_FILE_OLD);
 	const char *c_new = diff_get_color(opt->use_color, DIFF_FILE_NEW);
-	const char *c_plain = diff_get_color(opt->use_color, DIFF_PLAIN);
+	const char *c_context = diff_get_color(opt->use_color, DIFF_CONTEXT);
 
 	if (!pair || !diff)
 		return;
@@ -957,7 +957,7 @@ static void dump_diff_hacky_one(struct rev_info *rev, struct line_log_data *rang
 			int k;
 			for (; t_cur < diff->target.ranges[j].start; t_cur++)
 				print_line(prefix, ' ', t_cur, t_ends, pair->two->data,
-					   c_plain, c_reset);
+					   c_context, c_reset);
 			for (k = diff->parent.ranges[j].start; k < diff->parent.ranges[j].end; k++)
 				print_line(prefix, '-', k, p_ends, pair->one->data,
 					   c_old, c_reset);
@@ -968,7 +968,7 @@ static void dump_diff_hacky_one(struct rev_info *rev, struct line_log_data *rang
 		}
 		for (; t_cur < t_end; t_cur++)
 			print_line(prefix, ' ', t_cur, t_ends, pair->two->data,
-				   c_plain, c_reset);
+				   c_context, c_reset);
 	}
 
 	free(p_ends);
@@ -1030,7 +1030,8 @@ static int process_diff_filepair(struct rev_info *rev,
 	}
 
 	diff_ranges_init(&diff);
-	collect_diff(&file_parent, &file_target, &diff);
+	if (collect_diff(&file_parent, &file_target, &diff))
+		die("unable to generate diff for %s", pair->one->path);
 
 	/* NEEDSWORK should apply some heuristics to prevent mismatches */
 	free(rg->path);

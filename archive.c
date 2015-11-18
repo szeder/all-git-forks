@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "refs.h"
 #include "commit.h"
 #include "tree-walk.h"
 #include "attr.h"
@@ -33,7 +34,7 @@ static void format_subst(const struct commit *commit,
 	char *to_free = NULL;
 	struct strbuf fmt = STRBUF_INIT;
 	struct pretty_print_context ctx = {0};
-	ctx.date_mode = DATE_NORMAL;
+	ctx.date_mode.type = DATE_NORMAL;
 	ctx.abbrev = DEFAULT_ABBREV;
 
 	if (src == buf->buf)
@@ -170,13 +171,14 @@ static void queue_directory(const unsigned char *sha1,
 		unsigned mode, int stage, struct archiver_context *c)
 {
 	struct directory *d;
-	d = xmallocz(sizeof(*d) + base->len + 1 + strlen(filename));
+	size_t len = base->len + 1 + strlen(filename) + 1;
+	d = xmalloc(sizeof(*d) + len);
 	d->up	   = c->bottom;
 	d->baselen = base->len;
 	d->mode	   = mode;
 	d->stage   = stage;
 	c->bottom  = d;
-	d->len = sprintf(d->path, "%.*s%s/", (int)base->len, base->buf, filename);
+	d->len = xsnprintf(d->path, len, "%.*s%s/", (int)base->len, base->buf, filename);
 	hashcpy(d->oid.hash, sha1);
 }
 

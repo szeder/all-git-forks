@@ -252,16 +252,11 @@ static int load_bitmap_entries_v1(struct bitmap_index *index)
 
 static char *pack_bitmap_filename(struct packed_git *p)
 {
-	char *idx_name;
-	int len;
+	size_t len;
 
-	len = strlen(p->pack_name) - strlen(".pack");
-	idx_name = xmalloc(len + strlen(".bitmap") + 1);
-
-	memcpy(idx_name, p->pack_name, len);
-	memcpy(idx_name + len, ".bitmap", strlen(".bitmap") + 1);
-
-	return idx_name;
+	if (!strip_suffix(p->pack_name, ".pack", &len))
+		die("BUG: pack_name does not end in .pack");
+	return xstrfmt("%.*s.bitmap", (int)len, p->pack_name);
 }
 
 static int open_pack_bitmap_1(struct packed_git *packfile)
@@ -622,7 +617,7 @@ static void show_objects_for_type(
 	while (i < objects->word_alloc && ewah_iterator_next(&filter, &it)) {
 		eword_t word = objects->words[i] & filter;
 
-		for (offset = 0; offset < BITS_IN_WORD; ++offset) {
+		for (offset = 0; offset < BITS_IN_EWORD; ++offset) {
 			const unsigned char *sha1;
 			struct revindex_entry *entry;
 			uint32_t hash = 0;
@@ -644,7 +639,7 @@ static void show_objects_for_type(
 			show_reach(sha1, object_type, 0, hash, bitmap_git.pack, entry->offset);
 		}
 
-		pos += BITS_IN_WORD;
+		pos += BITS_IN_EWORD;
 		i++;
 	}
 }
@@ -776,7 +771,7 @@ int reuse_partial_packfile_from_bitmap(struct packed_git **packfile,
 			break;
 		}
 
-		reuse_objects += BITS_IN_WORD;
+		reuse_objects += BITS_IN_EWORD;
 	}
 
 #ifdef GIT_BITMAP_DEBUG
@@ -985,7 +980,7 @@ void test_bitmap_walk(struct rev_info *revs)
 	else
 		fprintf(stderr, "Mismatch!\n");
 
-	free(result);
+	bitmap_free(result);
 }
 
 static int rebuild_bitmap(uint32_t *reposition,
@@ -1001,7 +996,7 @@ static int rebuild_bitmap(uint32_t *reposition,
 	while (ewah_iterator_next(&word, &it)) {
 		uint32_t offset, bit_pos;
 
-		for (offset = 0; offset < BITS_IN_WORD; ++offset) {
+		for (offset = 0; offset < BITS_IN_EWORD; ++offset) {
 			if ((word >> offset) == 0)
 				break;
 
@@ -1014,7 +1009,7 @@ static int rebuild_bitmap(uint32_t *reposition,
 				return -1;
 		}
 
-		pos += BITS_IN_WORD;
+		pos += BITS_IN_EWORD;
 	}
 	return 0;
 }

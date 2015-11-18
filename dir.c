@@ -401,7 +401,6 @@ int report_path_error(const char *ps_matched,
 	/*
 	 * Make sure all pathspec matched; otherwise it is an error.
 	 */
-	struct strbuf sb = STRBUF_INIT;
 	int num, errors = 0;
 	for (num = 0; num < pathspec->nr; num++) {
 		int other, found_dup;
@@ -433,7 +432,6 @@ int report_path_error(const char *ps_matched,
 		      pathspec->items[num].original);
 		errors++;
 	}
-	strbuf_release(&sb);
 	return errors;
 }
 
@@ -884,11 +882,72 @@ int match_pathname(const char *pathname, int pathlen,
 		 */
 		if (!patternlen && !namelen)
 			return 1;
+		/*
+		 * This can happen when we ignore some exclude rules
+		 * on directories in other to see if negative rules
+		 * may match. E.g.
+		 *
+		 * /abc
+		 * !/abc/def/ghi
+		 *
+		 * The pattern of interest is "/abc". On the first
+		 * try, we should match path "abc" with this pattern
+		 * in the "if" statement right above, but the caller
+		 * ignores it.
+		 *
+		 * On the second try with paths within "abc",
+		 * e.g. "abc/xyz", we come here and try to match it
+		 * with "/abc".
+		 */
+		if (!patternlen && namelen && *name == '/')
+			return 1;
 	}
 
 	return fnmatch_icase_mem(pattern, patternlen,
 				 name, namelen,
 				 WM_PATHNAME) == 0;
+}
+
+/*
+ * Return non-zero if pathname is a directory and an ancestor of the
+ * literal path in a (negative) pattern. This is used to keep
+ * descending in "foo" and "foo/bar" when the pattern is
+ * "!foo/bar/.gitignore". "foo/notbar" will not be descended however.
+ */
+static int match_neg_path(const char *pathname, int pathlen, int *dtype,
+			  const char *base, int baselen,
+			  const char *pattern, int prefix, int patternlen,
+			  int flags)
+{
+	assert((flags & EXC_FLAG_NEGATIVE) && !(flags & EXC_FLAG_NODIR));
+
+	if (*dtype == DT_UNKNOWN)
+		*dtype = get_dtype(NULL, pathname, pathlen);
+	if (*dtype != DT_DIR)
+		return 0;
+
+	if (*pattern == '/') {
+		pattern++;
+		patternlen--;
+		prefix--;
+	}
+
+	if (baselen) {
+		if (((pathlen < baselen && base[pathlen] == '/') ||
+		     pathlen == baselen) &&
+		    !strncmp_icase(pathname, base, pathlen))
+			return 1;
+		pathname += baselen + 1;
+		pathlen  -= baselen + 1;
+	}
+
+
+	if (prefix &&
+	    ((pathlen < prefix && pattern[pathlen] == '/') &&
+	     !strncmp_icase(pathname, pattern, pathlen)))
+		return 1;
+
+	return 0;
 }
 
 /*
@@ -903,7 +962,8 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 						       int *dtype,
 						       struct exclude_list *el)
 {
-	int i;
+	struct exclude *exc = NULL; /* undecided */
+	int i, matched_negative_path = 0;
 
 	if (!el->nr)
 		return NULL;	/* undefined */
@@ -924,18 +984,33 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 			if (match_basename(basename,
 					   pathlen - (basename - pathname),
 					   exclude, prefix, x->patternlen,
-					   x->flags))
-				return x;
+					   x->flags)) {
+				exc = x;
+				break;
+			}
 			continue;
 		}
 
 		assert(x->baselen == 0 || x->base[x->baselen - 1] == '/');
 		if (match_pathname(pathname, pathlen,
 				   x->base, x->baselen ? x->baselen - 1 : 0,
+				   exclude, prefix, x->patternlen, x->flags)) {
+			exc = x;
+			break;
+		}
+
+		if ((x->flags & EXC_FLAG_NEGATIVE) && !matched_negative_path &&
+		    match_neg_path(pathname, pathlen, dtype, x->base,
+				   x->baselen ? x->baselen - 1 : 0,
 				   exclude, prefix, x->patternlen, x->flags))
-			return x;
+			matched_negative_path = 1;
 	}
-	return NULL; /* undecided */
+	if (exc &&
+	    !(exc->flags & EXC_FLAG_NEGATIVE) &&
+	    !(exc->flags & EXC_FLAG_NODIR) &&
+	    matched_negative_path)
+		exc = NULL;
+	return exc;
 }
 
 /*
@@ -1080,10 +1155,9 @@ static void prep_exclude(struct dir_struct *dir, const char *base, int baselen)
 		    (!untracked || !untracked->valid ||
 		     /*
 		      * .. and .gitignore does not exist before
-		      * (i.e. null exclude_sha1 and skip_worktree is
-		      * not set). Then we can skip loading .gitignore,
-		      * which would result in ENOENT anyway.
-		      * skip_worktree is taken care in read_directory()
+		      * (i.e. null exclude_sha1). Then we can skip
+		      * loading .gitignore, which would result in
+		      * ENOENT anyway.
 		      */
 		     !is_null_sha1(untracked->exclude_sha1))) {
 			/*
@@ -1205,29 +1279,15 @@ enum exist_status {
  */
 static enum exist_status directory_exists_in_index_icase(const char *dirname, int len)
 {
-	const struct cache_entry *ce = cache_dir_exists(dirname, len);
-	unsigned char endchar;
+	struct cache_entry *ce;
 
-	if (!ce)
-		return index_nonexistent;
-	endchar = ce->name[len];
-
-	/*
-	 * The cache_entry structure returned will contain this dirname
-	 * and possibly additional path components.
-	 */
-	if (endchar == '/')
+	if (cache_dir_exists(dirname, len))
 		return index_directory;
 
-	/*
-	 * If there are no additional path components, then this cache_entry
-	 * represents a submodule.  Submodules, despite being directories,
-	 * are stored in the cache without a closing slash.
-	 */
-	if (!endchar && S_ISGITLINK(ce->ce_mode))
+	ce = cache_file_exists(dirname, len, ignore_case);
+	if (ce && S_ISGITLINK(ce->ce_mode))
 		return index_gitdir;
 
-	/* This should never be hit, but it exists just in case. */
 	return index_nonexistent;
 }
 
@@ -1300,7 +1360,7 @@ static enum exist_status directory_exists_in_index(const char *dirname, int len)
  */
 static enum path_treatment treat_directory(struct dir_struct *dir,
 	struct untracked_cache_dir *untracked,
-	const char *dirname, int len, int exclude,
+	const char *dirname, int len, int baselen, int exclude,
 	const struct path_simplify *simplify)
 {
 	/* The "len-1" is to strip the final '/' */
@@ -1327,7 +1387,8 @@ static enum path_treatment treat_directory(struct dir_struct *dir,
 	if (!(dir->flags & DIR_HIDE_EMPTY_DIRECTORIES))
 		return exclude ? path_excluded : path_untracked;
 
-	untracked = lookup_untracked(dir->untracked, untracked, dirname, len);
+	untracked = lookup_untracked(dir->untracked, untracked,
+				     dirname + baselen, len - baselen);
 	return read_directory_recursive(dir, dirname, len,
 					untracked, 1, simplify);
 }
@@ -1447,6 +1508,7 @@ static int get_dtype(struct dirent *de, const char *path, int len)
 static enum path_treatment treat_one_path(struct dir_struct *dir,
 					  struct untracked_cache_dir *untracked,
 					  struct strbuf *path,
+					  int baselen,
 					  const struct path_simplify *simplify,
 					  int dtype, struct dirent *de)
 {
@@ -1498,8 +1560,8 @@ static enum path_treatment treat_one_path(struct dir_struct *dir,
 		return path_none;
 	case DT_DIR:
 		strbuf_addch(path, '/');
-		return treat_directory(dir, untracked, path->buf, path->len, exclude,
-			simplify);
+		return treat_directory(dir, untracked, path->buf, path->len,
+				       baselen, exclude, simplify);
 	case DT_REG:
 	case DT_LNK:
 		return exclude ? path_excluded : path_untracked;
@@ -1520,8 +1582,7 @@ static enum path_treatment treat_path_fast(struct dir_struct *dir,
 	}
 	strbuf_addstr(path, cdir->ucd->name);
 	/* treat_one_path() does this before it calls treat_directory() */
-	if (path->buf[path->len - 1] != '/')
-		strbuf_addch(path, '/');
+	strbuf_complete(path, '/');
 	if (cdir->ucd->check_only)
 		/*
 		 * check_only is set as a result of treat_directory() getting
@@ -1560,7 +1621,7 @@ static enum path_treatment treat_path(struct dir_struct *dir,
 		return path_none;
 
 	dtype = DTYPE(de);
-	return treat_one_path(dir, untracked, path, simplify, dtype, de);
+	return treat_one_path(dir, untracked, path, baselen, simplify, dtype, de);
 }
 
 static void add_untracked(struct untracked_cache_dir *dir, const char *name)
@@ -1830,7 +1891,7 @@ static int treat_leading_path(struct dir_struct *dir,
 			break;
 		if (simplify_away(sb.buf, sb.len, simplify))
 			break;
-		if (treat_one_path(dir, NULL, &sb, simplify,
+		if (treat_one_path(dir, NULL, &sb, baselen, simplify,
 				   DT_DIR, NULL) == path_none)
 			break; /* do not recurse into it */
 		if (len <= baselen) {
@@ -1850,7 +1911,7 @@ static const char *get_ident_string(void)
 
 	if (sb.len)
 		return sb.buf;
-	if (uname(&uts))
+	if (uname(&uts) < 0)
 		die_errno(_("failed to get kernel name and information"));
 	strbuf_addf(&sb, "Location %s, system %s %s %s", get_git_work_tree(),
 		    uts.sysname, uts.release, uts.version);
@@ -1882,7 +1943,6 @@ static struct untracked_cache_dir *validate_untracked_cache(struct dir_struct *d
 						      const struct pathspec *pathspec)
 {
 	struct untracked_cache_dir *root;
-	int i;
 
 	if (!dir->untracked || getenv("GIT_DISABLE_UNTRACKED_CACHE"))
 		return NULL;
@@ -1933,15 +1993,6 @@ static struct untracked_cache_dir *validate_untracked_cache(struct dir_struct *d
 	 */
 	if (dir->exclude_list_group[EXC_CMDL].nr)
 		return NULL;
-
-	/*
-	 * An optimization in prep_exclude() does not play well with
-	 * CE_SKIP_WORKTREE. It's a rare case anyway, if a single
-	 * entry has that bit set, disable the whole untracked cache.
-	 */
-	for (i = 0; i < active_nr; i++)
-		if (ce_skip_worktree(active_cache[i]))
-			return NULL;
 
 	if (!ident_in_untracked(dir->untracked)) {
 		warning(_("Untracked cache is disabled on this system."));
@@ -2041,6 +2092,15 @@ int file_exists(const char *f)
 	return lstat(f, &sb) == 0;
 }
 
+static int cmp_icase(char a, char b)
+{
+	if (a == b)
+		return 0;
+	if (ignore_case)
+		return toupper(a) - toupper(b);
+	return a - b;
+}
+
 /*
  * Given two normalized paths (a trailing slash is ok), if subdir is
  * outside dir, return -1.  Otherwise return the offset in subdir that
@@ -2052,7 +2112,7 @@ int dir_inside_of(const char *subdir, const char *dir)
 
 	assert(dir && subdir && *dir && *subdir);
 
-	while (*dir && *subdir && *dir == *subdir) {
+	while (*dir && *subdir && !cmp_icase(*dir, *subdir)) {
 		dir++;
 		subdir++;
 		offset++;
@@ -2137,8 +2197,7 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 		else
 			return -1;
 	}
-	if (path->buf[original_len - 1] != '/')
-		strbuf_addch(path, '/');
+	strbuf_complete(path, '/');
 
 	len = path->len;
 	while ((e = readdir(dir)) != NULL) {
@@ -2187,6 +2246,8 @@ int remove_dir_recursively(struct strbuf *path, int flag)
 	return remove_dir_recurse(path, flag, NULL);
 }
 
+static GIT_PATH_FUNC(git_path_info_exclude, "info/exclude")
+
 void setup_standard_excludes(struct dir_struct *dir)
 {
 	const char *path;
@@ -2201,7 +2262,7 @@ void setup_standard_excludes(struct dir_struct *dir)
 					 dir->untracked ? &dir->ss_excludes_file : NULL);
 
 	/* per repository user preference */
-	path = git_path("info/exclude");
+	path = git_path_info_exclude();
 	if (!access_or_warn(path, R_OK, 0))
 		add_excludes_from_file_1(dir, path,
 					 dir->untracked ? &dir->ss_info_exclude : NULL);
@@ -2627,23 +2688,67 @@ done2:
 	return uc;
 }
 
+static void invalidate_one_directory(struct untracked_cache *uc,
+				     struct untracked_cache_dir *ucd)
+{
+	uc->dir_invalidated++;
+	ucd->valid = 0;
+	ucd->untracked_nr = 0;
+}
+
+/*
+ * Normally when an entry is added or removed from a directory,
+ * invalidating that directory is enough. No need to touch its
+ * ancestors. When a directory is shown as "foo/bar/" in git-status
+ * however, deleting or adding an entry may have cascading effect.
+ *
+ * Say the "foo/bar/file" has become untracked, we need to tell the
+ * untracked_cache_dir of "foo" that "bar/" is not an untracked
+ * directory any more (because "bar" is managed by foo as an untracked
+ * "file").
+ *
+ * Similarly, if "foo/bar/file" moves from untracked to tracked and it
+ * was the last untracked entry in the entire "foo", we should show
+ * "foo/" instead. Which means we have to invalidate past "bar" up to
+ * "foo".
+ *
+ * This function traverses all directories from root to leaf. If there
+ * is a chance of one of the above cases happening, we invalidate back
+ * to root. Otherwise we just invalidate the leaf. There may be a more
+ * sophisticated way than checking for SHOW_OTHER_DIRECTORIES to
+ * detect these cases and avoid unnecessary invalidation, for example,
+ * checking for the untracked entry named "bar/" in "foo", but for now
+ * stick to something safe and simple.
+ */
+static int invalidate_one_component(struct untracked_cache *uc,
+				    struct untracked_cache_dir *dir,
+				    const char *path, int len)
+{
+	const char *rest = strchr(path, '/');
+
+	if (rest) {
+		int component_len = rest - path;
+		struct untracked_cache_dir *d =
+			lookup_untracked(uc, dir, path, component_len);
+		int ret =
+			invalidate_one_component(uc, d, rest + 1,
+						 len - (component_len + 1));
+		if (ret)
+			invalidate_one_directory(uc, dir);
+		return ret;
+	}
+
+	invalidate_one_directory(uc, dir);
+	return uc->dir_flags & DIR_SHOW_OTHER_DIRECTORIES;
+}
+
 void untracked_cache_invalidate_path(struct index_state *istate,
 				     const char *path)
 {
-	const char *sep;
-	struct untracked_cache_dir *d;
 	if (!istate->untracked || !istate->untracked->root)
 		return;
-	sep = strrchr(path, '/');
-	if (sep)
-		d = lookup_untracked(istate->untracked,
-				     istate->untracked->root,
-				     path, sep - path);
-	else
-		d = istate->untracked->root;
-	istate->untracked->dir_invalidated++;
-	d->valid = 0;
-	d->untracked_nr = 0;
+	invalidate_one_component(istate->untracked, istate->untracked->root,
+				 path, strlen(path));
 }
 
 void untracked_cache_remove_from_index(struct index_state *istate,

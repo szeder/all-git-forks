@@ -208,44 +208,25 @@ const char *sha1_file_name(const unsigned char *sha1)
  * provided by the caller.  which should be "pack" or "idx".
  */
 static char *sha1_get_pack_name(const unsigned char *sha1,
-				char **name, char **base, const char *which)
+				struct strbuf *buf,
+				const char *which)
 {
-	static const char hex[] = "0123456789abcdef";
-	char *buf;
-	int i;
-
-	if (!*base) {
-		const char *sha1_file_directory = get_object_directory();
-		int len = strlen(sha1_file_directory);
-		*base = xmalloc(len + 60);
-		sprintf(*base, "%s/pack/pack-1234567890123456789012345678901234567890.%s",
-			sha1_file_directory, which);
-		*name = *base + len + 11;
-	}
-
-	buf = *name;
-
-	for (i = 0; i < 20; i++) {
-		unsigned int val = *sha1++;
-		*buf++ = hex[val >> 4];
-		*buf++ = hex[val & 0xf];
-	}
-
-	return *base;
+	strbuf_reset(buf);
+	strbuf_addf(buf, "%s/pack/pack-%s.%s", get_object_directory(),
+		    sha1_to_hex(sha1), which);
+	return buf->buf;
 }
 
 char *sha1_pack_name(const unsigned char *sha1)
 {
-	static char *name, *base;
-
-	return sha1_get_pack_name(sha1, &name, &base, "pack");
+	static struct strbuf buf = STRBUF_INIT;
+	return sha1_get_pack_name(sha1, &buf, "pack");
 }
 
 char *sha1_pack_index_name(const unsigned char *sha1)
 {
-	static char *name, *base;
-
-	return sha1_get_pack_name(sha1, &name, &base, "idx");
+	static struct strbuf buf = STRBUF_INIT;
+	return sha1_get_pack_name(sha1, &buf, "idx");
 }
 
 struct alternate_object_database *alt_odb_list;
@@ -377,15 +358,12 @@ void read_info_alternates(const char * relative_base, int depth)
 	char *map;
 	size_t mapsz;
 	struct stat st;
-	const char alt_file_name[] = "info/alternates";
-	/* Given that relative_base is no longer than PATH_MAX,
-	   ensure that "path" has enough space to append "/", the
-	   file name, "info/alternates", and a trailing NUL.  */
-	char path[PATH_MAX + 1 + sizeof alt_file_name];
+	char *path;
 	int fd;
 
-	sprintf(path, "%s/%s", relative_base, alt_file_name);
+	path = xstrfmt("%s/info/alternates", relative_base);
 	fd = git_open_noatime(path);
+	free(path);
 	if (fd < 0)
 		return;
 	if (fstat(fd, &st) || (st.st_size == 0)) {
@@ -404,13 +382,46 @@ void read_info_alternates(const char * relative_base, int depth)
 void add_to_alternates_file(const char *reference)
 {
 	struct lock_file *lock = xcalloc(1, sizeof(struct lock_file));
-	int fd = hold_lock_file_for_append(lock, git_path("objects/info/alternates"), LOCK_DIE_ON_ERROR);
-	const char *alt = mkpath("%s\n", reference);
-	write_or_die(fd, alt, strlen(alt));
-	if (commit_lock_file(lock))
-		die("could not close alternates file");
-	if (alt_odb_tail)
-		link_alt_odb_entries(alt, strlen(alt), '\n', NULL, 0);
+	char *alts = git_pathdup("objects/info/alternates");
+	FILE *in, *out;
+
+	hold_lock_file_for_update(lock, alts, LOCK_DIE_ON_ERROR);
+	out = fdopen_lock_file(lock, "w");
+	if (!out)
+		die_errno("unable to fdopen alternates lockfile");
+
+	in = fopen(alts, "r");
+	if (in) {
+		struct strbuf line = STRBUF_INIT;
+		int found = 0;
+
+		while (strbuf_getline(&line, in, '\n') != EOF) {
+			if (!strcmp(reference, line.buf)) {
+				found = 1;
+				break;
+			}
+			fprintf_or_die(out, "%s\n", line.buf);
+		}
+
+		strbuf_release(&line);
+		fclose(in);
+
+		if (found) {
+			rollback_lock_file(lock);
+			lock = NULL;
+		}
+	}
+	else if (errno != ENOENT)
+		die_errno("unable to read alternates file");
+
+	if (lock) {
+		fprintf_or_die(out, "%s\n", reference);
+		if (commit_lock_file(lock))
+			die_errno("unable to move new alternates file into place");
+		if (alt_odb_tail)
+			link_alt_odb_entries(reference, strlen(reference), '\n', NULL, 0);
+	}
+	free(alts);
 }
 
 int foreach_alt_odb(alt_odb_fn fn, void *cb)
@@ -443,6 +454,7 @@ void prepare_alt_odb(void)
 	read_info_alternates(get_object_directory(), 0);
 }
 
+/* Returns 1 if we have successfully freshened the file, 0 otherwise. */
 static int freshen_file(const char *fn)
 {
 	struct utimbuf t;
@@ -450,11 +462,18 @@ static int freshen_file(const char *fn)
 	return !utime(fn, &t);
 }
 
+/*
+ * All of the check_and_freshen functions return 1 if the file exists and was
+ * freshened (if freshening was requested), 0 otherwise. If they return
+ * 0, you should not assume that it is safe to skip a write of the object (it
+ * either does not exist on disk, or has a stale mtime and may be subject to
+ * pruning).
+ */
 static int check_and_freshen_file(const char *fn, int freshen)
 {
 	if (access(fn, F_OK))
 		return 0;
-	if (freshen && freshen_file(fn))
+	if (freshen && !freshen_file(fn))
 		return 0;
 	return 1;
 }
@@ -633,13 +652,15 @@ static int check_packed_git_idx(const char *path, struct packed_git *p)
 int open_pack_index(struct packed_git *p)
 {
 	char *idx_name;
+	size_t len;
 	int ret;
 
 	if (p->index_data)
 		return 0;
 
-	idx_name = xstrdup(p->pack_name);
-	strcpy(idx_name + strlen(idx_name) - strlen(".pack"), ".idx");
+	if (!strip_suffix(p->pack_name, ".pack", &len))
+		die("BUG: pack_name does not end in .pack");
+	idx_name = xstrfmt("%.*s.idx", (int)len, p->pack_name);
 	ret = check_packed_git_idx(idx_name, p);
 	free(idx_name);
 	return ret;
@@ -707,8 +728,8 @@ static void mmap_limit_check(size_t length)
 		    (uintmax_t)length, (uintmax_t)limit);
 }
 
-void *xmmap(void *start, size_t length,
-	int prot, int flags, int fd, off_t offset)
+void *xmmap_gently(void *start, size_t length,
+		  int prot, int flags, int fd, off_t offset)
 {
 	void *ret;
 
@@ -719,9 +740,16 @@ void *xmmap(void *start, size_t length,
 			return NULL;
 		release_pack_memory(length);
 		ret = mmap(start, length, prot, flags, fd, offset);
-		if (ret == MAP_FAILED)
-			die_errno("Out of memory? mmap failed");
 	}
+	return ret;
+}
+
+void *xmmap(void *start, size_t length,
+	int prot, int flags, int fd, off_t offset)
+{
+	void *ret = xmmap_gently(start, length, prot, flags, fd, offset);
+	if (ret == MAP_FAILED)
+		die_errno("mmap failed");
 	return ret;
 }
 
@@ -740,6 +768,37 @@ void close_pack_windows(struct packed_git *p)
 		free(w);
 	}
 }
+
+static int close_pack_fd(struct packed_git *p)
+{
+	if (p->pack_fd < 0)
+		return 0;
+
+	close(p->pack_fd);
+	pack_open_fds--;
+	p->pack_fd = -1;
+
+	return 1;
+}
+
+static void close_pack(struct packed_git *p)
+{
+	close_pack_windows(p);
+	close_pack_fd(p);
+	close_pack_index(p);
+}
+
+void close_all_packs(void)
+{
+	struct packed_git *p;
+
+	for (p = packed_git; p; p = p->next)
+		if (p->do_not_close)
+			die("BUG! Want to close pack marked 'do-not-close'");
+		else
+			close_pack(p);
+}
+
 
 /*
  * The LRU pack is the one with the oldest MRU window, preferring packs
@@ -808,12 +867,8 @@ static int close_one_pack(void)
 		find_lru_pack(p, &lru_p, &mru_w, &accept_windows_inuse);
 	}
 
-	if (lru_p) {
-		close(lru_p->pack_fd);
-		pack_open_fds--;
-		lru_p->pack_fd = -1;
-		return 1;
-	}
+	if (lru_p)
+		return close_pack_fd(lru_p);
 
 	return 0;
 }
@@ -853,12 +908,7 @@ void free_pack_by_name(const char *pack_name)
 		p = *pp;
 		if (strcmp(pack_name, p->pack_name) == 0) {
 			clear_delta_base_cache();
-			close_pack_windows(p);
-			if (p->pack_fd != -1) {
-				close(p->pack_fd);
-				pack_open_fds--;
-			}
-			close_pack_index(p);
+			close_pack(p);
 			free(p->bad_object_sha1);
 			*pp = p->next;
 			if (last_found_pack == p)
@@ -992,11 +1042,7 @@ static int open_packed_git(struct packed_git *p)
 {
 	if (!open_packed_git_1(p))
 		return 0;
-	if (p->pack_fd != -1) {
-		close(p->pack_fd);
-		pack_open_fds--;
-		p->pack_fd = -1;
-	}
+	close_pack_fd(p);
 	return -1;
 }
 
@@ -1062,11 +1108,8 @@ unsigned char *use_pack(struct packed_git *p,
 					p->pack_name,
 					strerror(errno));
 			if (!win->offset && win->len == p->pack_size
-				&& !p->do_not_close) {
-				close(p->pack_fd);
-				pack_open_fds--;
-				p->pack_fd = -1;
-			}
+				&& !p->do_not_close)
+				close_pack_fd(p);
 			pack_mmap_calls++;
 			pack_open_windows++;
 			if (pack_mapped > peak_pack_mapped)
@@ -1101,11 +1144,12 @@ static void try_to_free_pack_memory(size_t size)
 	release_pack_memory(size);
 }
 
-struct packed_git *add_packed_git(const char *path, int path_len, int local)
+struct packed_git *add_packed_git(const char *path, size_t path_len, int local)
 {
 	static int have_set_try_to_free_routine;
 	struct stat st;
-	struct packed_git *p = alloc_packed_git(path_len + 2);
+	size_t alloc;
+	struct packed_git *p;
 
 	if (!have_set_try_to_free_routine) {
 		have_set_try_to_free_routine = 1;
@@ -1116,18 +1160,22 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 	 * Make sure a corresponding .pack file exists and that
 	 * the index looks sane.
 	 */
-	path_len -= strlen(".idx");
-	if (path_len < 1) {
-		free(p);
+	if (!strip_suffix_mem(path, &path_len, ".idx"))
 		return NULL;
-	}
+
+	/*
+	 * ".pack" is long enough to hold any suffix we're adding (and
+	 * the use xsnprintf double-checks that)
+	 */
+	alloc = path_len + strlen(".pack") + 1;
+	p = alloc_packed_git(alloc);
 	memcpy(p->pack_name, path, path_len);
 
-	strcpy(p->pack_name + path_len, ".keep");
+	xsnprintf(p->pack_name + path_len, alloc - path_len, ".keep");
 	if (!access(p->pack_name, F_OK))
 		p->pack_keep = 1;
 
-	strcpy(p->pack_name + path_len, ".pack");
+	xsnprintf(p->pack_name + path_len, alloc - path_len, ".pack");
 	if (stat(p->pack_name, &st) || !S_ISREG(st.st_mode)) {
 		free(p);
 		return NULL;
@@ -1147,9 +1195,10 @@ struct packed_git *add_packed_git(const char *path, int path_len, int local)
 struct packed_git *parse_pack_index(unsigned char *sha1, const char *idx_path)
 {
 	const char *path = sha1_pack_name(sha1);
-	struct packed_git *p = alloc_packed_git(strlen(path) + 1);
+	int alloc = strlen(path) + 1;
+	struct packed_git *p = alloc_packed_git(alloc);
 
-	strcpy(p->pack_name, path);
+	memcpy(p->pack_name, path, alloc); /* includes NUL */
 	hashcpy(p->sha1, sha1);
 	if (check_packed_git_idx(idx_path, p)) {
 		free(p);
@@ -1419,7 +1468,7 @@ int check_sha1_signature(const unsigned char *sha1, void *map,
 		return -1;
 
 	/* Generate the header */
-	hdrlen = sprintf(hdr, "%s %lu", typename(obj_type), size) + 1;
+	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(obj_type), size) + 1;
 
 	/* Sha1.. */
 	git_SHA1_Init(&c);
@@ -1446,7 +1495,10 @@ int git_open_noatime(const char *name)
 	static int sha1_file_open_flag = O_NOATIME;
 
 	for (;;) {
-		int fd = open(name, O_RDONLY | sha1_file_open_flag);
+		int fd;
+
+		errno = 0;
+		fd = open(name, O_RDONLY | sha1_file_open_flag);
 		if (fd >= 0)
 			return fd;
 
@@ -2074,7 +2126,7 @@ static unsigned long pack_entry_hash(struct packed_git *p, off_t base_offset)
 {
 	unsigned long hash;
 
-	hash = (unsigned long)p + (unsigned long)base_offset;
+	hash = (unsigned long)(intptr_t)p + (unsigned long)base_offset;
 	hash += (hash >> 8) + (hash >> 16);
 	return hash % MAX_DELTA_CACHE;
 }
@@ -2882,7 +2934,7 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
 	git_SHA_CTX c;
 
 	/* Generate the header */
-	*hdrlen = sprintf(hdr, "%s %lu", type, len)+1;
+	*hdrlen = xsnprintf(hdr, *hdrlen, "%s %lu", type, len)+1;
 
 	/* Sha1.. */
 	git_SHA1_Init(&c);
@@ -2893,11 +2945,8 @@ static void write_sha1_file_prepare(const void *buf, unsigned long len,
 
 /*
  * Move the just written object into its final resting place.
- * NEEDSWORK: this should be renamed to finalize_temp_file() as
- * "moving" is only a part of what it does, when no patch between
- * master to pu changes the call sites of this function.
  */
-int move_temp_to_file(const char *tmpfile, const char *filename)
+int finalize_object_file(const char *tmpfile, const char *filename)
 {
 	int ret = 0;
 
@@ -2948,7 +2997,7 @@ int hash_sha1_file(const void *buf, unsigned long len, const char *type,
                    unsigned char *sha1)
 {
 	char hdr[32];
-	int hdrlen;
+	int hdrlen = sizeof(hdr);
 	write_sha1_file_prepare(buf, len, type, sha1, hdr, &hdrlen);
 	return 0;
 }
@@ -2978,29 +3027,31 @@ static inline int directory_size(const char *filename)
  * We want to avoid cross-directory filename renames, because those
  * can have problems on various filesystems (FAT, NFS, Coda).
  */
-static int create_tmpfile(char *buffer, size_t bufsiz, const char *filename)
+static int create_tmpfile(struct strbuf *tmp, const char *filename)
 {
 	int fd, dirlen = directory_size(filename);
 
-	if (dirlen + 20 > bufsiz) {
-		errno = ENAMETOOLONG;
-		return -1;
-	}
-	memcpy(buffer, filename, dirlen);
-	strcpy(buffer + dirlen, "tmp_obj_XXXXXX");
-	fd = git_mkstemp_mode(buffer, 0444);
+	strbuf_reset(tmp);
+	strbuf_add(tmp, filename, dirlen);
+	strbuf_addstr(tmp, "tmp_obj_XXXXXX");
+	fd = git_mkstemp_mode(tmp->buf, 0444);
 	if (fd < 0 && dirlen && errno == ENOENT) {
-		/* Make sure the directory exists */
-		memcpy(buffer, filename, dirlen);
-		buffer[dirlen-1] = 0;
-		if (mkdir(buffer, 0777) && errno != EEXIST)
+		/*
+		 * Make sure the directory exists; note that the contents
+		 * of the buffer are undefined after mkstemp returns an
+		 * error, so we have to rewrite the whole buffer from
+		 * scratch.
+		 */
+		strbuf_reset(tmp);
+		strbuf_add(tmp, filename, dirlen - 1);
+		if (mkdir(tmp->buf, 0777) && errno != EEXIST)
 			return -1;
-		if (adjust_shared_perm(buffer))
+		if (adjust_shared_perm(tmp->buf))
 			return -1;
 
 		/* Try again */
-		strcpy(buffer + dirlen - 1, "/tmp_obj_XXXXXX");
-		fd = git_mkstemp_mode(buffer, 0444);
+		strbuf_addstr(tmp, "/tmp_obj_XXXXXX");
+		fd = git_mkstemp_mode(tmp->buf, 0444);
 	}
 	return fd;
 }
@@ -3013,10 +3064,10 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	git_zstream stream;
 	git_SHA_CTX c;
 	unsigned char parano_sha1[20];
-	static char tmp_file[PATH_MAX];
+	static struct strbuf tmp_file = STRBUF_INIT;
 	const char *filename = sha1_file_name(sha1);
 
-	fd = create_tmpfile(tmp_file, sizeof(tmp_file), filename);
+	fd = create_tmpfile(&tmp_file, filename);
 	if (fd < 0) {
 		if (errno == EACCES)
 			return error("insufficient permission for adding an object to repository database %s", get_object_directory());
@@ -3065,12 +3116,12 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 		struct utimbuf utb;
 		utb.actime = mtime;
 		utb.modtime = mtime;
-		if (utime(tmp_file, &utb) < 0)
+		if (utime(tmp_file.buf, &utb) < 0)
 			warning("failed utime() on %s: %s",
-				tmp_file, strerror(errno));
+				tmp_file.buf, strerror(errno));
 	}
 
-	return move_temp_to_file(tmp_file, filename);
+	return finalize_object_file(tmp_file.buf, filename);
 }
 
 static int freshen_loose_object(const unsigned char *sha1)
@@ -3094,7 +3145,7 @@ static int freshen_packed_object(const unsigned char *sha1)
 int write_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *sha1)
 {
 	char hdr[32];
-	int hdrlen;
+	int hdrlen = sizeof(hdr);
 
 	/* Normally if we have it in the pack then we do not bother writing
 	 * it out into .git/objects/??/?{38} file.
@@ -3112,7 +3163,8 @@ int hash_sha1_file_literally(const void *buf, unsigned long len, const char *typ
 	int hdrlen, status = 0;
 
 	/* type string, SP, %lu of the length plus NUL must fit this */
-	header = xmalloc(strlen(type) + 32);
+	hdrlen = strlen(type) + 32;
+	header = xmalloc(hdrlen);
 	write_sha1_file_prepare(buf, len, type, sha1, header, &hdrlen);
 
 	if (!(flags & HASH_WRITE_OBJECT))
@@ -3140,7 +3192,7 @@ int force_object_loose(const unsigned char *sha1, time_t mtime)
 	buf = read_packed_sha1(sha1, &type, &len);
 	if (!buf)
 		return error("cannot read sha1_file for %s", sha1_to_hex(sha1));
-	hdrlen = sprintf(hdr, "%s %lu", typename(type), len) + 1;
+	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(type), len) + 1;
 	ret = write_loose_object(sha1, hdr, hdrlen, buf, len, mtime);
 	free(buf);
 
@@ -3161,7 +3213,7 @@ int has_sha1_pack(const unsigned char *sha1)
 	return find_pack_entry(sha1, &e);
 }
 
-int has_sha1_file(const unsigned char *sha1)
+int has_sha1_file_with_flags(const unsigned char *sha1, int flags)
 {
 	struct pack_entry e;
 
@@ -3169,6 +3221,8 @@ int has_sha1_file(const unsigned char *sha1)
 		return 1;
 	if (has_loose_object(sha1))
 		return 1;
+	if (flags & HAS_SHA1_QUICK)
+		return 0;
 	reprepare_packed_git();
 	return find_pack_entry(sha1, &e);
 }
@@ -3286,7 +3340,7 @@ static int index_core(unsigned char *sha1, int fd, size_t size,
 	int ret;
 
 	if (!size) {
-		ret = index_mem(sha1, NULL, size, type, path, flags);
+		ret = index_mem(sha1, "", size, type, path, flags);
 	} else if (size <= SMALL_FILE_SIZE) {
 		char *buf = xmalloc(size);
 		if (size == read_in_full(fd, buf, size))
@@ -3566,14 +3620,19 @@ int for_each_packed_object(each_packed_object_fn cb, void *data, unsigned flags)
 {
 	struct packed_git *p;
 	int r = 0;
+	int pack_errors = 0;
 
 	prepare_packed_git();
 	for (p = packed_git; p; p = p->next) {
 		if ((flags & FOR_EACH_OBJECT_LOCAL_ONLY) && !p->pack_local)
 			continue;
+		if (open_pack_index(p)) {
+			pack_errors = 1;
+			continue;
+		}
 		r = for_each_object_in_pack(p, cb, data);
 		if (r)
 			break;
 	}
-	return r;
+	return r ? r : pack_errors;
 }

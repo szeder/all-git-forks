@@ -18,8 +18,12 @@
 #include "commit-slab.h"
 #include "dir.h"
 #include "cache-tree.h"
+#include "bisect.h"
 
 volatile show_early_output_fn_t show_early_output;
+
+static const char *term_bad;
+static const char *term_good;
 
 char *path_name(const struct name_path *path, const char *name)
 {
@@ -34,7 +38,7 @@ char *path_name(const struct name_path *path, const char *name)
 	}
 	n = xmalloc(len);
 	m = n + len - (nlen + 1);
-	strcpy(m, name);
+	memcpy(m, name, nlen + 1);
 	for (p = path; p; p = p->up) {
 		if (p->elem_len) {
 			m -= p->elem_len + 1;
@@ -149,10 +153,7 @@ void mark_parents_uninteresting(struct commit *commit)
 		commit_list_insert(l->item, &parents);
 
 	while (parents) {
-		struct commit *commit = parents->item;
-		l = parents;
-		parents = parents->next;
-		free(l);
+		struct commit *commit = pop_commit(&parents);
 
 		while (commit) {
 			/*
@@ -361,8 +362,8 @@ static int everybody_uninteresting(struct commit_list *orig,
 		list = list->next;
 		if (commit->object.flags & UNINTERESTING)
 			continue;
-		if (interesting_cache)
-			*interesting_cache = commit;
+
+		*interesting_cache = commit;
 		return 0;
 	}
 	return 1;
@@ -817,7 +818,7 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 			parent = parent->next;
 			if (p)
 				p->object.flags |= UNINTERESTING;
-			if (parse_commit(p) < 0)
+			if (parse_commit_gently(p, 1) < 0)
 				continue;
 			if (p->parents)
 				mark_parents_uninteresting(p);
@@ -844,7 +845,7 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 	for (parent = commit->parents; parent; parent = parent->next) {
 		struct commit *p = parent->item;
 
-		if (parse_commit(p) < 0)
+		if (parse_commit_gently(p, revs->ignore_missing_links) < 0)
 			return -1;
 		if (revs->show_source && !p->util)
 			p->util = commit->util;
@@ -1098,13 +1099,9 @@ static int limit_list(struct rev_info *revs)
 	}
 
 	while (list) {
-		struct commit_list *entry = list;
-		struct commit *commit = list->item;
+		struct commit *commit = pop_commit(&list);
 		struct object *obj = &commit->object;
 		show_early_output_fn_t show;
-
-		list = list->next;
-		free(entry);
 
 		if (commit == interesting_cache)
 			interesting_cache = NULL;
@@ -1218,7 +1215,8 @@ int ref_excluded(struct string_list *ref_excludes, const char *path)
 	return 0;
 }
 
-static int handle_one_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int handle_one_ref(const char *path, const struct object_id *oid,
+			  int flag, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
 	struct object *object;
@@ -1226,9 +1224,9 @@ static int handle_one_ref(const char *path, const unsigned char *sha1, int flag,
 	if (ref_excluded(cb->all_revs->ref_excludes, path))
 	    return 0;
 
-	object = get_reference(cb->all_revs, path, sha1, cb->all_flags);
+	object = get_reference(cb->all_revs, path, oid->hash, cb->all_flags);
 	add_rev_cmdline(cb->all_revs, object, path, REV_CMD_REF, cb->all_flags);
-	add_pending_sha1(cb->all_revs, path, sha1, cb->all_flags);
+	add_pending_sha1(cb->all_revs, path, oid->hash, cb->all_flags);
 	return 0;
 }
 
@@ -1292,7 +1290,8 @@ static int handle_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	return 0;
 }
 
-static int handle_one_reflog(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int handle_one_reflog(const char *path, const struct object_id *oid,
+			     int flag, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
 	cb->warned_bad_reflog = 0;
@@ -1304,6 +1303,7 @@ static int handle_one_reflog(const char *path, const unsigned char *sha1, int fl
 void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)
 {
 	struct all_refs_cb cb;
+
 	cb.all_revs = revs;
 	cb.all_flags = flags;
 	for_each_reflog(handle_one_reflog, &cb);
@@ -1993,10 +1993,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if (!strcmp(arg, "--full-history")) {
 		revs->simplify_history = 0;
 	} else if (!strcmp(arg, "--relative-date")) {
-		revs->date_mode = DATE_RELATIVE;
+		revs->date_mode.type = DATE_RELATIVE;
 		revs->date_mode_explicit = 1;
 	} else if ((argcount = parse_long_opt("date", argv, &optarg))) {
-		revs->date_mode = parse_date_format(optarg);
+		parse_date_format(optarg, &revs->date_mode);
 		revs->date_mode_explicit = 1;
 		return argcount;
 	} else if (!strcmp(arg, "--log-size")) {
@@ -2073,14 +2073,23 @@ void parse_revision_opt(struct rev_info *revs, struct parse_opt_ctx_t *ctx,
 	ctx->argc -= n;
 }
 
+static int for_each_bisect_ref(const char *submodule, each_ref_fn fn, void *cb_data, const char *term) {
+	struct strbuf bisect_refs = STRBUF_INIT;
+	int status;
+	strbuf_addf(&bisect_refs, "refs/bisect/%s", term);
+	status = for_each_ref_in_submodule(submodule, bisect_refs.buf, fn, cb_data);
+	strbuf_release(&bisect_refs);
+	return status;
+}
+
 static int for_each_bad_bisect_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
-	return for_each_ref_in_submodule(submodule, "refs/bisect/bad", fn, cb_data);
+	return for_each_bisect_ref(submodule, fn, cb_data, term_bad);
 }
 
 static int for_each_good_bisect_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
-	return for_each_ref_in_submodule(submodule, "refs/bisect/good", fn, cb_data);
+	return for_each_bisect_ref(submodule, fn, cb_data, term_good);
 }
 
 static int handle_revision_pseudo_opt(const char *submodule,
@@ -2109,6 +2118,7 @@ static int handle_revision_pseudo_opt(const char *submodule,
 		handle_refs(submodule, revs, *flags, for_each_branch_ref_submodule);
 		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--bisect")) {
+		read_bisect_terms(&term_bad, &term_good);
 		handle_refs(submodule, revs, *flags, for_each_bad_bisect_ref);
 		handle_refs(submodule, revs, *flags ^ (UNINTERESTING | BOTTOM), for_each_good_bisect_ref);
 		revs->bisect = 1;
@@ -2168,6 +2178,21 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	}
 
 	return 1;
+}
+
+static void NORETURN diagnose_missing_default(const char *def)
+{
+	unsigned char sha1[20];
+	int flags;
+	const char *refname;
+
+	refname = resolve_ref_unsafe(def, 0, sha1, &flags);
+	if (!refname || !(flags & REF_ISSYMREF) || (flags & REF_ISBROKEN))
+		die(_("your current branch appears to be broken"));
+
+	skip_prefix(refname, "refs/heads/", &refname);
+	die(_("your current branch '%s' does not have any commits yet"),
+	    refname);
 }
 
 /*
@@ -2299,7 +2324,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 		struct object *object;
 		struct object_context oc;
 		if (get_sha1_with_context(revs->def, 0, sha1, &oc))
-			die("bad default revision '%s'", revs->def);
+			diagnose_missing_default(revs->def);
 		object = get_reference(revs, revs->def, sha1, 0);
 		add_pending_object_with_mode(revs, object, revs->def, oc.mode);
 	}
@@ -2701,10 +2726,7 @@ static void simplify_merges(struct rev_info *revs)
 		yet_to_do = NULL;
 		tail = &yet_to_do;
 		while (list) {
-			commit = list->item;
-			next = list->next;
-			free(list);
-			list = next;
+			commit = pop_commit(&list);
 			tail = simplify_one(revs, commit, tail);
 		}
 	}
@@ -2716,10 +2738,7 @@ static void simplify_merges(struct rev_info *revs)
 	while (list) {
 		struct merge_simplify_state *st;
 
-		commit = list->item;
-		next = list->next;
-		free(list);
-		list = next;
+		commit = pop_commit(&list);
 		st = locate_simplify_state(revs, commit);
 		if (st->simplified == commit)
 			tail = &commit_list_insert(commit, tail)->next;
@@ -3093,11 +3112,7 @@ static struct commit *get_revision_1(struct rev_info *revs)
 		return NULL;
 
 	do {
-		struct commit_list *entry = revs->commits;
-		struct commit *commit = entry->item;
-
-		revs->commits = entry->next;
-		free(entry);
+		struct commit *commit = pop_commit(&revs->commits);
 
 		if (revs->reflog_info) {
 			save_parents(revs, commit);

@@ -77,8 +77,7 @@ static enum ws_ignore {
 
 
 static const char *patch_input_file;
-static const char *root;
-static int root_len;
+static struct strbuf root = STRBUF_INIT;
 static int read_stdin = 1;
 static int options;
 
@@ -494,8 +493,8 @@ static char *find_name_gnu(const char *line, const char *def, int p_value)
 	}
 
 	strbuf_remove(&name, 0, cp - name.buf);
-	if (root)
-		strbuf_insert(&name, 0, root, root_len);
+	if (root.len)
+		strbuf_insert(&name, 0, root.buf, root.len);
 	return squash_slash(strbuf_detach(&name, NULL));
 }
 
@@ -697,11 +696,8 @@ static char *find_name_common(const char *line, const char *def,
 			return squash_slash(xstrdup(def));
 	}
 
-	if (root) {
-		char *ret = xmalloc(root_len + len + 1);
-		strcpy(ret, root);
-		memcpy(ret + root_len, start, len);
-		ret[root_len + len] = '\0';
+	if (root.len) {
+		char *ret = xstrfmt("%s%.*s", root.buf, len, start);
 		return squash_slash(ret);
 	}
 
@@ -785,7 +781,7 @@ static int guess_p_value(const char *nameline)
 }
 
 /*
- * Does the ---/+++ line has the POSIX timestamp after the last HT?
+ * Does the ---/+++ line have the POSIX timestamp after the last HT?
  * GNU diff puts epoch there to signal a creation/deletion event.  Is
  * this such a timestamp?
  */
@@ -1277,8 +1273,8 @@ static int parse_git_header(const char *line, int len, unsigned int size, struct
 	 * the default name from the header.
 	 */
 	patch->def_name = git_header_name(line, len);
-	if (patch->def_name && root) {
-		char *s = xstrfmt("%s%s", root, patch->def_name);
+	if (patch->def_name && root.len) {
+		char *s = xstrfmt("%s%s", root.buf, patch->def_name);
 		free(patch->def_name);
 		patch->def_name = s;
 	}
@@ -1638,6 +1634,9 @@ static int parse_fragment(const char *line, unsigned long size,
 	}
 	if (oldlines || newlines)
 		return -1;
+	if (!deleted && !added)
+		return -1;
+
 	fragment->leading = leading;
 	fragment->trailing = trailing;
 
@@ -4498,14 +4497,9 @@ static int option_parse_whitespace(const struct option *opt,
 static int option_parse_directory(const struct option *opt,
 				  const char *arg, int unset)
 {
-	root_len = strlen(arg);
-	if (root_len && arg[root_len - 1] != '/') {
-		char *new_root;
-		root = new_root = xmalloc(root_len + 2);
-		strcpy(new_root, arg);
-		strcpy(new_root + root_len++, "/");
-	} else
-		root = arg;
+	strbuf_reset(&root);
+	strbuf_addstr(&root, arg);
+	strbuf_complete(&root, '/');
 	return 0;
 }
 

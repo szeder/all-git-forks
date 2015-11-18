@@ -91,6 +91,7 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_OPT_DIRSTAT_BY_LINE     (1 << 28)
 #define DIFF_OPT_FUNCCONTEXT         (1 << 29)
 #define DIFF_OPT_PICKAXE_IGNORE_CASE (1 << 30)
+#define DIFF_OPT_DEFAULT_FOLLOW_RENAMES (1 << 31)
 
 #define DIFF_OPT_TST(opts, flag)    ((opts)->flags & DIFF_OPT_##flag)
 #define DIFF_OPT_TOUCHED(opts, flag)    ((opts)->touched_flags & DIFF_OPT_##flag)
@@ -138,6 +139,11 @@ struct diff_options {
 	int dirstat_permille;
 	int setup;
 	int abbrev;
+/* white-space error highlighting */
+#define WSEH_NEW 1
+#define WSEH_CONTEXT 2
+#define WSEH_OLD 4
+	unsigned ws_error_highlight;
 	const char *prefix;
 	int prefix_length;
 	const char *stat_sep;
@@ -176,7 +182,7 @@ struct diff_options {
 
 enum color_diff {
 	DIFF_RESET = 0,
-	DIFF_PLAIN = 1,
+	DIFF_CONTEXT = 1,
 	DIFF_METAINFO = 2,
 	DIFF_FRAGINFO = 3,
 	DIFF_FILE_OLD = 4,

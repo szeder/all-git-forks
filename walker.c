@@ -17,10 +17,9 @@ void walker_say(struct walker *walker, const char *fmt, const char *hex)
 
 static void report_missing(const struct object *obj)
 {
-	char missing_hex[41];
-	strcpy(missing_hex, sha1_to_hex(obj->sha1));
 	fprintf(stderr, "Cannot obtain needed %s %s\n",
-		obj->type ? typename(obj->type): "object", missing_hex);
+		obj->type ? typename(obj->type): "object",
+		sha1_to_hex(obj->sha1));
 	if (!is_null_sha1(current_commit_sha1))
 		fprintf(stderr, "while processing commit %s.\n",
 			sha1_to_hex(current_commit_sha1));
@@ -200,9 +199,11 @@ static int interpret_target(struct walker *walker, char *target, unsigned char *
 	return -1;
 }
 
-static int mark_complete(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int mark_complete(const char *path, const struct object_id *oid,
+			 int flag, void *cb_data)
 {
-	struct commit *commit = lookup_commit_reference_gently(sha1, 1);
+	struct commit *commit = lookup_commit_reference_gently(oid->hash, 1);
+
 	if (commit) {
 		commit->object.flags |= COMPLETE;
 		commit_list_insert(commit, &complete);

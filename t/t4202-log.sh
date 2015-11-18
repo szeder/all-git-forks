@@ -146,7 +146,30 @@ test_expect_success 'git log --follow' '
 	actual=$(git log --follow --pretty="format:%s" ichi) &&
 	expect=$(echo third ; echo second ; echo initial) &&
 	verbose test "$actual" = "$expect"
+'
 
+test_expect_success 'git config log.follow works like --follow' '
+	test_config log.follow true &&
+	actual=$(git log --pretty="format:%s" ichi) &&
+	expect=$(echo third ; echo second ; echo initial) &&
+	verbose test "$actual" = "$expect"
+'
+
+test_expect_success 'git config log.follow does not die with multiple paths' '
+	test_config log.follow true &&
+	git log --pretty="format:%s" ichi ein
+'
+
+test_expect_success 'git config log.follow does not die with no paths' '
+	test_config log.follow true &&
+	git log --
+'
+
+test_expect_success 'git config log.follow is overridden by --no-follow' '
+	test_config log.follow true &&
+	actual=$(git log --no-follow --pretty="format:%s" ichi) &&
+	expect="third" &&
+	verbose test "$actual" = "$expect"
 '
 
 cat > expect << EOF
@@ -869,6 +892,20 @@ test_expect_success GPG 'log --graph --show-signature for merged tag' '
 
 test_expect_success 'log --graph --no-walk is forbidden' '
 	test_must_fail git log --graph --no-walk
+'
+
+test_expect_success 'log diagnoses bogus HEAD' '
+	git init empty &&
+	test_must_fail git -C empty log 2>stderr &&
+	test_i18ngrep does.not.have.any.commits stderr &&
+	echo 1234abcd >empty/.git/refs/heads/master &&
+	test_must_fail git -C empty log 2>stderr &&
+	test_i18ngrep broken stderr &&
+	echo "ref: refs/heads/invalid.lock" >empty/.git/HEAD &&
+	test_must_fail git -C empty log 2>stderr &&
+	test_i18ngrep broken stderr &&
+	test_must_fail git -C empty log --default totally-bogus 2>stderr &&
+	test_i18ngrep broken stderr
 '
 
 test_done

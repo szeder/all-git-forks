@@ -55,20 +55,16 @@ copy_data:
 			parents;
 			parents = parents->next, parent_number++) {
 		if (parent_number > 1) {
-			int len = strlen(tip_name);
-			char *new_name = xmalloc(len +
-				1 + decimal_length(generation) +  /* ~<n> */
-				1 + 2 +				  /* ^NN */
-				1);
+			size_t len;
+			char *new_name;
 
-			if (len > 2 && !strcmp(tip_name + len - 2, "^0"))
-				len -= 2;
+			strip_suffix(tip_name, "^0", &len);
 			if (generation > 0)
-				sprintf(new_name, "%.*s~%d^%d", len, tip_name,
-						generation, parent_number);
+				new_name = xstrfmt("%.*s~%d^%d", (int)len, tip_name,
+						   generation, parent_number);
 			else
-				sprintf(new_name, "%.*s^%d", len, tip_name,
-						parent_number);
+				new_name = xstrfmt("%.*s^%d", (int)len, tip_name,
+						   parent_number);
 
 			name_rev(parents->item, new_name, 0,
 				distance + MERGE_TRAVERSAL_WEIGHT, 0);
@@ -138,9 +134,9 @@ static int tipcmp(const void *a_, const void *b_)
 	return hashcmp(a->sha1, b->sha1);
 }
 
-static int name_ref(const char *path, const unsigned char *sha1, int flags, void *cb_data)
+static int name_ref(const char *path, const struct object_id *oid, int flags, void *cb_data)
 {
-	struct object *o = parse_object(sha1);
+	struct object *o = parse_object(oid->hash);
 	struct name_ref_data *data = cb_data;
 	int can_abbreviate_output = data->tags_only && data->name_only;
 	int deref = 0;
@@ -160,7 +156,7 @@ static int name_ref(const char *path, const unsigned char *sha1, int flags, void
 		}
 	}
 
-	add_to_tip_table(sha1, path, can_abbreviate_output);
+	add_to_tip_table(oid->hash, path, can_abbreviate_output);
 
 	while (o && o->type == OBJ_TAG) {
 		struct tag *t = (struct tag *) o;

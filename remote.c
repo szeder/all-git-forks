@@ -8,6 +8,7 @@
 #include "tag.h"
 #include "string-list.h"
 #include "mergesort.h"
+#include "argv-array.h"
 
 enum map_direction { FROM_SRC, FROM_DST };
 
@@ -49,16 +50,10 @@ static int branches_alloc;
 static int branches_nr;
 
 static struct branch *current_branch;
-static const char *default_remote_name;
-static const char *branch_pushremote_name;
 static const char *pushremote_name;
-static int explicit_default_remote_name;
 
 static struct rewrites rewrites;
 static struct rewrites rewrites_push;
-
-#define BUF_SIZE (2048)
-static char buffer[BUF_SIZE];
 
 static int valid_remote(const struct remote *remote)
 {
@@ -68,7 +63,6 @@ static int valid_remote(const struct remote *remote)
 static const char *alias_url(const char *url, struct rewrites *r)
 {
 	int i, j;
-	char *ret;
 	struct counted_string *longest;
 	int longest_i;
 
@@ -89,11 +83,7 @@ static const char *alias_url(const char *url, struct rewrites *r)
 	if (!longest)
 		return url;
 
-	ret = xmalloc(r->rewrite[longest_i]->baselen +
-		     (strlen(url) - longest->len) + 1);
-	strcpy(ret, r->rewrite[longest_i]->base);
-	strcpy(ret + r->rewrite[longest_i]->baselen, url + longest->len);
-	return ret;
+	return xstrfmt("%s%s", r->rewrite[longest_i]->base, url + longest->len);
 }
 
 static void add_push_refspec(struct remote *remote, const char *ref)
@@ -251,106 +241,77 @@ static void add_instead_of(struct rewrite *rewrite, const char *instead_of)
 	rewrite->instead_of_nr++;
 }
 
+static const char *skip_spaces(const char *s)
+{
+	while (isspace(*s))
+		s++;
+	return s;
+}
+
 static void read_remotes_file(struct remote *remote)
 {
+	struct strbuf buf = STRBUF_INIT;
 	FILE *f = fopen(git_path("remotes/%s", remote->name), "r");
 
 	if (!f)
 		return;
 	remote->origin = REMOTE_REMOTES;
-	while (fgets(buffer, BUF_SIZE, f)) {
-		int value_list;
-		char *s, *p;
+	while (strbuf_getline(&buf, f, '\n') != EOF) {
+		const char *v;
 
-		if (starts_with(buffer, "URL:")) {
-			value_list = 0;
-			s = buffer + 4;
-		} else if (starts_with(buffer, "Push:")) {
-			value_list = 1;
-			s = buffer + 5;
-		} else if (starts_with(buffer, "Pull:")) {
-			value_list = 2;
-			s = buffer + 5;
-		} else
-			continue;
+		strbuf_rtrim(&buf);
 
-		while (isspace(*s))
-			s++;
-		if (!*s)
-			continue;
-
-		p = s + strlen(s);
-		while (isspace(p[-1]))
-			*--p = 0;
-
-		switch (value_list) {
-		case 0:
-			add_url_alias(remote, xstrdup(s));
-			break;
-		case 1:
-			add_push_refspec(remote, xstrdup(s));
-			break;
-		case 2:
-			add_fetch_refspec(remote, xstrdup(s));
-			break;
-		}
+		if (skip_prefix(buf.buf, "URL:", &v))
+			add_url_alias(remote, xstrdup(skip_spaces(v)));
+		else if (skip_prefix(buf.buf, "Push:", &v))
+			add_push_refspec(remote, xstrdup(skip_spaces(v)));
+		else if (skip_prefix(buf.buf, "Pull:", &v))
+			add_fetch_refspec(remote, xstrdup(skip_spaces(v)));
 	}
+	strbuf_release(&buf);
 	fclose(f);
 }
 
 static void read_branches_file(struct remote *remote)
 {
 	char *frag;
-	struct strbuf branch = STRBUF_INIT;
-	int n = 1000;
-	FILE *f = fopen(git_path("branches/%.*s", n, remote->name), "r");
-	char *s, *p;
-	int len;
+	struct strbuf buf = STRBUF_INIT;
+	FILE *f = fopen(git_path("branches/%s", remote->name), "r");
 
 	if (!f)
 		return;
-	s = fgets(buffer, BUF_SIZE, f);
+
+	strbuf_getline(&buf, f, '\n');
 	fclose(f);
-	if (!s)
+	strbuf_trim(&buf);
+	if (!buf.len) {
+		strbuf_release(&buf);
 		return;
-	while (isspace(*s))
-		s++;
-	if (!*s)
-		return;
+	}
+
 	remote->origin = REMOTE_BRANCHES;
-	p = s + strlen(s);
-	while (isspace(p[-1]))
-		*--p = 0;
-	len = p - s;
-	p = xmalloc(len + 1);
-	strcpy(p, s);
 
 	/*
 	 * The branches file would have URL and optionally
 	 * #branch specified.  The "master" (or specified) branch is
-	 * fetched and stored in the local branch of the same name.
+	 * fetched and stored in the local branch matching the
+	 * remote name.
 	 */
-	frag = strchr(p, '#');
-	if (frag) {
+	frag = strchr(buf.buf, '#');
+	if (frag)
 		*(frag++) = '\0';
-		strbuf_addf(&branch, "refs/heads/%s", frag);
-	} else
-		strbuf_addstr(&branch, "refs/heads/master");
+	else
+		frag = "master";
 
-	strbuf_addf(&branch, ":refs/heads/%s", remote->name);
-	add_url_alias(remote, p);
-	add_fetch_refspec(remote, strbuf_detach(&branch, NULL));
+	add_url_alias(remote, strbuf_detach(&buf, NULL));
+	add_fetch_refspec(remote, xstrfmt("refs/heads/%s:refs/heads/%s",
+					  frag, remote->name));
+
 	/*
 	 * Cogito compatible push: push current HEAD to remote #branch
 	 * (master if missing)
 	 */
-	strbuf_init(&branch, 0);
-	strbuf_addstr(&branch, "HEAD");
-	if (frag)
-		strbuf_addf(&branch, ":refs/heads/%s", frag);
-	else
-		strbuf_addstr(&branch, ":refs/heads/master");
-	add_push_refspec(remote, strbuf_detach(&branch, NULL));
+	add_push_refspec(remote, xstrfmt("HEAD:refs/heads/%s", frag));
 	remote->fetch_tags = 1; /* always auto-follow */
 }
 
@@ -367,16 +328,9 @@ static int handle_config(const char *key, const char *value, void *cb)
 			return 0;
 		branch = make_branch(name, subkey - name);
 		if (!strcmp(subkey, ".remote")) {
-			if (git_config_string(&branch->remote_name, key, value))
-				return -1;
-			if (branch == current_branch) {
-				default_remote_name = branch->remote_name;
-				explicit_default_remote_name = 1;
-			}
+			return git_config_string(&branch->remote_name, key, value);
 		} else if (!strcmp(subkey, ".pushremote")) {
-			if (branch == current_branch)
-				if (git_config_string(&branch_pushremote_name, key, value))
-					return -1;
+			return git_config_string(&branch->pushremote_name, key, value);
 		} else if (!strcmp(subkey, ".merge")) {
 			if (!value)
 				return config_error_nonbool(key);
@@ -501,12 +455,15 @@ static void alias_all_urls(void)
 
 static void read_config(void)
 {
+	static int loaded;
 	unsigned char sha1[20];
 	const char *head_ref;
 	int flag;
-	if (default_remote_name) /* did this already */
+
+	if (loaded)
 		return;
-	default_remote_name = "origin";
+	loaded = 1;
+
 	current_branch = NULL;
 	head_ref = resolve_ref_unsafe("HEAD", 0, sha1, &flag);
 	if (head_ref && (flag & REF_ISSYMREF) &&
@@ -514,10 +471,6 @@ static void read_config(void)
 		current_branch = make_branch(head_ref, 0);
 	}
 	git_config(handle_config, NULL);
-	if (branch_pushremote_name) {
-		free((char *)pushremote_name);
-		pushremote_name = branch_pushremote_name;
-	}
 	alias_all_urls();
 }
 
@@ -696,22 +649,45 @@ static int valid_remote_nick(const char *name)
 	return !strchr(name, '/'); /* no slash */
 }
 
-static struct remote *remote_get_1(const char *name, const char *pushremote_name)
+const char *remote_for_branch(struct branch *branch, int *explicit)
+{
+	if (branch && branch->remote_name) {
+		if (explicit)
+			*explicit = 1;
+		return branch->remote_name;
+	}
+	if (explicit)
+		*explicit = 0;
+	return "origin";
+}
+
+const char *pushremote_for_branch(struct branch *branch, int *explicit)
+{
+	if (branch && branch->pushremote_name) {
+		if (explicit)
+			*explicit = 1;
+		return branch->pushremote_name;
+	}
+	if (pushremote_name) {
+		if (explicit)
+			*explicit = 1;
+		return pushremote_name;
+	}
+	return remote_for_branch(branch, explicit);
+}
+
+static struct remote *remote_get_1(const char *name,
+				   const char *(*get_default)(struct branch *, int *))
 {
 	struct remote *ret;
 	int name_given = 0;
 
+	read_config();
+
 	if (name)
 		name_given = 1;
-	else {
-		if (pushremote_name) {
-			name = pushremote_name;
-			name_given = 1;
-		} else {
-			name = default_remote_name;
-			name_given = explicit_default_remote_name;
-		}
-	}
+	else
+		name = get_default(current_branch, &name_given);
 
 	ret = make_remote(name, 0);
 	if (valid_remote_nick(name)) {
@@ -731,14 +707,12 @@ static struct remote *remote_get_1(const char *name, const char *pushremote_name
 
 struct remote *remote_get(const char *name)
 {
-	read_config();
-	return remote_get_1(name, NULL);
+	return remote_get_1(name, remote_for_branch);
 }
 
 struct remote *pushremote_get(const char *name)
 {
-	read_config();
-	return remote_get_1(name, pushremote_name);
+	return remote_get_1(name, pushremote_for_branch);
 }
 
 int remote_is_configured(const char *name)
@@ -1633,15 +1607,31 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 
 static void set_merge(struct branch *ret)
 {
+	struct remote *remote;
 	char *ref;
 	unsigned char sha1[20];
 	int i;
+
+	if (!ret)
+		return; /* no branch */
+	if (ret->merge)
+		return; /* already run */
+	if (!ret->remote_name || !ret->merge_nr) {
+		/*
+		 * no merge config; let's make sure we don't confuse callers
+		 * with a non-zero merge_nr but a NULL merge
+		 */
+		ret->merge_nr = 0;
+		return;
+	}
+
+	remote = remote_get(ret->remote_name);
 
 	ret->merge = xcalloc(ret->merge_nr, sizeof(*ret->merge));
 	for (i = 0; i < ret->merge_nr; i++) {
 		ret->merge[i] = xcalloc(1, sizeof(**ret->merge));
 		ret->merge[i]->src = xstrdup(ret->merge_name[i]);
-		if (!remote_find_tracking(ret->remote, ret->merge[i]) ||
+		if (!remote_find_tracking(remote, ret->merge[i]) ||
 		    strcmp(ret->remote_name, "."))
 			continue;
 		if (dwim_ref(ret->merge_name[i], strlen(ret->merge_name[i]),
@@ -1661,11 +1651,7 @@ struct branch *branch_get(const char *name)
 		ret = current_branch;
 	else
 		ret = make_branch(name, 0);
-	if (ret && ret->remote_name) {
-		ret->remote = remote_get(ret->remote_name);
-		if (ret->merge_nr)
-			set_merge(ret);
-	}
+	set_merge(ret);
 	return ret;
 }
 
@@ -1681,6 +1667,130 @@ int branch_merge_matches(struct branch *branch,
 	if (!branch || i < 0 || i >= branch->merge_nr)
 		return 0;
 	return refname_match(branch->merge[i]->src, refname);
+}
+
+__attribute((format (printf,2,3)))
+static const char *error_buf(struct strbuf *err, const char *fmt, ...)
+{
+	if (err) {
+		va_list ap;
+		va_start(ap, fmt);
+		strbuf_vaddf(err, fmt, ap);
+		va_end(ap);
+	}
+	return NULL;
+}
+
+const char *branch_get_upstream(struct branch *branch, struct strbuf *err)
+{
+	if (!branch)
+		return error_buf(err, _("HEAD does not point to a branch"));
+
+	if (!branch->merge || !branch->merge[0]) {
+		/*
+		 * no merge config; is it because the user didn't define any,
+		 * or because it is not a real branch, and get_branch
+		 * auto-vivified it?
+		 */
+		if (!ref_exists(branch->refname))
+			return error_buf(err, _("no such branch: '%s'"),
+					 branch->name);
+		return error_buf(err,
+				 _("no upstream configured for branch '%s'"),
+				 branch->name);
+	}
+
+	if (!branch->merge[0]->dst)
+		return error_buf(err,
+				 _("upstream branch '%s' not stored as a remote-tracking branch"),
+				 branch->merge[0]->src);
+
+	return branch->merge[0]->dst;
+}
+
+static const char *tracking_for_push_dest(struct remote *remote,
+					  const char *refname,
+					  struct strbuf *err)
+{
+	char *ret;
+
+	ret = apply_refspecs(remote->fetch, remote->fetch_refspec_nr, refname);
+	if (!ret)
+		return error_buf(err,
+				 _("push destination '%s' on remote '%s' has no local tracking branch"),
+				 refname, remote->name);
+	return ret;
+}
+
+static const char *branch_get_push_1(struct branch *branch, struct strbuf *err)
+{
+	struct remote *remote;
+
+	if (!branch)
+		return error_buf(err, _("HEAD does not point to a branch"));
+
+	remote = remote_get(pushremote_for_branch(branch, NULL));
+	if (!remote)
+		return error_buf(err,
+				 _("branch '%s' has no remote for pushing"),
+				 branch->name);
+
+	if (remote->push_refspec_nr) {
+		char *dst;
+		const char *ret;
+
+		dst = apply_refspecs(remote->push, remote->push_refspec_nr,
+				     branch->refname);
+		if (!dst)
+			return error_buf(err,
+					 _("push refspecs for '%s' do not include '%s'"),
+					 remote->name, branch->name);
+
+		ret = tracking_for_push_dest(remote, dst, err);
+		free(dst);
+		return ret;
+	}
+
+	if (remote->mirror)
+		return tracking_for_push_dest(remote, branch->refname, err);
+
+	switch (push_default) {
+	case PUSH_DEFAULT_NOTHING:
+		return error_buf(err, _("push has no destination (push.default is 'nothing')"));
+
+	case PUSH_DEFAULT_MATCHING:
+	case PUSH_DEFAULT_CURRENT:
+		return tracking_for_push_dest(remote, branch->refname, err);
+
+	case PUSH_DEFAULT_UPSTREAM:
+		return branch_get_upstream(branch, err);
+
+	case PUSH_DEFAULT_UNSPECIFIED:
+	case PUSH_DEFAULT_SIMPLE:
+		{
+			const char *up, *cur;
+
+			up = branch_get_upstream(branch, err);
+			if (!up)
+				return NULL;
+			cur = tracking_for_push_dest(remote, branch->refname, err);
+			if (!cur)
+				return NULL;
+			if (strcmp(cur, up))
+				return error_buf(err,
+						 _("cannot resolve 'simple' push to a single destination"));
+			return cur;
+		}
+	}
+
+	die("BUG: unhandled push situation");
+}
+
+const char *branch_get_push(struct branch *branch, struct strbuf *err)
+{
+	if (!branch->push_tracking_ref)
+		branch->push_tracking_ref = branch_get_push_1(branch, err);
+	return branch->push_tracking_ref;
 }
 
 static int ignore_symref_update(const char *refname)
@@ -1829,10 +1939,8 @@ int resolve_remote_symref(struct ref *ref, struct ref *list)
 static void unmark_and_free(struct commit_list *list, unsigned int mark)
 {
 	while (list) {
-		struct commit_list *temp = list;
-		temp->item->object.flags &= ~mark;
-		list = temp->next;
-		free(temp);
+		struct commit *commit = pop_commit(&list);
+		commit->object.flags &= ~mark;
 	}
 }
 
@@ -1877,27 +1985,30 @@ int ref_newer(const unsigned char *new_sha1, const unsigned char *old_sha1)
 
 /*
  * Compare a branch with its upstream, and save their differences (number
- * of commits) in *num_ours and *num_theirs.
+ * of commits) in *num_ours and *num_theirs. The name of the upstream branch
+ * (or NULL if no upstream is defined) is returned via *upstream_name, if it
+ * is not itself NULL.
  *
- * Return 0 if branch has no upstream (no base), -1 if upstream is missing
- * (with "gone" base), otherwise 1 (with base).
+ * Returns -1 if num_ours and num_theirs could not be filled in (e.g., no
+ * upstream defined, or ref does not exist), 0 otherwise.
  */
-int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
+int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs,
+		       const char **upstream_name)
 {
 	unsigned char sha1[20];
 	struct commit *ours, *theirs;
-	char symmetric[84];
 	struct rev_info revs;
-	const char *rev_argv[10], *base;
-	int rev_argc;
+	const char *base;
+	struct argv_array argv = ARGV_ARRAY_INIT;
 
 	/* Cannot stat unless we are marked to build on top of somebody else. */
-	if (!branch ||
-	    !branch->merge || !branch->merge[0] || !branch->merge[0]->dst)
-		return 0;
+	base = branch_get_upstream(branch, NULL);
+	if (upstream_name)
+		*upstream_name = base;
+	if (!base)
+		return -1;
 
 	/* Cannot stat if what we used to build on no longer exists */
-	base = branch->merge[0]->dst;
 	if (read_ref(base, sha1))
 		return -1;
 	theirs = lookup_commit_reference(sha1);
@@ -1913,23 +2024,19 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 	/* are we the same? */
 	if (theirs == ours) {
 		*num_theirs = *num_ours = 0;
-		return 1;
+		return 0;
 	}
 
 	/* Run "rev-list --left-right ours...theirs" internally... */
-	rev_argc = 0;
-	rev_argv[rev_argc++] = NULL;
-	rev_argv[rev_argc++] = "--left-right";
-	rev_argv[rev_argc++] = symmetric;
-	rev_argv[rev_argc++] = "--";
-	rev_argv[rev_argc] = NULL;
-
-	strcpy(symmetric, sha1_to_hex(ours->object.sha1));
-	strcpy(symmetric + 40, "...");
-	strcpy(symmetric + 43, sha1_to_hex(theirs->object.sha1));
+	argv_array_push(&argv, ""); /* ignored */
+	argv_array_push(&argv, "--left-right");
+	argv_array_pushf(&argv, "%s...%s",
+			 sha1_to_hex(ours->object.sha1),
+			 sha1_to_hex(theirs->object.sha1));
+	argv_array_push(&argv, "--");
 
 	init_revisions(&revs, NULL);
-	setup_revisions(rev_argc, rev_argv, &revs, NULL);
+	setup_revisions(argv.argc, argv.argv, &revs, NULL);
 	if (prepare_revision_walk(&revs))
 		die("revision walk setup failed");
 
@@ -1949,7 +2056,9 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 	/* clear object flags smudged by the above traversal */
 	clear_commit_marks(ours, ALL_REV_FLAGS);
 	clear_commit_marks(theirs, ALL_REV_FLAGS);
-	return 1;
+
+	argv_array_clear(&argv);
+	return 0;
 }
 
 /*
@@ -1958,23 +2067,17 @@ int stat_tracking_info(struct branch *branch, int *num_ours, int *num_theirs)
 int format_tracking_info(struct branch *branch, struct strbuf *sb)
 {
 	int ours, theirs;
+	const char *full_base;
 	char *base;
 	int upstream_is_gone = 0;
 
-	switch (stat_tracking_info(branch, &ours, &theirs)) {
-	case 0:
-		/* no base */
-		return 0;
-	case -1:
-		/* with "gone" base */
+	if (stat_tracking_info(branch, &ours, &theirs, &full_base) < 0) {
+		if (!full_base)
+			return 0;
 		upstream_is_gone = 1;
-		break;
-	default:
-		/* with base */
-		break;
 	}
 
-	base = shorten_unambiguous_ref(branch->merge[0]->dst, 0);
+	base = shorten_unambiguous_ref(full_base, 0);
 	if (upstream_is_gone) {
 		strbuf_addf(sb,
 			_("Your branch is based on '%s', but the upstream is gone.\n"),
@@ -2024,7 +2127,8 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 	return 1;
 }
 
-static int one_local_ref(const char *refname, const unsigned char *sha1, int flag, void *cb_data)
+static int one_local_ref(const char *refname, const struct object_id *oid,
+			 int flag, void *cb_data)
 {
 	struct ref ***local_tail = cb_data;
 	struct ref *ref;
@@ -2036,7 +2140,7 @@ static int one_local_ref(const char *refname, const unsigned char *sha1, int fla
 
 	len = strlen(refname) + 1;
 	ref = xcalloc(1, sizeof(*ref) + len);
-	hashcpy(ref->new_sha1, sha1);
+	hashcpy(ref->new_sha1, oid->hash);
 	memcpy(ref->name, refname, len);
 	**local_tail = ref;
 	*local_tail = &ref->next;
@@ -2046,6 +2150,7 @@ static int one_local_ref(const char *refname, const unsigned char *sha1, int fla
 struct ref *get_local_heads(void)
 {
 	struct ref *local_refs = NULL, **local_tail = &local_refs;
+
 	for_each_ref(one_local_ref, &local_tail);
 	return local_refs;
 }
@@ -2098,8 +2203,8 @@ struct stale_heads_info {
 	int ref_count;
 };
 
-static int get_stale_heads_cb(const char *refname,
-	const unsigned char *sha1, int flags, void *cb_data)
+static int get_stale_heads_cb(const char *refname, const struct object_id *oid,
+			      int flags, void *cb_data)
 {
 	struct stale_heads_info *info = cb_data;
 	struct string_list matches = STRING_LIST_INIT_DUP;
@@ -2128,7 +2233,7 @@ static int get_stale_heads_cb(const char *refname,
 
 	if (stale) {
 		struct ref *ref = make_linked_ref(refname, &info->stale_refs_tail);
-		hashcpy(ref->new_sha1, sha1);
+		hashcpy(ref->new_sha1, oid->hash);
 	}
 
 clean_exit:
@@ -2141,6 +2246,7 @@ struct ref *get_stale_heads(struct refspec *refs, int ref_count, struct ref *fet
 	struct ref *ref, *stale_refs = NULL;
 	struct string_list ref_names = STRING_LIST_INIT_NODUP;
 	struct stale_heads_info info;
+
 	info.ref_names = &ref_names;
 	info.stale_refs_tail = &stale_refs;
 	info.refs = refs;

@@ -362,13 +362,14 @@ static int non_note_cmp(const struct non_note *a, const struct non_note *b)
 	return strcmp(a->path, b->path);
 }
 
-static void add_non_note(struct notes_tree *t, const char *path,
+/* note: takes ownership of path string */
+static void add_non_note(struct notes_tree *t, char *path,
 		unsigned int mode, const unsigned char *sha1)
 {
 	struct non_note *p = t->prev_non_note, *n;
 	n = (struct non_note *) xmalloc(sizeof(struct non_note));
 	n->next = NULL;
-	n->path = xstrdup(path);
+	n->path = path;
 	n->mode = mode;
 	hashcpy(n->sha1, sha1);
 	t->prev_non_note = n;
@@ -482,17 +483,17 @@ handle_non_note:
 		 * component.
 		 */
 		{
-			char non_note_path[PATH_MAX];
-			char *p = non_note_path;
+			struct strbuf non_note_path = STRBUF_INIT;
 			const char *q = sha1_to_hex(subtree->key_sha1);
 			int i;
 			for (i = 0; i < prefix_len; i++) {
-				*p++ = *q++;
-				*p++ = *q++;
-				*p++ = '/';
+				strbuf_addch(&non_note_path, *q++);
+				strbuf_addch(&non_note_path, *q++);
+				strbuf_addch(&non_note_path, '/');
 			}
-			strcpy(p, entry.path);
-			add_non_note(t, non_note_path, entry.mode, entry.sha1);
+			strbuf_addstr(&non_note_path, entry.path);
+			add_non_note(t, strbuf_detach(&non_note_path, NULL),
+				     entry.mode, entry.sha1);
 		}
 	}
 	free(buf);
@@ -538,6 +539,9 @@ static unsigned char determine_fanout(struct int_node *tree, unsigned char n,
 	return fanout + 1;
 }
 
+/* hex SHA1 + 19 * '/' + NUL */
+#define FANOUT_PATH_MAX 40 + 19 + 1
+
 static void construct_path_with_fanout(const unsigned char *sha1,
 		unsigned char fanout, char *path)
 {
@@ -550,7 +554,7 @@ static void construct_path_with_fanout(const unsigned char *sha1,
 		path[i++] = '/';
 		fanout--;
 	}
-	strcpy(path + i, hex_sha1 + j);
+	xsnprintf(path + i, FANOUT_PATH_MAX - i, "%s", hex_sha1 + j);
 }
 
 static int for_each_note_helper(struct notes_tree *t, struct int_node *tree,
@@ -561,7 +565,7 @@ static int for_each_note_helper(struct notes_tree *t, struct int_node *tree,
 	void *p;
 	int ret = 0;
 	struct leaf_node *l;
-	static char path[40 + 19 + 1];  /* hex SHA1 + 19 * '/' + NUL */
+	static char path[FANOUT_PATH_MAX];
 
 	fanout = determine_fanout(tree, n, fanout);
 	for (i = 0; i < 16; i++) {
@@ -594,7 +598,7 @@ redo:
 				/* invoke callback with subtree */
 				unsigned int path_len =
 					l->key_sha1[19] * 2 + fanout;
-				assert(path_len < 40 + 19);
+				assert(path_len < FANOUT_PATH_MAX - 1);
 				construct_path_with_fanout(l->key_sha1, fanout,
 							   path);
 				/* Create trailing slash, if needed */
@@ -918,7 +922,7 @@ out:
 	return ret;
 }
 
-static int string_list_add_one_ref(const char *refname, const unsigned char *sha1,
+static int string_list_add_one_ref(const char *refname, const struct object_id *oid,
 				   int flag, void *cb)
 {
 	struct string_list *refs = cb;

@@ -59,7 +59,11 @@ struct commit *lookup_commit_reference_by_name(const char *name);
 struct commit *lookup_commit_or_die(const unsigned char *sha1, const char *ref_name);
 
 int parse_commit_buffer(struct commit *item, const void *buffer, unsigned long size);
-int parse_commit(struct commit *item);
+int parse_commit_gently(struct commit *item, int quiet_on_missing);
+static inline int parse_commit(struct commit *item)
+{
+	return parse_commit_gently(item, 0);
+}
 void parse_commit_or_die(struct commit *item);
 
 /*
@@ -141,7 +145,7 @@ struct pretty_print_context {
 	const char *subject;
 	const char *after_subject;
 	int preserve_subject;
-	enum date_mode date_mode;
+	struct date_mode date_mode;
 	unsigned date_mode_explicit:1;
 	int need_8bit_cte;
 	char *notes_message;
@@ -375,7 +379,7 @@ extern void print_commit_list(struct commit_list *list,
  * at all.  This may allocate memory for sig->gpg_output, sig->gpg_status,
  * sig->signer and sig->key.
  */
-extern void check_commit_signature(const struct commit *commit, struct signature_check *sigc);
+extern int check_commit_signature(const struct commit *commit, struct signature_check *sigc);
 
 int compare_commits_by_commit_date(const void *a_, const void *b_, void *unused);
 

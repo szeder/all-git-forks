@@ -145,6 +145,14 @@ test_pause () {
 	fi
 }
 
+# Wrap git in gdb. Adding this to a command can make it easier to
+# understand what is going on in a failing test.
+#
+# Example: "debug git checkout master".
+debug () {
+	 GIT_TEST_GDB=1 "$@"
+}
+
 # Call test_commit with the arguments "<message> [<file> [<contents> [<tag>]]]"
 #
 # This will commit a file with the given contents and the given commit
@@ -201,7 +209,14 @@ test_chmod () {
 
 # Unset a configuration variable, but don't fail if it doesn't exist.
 test_unconfig () {
-	git config --unset-all "$@"
+	config_dir=
+	if test "$1" = -C
+	then
+		shift
+		config_dir=$1
+		shift
+	fi
+	git ${config_dir:+-C "$config_dir"} config --unset-all "$@"
 	config_status=$?
 	case "$config_status" in
 	5) # ok, nothing to unset
@@ -213,8 +228,15 @@ test_unconfig () {
 
 # Set git config, automatically unsetting it after the test is over.
 test_config () {
-	test_when_finished "test_unconfig '$1'" &&
-	git config "$@"
+	config_dir=
+	if test "$1" = -C
+	then
+		shift
+		config_dir=$1
+		shift
+	fi
+	test_when_finished "test_unconfig ${config_dir:+-C '$config_dir'} '$1'" &&
+	git ${config_dir:+-C "$config_dir"} config "$@"
 }
 
 test_config_global () {
@@ -722,6 +744,11 @@ test_seq () {
 # what went wrong.
 
 test_when_finished () {
+	# We cannot detect when we are in a subshell in general, but by
+	# doing so on Bash is better than nothing (the test will
+	# silently pass on other shells).
+	test "${BASH_SUBSHELL-0}" = 0 ||
+	error "bug in test script: test_when_finished does nothing in a subshell"
 	test_cleanup="{ $*
 		} && (exit \"\$eval_ret\"); eval_ret=\$?; $test_cleanup"
 }

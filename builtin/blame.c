@@ -6,6 +6,7 @@
  */
 
 #include "cache.h"
+#include "refs.h"
 #include "builtin.h"
 #include "blob.h"
 #include "commit.h"
@@ -26,8 +27,9 @@
 #include "userdiff.h"
 #include "line-range.h"
 #include "line-log.h"
+#include "dir.h"
 
-static char blame_usage[] = N_("git blame [<options>] [<rev-opts>] [<rev>] [--] file");
+static char blame_usage[] = N_("git blame [<options>] [<rev-opts>] [<rev>] [--] <file>");
 
 static const char *blame_opt_usage[] = {
 	blame_usage,
@@ -49,7 +51,7 @@ static int xdl_opts;
 static int abbrev = -1;
 static int no_whole_file_rename;
 
-static enum date_mode blame_date_mode = DATE_ISO8601;
+static struct date_mode blame_date_mode = { DATE_ISO8601 };
 static size_t blame_date_width;
 
 static struct string_list mailmap;
@@ -457,12 +459,13 @@ static void queue_blames(struct scoreboard *sb, struct origin *porigin,
 static struct origin *make_origin(struct commit *commit, const char *path)
 {
 	struct origin *o;
-	o = xcalloc(1, sizeof(*o) + strlen(path) + 1);
+	size_t pathlen = strlen(path) + 1;
+	o = xcalloc(1, sizeof(*o) + pathlen);
 	o->commit = commit;
 	o->refcnt = 1;
 	o->next = commit->util;
 	commit->util = o;
-	strcpy(o->path, path);
+	memcpy(o->path, path, pathlen); /* includes NUL */
 	return o;
 }
 
@@ -972,7 +975,10 @@ static void pass_blame_to_parent(struct scoreboard *sb,
 	fill_origin_blob(&sb->revs->diffopt, target, &file_o);
 	num_get_patch++;
 
-	diff_hunks(&file_p, &file_o, 0, blame_chunk_cb, &d);
+	if (diff_hunks(&file_p, &file_o, 0, blame_chunk_cb, &d))
+		die("unable to generate diff (%s -> %s)",
+		    sha1_to_hex(parent->commit->object.sha1),
+		    sha1_to_hex(target->commit->object.sha1));
 	/* The rest are the same as the parent */
 	blame_chunk(&d.dstq, &d.srcq, INT_MAX, d.offset, INT_MAX, parent);
 	*d.dstq = NULL;
@@ -1118,7 +1124,9 @@ static void find_copy_in_blob(struct scoreboard *sb,
 	 * file_p partially may match that image.
 	 */
 	memset(split, 0, sizeof(struct blame_entry [3]));
-	diff_hunks(file_p, &file_o, 1, handle_split_cb, &d);
+	if (diff_hunks(file_p, &file_o, 1, handle_split_cb, &d))
+		die("unable to generate diff (%s)",
+		    sha1_to_hex(parent->commit->object.sha1));
 	/* remainder, if any, all match the preimage */
 	handle_split(sb, ent, d.tlno, d.plno, ent->num_lines, parent, split);
 }
@@ -1364,8 +1372,15 @@ static void pass_whole_blame(struct scoreboard *sb,
  */
 static struct commit_list *first_scapegoat(struct rev_info *revs, struct commit *commit)
 {
-	if (!reverse)
+	if (!reverse) {
+		if (revs->first_parent_only &&
+		    commit->parents &&
+		    commit->parents->next) {
+			free_commit_list(commit->parents->next);
+			commit->parents->next = NULL;
+		}
 		return commit->parents;
+	}
 	return lookup_decoration(&revs->children, &commit->object);
 }
 
@@ -1826,7 +1841,7 @@ static const char *format_time(unsigned long time, const char *tz_str,
 		size_t time_width;
 		int tz;
 		tz = atoi(tz_str);
-		time_str = show_date(time, tz, blame_date_mode);
+		time_str = show_date(time, tz, &blame_date_mode);
 		strbuf_addstr(&time_buf, time_str);
 		/*
 		 * Add space paddings to time_buf to display a fixed width
@@ -1865,9 +1880,9 @@ static void emit_porcelain(struct scoreboard *sb, struct blame_entry *ent,
 	int cnt;
 	const char *cp;
 	struct origin *suspect = ent->suspect;
-	char hex[41];
+	char hex[GIT_SHA1_HEXSZ + 1];
 
-	strcpy(hex, sha1_to_hex(suspect->commit->object.sha1));
+	sha1_to_hex_r(hex, suspect->commit->object.sha1);
 	printf("%s %d %d %d\n",
 	       hex,
 	       ent->s_lno + 1,
@@ -1903,11 +1918,11 @@ static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
 	const char *cp;
 	struct origin *suspect = ent->suspect;
 	struct commit_info ci;
-	char hex[41];
+	char hex[GIT_SHA1_HEXSZ + 1];
 	int show_raw_time = !!(opt & OUTPUT_RAW_TIMESTAMP);
 
 	get_commit_info(suspect->commit, &ci, 1);
-	strcpy(hex, sha1_to_hex(suspect->commit->object.sha1));
+	sha1_to_hex_r(hex, suspect->commit->object.sha1);
 
 	cp = nth_line(sb, ent->lno);
 	for (cnt = 0; cnt < ent->num_lines; cnt++) {
@@ -2151,16 +2166,6 @@ static void sanity_check_refcnt(struct scoreboard *sb)
 	}
 }
 
-/*
- * Used for the command line parsing; check if the path exists
- * in the working tree.
- */
-static int has_string_in_work_tree(const char *path)
-{
-	struct stat st;
-	return !lstat(path, &st);
-}
-
 static unsigned parse_score(const char *arg)
 {
 	char *end;
@@ -2185,10 +2190,18 @@ static int git_blame_config(const char *var, const char *value, void *cb)
 		blank_boundary = git_config_bool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "blame.showemail")) {
+		int *output_option = cb;
+		if (git_config_bool(var, value))
+			*output_option |= OUTPUT_SHOW_EMAIL;
+		else
+			*output_option &= ~OUTPUT_SHOW_EMAIL;
+		return 0;
+	}
 	if (!strcmp(var, "blame.date")) {
 		if (!value)
 			return config_error_nonbool(var);
-		blame_date_mode = parse_date_format(value);
+		parse_date_format(value, &blame_date_mode);
 		return 0;
 	}
 
@@ -2227,20 +2240,19 @@ static struct commit_list **append_parent(struct commit_list **tail, const unsig
 static void append_merge_parents(struct commit_list **tail)
 {
 	int merge_head;
-	const char *merge_head_file = git_path("MERGE_HEAD");
 	struct strbuf line = STRBUF_INIT;
 
-	merge_head = open(merge_head_file, O_RDONLY);
+	merge_head = open(git_path_merge_head(), O_RDONLY);
 	if (merge_head < 0) {
 		if (errno == ENOENT)
 			return;
-		die("cannot open '%s' for reading", merge_head_file);
+		die("cannot open '%s' for reading", git_path_merge_head());
 	}
 
 	while (!strbuf_getwholeline_fd(&line, merge_head, '\n')) {
 		unsigned char sha1[20];
 		if (line.len < 40 || get_sha1_hex(line.buf, sha1))
-			die("unknown line in '%s': %s", merge_head_file, line.buf);
+			die("unknown line in '%s': %s", git_path_merge_head(), line.buf);
 		tail = append_parent(tail, sha1);
 	}
 	close(merge_head);
@@ -2390,16 +2402,11 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	return commit;
 }
 
-static char *prepare_final(struct scoreboard *sb)
+static struct object_array_entry *find_single_final(struct rev_info *revs)
 {
 	int i;
-	const char *final_commit_name = NULL;
-	struct rev_info *revs = sb->revs;
+	struct object_array_entry *found = NULL;
 
-	/*
-	 * There must be one and only one positive commit in the
-	 * revs->pending array.
-	 */
 	for (i = 0; i < revs->pending.nr; i++) {
 		struct object *obj = revs->pending.objects[i].item;
 		if (obj->flags & UNINTERESTING)
@@ -2408,14 +2415,24 @@ static char *prepare_final(struct scoreboard *sb)
 			obj = deref_tag(obj, NULL, 0);
 		if (obj->type != OBJ_COMMIT)
 			die("Non commit %s?", revs->pending.objects[i].name);
-		if (sb->final)
+		if (found)
 			die("More than one commit to dig from %s and %s?",
 			    revs->pending.objects[i].name,
-			    final_commit_name);
-		sb->final = (struct commit *) obj;
-		final_commit_name = revs->pending.objects[i].name;
+			    found->name);
+		found = &(revs->pending.objects[i]);
 	}
-	return xstrdup_or_null(final_commit_name);
+	return found;
+}
+
+static char *prepare_final(struct scoreboard *sb)
+{
+	struct object_array_entry *found = find_single_final(sb->revs);
+	if (found) {
+		sb->final = (struct commit *) found->item;
+		return xstrdup(found->name);
+	} else {
+		return NULL;
+	}
 }
 
 static char *prepare_initial(struct scoreboard *sb)
@@ -2491,6 +2508,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	long dashdash_pos, lno;
 	char *final_commit_name = NULL;
 	enum object_type type;
+	struct commit *final_commit = NULL;
 
 	static struct string_list range_list;
 	static int output_option = 0, opt = 0;
@@ -2529,7 +2547,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	unsigned int range_i;
 	long anchor;
 
-	git_config(git_blame_config, NULL);
+	git_config(git_blame_config, &output_option);
 	init_revisions(&revs, NULL);
 	revs.date_mode = blame_date_mode;
 	DIFF_OPT_SET(&revs.diffopt, ALLOW_TEXTCONV);
@@ -2570,13 +2588,13 @@ parse_done:
 
 	if (cmd_is_annotate) {
 		output_option |= OUTPUT_ANNOTATE_COMPAT;
-		blame_date_mode = DATE_ISO8601;
+		blame_date_mode.type = DATE_ISO8601;
 	} else {
 		blame_date_mode = revs.date_mode;
 	}
 
 	/* The maximum width used to show the dates */
-	switch (blame_date_mode) {
+	switch (blame_date_mode.type) {
 	case DATE_RFC2822:
 		blame_date_width = sizeof("Thu, 19 Oct 2006 16:00:04 -0700");
 		break;
@@ -2601,9 +2619,11 @@ parse_done:
 		   fewer display columns. */
 		blame_date_width = utf8_strwidth(_("4 years, 11 months ago")) + 1; /* add the null */
 		break;
-	case DATE_LOCAL:
 	case DATE_NORMAL:
 		blame_date_width = sizeof("Thu Oct 19 16:00:04 2006 -0700");
+		break;
+	case DATE_STRFTIME:
+		blame_date_width = strlen(show_date(0, 0, &blame_date_mode)) + 1; /* add the null */
 		break;
 	}
 	blame_date_width -= 1; /* strip the null */
@@ -2656,14 +2676,14 @@ parse_done:
 		if (argc < 2)
 			usage_with_options(blame_opt_usage, options);
 		path = add_prefix(prefix, argv[argc - 1]);
-		if (argc == 3 && !has_string_in_work_tree(path)) { /* (2b) */
+		if (argc == 3 && !file_exists(path)) { /* (2b) */
 			path = add_prefix(prefix, argv[1]);
 			argv[1] = argv[2];
 		}
 		argv[argc - 1] = "--";
 
 		setup_work_tree();
-		if (!has_string_in_work_tree(path))
+		if (!file_exists(path))
 			die_errno("cannot stat path '%s'", path);
 	}
 
@@ -2677,10 +2697,12 @@ parse_done:
 		sb.commits.compare = compare_commits_by_commit_date;
 	}
 	else if (contents_from)
-		die("--contents and --children do not blend well.");
+		die("--contents and --reverse do not blend well.");
 	else {
 		final_commit_name = prepare_initial(&sb);
 		sb.commits.compare = compare_commits_by_reverse_commit_date;
+		if (revs.first_parent_only)
+			revs.children.name = NULL;
 	}
 
 	if (!sb.final) {
@@ -2697,6 +2719,14 @@ parse_done:
 	else if (contents_from)
 		die("Cannot use --contents with final commit object name");
 
+	if (reverse && revs.first_parent_only) {
+		struct object_array_entry *entry = find_single_final(sb.revs);
+		if (!entry)
+			die("--reverse and --first-parent together require specified latest commit");
+		else
+			final_commit = (struct commit*) entry->item;
+	}
+
 	/*
 	 * If we have bottom, this will mark the ancestors of the
 	 * bottom commits we would reach while traversing as
@@ -2704,6 +2734,25 @@ parse_done:
 	 */
 	if (prepare_revision_walk(&revs))
 		die(_("revision walk setup failed"));
+
+	if (reverse && revs.first_parent_only) {
+		struct commit *c = final_commit;
+
+		sb.revs->children.name = "children";
+		while (c->parents &&
+		       hashcmp(c->object.sha1, sb.final->object.sha1)) {
+			struct commit_list *l = xcalloc(1, sizeof(*l));
+
+			l->item = c;
+			if (add_decoration(&sb.revs->children,
+					   &c->parents->item->object, l))
+				die("BUG: not unique item in first-parent chain");
+			c = c->parents->item;
+		}
+
+		if (hashcmp(c->object.sha1, sb.final->object.sha1))
+			die("--reverse --first-parent together require range along first-parent chain");
+	}
 
 	if (is_null_sha1(sb.final->object.sha1)) {
 		o = sb.final->util;
