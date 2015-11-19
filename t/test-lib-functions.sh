@@ -598,6 +598,10 @@ test_must_fail () {
 	then
 		echo >&2 "test_must_fail: command succeeded: $*"
 		return 0
+	elif ! case ",$_test_ok," in *,sigpipe,*) false;; esac &&
+		test $exit_code = 141
+	then
+		return 0
 	elif test $exit_code -gt 129 && test $exit_code -le 192
 	then
 		echo >&2 "test_must_fail: died by signal: $*"
