@@ -94,6 +94,23 @@
 # GIT_PS1_HIDE_IF_PWD_IGNORED to a nonempty value. Override this on the
 # repository level by setting bash.hideIfPwdIgnored to "false".
 
+
+# oc openshift stuff
+oc_prompt () {
+local oc_client=$( which oc )
+if [ "" = "${oc_client-}" ]
+then
+  unset oc_PS
+else
+  local oc_project=$(oc project)
+  if echo  $oc_project | grep -q "^Using project"
+  then
+    oc_prompt_project=$(echo ${oc_project-} | awk -F\" '{ print $2 }')
+    oc_PS=" [${oc_prompt_project-}] "
+  fi
+fi
+}
+
 # check whether printf supports -v
 __git_printf_supports_v=
 printf -v __git_printf_supports_v -- '%s' yes >/dev/null 2>&1
@@ -517,15 +534,18 @@ __git_ps1 ()
 	local f="$w$i$s$u"
 	local gitstring="$c$b${f:+$z$f}$r$p"
 
+	oc_prompt
+
 	if [ $pcmode = yes ]; then
 		if [ "${__git_printf_supports_v-}" != yes ]; then
 			gitstring=$(printf -- "$printf_format" "$gitstring")
 		else
 			printf -v gitstring -- "$printf_format" "$gitstring"
 		fi
-		PS1="$ps1pc_start$gitstring$ps1pc_end"
+		PS1="$ps1pc_start$gitstring$ps1pc_end$oc_PS"
 	else
-		printf -- "$printf_format" "$gitstring"
+		printf  -- "$printf_format" "$gitstring"
+		printf  -- "$oc_PS" 
 	fi
 
 	return $exit
