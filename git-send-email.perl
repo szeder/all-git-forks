@@ -244,13 +244,10 @@ my %config_settings = (
     "smtpserveroption" => \@smtp_server_options,
     "smtpuser" => \$smtp_authuser,
     "smtppass" => \$smtp_authpass,
-    "smtpsslcertpath" => \$smtp_ssl_cert_path,
     "smtpdomain" => \$smtp_domain,
     "smtpauth" => \$smtp_auth,
     "to" => \@initial_to,
-    "tocmd" => \$to_cmd,
     "cc" => \@initial_cc,
-    "cccmd" => \$cc_cmd,
     "aliasfiletype" => \$aliasfiletype,
     "bcc" => \@bcclist,
     "suppresscc" => \@suppress_cc,
@@ -264,6 +261,9 @@ my %config_settings = (
 
 my %config_path_settings = (
     "aliasesfile" => \@alias_files,
+    "smtpsslcertpath" => \$smtp_ssl_cert_path,
+    "tocmd" => \$to_cmd,
+    "cccmd" => \$cc_cmd,
 );
 
 # Handle Uncouth Termination
