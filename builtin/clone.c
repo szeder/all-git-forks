@@ -648,6 +648,7 @@ static void update_head(const struct ref *our, const struct ref *remote,
 			const char *msg)
 {
 	const char *head;
+
 	if (our && skip_prefix(our->name, "refs/heads/", &head)) {
 		/* Local default branch link */
 		if (create_symref("HEAD", our->name, NULL) < 0)
@@ -655,7 +656,8 @@ static void update_head(const struct ref *our, const struct ref *remote,
 		if (!option_bare) {
 			update_ref(msg, "HEAD", our->old_oid.hash, NULL, 0,
 				   UPDATE_REFS_DIE_ON_ERR);
-			install_branch_config(0, head, option_origin, our->name);
+			if (install_branch_config(0, head, option_origin, our->name))
+				die(_("Could not update '%s'"), head);
 		}
 	} else if (our) {
 		struct commit *c = lookup_commit_reference(our->old_oid.hash);
@@ -1054,8 +1056,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		remote_head = NULL;
 		option_no_checkout = 1;
 		if (!option_bare)
-			install_branch_config(0, "master", option_origin,
-					      "refs/heads/master");
+			if (install_branch_config(0, "master", option_origin,
+						  "refs/heads/master"))
+				die(_("Could not set up master branch"));
 	}
 
 	write_refspec_config(src_ref_prefix, our_head_points_at,

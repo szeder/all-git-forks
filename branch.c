@@ -49,33 +49,38 @@ static int should_setup_rebase(const char *origin)
 	return 0;
 }
 
-void install_branch_config(int flag, const char *local, const char *origin, const char *remote)
+int install_branch_config(int flag, const char *local, const char *origin, const char *remote)
 {
 	const char *shortname = NULL;
 	struct strbuf key = STRBUF_INIT;
-	int rebasing = should_setup_rebase(origin);
+	int ret = 0, rebasing = should_setup_rebase(origin);
 
 	if (skip_prefix(remote, "refs/heads/", &shortname)
 	    && !strcmp(local, shortname)
 	    && !origin) {
 		warning(_("Not setting branch %s as its own upstream."),
 			local);
-		return;
+		return ret;
 	}
 
 	strbuf_addf(&key, "branch.%s.remote", local);
-	git_config_set(key.buf, origin ? origin : ".");
+	ret = git_config_set(key.buf, origin ? origin : ".");
+	if (ret)
+		goto out;
 
 	strbuf_reset(&key);
 	strbuf_addf(&key, "branch.%s.merge", local);
-	git_config_set(key.buf, remote);
+	ret = git_config_set(key.buf, remote);
+	if (ret)
+		goto out;
 
 	if (rebasing) {
 		strbuf_reset(&key);
 		strbuf_addf(&key, "branch.%s.rebase", local);
-		git_config_set(key.buf, "true");
+		ret = git_config_set(key.buf, "true");
+		if (ret)
+			goto out;
 	}
-	strbuf_release(&key);
 
 	if (flag & BRANCH_CONFIG_VERBOSE) {
 		if (shortname) {
@@ -102,6 +107,10 @@ void install_branch_config(int flag, const char *local, const char *origin, cons
 					  local, remote);
 		}
 	}
+
+out:
+	strbuf_release(&key);
+	return ret;
 }
 
 /*
@@ -134,8 +143,9 @@ static int setup_tracking(const char *new_ref, const char *orig_ref,
 		return error(_("Not tracking: ambiguous information for ref %s"),
 				orig_ref);
 
-	install_branch_config(config_flags, new_ref, tracking.remote,
-			      tracking.src ? tracking.src : orig_ref);
+	if (install_branch_config(config_flags, new_ref, tracking.remote,
+				  tracking.src ? tracking.src : orig_ref))
+		return error(_("Could not install branch configuration"));
 
 	free(tracking.src);
 	return 0;
@@ -295,7 +305,8 @@ void create_branch(const char *head,
 	}
 
 	if (real_ref && track)
-		setup_tracking(ref.buf + 11, real_ref, track, quiet);
+		if (setup_tracking(ref.buf + 11, real_ref, track, quiet) < 0)
+			die(_("Could not setup tracking branch"));
 
 	strbuf_release(&ref);
 	free(real_ref);
