@@ -1674,6 +1674,7 @@ proc parsecommit {id contents listed} {
     set audate {}
     set comname {}
     set comdate {}
+    set comgpg {}
     set hdrend [string first "\n\n" $contents]
     if {$hdrend < 0} {
 	# should never happen...
@@ -1690,6 +1691,9 @@ proc parsecommit {id contents listed} {
 	} elseif {$tag == "committer"} {
 	    set comdate [lrange $line end-1 end]
 	    set comname [join [lrange $line 1 end-2] " "]
+	} elseif {$tag == "gpg:"} {
+	    append comgpg [join [lrange $line 1 end] " "]
+	    append comgpg "\n"
 	}
     }
     set headline {}
@@ -1726,7 +1730,7 @@ proc parsecommit {id contents listed} {
 	set comment [string range $comment 0 $i-1]
     }
     set commitinfo($id) [list $headline $auname $audate \
-			     $comname $comdate $comment $hasnote $diff]
+			     $comname $comdate $comment $hasnote $diff $comgpg]
 }
 
 proc getcommit {id} {
@@ -7325,6 +7329,7 @@ proc selectline {l isnew {desired_loc {}} {switch_to_patch 0}} {
     $ctext insert end "[mc "Author"]: [lindex $info 1]  $date\n"
     set date [formatdate [lindex $info 4]]
     $ctext insert end "[mc "Committer"]: [lindex $info 3]  $date\n"
+    $ctext insert end [lindex $info 8]
     if {[info exists idtags($id)]} {
 	$ctext insert end [mc "Tags:"]
 	foreach tag $idtags($id) {
