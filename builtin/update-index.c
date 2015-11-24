@@ -1115,19 +1115,27 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		the_index.split_index = NULL;
 		the_index.cache_changed |= SOMETHING_CHANGED;
 	}
+	if (untracked_cache == TEST_UC || (untracked_cache == UC && use_untracked_cache == -1)) {
+		setup_work_tree();
+		if (!test_if_untracked_cache_is_supported())
+			return 1;
+		if (untracked_cache == TEST_UC)
+			return 0;
+	}
 	if (untracked_cache > 0) {
-		if (untracked_cache < FORCE_UC) {
-			setup_work_tree();
-			if (!test_if_untracked_cache_is_supported())
-				return 1;
-			if (untracked_cache == TEST_UC)
-				return 0;
-		}
+		if (!use_untracked_cache)
+			die("core.untrackedCache is set to false; "
+			    "the untracked cache will not be enabled");
 		add_untracked_cache();
 		fprintf(stderr, _("Untracked cache enabled for '%s'\n"), get_git_work_tree());
-	} else if (!untracked_cache && the_index.untracked) {
-		remove_untracked_cache();
-		fprintf(stderr, _("Untracked disabled\n"));
+	} else if (!untracked_cache) {
+		if (use_untracked_cache > 0)
+			die("core.untrackedCache is set to true; "
+			    "the untracked cache will not be disabled");
+		if (the_index.untracked) {
+			remove_untracked_cache();
+			fprintf(stderr, _("Untracked disabled\n"));
+		}
 	}
 
 	if (active_cache_changed) {
