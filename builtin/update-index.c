@@ -1107,9 +1107,13 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	if (untracked_cache > 0) {
 		struct untracked_cache *uc;
 
+		if (trust_mtime == 0) {
+			fprintf_ln(stderr,_("core.trustmtime is set to false"));
+			return 1;
+		}
 		if (untracked_cache < 2) {
 			setup_work_tree();
-			if (!test_if_untracked_cache_is_supported())
+			if (trust_mtime != 1 && !test_if_untracked_cache_is_supported())
 				return 1;
 		}
 		if (!the_index.untracked) {

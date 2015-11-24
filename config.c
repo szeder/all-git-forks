@@ -691,6 +691,13 @@ static int git_default_core_config(const char *var, const char *value)
 		trust_ctime = git_config_bool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "core.trustmtime")) {
+		if (!strcasecmp(value, "default") || !strcasecmp(value, "check"))
+			trust_mtime = -1;
+		else
+			trust_mtime = git_config_maybe_bool(var, value);
+		return 0;
+	}
 	if (!strcmp(var, "core.checkstat")) {
 		if (!strcasecmp(value, "default"))
 			check_stat = 1;
