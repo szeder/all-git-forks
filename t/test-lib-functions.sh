@@ -569,6 +569,18 @@ test_line_count () {
 	fi
 }
 
+# Returns true iff $2 appears in the comma-separated (with no whitespace!)
+# list given in $1.
+
+test_list_contains () {
+	case ",$1," in
+	*,$2,*)
+		return 0
+		;;
+	esac
+	return 1
+}
+
 # This is not among top-level (test_expect_success | test_expect_failure)
 # but is a prefix that can be used in the test script, like:
 #
@@ -593,13 +605,11 @@ test_must_fail () {
 	esac
 	"$@"
 	exit_code=$?
-	if ! case ",$_test_ok," in *,success,*) false;; esac &&
-		test $exit_code = 0
+	if test $exit_code = 0 && ! test_list_contains "$_test_ok" success
 	then
 		echo >&2 "test_must_fail: command succeeded: $*"
-		return 0
-	elif ! case ",$_test_ok," in *,sigpipe,*) false;; esac &&
-		test $exit_code = 141
+		return 1
+	elif test $exit_code = 141 && test_list_contains "$_test_ok" sigpipe
 	then
 		return 0
 	elif test $exit_code -gt 129 && test $exit_code -le 192
