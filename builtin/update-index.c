@@ -1106,15 +1106,20 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		the_index.split_index = NULL;
 		the_index.cache_changed |= SOMETHING_CHANGED;
 	}
-	if (untracked_cache > 0) {
+	if (untracked_cache == 2 || (untracked_cache == 1 && use_untracked_cache == -1)) {
+		setup_work_tree();
+		if (!test_if_untracked_cache_is_supported())
+			return 1;
+		if (untracked_cache == 2)
+			return 0;
+	}
+	if (untracked_cache > 0 || use_untracked_cache > 0) {
 		struct untracked_cache *uc;
 
-		if (untracked_cache < 3) {
-			setup_work_tree();
-			if (!test_if_untracked_cache_is_supported())
-				return 1;
-			if (untracked_cache == 2)
-				return 0;
+		if (use_untracked_cache == 0 && untracked_cache < 2) {
+			fprintf_ln(stderr,_("core.untrackedCache is set to false"));
+			fprintf_ln(stderr,_("use --force-untracked-cache to override it"));
+			return 1;
 		}
 		if (!the_index.untracked) {
 			uc = xcalloc(1, sizeof(*uc));
