@@ -190,7 +190,9 @@ may not support it yet.
 	For safety, `--untracked-cache` performs tests on the working
 	directory to make sure untracked cache can be used. These
 	tests can take a few seconds. `--force-untracked-cache` can be
-	used to skip the tests.
+	used to skip the tests. If you always want to skip those
+	tests, you can set the `core.trustmtime` configuration
+	variable to 'true', (see linkgit:git-config[1]).
 
 \--::
 	Do not interpret any more arguments as options.
@@ -406,6 +408,8 @@ It can be useful when the inode change time is regularly modified by
 something outside Git (file system crawlers and backup systems use
 ctime for marking files processed) (see linkgit:git-config[1]).
 
+Untracked cache needs a fully working mtime, so it will look at
+`core.trustmtime` configuration variable (see linkgit:git-config[1]).
 
 SEE ALSO
 --------

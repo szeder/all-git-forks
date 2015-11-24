@@ -308,6 +308,14 @@ core.trustctime::
 	crawlers and some backup systems).
 	See linkgit:git-update-index[1]. True by default.
 
+core.trustmtime::
+	If unset or set to 'default' or 'check', Git will test if
+	mtime is working properly before using features that need a
+	working mtime. If false, Git will refuse to use such
+	features. If set to true, Git will blindly use such features
+	without testing if they work.
+	See linkgit:git-update-index[1].
+
 core.checkStat::
 	Determines which stat fields to match between the index
 	and work tree. The user can set this to 'default' or

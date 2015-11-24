@@ -2038,6 +2038,7 @@ _git_config ()
 		core.sparseCheckout
 		core.symlinks
 		core.trustctime
+		core.trustmtime
 		core.warnAmbiguousRefs
 		core.whitespace
 		core.worktree
