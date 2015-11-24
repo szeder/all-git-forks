@@ -175,22 +175,38 @@ may not support it yet.
 --no-untracked-cache::
 	Enable or disable untracked cache extension. This could speed
 	up for commands that involve determining untracked files such
-	as `git status`. The underlying operating system and file
-	system must change `st_mtime` field of a directory if files
-	are added or deleted in that directory.
+	as `git status`.
++
+This feature works by omitting stat calls against files that are in a
+directory whose mtime hasn't changed. For this to work the underlying
+operating system and file system must change the `st_mtime` field of
+directories if files in the directory are added, modified or deleted.
++
+You can test whether the filesystem supports that with the
+`--test-untracked-cache` option. The `--untracked-cache` option used
+to implicitly perform that test in older versions of Git, but that's
+no longer the case.
++
+These options are simply aliases for setting the `core.untrackedCache`
+configuration variable to 'true' or 'false' in the local config file
+(see linkgit:git-config[1]). You can equivalently just set those
+configuration values directly. These options are just provided for
+backwards compatability with the older versions of Git where this was
+the only way to enable or disable the untracked cache extension.
 
 --test-untracked-cache::
 	Only perform tests on the working directory to make sure
 	untracked cache can be used. You have to manually enable
-	untracked cache using `--force-untracked-cache` (or
-	`--untracked-cache` but this will run the tests again)
-	afterwards if you really want to use it.
+	untracked cache using `--untracked-cache` or
+	`--force-untracked-cache` or the `core.untrackedCache`
+	configuration variable afterwards if you really want to use
+	it.
 
 --force-untracked-cache::
-	For safety, `--untracked-cache` performs tests on the working
-	directory to make sure untracked cache can be used. These
-	tests can take a few seconds. `--force-untracked-cache` can be
-	used to skip the tests.
+	Same as `--untracked-cache`. Provided for backwards
+	compatibility with older versions of Git where
+	`--untracked-cache` used to imply `--test-untracked-cache` but
+	this option would enable the extension unconditionally.
 
 \--::
 	Do not interpret any more arguments as options.
@@ -406,6 +422,8 @@ It can be useful when the inode change time is regularly modified by
 something outside Git (file system crawlers and backup systems use
 ctime for marking files processed) (see linkgit:git-config[1]).
 
+The untracked cache extension is enabled by the `core.untrackedCache`
+configuration variable (see linkgit:git-config[1]).
 
 SEE ALSO
 --------
