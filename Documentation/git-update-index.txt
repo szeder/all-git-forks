@@ -177,7 +177,10 @@ may not support it yet.
 	up for commands that involve determining untracked files such
 	as `git status`. The underlying operating system and file
 	system must change `st_mtime` field of a directory if files
-	are added or deleted in that directory.
+	are added or deleted in that directory. If you want to always
+	enable, or always disable, untracked cache, you can set the
+	`core.untrackedCache` configuration variable to 'true' or
+	'false' respectively, (see linkgit:git-config[1]).
 
 --test-untracked-cache::
 	Only perform tests on the working directory to make sure
@@ -190,7 +193,9 @@ may not support it yet.
 	For safety, `--untracked-cache` performs tests on the working
 	directory to make sure untracked cache can be used. These
 	tests can take a few seconds. `--force-untracked-cache` can be
-	used to skip the tests.
+	used to skip the tests. It cannot enable untracked cache if
+	`core.untrackedCache` configuration variable is set to false
+	(see linkgit:git-config[1]).
 
 \--::
 	Do not interpret any more arguments as options.
@@ -406,6 +411,8 @@ It can be useful when the inode change time is regularly modified by
 something outside Git (file system crawlers and backup systems use
 ctime for marking files processed) (see linkgit:git-config[1]).
 
+Untracked cache look at `core.untrackedCache` configuration variable
+(see linkgit:git-config[1]).
 
 SEE ALSO
 --------
