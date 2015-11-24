@@ -214,12 +214,24 @@ static const char * const usage_text[] = {
 	NULL
 };
 
+static void write_pid(struct strbuf *sb) {
+	static struct lock_file lock;
+	int fd = hold_lock_file_for_update(&lock,
+					   git_path("index-helper.pid"),
+					   LOCK_DIE_ON_ERROR);
+#ifdef GIT_WINDOWS_NATIVE
+	strbuf_addstr(sb, "HWND");
+#endif
+	strbuf_addf(sb, "%" PRIuMAX, (uintmax_t) getpid());
+	write_in_full(fd, sb->buf, sb->len);
+	commit_lock_file(&lock);
+}
+
 int main(int argc, char **argv)
 {
-	static struct lock_file lock;
 	struct strbuf sb = STRBUF_INIT;
 	const char *prefix;
-	int fd, idle_in_minutes = 10, detach = 0;
+	int idle_in_minutes = 10, detach = 0;
 	struct option options[] = {
 		OPT_INTEGER(0, "exit-after", &idle_in_minutes,
 			    N_("exit if not used after some minutes")),
@@ -240,21 +252,13 @@ int main(int argc, char **argv)
 			  options, usage_text, 0))
 		die(_("too many arguments"));
 
-	fd = hold_lock_file_for_update(&lock,
-				       git_path("index-helper.pid"),
-				       LOCK_DIE_ON_ERROR);
-#ifdef GIT_WINDOWS_NATIVE
-	strbuf_addstr(&sb, "HWND");
-#endif
-	strbuf_addf(&sb, "%" PRIuMAX, (uintmax_t) getpid());
-	write_in_full(fd, sb.buf, sb.len);
-	commit_lock_file(&lock);
-
 	atexit(cleanup);
 	sigchain_push_common(cleanup_on_signal);
 
 	if (detach && daemonize(&daemonized))
 		die_errno("unable to detach");
+
+	write_pid(&sb);
 
 	if (!idle_in_minutes)
 		idle_in_minutes = 0xffffffff / 60;
