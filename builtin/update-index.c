@@ -1115,17 +1115,18 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		the_index.split_index = NULL;
 		the_index.cache_changed |= SOMETHING_CHANGED;
 	}
+	if (untracked_cache == UC_TEST) {
+		setup_work_tree();
+		return !test_if_untracked_cache_is_supported();
+	}
 	if (untracked_cache > UC_DISABLE) {
-		if (untracked_cache < UC_FORCE) {
-			setup_work_tree();
-			if (!test_if_untracked_cache_is_supported())
-				return 1;
-			if (untracked_cache == UC_TEST)
-				return 0;
-		}
+		if (!use_untracked_cache && git_config_set("core.untrackedCache", "true"))
+			die("could not set core.untrackedCache to true");
 		add_untracked_cache();
 		report(_("Untracked cache enabled for '%s'"), get_git_work_tree());
 	} else if (untracked_cache == UC_DISABLE) {
+		if (use_untracked_cache && git_config_set("core.untrackedCache", "false"))
+			die("could not set core.untrackedCache to false");
 		remove_untracked_cache();
 		report(_("Untracked cache disabled"));
 	}
