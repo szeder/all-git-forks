@@ -74,8 +74,8 @@ msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-09-15 06:45+0800\n"
-"PO-Revision-Date: 2015-09-15 20:20+0200\n"
-"Last-Translator: Jean-Noël Avila <jn.avila@free.fr>\n"
+"PO-Revision-Date: 2015-11-25 16:50+0100\n"
+"Last-Translator: Cédric Malard <c.malard-git@valdun.net>\n"
 "Language-Team: Jean-Noël Avila <jn.avila@free.fr>\n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -628,7 +628,7 @@ msgstr "Impossible d'analyser le paramètre de l'option --submodule : '%s'"
 
 #: dir.c:1853
 msgid "failed to get kernel name and information"
-msgstr "echec de l'obtention d'information de kernel"
+msgstr "échec de l'obtention d'information de kernel"
 
 #: dir.c:1936
 msgid "Untracked cache is disabled on this system."
@@ -1913,7 +1913,7 @@ msgid ""
 "Everything below will be removed."
 msgstr ""
 "Ne touchez pas à la ligne ci-dessus\n"
-"Tout se qui suit sera éliminé."
+"Tout ce qui suit sera éliminé."
 
 #: wt-status.c:948
 msgid "You have unmerged paths."
@@ -2227,7 +2227,7 @@ msgstr "derrière "
 #: compat/precompose_utf8.c:55 builtin/clone.c:403
 #, c-format
 msgid "failed to unlink '%s'"
-msgstr "échec lors de l'unlink de '%s'"
+msgstr "échec de la suppression du lien '%s'"
 
 #: builtin/add.c:22
 msgid "git add [<options>] [--] <pathspec>..."
@@ -2236,7 +2236,7 @@ msgstr "git add [<options>] [--] <chemin>..."
 #: builtin/add.c:65
 #, c-format
 msgid "unexpected diff status %c"
-msgstr "status de diff inattendu %c"
+msgstr "état de diff inattendu %c"
 
 #: builtin/add.c:70 builtin/commit.c:277
 msgid "updating files failed"
@@ -2395,7 +2395,7 @@ msgstr "impossible de lire '%s'"
 
 #: builtin/am.c:444
 msgid "could not parse author script"
-msgstr "impossible d'analyser le script author"
+msgstr "impossible d'analyser l'auteur du script"
 
 #: builtin/am.c:521
 #, c-format
@@ -4760,7 +4760,7 @@ msgstr "impossible de remballer pour nettoyer"
 
 #: builtin/clone.c:801
 msgid "cannot unlink temporary alternates file"
-msgstr "impossible de unlinker le fichier temporaire alternates"
+msgstr "impossible de supprimer le lien vers le fichier temporaire alternates"
 
 #: builtin/clone.c:831
 msgid "Too many arguments."
@@ -7044,12 +7044,12 @@ msgstr "impossible de faire un stat du modèle '%s'"
 #: builtin/init-db.c:81
 #, c-format
 msgid "cannot opendir '%s'"
-msgstr "impossible d'ouvrir (opendir) '%s'"
+msgstr "impossible d'ouvrir le dossier '%s'"
 
 #: builtin/init-db.c:98
 #, c-format
 msgid "cannot readlink '%s'"
-msgstr "impossible de readlink '%s'"
+msgstr "impossible de lire le lien '%s'"
 
 #: builtin/init-db.c:100
 #, c-format
@@ -8862,7 +8862,7 @@ msgstr ""
 "Si vous souhaitez indiquer l'information de suivi distant pour cette "
 "branche, vous pouvez le faire avec :\n"
 "\n"
-"git branch --set-uptream-to=%s/<branche> %s\n"
+"    git branch --set-upstream-to=%s/<branche> %s\n"
 
 #: builtin/pull.c:476
 #, c-format
@@ -11112,7 +11112,7 @@ msgstr "Suppression de worktrees/%s : le fichier gitdir n'existe pas"
 #, c-format
 msgid "Removing worktrees/%s: unable to read gitdir file (%s)"
 msgstr ""
-"Suppression de worktrees/%s : echec de la lecture du fichier gitdir (%s)"
+"Suppression de worktrees/%s : échec de la lecture du fichier gitdir (%s)"
 
 #: builtin/worktree.c:58
 #, c-format
