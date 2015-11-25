@@ -628,6 +628,66 @@ test_expect_success 'git clean -e' '
 	test_path_is_file known
 '
 
+test_expect_success 'git clean --exclude-from' '
+	rm -fr repo &&
+	mkdir repo &&
+	cd repo &&
+	git init &&
+	touch known 1 2 3 &&
+	git add known &&
+	cat >.git/clean-exclude <<-\EOF &&
+	1
+	2
+	EOF
+	git clean -f --exclude-from=.git/clean-exclude &&
+	test_path_is_file 1 &&
+	test_path_is_file 2 &&
+	test_path_is_missing 3 &&
+	test_path_is_file known
+'
+
+test_expect_success 'git clean -e --exclude-from' '
+	rm -fr repo &&
+	mkdir repo &&
+	cd repo &&
+	git init &&
+	touch known 1 2 3 &&
+	git add known &&
+	echo 1 >> .git/clean-exclude &&
+	git clean -f -e 2 --exclude-from=.git/clean-exclude &&
+	test_path_is_file 1 &&
+	test_path_is_file 2 &&
+	test_path_is_missing 3 &&
+	test_path_is_file known
+'
+
+test_expect_success 'git clean --exclude-from --exclude-from' '
+	rm -fr repo &&
+	mkdir repo &&
+	git init &&
+	touch known 1 2 3 &&
+	git add known &&
+	cat >.git/clean-exclude1 <<-\EOF &&
+	1
+	EOF
+	cat >.git/clean-exclude2 <<-\EOF &&
+	2
+	EOF
+	git clean -f --exclude-from=.git/clean-exclude1 --exclude-from=.git/clean-exclude2 &&
+	test_path_is_file 1 &&
+	test_path_is_file 2 &&
+	test_path_is_missing 3 &&
+	test_path_is_file known
+'
+
+test_expect_success 'git clean --exclude-from=BADFILE' '
+	rm -fr repo &&
+	mkdir repo &&
+	cd repo &&
+	git init &&
+	test_expect_code 128 git clean -f --exclude-from=.git/clean-exclude-not-there
+'
+
 test_expect_success SANITY 'git clean -d with an unreadable empty directory' '
 	mkdir foo &&
 	chmod a= foo &&

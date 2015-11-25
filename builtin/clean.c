@@ -22,7 +22,7 @@ static struct string_list del_list = STRING_LIST_INIT_DUP;
 static unsigned int colopts;
 
 static const char *const builtin_clean_usage[] = {
-	N_("git clean [-d] [-f] [-i] [-n] [-q] [-e <pattern>] [-x | -X] [--] <paths>..."),
+	N_("git clean [-d] [-f] [-i] [-n] [-q] [-e <pattern>] [--exclude-from=<file>] [-x | -X] [--] <paths>..."),
 	NULL
 };
 
@@ -875,6 +875,14 @@ static void interactive_main_loop(void)
 	}
 }
 
+static int exclude_from_cb(const struct option *opt,
+				     const char *arg, int unset)
+{
+	struct dir_struct *dir = opt->value;
+	add_excludes_from_file(dir, arg);
+	return 0;
+}
+
 int cmd_clean(int argc, const char **argv, const char *prefix)
 {
 	int i, res;
@@ -898,12 +906,16 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 				N_("remove whole directories")),
 		{ OPTION_CALLBACK, 'e', "exclude", &exclude_list, N_("pattern"),
 		  N_("add <pattern> to ignore rules"), PARSE_OPT_NONEG, exclude_cb },
+		{ OPTION_CALLBACK, 0, "exclude-from", &dir, N_("file"),
+			N_("read exclude patterns from <file>"),
+			0, exclude_from_cb },
 		OPT_BOOL('x', NULL, &ignored, N_("remove ignored files, too")),
 		OPT_BOOL('X', NULL, &ignored_only,
 				N_("remove only ignored files")),
 		OPT_END()
 	};
 
+	memset(&dir, 0, sizeof(dir));
 	git_config(git_clean_config, NULL);
 	if (force < 0)
 		force = 0;
@@ -913,7 +925,6 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, options, builtin_clean_usage,
 			     0);
 
-	memset(&dir, 0, sizeof(dir));
 	if (ignored_only)
 		dir.flags |= DIR_SHOW_IGNORED;
 

@@ -8,7 +8,7 @@ git-clean - Remove untracked files from the working tree
 SYNOPSIS
 --------
 [verse]
-'git clean' [-d] [-f] [-i] [-n] [-q] [-e <pattern>] [-x | -X] [--] <path>...
+'git clean' [-d] [-f] [-i] [-n] [-q] [-e <pattern>] [--exclude-from=<file>] [-x | -X] [--] <path>...
 
 DESCRIPTION
 -----------
@@ -60,6 +60,9 @@ OPTIONS
 	In addition to those found in .gitignore (per directory) and
 	$GIT_DIR/info/exclude, also consider these patterns to be in the
 	set of the ignore rules in effect.
+
+--exclude-from=<file>::
+	Read exclude patterns from <file>; 1 per line.
 
 -x::
 	Don't use the standard ignore rules read from .gitignore (per
