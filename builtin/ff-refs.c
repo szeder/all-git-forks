@@ -5,10 +5,10 @@
 #include "run-command.h"
 #include "worktree.h"
 
-int dry_run = 0;
-int no_wt = 0;
-struct worktree **worktrees;
-const char *padding = ".....................................................";
+static int dry_run = 0;
+static int no_wt = 0;
+static struct worktree **worktrees;
+static const char *padding = ".....................................................";
 
 static const char * const builtin_ff_refs_usage[] = {
 	N_("git ff-refs [<options>]"),
