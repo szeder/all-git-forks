@@ -1,0 +1,55 @@
+git-ff-refs(1)
+============
+
+NAME
+----
+git-ff-refs - Fast-forward each local branch to its upstream (if possible)
+
+
+SYNOPSIS
+--------
+[verse]
+'git ff-refs' [<options>]
+
+
+DESCRIPTION
+-----------
+Update local branches to their tracked upstream if and only if the local branch
+can be fast-forwarded to the upstream ref.  Local branches which have diverged
+from the upstream will not be updated.
+
+Each local branch tracking an upstream will be reported with a status based on
+whether or not it it was updated.  The statuses are:
+
+	UP-TO-DATE - The local branch is the same or equal to the upstream
+	UPDATED - The branch was fast forwarded
+	WOULD-UPDATE - With `--dry-run`, the branch is fast forwardable
+	REMOTE-MISSING - The branch is tracking an upstream that is not present
+	NON-FAST-FORWARD - The branch has diverged from the upstream
+	SKIPPED - With `--skip-worktrees` the branch is fast forwardable but checked
+		out in a local worktree
+	WOULD-SKIP - With `--skip-worktrees` and `--dry-run`, the branch is fast
+		forwardable but checked out in a local worktree
+	UNABLE-TO-UPDATE - An error occurred while trying to update the branch
+
+OPTIONS
+-------
+--dry-run::
+	Report the updatable state of each branch without acutally updating anything.
+	In a dry run, fast-forwardable branches are marked 'WOULD-UPDATE' instead of
+	'UPDATED'.
+
+--skip-worktrees::
+	Does not update branches which are checked out in any worktree.  Branches
+	which are fast-forwardable that are checked out in any worktree are marked
+	'SKIPPED'.  If `--dry-run` is also set, those branches are marked 'WOULD-SKIP'.
+
+
+SEE ALSO
+--------
+linkgit:git-update-ref[1]
+linkgit:git-merge[1]
+
+GIT
+---
+Part of the linkgit:git[1] suite
