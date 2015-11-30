@@ -1114,15 +1114,13 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			return 0;
 	}
 	if (untracked_cache > 0 || use_untracked_cache > 0) {
-		struct untracked_cache *uc;
-
 		if (use_untracked_cache == 0 && untracked_cache < 2) {
 			fprintf_ln(stderr,_("core.untrackedCache is set to false"));
 			fprintf_ln(stderr,_("use --force-untracked-cache to override it"));
 			return 1;
 		}
 		if (!the_index.untracked) {
-			uc = xcalloc(1, sizeof(*uc));
+			struct untracked_cache *uc = xcalloc(1, sizeof(*uc));
 			strbuf_init(&uc->ident, 100);
 			uc->exclude_per_dir = ".gitignore";
 			/* should be the same flags used by git-status */
