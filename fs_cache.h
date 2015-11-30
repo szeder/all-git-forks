@@ -50,6 +50,8 @@ struct fsc_entry {
 /* Not yet saved to disk */
 #define FE_NEW               (1 << 10)
 
+#define FSC_ENTRY_AVG_PATH_LENGTH 256
+
 void fe_set_deleted(struct fsc_entry *fe);
 #define fe_clear_deleted(fe) ((fe)->flags &= ~FE_DELETED)
 #define fe_deleted(fe) ((fe)->flags & FE_DELETED)

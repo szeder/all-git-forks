@@ -11,7 +11,7 @@ struct trace_key trace_watchman = TRACE_KEY_INIT(WATCHMAN);
 
 struct fs_cache the_fs_cache;
 
-int cached_umask = -1;
+static int cached_umask = -1;
 
 static int fe_entry_cmp(const struct fsc_entry *f1,
 			const struct fsc_entry *f2,
@@ -399,8 +399,8 @@ int read_fs_cache(void)
 		goto unmap;
 
 	clear_fs_cache();
-	obstack_init(&the_fs_cache.obs);
 	nr = ntohl(hdr->hdr_entries);
+	obstack_begin(&the_fs_cache.obs, nr * (sizeof(struct fsc_entry) + FSC_ENTRY_AVG_PATH_LENGTH));
 	the_fs_cache.flags = ntohl(hdr->flags);
 	the_fs_cache.version = ntohl(hdr->hdr_version);
 	hashmap_init(&the_fs_cache.paths, (hashmap_cmp_fn) fe_entry_cmp, nr);
@@ -449,7 +449,7 @@ int read_fs_cache(void)
 				fe_set_parent(fe, parent_stack[parent_top - 1]);
 			}
 		}
-		mmap_cur = (char*)mmap_cur + consumed;
+		mmap_cur = (char *)mmap_cur + consumed;
 	}
 
 	munmap(mmap, mmap_size);
@@ -530,7 +530,7 @@ static void fs_cache_remove_recursive(struct fsc_entry *fe)
 		cur->first_child = NULL;
 	}
 
-	hashmap_remove(&the_fs_cache.paths, fe, fe);
+	hashmap_remove(&the_fs_cache.paths, fe, NULL);
 	the_fs_cache.nr--;
 }
 
@@ -660,7 +660,10 @@ int cmp_fsc_entry(const void *a, const void *b)
 	const unsigned char* pa = (unsigned char *)(*sa)->path;
 	const unsigned char* pb = (unsigned char *)(*sb)->path;
 
-	return cmp_topo(pa, pb);
+	if (ignore_case)
+		return icmp_topo(pa, pb);
+	else
+		return cmp_topo(pa, pb);
 }
 
 int cmp_topo(const unsigned char *pa, const unsigned char *pb) {
@@ -720,11 +723,26 @@ static int get_umask(void)
 
 static void copy_ce_stat_to_fe(const struct cache_entry *ce, struct fsc_entry *fe)
 {
+	int on_disk_mask;
 	fe_clear_deleted(fe);
 	fe->st.st_size = ce->ce_stat_data.sd_size;
-	/* The ce_mode is git's internal mode -- not the on-disk mode.
-	 * The on-disk mode will be 666 & ~umask, so we */
-	fe->st.st_mode = ce->ce_mode | (0666 & ~get_umask());
+#ifdef __linux__
+	/* On Linux, symlinks are always 0777 */
+	if (S_ISLNK(ce->ce_mode)) {
+		fe->st.st_mode = S_IFLNK | 0777;
+	} else {
+		on_disk_mask = 0666;
+		fe->st.st_mode = ce->ce_mode | (on_disk_mask & ~get_umask());
+	}
+#else
+	/*
+	 * The ce_mode is git's internal mode -- not the on-disk mode.
+	 * The on-disk mode will be 666 & ~umask for regular files,
+	 * 777 & ~umask for symlinks, so we:
+	 */
+	on_disk_mask = S_ISLNK(ce->ce_mode) ? 0777 : 0666;
+	fe->st.st_mode = ce->ce_mode | (on_disk_mask & ~get_umask());
+#endif
 	fe->st.st_ino = ce->ce_stat_data.sd_ino;
 	fe->st.st_dev = ce->ce_stat_data.sd_dev;
 	fe->st.st_uid = ce->ce_stat_data.sd_uid;

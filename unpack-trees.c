@@ -641,9 +641,8 @@ static int unpack_nondirectories(int n, unsigned long mask,
 					o);
 		for (i = 0; i < n; i++) {
 			struct cache_entry *ce = src[i + o->merge];
-			if (ce != o->df_conflict_entry) {
-				src[i + o->merge] = NULL;
-			}
+			if (ce != o->df_conflict_entry)
+				free(ce);
 		}
 		return rc;
 	}
@@ -1272,7 +1271,7 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 	if (!lstat(ce->name, &st)) {
 		int flags = CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE;
 		unsigned changed = ie_match_stat(o->src_index, ce, &st, flags);
-		if (!changed)
+		if (!(changed & ~OWNER_CHANGED))
 			return 0;
 		/*
 		 * NEEDSWORK: the current default policy is to allow

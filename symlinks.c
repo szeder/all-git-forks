@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "fs_cache.h"
 
 static int threaded_check_leading_path(struct cache_def *cache, const char *name, int len);
 static int threaded_has_dirs_only_path(struct cache_def *cache, const char *name, int len, int prefix_len);
@@ -280,6 +281,12 @@ static void do_remove_scheduled_dirs(int new_len)
 		removal.buf[removal.len] = '\0';
 		if (rmdir(removal.buf))
 			break;
+		else if (fs_cache_is_valid()) {
+			struct fsc_entry *fe = fs_cache_file_exists(removal.buf, removal.len);
+			if (fe != NULL) {
+				fe_set_deleted(fe);
+			}
+		}
 		do {
 			removal.len--;
 		} while (removal.len > new_len &&

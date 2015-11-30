@@ -5,36 +5,9 @@
 
 test_description='Watchman'
 
+GIT_TEST_WITH_WATCHMAN=1
+
 . ./test-lib.sh
-
-if ! test_have_prereq WATCHMAN
-then
-	skip_all='skipping watchman tests - no watchman'
-	test_done
-fi
-
-kill_watchman() {
-	#stop watchman
-	local c=0
-	pkill -x watchman
-	while pgrep -x watchman 2>&1 >/dev/null ; do
-		sleep 0.25
-		((c=$c+1))
-		test $c -lt 20 || error 'timed out trying to stop watchman'
-	done
-}
-
-#make sure that watchman is not running, but that it is runnable
-test_expect_success setup '
-	TMPHOME="$(mktemp -d /tmp/t7900.XXXXXXX)" &&
-	trap "rm -rf $TMPHOME" EXIT &&
-	HOME="$TMPHOME" && export HOME &&
-	install -d "$HOME/.watchman" &&
-	git config core.usewatchman true &&
-	kill_watchman &&
-	watchman -U "$HOME/.watchman/watchman.sock" watch-list > /dev/null &&
-	kill_watchman
-'
 
 cat >expect <<\EOF
 ?? expect
@@ -230,7 +203,7 @@ cat >expect <<\EOF
 EOF
 
 test_expect_success 'changes while watchman is not running are detected' '
-	kill_watchman &&
+	stop_watchman &&
 	touch dead &&
 	git status -s > output &&
 	test_cmp expect output
@@ -275,23 +248,18 @@ test_expect_success 'git-clean also cleans watchman ignored files' '
 	cat >>.gitignore <<-EOF &&
 fingle
 EOF
-	kill_watchman && # restart watchman to pickup the watchmanconfig
+	stop_watchman && # restart watchman to pickup the watchmanconfig
 	git status -s && # first time cant connect to watchman, regen fs_cache
 	git status -s && # second time will get the clock
 	mkdir fingle &&
 	touch fingle/gorp &&
 	git status -s >output &&
 	test_cmp output expected &&
-	git fs_cache-dump >output &&
+	git fs-cache-dump >output &&
 	! grep -q fingle output &&
 	git clean -fdx &&
 	! test -f output &&
 	! test -d fingle
-'
-
-test_expect_success 'Restore default test environment' '
-	git config --unset core.usewatchman &&
-	kill_watchman
 '
 
 test_done

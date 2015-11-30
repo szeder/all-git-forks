@@ -1277,8 +1277,9 @@ static void git_config_raw(config_fn_t fn, void *data)
 		die(_("unknown error occured while reading the configuration files"));
 }
 
-static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
+static int configset_iter(struct config_set *cs, config_fn_t fn, void *data, int do_die)
 {
+	int ret = 0;
 	int i, value_index;
 	struct string_list *values;
 	struct config_set_element *entry;
@@ -1289,19 +1290,32 @@ static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
 		entry = list->items[i].e;
 		value_index = list->items[i].value_index;
 		values = &entry->value_list;
-		if (fn(entry->key, values->items[value_index].string, data) < 0) {
+		ret |= fn(entry->key, values->items[value_index].string, data);
+		if (ret < 0 && do_die) {
 			kv_info = values->items[value_index].util;
 			git_die_config_linenr(entry->key, kv_info->filename, kv_info->linenr);
 		}
 	}
+
+	return ret;
 }
 
 static void git_config_check_init(void);
 
-void git_config(config_fn_t fn, void *data)
+int git_config1(config_fn_t fn, void *data, int do_die)
 {
 	git_config_check_init();
-	configset_iter(&the_config_set, fn, data);
+	return configset_iter(&the_config_set, fn, data, do_die);
+}
+
+void git_config(config_fn_t fn, void *data)
+{
+	git_config1(fn, data, 1);
+}
+
+int git_config_nodie(config_fn_t fn, void *data)
+{
+	return git_config1(fn, data, 0);
 }
 
 static struct config_set_element *configset_find_element(struct config_set *cs, const char *key)

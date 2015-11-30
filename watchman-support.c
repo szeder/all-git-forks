@@ -20,6 +20,8 @@
 
 static struct trace_key watchman_trace = TRACE_KEY_INIT(WATCHMAN);
 
+extern void git_config_nodie(config_fn_t fn, void *);
+
 static void copy_wm_stat_to_fe(struct watchman_stat *wm, struct fsc_entry *fe)
 {
 	if (!wm->exists) {
@@ -491,7 +493,12 @@ static int cmp_stat(const void *a, const void *b)
 	const struct watchman_stat* sb = b;
 	const unsigned char* pa = (unsigned char *)sa->name;
 	const unsigned char* pb = (unsigned char *)sb->name;
-	int cmp = icmp_topo(pa, pb);
+	int cmp;
+
+	if (ignore_case)
+		cmp = icmp_topo(pa, pb);
+	else
+		cmp = cmp_topo(pa, pb);
 	if (cmp == 0) {
 		assert(sa->oclock);
 		assert(sb->oclock);
@@ -962,13 +969,16 @@ static int git_watchman_config(const char *var, const char *value, void *cb)
  */
 void check_run_watchman(void)
 {
-	git_config(git_watchman_config, NULL);
+	git_config_nodie(git_watchman_config, NULL);
 	if (core_use_watchman && !core_lockout_watchman) {
 		char socket_path[PATH_MAX];
 		char pidfile_path[PATH_MAX];
 		char watchmandir_path[PATH_MAX];
-		const char *homedir = getenv("HOME");
+		const char *homedir = getenv("WATCHMAN_HOME");
 		int pidfd;
+
+		if (!homedir)
+			homedir = getenv("HOME");
 		assert(homedir);
 
 		snprintf(watchmandir_path, PATH_MAX, "%s/.watchman", homedir);

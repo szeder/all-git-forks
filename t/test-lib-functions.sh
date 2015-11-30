@@ -730,6 +730,17 @@ test_create_repo () {
 		error "cannot run git init -- have you built things yet?"
 		mv .git/hooks .git/hooks-disabled
 	) || exit
+	if test -n "$GIT_TEST_WITH_WATCHMAN"
+	then
+		if test_have_prereq WATCHMAN
+		then
+			setup_watchman
+			enable_watchman "$repo"
+		else
+			skip_all='set GIT_TEST_WITH_WATCHMAN but no watchman in this build'
+			test_done
+		fi
+	fi
 }
 
 # This function helps on symlink challenged file systems when it is not
