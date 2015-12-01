@@ -1802,7 +1802,7 @@ int head_ref_worktrees(each_ref_fn fn, void *cb_data)
 
 int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
-	return do_head_ref(submodule, fn, cb_data);
+	return do_head_ref_worktrees(submodule, fn, cb_data);
 }
 
 int for_each_ref(each_ref_fn fn, void *cb_data)

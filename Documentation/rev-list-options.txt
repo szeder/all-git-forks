@@ -134,7 +134,7 @@ parents) and `--max-parents=-1` (negative numbers denote no upper limit).
 
 --all::
 	Pretend as if all the refs in `refs/` are listed on the
-	command line as '<commit>'.
+	command line as '<commit>', as well as the HEADs of all worktrees.
 
 --branches[=<pattern>]::
 	Pretend as if all the refs in `refs/heads` are listed
