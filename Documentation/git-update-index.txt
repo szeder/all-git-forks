@@ -175,27 +175,28 @@ may not support it yet.
 --no-untracked-cache::
 	Enable or disable untracked cache extension. This could speed
 	up for commands that involve determining untracked files such
-	as `git status`. The underlying operating system and file
-	system must change `st_mtime` field of a directory if files
-	are added or deleted in that directory. If you want to always
-	enable, or always disable, untracked cache, you can set the
-	`core.untrackedCache` configuration variable to 'true' or
-	'false' respectively, (see linkgit:git-config[1]).
+	as `git status`.
++
+The underlying operating system and file system must change `st_mtime`
+field of a directory if files are added or deleted in that
+directory. You can test that using
+`--test-untracked-cache`. `--untracked-cache` used to test that too
+but it doesn't anymore. If you want to always enable, or always
+disable, untracked cache, you can set the `core.untrackedCache`
+configuration variable to 'true' or 'false' respectively, (see
+linkgit:git-config[1]).
 
 --test-untracked-cache::
 	Only perform tests on the working directory to make sure
 	untracked cache can be used. You have to manually enable
-	untracked cache using `--force-untracked-cache` (or
-	`--untracked-cache` but this will run the tests again)
-	afterwards if you really want to use it.
+	untracked cache using `--untracked-cache` or
+	`--force-untracked-cache` afterwards if you really want to use
+	it.
 
 --force-untracked-cache::
-	For safety, `--untracked-cache` performs tests on the working
-	directory to make sure untracked cache can be used. These
-	tests can take a few seconds. `--force-untracked-cache` can be
-	used to skip the tests. It cannot enable untracked cache if
-	`core.untrackedCache` configuration variable is set to false
-	(see linkgit:git-config[1]).
+	Same as `--untracked-cache`. Note that this option cannot
+	enable untracked cache if `core.untrackedCache` configuration
+	variable is set to false (see linkgit:git-config[1]).
 
 \--::
 	Do not interpret any more arguments as options.

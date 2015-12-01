@@ -11,7 +11,7 @@ avoid_racy() {
 # It's fine if git update-index returns an error code other than one,
 # it'll be caught in the first test.
 test_lazy_prereq UNTRACKED_CACHE '
-	{ git update-index --untracked-cache; ret=$?; } &&
+	{ git update-index --test-untracked-cache; ret=$?; } &&
 	test $ret -ne 1
 '
 

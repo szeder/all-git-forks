@@ -1106,12 +1106,9 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		the_index.split_index = NULL;
 		the_index.cache_changed |= SOMETHING_CHANGED;
 	}
-	if (untracked_cache == 2 || (untracked_cache == 1 && use_untracked_cache == -1)) {
+	if (untracked_cache == 2) {
 		setup_work_tree();
-		if (!test_if_untracked_cache_is_supported())
-			return 1;
-		if (untracked_cache == 2)
-			return 0;
+		return !test_if_untracked_cache_is_supported();
 	}
 	if (untracked_cache > 0) {
 		if (!use_untracked_cache)
