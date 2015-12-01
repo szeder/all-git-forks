@@ -130,6 +130,7 @@ cmd_add()
 {
 	# parse $args after "submodule ... add".
 	reference_path=
+	submodule_groups=
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -164,6 +165,10 @@ cmd_add()
 			;;
 		--depth=*)
 			depth=$1
+			;;
+		-g|--group)
+			submodule_groups=${submodule_groups:+${submodule_groups};}"$2"
+			shift
 			;;
 		--)
 			shift
@@ -292,6 +297,16 @@ Use -f if you really want to add it." >&2
 
 	git config -f .gitmodules submodule."$sm_name".path "$sm_path" &&
 	git config -f .gitmodules submodule."$sm_name".url "$repo" &&
+	if test -n "$submodule_groups"
+	then
+		OIFS=$IFS
+		IFS=';'
+		for group in $submodule_groups
+		do
+			git config --add -f .gitmodules submodule."$sm_name".group "${group}"
+		done
+		IFS=$OIFS
+	fi &&
 	if test -n "$branch"
 	then
 		git config -f .gitmodules submodule."$sm_name".branch "$branch"

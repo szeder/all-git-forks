@@ -986,6 +986,7 @@ test_expect_success 'submodule with UTF-8 name' '
 '
 
 test_expect_success 'submodule add clone shallow submodule' '
+	test_when_finished "rm -rf super" &&
 	mkdir super &&
 	pwd=$(pwd) &&
 	(
@@ -999,5 +1000,36 @@ test_expect_success 'submodule add clone shallow submodule' '
 	)
 '
 
+test_expect_success 'submodule add records a group' '
+	test_when_finished "rm -rf super" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --group groupA file://"$pwd"/example2 submodule &&
+		git config -f .gitmodules submodule."submodule".group >actual &&
+		echo groupA >expected &&
+		test_cmp expected actual
+	)
+'
+
+cat >expected <<-EOF
+groupA
+groupB
+EOF
+
+test_expect_success 'submodule add records groups' '
+	test_when_finished "rm -rf super" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --group groupA -g groupB file://"$pwd"/example2 submodule &&
+		git config --get-all -f .gitmodules submodule."submodule".group >../actual
+	) &&
+	test_cmp expected actual
+'
 
 test_done
