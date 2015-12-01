@@ -1780,6 +1780,8 @@ static int do_head_ref_worktrees(const char *submodule, each_ref_fn fn, void *cb
 	worktrees = get_worktrees();
 	retval = 0;
 	for (i=0; worktrees[i]; i++) {
+		if (is_null_sha1(worktrees[i]->head_sha1))
+			continue;
 		hashcpy(oid.hash, worktrees[i]->head_sha1);
 		retval = retval || fn("HEAD", &oid, worktrees[i]->is_detached ? 0 : REF_ISSYMREF, cb_data);
 	}
