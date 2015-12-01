@@ -692,13 +692,7 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 	if (!strcmp(var, "core.untrackedcache")) {
-		if (!strcasecmp(value, "default") || !strcasecmp(value, "check"))
-			use_untracked_cache = -1;
-		else {
-			use_untracked_cache = git_config_maybe_bool(var, value);
-			if (use_untracked_cache == -1)
-				error("unknown core.untrackedCache value '%s'; using default", value);
-		}
+		use_untracked_cache = git_config_bool(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "core.checkstat")) {

@@ -1120,15 +1120,13 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		return !test_if_untracked_cache_is_supported();
 	}
 	if (untracked_cache > 0) {
-		if (!use_untracked_cache)
-			die("core.untrackedCache is set to false; "
-			    "the untracked cache will not be enabled");
+		if (!use_untracked_cache && git_config_set("core.untrackedCache", "true"))
+			die("could not set core.untrackedCache to true");
 		add_untracked_cache();
 		fprintf(stderr, _("Untracked cache enabled for '%s'\n"), get_git_work_tree());
 	} else if (!untracked_cache) {
-		if (use_untracked_cache > 0)
-			die("core.untrackedCache is set to true; "
-			    "the untracked cache will not be disabled");
+		if (use_untracked_cache > 0 && git_config_set("core.untrackedCache", "false"))
+			die("could not set core.untrackedCache to false");
 		if (the_index.untracked) {
 			remove_untracked_cache();
 			fprintf(stderr, _("Untracked disabled\n"));
