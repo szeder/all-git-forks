@@ -183,6 +183,7 @@ typedef int each_ref_fn(const char *refname,
  * stop the iteration.
  */
 extern int head_ref(each_ref_fn fn, void *cb_data);
+extern int head_ref_worktrees(each_ref_fn fn, void *cb_data);
 extern int for_each_ref(each_ref_fn fn, void *cb_data);
 extern int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data);
 extern int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data, unsigned int broken);

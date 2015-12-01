@@ -1749,6 +1749,24 @@ static int do_for_each_ref(struct ref_cache *refs, const char *base,
 static int do_head_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	struct object_id oid;
+	int flag;
+
+	if (submodule) {
+		if (resolve_gitlink_ref(submodule, "HEAD", oid.hash) == 0)
+			return fn("HEAD", &oid, 0, cb_data);
+
+		return 0;
+	}
+
+	if (!read_ref_full("HEAD", RESOLVE_REF_READING, oid.hash, &flag))
+		return fn("HEAD", &oid, flag, cb_data);
+
+	return 0;
+}
+
+static int do_head_ref_worktrees(const char *submodule, each_ref_fn fn, void *cb_data)
+{
+	struct object_id oid;
 	struct worktree **worktrees;
 	int i, retval;
 
@@ -1773,6 +1791,11 @@ static int do_head_ref(const char *submodule, each_ref_fn fn, void *cb_data)
 int head_ref(each_ref_fn fn, void *cb_data)
 {
 	return do_head_ref(NULL, fn, cb_data);
+}
+
+int head_ref_worktrees(each_ref_fn fn, void *cb_data)
+{
+	return do_head_ref_worktrees(NULL, fn, cb_data);
 }
 
 int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
