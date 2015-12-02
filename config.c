@@ -49,6 +49,8 @@ static int zlib_compression_seen;
 
 static struct config_pattern worktree_v1[] = {
 	{ 0, 0, "core.bare" },
+	{ 0, 0, "core.ignorestat" },
+	{ 0, 0, "core.sparsecheckout" },
 	{ 0, 0, "core.worktree" },
 	{ 0, 0, NULL }
 };
