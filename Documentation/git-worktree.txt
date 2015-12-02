@@ -157,6 +157,7 @@ $GIT_COMMON_DIR/worktrees/X/config. Even though per-working tree
 variables for the main working tree are in the default config place,
 they are invisible from all linked working trees. The following
 configuration variables are per working directory:
+core.bare, core.worktree.
 
 LIST OUTPUT FORMAT
 ------------------
