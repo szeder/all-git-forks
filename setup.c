@@ -355,46 +355,20 @@ void setup_work_tree(void)
 	initialized = 1;
 }
 
-static int check_repo_format(const char *var, const char *value, void *cb)
-{
-	const char *ext;
-
-	if (strcmp(var, "core.repositoryformatversion") == 0)
-		repository_format_version = git_config_int(var, value);
-	else if (strcmp(var, "core.sharedrepository") == 0)
-		shared_repository = git_config_perm(var, value);
-	else if (skip_prefix(var, "extensions.", &ext)) {
-		/*
-		 * record any known extensions here; otherwise,
-		 * we fall through to recording it as unknown, and
-		 * check_repository_format will complain
-		 */
-		if (!strcmp(ext, "noop"))
-			;
-		else if (!strcmp(ext, "preciousobjects"))
-			repository_format_precious_objects = git_config_bool(var, value);
-		else if (!strcmp(ext, "worktree"))
-			repository_format_worktree_version =
-				git_config_ulong(var, value);
-		else
-			string_list_append(&unknown_extensions, ext);
-	}
-	return 0;
-}
-
 static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 {
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf sb2 = STRBUF_INIT;
 	const char *repo_config;
-	config_fn_t fn;
+	const char *worktree_config = NULL;
 	int ret = 0;
 
 	string_list_clear(&unknown_extensions, 0);
 
-	if (get_common_dir(&sb, gitdir))
-		fn = check_repo_format;
-	else
-		fn = check_repository_format_version;
+	if (get_common_dir(&sb, gitdir)) {
+		strbuf_addf(&sb2, "%s/config.worktree", gitdir);
+		worktree_config = sb2.buf;
+	}
 	strbuf_addstr(&sb, "/config");
 	repo_config = sb.buf;
 
@@ -407,7 +381,8 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	 * Use a gentler version of git_config() to check if this repo
 	 * is a good one.
 	 */
-	git_config_early(fn, NULL, repo_config, NULL);
+	git_config_early(check_repository_format_version, NULL,
+			 repo_config, worktree_config);
 	if (GIT_REPO_VERSION_READ < repository_format_version) {
 		if (!nongit_ok)
 			die ("Expected git repo version <= %d, found %d",
@@ -434,6 +409,7 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	}
 
 	strbuf_release(&sb);
+	strbuf_release(&sb2);
 	return ret;
 }
 
@@ -966,10 +942,28 @@ int git_config_perm(const char *var, const char *value)
 
 int check_repository_format_version(const char *var, const char *value, void *cb)
 {
-	int ret = check_repo_format(var, value, cb);
-	if (ret)
-		return ret;
-	if (strcmp(var, "core.bare") == 0) {
+	const char *ext;
+
+	if (strcmp(var, "core.repositoryformatversion") == 0)
+		repository_format_version = git_config_int(var, value);
+	else if (strcmp(var, "core.sharedrepository") == 0)
+		shared_repository = git_config_perm(var, value);
+	else if (skip_prefix(var, "extensions.", &ext)) {
+		/*
+		 * record any known extensions here; otherwise,
+		 * we fall through to recording it as unknown, and
+		 * check_repository_format will complain
+		 */
+		if (!strcmp(ext, "noop"))
+			;
+		else if (!strcmp(ext, "preciousobjects"))
+			repository_format_precious_objects = git_config_bool(var, value);
+		else if (!strcmp(ext, "worktree"))
+			repository_format_worktree_version =
+				git_config_ulong(var, value);
+		else
+			string_list_append(&unknown_extensions, ext);
+	} else if (strcmp(var, "core.bare") == 0) {
 		is_bare_repository_cfg = git_config_bool(var, value);
 		if (is_bare_repository_cfg == 1)
 			inside_work_tree = -1;
