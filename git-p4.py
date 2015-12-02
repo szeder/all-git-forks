@@ -2476,7 +2476,12 @@ class P4Sync(Command, P4UserMap):
     def streamOneP4File(self, file, contents):
         relPath = self.stripRepoPath(file['depotFile'], self.branchPrefixes)
         if verbose:
-            size = int(self.stream_file['fileSize'])
+            if 'fileSize' in self.stream_file:
+                size = int(self.stream_file['fileSize'])
+            elif 'streamContentSize' in self.stream_file:
+                size = int(self.stream_file['streamContentSize'])
+            else:
+                size = 0
             sys.stdout.write('\r%s --> %s (%i MB)\n' % (file['depotFile'], relPath, size/1024/1024))
             sys.stdout.flush()
 
