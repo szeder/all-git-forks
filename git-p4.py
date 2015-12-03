@@ -274,7 +274,7 @@ def p4_describe(change):
        the presence of field "time".  Return a dict of the
        results."""
 
-    ds = p4CmdList(["describe", "-s", str(change)])
+    ds = p4CmdList(["-r", "10", "describe", "-s", str(change)])
     if len(ds) != 1:
         die("p4 describe -s %d did not return 1 result: %s" % (change, str(ds)))
 
