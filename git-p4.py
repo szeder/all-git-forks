@@ -2652,6 +2652,7 @@ class P4Sync(Command, P4UserMap):
                 new_files.append (f)
             else:
                 sys.stderr.write("Ignoring file outside of prefix: %s\n" % f['path'])
+                sys.stderr.write("branch prefixs: %s\n" % str(self.branchPrefixes))
 
         if self.clientSpecDirs:
             self.clientSpecDirs.update_client_spec_path_cache(files)
