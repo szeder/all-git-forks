@@ -645,10 +645,15 @@ static int external_specification_len(const char *url)
 	return strchr(url, ':') - url;
 }
 
+int override_protocol_whitelist;
+
 static const struct string_list *protocol_whitelist(void)
 {
 	static int enabled = -1;
 	static struct string_list allowed = STRING_LIST_INIT_DUP;
+
+	if (override_protocol_whitelist)
+		return NULL;
 
 	if (enabled < 0) {
 		const char *v = getenv("GIT_ALLOW_PROTOCOL");
@@ -1233,6 +1238,8 @@ static int refs_from_alternate_cb(struct alternate_object_database *e,
 	if (!is_directory(other))
 		goto out;
 	other[len - 8] = '\0';
+
+	override_protocol_whitelist = 1;
 	remote = remote_get(other);
 	transport = transport_get(remote, other);
 	for (extra = transport_get_remote_refs(transport);
@@ -1240,6 +1247,8 @@ static int refs_from_alternate_cb(struct alternate_object_database *e,
 	     extra = extra->next)
 		cb->fn(extra, cb->data);
 	transport_disconnect(transport);
+	override_protocol_whitelist = 0;
+
 out:
 	free(other);
 	return 0;

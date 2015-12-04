@@ -172,6 +172,18 @@ int is_transport_allowed(const char *type, int from_user);
  */
 void transport_check_allowed(const char *type);
 
+/*
+ * Returns true if the user has attempted to turn on protocol
+ * restrictions at all.
+ */
+int transport_restrict_protocols(void);
+
+/*
+ * If true, override the whitelist used by the above "check" function, allowing
+ * all protocols.
+ */
+extern int override_protocol_whitelist;
+
 /* Transport options which apply to git:// and scp-style URLs */
 
 /* The program to use on the remote side to send a pack */
