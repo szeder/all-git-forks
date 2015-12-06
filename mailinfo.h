@@ -14,7 +14,7 @@ struct mailinfo {
 	int keep_non_patch_brackets_in_subject;
 	int add_message_id;
 	int use_scissors;
-	int use_inbody_headers; /* defaults to 1 */
+	int use_inbody_headers;
 	const char *metainfo_charset;
 
 	struct strbuf *content[MAX_BOUNDARIES];

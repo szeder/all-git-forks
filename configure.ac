@@ -537,7 +537,10 @@ GIT_CONF_SUBST([NO_CURL])
 
 if test -z "$NO_CURL"; then
 
-AC_CHECK_PROG([CURL_CONFIG], [curl-config], [curl-config], [no])
+AC_CHECK_PROG([CURL_CONFIG], [curl-config],
+[curl-config],
+[no])
+
 if test $CURL_CONFIG != no; then
     GIT_CONF_SUBST([CURL_CONFIG])
 fi
@@ -1139,7 +1142,12 @@ elif test -z "$PTHREAD_CFLAGS"; then
   # would then trigger compiler warnings on every single file we compile.
   for opt in "" -mt -pthread -lpthread; do
      old_CFLAGS="$CFLAGS"
-     CFLAGS="$opt $CFLAGS"
+     old_LIBS="$LIBS"
+     case "$opt" in
+        -l*)  LIBS="$opt $LIBS" ;;
+        *)    CFLAGS="$opt $CFLAGS" ;;
+     esac
+
      AC_MSG_CHECKING([for POSIX Threads with '$opt'])
      AC_LINK_IFELSE([PTHREADTEST_SRC],
 	[AC_MSG_RESULT([yes])
@@ -1151,6 +1159,7 @@ elif test -z "$PTHREAD_CFLAGS"; then
 	],
 	[AC_MSG_RESULT([no])])
       CFLAGS="$old_CFLAGS"
+      LIBS="$old_LIBS"
   done
   if test $threads_found != yes; then
     AC_CHECK_LIB([pthread], [pthread_create],

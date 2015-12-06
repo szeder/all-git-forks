@@ -395,7 +395,7 @@ void add_to_alternates_file(const char *reference)
 		struct strbuf line = STRBUF_INIT;
 		int found = 0;
 
-		while (strbuf_getline(&line, in, '\n') != EOF) {
+		while (strbuf_gets(&line, in) != EOF) {
 			if (!strcmp(reference, line.buf)) {
 				found = 1;
 				break;
@@ -1225,6 +1225,15 @@ static void report_helper(const struct string_list *list,
 	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX))
 		return;
 
+	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX|PACKDIR_FILE_BITMAP))
+		return;
+
+	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX|PACKDIR_FILE_KEEP))
+		return;
+
+	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX|PACKDIR_FILE_BITMAP|PACKDIR_FILE_KEEP))
+		return;
+
 	for (; first < last; first++)
 		report_garbage(seen_bits, list->items[first].string);
 }
@@ -1256,9 +1265,13 @@ static void report_pack_garbage(struct string_list *list)
 			first = i;
 		}
 		if (!strcmp(path + baselen, "pack"))
-			seen_bits |= 1;
+			seen_bits |= PACKDIR_FILE_PACK;
 		else if (!strcmp(path + baselen, "idx"))
-			seen_bits |= 2;
+			seen_bits |= PACKDIR_FILE_IDX;
+		else if (!strcmp(path + baselen, "bitmap"))
+			seen_bits |= PACKDIR_FILE_BITMAP;
+		else if (!strcmp(path + baselen, "keep"))
+			seen_bits |= PACKDIR_FILE_KEEP;
 	}
 	report_helper(list, seen_bits, first, list->nr);
 }
@@ -2115,7 +2128,7 @@ static unsigned long pack_entry_hash(struct packed_git *p, off_t base_offset)
 {
 	unsigned long hash;
 
-	hash = (unsigned long)p + (unsigned long)base_offset;
+	hash = (unsigned long)(intptr_t)p + (unsigned long)base_offset;
 	hash += (hash >> 8) + (hash >> 16);
 	return hash % MAX_DELTA_CACHE;
 }
@@ -3214,6 +3227,11 @@ int has_sha1_file_with_flags(const unsigned char *sha1, int flags)
 		return 0;
 	reprepare_packed_git();
 	return find_pack_entry(sha1, &e);
+}
+
+int has_object_file(const struct object_id *oid)
+{
+	return has_sha1_file(oid->hash);
 }
 
 static void check_tree(const void *buf, size_t size)

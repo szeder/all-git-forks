@@ -219,6 +219,7 @@ test_expect_success 'gc: prune old objects after local clone' '
 
 test_expect_success 'garbage report in count-objects -v' '
 	test_when_finished "rm -f .git/objects/pack/fake*" &&
+	test_when_finished "rm -f .git/objects/pack/foo*" &&
 	: >.git/objects/pack/foo &&
 	: >.git/objects/pack/foo.bar &&
 	: >.git/objects/pack/foo.keep &&
@@ -229,6 +230,12 @@ test_expect_success 'garbage report in count-objects -v' '
 	: >.git/objects/pack/fake.idx &&
 	: >.git/objects/pack/fake2.keep &&
 	: >.git/objects/pack/fake3.idx &&
+	: >.git/objects/pack/fake4.bitmap &&
+	: >.git/objects/pack/fake5.bitmap &&
+	: >.git/objects/pack/fake5.idx &&
+	: >.git/objects/pack/fake6.keep &&
+	: >.git/objects/pack/fake6.bitmap &&
+	: >.git/objects/pack/fake6.idx &&
 	git count-objects -v 2>stderr &&
 	grep "index file .git/objects/pack/fake.idx is too small" stderr &&
 	grep "^warning:" stderr | sort >actual &&
@@ -237,9 +244,43 @@ warning: garbage found: .git/objects/pack/fake.bar
 warning: garbage found: .git/objects/pack/foo
 warning: garbage found: .git/objects/pack/foo.bar
 warning: no corresponding .idx or .pack: .git/objects/pack/fake2.keep
+warning: no corresponding .idx or .pack: .git/objects/pack/fake4.bitmap
 warning: no corresponding .idx: .git/objects/pack/foo.keep
 warning: no corresponding .idx: .git/objects/pack/foo.pack
 warning: no corresponding .pack: .git/objects/pack/fake3.idx
+warning: no corresponding .pack: .git/objects/pack/fake5.bitmap
+warning: no corresponding .pack: .git/objects/pack/fake5.idx
+warning: no corresponding .pack: .git/objects/pack/fake6.bitmap
+warning: no corresponding .pack: .git/objects/pack/fake6.idx
+warning: no corresponding .pack: .git/objects/pack/fake6.keep
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'clean pack garbage with gc' '
+	test_when_finished "rm -f .git/objects/pack/fake*" &&
+	test_when_finished "rm -f .git/objects/pack/foo*" &&
+	: >.git/objects/pack/foo.keep &&
+	: >.git/objects/pack/foo.pack &&
+	: >.git/objects/pack/fake.idx &&
+	: >.git/objects/pack/fake2.keep &&
+	: >.git/objects/pack/fake2.idx &&
+	: >.git/objects/pack/fake3.keep &&
+	: >.git/objects/pack/fake4.bitmap &&
+	: >.git/objects/pack/fake5.bitmap &&
+	: >.git/objects/pack/fake5.idx &&
+	: >.git/objects/pack/fake6.keep &&
+	: >.git/objects/pack/fake6.bitmap &&
+	: >.git/objects/pack/fake6.idx &&
+	git gc &&
+	git count-objects -v 2>stderr &&
+	grep "^warning:" stderr | sort >actual &&
+	cat >expected <<\EOF &&
+warning: no corresponding .idx or .pack: .git/objects/pack/fake2.keep
+warning: no corresponding .idx or .pack: .git/objects/pack/fake3.keep
+warning: no corresponding .idx or .pack: .git/objects/pack/fake6.keep
+warning: no corresponding .idx: .git/objects/pack/foo.keep
+warning: no corresponding .idx: .git/objects/pack/foo.pack
 EOF
 	test_cmp expected actual
 '

@@ -367,8 +367,7 @@ extern size_t strbuf_fread(struct strbuf *, size_t, FILE *);
 extern ssize_t strbuf_read(struct strbuf *, int fd, size_t hint);
 
 /**
- * Read from a file descriptor that is marked as O_NONBLOCK without
- * blocking.  Returns the number of new bytes appended to the sb.
+ * Returns the number of new bytes appended to the sb.
  * Negative return value signals there was an error returned from
  * underlying read(2), in which case the caller should check errno.
  * e.g. errno == EAGAIN when the read may have blocked.
@@ -396,6 +395,13 @@ extern int strbuf_readlink(struct strbuf *sb, const char *path, size_t hint);
  * there was nothing left before EOF, in which case it returns `EOF`.
  */
 extern int strbuf_getline(struct strbuf *, FILE *, int);
+
+/*
+ * Similar to strbuf_getline(), but uses '\n' as the terminator,
+ * and additionally treats a '\r' that comes immediately before '\n'
+ * as part of the terminator.
+ */
+extern int strbuf_gets(struct strbuf *, FILE *);
 
 /**
  * Like `strbuf_getline`, but keeps the trailing terminator (if
@@ -465,19 +471,25 @@ static inline int strbuf_strip_suffix(struct strbuf *sb, const char *suffix)
  * For lighter-weight alternatives, see string_list_split() and
  * string_list_split_in_place().
  */
-extern struct strbuf **strbuf_split_buf(const char *, size_t,
-					int terminator, int max);
+extern struct strbuf **strbuf_split_buf(const char *str, size_t slen,
+					int terminator, int max, int with_term);
+
+static inline struct strbuf **strbuf_split_str_without_term(const char *str,
+							    int terminator, int max)
+{
+	return strbuf_split_buf(str, strlen(str), terminator, max, 0);
+}
 
 static inline struct strbuf **strbuf_split_str(const char *str,
 					       int terminator, int max)
 {
-	return strbuf_split_buf(str, strlen(str), terminator, max);
+	return strbuf_split_buf(str, strlen(str), terminator, max, 1);
 }
 
 static inline struct strbuf **strbuf_split_max(const struct strbuf *sb,
 						int terminator, int max)
 {
-	return strbuf_split_buf(sb->buf, sb->len, terminator, max);
+	return strbuf_split_buf(sb->buf, sb->len, terminator, max, 1);
 }
 
 static inline struct strbuf **strbuf_split(const struct strbuf *sb,

@@ -81,6 +81,7 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 					argv[i]);
 	}
 
+	xmp.crlf = (core_eol == EOL_CRLF);
 	xmp.ancestor = names[1];
 	xmp.file1 = names[0];
 	xmp.file2 = names[2];
@@ -103,6 +104,9 @@ int cmd_merge_file(int argc, const char **argv, const char *prefix)
 			ret = error("Could not close %s", filename);
 		free(result.ptr);
 	}
+
+	if (ret > 127)
+		ret = 127;
 
 	return ret;
 }

@@ -306,6 +306,15 @@ then
 	start_timestamp=$(date '+%s')
 fi
 
+if test -n "$filter_index" ||
+   test -n "$filter_tree" ||
+   test -n "$filter_subdir"
+then
+	need_index=t
+else
+	need_index=
+fi
+
 while read commit parents; do
 	git_filter_branch__commit_count=$(($git_filter_branch__commit_count+1))
 
@@ -313,7 +322,10 @@ while read commit parents; do
 
 	case "$filter_subdir" in
 	"")
-		GIT_ALLOW_NULL_SHA1=1 git read-tree -i -m $commit
+		if test -n "$need_index"
+		then
+			GIT_ALLOW_NULL_SHA1=1 git read-tree -i -m $commit
+		fi
 		;;
 	*)
 		# The commit may not have the subdirectory at all
@@ -349,7 +361,7 @@ while read commit parents; do
 			die "tree filter failed: $filter_tree"
 
 		(
-			git diff-index -r --name-only --ignore-submodules $commit &&
+			git diff-index -r --name-only --ignore-submodules $commit -- &&
 			git ls-files --others
 		) > "$tempdir"/tree-state || exit
 		git update-index --add --replace --remove --stdin \
@@ -387,8 +399,15 @@ while read commit parents; do
 	} <../commit |
 		eval "$filter_msg" > ../message ||
 			die "msg filter failed: $filter_msg"
+
+	if test -n "$need_index"
+	then
+		tree=$(git write-tree)
+	else
+		tree="$commit^{tree}"
+	fi
 	workdir=$workdir @SHELL_PATH@ -c "$filter_commit" "git commit-tree" \
-		$(git write-tree) $parentstr < ../message > ../map/$commit ||
+		"$tree" $parentstr < ../message > ../map/$commit ||
 			die "could not write rewritten commit"
 done <../revs
 
