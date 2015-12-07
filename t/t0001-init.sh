@@ -87,6 +87,33 @@ test_expect_success 'plain nested in bare through aliased command' '
 	check_config bare-ancestor-aliased.git/plain-nested/.git false unset
 '
 
+test_expect_success 'No extra GIT_* on alias scripts' '
+	cat <<-\EOF >expected &&
+	GIT_ATTR_NOSYSTEM
+	GIT_AUTHOR_EMAIL
+	GIT_AUTHOR_NAME
+	GIT_COMMITTER_EMAIL
+	GIT_COMMITTER_NAME
+	GIT_CONFIG_NOSYSTEM
+	GIT_EXEC_PATH
+	GIT_MERGE_AUTOEDIT
+	GIT_MERGE_VERBOSITY
+	GIT_PREFIX
+	GIT_TEMPLATE_DIR
+	GIT_TEXTDOMAINDIR
+	GIT_TRACE_BARE
+	EOF
+	cat <<-\EOF >script &&
+	#!/bin/sh
+	env | grep GIT_ | sed "s/=.*//" | sort >actual
+	exit 0
+	EOF
+	chmod 755 script &&
+	git config alias.script \!./script &&
+	( mkdir sub && cd sub && git script ) &&
+	test_cmp expected actual
+'
+
 test_expect_success 'plain with GIT_WORK_TREE' '
 	mkdir plain-wt &&
 	test_must_fail env GIT_WORK_TREE="$(pwd)/plain-wt" git init plain-wt
