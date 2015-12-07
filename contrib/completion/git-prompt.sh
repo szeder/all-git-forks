@@ -103,7 +103,7 @@ then
   unset oc_PS
 else
   local oc_project=$(cat ~/.kube/config 2>/dev/null| grep -o '^current-context: [^/]*' | cut -d' ' -f2)
-  if [ "" = "${oc_project-}" ]
+  if [ "" != "${oc_project-}" ]
   then
     oc_PS=" [${oc_project-}] "
   fi
