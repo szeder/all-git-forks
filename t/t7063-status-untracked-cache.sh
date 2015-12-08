@@ -28,6 +28,11 @@ test_expect_success 'setup' '
 	git update-index --untracked-cache
 '
 
+test_expect_success 'core.untrackedCache is set' '
+	UC=$(git config core.untrackedCache) &&
+	test "$UC" = "true"
+'
+
 test_expect_success 'untracked cache is empty' '
 	test-dump-untracked-cache >../actual &&
 	cat >../expect <<EOF &&
@@ -568,5 +573,15 @@ test_expect_success 'move entry in subdir from cached to untracked' '
 EOF
 	test_cmp ../status.expect ../status.actual
 '
+
+test_expect_success '--no-untracked-cache removes the cache' '
+	git update-index --no-untracked-cache &&
+	UC=$(git config core.untrackedCache) &&
+	test "$UC" = "false" &&
+	test-dump-untracked-cache >../actual &&
+	echo "no untracked cache" >../expected &&
+	test_cmp ../expected ../actual
+'
+
 
 test_done
