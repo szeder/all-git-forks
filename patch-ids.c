@@ -57,7 +57,7 @@ int free_patch_ids(struct patch_ids *ids)
 
 static struct patch_id *add_commit(struct commit *commit,
 				   struct patch_ids *ids,
-				   int no_add)
+				   int searching)
 {
 	struct patch_id_bucket *bucket;
 	struct patch_id *ent;
@@ -69,7 +69,7 @@ static struct patch_id *add_commit(struct commit *commit,
 	pos = patch_pos(ids->table, ids->nr, sha1);
 	if (0 <= pos)
 		return ids->table[pos];
-	if (no_add)
+	if (searching)
 		return NULL;
 
 	pos = -1 - pos;
