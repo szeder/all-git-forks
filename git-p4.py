@@ -2237,6 +2237,7 @@ class P4Sync(Command, P4UserMap):
                 optparse.make_option("-/", dest="cloneExclude",
                                      action="append", type="string",
                                      help="exclude depot path"),
+                optparse.make_option("--restart-import", dest="restartImport", action="store_true")
         ]
         self.description = """Imports from Perforce into a git repository.\n
     example:
@@ -2269,6 +2270,7 @@ class P4Sync(Command, P4UserMap):
         self.tempBranches = []
         self.tempBranchLocation = "git-p4-tmp"
         self.largeFileSystem = None
+        self.restartImport = False
 
         if gitConfig('git-p4.largeFileSystem'):
             largeFileSystemConstructor = globals()[gitConfig('git-p4.largeFileSystem')]
@@ -3096,8 +3098,12 @@ class P4Sync(Command, P4UserMap):
                             self.commit(description, filesForCommit, branch, parent)
                 else:
                     files = self.extractFilesFromCommit(description)
-                    self.commit(description, files, self.branch,
-                                self.initialParent)
+                    if (cnt == 2 and self.restartImport):
+                        parent = "%s^0" % self.branch
+                        print "Restart import, using parent %s" % parent
+                        self.commit(description, files, self.branch, parent)
+                    else:
+                        self.commit(description, files, self.branch, self.initialParent)
                     # only needed once, to connect to the previous commit
                     self.initialParent = ""
             except IOError:
