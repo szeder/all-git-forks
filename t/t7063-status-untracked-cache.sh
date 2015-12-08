@@ -18,6 +18,10 @@ if ! test_have_prereq UNTRACKED_CACHE; then
 	test_done
 fi
 
+test_expect_success 'core.untrackedCache is unset' '
+	test_must_fail git config --get core.untrackedCache
+'
+
 test_expect_success 'setup' '
 	git init worktree &&
 	cd worktree &&
@@ -26,6 +30,11 @@ test_expect_success 'setup' '
 	git add one two done/one &&
 	: >.git/info/exclude &&
 	git update-index --untracked-cache
+'
+
+test_expect_success 'core.untrackedCache is true' '
+	UC=$(git config core.untrackedCache) &&
+	test "$UC" = "true"
 '
 
 test_expect_success 'untracked cache is empty' '
@@ -506,7 +515,7 @@ EOF
 
 test_expect_success 'verify untracked cache dump (sparse/subdirs)' '
 	test-dump-untracked-cache >../actual &&
-	cat >../expect <<EOF &&
+	cat >../expect-from-test-dump <<EOF &&
 info/exclude 13263c0978fb9fad16b2d580fb800b6d811c3ff0
 core.excludesfile 0000000000000000000000000000000000000000
 exclude_per_dir .gitignore
@@ -525,7 +534,7 @@ file
 /dtwo/ 0000000000000000000000000000000000000000 recurse check_only valid
 two
 EOF
-	test_cmp ../expect ../actual
+	test_cmp ../expect-from-test-dump ../actual
 '
 
 test_expect_success 'test sparse status again with untracked cache and subdir' '
@@ -567,6 +576,41 @@ test_expect_success 'move entry in subdir from cached to untracked' '
 ?? dtwo/
 EOF
 	test_cmp ../status.expect ../status.actual
+'
+
+test_expect_success '--no-untracked-cache removes the cache' '
+	git update-index --no-untracked-cache &&
+	UC=$(git config core.untrackedCache) &&
+	test "$UC" = "false" &&
+	test-dump-untracked-cache >../actual &&
+	echo "no untracked cache" >../expect &&
+	test_cmp ../expect ../actual
+'
+
+test_expect_success 'git status does not change anything' '
+	git status &&
+	test-dump-untracked-cache >../actual &&
+	test_cmp ../expect ../actual &&
+	UC=$(git config core.untrackedCache) &&
+	test "$UC" = "false"
+'
+
+test_expect_success 'setting core.untrackedCache and using git status creates the cache' '
+	git config core.untrackedCache true &&
+	test-dump-untracked-cache >../actual &&
+	test_cmp ../expect ../actual &&
+	git status &&
+	test-dump-untracked-cache >../actual &&
+	test_cmp ../expect-from-test-dump ../actual
+'
+
+test_expect_success 'unsetting core.untrackedCache and using git status removes the cache' '
+	git config --unset core.untrackedCache &&
+	test-dump-untracked-cache >../actual &&
+	test_cmp ../expect-from-test-dump ../actual &&
+	git status &&
+	test-dump-untracked-cache >../actual &&
+	test_cmp ../expect ../actual
 '
 
 test_done
