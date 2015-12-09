@@ -1070,12 +1070,17 @@ class GitLFS(LargeFileSystem):
         gitMode = '100644'
         return (gitMode, pointerContents, localLargeFile)
 
-    def pushFile(self, localLargeFile):
-        uploadProcess = subprocess.Popen(
-            ['git', 'lfs', 'push', '--object-id', 'origin', os.path.basename(localLargeFile)]
-        )
-        if uploadProcess.wait():
-            die('git-lfs push command failed. Did you define a remote?')
+    def pushFile(self, localLargeFile, upload_attempts=10):
+        while upload_attempts > 0:
+            upload_attempts = upload_attempts - 1
+            uploadProcess = subprocess.Popen(
+                ['git', 'lfs', 'push', '--object-id', 'origin', os.path.basename(localLargeFile)]
+            )
+            return_code = uploadProcess.wait()
+            if returncode is None:
+                return
+            elif upload_attempts <= 0 and returncode is not None:
+                die('git-lfs push command failed. Did you define a remote?')
 
     def generateGitAttributes(self):
         return (
