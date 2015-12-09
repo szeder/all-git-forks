@@ -3,21 +3,25 @@
 # This file is distributed under the same license as the Git package.
 # Changwoo Ryu <cwryu@debian.org>, 2015.
 #
-# 용어:
 #
-#  branch	브랜치
-#  commit	커밋
-#  history	내역, 커밋 내역
-#  log	기록
-#  merge	병합
-#  repo	저장소
+# - 용어:
+#  +--------------+-----------------------------------------------+
+#  | branch       | 브랜치                                       |
+#  | commit       | 커밋                                         |
+#  | history      | 내역, 커밋 내역                              |
+#  | Git          | 깃 (명령어가 아닌 이름을 나타내는 경우)      |
+#  | log          | 기록                                         |
+#  | merge        | 병합                                         |
+#  | repo         | 저장소                                       |
+#  | working tree | 작업 폴더                                    |
+#  +--------------+-----------------------------------------------+
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-09-15 06:45+0800\n"
-"PO-Revision-Date: 2015-12-09 22:24+0900\n"
+"PO-Revision-Date: 2015-12-10 12:41+0900\n"
 "Last-Translator: Changwoo Ryu <cwryu@debian.org>\n"
 "Language-Team: Changwoo Ryu <cwryu@debian.org>\n"
 "Language: ko\n"
@@ -918,7 +922,7 @@ msgstr "사용법: %s"
 #: parse-options.c:585
 #, c-format
 msgid "   or: %s"
-msgstr " 또는: %s"
+msgstr "  또는: %s"
 
 #: parse-options.c:588
 #, c-format
@@ -6145,7 +6149,7 @@ msgstr ""
 
 #: builtin/help.c:52
 msgid "git help [--all] [--guides] [--man | --web | --info] [<command>]"
-msgstr ""
+msgstr "git help [--all] [--guides] [--man | --web | --info] [<명령>]"
 
 #: builtin/help.c:64
 #, c-format
@@ -6154,21 +6158,21 @@ msgstr ""
 
 #: builtin/help.c:91
 msgid "Failed to start emacsclient."
-msgstr ""
+msgstr "emacsclient 시작에 실패했습니다."
 
 #: builtin/help.c:104
 msgid "Failed to parse emacsclient version."
-msgstr ""
+msgstr "emacsclient 버전 파싱에 실패했습니다."
 
 #: builtin/help.c:112
 #, c-format
 msgid "emacsclient version '%d' too old (< 22)."
-msgstr ""
+msgstr "emacsclient '%d' 버전은 너무 과거 (< 22) 버전입니다."
 
 #: builtin/help.c:130 builtin/help.c:158 builtin/help.c:167 builtin/help.c:175
 #, c-format
 msgid "failed to exec '%s': %s"
-msgstr ""
+msgstr "실행 실패: '%s': %s"
 
 #: builtin/help.c:215
 #, c-format
@@ -6199,7 +6203,7 @@ msgstr ""
 
 #: builtin/help.c:428
 msgid "Defining attributes per path"
-msgstr ""
+msgstr "경로마다 속성 정의하기"
 
 #: builtin/help.c:429
 msgid "Everyday Git With 20 Commands Or So"
@@ -6207,7 +6211,7 @@ msgstr ""
 
 #: builtin/help.c:430
 msgid "A Git glossary"
-msgstr ""
+msgstr "깃 용어 사전"
 
 #: builtin/help.c:431
 msgid "Specifies intentionally untracked files to ignore"
@@ -6236,7 +6240,7 @@ msgstr ""
 #: builtin/help.c:468 builtin/help.c:485
 #, c-format
 msgid "usage: %s%s"
-msgstr ""
+msgstr "사용법: %s%s"
 
 #: builtin/help.c:501
 #, c-format
@@ -10452,11 +10456,11 @@ msgstr "파일, 디렉터리, 심볼릭 링크를 옮기거나 이름을 바꿉�
 
 #: common-cmds.h:30
 msgid "Fetch from and integrate with another repository or a local branch"
-msgstr ""
+msgstr "다른 저장소 또는 다른 로컬 브랜치에서 가져오거나 통합합니다"
 
 #: common-cmds.h:31
 msgid "Update remote refs along with associated objects"
-msgstr ""
+msgstr "원격 레퍼런스 및 그와 관련된 오브젝트를 업데이트합니다"
 
 #: common-cmds.h:32
 msgid "Forward-port local commits to the updated upstream head"
@@ -10472,15 +10476,15 @@ msgstr ""
 
 #: common-cmds.h:35
 msgid "Show various types of objects"
-msgstr ""
+msgstr "여러가지 종류의 오브젝트를 표시합니다"
 
 #: common-cmds.h:36
 msgid "Show the working tree status"
-msgstr ""
+msgstr "작업 폴더 상태를 표시합니다"
 
 #: common-cmds.h:37
 msgid "Create, list, delete or verify a tag object signed with GPG"
-msgstr ""
+msgstr "태그 오브젝트를 만들거나, 목록을 표시하거나, 삭제하거나, GPG로 서명한 태그를 검증합니다"
 
 #: parse-options.h:145
 msgid "expiry-date"
