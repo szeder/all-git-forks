@@ -1077,9 +1077,9 @@ class GitLFS(LargeFileSystem):
                 ['git', 'lfs', 'push', '--object-id', 'origin', os.path.basename(localLargeFile)]
             )
             return_code = uploadProcess.wait()
-            if returncode is None:
+            if return_code is None:
                 return
-            elif upload_attempts <= 0 and returncode is not None:
+            elif upload_attempts <= 0 and return_code is not None:
                 die('git-lfs push command failed. Did you define a remote?')
 
     def generateGitAttributes(self):
