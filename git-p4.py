@@ -791,7 +791,9 @@ def p4ParseNumericChangeRange(parts):
     return (changeStart, changeEnd)
 
 def chooseBlockSize(blockSize):
-    if blockSize:
+    if blockSize == 0:
+        return None
+    elif blockSize:
         return blockSize
     else:
         return defaultBlockSize
@@ -2160,6 +2162,14 @@ class View(object):
         if not exclude:
             self.mappings.append(depot_side)
 
+    def depotPaths(self):
+        paths = []
+        for d in self.mappings:
+            three_dots_index = d.find('...')
+            if three_dots_index > 0:
+                paths.append(d[0:three_dots_index])
+        return paths
+
     def convert_client_path(self, clientFile):
         # chop off //client/ part to make it relative
         if not clientFile.startswith(self.client_prefix):
@@ -3409,7 +3419,13 @@ class P4Sync(Command, P4UserMap):
                 if self.verbose:
                     print "Getting p4 changes for %s...%s" % (', '.join(self.depotPaths),
                                                               self.changeRange)
-                changes = p4ChangesForPaths(self.depotPaths, self.changeRange, self.changes_block_size)
+
+                if len(self.depotPaths) == 1 and self.depotPaths[0] == "/" and self.useClientSpec:
+                    changes = p4ChangesForPaths(self.clientSpecDirs.depotPaths(),
+                                                self.changeRange,
+                                                self.changes_block_size)
+                else:
+                    changes = p4ChangesForPaths(self.depotPaths, self.changeRange, self.changes_block_size)
 
                 if len(self.maxChanges) > 0:
                     changes = changes[:min(int(self.maxChanges), len(changes))]
@@ -3418,6 +3434,9 @@ class P4Sync(Command, P4UserMap):
                 if not self.silent:
                     print "No changes to import!"
             else:
+                if self.verbose:
+                    print "P4 changes to import: %s" % ', '.join(str(x) for x in changes)
+
                 if not self.silent and not self.detectBranches:
                     print "Import destination: %s" % self.branch
 
