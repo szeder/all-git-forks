@@ -630,25 +630,24 @@ static char *unique_path(struct merge_options *o, const char *path, const char *
 
 static int dir_in_way(const char *path, int check_working_copy)
 {
-	int pos, pathlen = strlen(path);
-	char *dirpath = xmalloc(pathlen + 2);
+	int pos;
+	struct strbuf dirpath = STRBUF_INIT;
 	struct stat st;
 
-	strcpy(dirpath, path);
-	dirpath[pathlen] = '/';
-	dirpath[pathlen+1] = '\0';
+	strbuf_addstr(&dirpath, path);
+	strbuf_addch(&dirpath, '/');
 
-	pos = cache_name_pos(dirpath, pathlen+1);
+	pos = cache_name_pos(dirpath.buf, dirpath.len);
 
 	if (pos < 0)
 		pos = -1 - pos;
 	if (pos < active_nr &&
-	    !strncmp(dirpath, active_cache[pos]->name, pathlen+1)) {
-		free(dirpath);
+	    !strncmp(dirpath.buf, active_cache[pos]->name, dirpath.len)) {
+		strbuf_release(&dirpath);
 		return 1;
 	}
 
-	free(dirpath);
+	strbuf_release(&dirpath);
 	return check_working_copy && !lstat(path, &st) && S_ISDIR(st.st_mode);
 }
 
@@ -1531,13 +1530,17 @@ static int read_sha1_strbuf(const unsigned char *sha1, struct strbuf *dst)
 }
 
 static int blob_unchanged(const unsigned char *o_sha,
+			  unsigned o_mode,
 			  const unsigned char *a_sha,
+			  unsigned a_mode,
 			  int renormalize, const char *path)
 {
 	struct strbuf o = STRBUF_INIT;
 	struct strbuf a = STRBUF_INIT;
 	int ret = 0; /* assume changed for safety */
 
+	if (a_mode != o_mode)
+		return 0;
 	if (sha_eq(o_sha, a_sha))
 		return 1;
 	if (!renormalize)
@@ -1723,8 +1726,8 @@ static int process_entry(struct merge_options *o,
 	} else if (o_sha && (!a_sha || !b_sha)) {
 		/* Case A: Deleted in one */
 		if ((!a_sha && !b_sha) ||
-		    (!b_sha && blob_unchanged(o_sha, a_sha, normalize, path)) ||
-		    (!a_sha && blob_unchanged(o_sha, b_sha, normalize, path))) {
+		    (!b_sha && blob_unchanged(o_sha, o_mode, a_sha, a_mode, normalize, path)) ||
+		    (!a_sha && blob_unchanged(o_sha, o_mode, b_sha, b_mode, normalize, path))) {
 			/* Deleted in both or deleted in one and
 			 * unchanged in the other */
 			if (a_sha)

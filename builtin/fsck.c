@@ -38,14 +38,7 @@ static int show_dangling = 1;
 #define ERROR_OBJECT 01
 #define ERROR_REACHABLE 02
 #define ERROR_PACK 04
-
-#ifdef NO_D_INO_IN_DIRENT
-#define SORT_DIRENT 0
-#define DIRENT_SORT_HINT(de) 0
-#else
-#define SORT_DIRENT 1
-#define DIRENT_SORT_HINT(de) ((de)->d_ino)
-#endif
+#define ERROR_REFS 010
 
 static int fsck_config(const char *var, const char *value, void *cb)
 {
@@ -373,102 +366,6 @@ static int fsck_obj_buffer(const unsigned char *sha1, enum object_type type,
 	return fsck_obj(obj);
 }
 
-/*
- * This is the sorting chunk size: make it reasonably
- * big so that we can sort well..
- */
-#define MAX_SHA1_ENTRIES (1024)
-
-struct sha1_entry {
-	unsigned long ino;
-	unsigned char sha1[20];
-};
-
-static struct {
-	unsigned long nr;
-	struct sha1_entry *entry[MAX_SHA1_ENTRIES];
-} sha1_list;
-
-static int ino_compare(const void *_a, const void *_b)
-{
-	const struct sha1_entry *a = _a, *b = _b;
-	unsigned long ino1 = a->ino, ino2 = b->ino;
-	return ino1 < ino2 ? -1 : ino1 > ino2 ? 1 : 0;
-}
-
-static void fsck_sha1_list(void)
-{
-	int i, nr = sha1_list.nr;
-
-	if (SORT_DIRENT)
-		qsort(sha1_list.entry, nr,
-		      sizeof(struct sha1_entry *), ino_compare);
-	for (i = 0; i < nr; i++) {
-		struct sha1_entry *entry = sha1_list.entry[i];
-		unsigned char *sha1 = entry->sha1;
-
-		sha1_list.entry[i] = NULL;
-		if (fsck_sha1(sha1))
-			errors_found |= ERROR_OBJECT;
-		free(entry);
-	}
-	sha1_list.nr = 0;
-}
-
-static void add_sha1_list(unsigned char *sha1, unsigned long ino)
-{
-	struct sha1_entry *entry = xmalloc(sizeof(*entry));
-	int nr;
-
-	entry->ino = ino;
-	hashcpy(entry->sha1, sha1);
-	nr = sha1_list.nr;
-	if (nr == MAX_SHA1_ENTRIES) {
-		fsck_sha1_list();
-		nr = 0;
-	}
-	sha1_list.entry[nr] = entry;
-	sha1_list.nr = ++nr;
-}
-
-static inline int is_loose_object_file(struct dirent *de,
-				       char *name, unsigned char *sha1)
-{
-	if (strlen(de->d_name) != 38)
-		return 0;
-	memcpy(name + 2, de->d_name, 39);
-	return !get_sha1_hex(name, sha1);
-}
-
-static void fsck_dir(int i, char *path)
-{
-	DIR *dir = opendir(path);
-	struct dirent *de;
-	char name[100];
-
-	if (!dir)
-		return;
-
-	if (verbose)
-		fprintf(stderr, "Checking directory %s\n", path);
-
-	sprintf(name, "%02x", i);
-	while ((de = readdir(dir)) != NULL) {
-		unsigned char sha1[20];
-
-		if (is_dot_or_dotdot(de->d_name))
-			continue;
-		if (is_loose_object_file(de, name, sha1)) {
-			add_sha1_list(sha1, DIRENT_SORT_HINT(de));
-			continue;
-		}
-		if (starts_with(de->d_name, "tmp_obj_"))
-			continue;
-		fprintf(stderr, "bad sha1 file: %s/%s\n", path, de->d_name);
-	}
-	closedir(dir);
-}
-
 static int default_refs;
 
 static void fsck_handle_reflog_sha1(const char *refname, unsigned char *sha1)
@@ -521,8 +418,10 @@ static int fsck_handle_ref(const char *refname, const struct object_id *oid,
 		/* We'll continue with the rest despite the error.. */
 		return 0;
 	}
-	if (obj->type != OBJ_COMMIT && is_branch(refname))
+	if (obj->type != OBJ_COMMIT && is_branch(refname)) {
 		error("%s: not a commit", refname);
+		errors_found |= ERROR_REFS;
+	}
 	default_refs++;
 	obj->used = 1;
 	mark_object_reachable(obj);
@@ -556,9 +455,28 @@ static void get_default_heads(void)
 	}
 }
 
+static int fsck_loose(const unsigned char *sha1, const char *path, void *data)
+{
+	if (fsck_sha1(sha1))
+		errors_found |= ERROR_OBJECT;
+	return 0;
+}
+
+static int fsck_cruft(const char *basename, const char *path, void *data)
+{
+	if (!starts_with(basename, "tmp_obj_"))
+		fprintf(stderr, "bad sha1 file: %s\n", path);
+	return 0;
+}
+
+static int fsck_subdir(int nr, const char *path, void *progress)
+{
+	display_progress(progress, nr + 1);
+	return 0;
+}
+
 static void fsck_object_dir(const char *path)
 {
-	int i;
 	struct progress *progress = NULL;
 
 	if (verbose)
@@ -566,14 +484,11 @@ static void fsck_object_dir(const char *path)
 
 	if (show_progress)
 		progress = start_progress(_("Checking object directories"), 256);
-	for (i = 0; i < 256; i++) {
-		static char dir[4096];
-		sprintf(dir, "%s/%02x", path, i);
-		fsck_dir(i, dir);
-		display_progress(progress, i+1);
-	}
+
+	for_each_loose_file_in_objdir(path, fsck_loose, fsck_cruft, fsck_subdir,
+				      progress);
+	display_progress(progress, 256);
 	stop_progress(&progress);
-	fsck_sha1_list();
 }
 
 static int fsck_head_link(void)
@@ -585,17 +500,23 @@ static int fsck_head_link(void)
 		fprintf(stderr, "Checking HEAD link\n");
 
 	head_points_at = resolve_ref_unsafe("HEAD", 0, head_oid.hash, &flag);
-	if (!head_points_at)
+	if (!head_points_at) {
+		errors_found |= ERROR_REFS;
 		return error("Invalid HEAD");
+	}
 	if (!strcmp(head_points_at, "HEAD"))
 		/* detached HEAD */
 		null_is_error = 1;
-	else if (!starts_with(head_points_at, "refs/heads/"))
+	else if (!starts_with(head_points_at, "refs/heads/")) {
+		errors_found |= ERROR_REFS;
 		return error("HEAD points to something strange (%s)",
 			     head_points_at);
+	}
 	if (is_null_oid(&head_oid)) {
-		if (null_is_error)
+		if (null_is_error) {
+			errors_found |= ERROR_REFS;
 			return error("HEAD: detached HEAD points at nothing");
+		}
 		fprintf(stderr, "notice: HEAD points to an unborn branch (%s)\n",
 			head_points_at + 11);
 	}
@@ -615,6 +536,7 @@ static int fsck_cache_tree(struct cache_tree *it)
 		if (!obj) {
 			error("%s: invalid sha1 pointer in cache-tree",
 			      sha1_to_hex(it->sha1));
+			errors_found |= ERROR_REFS;
 			return 1;
 		}
 		obj->used = 1;
@@ -678,16 +600,18 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 	git_config(fsck_config, NULL);
 
 	fsck_head_link();
-	if (!connectivity_only)
+	if (!connectivity_only) {
 		fsck_object_dir(get_object_directory());
 
-	prepare_alt_odb();
-	for (alt = alt_odb_list; alt; alt = alt->next) {
-		char namebuf[PATH_MAX];
-		int namelen = alt->name - alt->base;
-		memcpy(namebuf, alt->base, namelen);
-		namebuf[namelen - 1] = 0;
-		fsck_object_dir(namebuf);
+		prepare_alt_odb();
+		for (alt = alt_odb_list; alt; alt = alt->next) {
+			/* directory name, minus trailing slash */
+			size_t namelen = alt->name - alt->base - 1;
+			struct strbuf name = STRBUF_INIT;
+			strbuf_add(&name, alt->base, namelen);
+			fsck_object_dir(name.buf);
+			strbuf_release(&name);
+		}
 	}
 
 	if (check_full) {

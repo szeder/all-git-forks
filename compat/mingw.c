@@ -2131,11 +2131,13 @@ void mingw_startup()
 
 int uname(struct utsname *buf)
 {
-	DWORD v = GetVersion();
+	unsigned v = (unsigned)GetVersion();
 	memset(buf, 0, sizeof(*buf));
-	strcpy(buf->sysname, "Windows");
-	sprintf(buf->release, "%u.%u", v & 0xff, (v >> 8) & 0xff);
+	xsnprintf(buf->sysname, sizeof(buf->sysname), "Windows");
+	xsnprintf(buf->release, sizeof(buf->release),
+		 "%u.%u", v & 0xff, (v >> 8) & 0xff);
 	/* assuming NT variants only.. */
-	sprintf(buf->version, "%u", (v >> 16) & 0x7fff);
+	xsnprintf(buf->version, sizeof(buf->version),
+		  "%u", (v >> 16) & 0x7fff);
 	return 0;
 }

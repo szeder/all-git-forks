@@ -459,12 +459,13 @@ static void queue_blames(struct scoreboard *sb, struct origin *porigin,
 static struct origin *make_origin(struct commit *commit, const char *path)
 {
 	struct origin *o;
-	o = xcalloc(1, sizeof(*o) + strlen(path) + 1);
+	size_t pathlen = strlen(path) + 1;
+	o = xcalloc(1, sizeof(*o) + pathlen);
 	o->commit = commit;
 	o->refcnt = 1;
 	o->next = commit->util;
 	commit->util = o;
-	strcpy(o->path, path);
+	memcpy(o->path, path, pathlen); /* includes NUL */
 	return o;
 }
 
@@ -1879,9 +1880,9 @@ static void emit_porcelain(struct scoreboard *sb, struct blame_entry *ent,
 	int cnt;
 	const char *cp;
 	struct origin *suspect = ent->suspect;
-	char hex[41];
+	char hex[GIT_SHA1_HEXSZ + 1];
 
-	strcpy(hex, sha1_to_hex(suspect->commit->object.sha1));
+	sha1_to_hex_r(hex, suspect->commit->object.sha1);
 	printf("%s %d %d %d\n",
 	       hex,
 	       ent->s_lno + 1,
@@ -1917,11 +1918,11 @@ static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
 	const char *cp;
 	struct origin *suspect = ent->suspect;
 	struct commit_info ci;
-	char hex[41];
+	char hex[GIT_SHA1_HEXSZ + 1];
 	int show_raw_time = !!(opt & OUTPUT_RAW_TIMESTAMP);
 
 	get_commit_info(suspect->commit, &ci, 1);
-	strcpy(hex, sha1_to_hex(suspect->commit->object.sha1));
+	sha1_to_hex_r(hex, suspect->commit->object.sha1);
 
 	cp = nth_line(sb, ent->lno);
 	for (cnt = 0; cnt < ent->num_lines; cnt++) {
@@ -2401,16 +2402,13 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	return commit;
 }
 
-static char *prepare_final(struct scoreboard *sb)
+static struct commit *find_single_final(struct rev_info *revs,
+					const char **name_p)
 {
 	int i;
-	const char *final_commit_name = NULL;
-	struct rev_info *revs = sb->revs;
+	struct commit *found = NULL;
+	const char *name = NULL;
 
-	/*
-	 * There must be one and only one positive commit in the
-	 * revs->pending array.
-	 */
 	for (i = 0; i < revs->pending.nr; i++) {
 		struct object *obj = revs->pending.objects[i].item;
 		if (obj->flags & UNINTERESTING)
@@ -2419,14 +2417,22 @@ static char *prepare_final(struct scoreboard *sb)
 			obj = deref_tag(obj, NULL, 0);
 		if (obj->type != OBJ_COMMIT)
 			die("Non commit %s?", revs->pending.objects[i].name);
-		if (sb->final)
+		if (found)
 			die("More than one commit to dig from %s and %s?",
-			    revs->pending.objects[i].name,
-			    final_commit_name);
-		sb->final = (struct commit *) obj;
-		final_commit_name = revs->pending.objects[i].name;
+			    revs->pending.objects[i].name, name);
+		found = (struct commit *)obj;
+		name = revs->pending.objects[i].name;
 	}
-	return xstrdup_or_null(final_commit_name);
+	if (name_p)
+		*name_p = name;
+	return found;
+}
+
+static char *prepare_final(struct scoreboard *sb)
+{
+	const char *name;
+	sb->final = find_single_final(sb->revs, &name);
+	return xstrdup_or_null(name);
 }
 
 static char *prepare_initial(struct scoreboard *sb)
@@ -2502,6 +2508,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	long dashdash_pos, lno;
 	char *final_commit_name = NULL;
 	enum object_type type;
+	struct commit *final_commit = NULL;
 
 	static struct string_list range_list;
 	static int output_option = 0, opt = 0;
@@ -2690,12 +2697,12 @@ parse_done:
 		sb.commits.compare = compare_commits_by_commit_date;
 	}
 	else if (contents_from)
-		die("--contents and --children do not blend well.");
-	else if (revs.first_parent_only)
-		die("combining --first-parent and --reverse is not supported");
+		die("--contents and --reverse do not blend well.");
 	else {
 		final_commit_name = prepare_initial(&sb);
 		sb.commits.compare = compare_commits_by_reverse_commit_date;
+		if (revs.first_parent_only)
+			revs.children.name = NULL;
 	}
 
 	if (!sb.final) {
@@ -2712,6 +2719,12 @@ parse_done:
 	else if (contents_from)
 		die("Cannot use --contents with final commit object name");
 
+	if (reverse && revs.first_parent_only) {
+		final_commit = find_single_final(sb.revs, NULL);
+		if (!final_commit)
+			die("--reverse and --first-parent together require specified latest commit");
+	}
+
 	/*
 	 * If we have bottom, this will mark the ancestors of the
 	 * bottom commits we would reach while traversing as
@@ -2719,6 +2732,25 @@ parse_done:
 	 */
 	if (prepare_revision_walk(&revs))
 		die(_("revision walk setup failed"));
+
+	if (reverse && revs.first_parent_only) {
+		struct commit *c = final_commit;
+
+		sb.revs->children.name = "children";
+		while (c->parents &&
+		       hashcmp(c->object.sha1, sb.final->object.sha1)) {
+			struct commit_list *l = xcalloc(1, sizeof(*l));
+
+			l->item = c;
+			if (add_decoration(&sb.revs->children,
+					   &c->parents->item->object, l))
+				die("BUG: not unique item in first-parent chain");
+			c = c->parents->item;
+		}
+
+		if (hashcmp(c->object.sha1, sb.final->object.sha1))
+			die("--reverse --first-parent together require range along first-parent chain");
+	}
 
 	if (is_null_sha1(sb.final->object.sha1)) {
 		o = sb.final->util;
