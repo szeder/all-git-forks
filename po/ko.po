@@ -5550,15 +5550,15 @@ msgstr ""
 
 #: builtin/fetch.c:509
 msgid "[new tag]"
-msgstr ""
+msgstr "[새로운 태그]"
 
 #: builtin/fetch.c:512
 msgid "[new branch]"
-msgstr ""
+msgstr "[새로운 브랜치]"
 
 #: builtin/fetch.c:515
 msgid "[new ref]"
-msgstr ""
+msgstr "[새로운 레퍼런스]"
 
 #: builtin/fetch.c:560
 msgid "unable to update local ref"
