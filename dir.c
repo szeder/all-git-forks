@@ -1954,6 +1954,7 @@ void add_untracked_cache(void)
 
 void remove_untracked_cache(void)
 {
+	free_untracked_cache(the_index.untracked);
 	the_index.untracked = NULL;
 	the_index.cache_changed |= UNTRACKED_CHANGED;
 }
