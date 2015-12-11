@@ -1,11 +1,17 @@
 # Git Korean translation
-# Copyright (C) 2015 Changwoo Ryu
+# Copyright (C) 2015 Changwoo Ryu and contributors
 # This file is distributed under the same license as the Git package.
-# Changwoo Ryu <cwryu@debian.org>, 2015.
+#
+# Contributors:
+#  Changwoo Ryu <cwryu@debian.org>, 2015.
+#  Hyunjun Kim <yoloseem AT users.noreply.github.com>, 2015.
 #
 #
+# - 용어는 일관성을 지켜 주십시오.
 # - 용어:
 #  +--------------+-----------------------------------------------+
+#  | author       | 작성자                                       |
+#  | blob         | 블롭                                         |
 #  | branch       | 브랜치                                       |
 #  | commit       | 커밋                                         |
 #  | history      | 내역, 커밋 내역                              |
@@ -13,6 +19,9 @@
 #  | log          | 기록                                         |
 #  | merge        | 병합                                         |
 #  | repo         | 저장소                                       |
+#  | reset        | 재지정                                       |
+#  | subcommand   | 하위 명령                                    |
+#  | submodule    | 하위 모듈                                    |
 #  | working tree | 작업 폴더                                    |
 #  +--------------+-----------------------------------------------+
 #
@@ -21,9 +30,9 @@ msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-09-15 06:45+0800\n"
-"PO-Revision-Date: 2015-12-10 16:23+0900\n"
+"PO-Revision-Date: 2015-12-11 14:43+0900\n"
 "Last-Translator: Changwoo Ryu <cwryu@debian.org>\n"
-"Language-Team: Changwoo Ryu <cwryu@debian.org>\n"
+"Language-Team: Git Korean translation <http://github.com/changwoo/git-l10n-ko>\n"
 "Language: ko\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -578,11 +587,11 @@ msgstr ""
 #: help.c:207
 #, c-format
 msgid "available git commands in '%s'"
-msgstr ""
+msgstr "'%s'에 있는 깃 명령"
 
 #: help.c:214
 msgid "git commands available from elsewhere on your $PATH"
-msgstr ""
+msgstr "다른 $PATH에 있는 깃 명령"
 
 #: help.c:246
 msgid "These are common Git commands used in various situations:"
@@ -597,7 +606,7 @@ msgstr ""
 
 #: help.c:368
 msgid "Uh oh. Your system reports no Git commands at all."
-msgstr ""
+msgstr "어라라. 시스템에 깃 명령이 하나도 없다고 나옵니다."
 
 #: help.c:390
 #, c-format
@@ -605,16 +614,18 @@ msgid ""
 "WARNING: You called a Git command named '%s', which does not exist.\n"
 "Continuing under the assumption that you meant '%s'"
 msgstr ""
+"경고: 이름이 '%s'인 깃 명령을 실행했지만, 그 명령이 없습니다.\n"
+"자동으로 '%s' 명령이라고 가정하고 계속합니다"
 
 #: help.c:395
 #, c-format
 msgid "in %0.1f seconds automatically..."
-msgstr ""
+msgstr "(%0.1f초 뒤에)..."
 
 #: help.c:402
 #, c-format
 msgid "git: '%s' is not a git command. See 'git --help'."
-msgstr ""
+msgstr "git: '%s'은(는) 깃 명령이 아닙니다. 'git --help'를 참고하십시오."
 
 #: help.c:406 help.c:466
 msgid ""
@@ -623,7 +634,7 @@ msgid ""
 msgid_plural ""
 "\n"
 "Did you mean one of these?"
-msgstr[0] ""
+msgstr[0] "다음을 의도하신 것 아니었나요?"
 
 #: help.c:462
 #, c-format
@@ -1057,7 +1068,7 @@ msgstr ""
 
 #: remote.c:808
 msgid "Internal error"
-msgstr ""
+msgstr "내부 오류"
 
 #: remote.c:1723 remote.c:1766
 msgid "HEAD does not point to a branch"
@@ -1165,12 +1176,12 @@ msgstr ""
 
 #: run-command.c:83
 msgid "open /dev/null failed"
-msgstr ""
+msgstr "/dev/null 열기 실패"
 
 #: run-command.c:85
 #, c-format
 msgid "dup2(%d,%d) failed"
-msgstr ""
+msgstr "dup2(%d,%d) 실패"
 
 #: send-pack.c:295
 msgid "failed to sign the push certificate"
@@ -5058,135 +5069,135 @@ msgstr ""
 
 #: builtin/config.c:8
 msgid "git config [<options>]"
-msgstr ""
+msgstr "git config [<옵션>]"
 
 #: builtin/config.c:54
 msgid "Config file location"
-msgstr ""
+msgstr "설정 파일 위치"
 
 #: builtin/config.c:55
 msgid "use global config file"
-msgstr ""
+msgstr "공통 설정 파일을 사용합니다"
 
 #: builtin/config.c:56
 msgid "use system config file"
-msgstr ""
+msgstr "시스템 설정 파일을 사용합니다"
 
 #: builtin/config.c:57
 msgid "use repository config file"
-msgstr ""
+msgstr "저장소 설정 파일을 사용합니다"
 
 #: builtin/config.c:58
 msgid "use given config file"
-msgstr ""
+msgstr "지정한 설정 파일을 사용합니다"
 
 #: builtin/config.c:59
 msgid "blob-id"
-msgstr ""
+msgstr "블롭-id"
 
 #: builtin/config.c:59
 msgid "read config from given blob object"
-msgstr ""
+msgstr "지정한 블롭 오브젝트에서 설정을 읽습니다"
 
 #: builtin/config.c:60
 msgid "Action"
-msgstr ""
+msgstr "동작"
 
 #: builtin/config.c:61
 msgid "get value: name [value-regex]"
-msgstr ""
+msgstr "값을 가져옵니다: <이름> [<값-정규식>]"
 
 #: builtin/config.c:62
 msgid "get all values: key [value-regex]"
-msgstr ""
+msgstr "모든 값을 가져옵니다: <키> [<값-정규식>]"
 
 #: builtin/config.c:63
 msgid "get values for regexp: name-regex [value-regex]"
-msgstr ""
+msgstr "정규식에 대한 값을 가져옵니다: <이름-정규식> [<값-정규식>]"
 
 #: builtin/config.c:64
 msgid "get value specific for the URL: section[.var] URL"
-msgstr ""
+msgstr "<URL>에 특정되는 값을 가져옵니다: <섹션>[.<변수>] <URL>"
 
 #: builtin/config.c:65
 msgid "replace all matching variables: name value [value_regex]"
-msgstr ""
+msgstr "해당하는 변수를 모두 제거합니다: <이름> <값> [<값-정규식>]"
 
 #: builtin/config.c:66
 msgid "add a new variable: name value"
-msgstr ""
+msgstr "새 변수를 추가합니다: <이름> <값>"
 
 #: builtin/config.c:67
 msgid "remove a variable: name [value-regex]"
-msgstr ""
+msgstr "변수를 제거합니다: <이름> [<값-정규식>]"
 
 #: builtin/config.c:68
 msgid "remove all matches: name [value-regex]"
-msgstr ""
+msgstr "해당하는 항목을 모두 제거합니다: <이름> [<값-정규식>]"
 
 #: builtin/config.c:69
 msgid "rename section: old-name new-name"
-msgstr ""
+msgstr "섹션의 이름을 바꿉니다: <옛-이름> <새-이름>"
 
 #: builtin/config.c:70
 msgid "remove a section: name"
-msgstr ""
+msgstr "섹션을 제거합니다: <이름>"
 
 #: builtin/config.c:71
 msgid "list all"
-msgstr ""
+msgstr "전체 목록을 표시합니다"
 
 #: builtin/config.c:72
 msgid "open an editor"
-msgstr ""
+msgstr "편집기를 엽니다"
 
 #: builtin/config.c:73
 msgid "find the color configured: slot [default]"
-msgstr ""
+msgstr "설정한 색을 찾습니다: slot [<기본값>]"
 
 #: builtin/config.c:74
 msgid "find the color setting: slot [stdout-is-tty]"
-msgstr ""
+msgstr "색 설정을 찾습니다: slot [<표준출력이-TTY인지-여부>]"
 
 #: builtin/config.c:75
 msgid "Type"
-msgstr ""
+msgstr "값 종류"
 
 #: builtin/config.c:76
 msgid "value is \"true\" or \"false\""
-msgstr ""
+msgstr "값이 \"true\" 또는 \"false\"입니다"
 
 #: builtin/config.c:77
 msgid "value is decimal number"
-msgstr ""
+msgstr "값이 십진수입니다"
 
 #: builtin/config.c:78
 msgid "value is --bool or --int"
-msgstr ""
+msgstr "값이 --bool 또는 --int입니다"
 
 #: builtin/config.c:79
 msgid "value is a path (file or directory name)"
-msgstr ""
+msgstr "값이 경로(파일 또는 디렉터리 이름)입니다"
 
 #: builtin/config.c:80
 msgid "Other"
-msgstr ""
+msgstr "기타"
 
 #: builtin/config.c:81
 msgid "terminate values with NUL byte"
-msgstr ""
+msgstr "값을 NUL 바이트로 끝냅니다"
 
 #: builtin/config.c:82
 msgid "show variable names only"
-msgstr ""
+msgstr "변수 이름만 표시합니다"
 
 #: builtin/config.c:83
 msgid "respect include directives on lookup"
-msgstr ""
+msgstr "찾아볼 때 include 지시어를 고려합니다"
 
 #: builtin/config.c:311
 msgid "unable to parse default color value"
-msgstr ""
+msgstr "기본 색 값을 파싱할 수 없습니다"
 
 #: builtin/config.c:449
 #, c-format
@@ -5197,27 +5208,32 @@ msgid ""
 "#\tname = %s\n"
 "#\temail = %s\n"
 msgstr ""
+"# 깃의 사용자별 설정 파일입니다.\n"
+"[user]\n"
+"# 다음 줄을 알맞게 고치고 앞의 주석을 제거하십시오:\n"
+"#\tname = %s\n"
+"#\temail = %s\n"
 
 #: builtin/config.c:583
 #, c-format
 msgid "cannot create configuration file %s"
-msgstr ""
+msgstr "%s 설정 파일을 만들 수 없습니다"
 
 #: builtin/count-objects.c:55
 msgid "git count-objects [-v] [-H | --human-readable]"
-msgstr ""
+msgstr "git count-objects [-v] [-H | --human-readable]"
 
 #: builtin/count-objects.c:65
 msgid "print sizes in human readable format"
-msgstr ""
+msgstr "사람이 읽기 좋은 형식으로 크기를 표시합니다"
 
 #: builtin/describe.c:17
 msgid "git describe [<options>] [<commit-ish>...]"
-msgstr ""
+msgstr "git describe [<옵션>] [<커밋-따위>...]"
 
 #: builtin/describe.c:18
 msgid "git describe [<options>] --dirty"
-msgstr ""
+msgstr "git describe [<옵션>] --dirty"
 
 #: builtin/describe.c:217
 #, c-format
@@ -6129,23 +6145,23 @@ msgstr ""
 
 #: builtin/help.c:41
 msgid "print all available commands"
-msgstr ""
+msgstr "사용 가능한 모든 명령의 목록을 표시합니다"
 
 #: builtin/help.c:42
 msgid "print list of useful guides"
-msgstr ""
+msgstr "유용한 안내서 목록을 표시합니다"
 
 #: builtin/help.c:43
 msgid "show man page"
-msgstr ""
+msgstr "맨 페이지를 표시합니다"
 
 #: builtin/help.c:44
 msgid "show manual in web browser"
-msgstr ""
+msgstr "웹 브라우저에서 설명서를 표시합니다"
 
 #: builtin/help.c:46
 msgid "show info page"
-msgstr ""
+msgstr "인포 페이지를 표시합니다"
 
 #: builtin/help.c:52
 msgid "git help [--all] [--guides] [--man | --web | --info] [<command>]"
@@ -6154,7 +6170,7 @@ msgstr "git help [--all] [--guides] [--man | --web | --info] [<명령>]"
 #: builtin/help.c:64
 #, c-format
 msgid "unrecognized help format '%s'"
-msgstr ""
+msgstr "'%s' 도움말 포맷을 인식할 수 없습니다"
 
 #: builtin/help.c:91
 msgid "Failed to start emacsclient."
@@ -6180,6 +6196,8 @@ msgid ""
 "'%s': path for unsupported man viewer.\n"
 "Please consider using 'man.<tool>.cmd' instead."
 msgstr ""
+"'%s': 지원하지 않는 맨 페이지 보기 프로그램 경로.\n"
+"대신에 'man.<도구>.cmd' 옵션을 사용해 보십시오."
 
 #: builtin/help.c:227
 #, c-format
@@ -6187,19 +6205,21 @@ msgid ""
 "'%s': cmd for supported man viewer.\n"
 "Please consider using 'man.<tool>.path' instead."
 msgstr ""
+"'%s': 지원하지 않는 맨 페이지 보기 프로그램 명령.\n"
+"대신에 'man.<도구>.path' 옵션을 사용해 보십시오."
 
 #: builtin/help.c:354
 #, c-format
 msgid "'%s': unknown man viewer."
-msgstr ""
+msgstr "'%s': 알 수 없는 맨 페이지 보기 프로그램."
 
 #: builtin/help.c:371
 msgid "no man viewer handled the request"
-msgstr ""
+msgstr "요청을 처리한 맨 페이지 보기 프로그램이 없습니다"
 
 #: builtin/help.c:379
 msgid "no info viewer handled the request"
-msgstr ""
+msgstr "요청을 처리한 인포 페이지 보기 프로그램이 없습니다"
 
 #: builtin/help.c:428
 msgid "Defining attributes per path"
@@ -6207,7 +6227,7 @@ msgstr "경로마다 속성 정의하기"
 
 #: builtin/help.c:429
 msgid "Everyday Git With 20 Commands Or So"
-msgstr ""
+msgstr "매일매일 사용하는 20개 내외의 깃 명령"
 
 #: builtin/help.c:430
 msgid "A Git glossary"
@@ -6215,27 +6235,27 @@ msgstr "깃 용어 사전"
 
 #: builtin/help.c:431
 msgid "Specifies intentionally untracked files to ignore"
-msgstr ""
+msgstr "의도적으로 추적하지 않는 파일을 무시하게 지정하기"
 
 #: builtin/help.c:432
 msgid "Defining submodule properties"
-msgstr ""
+msgstr "하위 모듈 속성 정의하기"
 
 #: builtin/help.c:433
 msgid "Specifying revisions and ranges for Git"
-msgstr ""
+msgstr "깃의 리비전 및 범위를 지정하기"
 
 #: builtin/help.c:434
 msgid "A tutorial introduction to Git (for version 1.5.1 or newer)"
-msgstr ""
+msgstr "깃 따라하기 안내서 (버전 1.5.1 이후)"
 
 #: builtin/help.c:435
 msgid "An overview of recommended workflows with Git"
-msgstr ""
+msgstr "추천하는 깃 활용 작업 순서의 개요"
 
 #: builtin/help.c:447
 msgid "The common Git guides are:\n"
-msgstr ""
+msgstr "자주 사용하는 깃 안내서는 다음과 같습니다:\n"
 
 #: builtin/help.c:468 builtin/help.c:485
 #, c-format
@@ -6245,7 +6265,7 @@ msgstr "사용법: %s%s"
 #: builtin/help.c:501
 #, c-format
 msgid "`git %s' is aliased to `%s'"
-msgstr ""
+msgstr "`git %s' 명령은 `%s' 명령의 단축입니다"
 
 #: builtin/index-pack.c:152
 #, c-format
@@ -9637,32 +9657,32 @@ msgstr ""
 
 #: builtin/shortlog.c:13
 msgid "git shortlog [<options>] [<revision-range>] [[--] [<path>...]]"
-msgstr ""
+msgstr "git shortlog [<옵션>] [<리비전-범위>] [[--] [<경로>...]]"
 
 #: builtin/shortlog.c:131
 #, c-format
 msgid "Missing author: %s"
-msgstr ""
+msgstr "작성자 정보가 없습니다: %s"
 
 #: builtin/shortlog.c:230
 msgid "sort output according to the number of commits per author"
-msgstr ""
+msgstr "작성자별 커밋 수에 따라 정렬합니다"
 
 #: builtin/shortlog.c:232
 msgid "Suppress commit descriptions, only provides commit count"
-msgstr ""
+msgstr "커밋 설명을 생략하고, 커밋 수만 표시합니다"
 
 #: builtin/shortlog.c:234
 msgid "Show the email address of each author"
-msgstr ""
+msgstr "작성자의 전자메일 주소를 표시합니다"
 
 #: builtin/shortlog.c:235
 msgid "w[,i1[,i2]]"
-msgstr ""
+msgstr "w[,i1[,i2]]"
 
 #: builtin/shortlog.c:236
 msgid "Linewrap output"
-msgstr ""
+msgstr "줄바꿈 출력"
 
 #: builtin/show-branch.c:9
 msgid ""
@@ -10464,15 +10484,15 @@ msgstr "원격 레퍼런스 및 그와 관련된 오브젝트를 업데이트합
 
 #: common-cmds.h:32
 msgid "Forward-port local commits to the updated upstream head"
-msgstr ""
+msgstr "로컬 커밋들을 업데이트된 업스트림 head 다음에 맞춰 넣습니다"
 
 #: common-cmds.h:33
 msgid "Reset current HEAD to the specified state"
-msgstr ""
+msgstr "현재 HEAD를 지정한 상태로 재설정화합니다"
 
 #: common-cmds.h:34
 msgid "Remove files from the working tree and from the index"
-msgstr ""
+msgstr "파일을 작업 폴더에서 제거하고 인덱스에서도 제거합니다"
 
 #: common-cmds.h:35
 msgid "Show various types of objects"
