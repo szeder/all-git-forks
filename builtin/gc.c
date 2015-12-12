@@ -46,6 +46,22 @@ static struct argv_array rerere = ARGV_ARRAY_INIT;
 static struct tempfile pidfile;
 static struct lock_file log_lock;
 
+static struct string_list pack_garbage = STRING_LIST_INIT_DUP;
+
+static void clean_pack_garbage(void)
+{
+	int i;
+	for (i = 0; i < pack_garbage.nr; i++)
+		unlink_or_warn(pack_garbage.items[i].string);
+	string_list_clear(&pack_garbage, 0);
+}
+
+static void report_pack_garbage(unsigned seen_bits, const char *path)
+{
+	if (seen_bits == PACKDIR_FILE_IDX)
+		string_list_append(&pack_garbage, path);
+}
+
 static void git_config_date_string(const char *key, const char **output)
 {
 	if (git_config_get_string_const(key, output))
@@ -240,7 +256,7 @@ static const char *lock_repo_for_gc(int force, pid_t* ret_pid)
 			 * running.
 			 */
 			time(NULL) - st.st_mtime <= 12 * 3600 &&
-			fscanf(fp, "%"PRIuMAX" %127c", &pid, locking_host) == 2 &&
+			fscanf(fp, "%"SCNuMAX" %127c", &pid, locking_host) == 2 &&
 			/* be gentle to concurrent "gc" on remote hosts */
 			(strcmp(locking_host, my_host) || !kill(pid, 0) || errno == EPERM);
 		if (fp != NULL)
@@ -394,15 +410,17 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 	if (gc_before_repack())
 		return -1;
 
-	if (run_command_v_opt(repack.argv, RUN_GIT_CMD))
-		return error(FAILED_RUN, repack.argv[0]);
+	if (!repository_format_precious_objects) {
+		if (run_command_v_opt(repack.argv, RUN_GIT_CMD))
+			return error(FAILED_RUN, repack.argv[0]);
 
-	if (prune_expire) {
-		argv_array_push(&prune, prune_expire);
-		if (quiet)
-			argv_array_push(&prune, "--no-progress");
-		if (run_command_v_opt(prune.argv, RUN_GIT_CMD))
-			return error(FAILED_RUN, prune.argv[0]);
+		if (prune_expire) {
+			argv_array_push(&prune, prune_expire);
+			if (quiet)
+				argv_array_push(&prune, "--no-progress");
+			if (run_command_v_opt(prune.argv, RUN_GIT_CMD))
+				return error(FAILED_RUN, prune.argv[0]);
+		}
 	}
 
 	if (prune_worktrees_expire) {
@@ -413,6 +431,11 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 
 	if (run_command_v_opt(rerere.argv, RUN_GIT_CMD))
 		return error(FAILED_RUN, rerere.argv[0]);
+
+	report_garbage = report_pack_garbage;
+	reprepare_packed_git();
+	if (pack_garbage.nr > 0)
+		clean_pack_garbage();
 
 	if (auto_gc && too_many_loose_objects())
 		warning(_("There are too many unreachable loose objects; "

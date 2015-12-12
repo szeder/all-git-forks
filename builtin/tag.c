@@ -52,6 +52,7 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 	}
 
 	verify_ref_format(format);
+	filter->with_commit_tag_algo = 1;
 	filter_refs(&array, filter, FILTER_REFS_TAGS);
 	ref_array_sort(sorting, &array);
 
@@ -268,7 +269,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 	}
 
 	if (opt->cleanup_mode != CLEANUP_NONE)
-		stripspace(buf, opt->cleanup_mode == CLEANUP_ALL);
+		strbuf_stripspace(buf, opt->cleanup_mode == CLEANUP_ALL);
 
 	if (!opt->message_given && !buf->len)
 		die(_("no tag message?"));
