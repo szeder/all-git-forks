@@ -7,13 +7,15 @@
 #  Hyunjun Kim <yoloseem AT users.noreply.github.com>, 2015.
 #
 #
-# - 용어는 일관성을 지켜 주십시오.
+# - 용어는 일관성을 지켜 주십시오. 용어가 바뀌어야 한다고 생각하면 바꾸기 전에
+#   충분히 의견 교환을 하십시오.
 # - 용어:
 #  +--------------+----------------------------------------------+
 #  | author       | 작성자                                       |
 #  | blob         | 블롭                                         |
 #  | branch       | 브랜치                                       |
 #  | commit       | 커밋                                         |
+#  | committer    | 커미터                                       |
 #  | history      | 내역, 커밋 내역                              |
 #  | Git          | 깃 (명령어가 아닌 이름을 나타내는 경우)      |
 #  | log          | 기록                                         |
@@ -34,7 +36,7 @@ msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-12-11 23:36+0800\n"
-"PO-Revision-Date: 2015-12-13 13:04+0900\n"
+"PO-Revision-Date: 2015-12-13 15:08+0900\n"
 "Last-Translator: Changwoo Ryu <cwryu@debian.org>\n"
 "Language-Team: Git Korean translation <http://github.com/changwoo/git-l10n-"
 "ko>\n"
@@ -47,7 +49,7 @@ msgstr ""
 #: advice.c:55
 #, c-format
 msgid "hint: %.*s\n"
-msgstr ""
+msgstr "힌트: %.*s\n"
 
 #: advice.c:88
 msgid ""
@@ -1661,23 +1663,23 @@ msgstr "병합하지 않은 경로:"
 #: wt-status.c:176 wt-status.c:203
 #, c-format
 msgid "  (use \"git reset %s <file>...\" to unstage)"
-msgstr ""
+msgstr "  (스테이지 해제하려면 \"git reset %s <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:178 wt-status.c:205
 msgid "  (use \"git rm --cached <file>...\" to unstage)"
-msgstr ""
+msgstr "  (스테이지 해제하려면 \"git rm --cached <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:182
 msgid "  (use \"git add <file>...\" to mark resolution)"
-msgstr ""
+msgstr "  (해결했다고 표시하려면 \"git add <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:184 wt-status.c:188
 msgid "  (use \"git add/rm <file>...\" as appropriate to mark resolution)"
-msgstr ""
+msgstr "  (해결했다고 표시하려면 알맞게 \"git add/rm <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:186
 msgid "  (use \"git rm <file>...\" to mark resolution)"
-msgstr ""
+msgstr "  (해결했다고 표시하려면 \"git rm <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:197 wt-status.c:880
 msgid "Changes to be committed:"
@@ -1689,16 +1691,16 @@ msgstr "커밋하도록 정하지 않은 변경 사항:"
 
 #: wt-status.c:219
 msgid "  (use \"git add <file>...\" to update what will be committed)"
-msgstr "  (커밋할 사항을 바꾸려면 \"git add <파일>...\" 명령을 사용하십시오)"
+msgstr "  (커밋할 사항을 바꾸려면 \"git add <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:221
 msgid "  (use \"git add/rm <file>...\" to update what will be committed)"
-msgstr "  (커밋할 사항을 바꾸려면 \"git add/rm <파일>...\" 명령을 사용하십시오)"
+msgstr "  (커밋할 사항을 바꾸려면 \"git add/rm <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:222
 msgid ""
 "  (use \"git checkout -- <file>...\" to discard changes in working directory)"
-msgstr "  (작업 디렉터리의 변경 사항을 버리려면 \"git checkout -- <파일>...\" 명령을 사용하십시오)"
+msgstr "  (작업 디렉터리의 변경 사항을 버리려면 \"git checkout -- <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:224
 msgid "  (commit or discard the untracked or modified content in submodules)"
@@ -1707,7 +1709,7 @@ msgstr "  (하위 모듈의 추적되지 않는 파일이나 수정된 내용을
 #: wt-status.c:236
 #, c-format
 msgid "  (use \"git %s <file>...\" to include in what will be committed)"
-msgstr "  (커밋할 사항에 포함하려면 \"git %s <파일>...\" 명령을 사용하십시오)"
+msgstr "  (커밋할 사항에 포함하려면 \"git %s <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:251
 msgid "both deleted:"
@@ -1827,29 +1829,29 @@ msgstr ""
 
 #: wt-status.c:970
 msgid "The current patch is empty."
-msgstr ""
+msgstr "현재 패치가 비어 있습니다."
 
 #: wt-status.c:974
 msgid "  (fix conflicts and then run \"git am --continue\")"
-msgstr ""
+msgstr "  (충돌을 바로잡은 다음 \"git am --continue\"를 사용하십시오)"
 
 #: wt-status.c:976
 msgid "  (use \"git am --skip\" to skip this patch)"
-msgstr ""
+msgstr "  (이 패치를 건너 뛰려면 \"git am --skip\"을 사용하십시오)"
 
 #: wt-status.c:978
 msgid "  (use \"git am --abort\" to restore the original branch)"
-msgstr ""
+msgstr "  (원본 브랜치를 복구하려면 \"git am --abort\"를 사용하십시오)"
 
 #: wt-status.c:1105
 msgid "No commands done."
-msgstr ""
+msgstr "완료한 명령 없음."
 
 #: wt-status.c:1108
 #, c-format
 msgid "Last command done (%d command done):"
 msgid_plural "Last commands done (%d commands done):"
-msgstr[0] ""
+msgstr[0] "최근 완료한 명령 (%d개 명령 완료):"
 
 #: wt-status.c:1119
 #, c-format
@@ -1858,56 +1860,56 @@ msgstr ""
 
 #: wt-status.c:1124
 msgid "No commands remaining."
-msgstr ""
+msgstr "명령이 남아있지 않음."
 
 #: wt-status.c:1127
 #, c-format
 msgid "Next command to do (%d remaining command):"
 msgid_plural "Next commands to do (%d remaining commands):"
-msgstr[0] ""
+msgstr[0] "다음에 할 명령 (%d개 명령 남음):"
 
 #: wt-status.c:1135
 msgid "  (use \"git rebase --edit-todo\" to view and edit)"
-msgstr ""
+msgstr "  (보고 편집하려면 \"git rebase --edit-todo\"를 사용하십시오)"
 
 #: wt-status.c:1148
 #, c-format
 msgid "You are currently rebasing branch '%s' on '%s'."
-msgstr ""
+msgstr "현재 '%s' 브랜치를 '%s' 위로 리베이스하는 중입니다."
 
 #: wt-status.c:1153
 msgid "You are currently rebasing."
-msgstr ""
+msgstr "현재 리베이스하는 중입니다."
 
 #: wt-status.c:1167
 msgid "  (fix conflicts and then run \"git rebase --continue\")"
-msgstr ""
+msgstr "  (충돌을 바로잡고 \"git rebase --continue\"를 사용하십시오)"
 
 #: wt-status.c:1169
 msgid "  (use \"git rebase --skip\" to skip this patch)"
-msgstr ""
+msgstr "  (이 패치를 건너뛰려면 \"git rebase --skip\"을 사용하십시오)"
 
 #: wt-status.c:1171
 msgid "  (use \"git rebase --abort\" to check out the original branch)"
-msgstr ""
+msgstr "  (원본 브랜치를 가져오려면 \"git rebase --abort\"를 사용하십시오)"
 
 #: wt-status.c:1177
 msgid "  (all conflicts fixed: run \"git rebase --continue\")"
-msgstr ""
+msgstr "  (모든 충돌을 바로잡았습니다: \"git rebase --continue\"를 실행하십시오)"
 
 #: wt-status.c:1181
 #, c-format
 msgid ""
 "You are currently splitting a commit while rebasing branch '%s' on '%s'."
-msgstr ""
+msgstr "현재 '%s' 브랜치를 '%s' 위로 리베이스하는 중 커밋을 분리하는 중입니다."
 
 #: wt-status.c:1186
 msgid "You are currently splitting a commit during a rebase."
-msgstr ""
+msgstr "현재 리베이스하는 중 커밋을 분리하는 중입니다."
 
 #: wt-status.c:1189
 msgid "  (Once your working directory is clean, run \"git rebase --continue\")"
-msgstr ""
+msgstr "  (작업 폴더가 깨끗해지면, \"git rebase --continue\"를 실행하십시오)"
 
 #: wt-status.c:1193
 #, c-format
@@ -1976,7 +1978,7 @@ msgstr ""
 
 #: wt-status.c:1438
 msgid "On branch "
-msgstr ""
+msgstr "현재 브랜치 "
 
 #: wt-status.c:1444
 msgid "interactive rebase in progress; onto "
@@ -2034,7 +2036,9 @@ msgstr "변경 사항 없음"
 #: wt-status.c:1513
 #, c-format
 msgid "no changes added to commit (use \"git add\" and/or \"git commit -a\")\n"
-msgstr "커밋할 변경 사항을 추가하지 않았습니다 (\"git add\" 및/또는 \"git commit -a\"를 사용하십시오)\n"
+msgstr ""
+"커밋할 변경 사항을 추가하지 않았습니다 (\"git add\" 및/또는 \"git commit -a\"를\n"
+"사용하십시오)\n"
 
 #: wt-status.c:1516
 #, c-format
@@ -2047,35 +2051,37 @@ msgid ""
 "nothing added to commit but untracked files present (use \"git add\" to "
 "track)\n"
 msgstr ""
+"커밋할 사항을 추가하지 않았지만 추적하지 않는 파일이 있습니다 (추적하려면 \"git\n"
+"add\"를 사용하십시오)\n"
 
 #: wt-status.c:1522
 #, c-format
 msgid "nothing added to commit but untracked files present\n"
-msgstr ""
+msgstr "커밋할 사항을 추가하지 않았지만 추적하지 않는 파일이 있습니다\n"
 
 #: wt-status.c:1525
 #, c-format
 msgid "nothing to commit (create/copy files and use \"git add\" to track)\n"
-msgstr ""
+msgstr "커밋할 사항 없음 (파일을 만들거나 복사하고 \"git add\"를 사용하면 추적합니다)\n"
 
 #: wt-status.c:1528 wt-status.c:1533
 #, c-format
 msgid "nothing to commit\n"
-msgstr ""
+msgstr "커밋할 사항 없음\n"
 
 #: wt-status.c:1531
 #, c-format
 msgid "nothing to commit (use -u to show untracked files)\n"
-msgstr ""
+msgstr "커밋할 사항 없음 (추적하지 않는 파일을 보려면 -u 옵션을 사용하십시오)\n"
 
 #: wt-status.c:1535
 #, c-format
 msgid "nothing to commit, working directory clean\n"
-msgstr ""
+msgstr "커밋할 사항 없음, 작업 폴더 깨끗함\n"
 
 #: wt-status.c:1642
 msgid "Initial commit on "
-msgstr ""
+msgstr "최초 커밋, 브랜치: "
 
 #: wt-status.c:1646
 msgid "HEAD (no branch)"
@@ -2083,11 +2089,11 @@ msgstr "HEAD (브랜치 없음)"
 
 #: wt-status.c:1675
 msgid "gone"
-msgstr ""
+msgstr "없음"
 
 #: wt-status.c:1677 wt-status.c:1685
 msgid "behind "
-msgstr ""
+msgstr "뒤에: "
 
 #: compat/precompose_utf8.c:56 builtin/clone.c:408
 #, c-format
@@ -4627,10 +4633,10 @@ msgid ""
 "\n"
 "    git commit --amend --reset-author\n"
 msgstr ""
-"이름과 전자메일 주소를 사용자 이름과 호스트 이름을 이용해서\n"
-"자동으로 설정했습니다. 이 정보가 맞는지 확인하십시오. 이 메시지를\n"
-"보지 않으려면 정보를 명시적으로 설정하십시오. 다음 명령어를 실행하고\n"
-"편집기의 안내에 따라 설정 파일을 편집하십시오:\n"
+"이름과 전자메일 주소를 사용자 이름과 호스트 이름을 이용해서 자동으로\n"
+"설정했습니다. 이 정보가 맞는지 확인하십시오. 이 메시지를 보지 않으려면 정보를\n"
+"명시적으로 설정하십시오. 다음 명령어를 실행하고 편집기의 안내에 따라 설정\n"
+"파일을 편집하십시오:\n"
 "\n"
 "    git config --global --edit\n"
 "\n"
@@ -4826,17 +4832,17 @@ msgstr ""
 #: builtin/commit.c:848
 #, c-format
 msgid "%sAuthor:    %.*s <%.*s>"
-msgstr ""
+msgstr "%s작성자:    %.*s <%.*s>"
 
 #: builtin/commit.c:856
 #, c-format
 msgid "%sDate:      %s"
-msgstr ""
+msgstr "%s시각:      %s"
 
 #: builtin/commit.c:863
 #, c-format
 msgid "%sCommitter: %.*s <%.*s>"
-msgstr ""
+msgstr "%s커미터: %.*s <%.*s>"
 
 #: builtin/commit.c:881
 msgid "Cannot read index"
@@ -5004,7 +5010,7 @@ msgstr ""
 
 #: builtin/commit.c:1580
 msgid "author"
-msgstr ""
+msgstr "작성자"
 
 #: builtin/commit.c:1580
 msgid "override author for commit"
@@ -10590,9 +10596,9 @@ msgid ""
 "concept guides. See 'git help <command>' or 'git help <concept>'\n"
 "to read about a specific subcommand or concept."
 msgstr ""
-"'git help -a' 및 'git help -g' 명령을 실행하면 하위 명령어와 개념\n"
-"설명서의 목록을 볼 수 있습니다. 특정 하위 명령어나 개념에 대해 읽어\n"
-"보려면 'git help <명령>' 또는 'git help <개념>' 명령을 실행하십시오."
+"'git help -a' 및 'git help -g' 명령을 실행하면 하위 명령어와 개념 설명서의\n"
+"목록을 볼 수 있습니다. 특정 하위 명령어나 개념에 대해 읽어 보려면 'git help\n"
+"<명령>' 또는 'git help <개념>' 명령을 실행하십시오."
 
 #: common-cmds.h:9
 msgid "start a working area (see also: git help tutorial)"
@@ -10600,7 +10606,7 @@ msgstr "작업 공간 시작 (참고: git help tutorial)"
 
 #: common-cmds.h:10
 msgid "work on the current change (see also: git help everyday)"
-msgstr "바뀐 사항에 대한 작업 (참고: git help everyday)"
+msgstr "변경 사항에 대한 작업 (참고: git help everyday)"
 
 #: common-cmds.h:11
 msgid "examine the history and state (see also: git help revisions)"
@@ -10608,7 +10614,7 @@ msgstr "커밋 내역과 상태 보기 (참고: git help revisions)"
 
 #: common-cmds.h:12
 msgid "grow, mark and tweak your common history"
-msgstr ""
+msgstr "커밋 내역을 키우고, 표시하고, 조작하기"
 
 #: common-cmds.h:13
 msgid "collaborate (see also: git help workflows)"
