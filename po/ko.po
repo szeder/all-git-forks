@@ -34,7 +34,7 @@ msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-12-11 23:36+0800\n"
-"PO-Revision-Date: 2015-12-12 16:27+0900\n"
+"PO-Revision-Date: 2015-12-13 13:04+0900\n"
 "Last-Translator: Changwoo Ryu <cwryu@debian.org>\n"
 "Language-Team: Git Korean translation <http://github.com/changwoo/git-l10n-"
 "ko>\n"
@@ -639,7 +639,7 @@ msgid ""
 msgid_plural ""
 "\n"
 "Did you mean one of these?"
-msgstr[0] "다음을 의도하신 것 아니었나요?"
+msgstr[0] "\n다음을 의도하신 것 아니었나요?"
 
 #: help.c:462
 #, c-format
@@ -1184,7 +1184,7 @@ msgstr ""
 #: remote.c:2090
 #, c-format
 msgid "Your branch is up-to-date with '%s'.\n"
-msgstr "브랜치가 '%s' 저장소에 맞게 업데이트된 상태입니다."
+msgstr "브랜치가 '%s' 저장소에 맞게 업데이트된 상태입니다.\n"
 
 #: remote.c:2094
 #, c-format
