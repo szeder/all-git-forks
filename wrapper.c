@@ -259,6 +259,30 @@ ssize_t xread(int fd, void *buf, size_t len)
 }
 
 /*
+ * xread_nonblock() automatically restarts interrupted operations
+ * (EINTR). xread_nonblock() DOES NOT GUARANTEE that "len" bytes is
+ * read.  For convenience to callers that mark the file descriptor
+ * non-blocking, EWOULDBLOCK is turned into EAGAIN to allow them to
+ * check only for EAGAIN (POSIX.1 allows either to be returned).
+ */
+ssize_t xread_nonblock(int fd, void *buf, size_t len)
+{
+	ssize_t nr;
+	if (len > MAX_IO_SIZE)
+		len = MAX_IO_SIZE;
+	while (1) {
+		nr = read(fd, buf, len);
+		if (nr < 0) {
+			if (errno == EINTR)
+				continue;
+			if (errno == EWOULDBLOCK)
+				errno = EAGAIN;
+		}
+		return nr;
+	}
+}
+
+/*
  * xwrite() is the same a write(), but it automatically restarts write()
  * operations with a recoverable error (EAGAIN and EINTR). xwrite() DOES NOT
  * GUARANTEE that "len" bytes is written even if the operation is successful.
