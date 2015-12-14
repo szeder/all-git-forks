@@ -1431,4 +1431,16 @@ test_expect_success 'cover letter auto user override' '
 	test_line_count = 2 list
 '
 
+test_expect_success 'format-patch --zero-commit' '
+	git format-patch --zero-commit --stdout v2..v1 >patch2 &&
+	cnt=$(egrep "^From 0{40} Mon Sep 17 00:00:00 2001" patch2 | wc -l) &&
+	test $cnt = 3
+'
+
+test_expect_success 'From line has expected format' '
+	git format-patch --stdout v2..v1 >patch2 &&
+	cnt=$(egrep "^From [0-9a-f]{40} Mon Sep 17 00:00:00 2001" patch2 | wc -l) &&
+	test $cnt = 3
+'
+
 test_done
