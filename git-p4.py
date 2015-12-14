@@ -328,11 +328,49 @@ def split_p4_type(p4type):
     return (base, mods)
 
 #
+# converts P4 mods to Git file modes
+#
+def convert_to_git_mode(p4_mods):
+    if 'x' in p4_mods:
+        return '100755'
+    else:
+        return '100644'
+
+#
 # return the raw p4 type of a file (text, text+ko, etc)
 #
 def p4_type(f):
     results = p4CmdList(["fstat", "-T", "headType", wildcard_encode(f)])
     return results[0]['headType']
+
+#
+# Returns true if Git would mark the diff of a file `f` in `changelist1`
+# and `changelist2` as modified. The change detection is very conservative
+# as a P4 file type change would usually not change the Git content.
+# However, in case of symlinks or UTF-16 files that might happen.
+#
+def p4_file_changed(f, changelist1, changelist2):
+    if not changelist1 or not changelist2:
+        return True
+    results = p4CmdList([
+        'diff2',
+        '{}@{}'.format(wildcard_encode(f), changelist1),
+        '{}@{}'.format(wildcard_encode(f), changelist2)
+    ])
+    if len(results) != 1:
+        return True
+    elif ('status' not in results[0] or
+          'type' not in results[0] or
+          'type2' not in results[0]):
+        return True
+    else:
+        (type1, mods1) = split_p4_type(results[0]['type'])
+        (type2, mods2) = split_p4_type(results[0]['type2'])
+        return (
+            results[0]['status'] != 'identical' or
+            convert_to_git_mode(mods1) != convert_to_git_mode(mods2) or
+            type1 != type2
+        )
 
 #
 # Given a type base and modifier, return a regexp matching
@@ -2394,10 +2432,8 @@ class P4Sync(Command, P4UserMap):
             sys.stdout.flush()
 
         (type_base, type_mods) = split_p4_type(file["type"])
+        git_mode = convert_to_git_mode(type_mods)
 
-        git_mode = "100644"
-        if "x" in type_mods:
-            git_mode = "100755"
         if type_base == "symlink":
             git_mode = "120000"
             # p4 print on a symlink sometimes contains "target\n";
@@ -2655,6 +2691,14 @@ class P4Sync(Command, P4UserMap):
 
         files = [f for f in files
             if self.inClientSpec(f['path']) and self.hasBranchPrefix(f['path'])]
+
+        files = [f for f in files
+            if not f['action'] == 'edit' or p4_file_changed(
+                f['path'],
+                details.get('previous_change', None),
+                details['change']
+            )
+        ]
 
         if not files and not gitConfigBool('git-p4.keepEmptyCommits'):
             print('Ignoring revision {0} as it would produce an empty commit.'
@@ -2993,8 +3037,10 @@ class P4Sync(Command, P4UserMap):
 
     def importChanges(self, changes):
         cnt = 1
+        previous_change = None
         for change in changes:
             description = p4_describe(change)
+            description['previous_change'] = previous_change
             self.updateOptionDict(description)
 
             if not self.silent:
@@ -3069,6 +3115,8 @@ class P4Sync(Command, P4UserMap):
                                 self.initialParent)
                     # only needed once, to connect to the previous commit
                     self.initialParent = ""
+
+                previous_change = change
             except IOError:
                 print self.gitError.read()
                 sys.exit(1)

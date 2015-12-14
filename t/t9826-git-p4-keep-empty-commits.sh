@@ -15,7 +15,7 @@ test_expect_success 'Create a repo' '
 
 		mkdir -p subdir &&
 
-		>subdir/file1.txt &&
+		echo "content1" >subdir/file1.txt &&
 		p4 add subdir/file1.txt &&
 		p4 submit -d "Add file 1" &&
 
@@ -35,7 +35,21 @@ test_expect_success 'Create a repo' '
 		p4 submit -d "Remove file 3" &&
 
 		p4 delete file4.txt &&
-		p4 submit -d "Remove file 4"
+		p4 submit -d "Remove file 4" &&
+
+		p4 edit subdir/file1.txt &&
+		touch subdir/file1.txt &&
+		p4 submit -d "Touch file1 - no changes" subdir/file1.txt
+
+		p4 edit -t text+x subdir/file1.txt &&
+		p4 submit -d "Change execution bit" subdir/file1.txt
+
+		p4 edit -t binary+x subdir/file1.txt &&
+		p4 submit -d "Change filetype" subdir/file1.txt
+
+		p4 edit subdir/file1.txt &&
+		echo "content1 changed" >subdir/file1.txt &&
+		p4 submit -d "Change content" subdir/file1.txt
 	)
 '
 
@@ -47,6 +61,15 @@ test_expect_success 'Clone repo root path with all history' '
 		git init . &&
 		git p4 clone --use-client-spec --destination="$git" //depot@all &&
 		cat >expect <<-\EOF &&
+Change content
+[git-p4: depot-paths = "//depot/": change = 10]
+
+Change filetype
+[git-p4: depot-paths = "//depot/": change = 9]
+
+Change execution bit
+[git-p4: depot-paths = "//depot/": change = 8]
+
 Remove file 4
 [git-p4: depot-paths = "//depot/": change = 6]
 
@@ -80,6 +103,18 @@ test_expect_success 'Clone repo subdir with all history but keep empty commits' 
 		git config git-p4.keepEmptyCommits true &&
 		git p4 clone --use-client-spec --destination="$git" //depot@all &&
 		cat >expect <<-\EOF &&
+Change content
+[git-p4: depot-paths = "//depot/": change = 10]
+
+Change filetype
+[git-p4: depot-paths = "//depot/": change = 9]
+
+Change execution bit
+[git-p4: depot-paths = "//depot/": change = 8]
+
+Touch file1 - no changes
+[git-p4: depot-paths = "//depot/": change = 7]
+
 Remove file 4
 [git-p4: depot-paths = "//depot/": change = 6]
 
@@ -112,6 +147,15 @@ test_expect_success 'Clone repo subdir with all history' '
 		git init . &&
 		git p4 clone --use-client-spec --destination="$git" --verbose //depot@all &&
 		cat >expect <<-\EOF &&
+Change content
+[git-p4: depot-paths = "//depot/": change = 10]
+
+Change filetype
+[git-p4: depot-paths = "//depot/": change = 9]
+
+Change execution bit
+[git-p4: depot-paths = "//depot/": change = 8]
+
 Remove file 3
 [git-p4: depot-paths = "//depot/": change = 5]
 
