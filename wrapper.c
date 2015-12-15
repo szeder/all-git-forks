@@ -236,8 +236,48 @@ ssize_t xread(int fd, void *buf, size_t len)
 	    len = MAX_IO_SIZE;
 	while (1) {
 		nr = read(fd, buf, len);
-		if ((nr < 0) && (errno == EAGAIN || errno == EINTR))
-			continue;
+		if (nr < 0) {
+			if (errno == EINTR)
+				continue;
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				struct pollfd pfd;
+				pfd.events = POLLIN;
+				pfd.fd = fd;
+				/*
+				 * it is OK if this poll() failed; we
+				 * want to leave this infinite loop
+				 * only when read() returns with
+				 * success, or an expected failure,
+				 * which would be checked by the next
+				 * call to read(2).
+				 */
+				poll(&pfd, 1, -1);
+			}
+		}
+		return nr;
+	}
+}
+
+/*
+ * xread_nonblock() automatically restarts interrupted operations
+ * (EINTR). xread_nonblock() DOES NOT GUARANTEE that "len" bytes is
+ * read.  For convenience to callers that mark the file descriptor
+ * non-blocking, EWOULDBLOCK is turned into EAGAIN to allow them to
+ * check only for EAGAIN (POSIX.1 allows either to be returned).
+ */
+ssize_t xread_nonblock(int fd, void *buf, size_t len)
+{
+	ssize_t nr;
+	if (len > MAX_IO_SIZE)
+		len = MAX_IO_SIZE;
+	while (1) {
+		nr = read(fd, buf, len);
+		if (nr < 0) {
+			if (errno == EINTR)
+				continue;
+			if (errno == EWOULDBLOCK)
+				errno = EAGAIN;
+		}
 		return nr;
 	}
 }
