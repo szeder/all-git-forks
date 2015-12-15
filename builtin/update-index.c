@@ -1127,8 +1127,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		if (verbose)
 			printf(_("Untracked cache enabled\n"));
 	} else if (untracked_cache == UC_DISABLE && the_index.untracked) {
-		the_index.untracked = NULL;
-		the_index.cache_changed |= UNTRACKED_CHANGED;
+		remove_untracked_cache();
 		if (verbose)
 			printf(_("Untracked cache disabled\n"));
 	}
