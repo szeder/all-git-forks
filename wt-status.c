@@ -586,6 +586,15 @@ static void wt_status_collect_untracked(struct wt_status *s)
 		dir.flags |= DIR_SHOW_IGNORED_TOO;
 	else
 		dir.untracked = the_index.untracked;
+
+	if (!dir.untracked && use_untracked_cache == 1) {
+		add_untracked_cache();
+		dir.untracked = the_index.untracked;
+	} else if (dir.untracked && use_untracked_cache == 0) {
+		remove_untracked_cache();
+		dir.untracked = NULL;
+	}
+
 	setup_standard_excludes(&dir);
 
 	fill_directory(&dir, &s->pathspec);
