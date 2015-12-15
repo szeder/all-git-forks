@@ -127,7 +127,7 @@ struct untracked_cache {
 	struct sha1_stat ss_info_exclude;
 	struct sha1_stat ss_excludes_file;
 	const char *exclude_per_dir;
-	struct strbuf ident;
+	struct strbuf ident; /* unused now */
 	/*
 	 * dir_struct#flags must match dir_flags or the untracked
 	 * cache is ignored.
