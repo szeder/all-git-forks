@@ -308,6 +308,13 @@ core.trustctime::
 	crawlers and some backup systems).
 	See linkgit:git-update-index[1]. True by default.
 
+core.untrackedCache::
+	Determines if untracked cache will be enabled. Using
+	'git update-index --[no-|force-]untracked-cache' will set
+	this variable. Before setting it to true, you should check
+	that mtime is working properly on your system.
+	See linkgit:git-update-index[1]. False by default.
+
 core.checkStat::
 	Determines which stat fields to match between the index
 	and work tree. The user can set this to 'default' or
