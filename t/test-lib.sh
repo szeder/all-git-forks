@@ -333,6 +333,10 @@ test_external_has_tap=0
 
 die () {
 	code=$?
+	if test -n "$GIT_TEST_WITH_WATCHMAN"
+	then
+		cleanup_watchman
+	fi
 	if test -n "$GIT_EXIT_OK"
 	then
 		exit $code
