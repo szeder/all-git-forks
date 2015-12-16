@@ -6,16 +6,21 @@
 #  Changwoo Ryu <cwryu@debian.org>, 2015.
 #  Hyunjun Kim <yoloseem AT users.noreply.github.com>, 2015.
 #
-#
+# - 작업자는 Contributors 목록에 추가해 주세요.
+# - 번역하면서 80컬럼을 넘어가지 않도록 해 주세요.
 # - 용어는 일관성을 지켜 주십시오. 용어가 바뀌어야 한다고 생각하면 바꾸기 전에
 #   충분히 의견 교환을 하십시오.
 # - 용어:
 #  +--------------+----------------------------------------------+
 #  | author       | 작성자                                       |
 #  | blob         | 블롭                                         |
+#  | bundle       | 번들                                         |
 #  | branch       | 브랜치                                       |
+#  | cherry-pick  | 뽑다, 뽑기                                   |
 #  | commit       | 커밋                                         |
+#  | commit-ish   | 커밋-따위                                    |
 #  | committer    | 커미터                                       |
+#  | conflict     | 충돌                                         |
 #  | history      | 내역, 커밋 내역                              |
 #  | Git          | 깃 (명령어가 아닌 이름을 나타내는 경우)      |
 #  | log          | 기록                                         |
@@ -24,10 +29,12 @@
 #  | rebase       | 리베이스                                     |
 #  | ref          | 레퍼런스                                     |
 #  | repo         | 저장소                                       |
+#  | remote       | 리모트 (저장소)                              |
 #  | reset        | 재지정                                       |
 #  | revert       | 되돌리기                                     |
 #  | subcommand   | 하위 명령                                    |
 #  | submodule    | 하위 모듈                                    |
+#  | tree-ish     | 트리-따위                                    |
 #  | working tree | 작업 폴더                                    |
 #  +--------------+----------------------------------------------+
 #
@@ -36,7 +43,7 @@ msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2015-12-11 23:36+0800\n"
-"PO-Revision-Date: 2015-12-13 15:08+0900\n"
+"PO-Revision-Date: 2015-12-16 20:47+0900\n"
 "Last-Translator: Changwoo Ryu <cwryu@debian.org>\n"
 "Language-Team: Git Korean translation <http://github.com/changwoo/git-l10n-"
 "ko>\n"
@@ -56,6 +63,8 @@ msgid ""
 "Fix them up in the work tree, and then use 'git add/rm <file>'\n"
 "as appropriate to mark resolution and make a commit."
 msgstr ""
+"작업 폴더에서 문제를 바로잡은 다음, 'git add/rm <파일>'을 적절히\n"
+"사용해 해결 표시하고 커밋하십시오."
 
 #: advice.c:101 builtin/merge.c:1225
 msgid "You have not concluded your merge (MERGE_HEAD exists)."
@@ -63,15 +72,15 @@ msgstr "병합 작업을 다 마치지 않았습니다 (MERGE_HEAD 파일이 있
 
 #: advice.c:103
 msgid "Please, commit your changes before merging."
-msgstr ""
+msgstr "병합하기 전에 변경 사항을 커밋하십시오."
 
 #: advice.c:104
 msgid "Exiting because of unfinished merge."
-msgstr ""
+msgstr "병합을 마치지 못했기 때문에 끝납니다."
 
 #: archive.c:12
 msgid "git archive [<options>] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive [<옵션>] <트리-따위> [<경로>...]"
 
 #: archive.c:13
 msgid "git archive --list"
@@ -80,11 +89,11 @@ msgstr "git archive --list"
 #: archive.c:14
 msgid ""
 "git archive --remote <repo> [--exec <cmd>] [<options>] <tree-ish> [<path>...]"
-msgstr ""
+msgstr "git archive --remote <저장소> [--exec <명령>] [<옵션>] <트리-따위> [<경로>...]"
 
 #: archive.c:15
 msgid "git archive --remote <repo> [--exec <cmd>] --list"
-msgstr ""
+msgstr "git archive --remote <저장소> [--exec <명령>] --list"
 
 #: archive.c:344 builtin/add.c:137 builtin/add.c:420 builtin/rm.c:327
 #, c-format
@@ -93,11 +102,11 @@ msgstr "'%s' 경로명세가 어떤 파일과도 일치하지 않습니다"
 
 #: archive.c:429
 msgid "fmt"
-msgstr ""
+msgstr "형식"
 
 #: archive.c:429
 msgid "archive format"
-msgstr ""
+msgstr "압축 형식"
 
 #: archive.c:430 builtin/log.c:1228
 msgid "prefix"
@@ -121,27 +130,27 @@ msgstr "아카이브를 이 파일에 씁니다"
 
 #: archive.c:435
 msgid "read .gitattributes in working directory"
-msgstr ""
+msgstr "작업 폴더의 .gitattributes를 읽습니다"
 
 #: archive.c:436
 msgid "report archived files on stderr"
-msgstr ""
+msgstr "아카이브에 포함된 파일을 표준오류로 표시합니다"
 
 #: archive.c:437
 msgid "store only"
-msgstr ""
+msgstr "저장만 하기"
 
 #: archive.c:438
 msgid "compress faster"
-msgstr ""
+msgstr "더 빠르게 압축"
 
 #: archive.c:446
 msgid "compress better"
-msgstr ""
+msgstr "더 작게 압축"
 
 #: archive.c:449
 msgid "list supported archive formats"
-msgstr ""
+msgstr "지원하는 압축 형식의 목록을 표시합니다"
 
 #: archive.c:451 builtin/archive.c:90 builtin/clone.c:77
 msgid "repo"
@@ -164,80 +173,82 @@ msgid ""
 "Negative patterns are ignored in git attributes\n"
 "Use '\\!' for literal leading exclamation."
 msgstr ""
+"git attributes에서 반대 패턴은 무시됩니다.\n"
+"앞에 느낌표를 쓰려면 '\\!'를 사용하십시오."
 
 #: branch.c:61
 #, c-format
 msgid "Not setting branch %s as its own upstream."
-msgstr ""
+msgstr "%s 브랜치를 자신의 업스트림으로 지정하지 않음."
 
 #: branch.c:84
 #, c-format
 msgid "Branch %s set up to track remote branch %s from %s by rebasing."
-msgstr ""
+msgstr "%s 브랜치가 리베이스를 통해 리모트의 %s 브랜치를 (%s에서) 따라가도록 설정되었습니다."
 
 #: branch.c:85
 #, c-format
 msgid "Branch %s set up to track remote branch %s from %s."
-msgstr ""
+msgstr "%s 브랜치가 리모트의 %s 브랜치를 (%s에서) 따라가도록 설정되었습니다."
 
 #: branch.c:89
 #, c-format
 msgid "Branch %s set up to track local branch %s by rebasing."
-msgstr ""
+msgstr "%s 브랜치가 리베이스를 통해 리모트의 %s 브랜치를 따라가도록 설정되었습니다."
 
 #: branch.c:90
 #, c-format
 msgid "Branch %s set up to track local branch %s."
-msgstr ""
+msgstr "%s 브랜치가 %s 브랜치를 따라가도록 설정되었습니다."
 
 #: branch.c:95
 #, c-format
 msgid "Branch %s set up to track remote ref %s by rebasing."
-msgstr ""
+msgstr "%s 브랜치가 리베이스를 통해 리모트의 %s 레퍼런스를 따라가도록 설정되었습니다."
 
 #: branch.c:96
 #, c-format
 msgid "Branch %s set up to track remote ref %s."
-msgstr ""
+msgstr "%s 브랜치가 리모트의 %s 레퍼런스를 따라가도록 설정되었습니다."
 
 #: branch.c:100
 #, c-format
 msgid "Branch %s set up to track local ref %s by rebasing."
-msgstr ""
+msgstr "%s 브랜치가 리베이스를 통해 로컬의 %s 레퍼런스를 따라가도록 설정되었습니다."
 
 #: branch.c:101
 #, c-format
 msgid "Branch %s set up to track local ref %s."
-msgstr ""
+msgstr "%s 브랜치가 로컬의 %s 레퍼런스를 따라가도록 설정되었습니다."
 
 #: branch.c:134
 #, c-format
 msgid "Not tracking: ambiguous information for ref %s"
-msgstr ""
+msgstr "따라가지 않음: %s 레퍼런스에 대해 애매한 정보"
 
 #: branch.c:163
 #, c-format
 msgid "'%s' is not a valid branch name."
-msgstr ""
+msgstr "'%s'은(는) 올바른 브랜치 이름이 아닙니다."
 
 #: branch.c:168
 #, c-format
 msgid "A branch named '%s' already exists."
-msgstr ""
+msgstr "이름이 '%s'인 브랜치가 이미 있습니다."
 
 #: branch.c:176
 msgid "Cannot force update the current branch."
-msgstr ""
+msgstr "현재 브랜치를 강제로 업데이트할 수 없습니다."
 
 #: branch.c:196
 #, c-format
 msgid "Cannot setup tracking information; starting point '%s' is not a branch."
-msgstr ""
+msgstr "따라가기 정보를 설정할 수 없습니다; 시작 위치 '%s'이(가) 브랜치가 아닙니다."
 
 #: branch.c:198
 #, c-format
 msgid "the requested upstream branch '%s' does not exist"
-msgstr ""
+msgstr "요청한 업스트림 '%s' 브랜치가 없습니다"
 
 #: branch.c:200
 msgid ""
@@ -250,21 +261,27 @@ msgid ""
 "will track its remote counterpart, you may want to use\n"
 "\"git push -u\" to set the upstream config as you push."
 msgstr ""
+"\n"
+"리모트에 이미 있는 업스트림 브랜치를 기반으로 작업하려면,\n"
+"먼저 \"git fetch\"로 가져 리모트 브랜치를 가져옵니다.\n"
+"\n"
+"새 로컬 브랜치를 거기에 해당하는 리모트 브랜치로 push하려면,\n"
+"\"git push -u\"로 push하는 업스트림을 설정할 수 있습니다."
 
 #: branch.c:244
 #, c-format
 msgid "Not a valid object name: '%s'."
-msgstr ""
+msgstr "올바른 오브젝트 이름이 아닙니다: '%s'."
 
 #: branch.c:264
 #, c-format
 msgid "Ambiguous object name: '%s'."
-msgstr ""
+msgstr "애매한 오브젝트 이름: '%s'."
 
 #: branch.c:269
 #, c-format
 msgid "Not a valid branch point: '%s'."
-msgstr ""
+msgstr "올바른 브랜치 위치가 아닙니다: '%s'."
 
 #: branch.c:322
 #, c-format
@@ -288,7 +305,7 @@ msgstr "'%s'을(를) 열 수 없습니다"
 
 #: bundle.c:139
 msgid "Repository lacks these prerequisite commits:"
-msgstr ""
+msgstr "저장소에 필수적인 다음 커밋이 없습니다:"
 
 #: bundle.c:163 ref-filter.c:1372 sequencer.c:636 sequencer.c:1083
 #: builtin/blame.c:2734 builtin/commit.c:1045 builtin/log.c:334
@@ -301,34 +318,34 @@ msgstr "리비전 walk 준비가 실패했습니다"
 #, c-format
 msgid "The bundle contains this ref:"
 msgid_plural "The bundle contains these %d refs:"
-msgstr[0] ""
+msgstr[0] "번들에 다음 레퍼런스 %d개가 있습니다:"
 
 #: bundle.c:192
 msgid "The bundle records a complete history."
-msgstr ""
+msgstr "번들은 전체 커밋 내역을 기록합니다."
 
 #: bundle.c:194
 #, c-format
 msgid "The bundle requires this ref:"
 msgid_plural "The bundle requires these %d refs:"
-msgstr[0] ""
+msgstr[0] "번들에 다음 레퍼런스 %d개가 필요합니다:"
 
 #: bundle.c:253
 msgid "Could not spawn pack-objects"
-msgstr ""
+msgstr "pack-objects 명령을 실행할 수 없습니다"
 
 #: bundle.c:264
 msgid "pack-objects died"
-msgstr ""
+msgstr "pack-objects 명령이 죽었습니다"
 
 #: bundle.c:304
 msgid "rev-list died"
-msgstr ""
+msgstr "rev-list 명령이 죽었습니다"
 
 #: bundle.c:353
 #, c-format
 msgid "ref '%s' is excluded by the rev-list options"
-msgstr ""
+msgstr "rev-list 옵션에서 '%s' 레퍼런스가 제외되었습니다"
 
 #: bundle.c:443 builtin/log.c:157 builtin/log.c:1366 builtin/shortlog.c:261
 #, c-format
@@ -337,7 +354,7 @@ msgstr "알 수 없는 인자: %s"
 
 #: bundle.c:449
 msgid "Refusing to create empty bundle."
-msgstr ""
+msgstr "빈 번들은 만들지 않습니다."
 
 #: bundle.c:459
 #, c-format
@@ -346,7 +363,7 @@ msgstr ""
 
 #: bundle.c:480
 msgid "index-pack died"
-msgstr ""
+msgstr "index-pack 명령이 죽었습니다"
 
 #: color.c:275
 #, c-format
@@ -843,11 +860,11 @@ msgstr ""
 
 #: merge-recursive.c:1759
 msgid "file/directory"
-msgstr ""
+msgstr "파일/디렉터리"
 
 #: merge-recursive.c:1765
 msgid "directory/file"
-msgstr ""
+msgstr "디렉터리/파일"
 
 #: merge-recursive.c:1770
 #, c-format
@@ -1186,13 +1203,13 @@ msgstr ""
 #: remote.c:2090
 #, c-format
 msgid "Your branch is up-to-date with '%s'.\n"
-msgstr "브랜치가 '%s' 저장소에 맞게 업데이트된 상태입니다.\n"
+msgstr "브랜치가 '%s'에 맞게 업데이트된 상태입니다.\n"
 
 #: remote.c:2094
 #, c-format
 msgid "Your branch is ahead of '%s' by %d commit.\n"
 msgid_plural "Your branch is ahead of '%s' by %d commits.\n"
-msgstr[0] "브랜치가 '%s' 저장소보다 %d개 커밋만큼 앞에 있습니다\n"
+msgstr[0] "브랜치가 '%s'보다 %d개 커밋만큼 앞에 있습니다\n"
 
 #: remote.c:2100
 msgid "  (use \"git push\" to publish your local commits)\n"
@@ -1203,7 +1220,7 @@ msgstr "  (로컬에 있는 커밋을 제출하려면 \"git push\"를 사용하�
 msgid "Your branch is behind '%s' by %d commit, and can be fast-forwarded.\n"
 msgid_plural ""
 "Your branch is behind '%s' by %d commits, and can be fast-forwarded.\n"
-msgstr[0] "브랜치가 '%s' 저장소보다 %d개 커밋 뒤에 있고, 앞으로 돌릴 수 있습니다.\n"
+msgstr[0] "브랜치가 '%s'보다 %d개 커밋 뒤에 있고, 앞으로 돌릴 수 있습니다.\n"
 
 #: remote.c:2111
 msgid "  (use \"git pull\" to update your local branch)\n"
@@ -1700,7 +1717,7 @@ msgstr "  (커밋할 사항을 바꾸려면 \"git add/rm <파일>...\"을 사용
 #: wt-status.c:222
 msgid ""
 "  (use \"git checkout -- <file>...\" to discard changes in working directory)"
-msgstr "  (작업 디렉터리의 변경 사항을 버리려면 \"git checkout -- <파일>...\"을 사용하십시오)"
+msgstr "  (작업 폴더의 변경 사항을 버리려면 \"git checkout -- <파일>...\"을 사용하십시오)"
 
 #: wt-status.c:224
 msgid "  (commit or discard the untracked or modified content in submodules)"
@@ -1791,41 +1808,43 @@ msgstr "추적하지 않은 내용, "
 #: wt-status.c:390
 #, c-format
 msgid "bug: unhandled diff status %c"
-msgstr ""
+msgstr "버그: 처리되지 않은 diff 상태 %c"
 
 #: wt-status.c:754
 msgid "Submodules changed but not updated:"
-msgstr ""
+msgstr "변경되었지만 업데이트하지 않은 하위 모듈:"
 
 #: wt-status.c:756
 msgid "Submodule changes to be committed:"
-msgstr ""
+msgstr "커밋할 하위 모듈의 변경 사항:"
 
 #: wt-status.c:837
 msgid ""
 "Do not touch the line above.\n"
 "Everything below will be removed."
 msgstr ""
+"위의 줄을 바꾸지 마십시오.\n"
+"아래 있는 내용은 모두 제거됩니다."
 
 #: wt-status.c:948
 msgid "You have unmerged paths."
-msgstr ""
+msgstr "병합하지 않은 경로가 있습니다."
 
 #: wt-status.c:951
 msgid "  (fix conflicts and run \"git commit\")"
-msgstr ""
+msgstr "  (충돌을 바로잡고 \"git commit\"을 실행하십시오)"
 
 #: wt-status.c:954
 msgid "All conflicts fixed but you are still merging."
-msgstr ""
+msgstr "모든 충돌을 바로잡았지만 아직 병합하는 중입니다."
 
 #: wt-status.c:957
 msgid "  (use \"git commit\" to conclude merge)"
-msgstr ""
+msgstr "  (병합을 마무리하려면 \"git commit\"을 사용하십시오)"
 
 #: wt-status.c:967
 msgid "You are in the middle of an am session."
-msgstr ""
+msgstr "am 세션 중간에 있습니다."
 
 #: wt-status.c:970
 msgid "The current patch is empty."
@@ -1856,7 +1875,7 @@ msgstr[0] "최근 완료한 명령 (%d개 명령 완료):"
 #: wt-status.c:1119
 #, c-format
 msgid "  (see more in file %s)"
-msgstr ""
+msgstr "  (자세한 정보는 %s 파일 참고)"
 
 #: wt-status.c:1124
 msgid "No commands remaining."
@@ -1914,54 +1933,54 @@ msgstr "  (작업 폴더가 깨끗해지면, \"git rebase --continue\"를 실행
 #: wt-status.c:1193
 #, c-format
 msgid "You are currently editing a commit while rebasing branch '%s' on '%s'."
-msgstr ""
+msgstr "'%s' 브랜치를 '%s' 위로 리베이스하는 중 커밋을 편집하는 중입니다."
 
 #: wt-status.c:1198
 msgid "You are currently editing a commit during a rebase."
-msgstr ""
+msgstr "리베이스 중에 커밋을 편집하는 중입니다."
 
 #: wt-status.c:1201
 msgid "  (use \"git commit --amend\" to amend the current commit)"
-msgstr ""
+msgstr "  (현재 커밋을 수정하려면 \"git commit --amend\"을 사용하십시오)"
 
 #: wt-status.c:1203
 msgid ""
 "  (use \"git rebase --continue\" once you are satisfied with your changes)"
-msgstr ""
+msgstr "  (변경 사항에 만족할 때 \"git rebase --continue\"를 사용하십시오)"
 
 #: wt-status.c:1213
 #, c-format
 msgid "You are currently cherry-picking commit %s."
-msgstr ""
+msgstr "현재 %s 커밋을 뽑아 내고 있습니다."
 
 #: wt-status.c:1218
 msgid "  (fix conflicts and run \"git cherry-pick --continue\")"
-msgstr ""
+msgstr "  (충돌을 바로잡고 \"git cherry-pick --continue\"를 실행하십시오)"
 
 #: wt-status.c:1221
 msgid "  (all conflicts fixed: run \"git cherry-pick --continue\")"
-msgstr ""
+msgstr "  (모든 충돌을 바로잡았습니다: \"git cherry-pick --continue\"를 실행하십시오)"
 
 #: wt-status.c:1223
 msgid "  (use \"git cherry-pick --abort\" to cancel the cherry-pick operation)"
-msgstr ""
+msgstr "  (뽑기 작업을 취소하려면 \"git cherry-pick --abort\"를 사용하십시오)"
 
 #: wt-status.c:1232
 #, c-format
 msgid "You are currently reverting commit %s."
-msgstr ""
+msgstr "현재 %s 커밋을 되돌리는 중입니다."
 
 #: wt-status.c:1237
 msgid "  (fix conflicts and run \"git revert --continue\")"
-msgstr ""
+msgstr "  (충돌을 바로잡고 \"git revert --continue\"를 실행하십시오)"
 
 #: wt-status.c:1240
 msgid "  (all conflicts fixed: run \"git revert --continue\")"
-msgstr ""
+msgstr "  (모든 충돌을 바로잡았습니다: \"git revert --continue\"를 실행하십시오)"
 
 #: wt-status.c:1242
 msgid "  (use \"git revert --abort\" to cancel the revert operation)"
-msgstr ""
+msgstr "  (되돌리기 작업을 취소하려면 \"git revert --abort\"를 사용하십시오)"
 
 #: wt-status.c:1253
 #, c-format
@@ -2107,11 +2126,11 @@ msgstr "git add [<옵션>] [--] <경로명세>..."
 #: builtin/add.c:65
 #, c-format
 msgid "unexpected diff status %c"
-msgstr ""
+msgstr "예상치 못한 diff 상태 %c"
 
 #: builtin/add.c:70 builtin/commit.c:278
 msgid "updating files failed"
-msgstr ""
+msgstr "파일 업데이트가 실패했습니다"
 
 #: builtin/add.c:80
 #, c-format
@@ -2281,7 +2300,7 @@ msgstr ""
 
 #: builtin/am.c:626
 msgid "fseek failed"
-msgstr ""
+msgstr "fseek 실패"
 
 #: builtin/am.c:787 builtin/am.c:875
 #, c-format
@@ -3126,11 +3145,11 @@ msgstr ""
 #: builtin/archive.c:63
 #, c-format
 msgid "remote error: %s"
-msgstr ""
+msgstr "리모트 오류: %s"
 
 #: builtin/archive.c:64
 msgid "git archive: protocol error"
-msgstr ""
+msgstr "git archive: 프로토콜 오류"
 
 #: builtin/archive.c:68
 msgid "git archive: expected a flush"
@@ -3674,7 +3693,7 @@ msgstr ""
 msgid ""
 "git cat-file (-t [--allow-unknown-type]|-s [--allow-unknown-type]|-e|-p|"
 "<type>|--textconv) <object>"
-msgstr ""
+msgstr "git cat-file (-t [--allow-unknown-type]|-s [--allow-unknown-type]|-e|-p|<종류>|--textconv) <오브젝트>"
 
 #: builtin/cat-file.c:429
 msgid "git cat-file (--batch | --batch-check) [--follow-symlinks]"
@@ -3682,19 +3701,19 @@ msgstr "git cat-file (--batch | --batch-check) [--follow-symlinks]"
 
 #: builtin/cat-file.c:466
 msgid "<type> can be one of: blob, tree, commit, tag"
-msgstr ""
+msgstr "<종류>는 다음 중 하나가 될 수 있습니다: blob, tree, commit, tag"
 
 #: builtin/cat-file.c:467
 msgid "show object type"
-msgstr ""
+msgstr "오브젝트 종류를 봅니다"
 
 #: builtin/cat-file.c:468
 msgid "show object size"
-msgstr ""
+msgstr "오브젝트 크기를 봅니다"
 
 #: builtin/cat-file.c:470
 msgid "exit with zero when there's no error"
-msgstr ""
+msgstr "오류가 없을 때 0을 리턴하고 끝냅니다"
 
 #: builtin/cat-file.c:471
 msgid "pretty-print object's content"
@@ -4218,7 +4237,7 @@ msgstr "어라라 (%s)?"
 #: builtin/clean.c:677
 #, c-format
 msgid "Input ignore patterns>> "
-msgstr ""
+msgstr "무시할 패턴을 입력하십시오>> "
 
 #: builtin/clean.c:714
 #, c-format
@@ -4286,7 +4305,7 @@ msgstr ""
 #: builtin/clean.c:899 builtin/describe.c:407 builtin/grep.c:709
 #: builtin/ls-files.c:443 builtin/name-rev.c:307 builtin/show-ref.c:182
 msgid "pattern"
-msgstr ""
+msgstr "패턴"
 
 #: builtin/clean.c:900
 msgid "add <pattern> to ignore rules"
@@ -4990,7 +5009,7 @@ msgstr ""
 
 #: builtin/commit.c:1480
 msgid " (root-commit)"
-msgstr ""
+msgstr " (최상위-커밋)"
 
 #: builtin/commit.c:1575
 msgid "suppress summary after successful commit"
@@ -5006,7 +5025,7 @@ msgstr "커밋 메시지 옵션"
 
 #: builtin/commit.c:1579 builtin/tag.c:351
 msgid "read message from file"
-msgstr ""
+msgstr "파일에서 메시지를 읽습니다"
 
 #: builtin/commit.c:1580
 msgid "author"
@@ -5014,29 +5033,29 @@ msgstr "작성자"
 
 #: builtin/commit.c:1580
 msgid "override author for commit"
-msgstr ""
+msgstr "커밋의 작성자를 지정합니다"
 
 #: builtin/commit.c:1581 builtin/gc.c:326
 msgid "date"
-msgstr ""
+msgstr "시각"
 
 #: builtin/commit.c:1581
 msgid "override date for commit"
-msgstr ""
+msgstr "커밋의 시각을 지정합니다"
 
 #: builtin/commit.c:1582 builtin/merge.c:218 builtin/notes.c:392
 #: builtin/notes.c:555 builtin/tag.c:349
 msgid "message"
-msgstr ""
+msgstr "메시지"
 
 #: builtin/commit.c:1582
 msgid "commit message"
-msgstr ""
+msgstr "커밋 메시지"
 
 #: builtin/commit.c:1583 builtin/commit.c:1584 builtin/commit.c:1585
 #: builtin/commit.c:1586 parse-options.h:256 ref-filter.h:79
 msgid "commit"
-msgstr ""
+msgstr "커밋"
 
 #: builtin/commit.c:1583
 msgid "reuse and edit message from specified commit"
@@ -5563,31 +5582,31 @@ msgstr "git fetch --all [<옵션>]"
 
 #: builtin/fetch.c:90 builtin/pull.c:162
 msgid "fetch from all remotes"
-msgstr ""
+msgstr "모든 리모트에서 가져옵니다"
 
 #: builtin/fetch.c:92 builtin/pull.c:165
 msgid "append to .git/FETCH_HEAD instead of overwriting"
-msgstr ""
+msgstr "덮어쓰지 말고 .git/FETCH_HEAD에 덧붙입니다"
 
 #: builtin/fetch.c:94 builtin/pull.c:168
 msgid "path to upload pack on remote end"
-msgstr ""
+msgstr "리모트 쪽에 묶음을 업로드할 경로"
 
 #: builtin/fetch.c:95 builtin/pull.c:170
 msgid "force overwrite of local branch"
-msgstr ""
+msgstr "로컬 브랜치를 강제로 덮어씁니다"
 
 #: builtin/fetch.c:97
 msgid "fetch from multiple remotes"
-msgstr ""
+msgstr "여러 리모트에서 가져옵니다"
 
 #: builtin/fetch.c:99 builtin/pull.c:172
 msgid "fetch all tags and associated objects"
-msgstr ""
+msgstr "모든 태그와 관련 오브젝트를 가져옵니다"
 
 #: builtin/fetch.c:101
 msgid "do not fetch all tags (--no-tags)"
-msgstr ""
+msgstr "모든 태그를 가져오지 않습니다 (--no-tags)"
 
 #: builtin/fetch.c:103 builtin/pull.c:175
 msgid "prune remote-tracking branches no longer on remote"
@@ -5648,28 +5667,28 @@ msgstr ""
 #: builtin/fetch.c:458
 #, c-format
 msgid "object %s not found"
-msgstr ""
+msgstr "%s 오브젝트가 없습니다"
 
 #: builtin/fetch.c:463
 msgid "[up to date]"
-msgstr ""
+msgstr "[최신 상태]"
 
 #: builtin/fetch.c:477
 #, c-format
 msgid "! %-*s %-*s -> %s  (can't fetch in current branch)"
-msgstr ""
+msgstr "! %-*s %-*s -> %s  (현재 브랜치에서 가져올 수 없음)"
 
 #: builtin/fetch.c:478 builtin/fetch.c:566
 msgid "[rejected]"
-msgstr ""
+msgstr "[거부됨]"
 
 #: builtin/fetch.c:489
 msgid "[tag update]"
-msgstr ""
+msgstr "[태그 업데이트]"
 
 #: builtin/fetch.c:491 builtin/fetch.c:526 builtin/fetch.c:544
 msgid "  (unable to update local ref)"
-msgstr ""
+msgstr "  (로컬 레퍼런스를 업데이트할 수 없음)"
 
 #: builtin/fetch.c:509
 msgid "[new tag]"
@@ -7291,7 +7310,7 @@ msgstr ""
 #: builtin/merge.c:214 builtin/notes.c:767 builtin/pull.c:148
 #: builtin/revert.c:89
 msgid "strategy"
-msgstr ""
+msgstr "전략"
 
 #: builtin/merge.c:215 builtin/pull.c:149
 msgid "merge strategy to use"
@@ -7791,11 +7810,11 @@ msgstr "git notes [--ref <메모-레퍼런스>] [list [<오브젝트>]]"
 msgid ""
 "git notes [--ref <notes-ref>] add [-f] [--allow-empty] [-m <msg> | -F <file> "
 "| (-c | -C) <object>] [<object>]"
-msgstr ""
+msgstr "git notes [--ref <notes-ref>] add [-f] [--allow-empty] [-m <메시지> | -F <파일> | (-c | -C) <오브젝트>] [<오브젝트>]"
 
 #: builtin/notes.c:27
 msgid "git notes [--ref <notes-ref>] copy [-f] <from-object> <to-object>"
-msgstr ""
+msgstr "git notes [--ref <메모-레퍼런스>] copy [-f] <원본-오브젝트> <대상-오브젝트>"
 
 #: builtin/notes.c:28
 msgid ""
@@ -7814,27 +7833,27 @@ msgstr "git notes [--ref <notes-ref>] show [<오브젝트>]"
 #: builtin/notes.c:31
 msgid ""
 "git notes [--ref <notes-ref>] merge [-v | -q] [-s <strategy>] <notes-ref>"
-msgstr ""
+msgstr "git notes [--ref <메모-레퍼런스>] merge [-v | -q] [-s <전략>] <메모-레퍼런스>"
 
 #: builtin/notes.c:32
 msgid "git notes merge --commit [-v | -q]"
-msgstr ""
+msgstr "git notes merge --commit [-v | -q]"
 
 #: builtin/notes.c:33
 msgid "git notes merge --abort [-v | -q]"
-msgstr ""
+msgstr "git notes merge --abort [-v | -q]"
 
 #: builtin/notes.c:34
 msgid "git notes [--ref <notes-ref>] remove [<object>...]"
-msgstr ""
+msgstr "git notes [--ref <노트-레퍼런스>] remove [<오브젝트>...]"
 
 #: builtin/notes.c:35
 msgid "git notes [--ref <notes-ref>] prune [-n | -v]"
-msgstr ""
+msgstr "git notes [--ref <노트-레퍼런스>] prune [-n | -v]"
 
 #: builtin/notes.c:36
 msgid "git notes [--ref <notes-ref>] get-ref"
-msgstr ""
+msgstr "git notes [--ref <노트-레퍼런스>] get-ref"
 
 #: builtin/notes.c:41
 msgid "git notes [list [<object>]]"
@@ -7846,11 +7865,11 @@ msgstr "git notes add [<옵션>] [<오브젝트>]"
 
 #: builtin/notes.c:51
 msgid "git notes copy [<options>] <from-object> <to-object>"
-msgstr ""
+msgstr "git notes copy [<옵션>] <원본-오브젝트> <대상-오브젝트>"
 
 #: builtin/notes.c:52
 msgid "git notes copy --stdin [<from-object> <to-object>]..."
-msgstr ""
+msgstr "git notes copy --stdin [<원본-오브젝트> <대상-오브젝트>]..."
 
 #: builtin/notes.c:57
 msgid "git notes append [<options>] [<object>]"
@@ -7891,11 +7910,11 @@ msgstr "git notes get-ref"
 #: builtin/notes.c:147
 #, c-format
 msgid "unable to start 'show' for object '%s'"
-msgstr ""
+msgstr "'%s' 오브젝트에 대해 'show'를 시작할 수 없습니다"
 
 #: builtin/notes.c:151
 msgid "could not read 'show' output"
-msgstr ""
+msgstr "'show' 출력을 읽을 수 없습니다"
 
 #: builtin/notes.c:159
 #, c-format
@@ -7923,7 +7942,7 @@ msgstr ""
 #: builtin/notes.c:232 builtin/tag.c:440
 #, c-format
 msgid "cannot read '%s'"
-msgstr ""
+msgstr "'%s'을(를) 읽을 수 없습니다"
 
 #: builtin/notes.c:234 builtin/tag.c:443
 #, c-format
@@ -8283,7 +8302,7 @@ msgstr ""
 
 #: builtin/prune-packed.c:7
 msgid "git prune-packed [-n | --dry-run] [-q | --quiet]"
-msgstr ""
+msgstr "git prune-packed [-n | --dry-run] [-q | --quiet]"
 
 #: builtin/prune-packed.c:40
 msgid "Removing duplicate objects"
@@ -8311,7 +8330,7 @@ msgstr ""
 
 #: builtin/pull.c:69
 msgid "git pull [<options>] [<repository> [<refspec>...]]"
-msgstr ""
+msgstr "git pull [<옵션>] [<저장소> [<레퍼런스명세>...]]"
 
 #: builtin/pull.c:113
 msgid "Options related to merging"
@@ -8786,11 +8805,11 @@ msgstr "git remote [-v | --verbose]"
 msgid ""
 "git remote add [-t <branch>] [-m <master>] [-f] [--tags | --no-tags] [--"
 "mirror=<fetch|push>] <name> <url>"
-msgstr ""
+msgstr "git remote add [-t <브랜치>] [-m <master>] [-f] [--tags | --no-tags] [--mirror=<fetch|push>] <이름> <url>"
 
 #: builtin/remote.c:14 builtin/remote.c:34
 msgid "git remote rename <old> <new>"
-msgstr ""
+msgstr "git remote rename <옛이름> <새이름>"
 
 #: builtin/remote.c:15 builtin/remote.c:39
 msgid "git remote remove <name>"
@@ -8798,7 +8817,7 @@ msgstr "git remote remove <이름>"
 
 #: builtin/remote.c:16 builtin/remote.c:44
 msgid "git remote set-head <name> (-a | --auto | -d | --delete | <branch>)"
-msgstr ""
+msgstr "git remote set-head <이름> (-a | --auto | -d | --delete | <브랜치>)"
 
 #: builtin/remote.c:17
 msgid "git remote [-v | --verbose] show [-n] <name>"
@@ -8811,51 +8830,51 @@ msgstr "git remote prune [-n | --dry-run] <이름>"
 #: builtin/remote.c:19
 msgid ""
 "git remote [-v | --verbose] update [-p | --prune] [(<group> | <remote>)...]"
-msgstr ""
+msgstr "git remote [-v | --verbose] update [-p | --prune] [(<그룹> | <리모트>)...]"
 
 #: builtin/remote.c:20
 msgid "git remote set-branches [--add] <name> <branch>..."
-msgstr ""
+msgstr "git remote set-branches [--add] <이름> <브랜치>..."
 
 #: builtin/remote.c:21 builtin/remote.c:70
 msgid "git remote get-url [--push] [--all] <name>"
-msgstr ""
+msgstr "git remote get-url [--push] [--all] <이름>"
 
 #: builtin/remote.c:22 builtin/remote.c:75
 msgid "git remote set-url [--push] <name> <newurl> [<oldurl>]"
-msgstr ""
+msgstr "git remote set-url [--push] <이름> <새url> [<옛url>]"
 
 #: builtin/remote.c:23 builtin/remote.c:76
 msgid "git remote set-url --add <name> <newurl>"
-msgstr ""
+msgstr "git remote set-url --add <이름> <새url>"
 
 #: builtin/remote.c:24 builtin/remote.c:77
 msgid "git remote set-url --delete <name> <url>"
-msgstr ""
+msgstr "git remote set-url --delete <이름> <url>"
 
 #: builtin/remote.c:29
 msgid "git remote add [<options>] <name> <url>"
-msgstr ""
+msgstr "git remote add [<옵션>] <이름> <url>"
 
 #: builtin/remote.c:49
 msgid "git remote set-branches <name> <branch>..."
-msgstr ""
+msgstr "git remote set-branches <이름> <브랜치>..."
 
 #: builtin/remote.c:50
 msgid "git remote set-branches --add <name> <branch>..."
-msgstr ""
+msgstr "git remote set-branches --add <이름> <브랜치>..."
 
 #: builtin/remote.c:55
 msgid "git remote show [<options>] <name>"
-msgstr ""
+msgstr "git remote show [<옵션>] <이름>"
 
 #: builtin/remote.c:60
 msgid "git remote prune [<options>] <name>"
-msgstr ""
+msgstr "git remote prune [<옵션>] <이름>"
 
 #: builtin/remote.c:65
 msgid "git remote update [<options>] [<group> | <remote>]..."
-msgstr ""
+msgstr "git remote update [<옵션>] [<그룹> | <리모트>]..."
 
 #: builtin/remote.c:94
 #, c-format
@@ -9095,7 +9114,7 @@ msgstr ""
 
 #: builtin/remote.c:1163 builtin/remote.c:1314
 msgid "(no URL)"
-msgstr ""
+msgstr "(URL 없음)"
 
 #: builtin/remote.c:1172 builtin/remote.c:1174
 #, c-format
@@ -9117,7 +9136,7 @@ msgstr ""
 #, c-format
 msgid "  Remote branch:%s"
 msgid_plural "  Remote branches:%s"
-msgstr[0] ""
+msgstr[0] "  리모트 브랜치:%s"
 
 #: builtin/remote.c:1197 builtin/remote.c:1224
 msgid " (status not queried)"
@@ -9187,7 +9206,7 @@ msgstr ""
 #: builtin/remote.c:1311
 #, c-format
 msgid "URL: %s"
-msgstr ""
+msgstr "URL: %s"
 
 #: builtin/remote.c:1327
 #, c-format
@@ -9235,15 +9254,15 @@ msgstr ""
 
 #: builtin/remote.c:1543
 msgid "add URL"
-msgstr ""
+msgstr "URL을 추가합니다"
 
 #: builtin/remote.c:1545
 msgid "delete URLs"
-msgstr ""
+msgstr "URL을 삭제합니다"
 
 #: builtin/remote.c:1552
 msgid "--add --delete doesn't make sense"
-msgstr ""
+msgstr "--add --delete 옵션을 둘다 쓰면 안 됩니다"
 
 #: builtin/remote.c:1592
 #, c-format
@@ -9313,7 +9332,7 @@ msgstr ""
 
 #: builtin/repack.c:180 builtin/repack.c:184
 msgid "bytes"
-msgstr ""
+msgstr "바이트수"
 
 #: builtin/repack.c:181
 msgid "same as the above, but limit memory size instead of entries count"
@@ -9358,7 +9377,7 @@ msgstr "git replace -d <오브젝트>..."
 
 #: builtin/replace.c:23
 msgid "git replace [--format=<format>] [-l [<pattern>]]"
-msgstr ""
+msgstr "git replace [--format=<형식>] [-l [<패턴>]]"
 
 #: builtin/replace.c:325 builtin/replace.c:363 builtin/replace.c:391
 #, c-format
@@ -9435,7 +9454,7 @@ msgstr ""
 #: builtin/reset.c:26
 msgid ""
 "git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<commit>]"
-msgstr ""
+msgstr "git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<커밋>]"
 
 #: builtin/reset.c:27
 msgid "git reset [-q] <tree-ish> [--] <paths>..."
@@ -9592,11 +9611,11 @@ msgstr ""
 
 #: builtin/revert.c:23
 msgid "git revert <subcommand>"
-msgstr ""
+msgstr "git revert <하위명령>"
 
 #: builtin/revert.c:28
 msgid "git cherry-pick [<options>] <commit-ish>..."
-msgstr ""
+msgstr "git cherry-pick [<옵션>] <커밋-따위>..."
 
 #: builtin/revert.c:29
 msgid "git cherry-pick <subcommand>"
@@ -9633,11 +9652,11 @@ msgstr ""
 
 #: builtin/revert.c:89
 msgid "merge strategy"
-msgstr ""
+msgstr "병합 전략"
 
 #: builtin/revert.c:90
 msgid "option"
-msgstr ""
+msgstr "옵션"
 
 #: builtin/revert.c:91
 msgid "option for merge strategy"
@@ -9888,7 +9907,7 @@ msgstr ""
 msgid ""
 "git show-ref [-q | --quiet] [--verify] [--head] [-d | --dereference] [-s | --"
 "hash[=<n>]] [--abbrev[=<n>]] [--tags] [--heads] [--] [<pattern>...]"
-msgstr ""
+msgstr "git show-ref [-q | --quiet] [--verify] [--head] [-d | --dereference] [-s | --hash[=<n>]] [--abbrev[=<n>]] [--tags] [--heads] [--] [<패턴>...]"
 
 #: builtin/show-ref.c:11
 msgid "git show-ref --exclude-existing[=<pattern>]"
@@ -9928,11 +9947,11 @@ msgstr ""
 
 #: builtin/stripspace.c:17
 msgid "git stripspace [-s | --strip-comments]"
-msgstr ""
+msgstr "git stripspace [-s | --strip-comments]"
 
 #: builtin/stripspace.c:18
 msgid "git stripspace [-c | --comment-lines]"
-msgstr ""
+msgstr "git stripspace [-c | --comment-lines]"
 
 #: builtin/stripspace.c:35
 msgid "skip and remove all lines starting with comment character"
@@ -9965,7 +9984,7 @@ msgstr ""
 
 #: builtin/submodule--helper.c:173
 msgid "name of the new submodule"
-msgstr ""
+msgstr "새 하위 모듈 이름"
 
 #: builtin/submodule--helper.c:176
 msgid "url where to clone the submodule from"
@@ -10018,11 +10037,11 @@ msgstr ""
 
 #: builtin/symbolic-ref.c:7
 msgid "git symbolic-ref [<options>] <name> [<ref>]"
-msgstr ""
+msgstr "git symbolic-ref [<옵션>] <이름> [<레퍼런스>]"
 
 #: builtin/symbolic-ref.c:8
 msgid "git symbolic-ref -d [-q] <name>"
-msgstr ""
+msgstr "git symbolic-ref -d [-q] <이름>"
 
 #: builtin/symbolic-ref.c:40
 msgid "suppress error message for non-symbolic (detached) refs"
@@ -10052,7 +10071,7 @@ msgstr ""
 
 #: builtin/tag.c:24
 msgid "git tag -d <tagname>..."
-msgstr ""
+msgstr "git tag -d <태그이름>..."
 
 #: builtin/tag.c:25
 msgid ""
@@ -10062,17 +10081,17 @@ msgstr ""
 
 #: builtin/tag.c:27
 msgid "git tag -v <tagname>..."
-msgstr ""
+msgstr "git tag -v <태그이름>..."
 
 #: builtin/tag.c:80
 #, c-format
 msgid "tag name too long: %.*s..."
-msgstr ""
+msgstr "태그 이름이 너무 깁니다: %.*s..."
 
 #: builtin/tag.c:85
 #, c-format
 msgid "tag '%s' not found."
-msgstr ""
+msgstr "'%s' 태그가 없습니다"
 
 #: builtin/tag.c:100
 #, c-format
@@ -10138,11 +10157,11 @@ msgstr ""
 
 #: builtin/tag.c:343
 msgid "delete tags"
-msgstr ""
+msgstr "태그를 삭제합니다"
 
 #: builtin/tag.c:344
 msgid "verify tags"
-msgstr ""
+msgstr "태그를 검증합니다"
 
 #: builtin/tag.c:346
 msgid "Tag creation options"
@@ -10154,7 +10173,7 @@ msgstr ""
 
 #: builtin/tag.c:350
 msgid "tag message"
-msgstr ""
+msgstr "태그 메시지"
 
 #: builtin/tag.c:352
 msgid "annotated and GPG-signed tag"
@@ -10487,7 +10506,7 @@ msgstr ""
 
 #: builtin/verify-tag.c:17
 msgid "git verify-tag [-v | --verbose] <tag>..."
-msgstr ""
+msgstr "git verify-tag [-v | --verbose] <태그>..."
 
 #: builtin/verify-tag.c:83
 msgid "print tag contents"
@@ -10702,9 +10721,7 @@ msgstr "작업 폴더 상태를 표시합니다"
 
 #: common-cmds.h:37
 msgid "Create, list, delete or verify a tag object signed with GPG"
-msgstr ""
-"태그 오브젝트를 만들거나, 목록을 표시하거나, 삭제하거나, GPG로 서명한 태그를 "
-"검증합니다"
+msgstr "태그를 만들거나, 표시하거나, 삭제하거나, GPG 서명을 검증합니다"
 
 #: parse-options.h:145
 msgid "expiry-date"
