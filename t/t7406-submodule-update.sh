@@ -31,6 +31,14 @@ test_expect_success 'setup a submodule tree' '
 	git clone super rebasing &&
 	git clone super merging &&
 	git clone super none &&
+	git clone super non-default-branch &&
+	(cd non-default-branch &&
+	 git checkout -b non-default &&
+	 echo "non-default" >file &&
+	 git add file &&
+	 git commit -m "Commit on non-default branch" &&
+	 git checkout master
+	) &&
 	(cd super &&
 	 git submodule add ../submodule submodule &&
 	 test_tick &&
@@ -63,6 +71,15 @@ test_expect_success 'setup a submodule tree' '
 	 git submodule add ../none none &&
 	 test_tick &&
 	 git commit -m "none"
+	) &&
+	(cd super &&
+	 git submodule add ../non-default-branch non-default-branch &&
+	 (cd non-default-branch &&
+	  git checkout non-default
+	 ) &&
+     git add non-default-branch &&
+	 test_tick &&
+	 git commit -m "non-default-branch"
 	)
 '
 
@@ -752,17 +769,29 @@ test_expect_success SYMLINKS 'submodule update can handle symbolic links in pwd'
 	)
 '
 
-test_expect_success 'submodule update clone shallow submodule' '
+test_expect_success 'submodule update clone shallow submodule on default branch' '
 	git clone cloned super3 &&
 	pwd=$(pwd) &&
 	(cd super3 &&
 	 sed -e "s#url = ../#url = file://$pwd/#" <.gitmodules >.gitmodules.tmp &&
 	 mv -f .gitmodules.tmp .gitmodules &&
+	 git config submodule.non-default-branch.update none &&
 	 git submodule update --init --depth=3 &&
 	 (cd submodule &&
 	  test 1 = $(git log --oneline | wc -l)
 	 )
-)
+	)
+'
+
+test_expect_success 'submodule update clone shallow submodule on non-default branch' '
+	git clone cloned super4 &&
+	pwd=$(pwd) &&
+	(cd super4 &&
+	 sed -e "s#url = ../#url = file://$pwd/#" <.gitmodules >.gitmodules.tmp &&
+	 mv -f .gitmodules.tmp .gitmodules &&
+	 test_must_fail git submodule update --init --depth=3 2>submodule.out &&
+	 test_i18ngrep --count "Commit is probably not on the default branch." submodule.out
+    )
 '
 
 test_expect_success 'submodule update --recursive drops module name before recursing' '

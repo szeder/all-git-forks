@@ -764,6 +764,10 @@ Maybe you want to use 'update --init'?")"
 				command="git checkout $subforce -q"
 				die_msg="$(eval_gettext "Unable to checkout '\$sha1' in submodule path '\$displaypath'")"
 				say_msg="$(eval_gettext "Submodule path '\$displaypath': checked out '\$sha1'")"
+				if ! test -z "$depth"
+				then
+					die_msg="$die_msg $(eval_gettext "Commit is probably not on the default branch. Try to remove the '\$depth' argument!")"
+				fi
 				;;
 			rebase)
 				command="git rebase"
