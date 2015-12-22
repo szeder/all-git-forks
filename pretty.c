@@ -147,6 +147,19 @@ static struct cmt_fmt_map *find_commit_format(const char *sought)
 	return find_commit_format_recursive(sought, sought, 0);
 }
 
+void prepend_graph_placeholder(struct rev_info *rev)
+{
+	if (!rev->graph || rev->commit_format != CMIT_FMT_USERFORMAT)
+		return;
+	if (user_format && !strstr(user_format, "%G")) {
+		struct strbuf sb = STRBUF_INIT;
+		strbuf_addstr(&sb, "%G");
+		strbuf_addstr(&sb, user_format);
+		free(user_format);
+		user_format = strbuf_detach(&sb, NULL);
+	}
+}
+
 void get_commit_format(const char *arg, struct rev_info *rev)
 {
 	struct cmt_fmt_map *commit_format;
@@ -176,6 +189,7 @@ void get_commit_format(const char *arg, struct rev_info *rev)
 		save_user_format(rev, commit_format->user_format,
 				 commit_format->is_tformat);
 	}
+	prepend_graph_placeholder(rev);
 }
 
 /*
