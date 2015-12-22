@@ -539,6 +539,14 @@ static void show_mergetag(struct rev_info *opt, struct commit *commit)
 	for_each_mergetag(show_one_mergetag, commit, opt);
 }
 
+static void fwrite_and_empty_strbuf(struct strbuf *sb)
+{
+	if (sb->len) {
+		fwrite(sb->buf, sizeof(char), sb->len, stdout);
+		strbuf_reset(sb);
+	}
+}
+
 void show_log(struct rev_info *opt)
 {
 	struct strbuf msgbuf = STRBUF_INIT;
@@ -547,6 +555,7 @@ void show_log(struct rev_info *opt)
 	int abbrev_commit = opt->abbrev_commit ? opt->abbrev : 40;
 	const char *extra_headers = opt->extra_headers;
 	struct pretty_print_context ctx = {0};
+	struct strbuf graph_header = STRBUF_INIT;
 
 	opt->loginfo = NULL;
 	if (!opt->verbose_header) {
@@ -595,19 +604,21 @@ void show_log(struct rev_info *opt)
 	opt->shown_one = 1;
 
 	/*
-	 * If the history graph was requested,
-	 * print the graph, up to this commit's line
+	 * If the history graph was requested, collect the graph, up
+	 * to this commit's line
 	 */
-	graph_show_commit(opt->graph, NULL);
+	graph_show_commit(opt->graph, &graph_header);
 
 	/*
 	 * Print header line of header..
 	 */
 
 	if (opt->commit_format == CMIT_FMT_EMAIL) {
+		fwrite_and_empty_strbuf(&graph_header);
 		log_write_email_headers(opt, commit, &ctx.subject, &extra_headers,
 					&ctx.need_8bit_cte);
 	} else if (opt->commit_format != CMIT_FMT_USERFORMAT) {
+		fwrite_and_empty_strbuf(&graph_header);
 		fputs(diff_get_color_opt(&opt->diffopt, DIFF_COMMIT), stdout);
 		if (opt->commit_format != CMIT_FMT_ONELINE)
 			fputs("commit ", stdout);
@@ -649,6 +660,7 @@ void show_log(struct rev_info *opt)
 	}
 
 	if (opt->show_signature) {
+		fwrite_and_empty_strbuf(&graph_header);
 		show_signature(opt, commit);
 		show_mergetag(opt, commit);
 	}
@@ -685,6 +697,7 @@ void show_log(struct rev_info *opt)
 	ctx.mailmap = opt->mailmap;
 	ctx.color = opt->diffopt.use_color;
 	ctx.output_encoding = get_log_output_encoding();
+	ctx.graph_header = &graph_header;
 	if (opt->from_ident.mail_begin && opt->from_ident.name_begin)
 		ctx.from_ident = &opt->from_ident;
 	pretty_print_commit(&ctx, commit, &msgbuf);
