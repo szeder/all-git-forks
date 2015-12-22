@@ -587,7 +587,7 @@ static void wt_status_collect_untracked(struct wt_status *s)
 	else
 		dir.untracked = the_index.untracked;
 
-	if (!dir.untracked && use_untracked_cache == 1) {
+	if (use_untracked_cache == 1) {
 		add_untracked_cache();
 		dir.untracked = the_index.untracked;
 	} else if (dir.untracked && use_untracked_cache == 0) {
