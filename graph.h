@@ -77,7 +77,7 @@ int graph_next_line(struct git_graph *graph, struct strbuf *sb);
  * up to and including the line containing this commit.
  * Does not print a terminating newline on the last line.
  */
-void graph_show_commit(struct git_graph *graph);
+void graph_show_commit(struct git_graph *graph, struct strbuf *last_line);
 
 /*
  * If the graph is non-NULL, print one line of the history graph to stdout.

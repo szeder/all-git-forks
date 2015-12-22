@@ -550,7 +550,7 @@ void show_log(struct rev_info *opt)
 
 	opt->loginfo = NULL;
 	if (!opt->verbose_header) {
-		graph_show_commit(opt->graph);
+		graph_show_commit(opt->graph, NULL);
 
 		if (!opt->graph)
 			put_revision_mark(opt, commit);
@@ -598,7 +598,7 @@ void show_log(struct rev_info *opt)
 	 * If the history graph was requested,
 	 * print the graph, up to this commit's line
 	 */
-	graph_show_commit(opt->graph);
+	graph_show_commit(opt->graph, NULL);
 
 	/*
 	 * Print header line of header..

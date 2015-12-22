@@ -60,7 +60,7 @@ static void show_commit(struct commit *commit, void *data)
 		return;
 	}
 
-	graph_show_commit(revs->graph);
+	graph_show_commit(revs->graph, NULL);
 
 	if (revs->count) {
 		if (commit->object.flags & PATCHSAME)

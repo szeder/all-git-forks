@@ -1175,7 +1175,7 @@ int graph_is_commit_finished(struct git_graph const *graph)
 	return (graph->state == GRAPH_PADDING);
 }
 
-void graph_show_commit(struct git_graph *graph)
+void graph_show_commit(struct git_graph *graph, struct strbuf *last_line)
 {
 	struct strbuf msgbuf = STRBUF_INIT;
 	int shown_commit_line = 0;
@@ -1195,6 +1195,10 @@ void graph_show_commit(struct git_graph *graph)
 
 	while (!shown_commit_line && !graph_is_commit_finished(graph)) {
 		shown_commit_line = graph_next_line(graph, &msgbuf);
+		if (last_line && shown_commit_line) {
+			strbuf_addbuf(last_line, &msgbuf);
+			break;
+		}
 		fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
 		if (!shown_commit_line)
 			putchar('\n');
