@@ -1938,16 +1938,20 @@ void add_untracked_ident(struct untracked_cache *uc)
 	strbuf_addch(&uc->ident, 0);
 }
 
+static void new_untracked_ident(void)
+{
+	struct untracked_cache *uc = xcalloc(1, sizeof(*uc));
+	strbuf_init(&uc->ident, 100);
+	uc->exclude_per_dir = ".gitignore";
+	/* should be the same flags used by git-status */
+	uc->dir_flags = DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
+	the_index.untracked = uc;
+}
+
 void add_untracked_cache(void)
 {
-	if (!the_index.untracked) {
-		struct untracked_cache *uc = xcalloc(1, sizeof(*uc));
-		strbuf_init(&uc->ident, 100);
-		uc->exclude_per_dir = ".gitignore";
-		/* should be the same flags used by git-status */
-		uc->dir_flags = DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
-		the_index.untracked = uc;
-	}
+	if (!the_index.untracked)
+		new_untracked_ident();
 	add_untracked_ident(the_index.untracked);
 	the_index.cache_changed |= UNTRACKED_CHANGED;
 }
