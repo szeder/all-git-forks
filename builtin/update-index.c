@@ -1128,11 +1128,9 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	} else if (untracked_cache == UC_DISABLE) {
 		if (use_untracked_cache > 0 && git_config_set("core.untrackedCache", "false"))
 			die("could not set core.untrackedCache to false");
-		if (the_index.untracked) {
-			remove_untracked_cache();
-			if (verbose)
-				printf(_("Untracked cache disabled\n"));
-		}
+		remove_untracked_cache();
+		if (verbose)
+			printf(_("Untracked cache disabled\n"));
 	}
 
 	if (active_cache_changed) {
