@@ -358,6 +358,7 @@ void setup_work_tree(void)
 static int check_repo_format(const char *var, const char *value, void *cb)
 {
 	const char *ext;
+	const char *verstr;
 
 	if (strcmp(var, "core.repositoryformatversion") == 0)
 		repository_format_version = git_config_int(var, value);
@@ -369,6 +370,14 @@ static int check_repo_format(const char *var, const char *value, void *cb)
 		 * we fall through to recording it as unknown, and
 		 * check_repository_format will complain
 		 */
+		if (skip_prefix(ext, "worktree=", &verstr)) {
+			char *end = NULL;
+			int ver = strtol(verstr, &end, 10);
+			if (end && !*end) {
+				repository_format_worktree_version = ver;
+				return 0;
+			}
+		}
 		if (!strcmp(ext, "noop"))
 			;
 		else if (!strcmp(ext, "preciousobjects"))

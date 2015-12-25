@@ -86,3 +86,9 @@ for testing format-1 compatibility.
 When the config key `extensions.preciousObjects` is set to `true`,
 objects in the repository MUST NOT be deleted (e.g., by `git-prune` or
 `git repack -d`).
+
+`worktree=<N>`
+~~~~~~~~~~~~~~
+
+Define behavior in multiple worktree setup. `<N>` starts from 1. There
+should only be one `worktree=` extension defined at a time.
