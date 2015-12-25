@@ -319,3 +319,16 @@ const char *get_commit_output_encoding(void)
 {
 	return git_commit_encoding ? git_commit_encoding : "UTF-8";
 }
+
+const char *get_git_env(const char *name)
+{
+	if (!strcmp(name, GIT_DIR_ENVIRONMENT))
+		return get_git_dir();
+	else if (!strcmp(name, GIT_WORK_TREE_ENVIRONMENT))
+		return get_git_work_tree();
+	else if (!strcmp(name, GIT_COMMON_DIR_ENVIRONMENT))
+		return get_git_common_dir();
+	// else if ... check environment.c
+	else
+		return getenv(name);
+}
