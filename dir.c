@@ -1279,29 +1279,15 @@ enum exist_status {
  */
 static enum exist_status directory_exists_in_index_icase(const char *dirname, int len)
 {
-	const struct cache_entry *ce = cache_dir_exists(dirname, len);
-	unsigned char endchar;
+	struct cache_entry *ce;
 
-	if (!ce)
-		return index_nonexistent;
-	endchar = ce->name[len];
-
-	/*
-	 * The cache_entry structure returned will contain this dirname
-	 * and possibly additional path components.
-	 */
-	if (endchar == '/')
+	if (cache_dir_exists(dirname, len))
 		return index_directory;
 
-	/*
-	 * If there are no additional path components, then this cache_entry
-	 * represents a submodule.  Submodules, despite being directories,
-	 * are stored in the cache without a closing slash.
-	 */
-	if (!endchar && S_ISGITLINK(ce->ce_mode))
+	ce = cache_file_exists(dirname, len, ignore_case);
+	if (ce && S_ISGITLINK(ce->ce_mode))
 		return index_gitdir;
 
-	/* This should never be hit, but it exists just in case. */
 	return index_nonexistent;
 }
 
@@ -1596,8 +1582,7 @@ static enum path_treatment treat_path_fast(struct dir_struct *dir,
 	}
 	strbuf_addstr(path, cdir->ucd->name);
 	/* treat_one_path() does this before it calls treat_directory() */
-	if (path->buf[path->len - 1] != '/')
-		strbuf_addch(path, '/');
+	strbuf_complete(path, '/');
 	if (cdir->ucd->check_only)
 		/*
 		 * check_only is set as a result of treat_directory() getting
@@ -2107,6 +2092,15 @@ int file_exists(const char *f)
 	return lstat(f, &sb) == 0;
 }
 
+static int cmp_icase(char a, char b)
+{
+	if (a == b)
+		return 0;
+	if (ignore_case)
+		return toupper(a) - toupper(b);
+	return a - b;
+}
+
 /*
  * Given two normalized paths (a trailing slash is ok), if subdir is
  * outside dir, return -1.  Otherwise return the offset in subdir that
@@ -2118,7 +2112,7 @@ int dir_inside_of(const char *subdir, const char *dir)
 
 	assert(dir && subdir && *dir && *subdir);
 
-	while (*dir && *subdir && *dir == *subdir) {
+	while (*dir && *subdir && !cmp_icase(*dir, *subdir)) {
 		dir++;
 		subdir++;
 		offset++;
@@ -2203,8 +2197,7 @@ static int remove_dir_recurse(struct strbuf *path, int flag, int *kept_up)
 		else
 			return -1;
 	}
-	if (path->buf[original_len - 1] != '/')
-		strbuf_addch(path, '/');
+	strbuf_complete(path, '/');
 
 	len = path->len;
 	while ((e = readdir(dir)) != NULL) {
