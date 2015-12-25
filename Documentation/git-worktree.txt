@@ -110,6 +110,18 @@ OPTIONS
 --expire <time>::
 	With `prune`, only expire unused working trees older than <time>.
 
+WORKTREE VERSIONS AND MIGRATION
+-------------------------------
+Multiple worktree is still an experimental feature and evolving. Every
+time the behavior is changed, the "worktree version" is stepped
+up. Worktree version is stored as a configuration variable
+extensions.worktree.
+
+Version 0
+~~~~~~~~~
+This is the first release. Version 0 is implied if extensions.worktree
+does not exist.
+
 DETAILS
 -------
 Each linked working tree has a private sub-directory in the repository's
