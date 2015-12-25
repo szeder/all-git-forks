@@ -155,6 +155,32 @@ static int handle_path_include(const char *path, struct config_include_data *inc
 	expanded = expand_user_path(path);
 	if (!expanded)
 		return error("Could not expand include path '%s'", path);
+
+	if (starts_with(expanded, "$GIT_")) {
+		char *slash = expanded;
+		const char *base = NULL;
+		struct strbuf sb = STRBUF_INIT;
+
+		while (*slash && !is_dir_sep(*slash))
+			slash++;
+
+		if (*slash) {
+			char saved_slash = *slash;
+			*slash = '\0';
+			base = get_git_env(expanded + 1);
+			*slash = saved_slash;
+		}
+
+		if (!base) {
+			free(expanded);
+			return error("Could not expand include path '%s'", path);
+		}
+
+		strbuf_addstr(&sb, real_path(base));
+		strbuf_addstr(&sb, slash);
+		free(expanded);
+		expanded = strbuf_detach(&sb, NULL);
+	}
 	path = expanded;
 
 	/*
