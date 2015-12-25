@@ -727,6 +727,7 @@ extern int grafts_replace_parents;
 #define GIT_REPO_VERSION_READ 1
 extern int repository_format_version;
 extern int repository_format_precious_objects;
+extern int repository_format_worktree_version;
 extern int check_repository_format(void);
 
 #define MTIME_CHANGED	0x0001
