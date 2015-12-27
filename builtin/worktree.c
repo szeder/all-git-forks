@@ -184,6 +184,37 @@ static const char *worktree_basename(const char *path, int *olen)
 	return name;
 }
 
+static int git_config_set_int(const char *key, int value)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int ret;
+
+	strbuf_addf(&sb, "%d", value);
+	ret = git_config_set(key, sb.buf);
+	strbuf_release(&sb);
+	return ret;
+}
+
+static void upgrade_worktree_version(void)
+{
+	if (repository_format_worktree_version != 0)
+		/*
+		 * XXX: anything else to do when upgrading from
+		 * version X to Y? Also, the user may want to stick to
+		 * a particular version if multiple git versions
+		 * operate on this repo. In that case, do not
+		 * automatically bump version up.
+		 */
+		return;
+	repository_format_worktree_version = 1;
+	if (repository_format_version < 2)
+		repository_format_version = 2;
+	git_config_set_int("core.repositoryformatversion",
+			   repository_format_version);
+	git_config_set_int("extensions.worktree",
+			   repository_format_worktree_version);
+}
+
 static int add_worktree(const char *path, const char *refname,
 			const struct add_opts *opts)
 {
@@ -267,6 +298,8 @@ static int add_worktree(const char *path, const char *refname,
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/commondir", sb_repo.buf);
 	write_file(sb.buf, "../..");
+
+	upgrade_worktree_version();
 
 	fprintf_ln(stderr, _("Preparing %s (identifier %s)"), path, name);
 
