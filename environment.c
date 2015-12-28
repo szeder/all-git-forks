@@ -14,6 +14,7 @@
 
 int trust_executable_bit = 1;
 int trust_ctime = 1;
+int use_untracked_cache;
 int check_stat = 1;
 int has_symlinks = 1;
 int minimum_abbrev = 4, default_abbrev = 7;
