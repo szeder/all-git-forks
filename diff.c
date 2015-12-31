@@ -771,17 +771,6 @@ struct diff_words_buffer {
 	int orig_nr, orig_alloc;
 };
 
-static void diff_words_append(char *line, unsigned long len,
-		struct diff_words_buffer *buffer)
-{
-	ALLOC_GROW(buffer->text.ptr, buffer->text.size + len, buffer->alloc);
-	line++;
-	len--;
-	memcpy(buffer->text.ptr + buffer->text.size, line, len);
-	buffer->text.size += len;
-	buffer->text.ptr[buffer->text.size] = '\0';
-}
-
 struct diff_words_style_elem {
 	const char *prefix;
 	const char *suffix;
@@ -810,6 +799,17 @@ struct diff_words_data {
 	enum diff_words_type type;
 	struct diff_words_style *style;
 };
+
+static void diff_words_append(char *line, unsigned long len,
+		struct diff_words_buffer *buffer)
+{
+	ALLOC_GROW(buffer->text.ptr, buffer->text.size + len, buffer->alloc);
+	line++;
+	len--;
+	memcpy(buffer->text.ptr + buffer->text.size, line, len);
+	buffer->text.size += len;
+	buffer->text.ptr[buffer->text.size] = '\0';
+}
 
 static int fn_out_diff_words_write_helper(FILE *fp,
 					  struct diff_words_style_elem *st_el,
