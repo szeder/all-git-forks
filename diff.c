@@ -475,6 +475,73 @@ struct text_slice {
 	enum slice_tag tag;
 };
 
+static void emit_text_slices(FILE *file, int use_color,
+			     const char *set,
+			     const char *line, int len,
+			     struct text_slice *slice)
+{
+	struct text_slice *current;
+	const char *last_color = set;
+	const char *reset = diff_get_color(use_color, DIFF_RESET);
+	const char *last_emitted = line;
+
+	for (current = slice; ; current++) {
+		const char *start, *end, *color;
+
+		/*
+		 * start adjustment is needed because there may be \n
+		 * between lines that belongs to neither. Or when we
+		 * hit the guard, which has NULL in start.
+		 */
+		start = current->start;
+		if (!start || start > line + len)
+			start = line + len;
+
+		/* emit the gap since the last slice */
+		if (start > last_emitted) {
+			if (last_color != set) {
+				fputs(reset, file);
+				fputs(set, file);
+				last_color = set;
+			}
+			fwrite(last_emitted, start - last_emitted, 1, file);
+			last_emitted = start;
+		}
+
+		/* the caller can remove \n and emit it separately */
+		end = start + current->length;
+		if (end > line + len)
+			end = line + len;
+
+		switch (current->tag) {
+		case TAG_OLD_WORD:
+			color = diff_get_color(use_color, DIFF_WORD_OLD);
+			break;
+
+		case TAG_NEW_WORD:
+			color = diff_get_color(use_color, DIFF_WORD_NEW);
+			break;
+
+		case TAG_LINE:
+			if (current != slice)
+				return;
+			continue;
+		}
+
+		if (end == start)
+			continue;
+
+		if (color && color != last_color) {
+			if (color == set)
+				fputs(reset, file);
+			fputs(color, file);
+			last_color = color;
+		}
+		fwrite(start, end - start, 1, file);
+		last_emitted = end;
+	}
+}
+
 static void emit_line_0(struct diff_options *o, int use_color,
 			enum color_diff set_, int first,
 			const char *line, int len,
@@ -507,7 +574,11 @@ static void emit_line_0(struct diff_options *o, int use_color,
 		fputs(set, file);
 		if (!nofirst)
 			fputc(first, file);
-		fwrite(line, len, 1, file);
+		if (slice)
+			emit_text_slices(o->file, use_color, set,
+					 line, len, slice);
+		else
+			fwrite(line, len, 1, file);
 		fputs(reset, file);
 	}
 	if (has_trailing_carriage_return)
@@ -976,12 +1047,18 @@ static void diff_words_buffer_show(struct emit_callback *ecb,
 {
 	struct text_slice *line, *end;
 
+	/* Add guard for emit_text_slices() */
+	ALLOC_GROW(b->slice, b->slice_nr + 1, b->slice_alloc);
 	end = b->slice + b->slice_nr;
+	end->tag = TAG_LINE;
+	end->start = NULL;
+	end->length = 0;
+
 	for (line = b->slice; line < end; line++) {
 		if (line->tag != TAG_LINE)
 			continue;
 		emit_line_checked(ecb, line->start, line->length,
-				  color, ws_error_highlight, sign, NULL);
+				  color, ws_error_highlight, sign, line);
 	}
 }
 
