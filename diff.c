@@ -800,9 +800,17 @@ struct diff_words_data {
 	struct diff_words_style *style;
 };
 
-static void diff_words_append(char *line, unsigned long len,
-		struct diff_words_buffer *buffer)
+static void diff_words_append(struct diff_words_data *diff_words,
+			      char *line, unsigned long len)
 {
+	struct diff_words_buffer *buffer;
+
+	if (line[0] == '-')
+		buffer = &diff_words->minus;
+	else {
+		assert(line[0] == '+');
+		buffer = &diff_words->plus;
+	}
 	ALLOC_GROW(buffer->text.ptr, buffer->text.size + len, buffer->alloc);
 	line++;
 	len--;
@@ -1276,13 +1284,8 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 	}
 
 	if (ecbdata->diff_words) {
-		if (line[0] == '-') {
-			diff_words_append(line, len,
-					  &ecbdata->diff_words->minus);
-			return;
-		} else if (line[0] == '+') {
-			diff_words_append(line, len,
-					  &ecbdata->diff_words->plus);
+		if (line[0] == '-' || line[0] == '+') {
+			diff_words_append(ecbdata->diff_words, line, len);
 			return;
 		} else if (starts_with(line, "\\ ")) {
 			/*
