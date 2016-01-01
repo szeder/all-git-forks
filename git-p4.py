@@ -822,39 +822,37 @@ def p4ChangesForPaths(depotPaths, changeRange, requestedBlockSize):
                 die("cannot use --changes-block-size with non-numeric revisions")
             block_size = None
 
-    # Accumulate change numbers in a dictionary to avoid duplicates
-    changes = {}
+    changes = []
 
-    for p in depotPaths:
-        # Retrieve changes a block at a time, to prevent running
-        # into a MaxResults/MaxScanRows error from the server.
+    # Retrieve changes a block at a time, to prevent running
+    # into a MaxResults/MaxScanRows error from the server.
 
-        while True:
-            cmd = ['changes']
+    while True:
+        cmd = ['changes']
 
-            if block_size:
-                end = min(changeEnd, changeStart + block_size)
-                revisionRange = "%d,%d" % (changeStart, end)
-            else:
-                revisionRange = "%s,%s" % (changeStart, changeEnd)
+        if block_size:
+            end = min(changeEnd, changeStart + block_size)
+            revisionRange = "%d,%d" % (changeStart, end)
+        else:
+            revisionRange = "%s,%s" % (changeStart, changeEnd)
 
+        for p in depotPaths:
             cmd += ["%s...@%s" % (p, revisionRange)]
 
-            for line in p4_read_pipe_lines(cmd):
-                changeNum = int(line.split(" ")[1])
-                changes[changeNum] = True
+        # Insert changes in chronological order
+        for line in reversed(p4_read_pipe_lines(cmd)):
+            changes.append(int(line.split(" ")[1]))
 
-            if not block_size:
-                break
+        if not block_size:
+            break
 
-            if end >= changeEnd:
-                break
+        if end >= changeEnd:
+            break
 
-            changeStart = end + 1
+        changeStart = end + 1
 
-    changelist = changes.keys()
-    changelist.sort()
-    return changelist
+    changes = sorted(changes)
+    return changes
 
 def p4PathStartsWith(path, prefix):
     # This method tries to remedy a potential mixed-case issue:
@@ -1458,6 +1456,8 @@ class P4Submit(Command, P4UserMap):
            Remove lines in the Files section that show changes to files
            outside the depot path we're committing into."""
 
+        [upstream, settings] = findUpstreamBranchPoint()
+
         template = ""
         inFilesSection = False
         for line in p4_read_pipe_lines(['change', '-o']):
@@ -1470,8 +1470,13 @@ class P4Submit(Command, P4UserMap):
                     lastTab = path.rfind("\t")
                     if lastTab != -1:
                         path = path[:lastTab]
-                        if not p4PathStartsWith(path, self.depotPath):
-                            continue
+                        if settings.has_key('depot-paths'):
+                            if not [p for p in settings['depot-paths']
+                                    if p4PathStartsWith(path, p)]:
+                                continue
+                        else:
+                            if not p4PathStartsWith(path, self.depotPath):
+                                continue
                 else:
                     inFilesSection = False
             else:
@@ -2556,12 +2561,6 @@ class P4Sync(Command, P4UserMap):
         filesToDelete = []
 
         for f in files:
-            # if using a client spec, only add the files that have
-            # a path in the client
-            if self.clientSpecDirs:
-                if self.clientSpecDirs.map_in_client(f['path']) == "":
-                    continue
-
             filesForCommit.append(f)
             if f['action'] in self.delete_actions:
                 filesToDelete.append(f)
@@ -2632,24 +2631,40 @@ class P4Sync(Command, P4UserMap):
         gitStream.write(description)
         gitStream.write("\n")
 
+    def inClientSpec(self, path):
+        if not self.clientSpecDirs:
+            return True
+        inClientSpec = self.clientSpecDirs.map_in_client(path)
+        if not inClientSpec and self.verbose:
+            print('Ignoring file outside of client spec: {0}'.format(path))
+        return inClientSpec
+
+    def hasBranchPrefix(self, path):
+        if not self.branchPrefixes:
+            return True
+        hasPrefix = [p for p in self.branchPrefixes
+                        if p4PathStartsWith(path, p)]
+        if hasPrefix and self.verbose:
+            print('Ignoring file outside of prefix: {0}'.format(path))
+        return hasPrefix
+
     def commit(self, details, files, branch, parent = ""):
         epoch = details["time"]
         author = details["user"]
 
         if self.verbose:
-            print "commit into %s" % branch
-
-        # start with reading files; if that fails, we should not
-        # create a commit.
-        new_files = []
-        for f in files:
-            if [p for p in self.branchPrefixes if p4PathStartsWith(f['path'], p)]:
-                new_files.append (f)
-            else:
-                sys.stderr.write("Ignoring file outside of prefix: %s\n" % f['path'])
+            print('commit into {0}'.format(branch))
 
         if self.clientSpecDirs:
             self.clientSpecDirs.update_client_spec_path_cache(files)
+
+        files = [f for f in files
+            if self.inClientSpec(f['path']) and self.hasBranchPrefix(f['path'])]
+
+        if not files and not gitConfigBool('git-p4.keepEmptyCommits'):
+            print('Ignoring revision {0} as it would produce an empty commit.'
+                .format(details['change']))
+            return
 
         self.gitStream.write("commit %s\n" % branch)
         self.gitStream.write("mark :%s\n" % details["change"])
@@ -2674,7 +2689,7 @@ class P4Sync(Command, P4UserMap):
                 print "parent %s" % parent
             self.gitStream.write("from %s\n" % parent)
 
-        self.streamP4Files(new_files)
+        self.streamP4Files(files)
         self.gitStream.write("\n")
 
         change = int(details["change"])

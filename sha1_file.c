@@ -36,6 +36,7 @@
 static inline uintmax_t sz_fmt(size_t s) { return s; }
 
 const unsigned char null_sha1[20];
+const struct object_id null_oid;
 
 /*
  * This is meant to hold a *small* number of objects that you would
@@ -3504,12 +3505,12 @@ static int for_each_file_in_obj_subdir(int subdir_nr,
 				break;
 		}
 	}
-	strbuf_setlen(path, baselen);
+	closedir(dir);
 
+	strbuf_setlen(path, baselen);
 	if (!r && subdir_cb)
 		r = subdir_cb(subdir_nr, path->buf, data);
 
-	closedir(dir);
 	return r;
 }
 
