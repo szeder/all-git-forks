@@ -15,6 +15,10 @@ CFLAGS += -fno-omit-frame-pointer
 ifeq ($(SANITIZE),memory)
 CFLAGS += -fsanitize-memory-track-origins
 endif
+ifeq ($(SANITIZE),undefined)
+INTERNAL_QSORT = YesPlease
+CFLAGS += -DNO_UNALIGNED_LOADS
+endif
 endif
 
 COMPILER ?= gcc
