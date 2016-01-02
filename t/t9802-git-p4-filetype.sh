@@ -223,12 +223,15 @@ build_gendouble() {
 	import sys
 	import struct
 
-	s = struct.pack(">LL18s",
+	s = struct.pack(b">LL18s",
 			0x00051607,  # AppleDouble
 			0x00020000,  # version 2
-			""           # pad to 26 bytes
+			b""          # pad to 26 bytes
 	)
-	sys.stdout.write(s)
+	if sys.version_info < (3,):
+	    sys.stdout.write(s)
+	else:
+	    sys.stdout.buffer.write(s)
 	EOF
 }
 
