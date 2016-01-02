@@ -26,6 +26,8 @@ import zipfile
 import zlib
 import ctypes
 
+from __future__ import print_function
+
 try:
     from subprocess import CalledProcessError
 except ImportError:
