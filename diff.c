@@ -1059,7 +1059,6 @@ static void diff_words_show(struct emit_callback *ecb)
 			&style->old, style->newline,
 			diff_words->minus.text.size,
 			diff_words->minus.text.ptr, line_prefix);
-		diff_words->minus.text.size = 0;
 		return;
 	}
 
@@ -1088,7 +1087,11 @@ static void diff_words_show(struct emit_callback *ecb)
 			- diff_words->current_plus, diff_words->current_plus,
 			line_prefix);
 	}
-	diff_words->minus.text.size = diff_words->plus.text.size = 0;
+}
+
+static void diff_words_buffer_reset(struct diff_words_buffer *b)
+{
+	b->text.size = 0;
 }
 
 /* In "color-words" mode, show word-diff of words accumulated in the buffer */
@@ -1099,6 +1102,9 @@ static void diff_words_flush(struct emit_callback *ecbdata)
 		return;
 
 	ecbdata->diff_words->flush(ecbdata);
+
+	diff_words_buffer_reset(&ecbdata->diff_words->minus);
+	diff_words_buffer_reset(&ecbdata->diff_words->plus);
 }
 
 static int diff_words_consume(struct emit_callback *ecbdata,
