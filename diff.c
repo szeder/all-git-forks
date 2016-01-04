@@ -847,6 +847,23 @@ static void diff_words_mark_line(struct diff_words_buffer *buffer)
 	}
 }
 
+static void diff_words_buffer_show(struct emit_callback *ecb,
+				   struct diff_words_buffer *b,
+				   enum color_diff color,
+				   unsigned ws_error_highlight,
+				   char sign)
+{
+	struct text_slice *line, *end;
+
+	end = b->slice + b->slice_nr;
+	for (line = b->slice; line < end; line++) {
+		if (line->tag != TAG_LINE)
+			continue;
+		emit_line_checked(ecb, line->start, line->length,
+				  color, ws_error_highlight, sign);
+	}
+}
+
 static void diff_words_show_unified(struct emit_callback *ecbdata)
 {
 	struct diff_words_data		*dw    = ecbdata->diff_words;
@@ -860,6 +877,9 @@ static void diff_words_show_unified(struct emit_callback *ecbdata)
 	 */
 	diff_words_mark_line(minus);
 	diff_words_mark_line(plus);
+
+	diff_words_buffer_show(ecbdata, minus, DIFF_FILE_OLD, WSEH_OLD, '-');
+	diff_words_buffer_show(ecbdata, plus, DIFF_FILE_NEW, WSEH_NEW, '+');
 }
 
 static void diff_words_append(struct diff_words_data *diff_words,
