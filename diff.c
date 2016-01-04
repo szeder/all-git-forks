@@ -860,8 +860,25 @@ static int slicecmp(const void *a_, const void *b_)
 
 static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b)
 {
+	struct text_slice *src, *next, *end;
+
 	if (!b->slice_nr)
 		return;
+
+	/* Join consecutive same-type words */
+	end = b->slice + b->slice_nr;
+	for (src = b->slice; src < end; src++) {
+		next = src + 1;
+		while (next < end &&
+		       TAG_WORD(src->tag) &&
+		       src->tag == next->tag &&
+		       src->start + src->length == next->start) {
+			src->length += next->length;
+			memmove(next, next + 1, sizeof(*next) * (end - next - 1));
+			end--;
+		}
+	}
+	b->slice_nr = end - b->slice;
 
 	/*
 	 * Simplify one-word chunks. Not that at this point we have
