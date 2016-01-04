@@ -1788,6 +1788,10 @@ extern unsigned whitespace_rule(const char *);
 extern unsigned parse_whitespace_rule(const char *);
 extern unsigned ws_check(const char *line, int len, unsigned ws_rule);
 extern void ws_check_emit(const char *line, int len, unsigned ws_rule, FILE *stream, const char *set, const char *reset, const char *ws);
+#define WS_EMIT_NORMAL	-1
+#define WS_EMIT_SET	 0
+#define WS_EMIT_WS	 1
+extern unsigned ws_check_emit_cb(const char *line, int len, unsigned ws_rule, void (*emit)(int color, const char *str, int len, void* cb), void *cb);
 extern char *whitespace_error_string(unsigned ws);
 extern void ws_fix_copy(struct strbuf *, const char *, int, unsigned, int *);
 extern int ws_blank_line(const char *line, int len, unsigned ws_rule);

@@ -146,10 +146,28 @@ char *whitespace_error_string(unsigned ws)
 	return strbuf_detach(&err, NULL);
 }
 
-/* If stream is non-NULL, emits the line after checking. */
-static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
-				FILE *stream, const char *set,
-				const char *reset, const char *ws)
+struct emit_cb {
+	const char *set[2];
+	const char *reset;
+	FILE *fp;
+};
+
+static void emit(int set, const char *str, int len, void *cb)
+{
+	struct emit_cb *ecb = cb;
+	FILE *fp = ecb->fp;
+
+	if (set >= 0)
+		fputs(ecb->set[set], fp);
+	fwrite(str, len, 1, fp);
+	if (set >= 0)
+		fputs(ecb->reset, fp);
+}
+
+/* If cb is non-NULL, call it to print the line after checking. */
+unsigned ws_check_emit_cb(const char *line, int len, unsigned ws_rule,
+			  void (*emit)(int, const char *, int, void*),
+			  void *cb)
 {
 	unsigned result = 0;
 	int written = 0;
@@ -192,62 +210,48 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 			break;
 		if ((ws_rule & WS_SPACE_BEFORE_TAB) && written < i) {
 			result |= WS_SPACE_BEFORE_TAB;
-			if (stream) {
-				fputs(ws, stream);
-				fwrite(line + written, i - written, 1, stream);
-				fputs(reset, stream);
-				fwrite(line + i, 1, 1, stream);
+			if (emit) {
+				emit(WS_EMIT_WS, line + written, i - written, cb);
+				emit(WS_EMIT_NORMAL, line + i, 1, cb);
 			}
 		} else if (ws_rule & WS_TAB_IN_INDENT) {
 			result |= WS_TAB_IN_INDENT;
-			if (stream) {
-				fwrite(line + written, i - written, 1, stream);
-				fputs(ws, stream);
-				fwrite(line + i, 1, 1, stream);
-				fputs(reset, stream);
+			if (emit) {
+				emit(WS_EMIT_NORMAL, line + written, i - written, cb);
+				emit(WS_EMIT_WS, line + i, 1, cb);
 			}
-		} else if (stream) {
-			fwrite(line + written, i - written + 1, 1, stream);
-		}
+		} else if (emit)
+			emit(WS_EMIT_NORMAL, line + written, i - written + 1, cb);
 		written = i + 1;
 	}
 
 	/* Check for indent using non-tab. */
 	if ((ws_rule & WS_INDENT_WITH_NON_TAB) && i - written >= ws_tab_width(ws_rule)) {
 		result |= WS_INDENT_WITH_NON_TAB;
-		if (stream) {
-			fputs(ws, stream);
-			fwrite(line + written, i - written, 1, stream);
-			fputs(reset, stream);
-		}
+		if (emit)
+			emit(WS_EMIT_WS, line + written, i - written, cb);
 		written = i;
 	}
 
-	if (stream) {
+	if (emit) {
 		/*
 		 * Now the rest of the line starts at "written".
 		 * The non-highlighted part ends at "trailing_whitespace".
 		 */
 
 		/* Emit non-highlighted (middle) segment. */
-		if (trailing_whitespace - written > 0) {
-			fputs(set, stream);
-			fwrite(line + written,
-			    trailing_whitespace - written, 1, stream);
-			fputs(reset, stream);
-		}
+		if (trailing_whitespace - written > 0)
+			emit(WS_EMIT_SET, line + written,
+			     trailing_whitespace - written, cb);
 
 		/* Highlight errors in trailing whitespace. */
-		if (trailing_whitespace != len) {
-			fputs(ws, stream);
-			fwrite(line + trailing_whitespace,
-			    len - trailing_whitespace, 1, stream);
-			fputs(reset, stream);
-		}
+		if (trailing_whitespace != len)
+			emit(WS_EMIT_WS, line + trailing_whitespace,
+			     len - trailing_whitespace, cb);
 		if (trailing_carriage_return)
-			fputc('\r', stream);
+			emit(WS_EMIT_NORMAL, "\r", 1, cb);
 		if (trailing_newline)
-			fputc('\n', stream);
+			emit(WS_EMIT_NORMAL, "\n", 1, cb);
 	}
 	return result;
 }
@@ -256,12 +260,19 @@ void ws_check_emit(const char *line, int len, unsigned ws_rule,
 		   FILE *stream, const char *set,
 		   const char *reset, const char *ws)
 {
-	(void)ws_check_emit_1(line, len, ws_rule, stream, set, reset, ws);
+	struct emit_cb ecb;
+
+	ecb.set[WS_EMIT_SET] = set;
+	ecb.set[WS_EMIT_WS] = ws;
+	ecb.reset = reset;
+	ecb.fp = stream;
+
+	(void)ws_check_emit_cb(line, len, ws_rule, stream ? emit : NULL, &ecb);
 }
 
 unsigned ws_check(const char *line, int len, unsigned ws_rule)
 {
-	return ws_check_emit_1(line, len, ws_rule, NULL, NULL, NULL, NULL);
+	return ws_check_emit_cb(line, len, ws_rule, NULL, NULL);
 }
 
 int ws_blank_line(const char *line, int len, unsigned ws_rule)
