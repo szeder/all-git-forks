@@ -2031,7 +2031,7 @@ static struct untracked_cache_dir *validate_untracked_cache(struct dir_struct *d
 		return NULL;
 
 	if (!ident_in_untracked(dir->untracked)) {
-		warning(_("Untracked cache is disabled on this system."));
+		warning(_("Untracked cache is disabled on this system or location."));
 		return NULL;
 	}
 
