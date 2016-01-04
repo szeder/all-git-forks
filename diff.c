@@ -461,8 +461,10 @@ static void check_blank_at_eof(mmfile_t *mf1, mmfile_t *mf2,
 	ecbdata->blank_at_eof_in_postimage = (at - l2) + 1;
 }
 
-enum slice_tag {
-	TAG_LINE
+enum slice_tag { /* order is important because it's used in sorting */
+	TAG_LINE,
+	TAG_OLD_WORD,
+	TAG_NEW_WORD
 };
 
 struct text_slice {
@@ -847,9 +849,64 @@ static void diff_words_mark_line(struct diff_words_buffer *buffer)
 	}
 }
 
+static int slicecmp(const void *a_, const void *b_)
+{
+	const struct text_slice *a = a_;
+	const struct text_slice *b = b_;
+	return a->start == b->start ? a->tag > b->tag : a->start > b->start;
+}
+
+static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b)
+{
+	if (!b->slice_nr)
+		return;
+
+	/* Move words into lines */
+	qsort(b->slice, b->slice_nr, sizeof(*b->slice), slicecmp);
+}
+
+static void diff_words_finalize(struct emit_callback *ecb)
+{
+	diff_words_buffer_finalize_slices(&ecb->diff_words->minus);
+	diff_words_buffer_finalize_slices(&ecb->diff_words->plus);
+}
+
+static void diff_words_buffer_add_words(struct diff_words_buffer *b,
+					int first, int last,
+					enum slice_tag tag)
+{
+	int i;
+
+	for (i = first; i < last; i++) {
+		struct diff_words_orig *o = b->orig + i;
+		struct text_slice *ts;
+
+		ALLOC_GROW(b->slice, b->slice_nr + 1, b->slice_alloc);
+		ts = b->slice + b->slice_nr++;
+		ts->start = o->begin;
+		ts->length = o->end - o->begin;
+		ts->tag = tag;
+	}
+}
+
 static void fn_out_diff_words_aux_unified(void *priv, char *line,
 					  unsigned long len)
 {
+	struct diff_words_data *diff_words = priv;
+	int minus_first, minus_len, plus_first, plus_len;
+
+	if (line[0] != '@' ||
+	    parse_hunk_header(line, len,
+			      &minus_first, &minus_len,
+			      &plus_first, &plus_len))
+		return;
+
+	diff_words_buffer_add_words(&diff_words->minus,
+				    minus_first, minus_first + minus_len,
+				    TAG_OLD_WORD);
+	diff_words_buffer_add_words(&diff_words->plus,
+				    plus_first, plus_first + plus_len,
+				    TAG_NEW_WORD);
 }
 
 static void diff_words_fill(struct diff_words_buffer *, mmfile_t *, regex_t *);
@@ -906,6 +963,7 @@ static void diff_words_show_unified(struct emit_callback *ecbdata)
 	diff_words_mark_line(plus);
 
 	diff_words_collect_words(ecbdata);
+	diff_words_finalize(ecbdata);
 
 	diff_words_buffer_show(ecbdata, minus, DIFF_FILE_OLD, WSEH_OLD, '-');
 	diff_words_buffer_show(ecbdata, plus, DIFF_FILE_NEW, WSEH_NEW, '+');
