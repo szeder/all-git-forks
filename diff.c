@@ -55,6 +55,8 @@ static char diff_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_YELLOW,	/* COMMIT */
 	GIT_COLOR_BG_RED,	/* WHITESPACE */
 	GIT_COLOR_NORMAL,	/* FUNCINFO */
+	GIT_COLOR_INVERT,	/* WORD_OLD */
+	GIT_COLOR_INVERT	/* WORD_NEW */
 };
 
 static int parse_diff_color_slot(const char *var)
@@ -75,6 +77,10 @@ static int parse_diff_color_slot(const char *var)
 		return DIFF_WHITESPACE;
 	if (!strcasecmp(var, "func"))
 		return DIFF_FUNCINFO;
+	if (!strcasecmp(var, "wold"))
+		return DIFF_WORD_OLD;
+	if (!strcasecmp(var, "wnew"))
+		return DIFF_WORD_NEW;
 	return -1;
 }
 
@@ -802,6 +808,10 @@ struct diff_words_data {
 	int (*consume)(struct emit_callback *, char *, unsigned long);
 };
 
+static void diff_words_show_unified(struct emit_callback *ecbdata)
+{
+}
+
 static void diff_words_append(struct diff_words_data *diff_words,
 			      char *line, unsigned long len)
 {
@@ -1142,6 +1152,17 @@ static int diff_words_consume(struct emit_callback *ecbdata,
 	return -1;
 }
 
+static int diff_words_consume_unified(struct emit_callback *ecbdata,
+				      char *line, unsigned long len)
+{
+	if (line[0] == '-' || line[0] == '+') {
+		diff_words_append(ecbdata->diff_words, line, len);
+		return -1;
+	}
+	diff_words_flush(ecbdata);
+	return 0;
+}
+
 static void diff_filespec_load_driver(struct diff_filespec *one)
 {
 	/* Use already-loaded driver */
@@ -1194,6 +1215,11 @@ static void init_diff_words_data(struct emit_callback *ecbdata,
 	}
 	if (!o->word_diff_xdl_opts)
 		o->word_diff_xdl_opts = o->xdl_opts;
+	if (o->word_diff == DIFF_WORDS_UNIFIED) {
+		ecbdata->diff_words->flush = diff_words_show_unified;
+		ecbdata->diff_words->consume = diff_words_consume_unified;
+		return;
+	}
 	for (i = 0; i < ARRAY_SIZE(diff_words_styles); i++) {
 		if (o->word_diff == diff_words_styles[i].type) {
 			ecbdata->diff_words->style =
@@ -3924,6 +3950,8 @@ int diff_opt_parse(struct diff_options *options,
 		}
 		else if (!strcmp(arg, "porcelain"))
 			options->word_diff = DIFF_WORDS_PORCELAIN;
+		else if (!strcmp(arg, "diff"))
+			options->word_diff = DIFF_WORDS_UNIFIED;
 		else if (!strcmp(arg, "none"))
 			options->word_diff = DIFF_WORDS_NONE;
 		else
