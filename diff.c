@@ -25,6 +25,9 @@
 #define FAST_WORKING_DIRECTORY 1
 #endif
 
+#define ecb_get_color(ecb, ix) \
+	diff_get_color((ecb)->color_diff, ix)
+
 static int diff_detect_rename_default;
 static int diff_compaction_heuristic = 1;
 static int diff_rename_limit_default = 400;
@@ -518,7 +521,7 @@ static void emit_line_checked(struct emit_callback *ecbdata,
 	const char *ws = NULL;
 
 	if (ecbdata->opt->ws_error_highlight & ws_error_highlight) {
-		ws = diff_get_color(ecbdata->color_diff, DIFF_WHITESPACE);
+		ws = ecb_get_color(ecbdata, DIFF_WHITESPACE);
 		if (!*ws)
 			ws = NULL;
 	}
@@ -536,8 +539,8 @@ static void emit_line_checked(struct emit_callback *ecbdata,
 			    set, sign, "", 0);
 		ws_check_emit(line, len, ecbdata->ws_rule,
 			      ecbdata->opt->file,
-			      diff_get_color(ecbdata->color_diff, set),
-			      diff_get_color(ecbdata->color_diff, DIFF_RESET),
+			      ecb_get_color(ecbdata, set),
+			      ecb_get_color(ecbdata, DIFF_RESET),
 			      ws);
 	}
 }
@@ -560,10 +563,10 @@ static void emit_context_line(struct emit_callback *ecb, const char *line, int l
 static void emit_hunk_header(struct emit_callback *ecbdata,
 			     const char *line, int len)
 {
-	const char *context = diff_get_color(ecbdata->color_diff, DIFF_CONTEXT);
-	const char *frag = diff_get_color(ecbdata->color_diff, DIFF_FRAGINFO);
-	const char *func = diff_get_color(ecbdata->color_diff, DIFF_FUNCINFO);
-	const char *reset = diff_get_color(ecbdata->color_diff, DIFF_RESET);
+	const char *context = ecb_get_color(ecbdata, DIFF_CONTEXT);
+	const char *frag = ecb_get_color(ecbdata, DIFF_FRAGINFO);
+	const char *func = ecb_get_color(ecbdata, DIFF_FUNCINFO);
+	const char *reset = ecb_get_color(ecbdata, DIFF_RESET);
 	static const char atat[2] = { '@', '@' };
 	const char *cp, *ep;
 	struct strbuf msgbuf = STRBUF_INIT;
@@ -1229,8 +1232,8 @@ static void find_lno(const char *line, struct emit_callback *ecbdata)
 static void fn_out_consume(void *priv, char *line, unsigned long len)
 {
 	struct emit_callback *ecbdata = priv;
-	const char *meta = diff_get_color(ecbdata->color_diff, DIFF_METAINFO);
-	const char *reset = diff_get_color(ecbdata->color_diff, DIFF_RESET);
+	const char *meta = ecb_get_color(ecbdata, DIFF_METAINFO);
+	const char *reset = ecb_get_color(ecbdata, DIFF_RESET);
 	struct diff_options *o = ecbdata->opt;
 	const char *line_prefix = diff_line_prefix(o);
 
