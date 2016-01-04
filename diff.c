@@ -452,9 +452,12 @@ static void check_blank_at_eof(mmfile_t *mf1, mmfile_t *mf2,
 	ecbdata->blank_at_eof_in_postimage = (at - l2) + 1;
 }
 
-static void emit_line_0(struct diff_options *o, const char *set, const char *reset,
-			int first, const char *line, int len)
+static void emit_line_0(struct diff_options *o, int use_color,
+			enum color_diff set_, int first,
+			const char *line, int len)
 {
+	const char *set = diff_get_color(use_color, set_);
+	const char *reset = diff_get_color(use_color, DIFF_RESET);
 	int has_trailing_newline, has_trailing_carriage_return;
 	int nofirst;
 	FILE *file = o->file;
@@ -489,10 +492,10 @@ static void emit_line_0(struct diff_options *o, const char *set, const char *res
 		fputc('\n', file);
 }
 
-static void emit_line(struct diff_options *o, const char *set, const char *reset,
+static void emit_line(struct emit_callback *ecb, enum color_diff set,
 		      const char *line, int len)
 {
-	emit_line_0(o, set, reset, line[0], line+1, len-1);
+	emit_line_0(ecb->opt, ecb->color_diff, set, line[0], line+1, len-1);
 }
 
 static int new_blank_line_at_eof(struct emit_callback *ecbdata, const char *line, int len)
@@ -506,14 +509,12 @@ static int new_blank_line_at_eof(struct emit_callback *ecbdata, const char *line
 	return ws_blank_line(line, len, ecbdata->ws_rule);
 }
 
-static void emit_line_checked(const char *reset,
-			      struct emit_callback *ecbdata,
+static void emit_line_checked(struct emit_callback *ecbdata,
 			      const char *line, int len,
-			      enum color_diff color,
+			      enum color_diff set,
 			      unsigned ws_error_highlight,
 			      char sign)
 {
-	const char *set = diff_get_color(ecbdata->color_diff, color);
 	const char *ws = NULL;
 
 	if (ecbdata->opt->ws_error_highlight & ws_error_highlight) {
@@ -523,40 +524,37 @@ static void emit_line_checked(const char *reset,
 	}
 
 	if (!ws)
-		emit_line_0(ecbdata->opt, set, reset, sign, line, len);
+		emit_line_0(ecbdata->opt, ecbdata->color_diff,
+			    set, sign, line, len);
 	else if (sign == '+' && new_blank_line_at_eof(ecbdata, line, len))
 		/* Blank line at EOF - paint '+' as well */
-		emit_line_0(ecbdata->opt, ws, reset, sign, line, len);
+		emit_line_0(ecbdata->opt, ecbdata->color_diff,
+			    DIFF_WHITESPACE, sign, line, len);
 	else {
 		/* Emit just the prefix, then the rest. */
-		emit_line_0(ecbdata->opt, set, reset, sign, "", 0);
+		emit_line_0(ecbdata->opt, ecbdata->color_diff,
+			    set, sign, "", 0);
 		ws_check_emit(line, len, ecbdata->ws_rule,
-			      ecbdata->opt->file, set, reset, ws);
+			      ecbdata->opt->file,
+			      diff_get_color(ecbdata->color_diff, set),
+			      diff_get_color(ecbdata->color_diff, DIFF_RESET),
+			      ws);
 	}
 }
 
-static void emit_add_line(const char *reset,
-			  struct emit_callback *ecbdata,
-			  const char *line, int len)
+static void emit_add_line(struct emit_callback *ecb, const char *line, int len)
 {
-	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_FILE_NEW, WSEH_NEW, '+');
+	emit_line_checked(ecb, line, len, DIFF_FILE_NEW, WSEH_NEW, '+');
 }
 
-static void emit_del_line(const char *reset,
-			  struct emit_callback *ecbdata,
-			  const char *line, int len)
+static void emit_del_line(struct emit_callback *ecb, const char *line, int len)
 {
-	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_FILE_OLD, WSEH_OLD, '-');
+	emit_line_checked(ecb, line, len, DIFF_FILE_OLD, WSEH_OLD, '-');
 }
 
-static void emit_context_line(const char *reset,
-			      struct emit_callback *ecbdata,
-			      const char *line, int len)
+static void emit_context_line(struct emit_callback *ecb, const char *line, int len)
 {
-	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_CONTEXT, WSEH_CONTEXT, ' ');
+	emit_line_checked(ecb, line, len, DIFF_CONTEXT, WSEH_CONTEXT, ' ');
 }
 
 static void emit_hunk_header(struct emit_callback *ecbdata,
@@ -579,7 +577,8 @@ static void emit_hunk_header(struct emit_callback *ecbdata,
 	if (len < 10 ||
 	    memcmp(line, atat, 2) ||
 	    !(ep = memmem(line + 2, len - 2, atat, 2))) {
-		emit_line(ecbdata->opt, context, reset, line, len);
+		emit_line_0(ecbdata->opt, ecbdata->color_diff,
+			    DIFF_CONTEXT, line[0], line + 1, len - 1);
 		return;
 	}
 	ep += 2; /* skip over @@ */
@@ -613,7 +612,8 @@ static void emit_hunk_header(struct emit_callback *ecbdata,
 	}
 
 	strbuf_add(&msgbuf, line + len, org_len - len);
-	emit_line(ecbdata->opt, "", "", msgbuf.buf, msgbuf.len);
+	emit_line_0(ecbdata->opt, GIT_COLOR_NEVER, 0,
+		    msgbuf.buf[0], msgbuf.buf + 1, msgbuf.len - 1);
 	strbuf_release(&msgbuf);
 }
 
@@ -655,7 +655,6 @@ static void emit_rewrite_lines(struct emit_callback *ecb,
 {
 	const char *endp = NULL;
 	static const char *nneof = " No newline at end of file\n";
-	const char *reset = diff_get_color(ecb->color_diff, DIFF_RESET);
 
 	while (0 < size) {
 		int len;
@@ -664,20 +663,18 @@ static void emit_rewrite_lines(struct emit_callback *ecb,
 		len = endp ? (endp - data + 1) : size;
 		if (prefix != '+') {
 			ecb->lno_in_preimage++;
-			emit_del_line(reset, ecb, data, len);
+			emit_del_line(ecb, data, len);
 		} else {
 			ecb->lno_in_postimage++;
-			emit_add_line(reset, ecb, data, len);
+			emit_add_line(ecb, data, len);
 		}
 		size -= len;
 		data += len;
 	}
 	if (!endp) {
-		const char *context = diff_get_color(ecb->color_diff,
-						     DIFF_CONTEXT);
 		putc('\n', ecb->opt->file);
-		emit_line_0(ecb->opt, context, reset, '\\',
-			    nneof, strlen(nneof));
+		emit_line_0(ecb->opt, ecb->color_diff, DIFF_CONTEXT,
+			    '\\', nneof, strlen(nneof));
 	}
 }
 
@@ -1233,7 +1230,6 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 {
 	struct emit_callback *ecbdata = priv;
 	const char *meta = diff_get_color(ecbdata->color_diff, DIFF_METAINFO);
-	const char *context = diff_get_color(ecbdata->color_diff, DIFF_CONTEXT);
 	const char *reset = diff_get_color(ecbdata->color_diff, DIFF_RESET);
 	struct diff_options *o = ecbdata->opt;
 	const char *line_prefix = diff_line_prefix(o);
@@ -1276,7 +1272,7 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 	}
 
 	if (len < 1) {
-		emit_line(ecbdata->opt, reset, reset, line, len);
+		emit_line(ecbdata, DIFF_RESET, line, len);
 		if (ecbdata->diff_words
 		    && ecbdata->diff_words->type == DIFF_WORDS_PORCELAIN)
 			fputs("~\n", ecbdata->opt->file);
@@ -1299,7 +1295,7 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 		}
 		diff_words_flush(ecbdata);
 		if (ecbdata->diff_words->type == DIFF_WORDS_PORCELAIN) {
-			emit_line(ecbdata->opt, context, reset, line, len);
+			emit_line(ecbdata, DIFF_CONTEXT, line, len);
 			fputs("~\n", ecbdata->opt->file);
 		} else {
 			/*
@@ -1311,7 +1307,7 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 			      line++;
 			      len--;
 			}
-			emit_line(ecbdata->opt, context, reset, line, len);
+			emit_line(ecbdata, DIFF_CONTEXT, line, len);
 		}
 		return;
 	}
@@ -1319,23 +1315,21 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 	switch (line[0]) {
 	case '+':
 		ecbdata->lno_in_postimage++;
-		emit_add_line(reset, ecbdata, line + 1, len - 1);
+		emit_add_line(ecbdata, line + 1, len - 1);
 		break;
 	case '-':
 		ecbdata->lno_in_preimage++;
-		emit_del_line(reset, ecbdata, line + 1, len - 1);
+		emit_del_line(ecbdata, line + 1, len - 1);
 		break;
 	case ' ':
 		ecbdata->lno_in_postimage++;
 		ecbdata->lno_in_preimage++;
-		emit_context_line(reset, ecbdata, line + 1, len - 1);
+		emit_context_line(ecbdata, line + 1, len - 1);
 		break;
 	default:
 		/* incomplete line at the end */
 		ecbdata->lno_in_preimage++;
-		emit_line(ecbdata->opt,
-			  diff_get_color(ecbdata->color_diff, DIFF_CONTEXT),
-			  reset, line, len);
+		emit_line(ecbdata, DIFF_CONTEXT, line, len);
 		break;
 	}
 }
@@ -2147,7 +2141,8 @@ static void checkdiff_consume(void *priv, char *line, unsigned long len)
 		fprintf(data->o->file, "%s%s:%d: %s.\n",
 			line_prefix, data->filename, data->lineno, err);
 		free(err);
-		emit_line(data->o, set, reset, line, 1);
+		emit_line_0(data->o, data->o->use_color, DIFF_FILE_NEW,
+			    line[0], line + 1, len - 1);
 		ws_check_emit(line + 1, len - 1, data->ws_rule,
 			      data->o->file, set, reset, ws);
 	} else if (line[0] == ' ') {
