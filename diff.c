@@ -461,6 +461,8 @@ static void check_blank_at_eof(mmfile_t *mf1, mmfile_t *mf2,
 	ecbdata->blank_at_eof_in_postimage = (at - l2) + 1;
 }
 
+#define TAG_WORD(tag) ((tag) == TAG_OLD_WORD || (tag) == TAG_NEW_WORD)
+
 enum slice_tag { /* order is important because it's used in sorting */
 	TAG_LINE,
 	TAG_OLD_WORD,
@@ -860,6 +862,22 @@ static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b)
 {
 	if (!b->slice_nr)
 		return;
+
+	/*
+	 * Simplify one-word chunks. Not that at this point we have
+	 * all line marks (in correct order), then all word marks. So
+	 * what we're looking for is a series of lines ending with one
+	 * word and that word occupies all lines.
+	 */
+	if (b->slice_nr >= 2 &&
+	    b->slice[0].tag == TAG_LINE &&
+	    b->slice[b->slice_nr - 2].tag == TAG_LINE &&
+	    TAG_WORD(b->slice[b->slice_nr - 1].tag) &&
+	    b->slice[0].start == b->slice[b->slice_nr - 1].start &&
+	    b->slice[0].length == b->slice[b->slice_nr - 1].length) {
+		b->slice_nr--;
+		return;
+	}
 
 	/* Move words into lines */
 	qsort(b->slice, b->slice_nr, sizeof(*b->slice), slicecmp);
