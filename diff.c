@@ -688,9 +688,9 @@ static void emit_rewrite_diff(const char *name_a,
 {
 	int lc_a, lc_b;
 	const char *name_a_tab, *name_b_tab;
-	const char *metainfo = diff_get_color(o->use_color, DIFF_METAINFO);
-	const char *fraginfo = diff_get_color(o->use_color, DIFF_FRAGINFO);
-	const char *reset = diff_get_color(o->use_color, DIFF_RESET);
+	const char *metainfo = diff_get_color_opt(o, DIFF_METAINFO);
+	const char *fraginfo = diff_get_color_opt(o, DIFF_FRAGINFO);
+	const char *reset = diff_get_color_opt(o, DIFF_RESET);
 	static struct strbuf a_name = STRBUF_INIT, b_name = STRBUF_INIT;
 	const char *a_prefix, *b_prefix;
 	char *data_one, *data_two;
@@ -2115,9 +2115,9 @@ static void checkdiff_consume(void *priv, char *line, unsigned long len)
 {
 	struct checkdiff_t *data = priv;
 	int marker_size = data->conflict_marker_size;
-	const char *ws = diff_get_color(data->o->use_color, DIFF_WHITESPACE);
-	const char *reset = diff_get_color(data->o->use_color, DIFF_RESET);
-	const char *set = diff_get_color(data->o->use_color, DIFF_FILE_NEW);
+	const char *ws = diff_get_color_opt(data->o, DIFF_WHITESPACE);
+	const char *reset = diff_get_color_opt(data->o, DIFF_RESET);
+	const char *set = diff_get_color_opt(data->o, DIFF_FILE_NEW);
 	char *err;
 	const char *line_prefix;
 
