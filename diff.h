@@ -107,7 +107,8 @@ enum diff_words_type {
 	DIFF_WORDS_NONE = 0,
 	DIFF_WORDS_PORCELAIN,
 	DIFF_WORDS_PLAIN,
-	DIFF_WORDS_COLOR
+	DIFF_WORDS_COLOR,
+	DIFF_WORDS_UNIFIED
 };
 
 struct diff_options {
@@ -190,7 +191,9 @@ enum color_diff {
 	DIFF_FILE_NEW = 5,
 	DIFF_COMMIT = 6,
 	DIFF_WHITESPACE = 7,
-	DIFF_FUNCINFO = 8
+	DIFF_FUNCINFO = 8,
+	DIFF_WORD_OLD = 9,
+	DIFF_WORD_NEW = 10
 };
 const char *diff_get_color(int diff_use_color, enum color_diff ix);
 #define diff_get_color_opt(o, ix) \

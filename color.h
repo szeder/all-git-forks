@@ -48,6 +48,8 @@ struct strbuf;
 /* A special value meaning "no color selected" */
 #define GIT_COLOR_NIL "NIL"
 
+#define GIT_COLOR_INVERT	"\033[7m"
+
 /*
  * The first three are chosen to match common usage in the code, and what is
  * returned from git_config_colorbool. The "auto" value can be returned from
