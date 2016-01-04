@@ -765,6 +765,8 @@ struct diff_words_buffer {
 		const char *begin, *end;
 	} *orig;
 	int orig_nr, orig_alloc;
+	unsigned *line;
+	int line_nr, line_alloc;
 };
 
 struct diff_words_style_elem {
@@ -798,6 +800,18 @@ struct diff_words_data {
 	int (*consume)(struct emit_callback *, char *, unsigned long);
 };
 
+static void diff_words_mark_line_offset(struct diff_words_buffer *buffer,
+					unsigned long start, unsigned long len)
+{
+	unsigned *line;
+
+	ALLOC_GROW(buffer->line, (buffer->line_nr + 1) * 2, buffer->line_alloc);
+	line = buffer->line + (buffer->line_nr++) * 2;
+	line[0] = start;
+	line[1] = len;
+	assert(line[0] == start && line[1] == len);
+}
+
 static void diff_words_show_unified(struct emit_callback *ecbdata)
 {
 }
@@ -817,6 +831,8 @@ static void diff_words_append(struct diff_words_data *diff_words,
 	line++;
 	len--;
 	memcpy(buffer->text.ptr + buffer->text.size, line, len);
+	if (diff_words->type == DIFF_WORDS_UNIFIED)
+		diff_words_mark_line_offset(buffer, buffer->text.size, len);
 	buffer->text.size += len;
 	buffer->text.ptr[buffer->text.size] = '\0';
 }
@@ -1091,6 +1107,7 @@ static void diff_words_show(struct emit_callback *ecb)
 
 static void diff_words_buffer_reset(struct diff_words_buffer *b)
 {
+	b->line_nr = 0;
 	b->text.size = 0;
 }
 
@@ -1229,6 +1246,7 @@ static void diff_words_buffer_release(struct diff_words_buffer *b)
 {
 	free(b->text.ptr);
 	free(b->orig);
+	free(b->line);
 }
 
 static void free_diff_words_data(struct emit_callback *ecbdata)
