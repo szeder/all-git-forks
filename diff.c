@@ -465,6 +465,7 @@ static void check_blank_at_eof(mmfile_t *mf1, mmfile_t *mf2,
 
 enum slice_tag { /* order is important because it's used in sorting */
 	TAG_LINE,
+	TAG_WS,
 	TAG_OLD_WORD,
 	TAG_NEW_WORD
 };
@@ -484,6 +485,7 @@ static void emit_text_slices(FILE *file, int use_color,
 	const char *last_color = set;
 	const char *reset = diff_get_color(use_color, DIFF_RESET);
 	const char *last_emitted = line;
+	struct text_slice *last_ws = NULL, tmp_ws;
 
 	for (current = slice; ; current++) {
 		const char *start, *end, *color;
@@ -513,6 +515,21 @@ static void emit_text_slices(FILE *file, int use_color,
 		if (end > line + len)
 			end = line + len;
 
+		if (last_ws) {
+			const char *ws_end = last_ws->start + last_ws->length;
+			if (start >= ws_end)
+				last_ws = NULL;
+			else if (end <= ws_end) {
+				current++;
+				continue;
+			} else {
+				tmp_ws.start = current->start;
+				tmp_ws.length = ws_end - tmp_ws.start;
+				tmp_ws.tag = current->tag;
+				current = &tmp_ws;
+			}
+		}
+
 		switch (current->tag) {
 		case TAG_OLD_WORD:
 			color = diff_get_color(use_color, DIFF_WORD_OLD);
@@ -520,6 +537,11 @@ static void emit_text_slices(FILE *file, int use_color,
 
 		case TAG_NEW_WORD:
 			color = diff_get_color(use_color, DIFF_WORD_NEW);
+			break;
+
+		case TAG_WS:
+			color = diff_get_color(use_color, DIFF_WHITESPACE);
+			last_ws = current;
 			break;
 
 		case TAG_LINE:
@@ -931,7 +953,54 @@ static int slicecmp(const void *a_, const void *b_)
 	return a->start == b->start ? a->tag > b->tag : a->start > b->start;
 }
 
-static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b)
+struct diff_words_ws {
+	struct text_slice *ws;
+	int ws_nr, ws_alloc;
+};
+
+static void diff_words_add_ws_cb(int set, const char *str, int len, void *cb)
+{
+	struct diff_words_ws *data = cb;
+	struct text_slice *ts;
+
+	if (set != WS_EMIT_WS)
+		return;
+	ALLOC_GROW(data->ws, data->ws_nr + 2, data->ws_alloc);
+	ts = data->ws + data->ws_nr++;
+	ts->start = str;
+	ts->length = len;
+	ts->tag = TAG_WS;
+}
+
+static void diff_words_add_ws(struct diff_words_buffer *b,
+			      const char *ws,
+			      unsigned ws_rule)
+{
+	struct text_slice *line;
+	struct text_slice *end = b->slice + b->slice_nr;
+	struct diff_words_ws dws;
+
+	memset(&dws, 0, sizeof(dws));
+
+	for (line = b->slice; line < end; line++) {
+		if (line->tag != TAG_LINE)
+			continue;
+
+		(void)ws_check_emit_cb(line->start, line->length,
+				       ws_rule, diff_words_add_ws_cb, &dws);
+	}
+
+	/* Move ws into correct positions */
+	ALLOC_GROW(b->slice, b->slice_nr + dws.ws_nr, b->slice_alloc);
+	memcpy(b->slice + b->slice_nr, dws.ws, sizeof(*dws.ws) * dws.ws_nr);
+	free(dws.ws);
+	b->slice_nr += dws.ws_nr;
+	qsort(b->slice, b->slice_nr, sizeof(*b->slice), slicecmp);
+}
+
+static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b,
+					      struct emit_callback *ecb,
+					      unsigned ws_error_highlight)
 {
 	struct text_slice *src, *next, *end;
 
@@ -971,12 +1040,17 @@ static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b)
 
 	/* Move words into lines */
 	qsort(b->slice, b->slice_nr, sizeof(*b->slice), slicecmp);
+
+	if (ecb->opt->ws_error_highlight & ws_error_highlight) {
+		const char *ws = diff_get_color(ecb->color_diff, DIFF_WHITESPACE);
+		diff_words_add_ws(b, ws, ecb->ws_rule);
+	}
 }
 
 static void diff_words_finalize(struct emit_callback *ecb)
 {
-	diff_words_buffer_finalize_slices(&ecb->diff_words->minus);
-	diff_words_buffer_finalize_slices(&ecb->diff_words->plus);
+	diff_words_buffer_finalize_slices(&ecb->diff_words->minus, ecb, WSEH_OLD);
+	diff_words_buffer_finalize_slices(&ecb->diff_words->plus, ecb, WSEH_NEW);
 }
 
 static void diff_words_buffer_add_words(struct diff_words_buffer *b,
@@ -1058,7 +1132,7 @@ static void diff_words_buffer_show(struct emit_callback *ecb,
 		if (line->tag != TAG_LINE)
 			continue;
 		emit_line_checked(ecb, line->start, line->length,
-				  color, ws_error_highlight, sign, line);
+				  color, 0, sign, line);
 	}
 }
 
@@ -1080,7 +1154,7 @@ static void diff_words_show_unified(struct emit_callback *ecbdata)
 	diff_words_finalize(ecbdata);
 
 	diff_words_buffer_show(ecbdata, minus, DIFF_FILE_OLD, WSEH_OLD, '-');
-	diff_words_buffer_show(ecbdata, plus, DIFF_FILE_NEW, WSEH_NEW, '+');
+	diff_words_buffer_show(ecbdata, plus,  DIFF_FILE_NEW, WSEH_NEW, '+');
 }
 
 static void diff_words_append(struct diff_words_data *diff_words,
