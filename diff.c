@@ -461,6 +461,16 @@ static void check_blank_at_eof(mmfile_t *mf1, mmfile_t *mf2,
 	ecbdata->blank_at_eof_in_postimage = (at - l2) + 1;
 }
 
+enum slice_tag {
+	TAG_LINE
+};
+
+struct text_slice {
+	const char *start;
+	unsigned length;
+	enum slice_tag tag;
+};
+
 static void emit_line_0(struct diff_options *o, int use_color,
 			enum color_diff set_, int first,
 			const char *line, int len)
@@ -777,6 +787,8 @@ struct diff_words_buffer {
 	int orig_nr, orig_alloc;
 	unsigned *line;
 	int line_nr, line_alloc;
+	struct text_slice *slice;
+	int slice_nr, slice_alloc;
 };
 
 struct diff_words_style_elem {
@@ -822,8 +834,32 @@ static void diff_words_mark_line_offset(struct diff_words_buffer *buffer,
 	assert(line[0] == start && line[1] == len);
 }
 
+static void diff_words_mark_line(struct diff_words_buffer *buffer)
+{
+	int i;
+
+	ALLOC_GROW(buffer->slice, buffer->line_nr, buffer->slice_alloc);
+	for (i = 0; i < buffer->line_nr; i++) {
+		struct text_slice *ts = buffer->slice + buffer->slice_nr++;
+		ts->start  = buffer->text.ptr + buffer->line[i * 2];
+		ts->length = buffer->line[i * 2 + 1];
+		ts->tag    = TAG_LINE;
+	}
+}
+
 static void diff_words_show_unified(struct emit_callback *ecbdata)
 {
+	struct diff_words_data		*dw    = ecbdata->diff_words;
+	struct diff_words_buffer	*minus = &dw->minus;
+	struct diff_words_buffer	*plus  = &dw->plus;
+
+	/*
+	 * line marks are collected in line[] array as offsets because
+	 * the "text" buffer can be reallocated. Now it's safe to
+	 * convert line[] to slice[].
+	 */
+	diff_words_mark_line(minus);
+	diff_words_mark_line(plus);
 }
 
 static void diff_words_append(struct diff_words_data *diff_words,
@@ -1118,6 +1154,7 @@ static void diff_words_show(struct emit_callback *ecb)
 static void diff_words_buffer_reset(struct diff_words_buffer *b)
 {
 	b->line_nr = 0;
+	b->slice_nr = 0;
 	b->text.size = 0;
 }
 
@@ -1257,6 +1294,7 @@ static void diff_words_buffer_release(struct diff_words_buffer *b)
 	free(b->text.ptr);
 	free(b->orig);
 	free(b->line);
+	free(b->slice);
 }
 
 static void free_diff_words_data(struct emit_callback *ecbdata)
