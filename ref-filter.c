@@ -36,6 +36,7 @@ static int need_color_reset_at_eol;
 static struct {
 	const char *name;
 	cmp_type cmp_type;
+	void (*parser)(struct used_atom *atom);
 } valid_atom[] = {
 	{ "refname" },
 	{ "objecttype" },
@@ -154,6 +155,8 @@ int parse_ref_filter_atom(const char *atom, const char *ep)
 	REALLOC_ARRAY(used_atom, used_atom_cnt);
 	used_atom[at].name = xmemdupz(atom, ep - atom);
 	used_atom[at].type = valid_atom[i].cmp_type;
+	if (valid_atom[i].parser)
+		valid_atom[i].parser(&used_atom[at]);
 	if (*atom == '*')
 		need_tagged = 1;
 	if (!strcmp(used_atom[at].name, "symref"))
