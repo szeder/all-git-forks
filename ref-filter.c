@@ -16,6 +16,11 @@
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
 
+struct align {
+	align_type position;
+	unsigned int width;
+};
+
 /*
  * An atom is a valid field atom listed below, possibly prefixed with
  * a "*" to denote deref_tag().
@@ -31,6 +36,7 @@ static struct used_atom {
 	cmp_type type;
 	union {
 		char *color;
+		struct align align;
 	} u;
 } *used_atom;
 static int used_atom_cnt, need_tagged, need_symref;
@@ -66,6 +72,43 @@ static void color_atom_parser(struct used_atom *atom)
 	atom->u.color = xstrdup(atom->u.color);
 	if (color_parse(atom->u.color, atom->u.color) < 0)
 		die(_("invalid color value: %s"), atom->u.color);
+}
+
+static void align_atom_parser(struct used_atom *atom)
+{
+	struct align *align = &atom->u.align;
+	const char *buf = NULL;
+	struct strbuf **s, **to_free;
+	int width = -1;
+
+	if (!match_atom_name(atom->name, "align", &buf))
+		die("BUG: parsing non-'align'");
+	if (!buf)
+		die(_("expected format: %%(align:<width>,<position>)"));
+	s = to_free = strbuf_split_str_omit_term(buf, ',', 0);
+
+	align->position = ALIGN_LEFT;
+
+	while (*s) {
+		buf = s[0]->buf;
+
+		if (!strtoul_ui(buf, 10, (unsigned int *)&width))
+			;
+		else if (!strcmp(buf, "left"))
+			align->position = ALIGN_LEFT;
+		else if (!strcmp(buf, "right"))
+			align->position = ALIGN_RIGHT;
+		else if (!strcmp(buf, "middle"))
+			align->position = ALIGN_MIDDLE;
+		else
+			die(_("unrecognized %%(align) argument: %s"), buf);
+		s++;
+	}
+
+	if (width < 0)
+		die(_("positive width expected with the %%(align) atom"));
+	align->width = width;
+	strbuf_list_free(to_free);
 }
 
 static struct {
@@ -106,16 +149,11 @@ static struct {
 	{ "flag" },
 	{ "HEAD" },
 	{ "color", FIELD_STR, color_atom_parser },
-	{ "align" },
+	{ "align", FIELD_STR, align_atom_parser },
 	{ "end" },
 };
 
 #define REF_FORMATTING_STATE_INIT  { 0, NULL }
-
-struct align {
-	align_type position;
-	unsigned int width;
-};
 
 struct contents {
 	unsigned int lines;
@@ -816,7 +854,6 @@ static void populate_value(struct ref_array_item *ref)
 		int deref = 0;
 		const char *refname;
 		const char *formatp;
-		const char *valp;
 		struct branch *branch = NULL;
 
 		v->handler = append_atom;
@@ -880,36 +917,8 @@ static void populate_value(struct ref_array_item *ref)
 			else
 				v->s = " ";
 			continue;
-		} else if (match_atom_name(name, "align", &valp)) {
-			struct align *align = &v->u.align;
-			struct strbuf **s, **to_free;
-			int width = -1;
-
-			if (!valp)
-				die(_("expected format: %%(align:<width>,<position>)"));
-
-			s = to_free = strbuf_split_str_omit_term(valp, ',', 0);
-
-			align->position = ALIGN_LEFT;
-
-			while (*s) {
-				if (!strtoul_ui(s[0]->buf, 10, (unsigned int *)&width))
-					;
-				else if (!strcmp(s[0]->buf, "left"))
-					align->position = ALIGN_LEFT;
-				else if (!strcmp(s[0]->buf, "right"))
-					align->position = ALIGN_RIGHT;
-				else if (!strcmp(s[0]->buf, "middle"))
-					align->position = ALIGN_MIDDLE;
-				else
-					die(_("improper format entered align:%s"), s[0]->buf);
-				s++;
-			}
-
-			if (width < 0)
-				die(_("positive width expected with the %%(align) atom"));
-			align->width = width;
-			strbuf_list_free(to_free);
+		} else if (starts_with(name, "align")) {
+			v->u.align = atom->u.align;
 			v->handler = align_atom_handler;
 			continue;
 		} else if (!strcmp(name, "end")) {
