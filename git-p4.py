@@ -276,15 +276,16 @@ def p4_describe(change):
        the presence of field "time".  Return a dict of the
        results."""
 
-    ds = p4CmdList(["describe", "-s", str(change)])
+    try:
+        ds = p4CmdList(["describe", "-s", str(change)])
+    except P4CommandError as e:
+        die("p4 describe -s %d exited with %d" % (change, e.returncode))
+
     if len(ds) != 1:
         die("p4 describe -s %d did not return 1 result: %s" % (change, str(ds)))
 
     d = ds[0]
 
-    if "p4ExitCode" in d:
-        die("p4 describe -s %d exited with %d: %s" % (change, d["p4ExitCode"],
-                                                      str(d)))
     if "code" in d:
         if d["code"] == "error":
             die("p4 describe -s %d returned error code: %s" % (change, str(d)))
@@ -464,7 +465,16 @@ def isModeExec(mode):
 def isModeExecChanged(src_mode, dst_mode):
     return isModeExec(src_mode) != isModeExec(dst_mode)
 
-def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None):
+class P4CommandError(Exception):
+    def __init__(self, returncode, cmd, output):
+        self.returncode = returncode
+        self.cmd = cmd
+        self.output = output
+    def __str__(self):
+        return "p4 command '%s' returned non-zero exit status %d and output '%s'" % \
+            (self.cmd, self.returncode, str(self.output))
+
+def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None): # type: (Union[str, List[str]], File, str, Optional[Callable]) -> List[Dict[bytes, bytes]]
 
     if isinstance(cmd,basestring):
         cmd = "-G " + cmd
@@ -508,9 +518,7 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None):
         pass
     exitCode = p4.wait()
     if exitCode != 0:
-        entry = {}
-        entry["p4ExitCode"] = exitCode
-        result.append(entry)
+        raise P4CommandError(exitCode, cmd, result)
 
     return result
 
@@ -1212,7 +1220,9 @@ class P4RollBack(Command):
             return False
         maxChange = int(args[0])
 
-        if "p4ExitCode" in p4Cmd("changes -m 1"):
+        try:
+            p4Cmd("changes -m 1")
+        except P4CommandError:
             die("Problems executing p4");
 
         if self.rollbackLocalBranches:
@@ -3093,8 +3103,13 @@ class P4Sync(Command, P4UserMap):
         fileCnt = 0
         fileArgs = ["%s...%s" % (p,revision) for p in self.depotPaths]
 
-        for info in p4CmdList(["files"] + fileArgs):
+        try:
+            results = p4CmdList(["files"] + fileArgs)
+        except P4CommandError as e:
+            sys.stderr.write("p4 exitcode: %d\n" % e.returncode)
+            sys.exit(1)
 
+        for info in results:
             if 'code' in info and info['code'] == 'error':
                 sys.stderr.write("p4 returned an error: %s\n"
                                  % info['data'])
@@ -3103,10 +3118,6 @@ class P4Sync(Command, P4UserMap):
                     sys.stderr.write("Perhaps the depot path was misspelled.\n");
                     sys.stderr.write("Depot path:  %s\n" % " ".join(self.depotPaths))
                 sys.exit(1)
-            if 'p4ExitCode' in info:
-                sys.stderr.write("p4 exitcode: %s\n" % info['p4ExitCode'])
-                sys.exit(1)
-
 
             change = int(info["change"])
             if change > newestRevision:
