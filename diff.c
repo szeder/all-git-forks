@@ -945,10 +945,19 @@ static void fn_out_diff_words_aux(void *priv, char *line, unsigned long len)
 	diff_words->last_minus = minus_first;
 }
 
+static int isword(char first, char ch)
+{
+	if (isspace(ch))
+		return 0;
+	return isalnum(first) ? isalnum(ch) : !isalnum(ch);
+}
+
 /* This function starts looking at *begin, and returns 0 iff a word was found. */
 static int find_word_boundaries(mmfile_t *buffer, regex_t *word_regex,
 		int *begin, int *end)
 {
+	char first;
+
 	if (word_regex && *begin < buffer->size) {
 		regmatch_t match[1];
 		if (!regexec(word_regex, buffer->ptr + *begin, 1, match, 0)) {
@@ -968,8 +977,9 @@ static int find_word_boundaries(mmfile_t *buffer, regex_t *word_regex,
 		return -1;
 
 	/* find the end of the word */
+	first = buffer->ptr[*begin];
 	*end = *begin + 1;
-	while (*end < buffer->size && !isspace(buffer->ptr[*end]))
+	while (*end < buffer->size && isword(first, buffer->ptr[*end]))
 		(*end)++;
 
 	return 0;

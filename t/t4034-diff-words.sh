@@ -83,7 +83,7 @@ test_expect_success 'word diff with runs of whitespace' '
 		<BOLD>--- a/pre<RESET>
 		<BOLD>+++ b/post<RESET>
 		<CYAN>@@ -1,3 +1,7 @@<RESET>
-		<RED>h(4)<RESET><GREEN>h(4),hh[44]<RESET>
+		h(4<RED>)<RESET><GREEN>),hh[44]<RESET>
 
 		a = b + c<RESET>
 
@@ -103,8 +103,9 @@ test_expect_success '--word-diff=porcelain' '
 		--- a/pre
 		+++ b/post
 		@@ -1,3 +1,7 @@
-		-h(4)
-		+h(4),hh[44]
+		 h(4
+		-)
+		+),hh[44]
 		~
 		 # significant space
 		~
@@ -127,7 +128,7 @@ test_expect_success '--word-diff=plain' '
 		--- a/pre
 		+++ b/post
 		@@ -1,3 +1,7 @@
-		[-h(4)-]{+h(4),hh[44]+}
+		h(4[-)-]{+),hh[44]+}
 
 		a = b + c
 
@@ -146,7 +147,7 @@ test_expect_success '--word-diff=plain --color' '
 		<BOLD>--- a/pre<RESET>
 		<BOLD>+++ b/post<RESET>
 		<CYAN>@@ -1,3 +1,7 @@<RESET>
-		<RED>[-h(4)-]<RESET><GREEN>{+h(4),hh[44]+}<RESET>
+		h(4<RED>[-)-]<RESET><GREEN>{+),hh[44]+}<RESET>
 
 		a = b + c<RESET>
 
@@ -164,7 +165,7 @@ test_expect_success 'word diff without context' '
 		<BOLD>--- a/pre<RESET>
 		<BOLD>+++ b/post<RESET>
 		<CYAN>@@ -1 +1 @@<RESET>
-		<RED>h(4)<RESET><GREEN>h(4),hh[44]<RESET>
+		h(4<RED>)<RESET><GREEN>),hh[44]<RESET>
 		<CYAN>@@ -3,0 +4,4 @@<RESET> <RESET><MAGENTA>a = b + c<RESET>
 
 		<GREEN>aa = a<RESET>
@@ -378,7 +379,7 @@ test_expect_success 'wordRegex for the first file does not apply to the second' 
 		--- a/z.txt
 		+++ b/z.txt
 		@@ -1 +1 @@
-		a [-b;-]{+bx;+} c
+		a [-b-]{+bx+}; c
 	EOF
 	git diff --word-diff HEAD~ >actual &&
 	compare_diff_patch expect actual
