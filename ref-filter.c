@@ -74,6 +74,17 @@ static void color_atom_parser(struct used_atom *atom)
 		die(_("invalid color value: %s"), atom->u.color);
 }
 
+static align_type parse_align_position(const char *s)
+{
+	if (!strcmp(s, "right"))
+		return ALIGN_RIGHT;
+	else if (!strcmp(s, "middle"))
+		return ALIGN_MIDDLE;
+	else if (!strcmp(s, "left"))
+		return ALIGN_LEFT;
+	return -1;
+}
+
 static void align_atom_parser(struct used_atom *atom)
 {
 	struct align *align = &atom->u.align;
@@ -90,16 +101,13 @@ static void align_atom_parser(struct used_atom *atom)
 	align->position = ALIGN_LEFT;
 
 	while (*s) {
+		int position;
 		buf = s[0]->buf;
 
 		if (!strtoul_ui(buf, 10, (unsigned int *)&width))
 			;
-		else if (!strcmp(buf, "left"))
-			align->position = ALIGN_LEFT;
-		else if (!strcmp(buf, "right"))
-			align->position = ALIGN_RIGHT;
-		else if (!strcmp(buf, "middle"))
-			align->position = ALIGN_MIDDLE;
+		else if ((position = parse_align_position(buf)) >= 0)
+			align->position = position;
 		else
 			die(_("unrecognized %%(align) argument: %s"), buf);
 		s++;
