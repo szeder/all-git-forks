@@ -1007,6 +1007,14 @@ static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b,
 	if (!b->slice_nr)
 		return;
 
+	if (b->slice[b->slice_nr - 1].tag == TAG_LINE)
+		/*
+		 * There are no words. Skip the whole thing to stay
+		 * cheap. We'll go fast path later that do not even
+		 * use slice[].
+		 */
+		return;
+
 	/* Join consecutive same-type words */
 	end = b->slice + b->slice_nr;
 	for (src = b->slice; src < end; src++) {
@@ -1176,10 +1184,21 @@ static void diff_words_buffer_show(struct emit_callback *ecb,
 	end->length = 0;
 
 	for (line = b->slice; line < end; line++) {
+		struct text_slice *slice;
+		int ws;
+
 		if (line->tag != TAG_LINE)
 			continue;
+
+		if (line[1].tag == TAG_LINE) {
+			ws = ws_error_highlight;
+			slice = NULL;
+		} else {
+			ws = 0;
+			slice = line;
+		}
 		emit_line_checked(ecb, line->start, line->length,
-				  color, 0, sign, line);
+				  color, ws, sign, slice);
 	}
 }
 
