@@ -90,7 +90,7 @@ static void align_atom_parser(struct used_atom *atom)
 	struct align *align = &atom->u.align;
 	const char *buf = NULL;
 	struct strbuf **s, **to_free;
-	int width = -1;
+	unsigned int width = ~0U;
 
 	if (!match_atom_name(atom->name, "align", &buf))
 		die("BUG: parsing non-'align'");
@@ -104,7 +104,7 @@ static void align_atom_parser(struct used_atom *atom)
 		int position;
 		buf = s[0]->buf;
 
-		if (!strtoul_ui(buf, 10, (unsigned int *)&width))
+		if (!strtoul_ui(buf, 10, &width))
 			;
 		else if ((position = parse_align_position(buf)) >= 0)
 			align->position = position;
@@ -113,7 +113,7 @@ static void align_atom_parser(struct used_atom *atom)
 		s++;
 	}
 
-	if (width < 0)
+	if (width == ~0U)
 		die(_("positive width expected with the %%(align) atom"));
 	align->width = width;
 	strbuf_list_free(to_free);
