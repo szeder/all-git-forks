@@ -104,7 +104,15 @@ static void align_atom_parser(struct used_atom *atom)
 		int position;
 		buf = s[0]->buf;
 
-		if (!strtoul_ui(buf, 10, &width))
+		if (skip_prefix(buf, "position=", &buf)) {
+			position = parse_align_position(buf);
+			if (position < 0)
+				die(_("unrecognized position:%s"), buf);
+			align->position = position;
+		} else if (skip_prefix(buf, "width=", &buf)) {
+			if (strtoul_ui(buf, 10, &width))
+				die(_("unrecognized width:%s"), buf);
+		} else if (!strtoul_ui(buf, 10, &width))
 			;
 		else if ((position = parse_align_position(buf)) >= 0)
 			align->position = position;
