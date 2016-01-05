@@ -1047,8 +1047,30 @@ static void diff_words_buffer_finalize_slices(struct diff_words_buffer *b,
 	}
 }
 
+static int diff_words_too_much_change(struct diff_words_buffer *b)
+{
+	unsigned changed = 0, total = 1;
+	int i;
+
+	for (i = 0; i < b->slice_nr; i++) {
+		struct text_slice *ts = b->slice + i;
+		if (ts->tag == TAG_LINE)
+			total += ts->length;
+		else
+			changed += ts->length;
+	}
+
+	return changed > 10 && changed * 100 / total > 50;
+}
+
 static void diff_words_finalize(struct emit_callback *ecb)
 {
+	if (diff_words_too_much_change(&ecb->diff_words->plus) ||
+	    diff_words_too_much_change(&ecb->diff_words->minus)) {
+		ecb->diff_words->plus.slice_nr = ecb->diff_words->plus.line_nr;
+		ecb->diff_words->minus.slice_nr = ecb->diff_words->minus.line_nr;
+	}
+
 	diff_words_buffer_finalize_slices(&ecb->diff_words->minus, ecb, WSEH_OLD);
 	diff_words_buffer_finalize_slices(&ecb->diff_words->plus, ecb, WSEH_NEW);
 }
