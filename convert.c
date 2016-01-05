@@ -235,7 +235,6 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 	char *dst;
 
 	if (crlf_action == CRLF_BINARY ||
-	    (crlf_action == CRLF_GUESS && auto_crlf == AUTO_CRLF_FALSE) ||
 	    (src && !len))
 		return 0;
 
@@ -798,6 +797,8 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 		ca->crlf_action = CRLF_GUESS;
 		ca->ident = 0;
 	}
+	if (ca->crlf_action == CRLF_GUESS && auto_crlf == AUTO_CRLF_FALSE)
+		ca->crlf_action = CRLF_BINARY;
 }
 
 int would_convert_to_git_filter_fd(const char *path)
@@ -1382,8 +1383,7 @@ struct stream_filter *get_stream_filter(const char *path, const unsigned char *s
 
 	crlf_action = ca.crlf_action;
 
-	if ((crlf_action == CRLF_BINARY) || (crlf_action == CRLF_INPUT) ||
-	    (crlf_action == CRLF_GUESS && auto_crlf == AUTO_CRLF_FALSE))
+	if ((crlf_action == CRLF_BINARY) || (crlf_action == CRLF_INPUT))
 		filter = cascade_filter(filter, &null_filter_singleton);
 
 	else if (output_eol(crlf_action) == EOL_CRLF &&
