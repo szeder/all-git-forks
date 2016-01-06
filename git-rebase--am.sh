@@ -44,7 +44,7 @@ then
 	# empty commits and even if it didn't the format doesn't really lend
 	# itself well to recording empty patches.  fortunately, cherry-pick
 	# makes this easy
-	git cherry-pick ${gpg_sign_opt:+"$gpg_sign_opt"} --keep-redundant-commits \
+	git cherry-pick ${gpg_sign_opt:+"$gpg_sign_opt"} --allow-empty \
 		--right-only "$revisions" \
 		${restrict_revision+^$restrict_revision}
 	ret=$?
