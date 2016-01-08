@@ -1124,7 +1124,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			warn("core.untrackedCache is set to true; "
 			     "remove or change it, if you really want to "
 			     "disable the untracked cache");
-		remove_untracked_cache();
+		remove_untracked_cache(&the_index);
 		report(_("Untracked cache disabled"));
 		break;
 	case UC_TEST:
@@ -1136,7 +1136,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			warn("core.untrackedCache is set to false; "
 			     "remove or change it, if you really want to "
 			     "enable the untracked cache");
-		add_untracked_cache();
+		add_untracked_cache(&the_index);
 		report(_("Untracked cache enabled for '%s'"), get_git_work_tree());
 		break;
 	default:

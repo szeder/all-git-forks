@@ -1941,7 +1941,7 @@ static void set_untracked_ident(struct untracked_cache *uc)
 	strbuf_addch(&uc->ident, 0);
 }
 
-static void new_untracked_cache(void)
+static void new_untracked_cache(struct index_state *istate)
 {
 	struct untracked_cache *uc = xcalloc(1, sizeof(*uc));
 	strbuf_init(&uc->ident, 100);
@@ -1949,28 +1949,28 @@ static void new_untracked_cache(void)
 	/* should be the same flags used by git-status */
 	uc->dir_flags = DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
 	set_untracked_ident(uc);
-	the_index.untracked = uc;
-	the_index.cache_changed |= UNTRACKED_CHANGED;
+	istate->untracked = uc;
+	istate->cache_changed |= UNTRACKED_CHANGED;
 }
 
-void add_untracked_cache(void)
+void add_untracked_cache(struct index_state *istate)
 {
-	if (!the_index.untracked) {
-		new_untracked_cache();
+	if (!istate->untracked) {
+		new_untracked_cache(istate);
 	} else {
-		if (!ident_in_untracked(the_index.untracked)) {
-			free_untracked_cache(the_index.untracked);
-			new_untracked_cache();
+		if (!ident_in_untracked(istate->untracked)) {
+			free_untracked_cache(istate->untracked);
+			new_untracked_cache(istate);
 		}
 	}
 }
 
-void remove_untracked_cache(void)
+void remove_untracked_cache(struct index_state *istate)
 {
-	if (the_index.untracked) {
-		free_untracked_cache(the_index.untracked);
-		the_index.untracked = NULL;
-		the_index.cache_changed |= UNTRACKED_CHANGED;
+	if (istate->untracked) {
+		free_untracked_cache(istate->untracked);
+		istate->untracked = NULL;
+		istate->cache_changed |= UNTRACKED_CHANGED;
 	}
 }
 
