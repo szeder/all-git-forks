@@ -578,19 +578,6 @@ static void wt_status_collect_untracked(struct wt_status *s)
 	if (!s->show_untracked_files)
 		return;
 
-	switch (use_untracked_cache) {
-	case -1: /* keep: do nothing */
-		break;
-	case 0: /* false */
-		remove_untracked_cache();
-		break;
-	case 1: /* true */
-		add_untracked_cache();
-		break;
-	default: /* unknown value: do nothing */
-		break;
-	}
-
 	memset(&dir, 0, sizeof(dir));
 	if (s->show_untracked_files != SHOW_ALL_UNTRACKED_FILES)
 		dir.flags |=
