@@ -1103,6 +1103,9 @@ class GitLFS(LargeFileSystem):
         if uploadProcess.wait():
             die('git-lfs push command failed. Did you define a remote?')
 
+    def escapeGitAttributePath(self, path):
+        return path.replace('[', '\[').replace(']', '\]').replace(' ', '[[:space:]]')
+
     def generateGitAttributes(self):
         return (
             self.baseGitAttributes +
@@ -1112,10 +1115,10 @@ class GitLFS(LargeFileSystem):
                 '# Git LFS (see https://git-lfs.github.com/)\n',
                 '#\n',
             ] +
-            ['*.' + f.replace(' ', '[[:space:]]') + ' filter=lfs -text\n'
+            ['*.' + self.escapeGitAttributePath(f) + ' filter=lfs -text\n'
                 for f in sorted(gitConfigList('git-p4.largeFileExtensions'))
             ] +
-            ['/' + f.replace(' ', '[[:space:]]') + ' filter=lfs -text\n'
+            ['/' + self.escapeGitAttributePath(f) + ' filter=lfs -text\n'
                 for f in sorted(self.largeFiles) if not self.hasLargeFileExtension(f)
             ]
         )

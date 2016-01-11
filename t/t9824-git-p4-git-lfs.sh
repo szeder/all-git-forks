@@ -50,9 +50,9 @@ test_expect_success 'Create repo with binary files' '
 		p4 add file2.dat &&
 		p4 submit -d "Add text and binary file" &&
 
-		mkdir "path with spaces" &&
-		echo "content 2-3 bin 25 bytes" >"path with spaces/file3.bin" &&
-		p4 add "path with spaces/file3.bin" &&
+		mkdir "path with special-_(){}[]" &&
+		echo "content 2-3 bin 25 bytes" >"path with special-_(){}[]/file3.bin" &&
+		p4 add "path with special-_(){}[]/file3.bin" &&
 		p4 submit -d "Add another binary file with same content and spaces in path" &&
 
 		echo "content 4 bin 26 bytes XX" >file4.bin &&
@@ -73,7 +73,7 @@ test_expect_success 'Store files in LFS based on size (>24 bytes)' '
 		git p4 clone --destination="$git" //depot@all &&
 
 		test_file_in_lfs file2.dat 25 "content 2-3 bin 25 bytes" &&
-		test_file_in_lfs "path with spaces/file3.bin" 25 "content 2-3 bin 25 bytes" &&
+		test_file_in_lfs "path with special-_(){}[]/file3.bin" 25 "content 2-3 bin 25 bytes" &&
 		test_file_in_lfs file4.bin 26 "content 4 bin 26 bytes XX" &&
 
 		test_file_count_in_dir ".git/lfs/objects" 2 &&
@@ -85,7 +85,7 @@ test_expect_success 'Store files in LFS based on size (>24 bytes)' '
 		#
 		/file2.dat filter=lfs -text
 		/file4.bin filter=lfs -text
-		/path[[:space:]]with[[:space:]]spaces/file3.bin filter=lfs -text
+		/path[[:space:]]with[[:space:]]special-_(){}\[\]/file3.bin filter=lfs -text
 		EOF
 		test_path_is_file .gitattributes &&
 		test_cmp expect .gitattributes
@@ -192,7 +192,7 @@ test_expect_success 'Remove file from repo and store files in LFS based on size 
 		git p4 clone --destination="$git" //depot@all &&
 
 		test_file_in_lfs file2.dat 25 "content 2-3 bin 25 bytes" &&
-		test_file_in_lfs "path with spaces/file3.bin" 25 "content 2-3 bin 25 bytes" &&
+		test_file_in_lfs "path with special-_(){}[]/file3.bin" 25 "content 2-3 bin 25 bytes" &&
 		test_path_is_missing file4.bin &&
 		test_file_count_in_dir ".git/lfs/objects" 2 &&
 
@@ -202,7 +202,7 @@ test_expect_success 'Remove file from repo and store files in LFS based on size 
 		# Git LFS (see https://git-lfs.github.com/)
 		#
 		/file2.dat filter=lfs -text
-		/path[[:space:]]with[[:space:]]spaces/file3.bin filter=lfs -text
+		/path[[:space:]]with[[:space:]]special-_(){}\[\]/file3.bin filter=lfs -text
 		EOF
 		test_path_is_file .gitattributes &&
 		test_cmp expect .gitattributes
@@ -229,7 +229,7 @@ test_expect_success 'Add .gitattributes and store files in LFS based on size (>2
 		git p4 clone --destination="$git" //depot@all &&
 
 		test_file_in_lfs file2.dat 25 "content 2-3 bin 25 bytes" &&
-		test_file_in_lfs "path with spaces/file3.bin" 25 "content 2-3 bin 25 bytes" &&
+		test_file_in_lfs "path with special-_(){}[]/file3.bin" 25 "content 2-3 bin 25 bytes" &&
 		test_path_is_missing file4.bin &&
 		test_file_count_in_dir ".git/lfs/objects" 2 &&
 
@@ -240,7 +240,7 @@ test_expect_success 'Add .gitattributes and store files in LFS based on size (>2
 		# Git LFS (see https://git-lfs.github.com/)
 		#
 		/file2.dat filter=lfs -text
-		/path[[:space:]]with[[:space:]]spaces/file3.bin filter=lfs -text
+		/path[[:space:]]with[[:space:]]special-_(){}\[\]/file3.bin filter=lfs -text
 		EOF
 		test_path_is_file .gitattributes &&
 		test_cmp expect .gitattributes
