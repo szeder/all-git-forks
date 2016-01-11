@@ -1176,9 +1176,10 @@ static void diff_words_show_unified(struct emit_callback *ecbdata)
 	diff_words_mark_line(plus);
 
 	if ((minus->slice_nr == 1 && plus->slice_nr == 1) ||
-	    minus->slice_nr != plus->slice_nr)
-		diff_words_collect_words(ecbdata);
-	else
+	    minus->slice_nr != plus->slice_nr) {
+		if (minus->slice_nr && plus->slice_nr)
+			diff_words_collect_words(ecbdata);
+	} else
 		diff_words_collect_words_by_line(ecbdata);
 	diff_words_finalize(ecbdata);
 
