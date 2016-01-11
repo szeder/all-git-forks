@@ -1083,7 +1083,7 @@ class GitLFS(LargeFileSystem):
             die('git-lfs push command failed. Did you define a remote?')
 
     def escapeGitAttributePath(self, path):
-        return path.replace(' ', '[[:space:]]').replace('[', '\[').replace(']', '\]')
+        return path.replace('[', '\[').replace(']', '\]').replace(' ', '[[:space:]]')
 
     def generateGitAttributes(self):
         return (
