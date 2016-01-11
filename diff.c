@@ -798,6 +798,8 @@ struct diff_words_data {
 	regex_t *word_regex;
 	enum diff_words_type type;
 	struct diff_words_style *style;
+	void (*flush)(struct emit_callback *);
+	int (*consume)(struct emit_callback *, char *, unsigned long);
 };
 
 static void diff_words_append(struct diff_words_data *diff_words,
@@ -1036,8 +1038,9 @@ static void diff_words_fill(struct diff_words_buffer *buffer, mmfile_t *out,
 }
 
 /* this executes the word diff on the accumulated buffers */
-static void diff_words_show(struct diff_words_data *diff_words)
+static void diff_words_show(struct emit_callback *ecb)
 {
+	struct diff_words_data *diff_words = ecb->diff_words;
 	xpparam_t xpp;
 	xdemitconf_t xecfg;
 	mmfile_t minus, plus;
@@ -1091,9 +1094,46 @@ static void diff_words_show(struct diff_words_data *diff_words)
 /* In "color-words" mode, show word-diff of words accumulated in the buffer */
 static void diff_words_flush(struct emit_callback *ecbdata)
 {
-	if (ecbdata->diff_words->minus.text.size ||
-	    ecbdata->diff_words->plus.text.size)
-		diff_words_show(ecbdata->diff_words);
+	if (!ecbdata->diff_words->minus.text.size &&
+	    !ecbdata->diff_words->plus.text.size)
+		return;
+
+	ecbdata->diff_words->flush(ecbdata);
+}
+
+static int diff_words_consume(struct emit_callback *ecbdata,
+			      char *line, unsigned long len)
+{
+	if (line[0] == '-' || line[0] == '+') {
+		diff_words_append(ecbdata->diff_words, line, len);
+		return -1;
+	} else if (starts_with(line, "\\ ")) {
+		/*
+		 * Eat the "no newline at eof" marker as if we
+		 * saw a "+" or "-" line with nothing on it,
+		 * and return without diff_words_flush() to
+		 * defer processing. If this is the end of
+		 * preimage, more "+" lines may come after it.
+		 */
+		return -1;
+	}
+	diff_words_flush(ecbdata);
+	if (ecbdata->diff_words->type == DIFF_WORDS_PORCELAIN) {
+		emit_line(ecbdata, DIFF_CONTEXT, line, len);
+		fputs("~\n", ecbdata->opt->file);
+	} else {
+		/*
+		 * Skip the prefix character, if any.  With
+		 * diff_suppress_blank_empty, there may be
+		 * none.
+		 */
+		if (line[0] != '\n') {
+			line++;
+			len--;
+		}
+		emit_line(ecbdata, DIFF_CONTEXT, line, len);
+	}
+	return -1;
 }
 
 static void diff_filespec_load_driver(struct diff_filespec *one)
@@ -1129,6 +1169,8 @@ static void init_diff_words_data(struct emit_callback *ecbdata,
 		xcalloc(1, sizeof(struct diff_words_data));
 	ecbdata->diff_words->type = o->word_diff;
 	ecbdata->diff_words->opt = o;
+	ecbdata->diff_words->flush = diff_words_show;
+	ecbdata->diff_words->consume = diff_words_consume;
 	if (!o->word_regex)
 		o->word_regex = userdiff_word_regex(one);
 	if (!o->word_regex)
@@ -1282,38 +1324,9 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 		return;
 	}
 
-	if (ecbdata->diff_words) {
-		if (line[0] == '-' || line[0] == '+') {
-			diff_words_append(ecbdata->diff_words, line, len);
-			return;
-		} else if (starts_with(line, "\\ ")) {
-			/*
-			 * Eat the "no newline at eof" marker as if we
-			 * saw a "+" or "-" line with nothing on it,
-			 * and return without diff_words_flush() to
-			 * defer processing. If this is the end of
-			 * preimage, more "+" lines may come after it.
-			 */
-			return;
-		}
-		diff_words_flush(ecbdata);
-		if (ecbdata->diff_words->type == DIFF_WORDS_PORCELAIN) {
-			emit_line(ecbdata, DIFF_CONTEXT, line, len);
-			fputs("~\n", ecbdata->opt->file);
-		} else {
-			/*
-			 * Skip the prefix character, if any.  With
-			 * diff_suppress_blank_empty, there may be
-			 * none.
-			 */
-			if (line[0] != '\n') {
-			      line++;
-			      len--;
-			}
-			emit_line(ecbdata, DIFF_CONTEXT, line, len);
-		}
+	if (ecbdata->diff_words &&
+	    ecbdata->diff_words->consume(ecbdata, line, len))
 		return;
-	}
 
 	switch (line[0]) {
 	case '+':
