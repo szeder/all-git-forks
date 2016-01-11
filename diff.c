@@ -1209,15 +1209,19 @@ static void init_diff_words_data(struct emit_callback *ecbdata,
 	}
 }
 
+static void diff_words_buffer_release(struct diff_words_buffer *b)
+{
+	free(b->text.ptr);
+	free(b->orig);
+}
+
 static void free_diff_words_data(struct emit_callback *ecbdata)
 {
 	if (ecbdata->diff_words) {
 		diff_words_flush(ecbdata);
 		free (ecbdata->diff_words->opt);
-		free (ecbdata->diff_words->minus.text.ptr);
-		free (ecbdata->diff_words->minus.orig);
-		free (ecbdata->diff_words->plus.text.ptr);
-		free (ecbdata->diff_words->plus.orig);
+		diff_words_buffer_release(&ecbdata->diff_words->minus);
+		diff_words_buffer_release(&ecbdata->diff_words->plus);
 		if (ecbdata->diff_words->word_regex) {
 			regfree(ecbdata->diff_words->word_regex);
 			free(ecbdata->diff_words->word_regex);
