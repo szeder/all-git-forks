@@ -1901,6 +1901,10 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 
 	refname = resolve_ref_unsafe(refname, resolve_flags,
 				     lock->old_oid.hash, &type);
+	if (!refname && (flags & REF_NODEREF))
+		refname = resolve_ref_unsafe(orig_refname,
+					     resolve_flags | RESOLVE_REF_NO_RECURSE,
+					     lock->old_oid.hash, &type);
 	if (!refname && errno == EISDIR) {
 		/*
 		 * we are trying to lock foo but we used to
