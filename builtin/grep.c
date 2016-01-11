@@ -770,9 +770,20 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 			     PARSE_OPT_NO_INTERNAL_HELP);
 	grep_commit_pattern_type(pattern_type_arg, &opt);
 
-	if (use_index && !startup_info->have_repository)
-		/* die the same way as if we did it at the beginning */
-		setup_git_directory();
+	if (use_index && !startup_info->have_repository) {
+		int fallback = 0;
+		git_config_get_bool("grep.fallbacktonoindex", &fallback);
+		if (fallback) {
+			int nongit = 0;
+
+			setup_git_directory_gently(&nongit);
+			if (nongit)
+				use_index = 0;
+		} else {
+			/* die the same way as if we did it at the beginning */
+			setup_git_directory();
+		}
+	}
 
 	/*
 	 * skip a -- separator; we know it cannot be
@@ -889,12 +900,14 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		setup_pager();
 
 	if (!use_index && (untracked || cached))
-		die(_("--cached or --untracked cannot be used with --no-index."));
+		die(_("--cached or --untracked cannot be used with --no-index "
+		      "or outside of a git repository"));
 
 	if (!use_index || untracked) {
 		int use_exclude = (opt_exclude < 0) ? use_index : !!opt_exclude;
 		if (list.nr)
-			die(_("--no-index or --untracked cannot be used with revs."));
+			die(_("git grep outside of a repository, --no-index or "
+			      "--untracked cannot be used with revs."));
 		hit = grep_directory(&opt, &pathspec, use_exclude);
 	} else if (0 <= opt_exclude) {
 		die(_("--[no-]exclude-standard cannot be used for tracked contents."));
