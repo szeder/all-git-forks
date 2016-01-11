@@ -3870,7 +3870,7 @@ int diff_opt_parse(struct diff_options *options,
 	else if (skip_prefix(arg, "--color-words=", &arg)) {
 		options->use_color = 1;
 		options->word_diff = DIFF_WORDS_COLOR;
-		options->word_regex = arg;
+		options->word_regex = *arg ? arg : NULL;
 	}
 	else if (!strcmp(arg, "--word-diff")) {
 		if (options->word_diff == DIFF_WORDS_NONE)
@@ -3893,7 +3893,7 @@ int diff_opt_parse(struct diff_options *options,
 	else if ((argcount = parse_long_opt("word-diff-regex", av, &optarg))) {
 		if (options->word_diff == DIFF_WORDS_NONE)
 			options->word_diff = DIFF_WORDS_PLAIN;
-		options->word_regex = optarg;
+		options->word_regex = *optarg ? optarg : NULL;
 		return argcount;
 	}
 	else if (!strcmp(arg, "--exit-code"))
