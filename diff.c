@@ -847,6 +847,33 @@ static void diff_words_mark_line(struct diff_words_buffer *buffer)
 	}
 }
 
+static void fn_out_diff_words_aux_unified(void *priv, char *line,
+					  unsigned long len)
+{
+}
+
+static void diff_words_fill(struct diff_words_buffer *, mmfile_t *, regex_t *);
+static void diff_words_collect_words(struct emit_callback *ecb)
+{
+	struct diff_words_data *diff_words = ecb->diff_words;
+	xpparam_t xpp;
+	xdemitconf_t xecfg;
+	mmfile_t minus, plus;
+
+	memset(&xpp, 0, sizeof(xpp));
+	memset(&xecfg, 0, sizeof(xecfg));
+	diff_words_fill(&diff_words->minus, &minus, diff_words->word_regex);
+	diff_words_fill(&diff_words->plus, &plus, diff_words->word_regex);
+	xpp.flags = ecb->opt->word_diff_xdl_opts;
+	/* as only the hunk header will be parsed, we need a 0-context */
+	xecfg.ctxlen = 0;
+	if (xdi_diff_outf(&minus, &plus, fn_out_diff_words_aux_unified, diff_words,
+			  &xpp, &xecfg))
+		die("unable to generate word diff");
+	free(minus.ptr);
+	free(plus.ptr);
+}
+
 static void diff_words_buffer_show(struct emit_callback *ecb,
 				   struct diff_words_buffer *b,
 				   enum color_diff color,
@@ -877,6 +904,8 @@ static void diff_words_show_unified(struct emit_callback *ecbdata)
 	 */
 	diff_words_mark_line(minus);
 	diff_words_mark_line(plus);
+
+	diff_words_collect_words(ecbdata);
 
 	diff_words_buffer_show(ecbdata, minus, DIFF_FILE_OLD, WSEH_OLD, '-');
 	diff_words_buffer_show(ecbdata, plus, DIFF_FILE_NEW, WSEH_NEW, '+');
