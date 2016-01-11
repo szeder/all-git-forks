@@ -1113,6 +1113,31 @@ static void diff_words_collect_words(struct emit_callback *ecb)
 	free(plus.ptr);
 }
 
+static void diff_words_collect_words_by_line(struct emit_callback *ecb)
+{
+	struct diff_words_data   *dw    = ecb->diff_words;
+	struct diff_words_buffer *minus = &dw->minus;
+	struct diff_words_buffer *plus  = &dw->plus;
+	mmfile_t mm_minus, mm_plus;
+	int i, nr = minus->slice_nr;
+
+	assert(dw->minus.slice_nr == dw->plus.slice_nr);
+	memcpy(&mm_minus, &minus->text, sizeof(mm_minus));
+	memcpy(&mm_plus, &plus->text, sizeof(mm_plus));
+	for (i = 0; i < nr; i++) {
+		struct text_slice *ts_minus = minus->slice + i;
+		struct text_slice *ts_plus  = plus->slice  + i;
+
+		minus->text.ptr  = (char*)ts_minus->start;
+		minus->text.size = ts_minus->length;
+		plus->text.ptr   = (char*)ts_plus->start;
+		plus->text.size  = ts_plus->length;
+		diff_words_collect_words(ecb);
+	}
+	memcpy(&minus->text, &mm_minus, sizeof(mm_minus));
+	memcpy(&plus->text, &mm_plus, sizeof(mm_plus));
+}
+
 static void diff_words_buffer_show(struct emit_callback *ecb,
 				   struct diff_words_buffer *b,
 				   enum color_diff color,
@@ -1150,7 +1175,11 @@ static void diff_words_show_unified(struct emit_callback *ecbdata)
 	diff_words_mark_line(minus);
 	diff_words_mark_line(plus);
 
-	diff_words_collect_words(ecbdata);
+	if ((minus->slice_nr == 1 && plus->slice_nr == 1) ||
+	    minus->slice_nr != plus->slice_nr)
+		diff_words_collect_words(ecbdata);
+	else
+		diff_words_collect_words_by_line(ecbdata);
 	diff_words_finalize(ecbdata);
 
 	diff_words_buffer_show(ecbdata, minus, DIFF_FILE_OLD, WSEH_OLD, '-');
