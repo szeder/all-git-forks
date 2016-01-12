@@ -6,6 +6,7 @@
 
 static char *configured_signing_key;
 static const char *gpg_program = "gpg";
+static const char *gpg_homedir = NULL;
 
 #define PGP_SIGNATURE "-----BEGIN PGP SIGNATURE-----"
 #define PGP_MESSAGE "-----BEGIN PGP MESSAGE-----"
@@ -131,6 +132,11 @@ int git_gpg_config(const char *var, const char *value, void *cb)
 			return config_error_nonbool(var);
 		gpg_program = xstrdup(value);
 	}
+	if (!strcmp(var, "gpg.homedir")) {
+		if (!value)
+			return config_error_nonbool(var);
+		gpg_homedir = xstrdup(value);
+	}
 	return 0;
 }
 
@@ -150,7 +156,7 @@ const char *get_signing_key(void)
 int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
 {
 	struct child_process gpg = CHILD_PROCESS_INIT;
-	const char *args[4];
+	const char *args[6];
 	ssize_t len;
 	size_t i, j, bottom;
 
@@ -160,8 +166,13 @@ int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *sig
 	args[0] = gpg_program;
 	args[1] = "-bsau";
 	args[2] = signing_key;
-	args[3] = NULL;
-
+	if (gpg_homedir) {
+		args[3] = "--homedir";
+		args[4] = gpg_homedir;
+		args[5] = NULL;
+	} else {
+		args[3] = NULL;
+	}
 	if (start_command(&gpg))
 		return error(_("could not run gpg."));
 
@@ -210,13 +221,17 @@ int verify_signed_buffer(const char *payload, size_t payload_size,
 			 struct strbuf *gpg_output, struct strbuf *gpg_status)
 {
 	struct child_process gpg = CHILD_PROCESS_INIT;
-	const char *args_gpg[] = {NULL, "--status-fd=1", "--verify", "FILE", "-", NULL};
+	const char *args_gpg[] = {NULL, "--status-fd=1", "--verify", "FILE", "-", NULL, NULL, NULL};
 	char path[PATH_MAX];
 	int fd, ret;
 	struct strbuf buf = STRBUF_INIT;
 	struct strbuf *pbuf = &buf;
 
 	args_gpg[0] = gpg_program;
+	if (gpg_homedir) {
+		args_gpg[5] = "--homedir";
+		args_gpg[6] = gpg_homedir;
+	}
 	fd = git_mkstemp(path, PATH_MAX, ".git_vtag_tmpXXXXXX");
 	if (fd < 0)
 		return error(_("could not create temporary file '%s': %s"),
