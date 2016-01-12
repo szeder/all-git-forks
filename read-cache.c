@@ -1623,7 +1623,7 @@ int read_index_from(struct index_state *istate, const char *path)
 
 	ret = do_read_index(istate, path, 0);
 
-	switch (use_untracked_cache) {
+	switch (git_config_get_untracked_cache()) {
 	case -1: /* keep: do nothing */
 		break;
 	case 0: /* false */

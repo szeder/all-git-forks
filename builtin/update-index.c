@@ -1120,7 +1120,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	case UC_UNSPECIFIED:
 		break;
 	case UC_DISABLE:
-		if (use_untracked_cache == 1)
+		if (git_config_get_untracked_cache() == 1)
 			warning("core.untrackedCache is set to true; "
 				"remove or change it, if you really want to "
 				"disable the untracked cache");
@@ -1132,7 +1132,7 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		return !test_if_untracked_cache_is_supported();
 	case UC_ENABLE:
 	case UC_FORCE:
-		if (use_untracked_cache == 0)
+		if (git_config_get_untracked_cache() == 0)
 			warning("core.untrackedCache is set to false; "
 				"remove or change it, if you really want to "
 				"enable the untracked cache");
