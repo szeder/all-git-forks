@@ -7,6 +7,9 @@
 #            2007 Trolltech ASA
 # License: MIT <http://www.opensource.org/licenses/mit-license.php>
 #
+from __future__ import print_function
+from __future__ import unicode_literals
+
 import sys
 if sys.hexversion < 0x02040000:
     # The limiter is the subprocess module
@@ -26,11 +29,22 @@ import zipfile
 import zlib
 import ctypes
 
-from __future__ import print_function
+# python2/python3 compatibility
+if sys.version_info >= (3,0):
+    basestring = (str, bytes)
+    unicode = str
+    raw_input = input
 
 try:
-    from subprocess import CalledProcessError
+    from typing import Dict, List, Union, Callable, Optional, Any, cast
 except ImportError:
+    # no type checking
+    def cast(x):
+        return x
+    pass
+
+# do we have CalledProcessError?
+if 'CalledProcessError' not in dir(subprocess):
     # from python2.7:subprocess.py
     # Exception classes used by this module.
     class CalledProcessError(Exception):
@@ -223,7 +237,7 @@ def p4_system(cmd):
     if retcode:
         raise CalledProcessError(retcode, real_cmd)
 
-_p4_version_string = None
+_p4_version_string = None   # type: bytes
 def p4_version_string():
     """Read the version string, showing just the last line, which
        hopefully is the interesting version bit.
@@ -267,11 +281,11 @@ def p4_reopen(type, f):
 def p4_move(src, dest):
     p4_system(["move", "-k", wildcard_encode(src), wildcard_encode(dest)])
 
-def p4_last_change():
+def p4_last_change():   # type: () -> int
     results = p4CmdList(["changes", "-m", "1"])
     return int(results[0]['change'])
 
-def p4_describe(change):
+def p4_describe(change):    # type: (int) -> str
     """Make sure it returns a valid result by checking for
        the presence of field "time".  Return a dict of the
        results."""
@@ -466,21 +480,49 @@ def isModeExecChanged(src_mode, dst_mode):
     return isModeExec(src_mode) != isModeExec(dst_mode)
 
 class P4CommandError(Exception):
-    def __init__(self, returncode, cmd, output):
+    """ We ran p4, but got back a non-zero process exit code """
+    def __init__(self, returncode, cmd, output):    # type: (int, Union[List[str],str], List[str]) -> None
         self.returncode = returncode
         self.cmd = cmd
         self.output = output
     def __str__(self):
         return "p4 command '%s' returned non-zero exit status %d and output '%s'" % \
-            (self.cmd, self.returncode, str(self.output))
+            (str(self.cmd), self.returncode, str(self.output))
 
-def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None): # type: (Union[str, List[str]], File, str, Optional[Callable]) -> List[Dict[bytes, bytes]]
+class P4Result:
+    """ p4 -G returns a list of dictionaries of results. One of those dictionaries is
+        represented by a P4Result. The keys and values are internally byte strings. """
+    def __init__(self, d):          # type: (P4Result, Dict) -> None
+        self.dict = d
+
+    def __getitem__(self, key):     # type: (object, Union[str, bytes]) -> bytes
+        if isinstance(key, str):
+            return self.dict[key.encode('ascii')]
+        else:
+            return self.dict[key]
+
+    def __str__(self):
+        return self.dict.__str__(self.dict)
+
+    def __len__(self):
+        return len(self.dict)
+
+    def __iter__(self):
+        return iter(self.dict)
+
+    def __contains__(self, key):
+        if isinstance(key, str):
+            return key.encode('ascii') in self.dict
+        else:
+            return key in self.dict
+
+def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None): # type: (Union[str, List[str]], Any, str, Optional[Any]) -> List[P4Result]
 
     if isinstance(cmd,basestring):
-        cmd = "-G " + cmd
+        cmd = "-G " + str(cmd)
         expand = True
     else:
-        cmd = ["-G"] + cmd
+        cmd = ["-G"] + cast(List[str], cmd)
         expand = False
 
     cmd = p4_build_cmd(cmd)
@@ -506,10 +548,11 @@ def p4CmdList(cmd, stdin=None, stdin_mode='w+b', cb=None): # type: (Union[str, L
                           stdin=stdin_file,
                           stdout=subprocess.PIPE)
 
-    result = []
+    result = [] # type: List[P4Result]
+
     try:
         while True:
-            entry = marshal.load(p4.stdout)
+            entry = P4Result(marshal.load(p4.stdout))
             if cb is not None:
                 cb(entry)
             else:
@@ -630,7 +673,7 @@ def gitBranchExists(branch):
                             stderr=subprocess.PIPE, stdout=subprocess.PIPE);
     return proc.wait() == 0;
 
-_gitConfig = {}
+_gitConfig = {} # type: Dict[str, str]
 
 def gitConfig(key, typeSpecifier=None):
     if key not in _gitConfig:
@@ -966,11 +1009,10 @@ class LargeFileSystem(object):
         assert False, "Method 'pushFile' required in " + self.__class__.__name__
 
     def hasLargeFileExtension(self, relPath):
-        return reduce(
-            lambda a, b: a or b,
-            [relPath.endswith('.' + e) for e in gitConfigList('git-p4.largeFileExtensions')],
-            False
-        )
+        for e in gitConfigList('git-p4.largeFileExtensions'):
+            if relPath.endswith('.' + e):
+                return True
+        return False
 
     def generateTempFile(self, contents):
         contentFile = tempfile.NamedTemporaryFile(prefix='git-p4-large-file', delete=False)
@@ -1158,11 +1200,11 @@ class P4UserMap:
         home = os.environ.get("HOME", os.environ.get("USERPROFILE"))
         return home + "/.gitp4-usercache.txt"
 
-    def getUserMapFromPerforceServer(self):
+    def getUserMapFromPerforceServer(self):     # type: () -> None
         if self.userMapFromPerforceServer:
             return
-        self.users = {}
-        self.emails = {}
+        self.users = {}     # type: Dict[str, str]
+        self.emails = {}    # type: Dict[str, str]
 
         for output in p4CmdList("users"):
             if "User" not in output:
