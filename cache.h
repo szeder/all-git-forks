@@ -1605,6 +1605,8 @@ extern int git_config_get_maybe_bool(const char *key, int *dest);
 extern int git_config_get_pathname(const char *key, const char **dest);
 extern int git_config_get_untracked_cache(void);
 
+extern int ignore_untracked_cache_config;
+
 struct key_value_info {
 	const char *filename;
 	int linenr;
