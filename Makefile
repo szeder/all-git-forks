@@ -38,3 +38,4 @@ clean:
 
 backup: clean
 	cd .. ; tar czvf dircache.tar.gz dir-cache
+LIBS+=-lcrypto -lz
