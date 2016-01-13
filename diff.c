@@ -1057,7 +1057,7 @@ static void diff_words_show(struct diff_words_data *diff_words)
 	memset(&xecfg, 0, sizeof(xecfg));
 	diff_words_fill(&diff_words->minus, &minus, diff_words->word_regex);
 	diff_words_fill(&diff_words->plus, &plus, diff_words->word_regex);
-	xpp.flags = 0;
+	xpp.flags = opt->word_diff_xdl_opts;
 	/* as only the hunk header will be parsed, we need a 0-context */
 	xecfg.ctxlen = 0;
 	if (xdi_diff_outf(&minus, &plus, fn_out_diff_words_aux, diff_words,
@@ -1134,6 +1134,8 @@ static void init_diff_words_data(struct emit_callback *ecbdata,
 			die ("Invalid regular expression: %s",
 			     o->word_regex);
 	}
+	if (!o->word_diff_xdl_opts)
+		o->word_diff_xdl_opts = o->xdl_opts;
 	for (i = 0; i < ARRAY_SIZE(diff_words_styles); i++) {
 		if (o->word_diff == diff_words_styles[i].type) {
 			ecbdata->diff_words->style =
@@ -3832,6 +3834,17 @@ int diff_opt_parse(struct diff_options *options,
 		DIFF_XDL_CLR(options, NEED_MINIMAL);
 		options->xdl_opts &= ~XDF_DIFF_ALGORITHM_MASK;
 		options->xdl_opts |= value;
+		return argcount;
+	}
+	else if ((argcount = parse_long_opt("word-diff-algorithm", av, &optarg))) {
+		long value = parse_algorithm_value(optarg);
+		if (value < 0)
+			return error("option diff-algorithm accepts \"myers\", "
+				     "\"minimal\", \"patience\" and \"histogram\"");
+		/* clear out previous settings */
+		options->word_diff_xdl_opts &= ~XDF_NEED_MINIMAL;
+		options->word_diff_xdl_opts &= ~XDF_DIFF_ALGORITHM_MASK;
+		options->word_diff_xdl_opts |= value;
 		return argcount;
 	}
 
