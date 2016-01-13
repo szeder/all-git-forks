@@ -1880,6 +1880,7 @@ XDIFF_OBJS += xdiff/xemit.o
 XDIFF_OBJS += xdiff/xmerge.o
 XDIFF_OBJS += xdiff/xpatience.o
 XDIFF_OBJS += xdiff/xhistogram.o
+XDIFF_OBJS += xdiff/xlazy.o
 
 VCSSVN_OBJS += vcs-svn/line_buffer.o
 VCSSVN_OBJS += vcs-svn/sliding_window.o
