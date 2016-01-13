@@ -2,6 +2,7 @@
 #include "string-list.h"
 #include "run-command.h"
 #include "commit.h"
+#include "tempfile.h"
 #include "trailer.h"
 /*
  * Copyright (c) 2013, 2014 Christian Couder <chriscool@tuxfamily.org>
@@ -843,7 +844,9 @@ static void free_all(struct trailer_item **first)
 	}
 }
 
-void process_trailers(const char *file, int trim_empty, struct string_list *trailers)
+static struct tempfile trailers_tempfile;
+
+void process_trailers(const char *file, int in_place, int trim_empty, struct string_list *trailers)
 {
 	struct trailer_item *in_tok_first = NULL;
 	struct trailer_item *in_tok_last = NULL;
@@ -858,6 +861,31 @@ void process_trailers(const char *file, int trim_empty, struct string_list *trai
 
 	lines = read_input_file(file);
 
+	if (in_place) {
+		struct stat st;
+		struct strbuf template = STRBUF_INIT;
+		const char *tail;
+
+		if (stat(file, &st))
+			die_errno(_("could not stat %s"), file);
+		if (!S_ISREG(st.st_mode))
+			die(_("file %s is not a regular file"), file);
+		if (!(st.st_mode & S_IWUSR))
+			die(_("file %s is not writable by user"), file);
+
+		/* Create temporary file in the same directory as the original */
+		tail = strrchr(file, '/');
+		if (tail != NULL)
+			strbuf_add(&template, file, tail - file + 1);
+		strbuf_addstr(&template, "git-interpret-trailers-XXXXXX");
+
+		xmks_tempfile_m(&trailers_tempfile, template.buf, st.st_mode);
+		strbuf_release(&template);
+		outfile = fdopen_tempfile(&trailers_tempfile, "w");
+		if (!outfile)
+			die_errno(_("could not open temporary file"));
+	}
+
 	/* Print the lines before the trailers */
 	trailer_end = process_input_file(outfile, lines, &in_tok_first, &in_tok_last);
 
@@ -871,6 +899,11 @@ void process_trailers(const char *file, int trim_empty, struct string_list *trai
 
 	/* Print the lines after the trailers as is */
 	print_lines(outfile, lines, trailer_end, INT_MAX);
+
+	if (in_place) {
+		if (rename_tempfile(&trailers_tempfile, file))
+			die_errno(_("could not rename temporary file to %s"), file);
+	}
 
 	strbuf_list_free(lines);
 }
