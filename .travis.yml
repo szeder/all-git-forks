@@ -19,7 +19,7 @@ env:
     - GIT_LFS_VERSION="1.1.0"
     - DEFAULT_TEST_TARGET=prove
     - GIT_PROVE_OPTS="--timer --jobs 3"
-    - GIT_TEST_OPTS="--verbose --tee --root=~/ramdisk"
+    - GIT_TEST_OPTS="--verbose --tee --root=/tmp/ramdisk"
     - CFLAGS="-g -O2 -Wall -Werror"
     - GIT_TEST_CLONE_2GB=YesPlease
     # t9810 occasionally fails on Travis CI OS X
@@ -46,7 +46,7 @@ before_install:
         export PATH="$(pwd):$PATH"
       popd
       mkdir --parents /dev/shm/git-ramdisk
-      ln -s /dev/shm/git-ramdisk ~/ramdisk
+      ln -s /dev/shm/git-ramdisk /tmp/ramdisk
       ;;
     osx)
       brew_force_set_latest_binary_hash () {
@@ -62,7 +62,7 @@ before_install:
       brew install git-lfs perforce-server perforce gettext
       brew link --force gettext
       diskutil erasevolume HFS+ 'ramdisk' $(hdiutil attach -nomount ram://$((2048*128)))
-      ln -s /Volumes/ramdisk ~/ramdisk
+      ln -s /Volumes/ramdisk /tmp/ramdisk
       ;;
     esac;
     echo "$(tput setaf 6)Perforce Server Version$(tput sgr0)";
