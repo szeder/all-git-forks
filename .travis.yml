@@ -61,6 +61,7 @@ before_install:
       brew_force_set_latest_binary_hash perforce-server
       brew install git-lfs perforce-server perforce gettext
       brew link --force gettext
+      diskutil erasevolume HFS+ 'RAMDisk' $(hdiutil attach -nomount ram://$((2048*128)));
       ;;
     esac;
     echo "$(tput setaf 6)Perforce Server Version$(tput sgr0)";
@@ -69,7 +70,6 @@ before_install:
     p4 -V | grep Rev.;
     echo "$(tput setaf 6)Git-LFS Version$(tput sgr0)";
     git-lfs version;
-    diskutil erasevolume HFS+ 'RAMDisk' $(hdiutil attach -nomount ram://$((2048*128)));
 
 before_script: make --jobs=2
 
