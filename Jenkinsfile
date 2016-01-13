@@ -1,14 +1,10 @@
 node{
 
-	#Checkout current version of this branch
 	checkout scm
 
-	#Make config
-	"make configure".execute()
+	sh "make configure"
 
-	#Run configuration
-	"./configure".execute()
+	sh "./configure"
 
-	#Make
-	"make".execute()
+	sh "make"
 }
