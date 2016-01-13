@@ -19,7 +19,7 @@ env:
     - GIT_LFS_VERSION="1.1.0"
     - DEFAULT_TEST_TARGET=prove
     - GIT_PROVE_OPTS="--timer --jobs 3"
-    - GIT_TEST_OPTS="--verbose --tee"
+    - GIT_TEST_OPTS="--verbose --tee --root=/Volumes/RAMDisk"
     - CFLAGS="-g -O2 -Wall -Werror"
     - GIT_TEST_CLONE_2GB=YesPlease
     # t9810 occasionally fails on Travis CI OS X
@@ -67,6 +67,7 @@ before_install:
     p4 -V | grep Rev.;
     echo "$(tput setaf 6)Git-LFS Version$(tput sgr0)";
     git-lfs version;
+    diskutil erasevolume HFS+ 'RAMDisk' $(hdiutil attach -nomount ram://$((2048*128)));
 
 before_script: make --jobs=2
 
