@@ -45,6 +45,8 @@ before_install:
         cp git-lfs-$GIT_LFS_VERSION/git-lfs .
         export PATH="$(pwd):$PATH"
       popd
+      mkdir -p /Volumes/RAMDisk
+      mount -t tmpfs -o size=128M tmpfs /Volumes/RAMDisk
       ;;
     osx)
       brew_force_set_latest_binary_hash () {
