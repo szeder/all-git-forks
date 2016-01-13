@@ -2,9 +2,9 @@ node{
 
 	checkout scm
 
-	"make configure".execute()
+	sh "make configure"
 
-	"./configure".execute()
+	sh "./configure"
 
-	"make".execute()
+	sh "make"
 }
