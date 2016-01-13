@@ -388,12 +388,19 @@ extern int strbuf_readlink(struct strbuf *sb, const char *path, size_t hint);
  */
 extern int strbuf_getline(struct strbuf *, FILE *, int);
 
+
+typedef int (*strbuf_getline_fn)(struct strbuf *, FILE *);
+
+extern int strbuf_getline_lf(struct strbuf *sb, FILE *fp);
+extern int strbuf_getline_nul(struct strbuf *sb, FILE *fp);
+
 /*
  * Similar to strbuf_getline(), but uses '\n' as the terminator,
  * and additionally treats a '\r' that comes immediately before '\n'
  * as part of the terminator.
  */
 extern int strbuf_getline_crlf(struct strbuf *, FILE *);
+
 
 /**
  * Like `strbuf_getline`, but keeps the trailing terminator (if
