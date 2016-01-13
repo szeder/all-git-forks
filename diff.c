@@ -160,6 +160,8 @@ long parse_algorithm_value(const char *value)
 		return XDF_PATIENCE_DIFF;
 	else if (!strcasecmp(value, "histogram"))
 		return XDF_HISTOGRAM_DIFF;
+	else if (!strcasecmp(value, "lazy"))
+		return XDF_LAZY_DIFF;
 	return -1;
 }
 
