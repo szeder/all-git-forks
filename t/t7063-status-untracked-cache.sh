@@ -595,26 +595,28 @@ test_expect_success 'setting core.untrackedCache to true and using git status cr
 	test_cmp ../expect-from-test-dump ../actual
 '
 
-test_expect_success 'using --no-untracked-cache fails when core.untrackedCache is true' '
-	test_must_fail git update-index --no-untracked-cache &&
+test_expect_success 'using --no-untracked-cache does not fail when core.untrackedCache is true' '
+	git update-index --no-untracked-cache &&
 	test-dump-untracked-cache >../actual &&
-	test_cmp ../expect-from-test-dump ../actual
+	test_cmp ../expect ../actual &&
+	git update-index --untracked-cache &&
+	test-dump-untracked-cache >../actual &&
+	test_cmp ../expect-empty ../actual
 '
 
 test_expect_success 'setting core.untrackedCache to false and using git status removes the cache' '
 	git config core.untrackedCache false &&
 	test-dump-untracked-cache >../actual &&
-	test_cmp ../expect-from-test-dump ../actual &&
+	test_cmp ../expect-empty ../actual &&
 	git status &&
 	test-dump-untracked-cache >../actual &&
 	test_cmp ../expect ../actual
 '
 
-test_expect_success 'using --untracked-cache fails when core.untrackedCache is false' '
-	test_must_fail git update-index --untracked-cache &&
-	test_must_fail git update-index --force-untracked-cache &&
+test_expect_success 'using --untracked-cache does not fail when core.untrackedCache is false' '
+	git update-index --untracked-cache &&
 	test-dump-untracked-cache >../actual &&
-	test_cmp ../expect ../actual
+	test_cmp ../expect-empty ../actual
 '
 
 test_expect_success 'setting core.untrackedCache to keep' '
