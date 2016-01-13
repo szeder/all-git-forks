@@ -1924,6 +1924,7 @@ next:
 	 */
 	if (!state->rebasing) {
 		am_destroy(state);
+		close_all_packs();
 		run_command_v_opt(argv_gc_auto, RUN_GIT_CMD);
 	}
 }
