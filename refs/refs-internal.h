@@ -321,4 +321,6 @@ struct ref_storage_be {
 	for_each_replace_ref_fn *for_each_replace_ref;
 };
 
+extern struct ref_storage_be refs_be_files;
+
 #endif /* REFS_REFS_INTERNAL_H */
