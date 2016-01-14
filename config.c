@@ -11,6 +11,7 @@
 #include "strbuf.h"
 #include "quote.h"
 #include "hashmap.h"
+#include "refs.h"
 #include "string-list.h"
 #include "utf8.h"
 
@@ -1207,6 +1208,34 @@ int git_config_early(config_fn_t fn, void *data, const char *repo_config)
 	}
 
 	if (repo_config && !access_or_die(repo_config, R_OK, 0)) {
+		char *storage = NULL;
+
+		/*
+		 * make sure we always read the ref storage config
+		 * from the extensions section on startup
+		 */
+		ret += git_config_from_file(ref_storage_backend_config,
+					    repo_config, &storage);
+
+		if (!storage)
+			storage = xstrdup("");
+
+		if ((!*storage) ||
+		    (!strcmp(storage, "files"))) {
+			/* default backend, nothing to do */
+			free(storage);
+		} else if (!strcmp(storage, "lmdb")) {
+#ifdef USE_LIBLMDB
+			ref_storage_backend = storage;
+			register_ref_storage_backend(&refs_be_lmdb);
+			set_ref_storage_backend(ref_storage_backend);
+#else
+			die("Git was not built with USE_LIBLMDB, so the db refs backend is not available");
+#endif
+		} else {
+			die("Unknown ref backend type '%s'", storage);
+		}
+
 		ret += git_config_from_file(fn, repo_config, data);
 		found += 1;
 	}
