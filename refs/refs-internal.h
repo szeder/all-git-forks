@@ -42,6 +42,8 @@
  * value to ref_update::flags
  */
 
+#define REF_LOG_ONLY 0x80
+
 /*
  * Return true iff refname is minimally safe. "Safe" here means that
  * deleting a loose reference by this name will not do any damage, for
