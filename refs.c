@@ -1106,6 +1106,11 @@ int rename_ref_available(const char *oldname, const char *newname)
 }
 
 /* backend functions */
+int refs_init_db(struct strbuf *err, int shared)
+{
+	return the_refs_backend->init_db(err, shared);
+}
+
 int ref_transaction_commit(struct ref_transaction *transaction,
 			   struct strbuf *err)
 {
