@@ -297,8 +297,44 @@ int for_each_tag_ref(each_ref_fn fn, void *cb_data)
 	return for_each_ref_in("refs/tags/", fn, cb_data);
 }
 
+static int submodule_backend(const char *key, const char *value, void *data)
+{
+	char **path = data;
+	if (!strcmp(key, "extensions.refstorage"))
+		*path = xstrdup(value);
+	return 0;
+}
+
+static void check_submodule_backend(const char *submodule)
+{
+	struct strbuf sb = STRBUF_INIT;
+	char *submodule_storage_backend = xstrdup("files");
+
+	if (!submodule)
+		goto done;
+
+	strbuf_git_path_submodule(&sb, submodule, "%s", "");
+
+	if (!is_git_directory(sb.buf))
+		goto done;
+
+	strbuf_reset(&sb);
+	strbuf_git_path_submodule(&sb, submodule, "config");
+
+	git_config_from_file(submodule_backend, sb.buf,
+			     &submodule_storage_backend);
+	if (strcmp(submodule_storage_backend, ref_storage_backend))
+		die("Ref storage '%s' for submodule '%s' does not match our storage, '%s'",
+		    submodule_storage_backend, submodule, ref_storage_backend);
+
+done:
+	free(submodule_storage_backend);
+	strbuf_release(&sb);
+}
+
 int for_each_tag_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return for_each_ref_in_submodule(submodule, "refs/tags/", fn, cb_data);
 }
 
@@ -309,6 +345,7 @@ int for_each_branch_ref(each_ref_fn fn, void *cb_data)
 
 int for_each_branch_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return for_each_ref_in_submodule(submodule, "refs/heads/", fn, cb_data);
 }
 
@@ -319,6 +356,7 @@ int for_each_remote_ref(each_ref_fn fn, void *cb_data)
 
 int for_each_remote_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return for_each_ref_in_submodule(submodule, "refs/remotes/", fn, cb_data);
 }
 
@@ -1366,6 +1404,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 int resolve_gitlink_ref(const char *path, const char *refname,
 			unsigned char *sha1)
 {
+	check_submodule_backend(path);
 	return the_refs_backend->resolve_gitlink_ref(path, refname, sha1);
 }
 
@@ -1376,6 +1415,7 @@ int head_ref(each_ref_fn fn, void *cb_data)
 
 int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return the_refs_backend->head_ref_submodule(submodule, fn, cb_data);
 }
 
@@ -1386,6 +1426,7 @@ int for_each_ref(each_ref_fn fn, void *cb_data)
 
 int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return the_refs_backend->for_each_ref_submodule(submodule, fn, cb_data);
 }
 
@@ -1404,6 +1445,7 @@ int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data,
 int for_each_ref_in_submodule(const char *submodule, const char *prefix,
 			      each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return the_refs_backend->for_each_ref_in_submodule(submodule, prefix,
 							   fn, cb_data);
 }
