@@ -1122,6 +1122,11 @@ int delete_refs(struct string_list *refnames)
 	return the_refs_backend->delete_refs(refnames);
 }
 
+int rename_ref(const char *oldref, const char *newref, const char *logmsg)
+{
+	return the_refs_backend->rename_ref(oldref, newref, logmsg);
+}
+
 const char *resolve_ref_unsafe(const char *ref, int resolve_flags,
 			       unsigned char *sha1, int *flags)
 {
