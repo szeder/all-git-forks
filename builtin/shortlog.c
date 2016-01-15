@@ -112,20 +112,23 @@ static int match_ident_header(const char *candidate, const char *header,
 
 static void read_from_stdin(struct shortlog *log)
 {
-	char author[1024], oneline[1024];
+	struct strbuf author = STRBUF_INIT;
+	struct strbuf oneline = STRBUF_INIT;
 
-	while (fgets(author, sizeof(author), stdin) != NULL) {
+	while (strbuf_getline(&author, stdin, '\n') != EOF) {
 		const char *v;
-		if (!match_ident_header(author, "author", &v))
+		if (!match_ident_header(author.buf, "author", &v))
 			continue;
-		while (fgets(oneline, sizeof(oneline), stdin) &&
-		       oneline[0] != '\n')
+		while (strbuf_getline(&oneline, stdin, '\n') != EOF &&
+		       oneline.len)
 			; /* discard headers */
-		while (fgets(oneline, sizeof(oneline), stdin) &&
-		       oneline[0] == '\n')
+		while (strbuf_getline(&oneline, stdin, '\n') != EOF &&
+		       !oneline.len)
 			; /* discard blanks */
-		insert_one_record(log, v, oneline);
+		insert_one_record(log, v, oneline.buf);
 	}
+	strbuf_release(&author);
+	strbuf_release(&oneline);
 }
 
 void shortlog_add_commit(struct shortlog *log, struct commit *commit)
