@@ -89,13 +89,34 @@ static void insert_one_record(struct shortlog *log,
 	string_list_append(item->util, buffer);
 }
 
+/*
+ * If header is "author", match candidate against the regex /[Aa]uthor:? /,
+ * and return a pointer to the remainder of the string in out_value.
+ */
+static int match_ident_header(const char *candidate, const char *header,
+			      const char **out_value)
+{
+	const char *v;
+
+	if (tolower(*candidate++) != tolower(*header++))
+		return 0;
+	if (!skip_prefix(candidate, header, &v))
+		return 0;
+	if (*v == ':')
+		v++;
+	if (*v++ != ' ')
+		return 0;
+	*out_value = v;
+	return 1;
+}
+
 static void read_from_stdin(struct shortlog *log)
 {
 	char author[1024], oneline[1024];
 
 	while (fgets(author, sizeof(author), stdin) != NULL) {
-		if (!(author[0] == 'A' || author[0] == 'a') ||
-		    !starts_with(author + 1, "uthor: "))
+		const char *v;
+		if (!match_ident_header(author, "author", &v))
 			continue;
 		while (fgets(oneline, sizeof(oneline), stdin) &&
 		       oneline[0] != '\n')
@@ -103,7 +124,7 @@ static void read_from_stdin(struct shortlog *log)
 		while (fgets(oneline, sizeof(oneline), stdin) &&
 		       oneline[0] == '\n')
 			; /* discard blanks */
-		insert_one_record(log, author + 8, oneline);
+		insert_one_record(log, v, oneline);
 	}
 }
 
