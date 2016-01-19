@@ -44,6 +44,8 @@ static char *option_template, *option_depth;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
 static const char *real_git_dir;
+static const char *base_git_dir;
+static const char *git_dir_name;
 static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
 static int option_progress = -1;
@@ -92,6 +94,10 @@ static struct option builtin_clone_options[] = {
 		   N_("separate git dir from working tree")),
 	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
 			N_("set config inside the new repository")),
+	OPT_STRING(0, "base-git-dir", &base_git_dir, N_("directory"),
+		   N_("base directory for storing repositories")),
+	OPT_STRING(0, "name", &git_dir_name, N_("repository-name"),
+		   N_("repository name for use with --base-git-dir")),
 	OPT_END()
 };
 
@@ -730,6 +736,33 @@ static int checkout(void)
 	return err;
 }
 
+static int add_worktree(const char *work_tree)
+{
+	const char *argv[] = { "worktree", "add", NULL, NULL, NULL };
+	unsigned char sha1[20];
+	char *head;
+	const char *refname;
+	int flag, ret;
+	const char *prefix = "refs/heads/";
+
+	head = resolve_refdup("HEAD", 0, sha1, &flag);
+	if (head && (flag & REF_ISSYMREF) && starts_with(head, prefix))
+		refname = head + strlen(prefix);
+	else {
+		free(head);
+		head = xstrdup(sha1_to_hex(sha1));
+		refname = head;
+	}
+	if ((ret = mkdir(git_path("worktrees"), 0777)) == 0) {
+		delete_ref("HEAD", sha1, REF_NODEREF | UPDATE_REFS_DIE_ON_ERR);
+		argv[2] = work_tree;
+		argv[3] = refname;
+		ret = run_command_v_opt(argv, RUN_GIT_CMD);
+	}
+	free(head);
+	return ret;
+}
+
 static int write_one_config(const char *key, const char *value, void *data)
 {
 	return git_config_set_multivar(key, value ? value : "true", "^$", 0);
@@ -858,8 +891,17 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			    option_origin);
 		if (real_git_dir)
 			die(_("--bare and --separate-git-dir are incompatible."));
+		if (base_git_dir)
+			die(_("--bare and --base-git-dir are incompatible."));
 		option_no_checkout = 1;
 	}
+	if (base_git_dir) {
+		if (real_git_dir)
+			die(_("--separate-git-dir and --base-git-dir are incompatible."));
+		if (option_no_checkout)
+			die(_("--no-checkout and --base-git-dir are incompatible."));
+	} else if (git_dir_name)
+		die(_("--name cannot be used without --base-git-dir."));
 
 	if (!option_origin)
 		option_origin = "origin";
@@ -891,7 +933,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	strbuf_addf(&reflog_msg, "clone: from %s", repo);
 
-	if (option_bare)
+	if (option_bare || base_git_dir)
 		work_tree = NULL;
 	else {
 		work_tree = getenv("GIT_WORK_TREE");
@@ -901,7 +943,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	if (option_bare || work_tree)
 		git_dir = xstrdup(dir);
-	else {
+	else if (base_git_dir) {
+		work_tree = dir;
+		git_dir = NULL;
+	} else {
 		work_tree = dir;
 		git_dir = mkpathdup("%s/.git", dir);
 	}
@@ -909,7 +954,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	atexit(remove_junk);
 	sigchain_push_common(remove_junk_on_signal);
 
-	if (!option_bare) {
+	if (!option_bare && !base_git_dir) {
 		if (safe_create_leading_directories_const(work_tree) < 0)
 			die_errno(_("could not create leading directories of '%s'"),
 				  work_tree);
@@ -918,6 +963,25 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 				  work_tree);
 		junk_work_tree = work_tree;
 		set_git_work_tree(work_tree);
+	}
+
+	if (base_git_dir) {
+		static struct strbuf sb = STRBUF_INIT;
+		const char *name = git_dir_name;
+		char *to_free = NULL;
+		int ret;
+
+		if (!name)
+			name = to_free = guess_dir_name(repo_name, is_bundle, 1);
+		strbuf_addf(&sb, "%s/%s", base_git_dir, name);
+		git_dir = sb.buf;
+		ret = access(git_dir, F_OK);
+		if (!ret)
+			die(_("'%s' already exists in '%s', choose another name"),
+			    name, base_git_dir);
+		else if (errno != ENOENT)
+			die_errno(_("failed to access '%s'"),  git_dir);
+		free(to_free);
 	}
 
 	junk_git_dir = git_dir;
@@ -1050,7 +1114,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		remote_head_points_at = NULL;
 		remote_head = NULL;
 		option_no_checkout = 1;
-		if (!option_bare)
+		if (!option_bare && !base_git_dir)
 			install_branch_config(0, "master", option_origin,
 					      "refs/heads/master");
 	}
@@ -1077,7 +1141,11 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	}
 
 	junk_mode = JUNK_LEAVE_REPO;
-	err = checkout();
+
+	if (base_git_dir)
+		err = add_worktree(work_tree);
+	else
+		err = checkout();
 
 	strbuf_release(&reflog_msg);
 	strbuf_release(&branch_top);

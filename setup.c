@@ -282,8 +282,12 @@ int is_git_directory(const char *suspect)
 
 	/* Check worktree-related signatures */
 	strbuf_addf(&path, "%s/HEAD", suspect);
-	if (validate_headref(path.buf))
-		goto done;
+	if (validate_headref(path.buf)) {
+		strbuf_reset(&path);
+		strbuf_addf(&path, "%s/worktrees", suspect);
+		if (!is_directory(path.buf))
+			goto done;
+	}
 
 	strbuf_reset(&path);
 	get_common_dir(&path, suspect);

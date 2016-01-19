@@ -14,6 +14,7 @@ SYNOPSIS
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--dissociate] [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
+	  [--base-git-dir <dir> [--name <name>]]
 	  [--recursive | --recurse-submodules] [--] <repository>
 	  [<directory>]
 
@@ -220,6 +221,16 @@ objects from the source repository into a pack in the cloned repository.
 	then make a filesystem-agnostic Git symbolic link to there.
 	The result is Git repository can be separated from working
 	tree.
+
+--base-git-dir=<dir>::
+	The git repository will be put in <dir> as a new subdirectory.
+	The subdirectory name is guessed from command line, but can
+	be overriden with --name. A new worktree is created as a linked
+	one (see linkgit:git-worktree[1]).
+
+--name=<name>::
+	Specify the repository name. The path to the repository will
+	be `<base git directory>/<name>`.
 
 
 <repository>::
