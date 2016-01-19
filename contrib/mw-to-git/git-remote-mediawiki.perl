@@ -696,6 +696,7 @@ sub fe_escape_path {
     $path =~ s/\n/\\n/g;
     if ($use_subpage_dirs) {
         $path =~ s/%2F((?:%2F)*)/"\/" . $1/ge;
+        $path =~ s/^(\/+)/"%2F" x length $1/ge;
     }
     return qq("${path}");
 }
