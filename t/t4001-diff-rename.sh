@@ -312,4 +312,26 @@ test_expect_success 'rename correction from notes' '
 	)
 '
 
+test_expect_success 'merge rename notes, free src/tgt' '
+	(
+		cd correct-rename &&
+		test-merge-rename-notes refs/notes/rename refs/notes/rename-cache &&
+		git notes --ref=rename-cache show refs/notes/rename >actual &&
+		: >expected &&
+		test_cmp expected actual &&
+		ONE=`echo one | git hash-object --stdin` &&
+		TWO=`echo two | git hash-object --stdin` &&
+		git notes --ref=rename-cache show $TWO >actual &&
+		cat <<-EOF | sort >expected &&
+		.blob $ONE => $TWO
+		EOF
+		test_cmp expected actual &&
+		git notes --ref=rename-cache show $ONE >actual &&
+		cat <<-EOF | sort >expected &&
+		.blob $TWO => $ONE
+		EOF
+		test_cmp expected actual
+	)
+'
+
 test_done

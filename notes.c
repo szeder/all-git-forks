@@ -1179,6 +1179,36 @@ void prune_notes(struct notes_tree *t, int flags)
 	}
 }
 
+static int remove_all_notes_helper(const unsigned char *object_sha1,
+				   const unsigned char *note_sha1,
+				   char *note_path,
+				   void *cb_data)
+{
+	struct note_delete_list **l = (struct note_delete_list **) cb_data;
+	struct note_delete_list *n;
+
+	n = (struct note_delete_list *) xmalloc(sizeof(*n));
+	n->next = *l;
+	n->sha1 = object_sha1;
+	*l = n;
+	return 0;
+}
+
+void remove_all_notes(struct notes_tree *t)
+{
+	struct note_delete_list *l = NULL;
+
+	if (!t)
+		t = &default_notes_tree;
+	assert(t->initialized);
+
+	for_each_note(t, 0, remove_all_notes_helper, &l);
+	while (l) {
+		remove_note(t, l->sha1);
+		l = l->next;
+	}
+}
+
 void free_notes(struct notes_tree *t)
 {
 	if (!t)
