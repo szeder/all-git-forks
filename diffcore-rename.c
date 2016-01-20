@@ -6,6 +6,7 @@
 #include "diffcore.h"
 #include "hashmap.h"
 #include "progress.h"
+#include "refs.h"
 #include "notes.h"
 #include "commit.h"
 
@@ -206,6 +207,148 @@ static int parse_rename_file(const char *content, int len,
 			return -1;
 	}
 	return 0;
+}
+
+struct merge_rename {
+	const unsigned char *object_hash;
+	const unsigned char *note_hash;
+	struct notes_tree *notes;
+	struct strbuf *cache;
+	struct strbuf src_tree;
+	struct strbuf dst_tree;
+};
+
+static int merge_rename_match_tree(const char *src, int src_len,
+				   const char *dst, int dst_len,
+				   void *cb_data)
+{
+	struct merge_rename *mr = cb_data;
+
+	strbuf_reset(&mr->src_tree);
+	strbuf_reset(&mr->dst_tree);
+
+	if (src_len)
+		strbuf_add(&mr->src_tree, src, src_len);
+	if (dst_len)
+		strbuf_add(&mr->dst_tree, dst, dst_len);
+
+	return 1;
+}
+
+static struct object_id *rename_path_to_oid(const struct strbuf *name,
+					    const unsigned char *hash,
+					    const char *extra,
+					    const char *path, int pathlen)
+{
+	static struct object_id oid[2];
+	static int idx = 0;
+	struct strbuf sb = STRBUF_INIT;
+	int ret;
+
+	idx = (idx + 1) % 2;
+	strbuf_addf(&sb, "%s%s:%.*s",
+		    name->len ? name->buf : sha1_to_hex(hash),
+		    extra, pathlen, path);
+	ret = get_sha1(sb.buf, oid[idx].hash);
+	strbuf_release(&sb);
+	return ret ? NULL : oid + idx;
+}
+
+static int merge_rename_blob(const struct object_id *src,
+			     const struct object_id *dst,
+			     void *cb_data)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct merge_rename *mr = cb_data;
+	unsigned char hash[GIT_SHA1_RAWSZ];
+	int ret;
+
+	strbuf_addf(&sb, ".blob %s => %s\n", oid_to_hex(src), oid_to_hex(dst));
+	ret = write_sha1_file(sb.buf, sb.len, typename(OBJ_BLOB), hash);
+	strbuf_release(&sb);
+	if (ret)
+		return ret;
+	return add_note(mr->notes, dst->hash, hash, NULL);
+}
+
+static int merge_rename_path(const char *src, int src_len,
+			     const char *dst, int dst_len,
+			     void *cb_data)
+{
+	struct merge_rename *mr = cb_data;
+	struct object_id *src_oid = NULL;
+	struct object_id *dst_oid = NULL;
+
+	src_oid = rename_path_to_oid(&mr->src_tree, mr->object_hash, "^", src, src_len);
+	dst_oid = rename_path_to_oid(&mr->dst_tree, mr->object_hash, "",  dst, dst_len);
+
+	if (!src_oid || !dst_oid)
+		return 0;
+
+	return merge_rename_blob(src_oid, dst_oid, cb_data);
+}
+
+static int merge_rename_note(const unsigned char *object_hash,
+			     const unsigned char *note_hash,
+			     char *note_path,
+			     void *cb_data)
+{
+	struct merge_rename mr;
+	enum object_type type;
+	unsigned long size;
+	char *note;
+
+	note = read_sha1_file(note_hash, &type, &size);
+	if (type != OBJ_BLOB) {
+		free(note);
+		return 0;
+	}
+
+	strbuf_init(&mr.src_tree, 0);
+	strbuf_init(&mr.dst_tree, 0);
+	mr.object_hash = object_hash;
+	mr.note_hash = note_hash;
+	mr.notes = cb_data;
+
+	parse_rename_file(note, size,
+			  merge_rename_match_tree,
+			  merge_rename_path,
+			  merge_rename_blob,
+			  &mr);
+
+	return 0;
+}
+
+/*
+ * Traverse through the given notes tree, convert all "path to path"
+ * rename lines into "blob to blob" and return it. If cache_file is
+ * non-NULL, return it's content if still valid. Otherwise save the
+ * new content in it.
+ */
+void merge_rename_notes(struct notes_tree *src, struct notes_tree *dst)
+{
+	struct object_id src_oid;
+	const unsigned char *hash;
+	unsigned char empty_hash[GIT_SHA1_RAWSZ];
+
+	if (!resolve_ref_unsafe(src->ref, RESOLVE_REF_READING,
+				src_oid.hash, NULL))
+		return;
+
+	hash = get_note(dst, src_oid.hash);
+	if (hash)
+		return;
+
+	/*
+	 * XXX: we can traverse back to previous commits of source
+	 * notes tree. If a cache is found and no old notes are
+	 * deleted, the old cache could be used as base and we only
+	 * have to process new notes.
+	 */
+	remove_all_notes(dst);
+	if (!for_each_note(src, 0, merge_rename_note, dst) &&
+	    !write_sha1_file("", 0, typename(OBJ_BLOB), empty_hash))
+		add_note(dst, src_oid.hash, empty_hash, NULL);
 }
 
 /* Table of rename/copy destinations */
