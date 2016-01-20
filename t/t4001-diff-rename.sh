@@ -288,4 +288,28 @@ test_expect_success 'manual rename correction with blobs' '
 	)
 '
 
+test_expect_success 'rename correction from notes' '
+	(
+		cd correct-rename &&
+		git show --summary -M HEAD | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-one (100%)
+		 rename old-two => new-two (100%)
+		EOF
+		test_cmp expected actual &&
+
+		cat >correction <<-\EOF &&
+		old-one => new-two
+		old-two => new-one
+		EOF
+		git notes --ref=rename add -F correction HEAD &&
+		git show --summary -M --rename-notes=rename HEAD | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-two => new-one (100%)
+		 rename old-one => new-two (100%)
+		EOF
+		test_cmp expected actual
+	)
+'
+
 test_done
