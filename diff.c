@@ -3693,7 +3693,8 @@ static int parse_ws_error_highlight(struct diff_options *opt, const char *arg)
 	return 1;
 }
 
-int diff_opt_parse(struct diff_options *options, const char **av, int ac)
+int diff_opt_parse(struct diff_options *options,
+		   const char **av, int ac, const char *prefix)
 {
 	const char *arg = av[0];
 	const char *optarg;
