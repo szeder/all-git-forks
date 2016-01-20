@@ -577,6 +577,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 
 struct submodule_update_clone {
 	/* states */
+	struct string_list *submodule_groups;
 	int count;
 	int print_unmatched;
 	/* configuration */
@@ -590,7 +591,7 @@ struct submodule_update_clone {
 	struct string_list projectlines;
 	struct pathspec pathspec;
 };
-#define SUBMODULE_UPDATE_CLONE_INIT {0, 0, 0, NULL, NULL, NULL, NULL, NULL, MODULE_LIST_INIT, STRING_LIST_INIT_DUP}
+#define SUBMODULE_UPDATE_CLONE_INIT {NULL, 0, 0, 0, NULL, NULL, NULL, NULL, NULL, MODULE_LIST_INIT, STRING_LIST_INIT_DUP}
 
 static void fill_clone_command(struct child_process *cp, int quiet,
 			       const char *prefix, const char *path,
@@ -633,6 +634,7 @@ static int update_clone_get_next_task(struct child_process *cp,
 		const char *update_module = NULL;
 		char *url = NULL;
 		int needs_cloning = 0;
+		int in_submodule_groups = 0;
 
 		if (ce_stage(ce)) {
 			if (pp->recursive_prefix)
@@ -676,6 +678,22 @@ static int update_clone_get_next_task(struct child_process *cp,
 		strbuf_reset(&sb);
 		strbuf_addf(&sb, "submodule.%s.url", sub->name);
 		git_config_get_string(sb.buf, &url);
+		if (pp->submodule_groups && sub->groups){
+			struct string_list_item *item;
+			for_each_string_list_item(item, sub->groups) {
+				if (string_list_has_string(
+				    pp->submodule_groups, item->string)) {
+					in_submodule_groups = 1;
+					break;
+				}
+			}
+			if (in_submodule_groups) {
+				if (!url) {
+					init_submodule(sub->name, pp->prefix, pp->quiet);
+					url = xstrdup(sub->url);
+				}
+			}
+		}
 		if (!url) {
 			/*
 			 * Only mention uninitialized submodules when its
@@ -686,6 +704,7 @@ static int update_clone_get_next_task(struct child_process *cp,
 					"Maybe you want to use 'update --init'?"), displaypath);
 			continue;
 		}
+
 
 		strbuf_reset(&sb);
 		strbuf_addf(&sb, "%s/.git", ce->name);
@@ -742,6 +761,7 @@ static int update_clone_task_finished(int result,
 static int update_clone(int argc, const char **argv, const char *prefix)
 {
 	int max_jobs = -1;
+	const struct string_list *list;
 	struct string_list_item *item;
 	struct submodule_update_clone pp = SUBMODULE_UPDATE_CLONE_INIT;
 
@@ -785,6 +805,14 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 	gitmodules_config();
 	/* Overlay the parsed .gitmodules file with .git/config */
 	git_config(git_submodule_config, NULL);
+
+	list = git_config_get_value_multi("submodule.groups");
+	if (list) {
+		pp.submodule_groups = xmalloc(sizeof(*pp.submodule_groups));
+		string_list_init(pp.submodule_groups, 1);
+		for_each_string_list_item(item, list)
+			string_list_insert(pp.submodule_groups, item->string);
+	}
 
 	if (max_jobs < 0)
 		max_jobs = config_parallel_submodules();
