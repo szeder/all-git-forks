@@ -811,8 +811,10 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 	parents = get_saved_parents(opt, commit);
 	if (!parents) {
 		if (opt->show_root_diff) {
+			opt->diffopt.current_commit = commit;
 			diff_root_tree_sha1(oid->hash, "", &opt->diffopt);
 			log_tree_diff_flush(opt);
+			opt->diffopt.current_commit = NULL;
 		}
 		return !opt->loginfo;
 	}
@@ -830,9 +832,11 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 			 * we merged _in_.
 			 */
 			parse_commit_or_die(parents->item);
+			opt->diffopt.current_commit = commit;
 			diff_tree_sha1(parents->item->tree->object.oid.hash,
 				       oid->hash, "", &opt->diffopt);
 			log_tree_diff_flush(opt);
+			opt->diffopt.current_commit = NULL;
 			return !opt->loginfo;
 		}
 
@@ -840,6 +844,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 		log->parent = parents->item;
 	}
 
+	opt->diffopt.current_commit = commit;
 	showed_log = 0;
 	for (;;) {
 		struct commit *parent = parents->item;
@@ -858,6 +863,7 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 		log->parent = parents->item;
 		opt->loginfo = log;
 	}
+	opt->diffopt.current_commit = NULL;
 	return showed_log;
 }
 

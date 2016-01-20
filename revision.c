@@ -1910,6 +1910,16 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->notes_opt.use_default_notes = 1;
 	} else if (!strcmp(arg, "--no-standard-notes")) {
 		revs->notes_opt.use_default_notes = 0;
+	} else if (skip_prefix(arg, "--rename-notes=", &optarg)) {
+		struct strbuf buf = STRBUF_INIT;
+		struct notes_tree *nt;
+
+		strbuf_addstr(&buf, optarg);
+		expand_notes_ref(&buf);
+		revs->diffopt.rename_notes = nt = xcalloc(1, sizeof(*nt));
+		init_notes(nt, buf.buf, NULL, 0);
+		strbuf_release(&buf);
+		revs->diffopt.manual_renames = NULL;
 	} else if (!strcmp(arg, "--oneline")) {
 		revs->verbose_header = 1;
 		get_commit_format("oneline", revs);

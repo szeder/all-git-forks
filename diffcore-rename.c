@@ -6,6 +6,8 @@
 #include "diffcore.h"
 #include "hashmap.h"
 #include "progress.h"
+#include "notes.h"
+#include "commit.h"
 
 /*
  * regex equivalent: \s*[a-f0-9]{40}\s*=>\s*[a-f0-9]{40}\s*
@@ -671,6 +673,41 @@ static int rename_manually(struct diff_options *options,
 	return mr.rename_count;
 }
 
+static char *get_rename_note(struct notes_tree *t,
+			     const struct object_id *oid,
+			     unsigned long *size)
+{
+	enum object_type type;
+	const unsigned char *hash;
+	char *note;
+
+	hash = get_note(t, oid->hash);
+	if (!hash)
+		return NULL;
+
+	note = read_sha1_file(oid->hash, &type, size);
+	if (type != OBJ_BLOB) {
+		free(note);
+		note = NULL;
+	}
+	return note;
+}
+
+static int rename_by_commit(struct diff_options *opt)
+{
+	static char *last_note;
+	unsigned long size;
+
+	if (!opt->current_commit)
+		return 0;
+
+	free(last_note);
+	last_note = get_rename_note(opt->rename_notes,
+				    &opt->current_commit->object.oid,
+				    &size);
+	return rename_manually(opt, last_note, size);
+}
+
 #define NUM_CANDIDATE_PER_DST 4
 static void record_if_better(struct diff_score m[], struct diff_score *o)
 {
@@ -816,6 +853,8 @@ void diffcore_rename(struct diff_options *options)
 	if (rename_dst_nr == 0 || rename_src_nr == 0)
 		goto cleanup; /* nothing to do */
 
+	if (options->rename_notes)
+		rename_count += rename_by_commit(options);
 
 	if (options->manual_renames)
 		rename_count +=
