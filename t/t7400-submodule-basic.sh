@@ -1058,4 +1058,58 @@ test_expect_success 'submodule update works with groups implied' '
 	test_cmp actual expected
 '
 
+cat <<EOF > expected
+submodule
+-submodule1
+EOF
+
+test_expect_success 'clone --group works' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --group groupA file://"$pwd"/example2 submodule &&
+		git submodule add file://"$pwd"/example2 submodule1 &&
+		git commit -a -m "create repository with 2 submodules, one is in a group"
+	) &&
+	git clone --group groupA super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected
+'
+
+cat <<EOF > expected
+-submodule1
+submoduleA
+submoduleB
+submoduleC
+-submoduleD
+EOF
+
+test_expect_success 'clone with multiple groups works' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --group groupA file://"$pwd"/example2 submoduleA &&
+		git submodule add --group groupB file://"$pwd"/example2 submoduleB &&
+		git submodule add --group groupC file://"$pwd"/example2 submoduleC &&
+		git submodule add --group groupD file://"$pwd"/example2 submoduleD &&
+		git submodule add file://"$pwd"/example2 submodule1 &&
+		git commit -a -m "create repository with submodules groups"
+	) &&
+	git clone --group groupA,groupB --group groupC super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected
+'
+
 test_done
