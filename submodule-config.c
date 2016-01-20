@@ -60,6 +60,8 @@ static void free_one_config(struct submodule_entry *entry)
 {
 	free((void *) entry->config->path);
 	free((void *) entry->config->name);
+	if (entry->config->groups)
+		string_list_clear(entry->config->groups, 0);
 	free(entry->config);
 }
 
@@ -184,6 +186,7 @@ static struct submodule *lookup_or_create_by_name(struct submodule_cache *cache,
 	submodule->update = NULL;
 	submodule->fetch_recurse = RECURSE_SUBMODULES_NONE;
 	submodule->ignore = NULL;
+	submodule->groups = NULL;
 
 	hashcpy(submodule->gitmodules_sha1, gitmodules_sha1);
 
@@ -323,6 +326,16 @@ static int parse_specific_submodule_config(const char *subsection, int subsectio
 		else {
 			free((void *) submodule->update);
 			submodule->update = xstrdup(value);
+		}
+	} else if (!strcmp(key, "group")) {
+		if (!value)
+			ret = config_error_nonbool(var);
+		else {
+			if (!submodule->groups) {
+				submodule->groups = xmalloc(sizeof(*submodule->groups));
+				string_list_init(submodule->groups, 1);
+			}
+			string_list_insert(submodule->groups, value);
 		}
 	}
 
