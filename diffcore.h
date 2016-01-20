@@ -23,6 +23,8 @@
 #define MINIMUM_BREAK_SIZE     400 /* do not break a file smaller than this */
 
 struct userdiff_driver;
+struct strbuf;
+struct notes_tree;
 
 struct diff_filespec {
 	struct object_id oid;
@@ -146,4 +148,6 @@ extern int diffcore_count_changes(struct diff_filespec *src,
 				  unsigned long *src_copied,
 				  unsigned long *literal_added);
 
+extern void merge_rename_notes(struct notes_tree *src,
+			       struct notes_tree *dst);
 #endif

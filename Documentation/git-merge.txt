@@ -72,6 +72,15 @@ include::merge-options.txt[]
 	automatic detected renames in three-way merges. See
 	linkgit:gitdiffcore[7] for the file syntax.
 
+--rename-notes=<ref>::
+	Collect all renames from the given ref to override automatic
+	detected in three-way merges. See option `--rename-file` for
+	more information.
++
+All renames are cached in $GIT_DIR/rename-cache. This path can be
+changed using the environment variable $GIT_MERGE_RENAME_CACHE. An
+empty variable disables caching.
+
 -S[<keyid>]::
 --gpg-sign[=<keyid>]::
 	GPG-sign the resulting merge commit. The `keyid` argument is
