@@ -495,6 +495,7 @@ static struct string_list *get_renames(struct merge_options *o,
 	opts.rename_score = o->rename_score;
 	opts.show_rename_progress = o->show_rename_progress;
 	opts.output_format = DIFF_FORMAT_NO_OUTPUT;
+	opts.manual_renames = o->manual_renames;
 	diff_setup_done(&opts);
 	diff_tree_sha1(o_tree->object.oid.hash, tree->object.oid.hash, "", &opts);
 	diffcore_std(&opts);
