@@ -180,7 +180,12 @@ diffcore-rename can take a file that indicates what path should be
 renamed to what path. This overrides automatic detection. Each line in
 the file either starts with a keyword or is in the form "<path> =>
 <path>". All keywords start with a dot. Paths that start with a dot or
-contain spaces must be quoted.
+contain spaces must be quoted. The following keywords are supported:
+
+* `.blob` is followed by an SHA-1 as the source blob, the character
+  sequence "=>" (without quotes) and an SHA-1 as the target blob. A
+  diff pair between the given source and target blobs are considered
+  exact rename regardless of diff source and target.
 
 diffcore-merge-broken: For Putting "Complete Rewrites" Back Together
 --------------------------------------------------------------------
