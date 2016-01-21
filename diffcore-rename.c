@@ -14,6 +14,8 @@
 static const char *parse_rename_one_path(const char *start, const char *end,
 					 const char **path, int *path_len)
 {
+	static struct strbuf sb = STRBUF_INIT;
+
 	if (*start != '\'') {
 		*path = start;
 		while (start < end && !isspace(*start))
@@ -22,6 +24,32 @@ static const char *parse_rename_one_path(const char *start, const char *end,
 		return start;
 	}
 
+	strbuf_reset(&sb);
+	start++;
+	while (start < end) {
+		char c = *start++;
+
+		switch (c) {
+		case '\'':
+			*path = sb.buf;
+			*path_len = sb.len;
+			return start;
+
+		case '\0':
+			return NULL;
+
+		case '\\':
+			if (start + 1 < end && start[0] == '\'') {
+				strbuf_addch(&sb, '\'');
+				start++;
+				break;
+			}
+			/* Fallthrough */
+
+		default:
+			strbuf_addch(&sb, c);
+		}
+	}
 	return NULL;
 }
 
