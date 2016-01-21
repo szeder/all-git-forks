@@ -3788,6 +3788,13 @@ int diff_opt_parse(struct diff_options *options,
 		DIFF_OPT_SET(options, RENAME_EMPTY);
 	else if (!strcmp(arg, "--no-rename-empty"))
 		DIFF_OPT_CLR(options, RENAME_EMPTY);
+	else if (skip_prefix(arg, "--rename-file=", &optarg)) {
+		struct strbuf sb = STRBUF_INIT;
+		const char *path = prefix_filename(prefix, strlen(prefix), optarg);
+		if (strbuf_read_file(&sb, path, 0) == -1)
+			die(_("unable to read %s"), path);
+		options->manual_renames = strbuf_detach(&sb, NULL); /* leak */
+	}
 	else if (!strcmp(arg, "--relative"))
 		DIFF_OPT_SET(options, RELATIVE_NAME);
 	else if (skip_prefix(arg, "--relative=", &arg)) {

@@ -7,6 +7,95 @@
 #include "hashmap.h"
 #include "progress.h"
 
+/*
+ * Unquoted paths terminate at the first isspace(). Quoted paths start
+ * and end with a single quote. Only "\'" is recognized and escaped.
+ */
+static const char *parse_rename_one_path(const char *start, const char *end,
+					 const char **path, int *path_len)
+{
+	if (*start != '\'') {
+		*path = start;
+		while (start < end && !isspace(*start))
+			start++;
+		*path_len = start - *path;
+		return start;
+	}
+
+	return NULL;
+}
+
+/* regex: <path>\s*=>\s*<path>\s* */
+static int parse_rename_path(const char *start, const char *end,
+			     const char **src, int *src_len,
+			     const char **dst, int *dst_len)
+{
+	const char *next;
+
+	next = parse_rename_one_path(start, end, src, src_len);
+	if (!next)
+		return -1;
+
+	while (next < end && isspace(*next))
+		next++;
+	if (!skip_prefix(next, "=>", &next))
+		return -1;
+	while (next < end && isspace(*next))
+		next++;
+
+	next = parse_rename_one_path(next, end, dst, dst_len);
+	if (!next)
+		return -1;
+
+	while (next < end && isspace(*next))
+		next++;
+	if (next < end && !isspace(*next))
+		return -1;
+
+	return 0;
+}
+
+/*
+ * Given "content", which must be NUL terminated at
+ * content[len]. Parse it and call either callback, depending on the
+ * content.
+ *
+ * Each line could start with a keyword, which starts with a dot, or
+ * in form "<path> => <path>". Paths that starts with a dot must be
+ * quoted.
+ */
+static int parse_rename_file(const char *content, int len,
+			     int (*rename_path)(const char *src, int src_len,
+						const char *dst, int dst_len,
+						void *cb_data),
+			     void *cb_data)
+{
+	const char *content_end = content + len;
+	const char *p = content;
+
+	while (p < content_end) {
+		const char *start = p, *end, *src, *dst;
+		int src_len, dst_len;
+
+		while (start < content_end && isspace(*start))
+			start++;
+
+		end = strchr(start, '\n');
+		if (!end)
+			end = content_end;
+		p = end;
+
+		if (*start == '.') /* future keywords */
+			continue;
+
+		if (!parse_rename_path(start, end, &src, &src_len,
+				       &dst, &dst_len) &&
+		    rename_path(src, src_len, dst, dst_len, cb_data))
+			return -1;
+	}
+	return 0;
+}
+
 /* Table of rename/copy destinations */
 
 static struct diff_rename_dst {
@@ -350,13 +439,66 @@ static int find_exact_renames(struct diff_options *options)
 		insert_file_table(&file_table, i, rename_src[i].p->one);
 
 	/* Walk the destinations and find best source match */
-	for (i = 0; i < rename_dst_nr; i++)
+	for (i = 0; i < rename_dst_nr; i++) {
+		if (rename_dst[i].pair)
+			continue; /* dealt with exact match already. */
 		renames += find_identical_files(&file_table, i, options);
+	}
 
 	/* Free the hash data structure and entries */
 	hashmap_free(&file_table, 1);
 
 	return renames;
+}
+
+struct manual_rename {
+	int rename_count;
+	struct diff_options *options;
+};
+
+static int manual_rename_path(const char *src, int src_len,
+			      const char *dst, int dst_len,
+			      void *cb_data)
+{
+	int src_index, dst_index;
+	struct manual_rename *mr = cb_data;
+
+	for (src_index = 0; src_index < rename_src_nr; src_index++) {
+		const char *path = rename_src[src_index].p->one->path;
+		if (strlen(path) == src_len && !strncmp(path, src, src_len))
+			break;
+	}
+	if (src_index == rename_src_nr)
+		return 0;
+
+	for (dst_index = 0; dst_index < rename_dst_nr; dst_index++) {
+		const char *path = rename_dst[dst_index].two->path;
+		if (strlen(path) == dst_len && !strncmp(path, dst, dst_len))
+			break;
+	}
+	if (dst_index == rename_dst_nr)
+		return 0;
+
+	record_rename_pair(dst_index, src_index, MAX_SCORE);
+	mr->rename_count++;
+	return 0;
+}
+
+static int rename_manually(struct diff_options *options,
+			   const char *instructions,
+			   unsigned long size)
+{
+	struct manual_rename mr;
+
+	if (!instructions || !size)
+		return 0;
+
+	mr.rename_count = 0;
+	mr.options = options;
+	parse_rename_file(instructions, size,
+			  manual_rename_path,
+			  &mr);
+	return mr.rename_count;
 }
 
 #define NUM_CANDIDATE_PER_DST 4
@@ -452,7 +594,7 @@ void diffcore_rename(struct diff_options *options)
 	struct diff_queue_struct *q = &diff_queued_diff;
 	struct diff_queue_struct outq;
 	struct diff_score *mx;
-	int i, j, rename_count, skip_unmodified = 0;
+	int i, j, rename_count = 0, skip_unmodified = 0;
 	int num_create, dst_cnt;
 	struct progress *progress = NULL;
 
@@ -504,11 +646,17 @@ void diffcore_rename(struct diff_options *options)
 	if (rename_dst_nr == 0 || rename_src_nr == 0)
 		goto cleanup; /* nothing to do */
 
+
+	if (options->manual_renames)
+		rename_count +=
+			rename_manually(options, options->manual_renames,
+					strlen(options->manual_renames));
+
 	/*
 	 * We really want to cull the candidates list early
 	 * with cheap tests in order to avoid doing deltas.
 	 */
-	rename_count = find_exact_renames(options);
+	rename_count += find_exact_renames(options);
 
 	/* Did we only want exact renames? */
 	if (minimum_score == MAX_SCORE)

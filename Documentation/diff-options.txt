@@ -387,6 +387,11 @@ endif::git-log[]
 	projects, so use it with caution.  Giving more than one
 	`-C` option has the same effect.
 
+--rename-file=<path>::
+	The given file contains explicit rename pairs that override
+	automatic detected renames. See linkgit:gitdiffcore[7] for the file
+	syntax.
+
 -D::
 --irreversible-delete::
 	Omit the preimage for deletes, i.e. print only the header but not
