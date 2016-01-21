@@ -113,6 +113,29 @@ static int parse_rename_path(const char *start, const char *end,
 	return 0;
 }
 
+static int parse_rename_anchor(const char *start, const char *end,
+			       const char *dot_x_spc, const char *dot_no_x_spc,
+			       const char **anchor, int *anchor_len)
+{
+	if (skip_prefix(start, dot_x_spc, &start)) {
+		while (start < end && isspace(*start))
+			start++;
+		*anchor = start;
+		*anchor_len = end - start;
+		return 1;
+	}
+
+	if (skip_prefix(start, dot_no_x_spc, &start)) {
+		while (start < end && isspace(*start))
+			start++;
+		*anchor = NULL;
+		*anchor_len = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
 /*
  * Given "content", which must be NUL terminated at
  * content[len]. Parse it and call either callback, depending on the
@@ -123,6 +146,9 @@ static int parse_rename_path(const char *start, const char *end,
  * quoted.
  */
 static int parse_rename_file(const char *content, int len,
+			     int (*match_rename_trees)(const char *src, int src_len,
+						       const char *dst, int dst_len,
+						       void *cb_data),
 			     int (*rename_path)(const char *src, int src_len,
 						const char *dst, int dst_len,
 						void *cb_data),
@@ -133,6 +159,8 @@ static int parse_rename_file(const char *content, int len,
 {
 	const char *content_end = content + len;
 	const char *p = content;
+	const char *src_anchor = NULL, *dst_anchor = NULL;
+	int src_anchor_len = 0, dst_anchor_len = 0;
 
 	while (p < content_end) {
 		const char *start = p, *next, *end, *src, *dst;
@@ -145,6 +173,18 @@ static int parse_rename_file(const char *content, int len,
 		if (!end)
 			end = content_end;
 		p = end;
+
+		if (parse_rename_anchor(start, end, ".source ", ".nosource ",
+					&src_anchor, &src_anchor_len) ||
+		    parse_rename_anchor(start, end, ".target ", ".notarget ",
+					&dst_anchor, &dst_anchor_len))
+			continue;
+
+		if ((src_anchor || dst_anchor) &&
+		    !match_rename_trees(src_anchor, src_anchor_len,
+					dst_anchor, dst_anchor_len,
+					cb_data))
+			continue;
 
 		if (skip_prefix(start, ".blob ", &next)) {
 			struct object_id src, dst;
@@ -580,6 +620,39 @@ static int manual_rename_path(const char *src, int src_len,
 	return 0;
 }
 
+static int match_rename_one_tree(const char *name, int len,
+				 const unsigned char *tree_hash)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct object_id oid;
+	int ret;
+
+	if (!name || len == 0)
+		return 1;
+
+	if (!tree_hash)
+		return 0;
+
+	strbuf_add(&sb, name, len);
+	ret = get_sha1_treeish(sb.buf, oid.hash);
+	strbuf_release(&sb);
+	if (ret)
+		return 1;
+
+	return !hashcmp(tree_hash, oid.hash);
+}
+
+static int match_rename_tree(const char *src, int src_len,
+			     const char *dst, int dst_len,
+			     void *cb_data)
+{
+	struct manual_rename *mr = cb_data;
+	struct diff_options *opt = mr->options;
+
+	return match_rename_one_tree(src, src_len, opt->old_root) &&
+	       match_rename_one_tree(dst, dst_len, opt->new_root);
+}
+
 static int rename_manually(struct diff_options *options,
 			   const char *instructions,
 			   unsigned long size)
@@ -592,6 +665,7 @@ static int rename_manually(struct diff_options *options,
 	mr.rename_count = 0;
 	mr.options = options;
 	parse_rename_file(instructions, size,
+			  match_rename_tree,
 			  manual_rename_path, manual_rename_blob,
 			  &mr);
 	return mr.rename_count;
