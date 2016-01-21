@@ -230,4 +230,37 @@ test_expect_success 'rename pretty print common prefix and suffix overlap' '
 	test_i18ngrep " d/f/{ => f}/e " output
 '
 
+test_expect_success 'manual rename correction' '
+	test_create_repo correct-rename &&
+	(
+		cd correct-rename &&
+		echo one > old-one &&
+		echo two > old-two &&
+		git add old-one old-two &&
+		git commit -m old &&
+		git rm old-one old-two &&
+		echo one > new-one &&
+		echo two > new-two &&
+		git add new-one new-two &&
+		git commit -m new &&
+		git diff -M --summary HEAD^ | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-one (100%)
+		 rename old-two => new-two (100%)
+		EOF
+		test_cmp expected actual &&
+
+		cat >correction <<-\EOF &&
+		old-one => new-two
+		old-two => new-one
+		EOF
+		git diff -M --rename-file=correction --summary HEAD^ | sort | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-two (100%)
+		 rename old-two => new-one (100%)
+		EOF
+		test_cmp expected actual
+	)
+'
+
 test_done
