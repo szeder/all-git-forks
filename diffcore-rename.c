@@ -8,6 +8,36 @@
 #include "progress.h"
 
 /*
+ * regex equivalent: \s*[a-f0-9]{40}\s*=>\s*[a-f0-9]{40}\s*
+ */
+static int parse_rename_blob(const char *next, const char *end,
+			     struct object_id *src,
+			     struct object_id *dst)
+{
+	while (next < end && isspace(*next))
+		next++;
+	if (get_oid_hex(next, src))
+		return -1;
+	next += GIT_SHA1_HEXSZ;
+	if (next >= end || !isspace(*next))
+		return -1;
+	while (next < end && isspace(*next))
+		next++;
+	if (!skip_prefix(next, "=>", &next))
+		return -1;
+	while (next < end && isspace(*next))
+		next++;
+	if (get_oid_hex(next, dst))
+		return -1;
+	next += GIT_SHA1_HEXSZ;
+	while (next < end && isspace(*next))
+		next++;
+	if (next != end)
+		return -1;
+	return 0;
+}
+
+/*
  * Unquoted paths terminate at the first isspace(). Quoted paths start
  * and end with a single quote. Only "\'" is recognized and escaped.
  */
@@ -96,13 +126,16 @@ static int parse_rename_file(const char *content, int len,
 			     int (*rename_path)(const char *src, int src_len,
 						const char *dst, int dst_len,
 						void *cb_data),
+			     int (*rename_blob)(const struct object_id *src,
+						const struct object_id *dst,
+						void *cb_data),
 			     void *cb_data)
 {
 	const char *content_end = content + len;
 	const char *p = content;
 
 	while (p < content_end) {
-		const char *start = p, *end, *src, *dst;
+		const char *start = p, *next, *end, *src, *dst;
 		int src_len, dst_len;
 
 		while (start < content_end && isspace(*start))
@@ -112,6 +145,15 @@ static int parse_rename_file(const char *content, int len,
 		if (!end)
 			end = content_end;
 		p = end;
+
+		if (skip_prefix(start, ".blob ", &next)) {
+			struct object_id src, dst;
+
+			if (!parse_rename_blob(next, end, &src, &dst) &&
+			    rename_blob(&src, &dst, cb_data))
+				return -1;
+			continue;
+		}
 
 		if (*start == '.') /* future keywords */
 			continue;
@@ -484,6 +526,32 @@ struct manual_rename {
 	struct diff_options *options;
 };
 
+static int manual_rename_blob(const struct object_id *src,
+			      const struct object_id *dst,
+			      void *cb_data)
+{
+	int src_index, dst_index;
+	struct manual_rename *mr = cb_data;
+
+	for (src_index = 0; src_index < rename_src_nr; src_index++) {
+		if (oidcmp(src, &rename_src[src_index].p->one->oid))
+			break;
+	}
+	if (src_index == rename_src_nr)
+		return -1;
+
+	for (dst_index = 0; dst_index < rename_dst_nr; dst_index++) {
+		if (oidcmp(dst, &rename_dst[dst_index].two->oid))
+			break;
+	}
+	if (dst_index == rename_dst_nr)
+		return -1;
+
+	record_rename_pair(dst_index, src_index, MAX_SCORE);
+	mr->rename_count++;
+	return 0;
+}
+
 static int manual_rename_path(const char *src, int src_len,
 			      const char *dst, int dst_len,
 			      void *cb_data)
@@ -524,7 +592,7 @@ static int rename_manually(struct diff_options *options,
 	mr.rename_count = 0;
 	mr.options = options;
 	parse_rename_file(instructions, size,
-			  manual_rename_path,
+			  manual_rename_path, manual_rename_blob,
 			  &mr);
 	return mr.rename_count;
 }

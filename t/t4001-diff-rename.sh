@@ -263,4 +263,29 @@ test_expect_success 'manual rename correction' '
 	)
 '
 
+test_expect_success 'manual rename correction with blobs' '
+	(
+		cd correct-rename &&
+		git diff -M --summary HEAD^ | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-one (100%)
+		 rename old-two => new-two (100%)
+		EOF
+		test_cmp expected actual &&
+
+		ONE=`echo one | git hash-object --stdin` &&
+		TWO=`echo two | git hash-object --stdin` &&
+		cat >correction <<-EOF &&
+		.blob $ONE => $TWO
+		.blob $TWO => $ONE
+		EOF
+		git diff -M --rename-file=correction --summary HEAD^ | sort | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-two (100%)
+		 rename old-two => new-one (100%)
+		EOF
+		test_cmp expected actual
+	)
+'
+
 test_done
