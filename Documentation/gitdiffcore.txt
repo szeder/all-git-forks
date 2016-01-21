@@ -176,6 +176,10 @@ the expense of making it slower.  Without `--find-copies-harder`,
 'git diff-{asterisk}' commands can detect copies only if the file that was
 copied happened to have been modified in the same changeset.
 
+diffcore-rename can take a file that indicates what path should be
+renamed to what path. This overrides automatic detection. Each line in
+the file either starts with a keyword or is in the form "<path> =>
+<path>". All keywords start with a dot.
 
 diffcore-merge-broken: For Putting "Complete Rewrites" Back Together
 --------------------------------------------------------------------
