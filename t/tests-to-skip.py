@@ -42,6 +42,7 @@ t7506	watchman! Linux Darwin
 t7508	watchman! Linux Darwin
 
 # SRC-1072 -- fix these then re-add them
+t4023 watchman! Darwin
 t4201 watchman! Darwin
 t6038 watchman! Darwin
 
