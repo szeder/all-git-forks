@@ -177,6 +177,8 @@ struct diff_options {
 	int output_prefix_length;
 	void *output_prefix_data;
 	const char *manual_renames;
+	const unsigned char *old_root;
+	const unsigned char *new_root;
 
 	int diff_path_counter;
 };
