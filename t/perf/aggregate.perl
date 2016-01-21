@@ -17,29 +17,41 @@ sub get_times {
 	return ($rt, $4, $5);
 }
 
-sub format_times {
+sub format_times_list {
 	my ($r, $u, $s, $firstr) = @_;
 	if (!defined $r) {
 		return "<missing>";
 	}
 	my $out = sprintf "%.2f(%.2f+%.2f)", $r, $u, $s;
+	my $pct;
 	if (defined $firstr) {
 		if ($firstr > 0) {
-			$out .= sprintf " %+.1f%%", 100.0*($r-$firstr)/$firstr;
+			$pct = sprintf "%+.1f%%", 100.0*($r-$firstr)/$firstr;
 		} elsif ($r == 0) {
-			$out .= " =";
+			$pct = "=";
 		} else {
-			$out .= " +inf";
+			$pct = "+inf";
 		}
 	}
-	return $out;
+	return ($out, $pct);
+}
+
+sub format_times {
+	my ($times, $pct) = format_times_list(@_);
+	return defined $pct ? "$times $pct" : $times;
 }
 
 my (@dirs, %dirnames, %dirabbrevs, %prefixes, @tests);
+my ($tall_format);
 while (scalar @ARGV) {
 	my $arg = $ARGV[0];
 	my $dir;
 	last if -f $arg or $arg eq "--";
+	if ($arg eq "--tall") {
+		$tall_format = 1;
+		shift @ARGV;
+		next;
+	}
 	if (! -d $arg) {
 		my $rev = Git::command_oneline(qw(rev-parse --verify), $arg);
 		$dir = "build/".$rev;
@@ -116,6 +128,11 @@ sub have_slash {
 	return 0;
 }
 
+sub printable_dir {
+	my ($d) = @_;
+	return exists $dirabbrevs{$d} ? $dirabbrevs{$d} : $dirnames{$d};
+}
+
 my %newdirabbrevs = %dirabbrevs;
 while (!have_duplicate(values %newdirabbrevs)) {
 	%dirabbrevs = %newdirabbrevs;
@@ -126,42 +143,77 @@ while (!have_duplicate(values %newdirabbrevs)) {
 	}
 }
 
-my %times;
-my @colwidth = ((0)x@dirs);
-for my $i (0..$#dirs) {
-	my $d = $dirs[$i];
-	my $w = length (exists $dirabbrevs{$d} ? $dirabbrevs{$d} : $dirnames{$d});
-	$colwidth[$i] = $w if $w > $colwidth[$i];
-}
-for my $t (@subtests) {
-	my $firstr;
+if (!$tall_format) {
+	my %times;
+	my @colwidth = ((0)x@dirs);
 	for my $i (0..$#dirs) {
 		my $d = $dirs[$i];
-		$times{$prefixes{$d}.$t} = [get_times("test-results/$prefixes{$d}$t.times")];
-		my ($r,$u,$s) = @{$times{$prefixes{$d}.$t}};
-		my $w = length format_times($r,$u,$s,$firstr);
+		my $w = length(printable_dir($d));
 		$colwidth[$i] = $w if $w > $colwidth[$i];
-		$firstr = $r unless defined $firstr;
 	}
-}
-my $totalwidth = 3*@dirs+$descrlen;
-$totalwidth += $_ for (@colwidth);
+	for my $t (@subtests) {
+		my $firstr;
+		for my $i (0..$#dirs) {
+			my $d = $dirs[$i];
+			$times{$prefixes{$d}.$t} = [get_times("test-results/$prefixes{$d}$t.times")];
+			my ($r,$u,$s) = @{$times{$prefixes{$d}.$t}};
+			my $w = length format_times($r,$u,$s,$firstr);
+			$colwidth[$i] = $w if $w > $colwidth[$i];
+			$firstr = $r unless defined $firstr;
+		}
+	}
+	my $totalwidth = 3*@dirs+$descrlen;
+	$totalwidth += $_ for (@colwidth);
 
-printf "%-${descrlen}s", "Test";
-for my $i (0..$#dirs) {
-	my $d = $dirs[$i];
-	printf "   %-$colwidth[$i]s", (exists $dirabbrevs{$d} ? $dirabbrevs{$d} : $dirnames{$d});
-}
-print "\n";
-print "-"x$totalwidth, "\n";
-for my $t (@subtests) {
-	printf "%-${descrlen}s", $descrs{$t};
-	my $firstr;
+	printf "%-${descrlen}s", "Test";
 	for my $i (0..$#dirs) {
 		my $d = $dirs[$i];
-		my ($r,$u,$s) = @{$times{$prefixes{$d}.$t}};
-		printf "   %-$colwidth[$i]s", format_times($r,$u,$s,$firstr);
-		$firstr = $r unless defined $firstr;
+		printf "   %-$colwidth[$i]s", printable_dir($d);
 	}
 	print "\n";
+	print "-"x$totalwidth, "\n";
+	for my $t (@subtests) {
+		printf "%-${descrlen}s", $descrs{$t};
+		my $firstr;
+		for my $i (0..$#dirs) {
+			my $d = $dirs[$i];
+			my ($r,$u,$s) = @{$times{$prefixes{$d}.$t}};
+			printf "   %-$colwidth[$i]s", format_times($r,$u,$s,$firstr);
+			$firstr = $r unless defined $firstr;
+		}
+		print "\n";
+	}
+} else {
+	my $shown = 0;
+	for my $t (@subtests) {
+		print "\n" if $shown++;
+		print "Test: $t\n";
+
+		my %times;
+		my $firstr;
+		for my $d (@dirs) {
+			my ($r, $u, $s) = get_times("test-results/$prefixes{$d}$t.times");
+			$times{$d} = [format_times_list($r, $u, $s, $firstr)];
+			$firstr = $r unless defined $firstr;
+		}
+
+		my $maxdirlen = 0;
+		my $maxtimelen = 0;
+		for my $d (@dirs) {
+			if (length($d) > $maxdirlen) {
+				$maxdirlen = length(printable_dir($d));
+			}
+			if (length($times{$d}->[0]) > $maxtimelen) {
+				$maxtimelen = length($times{$d}->[0]);
+			}
+		}
+		$maxdirlen++;
+
+		for my $d (@dirs) {
+			printf "%-${maxdirlen}s", printable_dir($d);
+			printf "   %${maxtimelen}s", $times{$d}->[0];
+			print " $times{$d}->[1]" if defined $times{$d}->[1];
+			print "\n";
+		}
+	}
 }
