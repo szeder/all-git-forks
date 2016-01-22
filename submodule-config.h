@@ -17,6 +17,8 @@ struct submodule {
 	const char *update;
 	/* the sha1 blob id of the responsible .gitmodules file */
 	unsigned char gitmodules_sha1[20];
+	/* sorted, not as on disk */
+	struct string_list *labels;
 };
 
 int parse_fetch_recurse_submodules_arg(const char *opt, const char *arg);
