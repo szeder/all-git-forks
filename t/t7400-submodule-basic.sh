@@ -1064,4 +1064,105 @@ test_expect_success 'submodule update auto-initializes submodules' '
 	test_cmp actual expected
 '
 
+cat <<EOF > expected
+submodule
+-submodule1
+EOF
+
+test_expect_success 'clone --init-submodule works' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label labelA file://"$pwd"/example2 submodule &&
+		git submodule add file://"$pwd"/example2 submodule1 &&
+		git commit -a -m "create repository with 2 submodules, one is in a group"
+	) &&
+	git clone --init-submodule \*labelA super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected
+'
+
+cat <<EOF > expected
+-submodule1
+submoduleA
+-submoduleB
+submoduleC
+-submoduleD
+submoduleE
+EOF
+
+test_expect_success 'clone initializes submodules correctly with more than one --init-submodule option' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label groupA file://"$pwd"/example2 submoduleA &&
+		git submodule add --label groupB file://"$pwd"/example2 submoduleB &&
+		git submodule add --label groupC file://"$pwd"/example2 submoduleC &&
+		git submodule add --label groupD --name submoduleE file://"$pwd"/example2 submoduleD &&
+		git submodule add --label groupE --name submoduleD file://"$pwd"/example2 submoduleE &&
+		git submodule add file://"$pwd"/example2 submodule1 &&
+		git commit -a -m "create repository with submodules groups"
+	) &&
+	git clone --init-submodule=\*groupA --init-submodule ./submoduleC --init-submodule :submoduleD super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected
+'
+
+cat <<EOF > expected1
+submoduleA
+-submoduleB
+EOF
+
+cat <<EOF > expected2
+submoduleA
+-submoduleB
+submoduleC
+EOF
+
+test_expect_success 'clone and subsequent updates correctly auto-initialize submodules' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label LA file://"$pwd"/example2 submoduleA &&
+		git submodule add file://"$pwd"/example2 submoduleB &&
+		git commit -a -m "create repository with submodules groups"
+	) &&
+	git clone --init-submodule=\*LA super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected1 &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label LA file://"$pwd"/example2 submoduleC &&
+		git commit -a -m "add another labled submodule"
+	) &&
+	(
+		cd super_clone &&
+		# obtain the new superproject
+		git pull &&
+		# submoduleC should just appear as it has the label LA
+		# which was configured to autoInitialize in git clone
+		git submodule update &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected2
+'
 test_done
