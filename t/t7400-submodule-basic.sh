@@ -1032,4 +1032,36 @@ test_expect_success 'submodule add records multiple lables' '
 	test_cmp expected actual
 '
 
+cat <<EOF > expected
+submodule
+submodule1
+submodule2
+-submodule3
+EOF
+
+test_expect_success 'submodule update auto-initializes submodules' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label labelA file://"$pwd"/example2 submodule &&
+		git submodule add --name specialSnowflake file://"$pwd"/example2 submodule1 &&
+		git submodule add file://"$pwd"/example2 submodule2 &&
+		git submodule add file://"$pwd"/example2 submodule3 &&
+		git commit -a -m "create repository with 4 submodules, one is labeled"
+	) &&
+	git clone super super_clone &&
+	(
+		cd super_clone &&
+		git config submodule.autoInitialize \*labelA &&
+		git config --add submodule.autoInitialize :specialSnowflake &&
+		git config --add submodule.autoInitialize ./submodule2 &&
+		git submodule update &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected
+'
+
 test_done

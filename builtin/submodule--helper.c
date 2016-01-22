@@ -579,9 +579,10 @@ struct submodule_update_clone {
 	const char *prefix;
 	struct module_list list;
 	struct string_list projectlines;
+	struct string_list *initialize;
 	struct pathspec pathspec;
 };
-#define SUBMODULE_UPDATE_CLONE_INIT {0, 0, 0, NULL, NULL, NULL, NULL, NULL, MODULE_LIST_INIT, STRING_LIST_INIT_DUP}
+#define SUBMODULE_UPDATE_CLONE_INIT {0, 0, 0, NULL, NULL, NULL, NULL, NULL, MODULE_LIST_INIT, STRING_LIST_INIT_DUP, NULL}
 
 static void fill_clone_command(struct child_process *cp, int quiet,
 			       const char *prefix, const char *path,
@@ -624,6 +625,7 @@ static int update_clone_get_next_task(struct child_process *cp,
 		const char *update_module = NULL;
 		char *url = NULL;
 		int needs_cloning = 0;
+		int auto_init = 0;
 
 		if (ce_stage(ce)) {
 			if (pp->recursive_prefix)
@@ -667,6 +669,49 @@ static int update_clone_get_next_task(struct child_process *cp,
 		strbuf_reset(&sb);
 		strbuf_addf(&sb, "submodule.%s.url", sub->name);
 		git_config_get_string(sb.buf, &url);
+		if (pp->initialize) {
+			if (sub->labels) {
+				struct string_list_item *item;
+				for_each_string_list_item(item, sub->labels) {
+					strbuf_reset(&sb);
+					strbuf_addf(&sb, "*%s", item->string);
+					if (string_list_has_string(
+					    pp->initialize, sb.buf)) {
+						auto_init = 1;
+						break;
+					}
+				}
+			}
+			if (sub->path) {
+				/*
+				 * NEEDSWORK: This currently works only for
+				 * exact paths, but we want to enable
+				 * inexact matches such wildcards.
+				 */
+				strbuf_reset(&sb);
+				strbuf_addf(&sb, "./%s", sub->path);
+				if (string_list_has_string(pp->initialize, sb.buf)) {
+					auto_init = 1;
+				}
+			}
+			if (sub->name) {
+				/*
+				 * NEEDSWORK: Same as with path. Do we want to
+				 * support wildcards or such?
+				 */
+				strbuf_reset(&sb);
+				strbuf_addf(&sb, ":%s", sub->name);
+				if (string_list_has_string(pp->initialize, sb.buf)) {
+					auto_init = 1;
+				}
+			}
+			if (auto_init) {
+				if (!url) {
+					init_submodule(sub->path, pp->prefix, pp->quiet);
+					url = xstrdup(sub->url);
+				}
+			}
+		}
 		if (!url) {
 			/*
 			 * Only mention uninitialized submodules when its
@@ -733,6 +778,7 @@ static int update_clone_task_finished(int result,
 static int update_clone(int argc, const char **argv, const char *prefix)
 {
 	int max_jobs = -1;
+	const struct string_list *list;
 	struct string_list_item *item;
 	struct submodule_update_clone pp = SUBMODULE_UPDATE_CLONE_INIT;
 
@@ -776,6 +822,14 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 	gitmodules_config();
 	/* Overlay the parsed .gitmodules file with .git/config */
 	git_config(git_submodule_config, NULL);
+
+	list = git_config_get_value_multi("submodule.autoInitialize");
+	if (list) {
+		pp.initialize = xmalloc(sizeof(*pp.initialize));
+		string_list_init(pp.initialize, 1);
+		for_each_string_list_item(item, list)
+			string_list_insert(pp.initialize, item->string);
+	}
 
 	if (max_jobs < 0)
 		max_jobs = config_parallel_submodules();
