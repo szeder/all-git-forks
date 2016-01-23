@@ -696,8 +696,12 @@ static struct convert_driver *git_path_check_convert(const char *path,
 	if (ATTR_TRUE(value) || ATTR_FALSE(value) || ATTR_UNSET(value))
 		return NULL;
 	for (drv = user_convert; drv; drv = drv->next)
-		if (!strcmp(value, drv->name))
-			return drv;
+		if (!strcmp(value, drv->name)) {
+			if (strlen(drv->smudge) > 0 && strlen(drv->clean) > 0)
+				return drv;
+			else
+				return NULL;
+		}
 	return NULL;
 }
 
