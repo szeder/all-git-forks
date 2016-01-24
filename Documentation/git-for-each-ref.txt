@@ -92,7 +92,11 @@ refname::
 	The name of the ref (the part after $GIT_DIR/).
 	For a non-ambiguous short name of the ref append `:short`.
 	The option core.warnAmbiguousRefs is used to select the strict
-	abbreviation mode.
+	abbreviation mode. If `strip=<N>` is appended, strips `<N>`
+	slash-separated path components from the front of the refname
+	(e.g., `%(refname:strip=2)` turns `refs/tags/foo` into `foo`.
+	If the ref has fewer components than `<N>`, the whole,
+	unstripped `%(refname)` is printed.
 
 objecttype::
 	The type of the object (`blob`, `tree`, `commit`, `tag`).

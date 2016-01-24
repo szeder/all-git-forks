@@ -50,6 +50,10 @@ test_atom() {
 
 test_atom head refname refs/heads/master
 test_atom head refname:short master
+test_atom head refname:strip=0 refs/heads/master
+test_atom head refname:strip=1 heads/master
+test_atom head refname:strip=2 master
+test_atom head refname:strip=3 refs/heads/master
 test_atom head upstream refs/remotes/origin/master
 test_atom head upstream:short origin/master
 test_atom head push refs/remotes/myfork/master
