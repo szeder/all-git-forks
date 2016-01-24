@@ -76,7 +76,7 @@ before_install:
 
 before_script: make --jobs=2
 
-script: make --quiet test
+script: cd t; for i in {1..10000}; do echo "Try $i ..."; ./t0025-crlf-auto.sh; done;
 
 after_failure:
   - >
