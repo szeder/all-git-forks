@@ -708,6 +708,26 @@ static int rename_by_commit(struct diff_options *opt)
 	return rename_manually(opt, last_note, size);
 }
 
+static int rename_by_blob(struct diff_options *opt)
+{
+	int rename_count = 0, i;
+
+	for (i = 0; i < rename_dst_nr; i++) {
+		unsigned long size;
+		char *note;
+
+		if (rename_dst[i].pair)
+			continue; /* dealt with exact match already. */
+
+		note = get_rename_note(opt->rename_notes,
+				       &rename_dst[i].two->oid,
+				       &size);
+		rename_count += rename_manually(opt, note, size);
+		free(note);
+	}
+	return rename_count;
+}
+
 #define NUM_CANDIDATE_PER_DST 4
 static void record_if_better(struct diff_score m[], struct diff_score *o)
 {
@@ -853,8 +873,10 @@ void diffcore_rename(struct diff_options *options)
 	if (rename_dst_nr == 0 || rename_src_nr == 0)
 		goto cleanup; /* nothing to do */
 
-	if (options->rename_notes)
+	if (options->rename_notes) {
 		rename_count += rename_by_commit(options);
+		rename_count += rename_by_blob(options);
+	}
 
 	if (options->manual_renames)
 		rename_count +=
