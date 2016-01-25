@@ -380,3 +380,43 @@ const struct worktree *find_shared_symref(const char *symref,
 
 	return existing;
 }
+
+void migrate_worktree_config(void)
+{
+	struct strbuf worktree_path = STRBUF_INIT;
+	struct strbuf main_path = STRBUF_INIT;
+	struct repository_format format;
+
+	assert(repository_format_worktree_config == 0);
+
+	strbuf_git_common_path(&worktree_path, "config.worktree");
+	strbuf_git_path(&main_path, "config");
+
+	read_repository_format(&format, main_path.buf);
+	assert(format.worktree_config == 0);
+
+	if (format.is_bare >= 0) {
+		git_config_set_in_file(worktree_path.buf,
+				       "core.bare", "true");
+		git_config_set_in_file(main_path.buf,
+				       "core.bare", NULL);
+	}
+	if (format.work_tree) {
+		git_config_set_in_file(worktree_path.buf,
+				       "core.worktree",
+				       format.work_tree);
+		git_config_set_in_file(main_path.buf,
+				       "core.worktree", NULL);
+	}
+
+	git_config_set_in_file(main_path.buf,
+			       "extensions.worktreeConfig", "true");
+	if (format.version == 0)
+		git_config_set_in_file(main_path.buf,
+				       "core.repositoryFormatVersion", "1");
+
+	repository_format_worktree_config = 1;
+
+	strbuf_release(&main_path);
+	strbuf_release(&worktree_path);
+}
