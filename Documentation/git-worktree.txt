@@ -115,7 +115,13 @@ WORKTREE VERSIONS AND MIGRATION
 Multiple worktree is still an experimental feature and evolving. Every
 time the behavior is changed, the "worktree version" is stepped
 up. Worktree version is stored as a configuration variable
-extensions.worktree.
+extensions.worktree. Latest version is one.
+
+Version 1
+~~~~~~~~~
+In this version, the repository config file `.git/config` is not
+shared anymore. A new file, `.git/common/config`, read for all
+worktrees. Shared configuration should be stored here.
 
 Version 0
 ~~~~~~~~~

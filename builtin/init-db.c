@@ -123,7 +123,7 @@ static void copy_templates(const char *template_dir)
 
 	/* Make sure that template is from the correct vintage */
 	strbuf_addstr(&template_path, "config");
-	read_repository_format(&template_format, template_path.buf);
+	read_repository_format(&template_format, template_path.buf, NULL);
 	strbuf_setlen(&template_path, template_len);
 
 	/*

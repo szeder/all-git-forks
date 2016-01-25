@@ -140,7 +140,6 @@ static struct common_dir common_list_v1[] = {
 	{ 0, 1, 0, "worktrees" },
 	{ 0, 1, 0, "rr-cache" },
 	{ 0, 1, 0, "svn" },
-	{ 0, 0, 0, "config" },
 	{ 1, 0, 0, "gc.pid" },
 	{ 0, 0, 0, "packed-refs" },
 	{ 0, 0, 0, "shallow" },

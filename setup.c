@@ -408,14 +408,30 @@ static int check_repo_format(const char *var, const char *value, void *vdata)
 static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 {
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf sb2 = STRBUF_INIT;
+	struct strbuf sb3 = STRBUF_INIT;
+	const char *repo_config;
+	const char *repo_common_config;
 	struct strbuf err = STRBUF_INIT;
 	struct repository_format candidate;
 	int has_common;
 
 	has_common = get_common_dir(&sb, gitdir);
-	strbuf_addstr(&sb, "/config");
-	read_repository_format(&candidate, sb.buf);
+	strbuf_addf(&sb2, "%s/common/config", sb.buf);
+	if (access(sb2.buf, F_OK) == -1) { /* worktree v0 */
+		strbuf_addf(&sb3, "%s/config", sb.buf);
+		repo_common_config = NULL;
+		repo_config = sb3.buf;
+	} else {
+		strbuf_addf(&sb3, "%s/config", gitdir);
+		repo_common_config = sb2.buf;
+		repo_config = sb3.buf;
+	}
+
+	read_repository_format(&candidate, repo_config, repo_common_config);
 	strbuf_release(&sb);
+	strbuf_release(&sb2);
+	strbuf_release(&sb3);
 
 	/*
 	 * For historical use of check_repository_format() in git-init,
@@ -434,6 +450,11 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 		}
 		die("%s", err.buf);
 	}
+
+	if (repo_common_config && repository_format_worktree_version < 1)
+		die(_("worktree version must be one minimum in the presence of .git/common/config"));
+	if (!repo_common_config && repository_format_worktree_version > 0)
+		die(_("worktree version must be zero if .git/common/config does not exist"));
 
 	repository_format_precious_objects = candidate.precious_objects;
 	repository_format_worktree_version = candidate.worktree_version;
@@ -456,12 +477,16 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	return 0;
 }
 
-int read_repository_format(struct repository_format *format, const char *path)
+int read_repository_format(struct repository_format *format,
+			   const char *path,
+			   const char *common_path)
 {
 	memset(format, 0, sizeof(*format));
 	format->version = -1;
 	format->is_bare = -1;
 	string_list_init(&format->unknown_extensions, 1);
+	if (common_path)
+		git_config_from_file(check_repo_format, common_path, format);
 	git_config_from_file(check_repo_format, path, format);
 	return format->version;
 }

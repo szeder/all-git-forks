@@ -254,6 +254,11 @@ common::
 	This directory is seen from all working directories. It is
 	meant to share files that all working directories can see.
 
+common/config::
+	Repository specific configuration file. Note that if this file
+	is present, it must contain the variable extensions.worktree
+	whose value must be one or above.
+
 worktrees::
 	Contains administrative data for linked
 	working trees. Each subdirectory contains the working tree-related
@@ -279,6 +284,9 @@ worktrees/<id>/link::
 	If this file exists, it is a hard link to the linked .git
 	file. It is used to detect if the linked repository is
 	manually removed.
+
+worktrees/<id>/config::
+	Working tree specific configuration file.
 
 SEE ALSO
 --------

@@ -765,7 +765,9 @@ struct repository_format {
  * format->version is set to -1, and all other fields in the struct are
  * undefined.
  */
-int read_repository_format(struct repository_format *format, const char *path);
+int read_repository_format(struct repository_format *format,
+			   const char *path,
+			   const char *common_path);
 
 /*
  * Verify that the repository described by repository_format is something we
@@ -1593,6 +1595,13 @@ extern int config_error_nonbool(const char *);
 #if defined(__GNUC__)
 #define config_error_nonbool(s) (config_error_nonbool(s), const_error())
 #endif
+/*
+ * Return the path to per-repo config file. In single-worktree
+ * settings, this is always $GIT_DIR/config. In multiple-worktree
+ * settings, it could be either $GIT_DIR/config or
+ * $GIT_COMMON_DIR/common/config.
+ */
+extern const char *git_common_config_path(void);
 extern const char *get_log_output_encoding(void);
 extern const char *get_commit_output_encoding(void);
 
