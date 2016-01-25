@@ -909,12 +909,23 @@ static void populate_value(struct ref_array_item *ref)
 		formatp = strchr(name, ':');
 		if (formatp) {
 			int num_ours, num_theirs;
+			const char *arg;
 
 			formatp++;
 			if (!strcmp(formatp, "short"))
 				refname = shorten_unambiguous_ref(refname,
 						      warn_ambiguous_refs);
-			else if (!strcmp(formatp, "track") &&
+			else if (skip_prefix(formatp, "strip=", &arg)) {
+				int strip = atoi(arg);
+				const char *start = refname;
+				while (strip && *start) {
+					if (*start == '/')
+						strip--;
+					start++;
+				}
+				if (!strip)
+					refname = start;
+			} else if (!strcmp(formatp, "track") &&
 				 (starts_with(name, "upstream") ||
 				  starts_with(name, "push"))) {
 
