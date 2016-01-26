@@ -250,6 +250,10 @@ commondir::
 modules::
 	Contains the git-repositories of the submodules.
 
+common::
+	This directory is seen from all working directories. It is
+	meant to share files that all working directories can see.
+
 worktrees::
 	Contains administrative data for linked
 	working trees. Each subdirectory contains the working tree-related

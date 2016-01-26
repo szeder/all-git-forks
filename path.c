@@ -124,6 +124,7 @@ static struct common_dir common_list_v0[] = {
 };
 
 static struct common_dir common_list_v1[] = {
+	{ 0, 1, 0, "common" },
 	{ 0, 1, 0, "branches" },
 	{ 0, 1, 0, "hooks" },
 	{ 0, 1, 0, "info" },
