@@ -100,7 +100,7 @@ struct common_dir {
 	const char *dirname;
 };
 
-static struct common_dir common_list[] = {
+static struct common_dir common_list_v0[] = {
 	{ 0, 1, 0, "branches" },
 	{ 0, 1, 0, "hooks" },
 	{ 0, 1, 0, "info" },
@@ -122,6 +122,40 @@ static struct common_dir common_list[] = {
 	{ 0, 0, 0, "shallow" },
 	{ 0, 0, 0, NULL }
 };
+
+static struct common_dir common_list_v1[] = {
+	{ 0, 1, 0, "branches" },
+	{ 0, 1, 0, "hooks" },
+	{ 0, 1, 0, "info" },
+	{ 0, 0, 1, "info/sparse-checkout" },
+	{ 1, 1, 0, "logs" },
+	{ 1, 1, 1, "logs/HEAD" },
+	{ 0, 1, 1, "logs/refs/bisect" },
+	{ 0, 1, 0, "lost-found" },
+	{ 0, 1, 0, "objects" },
+	{ 0, 1, 0, "refs" },
+	{ 0, 1, 1, "refs/bisect" },
+	{ 0, 1, 0, "remotes" },
+	{ 0, 1, 0, "worktrees" },
+	{ 0, 1, 0, "rr-cache" },
+	{ 0, 1, 0, "svn" },
+	{ 0, 0, 0, "config" },
+	{ 1, 0, 0, "gc.pid" },
+	{ 0, 0, 0, "packed-refs" },
+	{ 0, 0, 0, "shallow" },
+	{ 0, 0, 0, NULL }
+};
+
+static struct common_dir *get_common_list(void)
+{
+	switch (repository_format_worktree_version) {
+	case 0: return common_list_v0;
+	case 1: return common_list_v1;
+	default:
+		die(_("unsupported worktree format version %d"),
+		    repository_format_worktree_version);
+	}
+}
 
 /*
  * A compressed trie.  A trie node consists of zero or more characters that
@@ -309,7 +343,7 @@ static void init_common_trie(void)
 	if (common_trie_done_setup)
 		return;
 
-	for (p = common_list; p->dirname; p++)
+	for (p = get_common_list(); p->dirname; p++)
 		add_to_trie(&common_trie, p->dirname, p);
 
 	common_trie_done_setup = 1;
@@ -356,7 +390,7 @@ void report_linked_checkout_garbage(void)
 		return;
 	strbuf_addf(&sb, "%s/", get_git_dir());
 	len = sb.len;
-	for (p = common_list; p->dirname; p++) {
+	for (p = get_common_list(); p->dirname; p++) {
 		const char *path = p->dirname;
 		if (p->ignore_garbage)
 			continue;
