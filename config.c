@@ -1875,9 +1875,24 @@ void git_config_set_in_file(const char *config_filename,
 	git_config_set_multivar_in_file(config_filename, key, value, NULL, 0);
 }
 
+int git_config_set_share_gently(const char *key, const char *value)
+{
+	char *path = xstrdup(git_common_config_path());
+	int ret = git_config_set_multivar_in_file_gently(path, key, value, NULL, 0);
+	free(path);
+	return ret;
+}
+
 int git_config_set_gently(const char *key, const char *value)
 {
 	return git_config_set_multivar_gently(key, value, NULL, 0);
+}
+
+void git_config_set_share(const char *key, const char *value)
+{
+	char *path = xstrdup(git_common_config_path());
+	git_config_set_multivar_in_file(path, key, value, NULL, 0);
+	free(path);
 }
 
 void git_config_set(const char *key, const char *value)
@@ -2240,11 +2255,30 @@ void git_config_set_multivar_in_file(const char *config_filename,
 		die(_("could not unset '%s'"), key);
 }
 
+int git_config_set_multivar_share_gently(const char *key, const char *value,
+					 const char *value_regex, int multi_replace)
+{
+	char *path = xstrdup(git_common_config_path());
+	int ret = git_config_set_multivar_in_file_gently(path, key, value,
+							 value_regex, multi_replace);
+	free(path);
+	return ret;
+}
+
 int git_config_set_multivar_gently(const char *key, const char *value,
 				   const char *value_regex, int multi_replace)
 {
 	return git_config_set_multivar_in_file_gently(NULL, key, value, value_regex,
 						      multi_replace);
+}
+
+void git_config_set_multivar_share(const char *key, const char *value,
+				   const char *value_regex, int multi_replace)
+{
+	char *path = xstrdup(git_common_config_path());
+	git_config_set_multivar_in_file(path, key, value,
+					value_regex, multi_replace);
+	free(path);
 }
 
 void git_config_set_multivar(const char *key, const char *value,

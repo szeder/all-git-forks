@@ -47,7 +47,7 @@ checks or transformations are performed on the value.
 
 When reading, the values are read from the system, global and
 repository local configuration files by default, and options
-'--system', '--global', '--local' and '--file <filename>' can be
+'--system', '--global', '--repo', '--local' and '--file <filename>' can be
 used to tell the command to read from only that location (see <<FILES>>).
 
 When writing, the new value is written to the repository local
@@ -121,6 +121,18 @@ See also <<FILES>>.
 +
 For reading options: read only from system-wide `$(prefix)/etc/gitconfig`
 rather than from all available files.
++
+See also <<FILES>>.
+
+--repo::
+
+	For writing options: write to the repository file
+	`.git/config` if the configuration variable extensions.worktree
+	is not specified or has the value zero, `.git/worktrees/config`
+	otherwise.
++
+For reading options: read only from the same file rather than from all
+available files.
 +
 See also <<FILES>>.
 

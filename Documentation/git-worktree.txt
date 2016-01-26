@@ -123,6 +123,10 @@ In this version, the repository config file `.git/config` is not
 shared anymore. A new file, `.git/common/config`, read for all
 worktrees. Shared configuration should be stored here.
 
+Use "git config --repo" to store shared configuration variables. Use
+"git config --local" to store per-worktree ones. This works even in
+single-worktree mode.
+
 Version 0
 ~~~~~~~~~
 This is the first release. Version 0 is implied if extensions.worktree

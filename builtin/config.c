@@ -22,7 +22,7 @@ static char delim = '=';
 static char key_delim = ' ';
 static char term = '\n';
 
-static int use_global_config, use_system_config, use_local_config;
+static int use_global_config, use_system_config, use_local_config, use_repo_config;
 static struct git_config_source given_config_source;
 static int actions, types;
 static const char *get_color_slot, *get_colorbool_slot;
@@ -56,7 +56,8 @@ static struct option builtin_config_options[] = {
 	OPT_GROUP(N_("Config file location")),
 	OPT_BOOL(0, "global", &use_global_config, N_("use global config file")),
 	OPT_BOOL(0, "system", &use_system_config, N_("use system config file")),
-	OPT_BOOL(0, "local", &use_local_config, N_("use repository config file")),
+	OPT_BOOL(0, "repo", &use_repo_config, N_("use per-repository config file")),
+	OPT_BOOL(0, "local", &use_local_config, N_("use per-worktree config file")),
 	OPT_STRING('f', "file", &given_config_source.file, N_("file"), N_("use given config file")),
 	OPT_STRING(0, "blob", &given_config_source.blob, N_("blob-id"), N_("read config from given blob object")),
 	OPT_GROUP(N_("Action")),
@@ -491,7 +492,8 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 			     PARSE_OPT_STOP_AT_NON_OPTION);
 
 	if (use_global_config + use_system_config + use_local_config +
-	    !!given_config_source.file + !!given_config_source.blob > 1) {
+	    !!given_config_source.file + !!given_config_source.blob > 1 +
+	    use_repo_config) {
 		error("only one config file at a time.");
 		usage_with_options(builtin_config_usage, builtin_config_options);
 	}
@@ -525,6 +527,8 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		given_config_source.file = git_etc_gitconfig();
 	else if (use_local_config)
 		given_config_source.file = git_pathdup("config");
+	else if (use_repo_config)
+		given_config_source.file = xstrdup(git_common_config_path());
 	else if (given_config_source.file) {
 		if (!is_absolute_path(given_config_source.file) && prefix)
 			given_config_source.file =
