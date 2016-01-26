@@ -141,6 +141,7 @@ static char *junk_work_tree;
 static char *junk_git_dir;
 static int is_junk;
 static pid_t junk_pid;
+static int target_version;
 
 static void remove_junk(void)
 {
@@ -183,6 +184,87 @@ static const char *worktree_basename(const char *path, int *olen)
 
 	*olen = len;
 	return name;
+}
+
+struct key_data {
+	const char *key;
+	char *value;
+};
+
+static int get_one_key(const char *key, const char *value, void *cb)
+{
+	struct key_data *kd = cb;
+
+	if (!strcmp(key, kd->key))
+		kd->value = xstrdup(value);
+
+	return 0;
+}
+
+static char *get_key(const char *file, const char *key)
+{
+	struct key_data kd;
+
+	kd.key = key;
+	kd.value = NULL;
+	if (git_config_from_file(get_one_key, file, &kd))
+		return NULL;
+	return kd.value;
+}
+
+static void upgrade_worktree_layout(void)
+{
+	const char *per_wortree_keys[] = {
+		"core.bare",
+		"core.ignorestat",
+		"core.sparsecheckout",
+		"core.worktree",
+		NULL
+	};
+	struct strbuf sb = STRBUF_INIT;
+	const char **key_p;
+
+	switch (repository_format_worktree_version) {
+	case 0:
+		strbuf_addf(&sb, "%s/common", get_git_common_dir());
+		if (mkdir_in_gitdir(sb.buf))
+			die_errno(_("failed to create directory %s"), sb.buf);
+		if (repository_format_version < 1)
+			git_config_set("core.repositoryformatversion", "1");
+		git_config_set("extensions.worktree", "1");
+		strbuf_addstr(&sb, "/config");
+		if (rename(git_path("config"), sb.buf))
+			die_errno(_("failed to set move config file to %s"),
+				  sb.buf);
+		for (key_p = per_wortree_keys; *key_p; key_p++) {
+			const char *key = *key_p;
+			char *value = get_key(sb.buf, key);
+
+			if (value) {
+				git_config_set(key, value);
+				git_config_set_in_file(sb.buf, key, NULL);
+				free(value);
+			}
+		}
+
+		/*
+		 * we're still in version 0 in this process, this will
+		 * create a new file $GIT_COMMON_DIR/config with only
+		 * one key, extensions.worktree. This will force old
+		 * git binaries that do not understand v1 to bail out.
+		 */
+		if (repository_format_version < 1)
+			git_config_set("core.repositoryformatversion", "1");
+		git_config_set("extensions.worktree", "1");
+
+		repository_format_worktree_version = 1;
+		break;
+	case 1:
+		break;
+	default:
+		die(_("unsupported worktree format version %d"),
+		    repository_format_worktree_version);
+	}
 }
 
 static int add_worktree(const char *path, const char *refname,
@@ -294,6 +376,14 @@ static int add_worktree(const char *path, const char *refname,
 		if (ret)
 			goto done;
 	}
+	is_junk = 0;
+	free(junk_work_tree);
+	free(junk_git_dir);
+	junk_work_tree = NULL;
+	junk_git_dir = NULL;
+
+	while (repository_format_worktree_version < target_version)
+		upgrade_worktree_layout();
 
 	is_junk = 0;
 	free(junk_work_tree);
@@ -326,6 +416,8 @@ static int add(int ac, const char **av, const char *prefix)
 			   N_("create or reset a branch")),
 		OPT_BOOL(0, "detach", &opts.detach, N_("detach HEAD at named commit")),
 		OPT_BOOL(0, "checkout", &opts.checkout, N_("populate the new working tree")),
+		OPT_INTEGER(0, "version", &target_version,
+			   N_("stay at this worktree version")),
 		OPT_END()
 	};
 
@@ -336,6 +428,8 @@ static int add(int ac, const char **av, const char *prefix)
 		die(_("-b, -B, and --detach are mutually exclusive"));
 	if (ac < 1 || ac > 2)
 		usage_with_options(worktree_usage, options);
+	if (target_version < 0 || target_version > 1)
+		die(_("invalid worktree version %d"), target_version);
 
 	path = prefix ? prefix_filename(prefix, strlen(prefix), av[0]) : av[0];
 	branch = ac < 2 ? "HEAD" : av[1];

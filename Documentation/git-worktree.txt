@@ -9,7 +9,7 @@ git-worktree - Manage multiple working trees
 SYNOPSIS
 --------
 [verse]
-'git worktree add' [-f] [--detach] [--checkout] [-b <new-branch>] <path> [<branch>]
+'git worktree add' [-f] [--detach] [--checkout] [-b <new-branch>] [--version=<N>] <path> [<branch>]
 'git worktree prune' [-n] [-v] [--expire <expire>]
 'git worktree list' [--porcelain]
 
@@ -92,6 +92,13 @@ OPTIONS
 	be used to suppress checkout in order to make customizations,
 	such as configuring sparse-checkout. See "Sparse checkout"
 	in linkgit:git-read-tree[1].
+
+--version=<N>::
+	By default when a new working directory is added, worktree
+	layout is automatically migrated to latest version. This
+	option can be used to specify only migrate to the specified
+	version, or no migrate at all if it's already current worktree
+	version.
 
 -n::
 --dry-run::
