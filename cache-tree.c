@@ -3,6 +3,7 @@
 #include "tree.h"
 #include "tree-walk.h"
 #include "cache-tree.h"
+#include "narrow-tree.h"
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -428,6 +429,8 @@ int cache_tree_update(struct index_state *istate, int flags)
 	i = update_one(it, cache, entries, "", 0, &skip, flags);
 	if (i < 0)
 		return i;
+	if (istate->narrow_prefix && complete_cache_tree(istate) < 0)
+		return -1;
 	istate->cache_changed |= CACHE_TREE_CHANGED;
 	return 0;
 }
@@ -651,26 +654,65 @@ int write_cache_as_tree(unsigned char *sha1, int flags, const char *prefix)
 	return write_index_as_tree(sha1, &the_index, get_index_file(), flags, prefix);
 }
 
-static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree)
+/*
+ * Create a cache tree from a tree object.
+ *
+ * In narrow clone:
+ * - border check is performed before traverse down the subtrees.
+ * - entry_count obviously does not reflect the number of existing
+ *   items, but the number of visible items.
+ * - 'base' == NULL means all subtrees are safe, no border check
+ *   needed, which is also normal case.
+ */
+static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree,
+				 struct strbuf *base)
 {
 	struct tree_desc desc;
 	struct name_entry entry;
-	int cnt;
+	int cnt, oldlen, all_interesting = !base ? 2 : 0;
 
 	hashcpy(it->sha1, tree->object.oid.hash);
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	cnt = 0;
+	if (base) oldlen = base->len;
 	while (tree_entry(&desc, &entry)) {
 		if (!S_ISDIR(entry.mode))
 			cnt++;
 		else {
 			struct cache_tree_sub *sub;
-			struct tree *subtree = lookup_tree(entry.sha1);
+			struct tree *subtree;
+			int match;
+
+			if (all_interesting)
+				match = all_interesting > 0;
+			else {
+				match = tree_entry_interesting(&entry, base, 0,
+							       get_narrow_pathspec());
+				if (match < 0) {
+					all_interesting = -1;
+					match = 0;
+				}
+				if (match > 1)
+					all_interesting = 1;
+			}
+
+			if (all_interesting < 0) {
+				/* keep entry_count correct */
+				cnt++;
+				while (tree_entry(&desc, &entry))
+					cnt++;
+				break;
+			}
+
+			subtree = lookup_tree(entry.sha1);
 			if (!subtree->object.parsed)
 				parse_tree(subtree);
 			sub = cache_tree_sub(it, entry.path);
 			sub->cache_tree = cache_tree();
-			prime_cache_tree_rec(sub->cache_tree, subtree);
+			if (base) strbuf_addf(base, "%s/", entry.path);
+			prime_cache_tree_rec(sub->cache_tree, subtree,
+					     all_interesting > 0 ? NULL : base);
+			if (base) strbuf_setlen(base, oldlen);
 			cnt += sub->cache_tree->entry_count;
 		}
 	}
@@ -679,10 +721,14 @@ static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree)
 
 void prime_cache_tree(struct index_state *istate, struct tree *tree)
 {
+	struct strbuf sb = STRBUF_INIT;
+
 	cache_tree_free(&istate->cache_tree);
 	istate->cache_tree = cache_tree();
-	prime_cache_tree_rec(istate->cache_tree, tree);
+	prime_cache_tree_rec(istate->cache_tree, tree,
+			     is_null_sha1(istate->narrow_base) ? NULL : &sb);
 	istate->cache_changed |= CACHE_TREE_CHANGED;
+	strbuf_release(&sb);
 }
 
 /*

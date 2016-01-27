@@ -109,4 +109,20 @@ test_expect_success 'create narrow index' '
 	test_cmp expected result
 '
 
+test_expect_success 'write-tree without modification' '
+	echo $TREE >expected &&
+	git write-tree >result &&
+	test_cmp expected result
+'
+
+test_expect_success 'write-tree with modification' '
+	echo 1 >>t1/f10 &&
+	git add t1/f10 &&
+	git ls-tree $TREE | grep -v t1 >expected &&
+	NEWTREE=$(git write-tree) &&
+	git ls-tree $NEWTREE | grep -v t1 >result &&
+	test "$TREE" != "$NEWTREE" &&
+	test_cmp expected result
+'
+
 test_done

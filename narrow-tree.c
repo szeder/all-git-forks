@@ -2,6 +2,7 @@
 #include "narrow-tree.h"
 #include "pathspec.h"
 #include "argv-array.h"
+#include "tree-walk.h"
 
 static struct pathspec narrow_pathspec;
 
@@ -91,4 +92,43 @@ int is_repository_narrow(void)
 {
 	struct pathspec *ps = get_narrow_pathspec();
 	return ps && ps->nr;
+}
+
+/*
+ * Given a source tree, find matching entries by path and replace
+ * their hashes with ones from entries[]. entries[] must be sorted.
+ * Return the new tree in "out".
+ */
+static int replace_subtrees(const char *in, unsigned long size,
+			    struct strbuf *out,
+			    int nr_entries, const struct name_entry *entries)
+{
+	const struct name_entry *new = entries;
+	struct name_entry old;
+	struct tree_desc desc;
+
+	init_tree_desc(&desc, in, size);
+	while (tree_entry(&desc, &old)) {
+		const unsigned char *hash;
+
+		strbuf_addf(out, "%o %.*s%c",
+			    old.mode, tree_entry_len(&old),
+			    old.path, '\0');
+		if (nr_entries && !strcmp(old.path, new->path)) {
+			hash = new->sha1;
+			new++;
+			nr_entries--;
+		} else
+			hash = old.sha1;
+		strbuf_add(out, hash, GIT_SHA1_RAWSZ);
+	}
+	return 0;
+}
+
+/*
+ * Take a valid cache tree, get more trees from narrow base. Narrow
+ * extension must be available.
+ */
+int complete_cache_tree(struct index_state *istate)
+{
 }
