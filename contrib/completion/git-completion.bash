@@ -765,7 +765,7 @@ __git_aliases ()
 __git_aliased_command ()
 {
 	local word cmdline=$(git --git-dir="$(__gitdir)" \
-		config --get "alias.$1")
+		config --get "alias.$1" 2> /dev/null)
 	for word in $cmdline; do
 		case "$word" in
 		\!gitk|gitk)
