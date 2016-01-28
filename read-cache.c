@@ -1000,6 +1000,32 @@ static int add_index_entry_with_check(struct index_state *istate, struct cache_e
 	}
 	pos = -pos-1;
 
+	/*
+	 * Adding a file entry replaces the directory entry of same name.
+	 * Adding a directory entry replaces all file entries of same name.
+	 */
+	if (S_ISDIR(ce->ce_mode)) {
+		int alt_pos = index_name_pos_also_unmerged(istate,
+							   ce->name,
+							   ce_namelen(ce));
+		if (alt_pos >= 0) {
+			while (ce_same_name(istate->cache[alt_pos], ce))
+				if (!remove_index_entry_at(istate, alt_pos))
+					break;
+			ok_to_add = 1;
+			pos = alt_pos;
+		}
+	} else {
+		int alt_pos = index_name_mode_stage_pos(istate,
+							ce->name,
+							ce_namelen(ce),
+							S_IFDIR, 0);
+		if (alt_pos >= 0) {
+			ok_to_add = 1;
+			remove_index_entry_at(istate, alt_pos);
+		}
+	}
+
 	if (!(option & ADD_CACHE_KEEP_CACHE_TREE))
 		untracked_cache_add_to_index(istate, ce->name);
 
