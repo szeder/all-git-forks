@@ -252,4 +252,18 @@ test_expect_success "filter: smudge empty file" '
 	test_cmp expected filtered-empty-in-repo
 '
 
+test_expect_success 'disable filter with empty override' '
+	git config filter.disable.smudge false &&
+	git config filter.disable.clean false &&
+
+	echo "*.disable filter=disable" >.gitattributes &&
+
+	echo test >test.disable &&
+	git -c filter.disable.clean= add test.disable 2>err &&
+	! test -s err &&
+	rm -f test.disable &&
+	git -c filter.disable.smudge= checkout -- test.disable 2>err &&
+	! test -s err
+'
+
 test_done

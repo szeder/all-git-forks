@@ -849,7 +849,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 	struct conv_attrs ca;
 
 	convert_attrs(&ca, path);
-	if (ca.drv) {
+	if (ca.drv && ca.drv->clean && *ca.drv->clean) {
 		filter = ca.drv->clean;
 		required = ca.drv->required;
 	}
@@ -898,7 +898,7 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 	struct conv_attrs ca;
 
 	convert_attrs(&ca, path);
-	if (ca.drv) {
+	if (ca.drv && ca.drv->smudge && *ca.drv->smudge) {
 		filter = ca.drv->smudge;
 		required = ca.drv->required;
 	}
