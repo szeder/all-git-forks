@@ -591,12 +591,16 @@ static int ce_in_traverse_path(const struct cache_entry *ce,
 
 static struct cache_entry *create_ce_entry(const struct traverse_info *info,
 					   const struct name_entry *n,
+					   int fold_trees,
 					   int stage)
 {
 	int len = traverse_path_len(info, n);
 	struct cache_entry *ce = xcalloc(1, cache_entry_size(len));
 
-	ce->ce_mode = create_ce_mode(n->mode);
+	if (fold_trees && S_ISDIR(n->mode))
+		ce->ce_mode = S_IFDIR;
+	else
+		ce->ce_mode = create_ce_mode(n->mode);
 	ce->ce_flags = create_ce_flags(stage);
 	ce->ce_namelen = len;
 	hashcpy(ce->sha1, n->sha1);
@@ -607,17 +611,23 @@ static struct cache_entry *create_ce_entry(const struct traverse_info *info,
 
 static int unpack_nondirectories(int n, unsigned long mask,
 				 unsigned long dirmask,
+				 int fold_trees,
 				 struct cache_entry **src,
 				 const struct name_entry *names,
 				 const struct traverse_info *info)
 {
 	int i;
 	struct unpack_trees_options *o = info->data;
-	unsigned long conflicts = info->df_conflicts | dirmask;
+	unsigned long conflicts;
+
+	if (fold_trees)
+		/* All folded directories are treated as files */
+		dirmask = 0;
 
 	/* Do we have *only* directories? Nothing to do */
 	if (mask == dirmask && !src[0])
 		return 0;
+	conflicts = info->df_conflicts | dirmask;
 
 	/*
 	 * Ok, we've filled in up to any potential index entry in src[0],
@@ -640,7 +650,8 @@ static int unpack_nondirectories(int n, unsigned long mask,
 			stage = 3;
 		else
 			stage = 2;
-		src[i + o->merge] = create_ce_entry(info, names + i, stage);
+		src[i + o->merge] = create_ce_entry(info, names + i,
+						    fold_trees, stage);
 	}
 
 	if (o->merge) {
@@ -798,6 +809,7 @@ static int unpack_callback(int n,
 	struct cache_entry *src[MAX_UNPACK_TREES + 1] = { NULL, };
 	struct unpack_trees_options *o = info->data;
 	const struct name_entry *p = names;
+	int fold_trees = 0;
 
 	/* Find first entry with a real name (we could use "mask" too) */
 	while (!p->mode)
@@ -844,7 +856,24 @@ static int unpack_callback(int n,
 		}
 	}
 
-	if (unpack_nondirectories(n, mask, dirmask, src, names, info) < 0)
+	if (o->fold_pathspec) {
+		struct strbuf base = STRBUF_INIT;
+
+		if (info->prev) {
+			strbuf_grow(&base, info->pathlen);
+			make_traverse_path(base.buf, info->prev, &info->name);
+			base.buf[info->pathlen-1] = '/';
+			strbuf_setlen(&base, info->pathlen);
+		}
+
+		fold_trees =
+			tree_entry_interesting(p, &base, 0,
+					       o->fold_pathspec) <= 0;
+		strbuf_release(&base);
+	}
+
+	if (unpack_nondirectories(n, mask, dirmask, fold_trees,
+				  src, names, info) < 0)
 		return -1;
 
 	if (o->merge && src[0]) {
@@ -855,7 +884,7 @@ static int unpack_callback(int n,
 	}
 
 	/* Now handle any directories.. */
-	if (dirmask) {
+	if (dirmask && !fold_trees) {
 		/* special case: "diff-index --cached" looking at a tree */
 		if (o->diff_index_cached &&
 		    n == 1 && dirmask == 1 && S_ISDIR(names->mode)) {
