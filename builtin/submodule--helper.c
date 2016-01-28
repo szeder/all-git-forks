@@ -21,11 +21,11 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static int list_modules(const char *root,
-			const char *curdir,
-			struct dotmodule_list *list,
-			struct pathspec *pathspec,
-			int max_prefix_len)
+static int module_list_gitdir_modules(const char *root,
+				      const char *curdir,
+				      struct dotmodule_list *list,
+				      struct pathspec *pathspec,
+				      int max_prefix_len)
 {
 	struct strbuf root_path = STRBUF_INIT,
 		      curpath = STRBUF_INIT;
@@ -66,7 +66,7 @@ static int list_modules(const char *root,
 				    max_prefix_len, NULL, 1))
 			continue;
 
-		list_modules(root, curpath.buf, list, pathspec, max_prefix_len);
+		module_list_gitdir_modules(root, curpath.buf, list, pathspec, max_prefix_len);
 	}
 
 out:
@@ -77,7 +77,7 @@ out:
 	return ret;
 }
 
-static int module_list_all(int argc, const char **argv, const char *prefix, struct pathspec *pathspec)
+static int module_list_compute_all(int argc, const char **argv, const char *prefix, struct pathspec *pathspec)
 {
 	struct dotmodule_list list = MODULE_LIST_INIT;
 	struct strbuf path = STRBUF_INIT;
@@ -95,7 +95,7 @@ static int module_list_all(int argc, const char **argv, const char *prefix, stru
 
 	strbuf_git_path(&path, "modules");
 
-	list_modules(path.buf, NULL, &list, pathspec, max_prefix_len);
+	module_list_gitdir_modules(path.buf, NULL, &list, pathspec, max_prefix_len);
 	for (i = 0; i < list.nr; i++) {
 	    puts(list.entries[i]);
 	}
@@ -103,10 +103,10 @@ static int module_list_all(int argc, const char **argv, const char *prefix, stru
 	return 0;
 }
 
-static int module_list_compute(int argc, const char **argv,
-			       const char *prefix,
-			       struct pathspec *pathspec,
-			       struct module_list *list)
+static int module_list_compute_index(int argc, const char **argv,
+				     const char *prefix,
+				     struct pathspec *pathspec,
+				     struct module_list *list)
 {
 	int i, result = 0;
 	char *max_prefix, *ps_matched = NULL;
@@ -179,9 +179,9 @@ static int module_list(int argc, const char **argv, const char *prefix)
 			     git_submodule_helper_usage, 0);
 
 	if (all) {
-	    module_list_all(argc, argv, prefix, &pathspec);
+	    module_list_compute_all(argc, argv, prefix, &pathspec);
 	} else {
-	    if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0) {
+	    if (module_list_compute_index(argc, argv, prefix, &pathspec, &list) < 0) {
 			printf("#unmatched\n");
 			return 1;
 	    }
