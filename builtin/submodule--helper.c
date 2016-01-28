@@ -32,20 +32,21 @@ static int module_list_gitdir_modules(const char *current_dir,
 	DIR *dir = NULL;
 	int ret = 0;
 
-	if (current_dir)
-	    strbuf_git_path(&path, "modules/%s", current_dir);
-	else
-	    strbuf_git_path(&path, "modules");
+	strbuf_git_path(&path, "modules");
 
-	if (current_dir && match_pathspec(pathspec, current_dir, strlen(current_dir),
-			   max_prefix_len, ps_matched, 1)) {
-		strbuf_addstr(&path, "/index");
-		if (file_exists(path.buf)) {
-			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
-			list->entries[list->nr++] = xstrdup(current_dir);
-			goto out;
+	if (current_dir) {
+		strbuf_addf(&path, "/%s", current_dir);
+
+		if (match_pathspec(pathspec, current_dir, strlen(current_dir),
+				   max_prefix_len, ps_matched, 1)) {
+			strbuf_addstr(&path, "/index");
+			if (file_exists(path.buf)) {
+				ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
+				list->entries[list->nr++] = xstrdup(current_dir);
+				goto out;
+			}
+			strbuf_strip_suffix(&path, "/index");
 		}
-		strbuf_strip_suffix(&path, "/index");
 	}
 
 	if ((dir = opendir(path.buf)) == NULL)
