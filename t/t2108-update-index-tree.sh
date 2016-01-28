@@ -14,4 +14,8 @@ test_expect_success 'add an empty tree' '
 	test_cmp expected actual
 '
 
+test_expect_success 'update-index --refresh' '
+	git update-index --refresh
+'
+
 test_done

@@ -1040,6 +1040,9 @@ int add_index_entry(struct index_state *istate, struct cache_entry *ce, int opti
 {
 	int pos;
 
+	if (S_ISDIR(ce->ce_mode))
+		ce->ce_flags |= CE_SKIP_WORKTREE;
+
 	if (option & ADD_CACHE_JUST_APPEND)
 		pos = istate->cache_nr;
 	else {
@@ -1514,6 +1517,8 @@ static struct cache_entry *create_from_disk(struct ondisk_cache_entry *ondisk,
 
 		*ent_size = (name - ((char *)ondisk)) + consumed;
 	}
+	if (S_ISDIR(ce->ce_mode))
+		ce->ce_flags |= CE_SKIP_WORKTREE;
 	return ce;
 }
 

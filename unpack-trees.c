@@ -277,7 +277,7 @@ static int apply_sparse_checkout(struct index_state *istate,
 {
 	int was_skip_worktree = ce_skip_worktree(ce);
 
-	if (ce->ce_flags & CE_NEW_SKIP_WORKTREE)
+	if ((ce->ce_flags & CE_NEW_SKIP_WORKTREE) || S_ISDIR(ce->ce_mode))
 		ce->ce_flags |= CE_SKIP_WORKTREE;
 	else
 		ce->ce_flags &= ~CE_SKIP_WORKTREE;
