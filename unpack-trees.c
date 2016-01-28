@@ -523,7 +523,9 @@ static int traverse_trees_recursive(int n, unsigned long dirmask,
  * itself - the caller needs to do the final check for the cache
  * entry having more data at the end!
  */
-static int do_compare_entry_piecewise(const struct cache_entry *ce, const struct traverse_info *info, const struct name_entry *n)
+static int do_compare_entry_piecewise(const struct cache_entry *ce,
+				      const struct traverse_info *info,
+				      const struct name_entry *n)
 {
 	int len, pathlen, ce_len;
 	const char *ce_name;
@@ -581,7 +583,9 @@ static int do_compare_entry(const struct cache_entry *ce,
 	return df_name_compare(ce_name, ce_len, S_IFREG, n->path, len, n->mode);
 }
 
-static int compare_entry(const struct cache_entry *ce, const struct traverse_info *info, const struct name_entry *n)
+static int compare_entry(const struct cache_entry *ce,
+			 const struct traverse_info *info,
+			 const struct name_entry *n)
 {
 	int cmp = do_compare_entry(ce, info, n);
 	if (cmp)
@@ -608,7 +612,9 @@ static int ce_in_traverse_path(const struct cache_entry *ce,
 	return (info->pathlen < ce_namelen(ce));
 }
 
-static struct cache_entry *create_ce_entry(const struct traverse_info *info, const struct name_entry *n, int stage)
+static struct cache_entry *create_ce_entry(const struct traverse_info *info,
+					   const struct name_entry *n,
+					   int stage)
 {
 	int len = traverse_path_len(info, n);
 	struct cache_entry *ce = xcalloc(1, cache_entry_size(len));
@@ -806,7 +812,11 @@ static void debug_unpack_callback(int n,
 		debug_name_entry(i, names + i);
 }
 
-static int unpack_callback(int n, unsigned long mask, unsigned long dirmask, struct name_entry *names, struct traverse_info *info)
+static int unpack_callback(int n,
+			   unsigned long mask,
+			   unsigned long dirmask,
+			   struct name_entry *names,
+			   struct traverse_info *info)
 {
 	struct cache_entry *src[MAX_UNPACK_TREES + 1] = { NULL, };
 	struct unpack_trees_options *o = info->data;
