@@ -98,7 +98,7 @@ static int debug_merge(const struct cache_entry * const *stages,
 
 static struct lock_file lock_file;
 
-int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
+int cmd_read_tree(int argc, const char **argv, const char *prefix)
 {
 	int i, stage = 0;
 	unsigned char sha1[20];
@@ -147,7 +147,7 @@ int cmd_read_tree(int argc, const char **argv, const char *unused_prefix)
 
 	git_config(git_default_config, NULL);
 
-	argc = parse_options(argc, argv, unused_prefix, read_tree_options,
+	argc = parse_options(argc, argv, prefix, read_tree_options,
 			     read_tree_usage, 0);
 
 	hold_locked_index(&lock_file, 1);
