@@ -21,27 +21,29 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static int list_modules(const char *root, const char *curdir, struct dotmodule_list *list)
+static int list_modules(const char *root, const char *curdir, struct dotmodule_list *list, struct pathspec *pathspec, int max_prefix_len)
 {
-	struct strbuf path = STRBUF_INIT, curpath = STRBUF_INIT;
+	struct strbuf root_path = STRBUF_INIT, curpath = STRBUF_INIT;
 	struct dirent *entry;
-	DIR *dir;
+	DIR *dir = NULL;
+	int ret = 0;
 
-	if (curdir == NULL)
-	    curdir = "";
+	strbuf_addstr(&root_path, root);
+	if (curdir != NULL)
+	    strbuf_addf(&root_path, "/%s", curdir);
 
-	strbuf_addf(&path, "%s/%s/index", root, curdir);
+	strbuf_addstr(&root_path, "/index");
 
-	if (file_exists(path.buf)) {
+	if (file_exists(root_path.buf)) {
 	    /* add submodule */
 	    printf("Submodule %s\n", curdir);
-	    return 0;
+	    goto out;
 	}
 
-	strbuf_strip_suffix(&path, "/index");
+	strbuf_strip_suffix(&root_path, "/index");
 
-	if ((dir = opendir(path.buf)) == NULL)
-		return 0;
+	if ((dir = opendir(root_path.buf)) == NULL)
+		goto out;
 	while ((entry = readdir(dir)) != NULL) {
 		if (entry->d_type != DT_DIR)
 			continue;
@@ -50,26 +52,44 @@ static int list_modules(const char *root, const char *curdir, struct dotmodule_l
 			continue;
 
 		strbuf_reset(&curpath);
-		strbuf_addf(&curpath, "%s/%s", curdir, entry->d_name);
+		if (curdir)
+			strbuf_addf(&curpath, "%s/", curdir);
+		strbuf_addstr(&curpath, entry->d_name);
 
-		list_modules(root, curpath.buf, list);
+		if (!match_pathspec(pathspec, curpath.buf, curpath.len,
+				    max_prefix_len, NULL, 1))
+			continue;
+
+		list_modules(root, curpath.buf, list, pathspec, max_prefix_len);
 	}
 
+out:
 	closedir(dir);
-	strbuf_release(&path);
+	strbuf_release(&root_path);
+	strbuf_release(&curpath);
 
-	return 0;
+	return ret;
 }
 
-static int all(int argc, const char **argv, const char *prefix)
+static int module_list_all(int argc, const char **argv, const char *prefix, struct pathspec *pathspec)
 {
 	struct dotmodule_list list = MODULE_LIST_INIT;
 	struct strbuf path = STRBUF_INIT;
+	char *max_prefix;
+	int max_prefix_len;
 	int i;
+
+	parse_pathspec(pathspec, 0,
+		       PATHSPEC_PREFER_FULL |
+		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
+		       prefix, argv);
+
+	max_prefix = common_prefix(pathspec);
+	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
 
 	strbuf_git_path(&path, "modules");
 
-	list_modules(path.buf, NULL, &list);
+	list_modules(path.buf, NULL, &list, pathspec, max_prefix_len);
 	for (i = 0; i < list.nr; i++) {
 	    puts(list.entries[i]);
 	}
@@ -152,9 +172,13 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, module_list_options,
 			     git_submodule_helper_usage, 0);
 
-	if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0) {
-		printf("#unmatched\n");
-		return 1;
+	if (all) {
+	    module_list_all(argc, argv, prefix, &pathspec);
+	} else {
+	    if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0) {
+			printf("#unmatched\n");
+			return 1;
+	    }
 	}
 
 	for (i = 0; i < list.nr; i++) {
@@ -325,7 +349,6 @@ struct cmd_struct {
 };
 
 static struct cmd_struct commands[] = {
-	{"all", all},
 	{"list", module_list},
 	{"name", module_name},
 	{"clone", module_clone},
