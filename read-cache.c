@@ -408,8 +408,8 @@ int base_name_compare(const char *name1, int len1, int mode1,
 	cmp = memcmp(name1, name2, len);
 	if (cmp)
 		return cmp;
-	c1 = name1[len];
-	c2 = name2[len];
+	c1 = len < len1 ? name1[len] : '\0';
+	c2 = len < len2 ? name2[len] : '\0';
 	if (!c1 && S_ISDIR(mode1))
 		c1 = '/';
 	if (!c2 && S_ISDIR(mode2))
