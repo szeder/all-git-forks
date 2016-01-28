@@ -529,6 +529,7 @@ static int do_compare_entry_piecewise(const struct cache_entry *ce,
 {
 	int len, pathlen, ce_len;
 	const char *ce_name;
+	int ce_mode;
 
 	if (info->prev) {
 		int cmp = do_compare_entry_piecewise(ce, info->prev,
@@ -545,9 +546,10 @@ static int do_compare_entry_piecewise(const struct cache_entry *ce,
 
 	ce_len -= pathlen;
 	ce_name = ce->name + pathlen;
+	ce_mode = S_ISGITLINK(ce->ce_mode) ? S_IFREG : ce->ce_mode;
 
 	len = tree_entry_len(n);
-	return df_name_compare(ce_name, ce_len, S_IFREG, n->path, len, n->mode);
+	return df_name_compare(ce_name, ce_len, ce_mode, n->path, len, n->mode);
 }
 
 static int do_compare_entry(const struct cache_entry *ce,
