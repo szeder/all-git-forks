@@ -486,7 +486,9 @@ static int ce_compare(const char *name1, int len1, int mode1, int stage1,
 	return 0;
 }
 
-static int index_name_stage_pos(const struct index_state *istate, const char *name, int namelen, int stage)
+static int index_name_mode_stage_pos(const struct index_state *istate,
+				     const char *name, int namelen,
+				     int mode, int stage)
 {
 	int first, last;
 
@@ -495,7 +497,7 @@ static int index_name_stage_pos(const struct index_state *istate, const char *na
 	while (last > first) {
 		int next = (last + first) >> 1;
 		struct cache_entry *ce = istate->cache[next];
-		int cmp = ce_compare(name, namelen, S_IFREG, stage, ce);
+		int cmp = ce_compare(name, namelen, mode, stage, ce);
 		if (!cmp)
 			return next;
 		if (cmp < 0) {
@@ -507,9 +509,14 @@ static int index_name_stage_pos(const struct index_state *istate, const char *na
 	return -first-1;
 }
 
+/*
+ * Return the position if the _file_ entry in index if found. Otherwise
+ * return a negative number that can converted back to the position
+ * where this entry could be inserted.
+ */
 int index_name_pos(const struct index_state *istate, const char *name, int namelen)
 {
-	return index_name_stage_pos(istate, name, namelen, 0);
+	return index_name_mode_stage_pos(istate, name, namelen, S_IFREG, 0);
 }
 
 /* Remove entry, return true if there are more entries to go.. */
@@ -893,7 +900,8 @@ static int has_dir_name(struct index_state *istate,
 		}
 		len = slash - name;
 
-		pos = index_name_stage_pos(istate, name, len, stage);
+		pos = index_name_mode_stage_pos(istate, name, len,
+						ce->ce_mode, stage);
 		if (pos >= 0) {
 			/*
 			 * Found one, but not so fast.  This could
@@ -984,7 +992,8 @@ static int add_index_entry_with_check(struct index_state *istate, struct cache_e
 
 	if (!(option & ADD_CACHE_KEEP_CACHE_TREE))
 		cache_tree_invalidate_path(istate, ce->name);
-	pos = index_name_stage_pos(istate, ce->name, ce_namelen(ce), ce_stage(ce));
+	pos = index_name_mode_stage_pos(istate, ce->name, ce_namelen(ce),
+					ce->ce_mode, ce_stage(ce));
 
 	/* existing match? Just replace it. */
 	if (pos >= 0) {
@@ -1019,7 +1028,9 @@ static int add_index_entry_with_check(struct index_state *istate, struct cache_e
 		if (!ok_to_replace)
 			return error("'%s' appears as both a file and as a directory",
 				     ce->name);
-		pos = index_name_stage_pos(istate, ce->name, ce_namelen(ce), ce_stage(ce));
+		pos = index_name_mode_stage_pos(istate, ce->name,
+						ce_namelen(ce), ce->ce_mode,
+						ce_stage(ce));
 		pos = -pos-1;
 	}
 	return pos + 1;
