@@ -883,6 +883,22 @@ static int unpack_callback(int n,
 			fold_trees = 1;
 	}
 
+	if (o->fold_pathspec) {
+		struct strbuf base = STRBUF_INIT;
+
+		if (info->prev) {
+			strbuf_grow(&base, info->pathlen);
+			make_traverse_path(base.buf, info->prev, &info->name);
+			base.buf[info->pathlen-1] = '/';
+			strbuf_setlen(&base, info->pathlen);
+		}
+
+		fold_trees =
+			tree_entry_interesting(p, &base, 0,
+					       o->fold_pathspec) <= 0;
+		strbuf_release(&base);
+	}
+
 	if (unpack_nondirectories(n, mask, dirmask, fold_trees,
 				  src, names, info) < 0)
 		return -1;

@@ -53,6 +53,7 @@ struct unpack_trees_options {
 	int cache_bottom;
 	struct dir_struct *dir;
 	struct pathspec *pathspec;
+	struct pathspec *fold_pathspec;
 	merge_fn_t fn;
 	const char *msgs[NB_UNPACK_TREES_ERROR_TYPES];
 	/*
