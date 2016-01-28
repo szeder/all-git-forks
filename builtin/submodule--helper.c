@@ -21,15 +21,27 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static int list_modules(const char *dirpath, struct dotmodule_list *list)
+static int list_modules(const char *root, const char *curdir, struct dotmodule_list *list)
 {
-	struct strbuf entrypath = STRBUF_INIT, indexpath = STRBUF_INIT;
+	struct strbuf path = STRBUF_INIT, curpath = STRBUF_INIT;
 	struct dirent *entry;
 	DIR *dir;
 
-	if ((dir = opendir(dirpath)) == NULL)
-		return 0;
+	if (curdir == NULL)
+	    curdir = "";
 
+	strbuf_addf(&path, "%s/%s/index", root, curdir);
+
+	if (file_exists(path.buf)) {
+	    /* add submodule */
+	    printf("Submodule %s\n", curdir);
+	    return 0;
+	}
+
+	strbuf_strip_suffix(&path, "/index");
+
+	if ((dir = opendir(path.buf)) == NULL)
+		return 0;
 	while ((entry = readdir(dir)) != NULL) {
 		if (entry->d_type != DT_DIR)
 			continue;
@@ -37,23 +49,14 @@ static int list_modules(const char *dirpath, struct dotmodule_list *list)
 		    !strcmp(entry->d_name, ".."))
 			continue;
 
-		strbuf_reset(&entrypath);
-		strbuf_reset(&indexpath);
+		strbuf_reset(&curpath);
+		strbuf_addf(&curpath, "%s/%s", curdir, entry->d_name);
 
-		strbuf_addf(&entrypath, "%s/%s", dirpath, entry->d_name);
-		strbuf_addf(&indexpath, "%s/%s", entrypath.buf, "index");
-
-		if (file_exists(indexpath.buf)) {
-			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
-			list->entries[list->nr++] = strbuf_detach(&entrypath, NULL);
-		} else {
-			list_modules(entrypath.buf, list);
-		}
+		list_modules(root, curpath.buf, list);
 	}
 
 	closedir(dir);
-	strbuf_release(&entrypath);
-	strbuf_release(&indexpath);
+	strbuf_release(&path);
 
 	return 0;
 }
@@ -66,7 +69,7 @@ static int all(int argc, const char **argv, const char *prefix)
 
 	strbuf_git_path(&path, "modules");
 
-	list_modules(path.buf, &list);
+	list_modules(path.buf, NULL, &list);
 	for (i = 0; i < list.nr; i++) {
 	    puts(list.entries[i]);
 	}
