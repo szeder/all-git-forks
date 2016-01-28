@@ -15,6 +15,7 @@
 #include "builtin.h"
 #include "parse-options.h"
 #include "resolve-undo.h"
+#include "pathspec.h"
 
 static int nr_trees;
 static int read_empty;
@@ -104,7 +105,8 @@ int cmd_read_tree(int argc, const char **argv, const char *prefix)
 	unsigned char sha1[20];
 	struct tree_desc t[MAX_UNPACK_TREES];
 	struct unpack_trees_options opts;
-	int prefix_set = 0;
+	int prefix_set = 0, fold_trees = 0;
+	struct pathspec fold_pathspec;
 	const struct option read_tree_options[] = {
 		{ OPTION_CALLBACK, 0, "index-output", NULL, N_("file"),
 		  N_("write resulting index to <file>"),
@@ -148,7 +150,7 @@ int cmd_read_tree(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 
 	argc = parse_options(argc, argv, prefix, read_tree_options,
-			     read_tree_usage, 0);
+			     read_tree_usage, PARSE_OPT_KEEP_DASHDASH);
 
 	hold_locked_index(&lock_file, 1);
 
@@ -175,11 +177,20 @@ int cmd_read_tree(int argc, const char **argv, const char *prefix)
 	for (i = 0; i < argc; i++) {
 		const char *arg = argv[i];
 
+		if (!strcmp(arg, "--")) {
+			i++;
+			break;
+		}
 		if (get_sha1(arg, sha1))
 			die("Not a valid object name %s", arg);
 		if (list_tree(sha1) < 0)
 			die("failed to unpack tree object %s", arg);
 		stage++;
+	}
+	if (i < argc) {
+		fold_trees = 1;
+		memset(&fold_pathspec, 0, sizeof(fold_pathspec));
+		parse_pathspec(&fold_pathspec, 0, 0, prefix, argv + i);
 	}
 	if (nr_trees == 0 && !read_empty)
 		warning("read-tree: emptying the index with no arguments is deprecated; use --empty");
@@ -221,6 +232,8 @@ int cmd_read_tree(int argc, const char **argv, const char *prefix)
 
 	if (opts.debug_unpack)
 		opts.fn = debug_merge;
+	if (fold_trees)
+		opts.fold_pathspec = &fold_pathspec;
 
 	cache_tree_free(&active_cache_tree);
 	for (i = 0; i < nr_trees; i++) {
