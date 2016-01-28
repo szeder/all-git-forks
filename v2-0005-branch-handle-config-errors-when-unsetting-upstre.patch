@@ -1,0 +1,58 @@
+From b860ec2976c053708dba68d0eeac21024d0f6aa6 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Mon, 23 Nov 2015 12:23:41 +0100
+Subject: [PATCH v2 5/9] branch: handle config errors when unsetting upstream
+
+When we try to unset upstream configurations we do not check
+return codes for the `git_config_set` functions. As those may
+indicate that we were unable to unset the respective
+configuration we may exit successfully without any error message
+while in fact the upstream configuration was not unset.
+
+Fix this by dying with an error message when we cannot unset the
+configuration.
+
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ builtin/branch.c  | 4 ++--
+ t/t3200-branch.sh | 7 +++++++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/builtin/branch.c b/builtin/branch.c
+index 3f6c825..0978287 100644
+--- a/builtin/branch.c
++++ b/builtin/branch.c
+@@ -791,10 +791,10 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
+ 			die(_("Branch '%s' has no upstream information"), branch->name);
+ 
+ 		strbuf_addf(&buf, "branch.%s.remote", branch->name);
+-		git_config_set_multivar(buf.buf, NULL, NULL, 1);
++		git_config_set_multivar_or_die(buf.buf, NULL, NULL, 1);
+ 		strbuf_reset(&buf);
+ 		strbuf_addf(&buf, "branch.%s.merge", branch->name);
+-		git_config_set_multivar(buf.buf, NULL, NULL, 1);
++		git_config_set_multivar_or_die(buf.buf, NULL, NULL, 1);
+ 		strbuf_release(&buf);
+ 	} else if (argc > 0 && argc <= 2) {
+ 		struct branch *branch = branch_get(argv[0]);
+diff --git a/t/t3200-branch.sh b/t/t3200-branch.sh
+index dd776b3..a897248 100755
+--- a/t/t3200-branch.sh
++++ b/t/t3200-branch.sh
+@@ -473,6 +473,13 @@ test_expect_success '--unset-upstream should fail if given a non-existent branch
+ 	test_must_fail git branch --unset-upstream i-dont-exist
+ '
+ 
++test_expect_success '--unset-upstream should fail if config is locked' '
++	test_when_finished "rm -f .git/config.lock" &&
++	git branch --set-upstream-to locked &&
++	>.git/config.lock &&
++	test_must_fail git branch --unset-upstream
++'
++
+ test_expect_success 'test --unset-upstream on HEAD' '
+ 	git branch my14 &&
+ 	test_config branch.master.remote foo &&
+-- 
+2.7.0
+

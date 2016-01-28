@@ -1,0 +1,71 @@
+From 4bfd16d76275e8574a2af75c06c6c8ff1c604d96 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Mon, 23 Nov 2015 10:51:42 +0100
+Subject: [PATCH v2 7/9] sequencer: handle config errors when saving opts
+
+When we start picking a range of revisions we save the replay
+options that are required to restore state when interrupting and
+later continuing picking the revisions. However, we do not check
+the return values of the `git_config_set` functions, which may
+lead us to store incomplete information. As this may lead us to
+fail when trying to continue the sequence this error can be
+fatal.
+
+Fix this by dying immediately when we are unable to write back
+any replay option.
+
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ sequencer.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/sequencer.c b/sequencer.c
+index 8c58fa2..3c109b6 100644
+--- a/sequencer.c
++++ b/sequencer.c
+@@ -933,31 +933,31 @@ static void save_opts(struct replay_opts *opts)
+ 	const char *opts_file = git_path_opts_file();
+ 
+ 	if (opts->no_commit)
+-		git_config_set_in_file(opts_file, "options.no-commit", "true");
++		git_config_set_in_file_or_die(opts_file, "options.no-commit", "true");
+ 	if (opts->edit)
+-		git_config_set_in_file(opts_file, "options.edit", "true");
++		git_config_set_in_file_or_die(opts_file, "options.edit", "true");
+ 	if (opts->signoff)
+-		git_config_set_in_file(opts_file, "options.signoff", "true");
++		git_config_set_in_file_or_die(opts_file, "options.signoff", "true");
+ 	if (opts->record_origin)
+-		git_config_set_in_file(opts_file, "options.record-origin", "true");
++		git_config_set_in_file_or_die(opts_file, "options.record-origin", "true");
+ 	if (opts->allow_ff)
+-		git_config_set_in_file(opts_file, "options.allow-ff", "true");
++		git_config_set_in_file_or_die(opts_file, "options.allow-ff", "true");
+ 	if (opts->mainline) {
+ 		struct strbuf buf = STRBUF_INIT;
+ 		strbuf_addf(&buf, "%d", opts->mainline);
+-		git_config_set_in_file(opts_file, "options.mainline", buf.buf);
++		git_config_set_in_file_or_die(opts_file, "options.mainline", buf.buf);
+ 		strbuf_release(&buf);
+ 	}
+ 	if (opts->strategy)
+-		git_config_set_in_file(opts_file, "options.strategy", opts->strategy);
++		git_config_set_in_file_or_die(opts_file, "options.strategy", opts->strategy);
+ 	if (opts->gpg_sign)
+-		git_config_set_in_file(opts_file, "options.gpg-sign", opts->gpg_sign);
++		git_config_set_in_file_or_die(opts_file, "options.gpg-sign", opts->gpg_sign);
+ 	if (opts->xopts) {
+ 		int i;
+ 		for (i = 0; i < opts->xopts_nr; i++)
+-			git_config_set_multivar_in_file(opts_file,
+-							"options.strategy-option",
+-							opts->xopts[i], "^$", 0);
++			git_config_set_multivar_in_file_or_die(opts_file,
++							       "options.strategy-option",
++							       opts->xopts[i], "^$", 0);
+ 	}
+ }
+ 
+-- 
+2.7.0
+

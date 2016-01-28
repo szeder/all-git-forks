@@ -1,0 +1,72 @@
+From 831c759b000393c7d31f0ede8df31618d3139bd1 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Mon, 23 Nov 2015 10:04:47 +0100
+Subject: [PATCH v2 3/9] remote: handle config errors in set_url
+
+The return codes for function calls that write the new URL
+configuration are not being checked in `set_url`. As the function
+is exposed to the user directly through `git remote set-url` we
+want to inform her that we were not able to complete the request
+and abort the program.
+
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ builtin/remote.c  | 11 ++++++-----
+ t/t5505-remote.sh |  9 +++++++++
+ 2 files changed, 15 insertions(+), 5 deletions(-)
+
+diff --git a/builtin/remote.c b/builtin/remote.c
+index 2b2ff9b..8b78c3d 100644
+--- a/builtin/remote.c
++++ b/builtin/remote.c
+@@ -1583,11 +1583,12 @@ static int set_url(int argc, const char **argv)
+ 	/* Special cases that add new entry. */
+ 	if ((!oldurl && !delete_mode) || add_mode) {
+ 		if (add_mode)
+-			git_config_set_multivar(name_buf.buf, newurl,
+-				"^$", 0);
++			git_config_set_multivar_or_die(name_buf.buf, newurl,
++						       "^$", 0);
+ 		else
+-			git_config_set(name_buf.buf, newurl);
++			git_config_set_or_die(name_buf.buf, newurl);
+ 		strbuf_release(&name_buf);
++
+ 		return 0;
+ 	}
+ 
+@@ -1608,9 +1609,9 @@ static int set_url(int argc, const char **argv)
+ 	regfree(&old_regex);
+ 
+ 	if (!delete_mode)
+-		git_config_set_multivar(name_buf.buf, newurl, oldurl, 0);
++		git_config_set_multivar_or_die(name_buf.buf, newurl, oldurl, 0);
+ 	else
+-		git_config_set_multivar(name_buf.buf, NULL, oldurl, 1);
++		git_config_set_multivar_or_die(name_buf.buf, NULL, oldurl, 1);
+ 	return 0;
+ }
+ 
+diff --git a/t/t5505-remote.sh b/t/t5505-remote.sh
+index 1a8e3b8..e019f27 100755
+--- a/t/t5505-remote.sh
++++ b/t/t5505-remote.sh
+@@ -932,6 +932,15 @@ test_expect_success 'get-url on new remote' '
+ 	echo foo | get_url_test --push --all someremote
+ '
+ 
++test_expect_success 'remote set-url with locked config' '
++	test_when_finished "rm -f .git/config.lock" &&
++	git config --get-all remote.someremote.url >expect &&
++	>.git/config.lock &&
++	test_must_fail git remote set-url someremote baz &&
++	git config --get-all remote.someremote.url >actual &&
++	cmp expect actual
++'
++
+ test_expect_success 'remote set-url bar' '
+ 	git remote set-url someremote bar &&
+ 	echo bar >expect &&
+-- 
+2.7.0
+

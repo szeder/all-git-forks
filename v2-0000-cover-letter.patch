@@ -1,0 +1,57 @@
+From 946ab48bdd4d76c691025020c11bffc9f7ca3e6e Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Thu, 28 Jan 2016 09:54:48 +0100
+Subject: [PATCH v2 0/9] Handle errors when setting configs
+
+I've finally got around to producing version two of my previous
+patch to handle errors when setting configs. Back in September
+I've posted a single patch to handle errors when
+`install_branch_config` fails due to configuration failures [1].
+
+Failure to write the configuration file may be caused by multiple
+conditions, but the most common one will surely be the case where
+the configuration is locked because of a leftover lock file or
+because another process is currently writing to it. We used to
+ignore those errors in many cases, possibly leading to
+inconsistently configured repositories. More often than not git
+even pretended that everything was fine and that the settings
+have been applied when indeed they were not.
+
+Version two of this patch is somewhat more involved in that I
+tried to track down all relevant places where we set configs
+without checking for error conditions. My current approach to
+most of those cases is to just die with an error message, this
+remains up to discussion though for the individual cases.
+
+[1]: $gmane/278544
+
+Patrick Steinhardt (9):
+  config: introduce set_or_die wrappers
+  branch: return error code for install_branch_config
+  remote: handle config errors in set_url
+  clone: handle config errors in cmd_clone
+  branch: handle config errors when unsetting upstream
+  init-db: handle config errors
+  sequencer: handle config errors when saving opts
+  submodule--helper: handle config errors
+  compat: die when unable to set core.precomposeunicode
+
+ branch.c                    | 31 +++++++++++++++++++++----------
+ branch.h                    |  3 ++-
+ builtin/branch.c            |  4 ++--
+ builtin/clone.c             | 17 ++++++++++-------
+ builtin/init-db.c           | 20 ++++++++++----------
+ builtin/remote.c            | 11 ++++++-----
+ builtin/submodule--helper.c |  4 ++--
+ cache.h                     |  4 ++++
+ compat/precompose_utf8.c    |  3 ++-
+ config.c                    | 27 +++++++++++++++++++++++++++
+ sequencer.c                 | 22 +++++++++++-----------
+ t/t3200-branch.sh           | 16 +++++++++++++++-
+ t/t5505-remote.sh           |  9 +++++++++
+ transport.c                 | 11 ++++++-----
+ 14 files changed, 127 insertions(+), 55 deletions(-)
+
+-- 
+2.7.0
+
