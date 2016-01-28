@@ -24,6 +24,7 @@ struct module_list {
 static int module_list_gitdir_modules(const char *current_dir,
 				      struct dotmodule_list *list,
 				      struct pathspec *pathspec,
+				      char *ps_matched,
 				      int max_prefix_len)
 {
 	struct strbuf path = STRBUF_INIT;
@@ -36,13 +37,16 @@ static int module_list_gitdir_modules(const char *current_dir,
 	else
 	    strbuf_git_path(&path, "modules");
 
-	strbuf_addstr(&path, "/index");
-	if (file_exists(path.buf)) {
-		ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
-		list->entries[list->nr++] = xstrdup(current_dir);
-		goto out;
+	if (current_dir && match_pathspec(pathspec, current_dir, strlen(current_dir),
+			   max_prefix_len, ps_matched, 1)) {
+		strbuf_addstr(&path, "/index");
+		if (file_exists(path.buf)) {
+			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
+			list->entries[list->nr++] = xstrdup(current_dir);
+			goto out;
+		}
+		strbuf_strip_suffix(&path, "/index");
 	}
-	strbuf_strip_suffix(&path, "/index");
 
 	if ((dir = opendir(path.buf)) == NULL)
 		goto out;
@@ -58,11 +62,7 @@ static int module_list_gitdir_modules(const char *current_dir,
 			strbuf_addf(&path, "%s/", current_dir);
 		strbuf_addstr(&path, entry->d_name);
 
-		if (!match_pathspec(pathspec, path.buf, path.len,
-				    max_prefix_len, NULL, 1))
-			continue;
-
-		module_list_gitdir_modules(path.buf, list, pathspec, max_prefix_len);
+		module_list_gitdir_modules(path.buf, list, pathspec, ps_matched, max_prefix_len);
 	}
 
 out:
@@ -75,7 +75,7 @@ out:
 static int module_list_compute_all(int argc, const char **argv, const char *prefix, struct pathspec *pathspec)
 {
 	struct dotmodule_list list = MODULE_LIST_INIT;
-	char *max_prefix;
+	char *max_prefix, *ps_matched = NULL;
 	int max_prefix_len;
 	int i;
 
@@ -87,10 +87,18 @@ static int module_list_compute_all(int argc, const char **argv, const char *pref
 	max_prefix = common_prefix(pathspec);
 	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
 
-	module_list_gitdir_modules(NULL, &list, pathspec, max_prefix_len);
+	if (pathspec->nr)
+		ps_matched = xcalloc(pathspec->nr, 1);
+
+	module_list_gitdir_modules(NULL, &list, pathspec, ps_matched, max_prefix_len);
 	for (i = 0; i < list.nr; i++) {
-	    puts(list.entries[i]);
+		puts(list.entries[i]);
 	}
+
+	if (ps_matched && report_path_error(ps_matched, pathspec, prefix))
+		return -1;
+
+	free(ps_matched);
 
 	return 0;
 }
