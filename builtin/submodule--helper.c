@@ -21,9 +21,14 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static int list_modules(const char *root, const char *curdir, struct dotmodule_list *list, struct pathspec *pathspec, int max_prefix_len)
+static int list_modules(const char *root,
+			const char *curdir,
+			struct dotmodule_list *list,
+			struct pathspec *pathspec,
+			int max_prefix_len)
 {
-	struct strbuf root_path = STRBUF_INIT, curpath = STRBUF_INIT;
+	struct strbuf root_path = STRBUF_INIT,
+		      curpath = STRBUF_INIT;
 	struct dirent *entry;
 	DIR *dir = NULL;
 	int ret = 0;
@@ -35,9 +40,10 @@ static int list_modules(const char *root, const char *curdir, struct dotmodule_l
 	strbuf_addstr(&root_path, "/index");
 
 	if (file_exists(root_path.buf)) {
-	    /* add submodule */
-	    printf("Submodule %s\n", curdir);
-	    goto out;
+		/* add submodule */
+		ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
+		list->entries[list->nr++] = xstrdup(curdir);
+		goto out;
 	}
 
 	strbuf_strip_suffix(&root_path, "/index");
