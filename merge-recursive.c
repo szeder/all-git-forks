@@ -760,6 +760,11 @@ static void update_file_flags(struct merge_options *o,
 			goto update_index;
 		}
 
+		if (S_ISDIR(mode)) {
+			update_wd = 0;
+			goto update_index;
+		}
+
 		buf = read_sha1_file(sha, &type, &size);
 		if (!buf)
 			die(_("cannot read object %s '%s'"), sha1_to_hex(sha), path);
@@ -955,6 +960,8 @@ static struct merge_file_info merge_file_1(struct merge_options *o,
 
 			if (!sha_eq(a->sha1, b->sha1))
 				result.clean = 0;
+		} else if (S_ISDIR(a->mode)) {
+			result.clean = 0;
 		} else {
 			die(_("unsupported object type in the tree"));
 		}
@@ -1648,6 +1655,8 @@ static int merge_content(struct merge_options *o,
 	if (!mfi.clean) {
 		if (S_ISGITLINK(mfi.mode))
 			reason = _("submodule");
+		else if (S_ISDIR(mfi.mode))
+			reason = _("folded directory");
 		output(o, 1, _("CONFLICT (%s): Merge conflict in %s"),
 				reason, path);
 		if (rename_conflict_info && !df_conflict_remains)
