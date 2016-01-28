@@ -21,34 +21,33 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static int module_list_gitdir_modules(const char *root,
-				      const char *curdir,
+static int module_list_gitdir_modules(const char *curdir,
 				      struct dotmodule_list *list,
 				      struct pathspec *pathspec,
 				      int max_prefix_len)
 {
-	struct strbuf root_path = STRBUF_INIT,
-		      curpath = STRBUF_INIT;
+	struct strbuf path = STRBUF_INIT;
 	struct dirent *entry;
 	DIR *dir = NULL;
 	int ret = 0;
 
-	strbuf_addstr(&root_path, root);
-	if (curdir != NULL)
-	    strbuf_addf(&root_path, "/%s", curdir);
+	if (curdir)
+	    strbuf_git_path(&path, "modules/%s", curdir);
+	else
+	    strbuf_git_path(&path, "modules");
 
-	strbuf_addstr(&root_path, "/index");
+	strbuf_addstr(&path, "/index");
 
-	if (file_exists(root_path.buf)) {
+	if (file_exists(path.buf)) {
 		/* add submodule */
 		ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
 		list->entries[list->nr++] = xstrdup(curdir);
 		goto out;
 	}
 
-	strbuf_strip_suffix(&root_path, "/index");
+	strbuf_strip_suffix(&path, "/index");
 
-	if ((dir = opendir(root_path.buf)) == NULL)
+	if ((dir = opendir(path.buf)) == NULL)
 		goto out;
 	while ((entry = readdir(dir)) != NULL) {
 		if (entry->d_type != DT_DIR)
@@ -57,22 +56,21 @@ static int module_list_gitdir_modules(const char *root,
 		    !strcmp(entry->d_name, ".."))
 			continue;
 
-		strbuf_reset(&curpath);
+		strbuf_reset(&path);
 		if (curdir)
-			strbuf_addf(&curpath, "%s/", curdir);
-		strbuf_addstr(&curpath, entry->d_name);
+			strbuf_addf(&path, "%s/", curdir);
+		strbuf_addstr(&path, entry->d_name);
 
-		if (!match_pathspec(pathspec, curpath.buf, curpath.len,
+		if (!match_pathspec(pathspec, path.buf, path.len,
 				    max_prefix_len, NULL, 1))
 			continue;
 
-		module_list_gitdir_modules(root, curpath.buf, list, pathspec, max_prefix_len);
+		module_list_gitdir_modules(path.buf, list, pathspec, max_prefix_len);
 	}
 
 out:
 	closedir(dir);
-	strbuf_release(&root_path);
-	strbuf_release(&curpath);
+	strbuf_release(&path);
 
 	return ret;
 }
@@ -80,7 +78,6 @@ out:
 static int module_list_compute_all(int argc, const char **argv, const char *prefix, struct pathspec *pathspec)
 {
 	struct dotmodule_list list = MODULE_LIST_INIT;
-	struct strbuf path = STRBUF_INIT;
 	char *max_prefix;
 	int max_prefix_len;
 	int i;
@@ -93,9 +90,7 @@ static int module_list_compute_all(int argc, const char **argv, const char *pref
 	max_prefix = common_prefix(pathspec);
 	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
 
-	strbuf_git_path(&path, "modules");
-
-	module_list_gitdir_modules(path.buf, NULL, &list, pathspec, max_prefix_len);
+	module_list_gitdir_modules(NULL, &list, pathspec, max_prefix_len);
 	for (i = 0; i < list.nr; i++) {
 	    puts(list.entries[i]);
 	}
