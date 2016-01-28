@@ -203,6 +203,8 @@ static int write_entry(struct cache_entry *ce,
 		if (mkdir(path, 0777) < 0)
 			return error("cannot create submodule directory %s", path);
 		break;
+	case S_IFDIR:
+		return 0;
 	default:
 		return error("unknown file mode for %s in index", path);
 	}

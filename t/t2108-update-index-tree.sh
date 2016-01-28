@@ -18,4 +18,9 @@ test_expect_success 'update-index --refresh' '
 	git update-index --refresh
 '
 
+test_expect_success 'checkout' '
+	git checkout-index empty-dir 2>err &&
+	test_must_be_empty err
+'
+
 test_done
