@@ -10,11 +10,69 @@
 #include "string-list.h"
 #include "run-command.h"
 
+struct dotmodule_list {
+    char **entries;
+    int alloc, nr;
+};
+
 struct module_list {
 	const struct cache_entry **entries;
 	int alloc, nr;
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
+
+static int list_modules(const char *dirpath, struct dotmodule_list *list)
+{
+	struct strbuf entrypath = STRBUF_INIT, indexpath = STRBUF_INIT;
+	struct dirent *entry;
+	DIR *dir;
+
+	if ((dir = opendir(dirpath)) == NULL)
+		return 0;
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (entry->d_type != DT_DIR)
+			continue;
+		if (!strcmp(entry->d_name, ".") ||
+		    !strcmp(entry->d_name, ".."))
+			continue;
+
+		strbuf_reset(&entrypath);
+		strbuf_reset(&indexpath);
+
+		strbuf_addf(&entrypath, "%s/%s", dirpath, entry->d_name);
+		strbuf_addf(&indexpath, "%s/%s", entrypath.buf, "index");
+
+		if (file_exists(indexpath.buf)) {
+			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
+			list->entries[list->nr++] = strbuf_detach(&entrypath, NULL);
+		} else {
+			list_modules(entrypath.buf, list);
+		}
+	}
+
+	closedir(dir);
+	strbuf_release(&entrypath);
+	strbuf_release(&indexpath);
+
+	return 0;
+}
+
+static int all(int argc, const char **argv, const char *prefix)
+{
+	struct dotmodule_list list = MODULE_LIST_INIT;
+	struct strbuf path = STRBUF_INIT;
+	int i;
+
+	strbuf_git_path(&path, "modules");
+
+	list_modules(path.buf, &list);
+	for (i = 0; i < list.nr; i++) {
+	    puts(list.entries[i]);
+	}
+
+	return 0;
+}
 
 static int module_list_compute(int argc, const char **argv,
 			       const char *prefix,
@@ -70,6 +128,7 @@ static int module_list_compute(int argc, const char **argv,
 static int module_list(int argc, const char **argv, const char *prefix)
 {
 	int i;
+	int all;
 	struct pathspec pathspec;
 	struct module_list list = MODULE_LIST_INIT;
 
@@ -77,6 +136,8 @@ static int module_list(int argc, const char **argv, const char *prefix)
 		OPT_STRING(0, "prefix", &prefix,
 			   N_("path"),
 			   N_("alternative anchor for relative paths")),
+		OPT_BOOL(0, "all", &all,
+			   N_("also include submodules not currently in .gitmodules")),
 		OPT_END()
 	};
 
@@ -261,6 +322,7 @@ struct cmd_struct {
 };
 
 static struct cmd_struct commands[] = {
+	{"all", all},
 	{"list", module_list},
 	{"name", module_name},
 	{"clone", module_clone},
