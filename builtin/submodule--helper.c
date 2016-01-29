@@ -168,8 +168,11 @@ static int module_list(int argc, const char **argv, const char *prefix)
 
 	module_list_compute_index(&pathspec, &index_modules, ps_matched, max_prefix_len);
 	if (all) {
-	    module_list_compute_gitdir(NULL, &pathspec, &gitdir_modules, ps_matched, max_prefix_len);
-	    qsort(&gitdir_modules.entries[0], gitdir_modules.nr, sizeof(struct module), cmp_gitdir_modules);
+		module_list_compute_gitdir(NULL, &pathspec, &gitdir_modules, ps_matched, max_prefix_len);
+		qsort(&gitdir_modules.entries[0], gitdir_modules.nr, sizeof(struct module), cmp_gitdir_modules);
+	} else {
+		/* TODO: saner way of working around */
+		gitdir_modules = index_modules;
 	}
 
 	if (ps_matched && report_path_error(ps_matched, &pathspec, prefix)) {
