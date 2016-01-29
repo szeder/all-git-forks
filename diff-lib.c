@@ -357,6 +357,19 @@ static int show_modified(struct rev_info *revs,
 	    !DIFF_OPT_TST(&revs->diffopt, FIND_COPIES_HARDER))
 		return 0;
 
+	if (S_ISDIR(oldmode) && S_ISDIR(mode))
+		return diff_tree_sha1(old->sha1, sha1, "", &revs->diffopt);
+	else if (S_ISDIR(oldmode) && !S_ISDIR(mode)) {
+		show_new_file(revs, new, cached, match_missing);
+		return diff_tree_sha1(old->sha1, EMPTY_TREE_SHA1_BIN, "",
+				      &revs->diffopt);
+	} else if (!S_ISDIR(oldmode) && S_ISDIR(mode)) {
+		diff_index_show_file(revs, "-", old, old->sha1, 1,
+				     old->ce_mode, 0);
+		return diff_tree_sha1(EMPTY_TREE_SHA1_BIN, sha1, "",
+				      &revs->diffopt);
+	}
+
 	diff_change(&revs->diffopt, oldmode, mode,
 		    old->sha1, sha1, 1, !is_null_sha1(sha1),
 		    old->name, 0, dirty_submodule);
