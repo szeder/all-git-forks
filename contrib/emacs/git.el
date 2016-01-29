@@ -55,8 +55,6 @@
 (require 'ewoc)
 (require 'log-edit)
 (require 'easymenu)
-(require 'f)
-
 
 ;;;; Customizations
 ;;;; ------------------------------------------------------------
@@ -356,8 +354,7 @@ the process output as a string, or nil if the git command failed."
 		  (insert-file-contents dotgit-file)
 		  (buffer-string))))
     (string-match "^gitdir:[ ]*\\(.*\\)[ \n]*$" gitstr)
-    (expand-file-name
-     (f-join gitdir (match-string 1 gitstr)))))
+    (expand-file-name (match-string 1 gitstr) gitdir)))
 
 (defun git-get-dotgit-dir ()
   (let ((dotgit-dir ".git"))
@@ -366,7 +363,12 @@ the process output as a string, or nil if the git command failed."
       (git-get-path-from-dotgit-file dotgit-dir))))
 
 (defun git-get-repo-exclude-file ()
-  (f-join (git-get-dotgit-dir) "info" "exclude"))
+  (concat
+   (file-name-as-directory
+    (concat
+     (file-name-as-directory
+      (git-get-dotgit-dir)) "info")) 
+   "exclude"))
 
 ;stolen from pcl-cvs
 (defun git-append-to-ignore (file)
@@ -1629,8 +1631,8 @@ amended version of it."
     (define-key map "\r"  'git-find-file)
     (define-key map "g"   'git-refresh-status)
     (define-key map "i"   'git-ignore-file)
-    (define-key map "\C-i"   'git-exclude-file)
-    (define-key map "\M-\C-i"   'git-unexclude-file)
+    (define-key map "e"   'git-exclude-file)
+    (define-key map "\M-e"   'git-unexclude-file)
     (define-key map "I"   'git-insert-file)
     (define-key map "l"   'git-log-file)
     (define-key map "m"   'git-mark-file)
