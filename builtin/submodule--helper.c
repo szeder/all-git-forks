@@ -42,12 +42,20 @@ static void module_list_compute_gitdir(const char *current_dir,
 		    match_pathspec(pathspec, current_dir, strlen(current_dir),
 				   max_prefix_len, ps_matched, 1)) {
 			struct module *module;
+			const struct submodule *config;
+			unsigned char head[GIT_SHA1_RAWSZ];
 
 			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
 			module = &list->entries[list->nr++];
 
-			module->name = xstrdup(current_dir);
-			memcpy(module->sha1, null_sha1, sizeof(module->sha1));
+			get_sha1("HEAD", head);
+			config = submodule_from_name(head, current_dir);
+			if (config != NULL)
+				module->name = xstrdup(config->path);
+			else
+				module->name = xstrdup(current_dir);
+
+			hashcpy(module->sha1, null_sha1);
 			module->stage = 0;
 			module->mode = 0;
 
@@ -100,7 +108,7 @@ static void module_list_compute_index(struct pathspec *pathspec,
 
 		m = &list->entries[list->nr++];
 		m->name = ce->name;
-		memcpy(m->sha1, ce->sha1, GIT_SHA1_RAWSZ);
+		hashcpy(m->sha1, ce->sha1);
 		m->mode = ce->ce_mode;
 		m->stage = ce_stage(ce);
 
