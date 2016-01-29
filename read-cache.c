@@ -1513,13 +1513,29 @@ static void check_ce_order(struct index_state *istate)
 	for (i = 1; i < istate->cache_nr; i++) {
 		struct cache_entry *ce1 = istate->cache[i - 1];
 		struct cache_entry *ce2 = istate->cache[i];
-		int cmp = strcmp(ce1->name, ce2->name);
+		int len1 = ce_namelen(ce1), len2 = ce_namelen(ce2);
+		int len = len1 < len2 ? len1 : len2;
+		unsigned char c1, c2;
+		int cmp = memcmp(ce1->name, ce2->name, len);
 
 		if (0 < cmp)
 			die("unordered stage entries '%s' and '%s' in index",
 			    ce1->name, ce2->name);
 		if (cmp < 0)
 			continue;
+		c1 = len < len1 ? ce1->name[len] : '\0';
+		c2 = len < len2 ? ce2->name[len] : '\0';
+		if (!c1 && S_ISDIR(ce1->ce_mode))
+			c1 = '/';
+		if (!c2 && S_ISDIR(ce2->ce_mode))
+			c2 = '/';
+		cmp = (c1 < c2) ? -1 : (c1 > c2) ? 1 : 0;
+		if (0 < cmp)
+			die("unordered stage entries '%s' and '%s' in index",
+			    ce1->name, ce2->name);
+		if (cmp < 0)
+			continue;
+
 		if (!ce_stage(ce1))
 			die("multiple stage entries for merged file '%s'",
 			    ce1->name);
