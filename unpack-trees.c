@@ -854,6 +854,9 @@ static int unpack_callback(int n,
 			}
 			break;
 		}
+
+		if (!o->fold_pathspec && src[0] && S_ISDIR(src[0]->ce_mode))
+			fold_trees = 1;
 	}
 
 	if (o->fold_pathspec) {
