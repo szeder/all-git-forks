@@ -177,7 +177,7 @@ static int module_list_compute_index(int argc, const char **argv,
 static int module_list(int argc, const char **argv, const char *prefix)
 {
 	int i;
-	int all;
+	int all = 0;
 	struct pathspec pathspec;
 	struct module_list list = MODULE_LIST_INIT;
 
