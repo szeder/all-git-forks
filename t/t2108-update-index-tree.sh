@@ -32,4 +32,16 @@ test_expect_success 'write-tree' '
 	test_cmp expected actual
 '
 
+test_expect_success 'fsck' '
+	git commit -m initial &&
+	git fsck 2>err &&
+	test_must_be_empty err
+'
+
+test_expect_success 'remove a tree' '
+	git update-index --remove empty-dir &&
+	git ls-files --stage >actual &&
+	test_must_be_empty actual
+'
+
 test_done

@@ -672,16 +672,25 @@ int cmd_fsck(int argc, const char **argv, const char *prefix)
 		read_cache();
 		for (i = 0; i < active_nr; i++) {
 			unsigned int mode;
-			struct blob *blob;
 			struct object *obj;
 
 			mode = active_cache[i]->ce_mode;
 			if (S_ISGITLINK(mode))
 				continue;
-			blob = lookup_blob(active_cache[i]->sha1);
-			if (!blob)
+			if (S_ISDIR(mode)) {
+				struct tree *tree;
+				tree = lookup_tree(active_cache[i]->sha1);
+				if (!tree)
+					continue;
+				obj = &tree->object;
+			} else if (S_ISREG(mode)) {
+				struct blob *blob;
+				blob = lookup_blob(active_cache[i]->sha1);
+				if (!blob)
+					continue;
+				obj = &blob->object;
+			} else
 				continue;
-			obj = &blob->object;
 			obj->used = 1;
 			mark_object_reachable(obj);
 		}

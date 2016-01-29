@@ -563,7 +563,8 @@ void remove_marked_cache_entries(struct index_state *istate)
 
 int remove_file_from_index(struct index_state *istate, const char *path)
 {
-	int pos = index_name_pos(istate, path, strlen(path));
+	/* in case both a file and a tree exists as "path", remove them both */
+	int pos = index_name_mode_stage_pos(istate, path, strlen(path), S_IFDIR, 0);
 	if (pos < 0)
 		pos = -pos-1;
 	cache_tree_invalidate_path(istate, path);
