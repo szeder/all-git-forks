@@ -23,16 +23,15 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static int module_list_gitdir_modules(const char *current_dir,
-				      struct module_list *list,
-				      struct pathspec *pathspec,
-				      char *ps_matched,
-				      int max_prefix_len)
+static void module_list_compute_gitdir(const char *current_dir,
+				       struct pathspec *pathspec,
+				       struct module_list *list,
+				       char *ps_matched,
+				       int max_prefix_len)
 {
 	struct strbuf path = STRBUF_INIT;
 	struct dirent *entry;
 	DIR *dir = NULL;
-	int ret = 0;
 
 	strbuf_git_path(&path, "modules");
 
@@ -70,71 +69,20 @@ static int module_list_gitdir_modules(const char *current_dir,
 			strbuf_addf(&path, "%s/", current_dir);
 		strbuf_addstr(&path, entry->d_name);
 
-		module_list_gitdir_modules(path.buf, list, pathspec, ps_matched, max_prefix_len);
+		module_list_compute_gitdir(path.buf, pathspec, list, ps_matched, max_prefix_len);
 	}
 
 out:
 	closedir(dir);
 	strbuf_release(&path);
-
-	return ret;
 }
 
-static int cmp_gitdir_modules(const void *m1, const void *m2)
+static void module_list_compute_index(struct pathspec *pathspec,
+				      struct module_list *list,
+				      char *ps_matched,
+				      int max_prefix_len)
 {
-	return strcmp(((struct module const *)m1)->name,
-		      ((struct module const *)m2)->name);
-}
-
-static int module_list_compute_all(int argc, const char **argv,
-				   const char *prefix,
-				   struct pathspec *pathspec,
-				   struct module_list *list)
-{
-	char *max_prefix, *ps_matched = NULL;
-	int max_prefix_len;
-
-	parse_pathspec(pathspec, 0,
-		       PATHSPEC_PREFER_FULL |
-		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
-		       prefix, argv);
-
-	max_prefix = common_prefix(pathspec);
-	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
-
-	if (pathspec->nr)
-		ps_matched = xcalloc(pathspec->nr, 1);
-
-	module_list_gitdir_modules(NULL, list, pathspec, ps_matched, max_prefix_len);
-	qsort(&list->entries[0], list->nr, sizeof(struct module), cmp_gitdir_modules);
-
-	if (ps_matched && report_path_error(ps_matched, pathspec, prefix))
-		return -1;
-
-	free(ps_matched);
-
-	return 0;
-}
-
-static int module_list_compute_index(int argc, const char **argv,
-				     const char *prefix,
-				     struct pathspec *pathspec,
-				     struct module_list *list)
-{
-	int i, result = 0;
-	char *max_prefix, *ps_matched = NULL;
-	int max_prefix_len;
-	parse_pathspec(pathspec, 0,
-		       PATHSPEC_PREFER_FULL |
-		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
-		       prefix, argv);
-
-	/* Find common prefix for all pathspec's */
-	max_prefix = common_prefix(pathspec);
-	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
-
-	if (pathspec->nr)
-		ps_matched = xcalloc(pathspec->nr, 1);
+	int i;
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
@@ -164,20 +112,18 @@ static int module_list_compute_index(int argc, const char **argv,
 			 */
 			i++;
 	}
-	free(max_prefix);
+}
 
-	if (ps_matched && report_path_error(ps_matched, pathspec, prefix))
-		result = -1;
-
-	free(ps_matched);
-
-	return result;
+static int cmp_gitdir_modules(const void *m1, const void *m2)
+{
+	return strcmp(((struct module const *)m1)->name,
+		      ((struct module const *)m2)->name);
 }
 
 static int module_list(int argc, const char **argv, const char *prefix)
 {
-	int i;
-	int all = 0;
+	int i, all = 0, max_prefix_len;
+	char *max_prefix, *ps_matched = NULL;
 	struct pathspec pathspec;
 	struct module_list list = MODULE_LIST_INIT;
 
@@ -198,14 +144,29 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, module_list_options,
 			     git_submodule_helper_usage, 0);
 
+	parse_pathspec(&pathspec, 0,
+		       PATHSPEC_PREFER_FULL |
+		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
+		       prefix, argv);
+
+	/* Find common prefix for all pathspec's */
+	max_prefix = common_prefix(&pathspec);
+	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
+
+	if (pathspec.nr)
+		ps_matched = xcalloc(pathspec.nr, 1);
+
+	module_list_compute_index(&pathspec, &list, ps_matched, max_prefix_len);
 	if (all) {
-	    module_list_compute_all(argc, argv, prefix, &pathspec, &list);
-	} else {
-	    if (module_list_compute_index(argc, argv, prefix, &pathspec, &list) < 0) {
-			printf("#unmatched\n");
-			return 1;
-	    }
+	    module_list_compute_gitdir(NULL, &pathspec, &list, ps_matched, max_prefix_len);
+	    qsort(&list.entries[0], list.nr, sizeof(struct module), cmp_gitdir_modules);
 	}
+
+	if (ps_matched && report_path_error(ps_matched, &pathspec, prefix)) {
+		printf("#unmatched\n");
+		return 1;
+	}
+	free(ps_matched);
 
 	for (i = 0; i < list.nr; i++) {
 		const struct module *m = &list.entries[i];
@@ -217,6 +178,7 @@ static int module_list(int argc, const char **argv, const char *prefix)
 
 		utf8_fprintf(stdout, "%s\n", m->name);
 	}
+
 	return 0;
 }
 
