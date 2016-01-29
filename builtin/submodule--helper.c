@@ -54,6 +54,7 @@ static void module_list_compute_gitdir(const char *current_dir,
 				module->name = xstrdup(config->path);
 			else
 				module->name = xstrdup(current_dir);
+			submodule_free();
 
 			hashcpy(module->sha1, null_sha1);
 			module->stage = 0;
