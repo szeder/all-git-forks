@@ -55,6 +55,7 @@
 (require 'ewoc)
 (require 'log-edit)
 (require 'easymenu)
+(require 'f)
 
 
 ;;;; Customizations
@@ -347,6 +348,26 @@ the process output as a string, or nil if the git command failed."
     (expand-file-name (concat (file-name-as-directory dir)
                               (car (split-string cdup "\n"))))))
 
+(defun git-get-path-from-dotgit-file (dotgit-file)
+  "parse .git directory path from contents of .git file for submodule"
+  (let ((gitdir (file-name-directory
+		 (expand-file-name dotgit-file)))
+	(gitstr (with-temp-buffer
+		  (insert-file-contents dotgit-file)
+		  (buffer-string))))
+    (string-match "^gitdir:[ ]*\\(.*\\)[ \n]*$" gitstr)
+    (expand-file-name
+     (f-join gitdir (match-string 1 gitstr)))))
+
+(defun git-get-dotgit-dir ()
+  (let ((dotgit-dir ".git"))
+    (if (file-directory-p dotgit-dir)
+	dotgit-dir
+      (git-get-path-from-dotgit-file dotgit-dir))))
+
+(defun git-get-repo-exclude-file ()
+  (f-join (git-get-dotgit-dir) "info" "exclude"))
+
 ;stolen from pcl-cvs
 (defun git-append-to-ignore (file)
   "Add a file name to the ignore file in its directory."
@@ -365,6 +386,48 @@ the process output as a string, or nil if the git command failed."
   (when created
     (git-call-process nil "update-index" "--add" "--" (file-relative-name ignore-name)))
   (git-update-status-files (list (file-relative-name ignore-name)))))
+
+(defun git-append-to-exclude (file)
+  "Add a file name to the local ignore file for repo."
+  (let* ((fullname (expand-file-name file))
+         (dir (file-name-directory fullname))
+         (repo-dir (git-get-top-dir dir))
+         (relname (file-relative-name fullname repo-dir))
+         (local-ignore-name (git-get-repo-exclude-file))
+	 )
+    (save-window-excursion
+      (set-buffer (find-file-noselect local-ignore-name))
+      (goto-char (point-max))
+      (unless (zerop (current-column)) (insert "\n"))
+      (insert "/" relname "\n")
+      (sort-lines nil (point-min) (point-max))
+      (save-buffer))
+    ))
+
+(defun git-remove-from-exclude (file)
+  "remove a file name from the local ignore file for repo."
+  (let* ((fullname (expand-file-name file))
+         (dir (file-name-directory fullname))
+         (repo-dir (git-get-top-dir dir))
+         (relname (file-relative-name fullname repo-dir))
+         (local-ignore-name (git-get-repo-exclude-file))
+	 )
+    (save-window-excursion
+      (set-buffer (find-file-noselect local-ignore-name))
+      (goto-char (point-min))
+      (when
+	  (if (re-search-forward (concat "^[/]" relname "[/]?[ ]*$"))
+	      ;; delete the line
+	      (let ((beg (progn (forward-line 0) (point))))
+		(forward-line 1)
+		(delete-region beg (point))
+		t)
+	    ;; error, file not found
+	    (message "file not in local ignore: %s" relname)
+	    nil
+	    )
+	(save-buffer)))
+    ))
 
 ; propertize definition for XEmacs, stolen from erc-compat
 (eval-when-compile
@@ -759,9 +822,10 @@ Return the list of files that haven't been handled."
 (defun git-get-exclude-files ()
   "Get the list of exclude files to pass to git-ls-files."
   (let (files
-        (config (git-config "core.excludesfile")))
-    (when (file-readable-p ".git/info/exclude")
-      (push ".git/info/exclude" files))
+	(config (git-config "core.excludesfile"))
+	(local-exclude (git-get-repo-exclude-file)))
+    (when (file-readable-p local-exclude)
+      (push local-exclude files))
     (when (and config (file-readable-p config))
       (push config files))
     files))
@@ -1063,6 +1127,28 @@ The FILES list must be sorted."
     (dolist (f files) (git-append-to-ignore f))
     (git-update-status-files files)
     (git-success-message "Ignored" files)))
+
+(defun git-exclude-file ()
+  "Add marked file(s) to the local ignore list."
+  (interactive)
+  (let ((files (git-get-filenames (git-marked-files-state 'unknown))))
+    (unless files
+      (push (file-relative-name (read-file-name "File to ignore: " nil nil t)) files))
+    (dolist (f files) (git-append-to-exclude f))
+    (git-update-status-files files)
+    (git-success-message "Local Ignored" files)
+  ))
+
+(defun git-unexclude-file ()
+  "Remove marked file(s) from the local ignore list."
+  (interactive)
+  (let ((files (git-get-filenames (git-marked-files-state 'ignored))))
+    (unless files
+      (push (file-relative-name (read-file-name "File to ignore: " nil nil t)) files))
+    (dolist (f files) (git-remove-from-exclude f))
+    (git-update-status-files files)
+    (git-success-message "Local Unignored" files)
+  ))
 
 (defun git-remove-file ()
   "Remove the marked file(s)."
@@ -1543,6 +1629,8 @@ amended version of it."
     (define-key map "\r"  'git-find-file)
     (define-key map "g"   'git-refresh-status)
     (define-key map "i"   'git-ignore-file)
+    (define-key map "\C-i"   'git-exclude-file)
+    (define-key map "\M-\C-i"   'git-unexclude-file)
     (define-key map "I"   'git-insert-file)
     (define-key map "l"   'git-log-file)
     (define-key map "m"   'git-mark-file)
