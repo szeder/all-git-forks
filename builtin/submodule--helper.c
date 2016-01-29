@@ -122,10 +122,11 @@ static int cmp_gitdir_modules(const void *m1, const void *m2)
 
 static int module_list(int argc, const char **argv, const char *prefix)
 {
-	int i, all = 0, max_prefix_len;
+	int i, j, all = 0, max_prefix_len;
 	char *max_prefix, *ps_matched = NULL;
 	struct pathspec pathspec;
-	struct module_list list = MODULE_LIST_INIT;
+	struct module_list index_modules = MODULE_LIST_INIT,
+			   gitdir_modules = MODULE_LIST_INIT;
 
 	struct option module_list_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
@@ -156,10 +157,10 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	if (pathspec.nr)
 		ps_matched = xcalloc(pathspec.nr, 1);
 
-	module_list_compute_index(&pathspec, &list, ps_matched, max_prefix_len);
+	module_list_compute_index(&pathspec, &index_modules, ps_matched, max_prefix_len);
 	if (all) {
-	    module_list_compute_gitdir(NULL, &pathspec, &list, ps_matched, max_prefix_len);
-	    qsort(&list.entries[0], list.nr, sizeof(struct module), cmp_gitdir_modules);
+	    module_list_compute_gitdir(NULL, &pathspec, &gitdir_modules, ps_matched, max_prefix_len);
+	    qsort(&gitdir_modules.entries[0], gitdir_modules.nr, sizeof(struct module), cmp_gitdir_modules);
 	}
 
 	if (ps_matched && report_path_error(ps_matched, &pathspec, prefix)) {
@@ -168,8 +169,17 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	}
 	free(ps_matched);
 
-	for (i = 0; i < list.nr; i++) {
-		const struct module *m = &list.entries[i];
+	for (i = 0, j = 0; i < gitdir_modules.nr; i++) {
+		const struct module *gitdir_module = &gitdir_modules.entries[i],
+				    *index_module = &index_modules.entries[j],
+				    *m;
+
+		if (!cmp_gitdir_modules(gitdir_module, index_module)) {
+			j++;
+			m = index_module;
+		} else {
+			m = gitdir_module;
+		}
 
 		if (m->stage)
 			printf("%06o %s U\t", m->mode, sha1_to_hex(m->sha1));
