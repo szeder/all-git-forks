@@ -10,19 +10,21 @@
 #include "string-list.h"
 #include "run-command.h"
 
-struct dotmodule_list {
-    char **entries;
-    int alloc, nr;
+struct module {
+	const char *name;
+	unsigned char sha1[GIT_SHA1_RAWSZ];
+	unsigned int mode;
+	unsigned int stage;
 };
 
 struct module_list {
-	const struct cache_entry **entries;
+	struct module *entries;
 	int alloc, nr;
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
 static int module_list_gitdir_modules(const char *current_dir,
-				      struct dotmodule_list *list,
+				      struct module_list *list,
 				      struct pathspec *pathspec,
 				      char *ps_matched,
 				      int max_prefix_len)
@@ -40,8 +42,16 @@ static int module_list_gitdir_modules(const char *current_dir,
 		if (is_git_directory(path.buf) &&
 		    match_pathspec(pathspec, current_dir, strlen(current_dir),
 				   max_prefix_len, ps_matched, 1)) {
+			struct module *module;
+
 			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
-			list->entries[list->nr++] = xstrdup(current_dir);
+			module = &list->entries[list->nr++];
+
+			module->name = xstrdup(current_dir);
+			memcpy(module->sha1, null_sha1, sizeof(module->sha1));
+			module->stage = 0;
+			module->mode = 0;
+
 			goto out;
 		}
 	}
@@ -72,17 +82,17 @@ out:
 
 static int cmp_gitdir_modules(const void *m1, const void *m2)
 {
-	return strcmp(*(char * const *)m1, *(char * const *)m2);
+	return strcmp(((struct module const *)m1)->name,
+		      ((struct module const *)m2)->name);
 }
 
 static int module_list_compute_all(int argc, const char **argv,
 				   const char *prefix,
-				   struct pathspec *pathspec)
+				   struct pathspec *pathspec,
+				   struct module_list *list)
 {
-	struct dotmodule_list list = MODULE_LIST_INIT;
 	char *max_prefix, *ps_matched = NULL;
 	int max_prefix_len;
-	int i;
 
 	parse_pathspec(pathspec, 0,
 		       PATHSPEC_PREFER_FULL |
@@ -95,12 +105,8 @@ static int module_list_compute_all(int argc, const char **argv,
 	if (pathspec->nr)
 		ps_matched = xcalloc(pathspec->nr, 1);
 
-	module_list_gitdir_modules(NULL, &list, pathspec, ps_matched, max_prefix_len);
-	qsort(&list.entries[0], list.nr, sizeof(char *), cmp_gitdir_modules);
-
-	for (i = 0; i < list.nr; i++) {
-		puts(list.entries[i]);
-	}
+	module_list_gitdir_modules(NULL, list, pathspec, ps_matched, max_prefix_len);
+	qsort(&list->entries[0], list->nr, sizeof(struct module), cmp_gitdir_modules);
 
 	if (ps_matched && report_path_error(ps_matched, pathspec, prefix))
 		return -1;
@@ -135,6 +141,7 @@ static int module_list_compute_index(int argc, const char **argv,
 
 	for (i = 0; i < active_nr; i++) {
 		const struct cache_entry *ce = active_cache[i];
+		struct module *m;
 
 		if (!S_ISGITLINK(ce->ce_mode) ||
 		    !match_pathspec(pathspec, ce->name, ce_namelen(ce),
@@ -142,7 +149,13 @@ static int module_list_compute_index(int argc, const char **argv,
 			continue;
 
 		ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
-		list->entries[list->nr++] = ce;
+
+		m = &list->entries[list->nr++];
+		m->name = ce->name;
+		memcpy(m->sha1, ce->sha1, GIT_SHA1_RAWSZ);
+		m->mode = ce->ce_mode;
+		m->stage = ce_stage(ce);
+
 		while (i + 1 < active_nr &&
 		       !strcmp(ce->name, active_cache[i + 1]->name))
 			/*
@@ -186,7 +199,7 @@ static int module_list(int argc, const char **argv, const char *prefix)
 			     git_submodule_helper_usage, 0);
 
 	if (all) {
-	    module_list_compute_all(argc, argv, prefix, &pathspec);
+	    module_list_compute_all(argc, argv, prefix, &pathspec, &list);
 	} else {
 	    if (module_list_compute_index(argc, argv, prefix, &pathspec, &list) < 0) {
 			printf("#unmatched\n");
@@ -195,14 +208,14 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	}
 
 	for (i = 0; i < list.nr; i++) {
-		const struct cache_entry *ce = list.entries[i];
+		const struct module *m = &list.entries[i];
 
-		if (ce_stage(ce))
-			printf("%06o %s U\t", ce->ce_mode, sha1_to_hex(null_sha1));
+		if (m->stage)
+			printf("%06o %s U\t", m->mode, sha1_to_hex(m->sha1));
 		else
-			printf("%06o %s %d\t", ce->ce_mode, sha1_to_hex(ce->sha1), ce_stage(ce));
+			printf("%06o %s %d\t", m->mode, sha1_to_hex(m->sha1), m->stage);
 
-		utf8_fprintf(stdout, "%s\n", ce->name);
+		utf8_fprintf(stdout, "%s\n", m->name);
 	}
 	return 0;
 }
