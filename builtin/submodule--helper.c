@@ -21,6 +21,19 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
+static int is_gitdir_submodule(const char *path)
+{
+	struct strbuf buf = STRBUF_INIT;
+	int is_submodule;
+
+	strbuf_addf(&buf, "%s/index", path);
+	is_submodule = file_exists(buf.buf);
+
+	strbuf_release(&buf);
+
+	return is_submodule;
+}
+
 static int module_list_gitdir_modules(const char *current_dir,
 				      struct dotmodule_list *list,
 				      struct pathspec *pathspec,
@@ -35,13 +48,9 @@ static int module_list_gitdir_modules(const char *current_dir,
 	strbuf_git_path(&path, "modules");
 
 	if (current_dir) {
-		int is_submodule;
+		strbuf_addf(&path, "/%s", current_dir);
 
-		strbuf_addf(&path, "/%s/index", current_dir);
-		is_submodule = file_exists(path.buf);
-		strbuf_strip_suffix(&path, "/index");
-
-		if (is_submodule &&
+		if (is_gitdir_submodule(path.buf) &&
 		    match_pathspec(pathspec, current_dir, strlen(current_dir),
 				   max_prefix_len, ps_matched, 1)) {
 			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
