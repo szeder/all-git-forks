@@ -40,7 +40,8 @@ Git index format
   Index entries are sorted in ascending order on the name field,
   interpreted as a string of unsigned bytes (i.e. memcmp() order, no
   localization, no special casing of directory separator '/'). Entries
-  with the same name are sorted by their stage field.
+  with the same name are sorted by their stage field. Directory names
+  are appended with '/' before sorting.
 
   32-bit ctime seconds, the last time a file's metadata changed
     this is stat(2) data
@@ -63,8 +64,8 @@ Git index format
   32-bit mode, split into (high to low bits)
 
     4-bit object type
-      valid values in binary are 1000 (regular file), 1010 (symbolic link)
-      and 1110 (gitlink)
+      valid values in binary are 1000 (regular file), 1010 (symbolic link),
+      0100 (directory) and 1110 (gitlink)
 
     3-bit unused
 
