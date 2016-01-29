@@ -469,11 +469,13 @@ int name_compare(const char *name1, size_t len1, const char *name2, size_t len2)
 	return 0;
 }
 
-static int cache_name_stage_compare(const char *name1, int len1, int stage1, const char *name2, int len2, int stage2)
+static int ce_compare(const char *name1, int len1, int mode1, int stage1,
+		      const struct cache_entry *ce2)
 {
-	int cmp;
+	int cmp, stage2 = ce_stage(ce2);
 
-	cmp = name_compare(name1, len1, name2, len2);
+	cmp = base_name_compare(name1, len1, mode1,
+				ce2->name, ce_namelen(ce2), ce2->ce_mode);
 	if (cmp)
 		return cmp;
 
@@ -493,7 +495,7 @@ static int index_name_stage_pos(const struct index_state *istate, const char *na
 	while (last > first) {
 		int next = (last + first) >> 1;
 		struct cache_entry *ce = istate->cache[next];
-		int cmp = cache_name_stage_compare(name, namelen, stage, ce->name, ce_namelen(ce), ce_stage(ce));
+		int cmp = ce_compare(name, namelen, S_IFREG, stage, ce);
 		if (!cmp)
 			return next;
 		if (cmp < 0) {
@@ -2338,8 +2340,9 @@ static int cmp_cache_name_compare(const void *a_, const void *b_)
 
 	ce1 = *((const struct cache_entry **)a_);
 	ce2 = *((const struct cache_entry **)b_);
-	return cache_name_stage_compare(ce1->name, ce1->ce_namelen, ce_stage(ce1),
-				  ce2->name, ce2->ce_namelen, ce_stage(ce2));
+	return ce_compare(ce1->name, ce1->ce_namelen,
+			  ce1->ce_mode, ce_stage(ce1),
+			  ce2);
 }
 
 /*
