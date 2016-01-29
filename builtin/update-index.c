@@ -407,7 +407,7 @@ static int add_cacheinfo(unsigned int mode, const unsigned char *sha1,
 	memcpy(ce->name, path, len);
 	ce->ce_flags = create_ce_flags(stage);
 	ce->ce_namelen = len;
-	ce->ce_mode = create_ce_mode(mode);
+	ce->ce_mode = S_ISDIR(mode) ? S_IFDIR : create_ce_mode(mode);
 	if (assume_unchanged)
 		ce->ce_flags |= CE_VALID;
 	option = allow_add ? ADD_CACHE_OK_TO_ADD : 0;
