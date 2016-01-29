@@ -398,6 +398,10 @@ int ie_modified(const struct index_state *istate,
 	return 0;
 }
 
+/*
+ * Before comparison, automatically append '/' to the name if it's a
+ * directory.
+ */
 int base_name_compare(const char *name1, int len1, int mode1,
 		      const char *name2, int len2, int mode2)
 {
