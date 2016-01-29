@@ -83,7 +83,14 @@ out:
 	return ret;
 }
 
-static int module_list_compute_all(int argc, const char **argv, const char *prefix, struct pathspec *pathspec)
+static int cmp_gitdir_modules(const void *m1, const void *m2)
+{
+	return strcmp(*(char * const *)m1, *(char * const *)m2);
+}
+
+static int module_list_compute_all(int argc, const char **argv,
+				   const char *prefix,
+				   struct pathspec *pathspec)
 {
 	struct dotmodule_list list = MODULE_LIST_INIT;
 	char *max_prefix, *ps_matched = NULL;
@@ -102,6 +109,8 @@ static int module_list_compute_all(int argc, const char **argv, const char *pref
 		ps_matched = xcalloc(pathspec->nr, 1);
 
 	module_list_gitdir_modules(NULL, &list, pathspec, ps_matched, max_prefix_len);
+	qsort(&list.entries[0], list.nr, sizeof(char *), cmp_gitdir_modules);
+
 	for (i = 0; i < list.nr; i++) {
 		puts(list.entries[i]);
 	}
