@@ -75,8 +75,12 @@ static void remove_subtree(struct strbuf *path)
 
 static int create_file(const char *path, unsigned int mode)
 {
-	mode = (mode & 0100) ? 0777 : 0666;
-	return open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
+	struct stat st;
+	if (lstat(path, &st)) {
+		mode = (mode & 0100) ? 0777 : 0666;
+		return open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
+	}
+	return open(path, O_WRONLY | O_TRUNC);
 }
 
 static void *read_blob_entry(const struct cache_entry *ce, unsigned long *size)
@@ -282,8 +286,7 @@ int checkout_entry(struct cache_entry *ce,
 			if (!state->force)
 				return error("%s is a directory", path.buf);
 			remove_subtree(&path);
-		} else if (unlink(path.buf))
-			return error_errno("unable to unlink old '%s'", path.buf);
+		}
 	} else if (state->not_new)
 		return 0;
 
