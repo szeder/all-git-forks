@@ -44,6 +44,17 @@ static void color_atom_parser(struct used_atom *atom, const char *color_value)
 		die(_("invalid color value: %s"), atom->u.color);
 }
 
+static align_type parse_align_position(const char *s)
+{
+	if (!strcmp(s, "right"))
+		return ALIGN_RIGHT;
+	else if (!strcmp(s, "middle"))
+		return ALIGN_MIDDLE;
+	else if (!strcmp(s, "left"))
+		return ALIGN_LEFT;
+	return -1;
+}
+
 static struct {
 	const char *name;
 	cmp_type cmp_type;
@@ -910,14 +921,12 @@ static void populate_value(struct ref_array_item *ref)
 			align->position = ALIGN_LEFT;
 
 			while (*s) {
+				int position;
+
 				if (!strtoul_ui(s[0]->buf, 10, (unsigned int *)&width))
 					;
-				else if (!strcmp(s[0]->buf, "left"))
-					align->position = ALIGN_LEFT;
-				else if (!strcmp(s[0]->buf, "right"))
-					align->position = ALIGN_RIGHT;
-				else if (!strcmp(s[0]->buf, "middle"))
-					align->position = ALIGN_MIDDLE;
+				else if ((position = parse_align_position(s[0]->buf)) >= 0)
+					align->position = position;
 				else
 					die(_("improper format entered align:%s"), s[0]->buf);
 				s++;
