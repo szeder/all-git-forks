@@ -451,6 +451,33 @@ proc revert_helper {txt paths} {
 	}
 }
 
+proc do_open_file_explorer {} {
+	global repo_config
+	global ui_index ui_workdir
+	global current_diff_path selected_paths
+
+	if {[array exists selected_paths] == 0} {
+		return
+	}
+
+	if {[array size selected_paths] == 0} {
+		return
+	}
+
+	set file_explorer $repo_config(gui.fileexplorer)
+	if {[string length $file_explorer] == 0} {
+		return
+	}
+
+	foreach path [array names selected_paths] {
+		set dir [file dirname $path]
+		set ossep [file separator]
+
+		set sysdir [string map [list "/" $ossep] $dir]
+		catch { exec $file_explorer "$sysdir" } msg
+	}
+}
+
 proc delete_helper {paths} {
 	global file_states current_diff_path
 

@@ -881,6 +881,7 @@ set default_config(gui.copyblamethreshold) 40
 set default_config(gui.blamehistoryctx) 7
 set default_config(gui.diffcontext) 5
 set default_config(gui.diffopts) {}
+set default_config(gui.fileexplorer) {}
 set default_config(gui.commitmsgwidth) 75
 set default_config(gui.newbranchtemplate) {}
 set default_config(gui.spellingdictionary) {}
@@ -3831,6 +3832,7 @@ foreach i [list $ui_index $ui_workdir] {
 	bind $i <Button-1>       "toggle_or_diff         $i %x %y; break"
 	bind $i <$M1B-Button-1>  "add_one_to_selection   $i %x %y; break"
 	bind $i <Shift-Button-1> "add_range_to_selection $i %x %y; break"
+	bind $i <Double-1> {do_open_file_explorer; break}
 }
 unset i
 
