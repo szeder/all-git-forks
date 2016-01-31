@@ -602,6 +602,8 @@ static struct cache_entry *create_ce_entry(const struct traverse_info *info,
 	else
 		ce->ce_mode = create_ce_mode(n->mode);
 	ce->ce_flags = create_ce_flags(stage);
+	if (S_ISDIR(ce->ce_mode))
+		ce->ce_flags |= CE_UPTODATE | CE_SKIP_WORKTREE;
 	ce->ce_namelen = len;
 	hashcpy(ce->sha1, n->sha1);
 	make_traverse_path(ce->name, info, n);
