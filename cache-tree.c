@@ -354,6 +354,7 @@ static int update_one(struct cache_tree *it,
 			entlen = pathlen - baselen;
 			i++;
 		}
+		/* FIXME apply pathspec and avoid has_sha1_file() */
 		if (mode != S_IFGITLINK && !missing_ok && !has_sha1_file(sha1)) {
 			strbuf_release(&buffer);
 			if (expected_missing)
