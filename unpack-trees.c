@@ -10,6 +10,7 @@
 #include "attr.h"
 #include "split-index.h"
 #include "dir.h"
+#include "pathspec.h"
 
 /*
  * Error messages expected by scripts out of plumbing commands such as
@@ -1095,6 +1096,135 @@ static void mark_new_skip_worktree(struct exclude_list *el,
 static int verify_absent(const struct cache_entry *,
 			 enum unpack_trees_error_types,
 			 struct unpack_trees_options *);
+
+static int verify_directory_absent(const struct cache_entry *ce,
+				   struct unpack_trees_options *o)
+{
+	if (is_empty_dir(ce->name) || !file_exists(ce->name))
+		return 0;
+	return error("%s exists and is not empty", ce->name);
+}
+
+/*
+ * This is used when the caller knows there is no existing entries at
+ * the stage that will conflict with the entry being added.
+ */
+static int unfold_entry_1(const unsigned char *sha1, struct strbuf *base,
+			  const char *pathname, unsigned mode, int stage,
+			  void *context)
+{
+	struct unpack_trees_options *o = context;
+	struct cache_entry *ce;
+	unsigned int size;
+	int len;
+
+	if (S_ISDIR(mode))
+		/*
+		 * XXX: check o->fold_pathspec and keep tree unpacked
+		 * if negative pathspec is used
+		 */
+		return READ_TREE_RECURSIVE;
+
+	len = strlen(pathname);
+	size = cache_entry_size(base->len + len);
+	ce = xcalloc(1, size);
+
+	ce->ce_mode = create_ce_mode(mode);
+	ce->ce_flags = create_ce_flags(stage) | CE_UPDATE;
+	ce->ce_namelen = base->len + len;
+	memcpy(ce->name, base->buf, base->len);
+	memcpy(ce->name + base->len, pathname, len+1);
+	hashcpy(ce->sha1, sha1);
+	return add_index_entry(o->dst_index, ce, ADD_CACHE_JUST_APPEND);
+}
+
+static int unfold_entry(struct index_state *istate,
+			const struct cache_entry *ce,
+			struct unpack_trees_options *o)
+{
+	struct pathspec empty;
+	struct strbuf sb;
+	int ret;
+
+	if (o->update && verify_directory_absent(ce, o))
+		return -1;
+
+	memset(&empty, 0, sizeof(empty));
+	strbuf_add(&sb, ce->name, ce_namelen(ce));
+	strbuf_addch(&sb, '/');
+	ret = read_tree_recursive(lookup_tree(ce->sha1),
+				  sb.buf, sb.len,
+				  0, &empty,
+				  unfold_entry_1, o);
+	strbuf_release(&sb);
+	return ret;
+}
+
+/*
+ * Run the index through o->fold_pathspec and fold uninterested
+ * directores, unfold interested ones. If o->update is non-zero,
+ * folding a dir requires that cache-tree is valid on that dir. The
+ * folded dir is unclean if any entry inside is unclean.
+ */
+static int fold_unfold_index(struct unpack_trees_options *o)
+{
+	int i;
+	struct index_state result;
+
+	memset(&result, 0, sizeof(result));
+
+	/*
+	 * Generate as many trees as possible before we ruin src_index
+	 * at unfold step.
+	 */
+	cache_tree_update(o->src_index,
+			  WRITE_TREE_SILENT |
+			  WRITE_TREE_REPAIR);
+	/* unfold first */
+	for (i = 0; i < o->src_index->cache_nr; i++) {
+		struct cache_entry *ce = o->src_index->cache[i];
+
+		if (!ce_stage(ce) &&
+		    !match_pathspec(o->fold_pathspec,
+				    ce->name, ce_namelen(ce),
+				    0, NULL, S_ISDIR(ce->ce_mode)))
+			continue;
+
+		/*
+		 * Do not pick up this tree at fold step because it
+		 * has an interested entry.
+		 */
+		o->src_index->cache[i] = NULL;
+		cache_tree_invalidate_path(o->src_index, ce->name);
+
+		if (!ce_stage(ce) && S_ISDIR(ce->ce_mode)) {
+			if (unfold_entry(&result, ce, o)) {
+				o->src_index->cache[i] = ce;
+				return -1;
+			}
+			free(ce);
+			continue;
+		}
+		add_index_entry(&result, ce, ADD_CACHE_JUST_APPEND);
+	}
+
+	/*
+	 * At this point cache trees can only be valid if they contain
+	 * nothing but uninterested entries (i.e. no entry is
+	 * invalidated in the above loop). Pick them all up and save
+	 * them.
+	 */
+	/* cache_tree_to_index(); */
+
+	/*
+	 * Pick up the rest of uninterested files.
+	 */
+
+	sort_index(&result);
+
+	return 0;
+}
+
 /*
  * N-way merge "len" trees.  Returns 0 on success, -1 on failure to manipulate the
  * resulting index, -2 on failure to reflect the changes to the work tree.
@@ -1115,6 +1245,9 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	state.quiet = 1;
 	state.refresh_cache = 1;
 	state.istate = &o->result;
+
+	if (o->fold_pathspec && o->merge && fold_unfold_index(o))
+		return -1;
 
 	memset(&el, 0, sizeof(el));
 	if (!core_apply_sparse_checkout || !o->update)
