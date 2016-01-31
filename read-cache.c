@@ -465,7 +465,7 @@ int name_compare(const char *name1, size_t len1, const char *name2, size_t len2)
 	return 0;
 }
 
-int cache_name_stage_compare(const char *name1, int len1, int stage1, const char *name2, int len2, int stage2)
+static int cache_name_stage_compare(const char *name1, int len1, int stage1, const char *name2, int len2, int stage2)
 {
 	int cmp;
 
@@ -2326,4 +2326,24 @@ void stat_validity_update(struct stat_validity *sv, int fd)
 			sv->sd = xcalloc(1, sizeof(struct stat_data));
 		fill_stat_data(sv->sd, &st);
 	}
+}
+
+static int cmp_cache_name_compare(const void *a_, const void *b_)
+{
+	const struct cache_entry *ce1, *ce2;
+
+	ce1 = *((const struct cache_entry **)a_);
+	ce2 = *((const struct cache_entry **)b_);
+	return cache_name_stage_compare(ce1->name, ce1->ce_namelen, ce_stage(ce1),
+				  ce2->name, ce2->ce_namelen, ce_stage(ce2));
+}
+
+/*
+ * Sort the cache entry -- we need to nuke the cache tree, though.
+ */
+void sort_index(struct index_state *istate)
+{
+	cache_tree_free(&istate->cache_tree);
+	qsort(istate->cache, istate->cache_nr, sizeof(*istate->cache),
+	      cmp_cache_name_compare);
 }
