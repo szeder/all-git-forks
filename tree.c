@@ -1,5 +1,4 @@
 #include "cache.h"
-#include "cache-tree.h"
 #include "tree.h"
 #include "blob.h"
 #include "commit.h"
@@ -138,16 +137,6 @@ int read_tree_recursive(struct tree *tree,
 	return ret;
 }
 
-static int cmp_cache_name_compare(const void *a_, const void *b_)
-{
-	const struct cache_entry *ce1, *ce2;
-
-	ce1 = *((const struct cache_entry **)a_);
-	ce2 = *((const struct cache_entry **)b_);
-	return cache_name_stage_compare(ce1->name, ce1->ce_namelen, ce_stage(ce1),
-				  ce2->name, ce2->ce_namelen, ce_stage(ce2));
-}
-
 int read_tree(struct tree *tree, int stage, struct pathspec *match)
 {
 	read_tree_fn_t fn = NULL;
@@ -180,12 +169,7 @@ int read_tree(struct tree *tree, int stage, struct pathspec *match)
 	if (fn == read_one_entry || err)
 		return err;
 
-	/*
-	 * Sort the cache entry -- we need to nuke the cache tree, though.
-	 */
-	cache_tree_free(&active_cache_tree);
-	qsort(active_cache, active_nr, sizeof(active_cache[0]),
-	      cmp_cache_name_compare);
+	sort_index(&the_index);
 	return 0;
 }
 
