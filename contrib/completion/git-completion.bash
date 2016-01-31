@@ -728,7 +728,6 @@ __git_list_porcelain_commands ()
 		write-tree)       : plumbing;;
 		var)              : infrequent;;
 		verify-pack)      : infrequent;;
-		verify-tag)       : plumbing;;
 		*) echo $i;;
 		esac
 	done
