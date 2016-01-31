@@ -451,6 +451,64 @@ proc revert_helper {txt paths} {
 	}
 }
 
+proc delete_helper {paths} {
+	global file_states current_diff_path
+
+	set n [llength $paths]
+	if {$n == 0} {
+		unlock_index
+		return
+	} elseif {$n == 1} {
+		set query [mc "Delete file %s?" [short_path [lindex $paths]]]
+	} else {
+		set query [mc "Delete files?" $n]
+	}
+
+	set reply [tk_dialog \
+		.confirm_revert \
+		"[appname] ([reponame])" \
+		"$query
+
+[mc "Any unstaged changes will be permanently lost by the revert."]" \
+		question \
+		1 \
+		[mc "Do Nothing"] \
+		[mc "Delete"] \
+		]
+	if {$reply == 1} {
+		foreach path $paths {
+			file delete -force $path
+		}
+	}
+	do_rescan
+}
+
+proc do_delete_files {x y} {
+	global ui_index ui_workdir
+	global current_diff_path selected_paths
+
+	# Identify the source of the event
+	set win [winfo containing $x $y]
+	set comp [string compare $win $ui_index]
+	if {![string equal $win $ui_index] && ![string equal $win $ui_workdir]} {
+		return
+	}
+
+	if {[string equal $win $ui_index]} {
+		do_unstage_selection
+	}
+
+	if {[array exists selected_paths] == 0} {
+		return
+	}
+
+	if {[array size selected_paths] > 0} {
+		delete_helper [array names selected_paths]
+	} elseif {$current_diff_path ne {}} {
+		delete_helper [array names selected_paths]
+	}
+}
+
 proc do_revert_selection {} {
 	global current_diff_path selected_paths
 
