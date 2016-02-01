@@ -198,6 +198,22 @@ const char *get_worktree_git_dir(const struct worktree *wt)
 		return get_git_common_dir();
 }
 
+struct worktree *find_worktree_by_path(struct worktree **list,
+				       const char *path_)
+{
+	char *path = xstrdup(real_path(path_));
+	struct worktree *wt = NULL;
+
+	while (*list) {
+		wt = *list++;
+		if (!strcmp_icase(path, real_path(wt->path)))
+			break;
+		wt = NULL;
+	}
+	free(path);
+	return wt;
+}
+
 char *find_shared_symref(const char *symref, const char *target)
 {
 	char *existing = NULL;
