@@ -1,0 +1,29 @@
+#Physics 218 Week 1-Density Question
+#Yu Xia 
+
+from __future__ import division
+import numpy as np
+
+def rule4(c,m,n,o,A,dA,B,dB, C,dC,Q):
+    dQ = Q*np.sqrt((m*dA/A)**2+(n*dB/B)**2+(o*dC/C)**2)
+    return dQ
+    
+def density(m,d,h):
+    p = 1/3.1415926 * m * (d/2)**(-2) *h**(-1)
+    return p
+    
+m=228.6 #g
+d=8.60 #mm
+h = 22.65 #mm
+dm = 0.1 #g
+dd = 0.05 #mm
+dh = 0.05 #mm
+
+p = density(m,d,h)
+print "density =", p, "g/mm**3"
+density = 0.173748571742 g/mm**3
+
+
+errp=rule4(1/3.1415926, 1, -2, -1, m, dm, d, dd, h, dh, p)
+print "error p=", errp, "g/mm**3"
+error p= 0.0020578217781 g/mm**3
