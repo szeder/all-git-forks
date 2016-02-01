@@ -23,6 +23,77 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
+static void module_list_compute_gitdir(const char *current_dir,
+				       struct pathspec *pathspec,
+				       int max_prefix_len,
+				       char *ps_matched,
+				       struct module_list *list)
+{
+	struct strbuf path = STRBUF_INIT;
+	struct dirent *entry;
+	DIR *dir = NULL;
+
+	strbuf_git_path(&path, "modules");
+
+	if (current_dir) {
+		strbuf_addf(&path, "/%s", current_dir);
+
+		if (is_git_directory(path.buf) &&
+		    match_pathspec(pathspec, current_dir, strlen(current_dir),
+				   max_prefix_len, ps_matched, 1)) {
+			struct module *module;
+			const struct submodule *config;
+			unsigned char head[GIT_SHA1_RAWSZ];
+
+			ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
+			module = &list->entries[list->nr++];
+
+			/* We need to determine if the submodule
+			 * is referenced by another submodule in
+			 * the index which is checked out at
+			 * a path not matching its name. In such
+			 * a case we simply assume that the
+			 * current submodule's name is the path
+			 * specified in the .gitmodules file of
+			 * the current index.
+			 */
+			get_sha1("HEAD", head);
+			config = submodule_from_name(head, current_dir);
+			module->name = xstrdup(config ?
+					       config->path : current_dir);
+			submodule_free();
+
+			hashcpy(module->sha1, null_sha1);
+			module->stage = 0;
+			module->mode = 0;
+
+			goto out;
+		}
+	}
+
+	if ((dir = opendir(path.buf)) == NULL)
+		goto out;
+	while ((entry = readdir(dir)) != NULL) {
+		if (entry->d_type != DT_DIR)
+			continue;
+		if (!strcmp(entry->d_name, ".") ||
+		    !strcmp(entry->d_name, ".."))
+			continue;
+
+		strbuf_reset(&path);
+		if (current_dir)
+			strbuf_addf(&path, "%s/", current_dir);
+		strbuf_addstr(&path, entry->d_name);
+
+		module_list_compute_gitdir(path.buf, pathspec, max_prefix_len,
+					   ps_matched, list);
+	}
+
+out:
+	closedir(dir);
+	strbuf_release(&path);
+}
+
 static void module_list_compute_index(struct pathspec *pathspec,
 				      int max_prefix_len,
 				      char *ps_matched,
@@ -60,9 +131,24 @@ static void module_list_compute_index(struct pathspec *pathspec,
 	}
 }
 
+static int cmp_gitdir_modules(const void *d1, const void *d2)
+{
+	struct module const *m1 = (struct module const *)d1,
+			    *m2 = (struct module const *)d2;
+	int result;
+
+	result = strcmp(m1->name, m2->name);
+	if (!result)
+		/* Sort null_sha1 after all the others */
+		result = -1 * strcmp((char *)m1->sha1, (char *)m2->sha1);
+
+	return result;
+}
+
 static int module_list(int argc, const char **argv, const char *prefix)
 {
 	int i;
+	int all = 0;
 	int max_prefix_len;
 	char *max_prefix, *ps_matched = NULL;
 	struct pathspec pathspec;
@@ -72,6 +158,8 @@ static int module_list(int argc, const char **argv, const char *prefix)
 		OPT_STRING(0, "prefix", &prefix,
 			   N_("path"),
 			   N_("alternative anchor for relative paths")),
+		OPT_BOOL(0, "all", &all,
+			 N_("include submodules not currently in .gitmodules")),
 		OPT_END()
 	};
 
@@ -97,6 +185,12 @@ static int module_list(int argc, const char **argv, const char *prefix)
 		ps_matched = xcalloc(pathspec.nr, 1);
 
 	module_list_compute_index(&pathspec, max_prefix_len, ps_matched, &list);
+	if (all) {
+		module_list_compute_gitdir(NULL, &pathspec, max_prefix_len,
+					   ps_matched, &list);
+		qsort(&list.entries[0], list.nr, sizeof(struct module),
+		      cmp_gitdir_modules);
+	}
 
 	if (ps_matched && report_path_error(ps_matched, &pathspec, prefix)) {
 		printf("#unmatched\n");
@@ -105,7 +199,18 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	free(ps_matched);
 
 	for (i = 0; i < list.nr; i++) {
-		struct module *m = &list.entries[i];
+		struct module *m = &list.entries[i],
+			      *next = &list.entries[i + 1];
+
+		/* Skip next entry if both describe the same
+		 * submodule. We assume that the list is sorted
+		 * in such a way that submodules matching a
+		 * staged entry preced submodules computed by
+		 * inspecting the .git/modules directory. */
+		if (i + 1 < list.nr && !strcmp(m->name, next->name)) {
+			i++;
+			free(next->name);
+		}
 
 		if (m->stage)
 			printf("%06o %s U\t", m->mode, sha1_to_hex(null_sha1));
