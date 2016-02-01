@@ -189,32 +189,15 @@ static const char *worktree_basename(const char *path, int *olen)
 	return name;
 }
 
-static int add_worktree(const char *path, const char *refname,
-			const struct add_opts *opts)
+static void prepare_new_worktree(const char *path,
+				 struct worktree *wt,
+				 int create_gitdir_and_head)
 {
+	const char *name;
 	struct strbuf sb_git = STRBUF_INIT, sb_repo = STRBUF_INIT;
 	struct strbuf sb = STRBUF_INIT;
-	const char *name;
 	struct stat st;
-	struct child_process cp;
-	struct argv_array child_env = ARGV_ARRAY_INIT;
-	int counter = 0, len, ret;
-	struct strbuf symref = STRBUF_INIT;
-	struct commit *commit = NULL;
-
-	if (file_exists(path) && !is_empty_dir(path))
-		die(_("'%s' already exists"), path);
-
-	/* is 'refname' a branch or commit? */
-	if (!opts->detach && !strbuf_check_branch_ref(&symref, refname) &&
-		 ref_exists(symref.buf)) { /* it's a branch */
-		if (!opts->force)
-			die_if_checked_out(symref.buf, 0);
-	} else { /* must be a commit */
-		commit = lookup_commit_reference_by_name(refname);
-		if (!commit)
-			die(_("invalid reference: %s"), refname);
-	}
+	int counter = 0, len;
 
 	name = worktree_basename(path, &len);
 	strbuf_addstr(&sb_repo,
@@ -229,6 +212,10 @@ static int add_worktree(const char *path, const char *refname,
 		strbuf_addf(&sb_repo, "%d", counter);
 	}
 	name = strrchr(sb_repo.buf, '/') + 1;
+
+	memset(wt, 0, sizeof(*wt));
+	wt->path = xstrdup(path);
+	wt->id = xstrdup(name);
 
 	junk_pid = getpid();
 	atexit(remove_junk);
@@ -255,25 +242,78 @@ static int add_worktree(const char *path, const char *refname,
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/gitdir", sb_repo.buf);
 	write_file(sb.buf, "%s", real_path(sb_git.buf));
-	write_file(sb_git.buf, "gitdir: %s/worktrees/%s",
-		   real_path(get_git_common_dir()), name);
-	/*
-	 * This is to keep resolve_ref() happy. We need a valid HEAD
-	 * or is_git_directory() will reject the directory. Any value which
-	 * looks like an object ID will do since it will be immediately
-	 * replaced by the symbolic-ref or update-ref invocation in the new
-	 * worktree.
-	 */
-	strbuf_reset(&sb);
-	strbuf_addf(&sb, "%s/HEAD", sb_repo.buf);
-	write_file(sb.buf, sha1_to_hex(null_sha1));
+	if (create_gitdir_and_head) {
+		write_file(sb_git.buf, "gitdir: %s/worktrees/%s",
+			   real_path(get_git_common_dir()), name);
+
+		/*
+		 * This is to keep resolve_ref() happy. We need a valid HEAD
+		 * or is_git_directory() will reject the directory. Any value which
+		 * looks like an object ID will do since it will be immediately
+		 * replaced by the symbolic-ref or update-ref invocation in the new
+		 * worktree.
+		 */
+		strbuf_reset(&sb);
+		strbuf_addf(&sb, "%s/HEAD", sb_repo.buf);
+		write_file(sb.buf, sha1_to_hex(null_sha1));
+	}
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/commondir", sb_repo.buf);
 	write_file(sb.buf, "../..");
 
-	fprintf_ln(stderr, _("Preparing %s (identifier %s)"), path, name);
+	strbuf_release(&sb);
+	strbuf_release(&sb_repo);
+	strbuf_release(&sb_git);
+}
 
-	argv_array_pushf(&child_env, "%s=%s", GIT_DIR_ENVIRONMENT, sb_git.buf);
+static void new_worktree_complete(void)
+{
+	is_junk = 0;
+	free(junk_work_tree);
+	free(junk_git_dir);
+	junk_work_tree = NULL;
+	junk_git_dir = NULL;
+}
+
+static void cleanup_new_worktree(struct worktree *wt)
+{
+	struct strbuf sb = STRBUF_INIT;
+
+	strbuf_git_common_path(&sb, "worktrees/%s/locked", wt->id);
+	unlink_or_warn(sb.buf);
+	strbuf_release(&sb);
+	clear_worktree(wt);
+}
+
+static int add_worktree(const char *path, const char *refname,
+			const struct add_opts *opts)
+{
+	struct child_process cp;
+	struct argv_array child_env = ARGV_ARRAY_INIT;
+	int ret;
+	struct strbuf symref = STRBUF_INIT;
+	struct commit *commit = NULL;
+
+	if (file_exists(path) && !is_empty_dir(path))
+		die(_("'%s' already exists"), path);
+
+	/* is 'refname' a branch or commit? */
+	if (!opts->detach && !strbuf_check_branch_ref(&symref, refname) &&
+		 ref_exists(symref.buf)) { /* it's a branch */
+		if (!opts->force)
+			die_if_checked_out(symref.buf, 0);
+	} else { /* must be a commit */
+		commit = lookup_commit_reference_by_name(refname);
+		if (!commit)
+			die(_("invalid reference: %s"), refname);
+	}
+
+	prepare_new_worktree(path, &wt, 1);
+
+	fprintf_ln(stderr, _("Preparing %s (identifier %s)"), path, wt.id);
+
+	argv_array_pushf(&child_env, "%s=%s", GIT_DIR_ENVIRONMENT,
+			 get_worktree_git_dir(&wt));
 	argv_array_pushf(&child_env, "%s=%s", GIT_WORK_TREE_ENVIRONMENT, path);
 	memset(&cp, 0, sizeof(cp));
 	cp.git_cmd = 1;
@@ -299,21 +339,11 @@ static int add_worktree(const char *path, const char *refname,
 			goto done;
 	}
 
-	is_junk = 0;
-	free(junk_work_tree);
-	free(junk_git_dir);
-	junk_work_tree = NULL;
-	junk_git_dir = NULL;
-
+	new_worktree_complete();
 done:
-	strbuf_reset(&sb);
-	strbuf_addf(&sb, "%s/locked", sb_repo.buf);
-	unlink_or_warn(sb.buf);
 	argv_array_clear(&child_env);
-	strbuf_release(&sb);
 	strbuf_release(&symref);
-	strbuf_release(&sb_repo);
-	strbuf_release(&sb_git);
+	cleanup_new_worktree(&wt);
 	return ret;
 }
 
