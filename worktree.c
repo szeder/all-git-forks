@@ -230,6 +230,11 @@ struct worktree *find_worktree_by_path(struct worktree **list,
 	return wt;
 }
 
+int is_main_worktree(const struct worktree *wt)
+{
+	return wt && !wt->id;
+}
+
 int is_worktree_being_rebased(const struct worktree *wt,
 			      const char *target)
 {
