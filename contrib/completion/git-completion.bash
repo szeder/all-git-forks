@@ -2612,6 +2612,9 @@ _git_worktree ()
 		lock,--*)
 			__gitcomp "--reason"
 			;;
+		move,--*)
+			__gitcomp "--repository"
+			;;
 		prune,--*)
 			__gitcomp "--dry-run --expire --verbose"
 			;;

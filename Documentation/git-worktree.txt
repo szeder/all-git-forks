@@ -13,6 +13,7 @@ SYNOPSIS
 'git worktree list' [--porcelain]
 'git worktree lock' [--reason <string>] <path>
 'git worktree move' <path> <new-path>
+'git worktree move' --repository <new-path>
 'git worktree prune' [-n] [-v] [--expire <expire>]
 'git worktree remove' [--force] <path>
 'git worktree unlock' <path>
@@ -73,7 +74,9 @@ when "git worktree <command>" is executed.
 
 move::
 
-Move a worktree to a new location. Note that the main worktree cannot be moved.
+Move a worktree or the repository to a new location. Note that the
+main worktree cannot be moved. The repository move, however, converts
+main worktree into a linked worktree, allowing it to be moved later.
 
 prune::
 
@@ -139,6 +142,9 @@ OPTIONS
 
 --reason <string>:
 	An explanation why the worktree is locked.
+
+--repository::
+	Perform a repository move instead of worktree move.
 
 DETAILS
 -------

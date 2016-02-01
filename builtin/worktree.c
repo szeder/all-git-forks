@@ -16,6 +16,7 @@ static const char * const worktree_usage[] = {
 	N_("git worktree list [<options>]"),
 	N_("git worktree lock [<options>] <path>"),
 	N_("git worktree move <path> <new-path>"),
+	N_("git worktree move --repository <new-path>"),
 	N_("git worktree prune [<options>]"),
 	N_("git worktree remove [<options>] <path>"),
 	N_("git worktree unlock <path>"),
@@ -145,6 +146,16 @@ static char *junk_work_tree;
 static char *junk_git_dir;
 static int is_junk;
 static pid_t junk_pid;
+static char *undo_rename_source, *undo_rename_dest;
+
+static void undo_rename(void)
+{
+	if (!undo_rename_source || !undo_rename_dest)
+		return;
+	if (file_exists(undo_rename_dest))
+		unlink(undo_rename_dest);
+	rename(undo_rename_source, undo_rename_dest);
+}
 
 static void remove_junk(void)
 {
@@ -165,6 +176,7 @@ static void remove_junk(void)
 
 static void remove_junk_on_signal(int signo)
 {
+	undo_rename();
 	remove_junk();
 	sigchain_pop(signo);
 	raise(signo);
@@ -559,9 +571,76 @@ static int unlock_worktree(int ac, const char **av, const char *prefix)
 	return unlink_or_warn(git_common_path("worktrees/%s/locked", wt->id));
 }
 
+static int move_gitdir(int ac, const char **av, const char *prefix)
+{
+	struct strbuf dst = STRBUF_INIT;
+	struct strbuf src = STRBUF_INIT;
+	struct worktree **worktrees, *mwt = NULL;
+	int i, ret = 0, moved;
+
+	if (ac != 1)
+		die(_("--repository requires one argument"));
+
+	strbuf_addstr(&src, real_path(get_git_common_dir()));
+	strbuf_addstr(&dst, real_path(prefix_filename(prefix, strlen(prefix), av[0])));
+
+	worktrees = get_worktrees();
+	for (i = 0; worktrees[i]; i++) {
+		const char *reason;
+
+		if (is_main_worktree(worktrees[i]))
+			mwt = worktrees[i];
+		else if ((reason = is_worktree_locked(worktrees[i]))) {
+			if (*reason)
+				die(_("'%s' is already locked, reason: %s"),
+				    worktrees[i]->path, reason);
+			die(_("'%s' is already locked, no reason"),
+			    worktrees[i]->path);
+		}
+		if (validate_worktree(worktrees[i], 0))
+			return -1;
+	}
+
+	if (mwt)
+		die(_("converting main worktree is not supported"));
+
+	if ((moved = !rename(src.buf, dst.buf))) {
+		undo_rename_source = xstrdup(dst.buf);
+		undo_rename_dest   = xstrdup(src.buf);
+	} else {
+		if (errno != EXDEV)
+			die_errno(_("failed to move '%s' to '%s'"),
+				  src.buf, dst.buf);
+		ret = copy_dir_recursively(src.buf, dst.buf);
+		if (ret)
+			die(_("failed to copy '%s' to '%s'"), src.buf, dst.buf);
+	}
+
+	for (i = 0; worktrees[i]; i++) {
+		struct strbuf sb = STRBUF_INIT;
+
+		strbuf_addf(&sb, "%s/.git", worktrees[i]->path);
+		if (update_worktree_gitfile(sb.buf, dst.buf,
+					    worktrees[i]->id))
+			ret = -1;
+		strbuf_release(&sb);
+	}
+
+	if (!ret && !moved)
+		ret = remove_dir_recursively(&src, 0);
+
+	free(undo_rename_source);
+	free(undo_rename_dest);
+	undo_rename_dest = undo_rename_source = NULL;
+
+	return ret;
+}
+
 static int move_worktree(int ac, const char **av, const char *prefix)
 {
+	int move_repo = 0;
 	struct option options[] = {
+		OPT_BOOL(0, "repository", &move_repo, N_("move repository")),
 		OPT_END()
 	};
 	struct worktree **worktrees, *wt;
@@ -570,6 +649,8 @@ static int move_worktree(int ac, const char **av, const char *prefix)
 	const char *reason;
 
 	ac = parse_options(ac, av, prefix, options, worktree_usage, 0);
+	if (move_repo)
+		return move_gitdir(ac, av, prefix);
 	if (ac != 2)
 		usage_with_options(worktree_usage, options);
 
