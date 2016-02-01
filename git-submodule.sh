@@ -15,9 +15,9 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
 OPTIONS_SPEC=
 SUBDIRECTORY_OK=Yes
-. git-sh-setup
-. git-sh-i18n
-. git-parse-remote
+. /home/pks/Development/elego/git/git/git-sh-setup
+. /home/pks/Development/elego/git/git/git-sh-i18n
+. /home/pks/Development/elego/git/git/git-parse-remote
 require_work_tree
 wt_prefix=$(git rev-parse --show-prefix)
 cd_to_toplevel
@@ -1077,6 +1077,9 @@ cmd_status()
 		-q|--quiet)
 			GIT_QUIET=1
 			;;
+		--all)
+			all=--all
+			;;
 		--cached)
 			cached=1
 			;;
@@ -1097,7 +1100,7 @@ cmd_status()
 		shift
 	done
 
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	/home/pks/Development/elego/git/git/git submodule--helper list "$all" --prefix "$wt_prefix" "$@" |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
@@ -1240,6 +1243,9 @@ do
 	-q|--quiet)
 		GIT_QUIET=1
 		;;
+	--all)
+		all=1
+		;;
 	-b|--branch)
 		case "$2" in
 		'')
@@ -1283,6 +1289,12 @@ fi
 
 # "--cached" is accepted only by "status" and "summary"
 if test -n "$cached" && test "$command" != status && test "$command" != summary
+then
+	usage
+fi
+
+# "--all" is accepted only by "status"
+if test -n "$all" && test "$command" != status
 then
 	usage
 fi
