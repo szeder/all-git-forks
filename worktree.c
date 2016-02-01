@@ -282,6 +282,31 @@ int validate_worktree(const struct worktree *wt, int quiet)
 	return 0;
 }
 
+int update_worktree_location(struct worktree *wt, const char *path_)
+{
+	struct strbuf path = STRBUF_INIT;
+	int ret;
+
+	if (is_main_worktree(wt))
+		return 0;
+
+	strbuf_add_absolute_path(&path, path_);
+	if (strcmp_icase(wt->path, path.buf)) {
+		if (!write_file_gently(git_common_path("worktrees/%s/gitdir",
+						       wt->id),
+				       "%s/.git", real_path(path.buf))) {
+			free(wt->path);
+			wt->path = strbuf_detach(&path, NULL);
+			ret = 0;
+		} else
+			ret = sys_error(_("failed to update '%s'"),
+					git_common_path("worktrees/%s/gitdir",
+							wt->id));
+	}
+	strbuf_release(&path);
+	return ret;
+}
+
 char *find_shared_symref(const char *symref, const char *target)
 {
 	char *existing = NULL;
