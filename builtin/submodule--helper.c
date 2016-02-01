@@ -23,25 +23,12 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static int module_list_compute(int argc, const char **argv,
-			       const char *prefix,
-			       struct pathspec *pathspec,
-			       struct module_list *list)
+static void module_list_compute(struct pathspec *pathspec,
+				int max_prefix_len,
+				char *ps_matched,
+				struct module_list *list)
 {
-	int i, result = 0;
-	char *max_prefix, *ps_matched = NULL;
-	int max_prefix_len;
-	parse_pathspec(pathspec, 0,
-		       PATHSPEC_PREFER_FULL |
-		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
-		       prefix, argv);
-
-	/* Find common prefix for all pathspec's */
-	max_prefix = common_prefix(pathspec);
-	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
-
-	if (pathspec->nr)
-		ps_matched = xcalloc(pathspec->nr, 1);
+	int i;
 
 	if (read_cache() < 0)
 		die(_("index file corrupt"));
@@ -71,19 +58,13 @@ static int module_list_compute(int argc, const char **argv,
 			 */
 			i++;
 	}
-	free(max_prefix);
-
-	if (ps_matched && report_path_error(ps_matched, pathspec, prefix))
-		result = -1;
-
-	free(ps_matched);
-
-	return result;
 }
 
 static int module_list(int argc, const char **argv, const char *prefix)
 {
 	int i;
+	int max_prefix_len;
+	char *max_prefix, *ps_matched = NULL;
 	struct pathspec pathspec;
 	struct module_list list = MODULE_LIST_INIT;
 
@@ -102,10 +83,26 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, module_list_options,
 			     git_submodule_helper_usage, 0);
 
-	if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0) {
+	parse_pathspec(&pathspec, 0,
+		       PATHSPEC_PREFER_FULL |
+		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
+		       prefix, argv);
+
+	/* Find common prefix for all pathspec's */
+	max_prefix = common_prefix(&pathspec);
+	max_prefix_len = max_prefix ? strlen(max_prefix) : 0;
+	free(max_prefix);
+
+	if (pathspec.nr)
+		ps_matched = xcalloc(pathspec.nr, 1);
+
+	module_list_compute(&pathspec, max_prefix_len, ps_matched, &list);
+
+	if (ps_matched && report_path_error(ps_matched, &pathspec, prefix)) {
 		printf("#unmatched\n");
 		return 1;
 	}
+	free(ps_matched);
 
 	for (i = 0; i < list.nr; i++) {
 		struct module *m = &list.entries[i];
