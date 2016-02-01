@@ -23,10 +23,10 @@ struct module_list {
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
 
-static void module_list_compute(struct pathspec *pathspec,
-				int max_prefix_len,
-				char *ps_matched,
-				struct module_list *list)
+static void module_list_compute_index(struct pathspec *pathspec,
+				      int max_prefix_len,
+				      char *ps_matched,
+				      struct module_list *list)
 {
 	int i;
 
@@ -96,7 +96,7 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	if (pathspec.nr)
 		ps_matched = xcalloc(pathspec.nr, 1);
 
-	module_list_compute(&pathspec, max_prefix_len, ps_matched, &list);
+	module_list_compute_index(&pathspec, max_prefix_len, ps_matched, &list);
 
 	if (ps_matched && report_path_error(ps_matched, &pathspec, prefix)) {
 		printf("#unmatched\n");
