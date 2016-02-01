@@ -50,6 +50,8 @@ static int parse_ref(char *path_to_ref, struct strbuf *ref, int *is_detached)
 		if (!starts_with(ref->buf, "ref:")) {
 			if (is_detached)
 				*is_detached = 1;
+			if (starts_with(ref->buf, sha1_to_hex(null_sha1)))
+				return -1;
 		} else {
 			strbuf_remove(ref, 0, strlen("ref:"));
 			strbuf_trim(ref);
