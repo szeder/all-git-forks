@@ -214,6 +214,18 @@ const char *get_worktree_git_dir(const struct worktree *wt)
 		return git_common_path("worktrees/%s", wt->id);
 }
 
+struct worktree *find_worktree_by_path(struct worktree **list,
+				       const char *path_)
+{
+	char *path = xstrdup(real_path(path_));
+
+	for (; *list; list++)
+		if (!fspathcmp(path, real_path((*list)->path)))
+			break;
+	free(path);
+	return *list;
+}
+
 int is_worktree_being_rebased(const struct worktree *wt,
 			      const char *target)
 {
