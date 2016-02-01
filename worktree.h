@@ -56,6 +56,10 @@ extern int validate_worktree(const struct worktree *wt, int quiet);
  */
 extern int update_worktree_location(struct worktree *wt,
 				    const char *path_);
+/*
+ * Free up the memory for worktree
+ */
+extern void clear_worktree(struct worktree *);
 
 /*
  * Free up the memory for worktree(s)

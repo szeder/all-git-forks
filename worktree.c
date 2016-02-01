@@ -5,14 +5,22 @@
 #include "dir.h"
 #include "wt-status.h"
 
+void clear_worktree(struct worktree *wt)
+{
+	if (!wt)
+		return;
+	free(wt->path);
+	free(wt->id);
+	free(wt->head_ref);
+	memset(wt, 0, sizeof(*wt));
+}
+
 void free_worktrees(struct worktree **worktrees)
 {
 	int i = 0;
 
 	for (i = 0; worktrees[i]; i++) {
-		free(worktrees[i]->path);
-		free(worktrees[i]->id);
-		free(worktrees[i]->head_ref);
+		clear_worktree(worktrees[i]);
 		free(worktrees[i]);
 	}
 	free (worktrees);
