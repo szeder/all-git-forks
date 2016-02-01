@@ -194,7 +194,7 @@ static int module_list(int argc, const char **argv, const char *prefix)
 		}
 
 		if (m->stage)
-			printf("%06o %s U\t", m->mode, sha1_to_hex(m->sha1));
+			printf("%06o %s U\t", m->mode, sha1_to_hex(null_sha1));
 		else
 			printf("%06o %s %d\t", m->mode, sha1_to_hex(m->sha1), m->stage);
 
