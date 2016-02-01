@@ -214,6 +214,11 @@ struct worktree *find_worktree_by_path(struct worktree **list,
 	return wt;
 }
 
+int is_main_worktree(const struct worktree *wt)
+{
+	return wt && !wt->id;
+}
+
 char *find_shared_symref(const char *symref, const char *target)
 {
 	char *existing = NULL;
