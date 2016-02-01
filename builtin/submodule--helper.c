@@ -10,8 +10,15 @@
 #include "string-list.h"
 #include "run-command.h"
 
+struct module {
+	char *name;
+	unsigned char sha1[GIT_SHA1_RAWSZ];
+	unsigned int mode;
+	unsigned int stage;
+};
+
 struct module_list {
-	const struct cache_entry **entries;
+	struct module *entries;
 	int alloc, nr;
 };
 #define MODULE_LIST_INIT { NULL, 0, 0 }
@@ -41,6 +48,7 @@ static int module_list_compute(int argc, const char **argv,
 
 	for (i = 0; i < active_nr; i++) {
 		const struct cache_entry *ce = active_cache[i];
+		struct module *module;
 
 		if (!S_ISGITLINK(ce->ce_mode) ||
 		    !match_pathspec(pathspec, ce->name, ce_namelen(ce),
@@ -48,7 +56,13 @@ static int module_list_compute(int argc, const char **argv,
 			continue;
 
 		ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
-		list->entries[list->nr++] = ce;
+		module = &list->entries[list->nr++];
+
+		module->name = xstrdup(ce->name);
+		hashcpy(module->sha1, ce->sha1);
+		module->mode = ce->ce_mode;
+		module->stage = ce_stage(ce);
+
 		while (i + 1 < active_nr &&
 		       !strcmp(ce->name, active_cache[i + 1]->name))
 			/*
@@ -94,15 +108,20 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	}
 
 	for (i = 0; i < list.nr; i++) {
-		const struct cache_entry *ce = list.entries[i];
+		struct module *m = &list.entries[i];
 
-		if (ce_stage(ce))
-			printf("%06o %s U\t", ce->ce_mode, sha1_to_hex(null_sha1));
+		if (m->stage)
+			printf("%06o %s U\t", m->mode, sha1_to_hex(null_sha1));
 		else
-			printf("%06o %s %d\t", ce->ce_mode, sha1_to_hex(ce->sha1), ce_stage(ce));
+			printf("%06o %s %d\t", m->mode, sha1_to_hex(m->sha1), m->stage);
 
-		utf8_fprintf(stdout, "%s\n", ce->name);
+		utf8_fprintf(stdout, "%s\n", m->name);
+
+		free(m->name);
 	}
+
+	free(list.entries);
+
 	return 0;
 }
 
