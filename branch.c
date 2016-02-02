@@ -64,16 +64,16 @@ void install_branch_config(int flag, const char *local, const char *origin, cons
 	}
 
 	strbuf_addf(&key, "branch.%s.remote", local);
-	git_config_set_or_die(key.buf, origin ? origin : ".");
+	git_config_set(key.buf, origin ? origin : ".");
 
 	strbuf_reset(&key);
 	strbuf_addf(&key, "branch.%s.merge", local);
-	git_config_set_or_die(key.buf, remote);
+	git_config_set(key.buf, remote);
 
 	if (rebasing) {
 		strbuf_reset(&key);
 		strbuf_addf(&key, "branch.%s.rebase", local);
-		git_config_set_or_die(key.buf, "true");
+		git_config_set(key.buf, "true");
 	}
 	strbuf_release(&key);
 
