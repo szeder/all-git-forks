@@ -3349,7 +3349,7 @@ static int load_current(struct image *image, struct patch *patch)
 	ce = active_cache[pos];
 	if (lstat(name, &st)) {
 		if (errno != ENOENT)
-			return error(_("%s: %s"), name, strerror(errno));
+			return sys_error("%s", name);
 		if (checkout_target(&the_index, ce, &st))
 			return -1;
 	}
@@ -3492,7 +3492,7 @@ static int check_preimage(struct patch *patch, struct cache_entry **ce, struct s
 	} else if (!cached) {
 		stat_ret = lstat(old_name, st);
 		if (stat_ret && errno != ENOENT)
-			return error(_("%s: %s"), old_name, strerror(errno));
+			return sys_error("%s", old_name);
 	}
 
 	if (check_index && !previous) {
@@ -3514,7 +3514,7 @@ static int check_preimage(struct patch *patch, struct cache_entry **ce, struct s
 	} else if (stat_ret < 0) {
 		if (patch->is_new < 0)
 			goto is_new;
-		return error(_("%s: %s"), old_name, strerror(errno));
+		return sys_error("%s", old_name);
 	}
 
 	if (!cached && !previous)
@@ -3571,7 +3571,7 @@ static int check_to_create(const char *new_name, int ok_if_exists)
 
 		return EXISTS_IN_WORKTREE;
 	} else if ((errno != ENOENT) && (errno != ENOTDIR)) {
-		return error("%s: %s", new_name, strerror(errno));
+		return sys_error("%s", new_name);
 	}
 	return 0;
 }
@@ -4284,7 +4284,7 @@ static int write_out_one_reject(struct patch *patch)
 
 	rej = fopen(namebuf, "w");
 	if (!rej)
-		return error(_("cannot open %s: %s"), namebuf, strerror(errno));
+		return sys_error(_("cannot open %s"), namebuf);
 
 	/* Normal git tools never deal with .rej, so do not pretend
 	 * this is a git patch by saying --git or giving extended
