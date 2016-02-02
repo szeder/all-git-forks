@@ -242,7 +242,7 @@ static int wait_or_whine(pid_t pid, const char *argv0, int in_signal)
 
 	if (waiting < 0) {
 		failed_errno = errno;
-		error("waitpid for %s failed: %s", argv0, strerror(errno));
+		sys_error("waitpid for %s failed", argv0);
 	} else if (waiting != pid) {
 		error("waitpid is confused (%s)", argv0);
 	} else if (WIFSIGNALED(status)) {
@@ -429,8 +429,7 @@ fail_pipe:
 		}
 	}
 	if (cmd->pid < 0)
-		error("cannot fork() for %s: %s", cmd->argv[0],
-			strerror(errno));
+		sys_error("cannot fork() for %s", cmd->argv[0]);
 	else if (cmd->clean_on_exit)
 		mark_child_for_cleanup(cmd->pid);
 
@@ -490,7 +489,7 @@ fail_pipe:
 			cmd->dir, fhin, fhout, fherr);
 	failed_errno = errno;
 	if (cmd->pid < 0 && (!cmd->silent_exec_failure || errno != ENOENT))
-		error("cannot spawn %s: %s", cmd->argv[0], strerror(errno));
+		sys_error("cannot spawn %s", cmd->argv[0]);
 	if (cmd->clean_on_exit && cmd->pid >= 0)
 		mark_child_for_cleanup(cmd->pid);
 
@@ -693,7 +692,7 @@ int start_async(struct async *async)
 		if (pipe(fdin) < 0) {
 			if (async->out > 0)
 				close(async->out);
-			return error("cannot create pipe: %s", strerror(errno));
+			return sys_error("cannot create pipe");
 		}
 		async->in = fdin[1];
 	}
@@ -705,7 +704,7 @@ int start_async(struct async *async)
 				close_pair(fdin);
 			else if (async->in)
 				close(async->in);
-			return error("cannot create pipe: %s", strerror(errno));
+			return sys_error("cannot create pipe");
 		}
 		async->out = fdout[0];
 	}
@@ -730,7 +729,7 @@ int start_async(struct async *async)
 
 	async->pid = fork();
 	if (async->pid < 0) {
-		error("fork (async) failed: %s", strerror(errno));
+		sys_error("fork (async) failed");
 		goto error;
 	}
 	if (!async->pid) {
@@ -777,7 +776,7 @@ int start_async(struct async *async)
 	{
 		int err = pthread_create(&async->tid, NULL, run_thread, async);
 		if (err) {
-			error("cannot create thread: %s", strerror(err));
+			sys_error("cannot create thread");
 			goto error;
 		}
 	}
