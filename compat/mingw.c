@@ -1558,8 +1558,7 @@ int mingw_socket(int domain, int type, int protocol)
 	/* convert into a file descriptor */
 	if ((sockfd = _open_osfhandle(s, O_RDWR|O_BINARY)) < 0) {
 		closesocket(s);
-		return error("unable to make a socket file descriptor: %s",
-			strerror(errno));
+		return sys_error("unable to make a socket file descriptor");
 	}
 	return sockfd;
 }
@@ -1611,8 +1610,7 @@ int mingw_accept(int sockfd1, struct sockaddr *sa, socklen_t *sz)
 	if ((sockfd2 = _open_osfhandle(s2, O_RDWR|O_BINARY)) < 0) {
 		int err = errno;
 		closesocket(s2);
-		return error("unable to make a socket file descriptor: %s",
-			strerror(err));
+		return sys_error("unable to make a socket file descriptor");
 	}
 	return sockfd2;
 }
