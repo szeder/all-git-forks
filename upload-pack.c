@@ -177,8 +177,7 @@ static void create_pack_file(void)
 
 		if (ret < 0) {
 			if (errno != EINTR) {
-				error("poll failed, resuming: %s",
-				      strerror(errno));
+				sys_error("poll failed, resuming");
 				sleep(1);
 			}
 			continue;
