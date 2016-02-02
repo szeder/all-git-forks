@@ -351,8 +351,7 @@ static int handle_file(const char *path, unsigned char *sha1, const char *output
 		error("There were errors while writing %s (%s)",
 		      path, strerror(io.io.wrerror));
 	if (io.io.output && fclose(io.io.output))
-		io.io.wrerror = error("Failed to flush %s: %s",
-				      path, strerror(errno));
+		io.io.wrerror = sys_error("Failed to flush %s", path);
 
 	if (hunk_no < 0) {
 		if (output)
@@ -621,13 +620,11 @@ static int merge(const struct rerere_id *id, const char *path)
 	/* Update "path" with the resolution */
 	f = fopen(path, "w");
 	if (!f)
-		return error("Could not open %s: %s", path,
-			     strerror(errno));
+		return sys_error("Could not open %s", path);
 	if (fwrite(result.ptr, result.size, 1, f) != 1)
-		error("Could not write %s: %s", path, strerror(errno));
+		sys_error("Could not write %s", path);
 	if (fclose(f))
-		return error("Writing %s failed: %s", path,
-			     strerror(errno));
+		return sys_error("Writing %s failed", path);
 
 out:
 	free(cur.ptr);
@@ -842,7 +839,7 @@ static int rerere_forget_one_path(const char *path, struct string_list *rr)
 	if (unlink(filename))
 		return (errno == ENOENT
 			? error("no remembered resolution for %s", path)
-			: error("cannot unlink %s: %s", filename, strerror(errno)));
+			: sys_error("cannot unlink %s", filename));
 
 	/*
 	 * Update the preimage so that the user can resolve the
