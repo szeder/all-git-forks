@@ -2450,8 +2450,8 @@ static int rename_tmp_log(const char *newrefname)
 			 */
 			goto retry;
 		} else {
-			error("unable to move logfile "TMP_RENAMED_LOG" to logs/%s: %s",
-				newrefname, strerror(errno));
+			sys_error("unable to move logfile "TMP_RENAMED_LOG" to logs/%s",
+				  newrefname);
 			goto out;
 		}
 	}
@@ -2509,8 +2509,8 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 		return 1;
 
 	if (log && rename(git_path("logs/%s", oldrefname), git_path(TMP_RENAMED_LOG)))
-		return error("unable to move logfile logs/%s to "TMP_RENAMED_LOG": %s",
-			oldrefname, strerror(errno));
+		return sys_error("unable to move logfile logs/%s to "TMP_RENAMED_LOG"",
+				 oldrefname);
 
 	if (delete_ref(oldrefname, orig_sha1, REF_NODEREF)) {
 		error("unable to delete old %s", oldrefname);
@@ -2578,12 +2578,12 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 
  rollbacklog:
 	if (logmoved && rename(git_path("logs/%s", newrefname), git_path("logs/%s", oldrefname)))
-		error("unable to restore logfile %s from %s: %s",
-			oldrefname, newrefname, strerror(errno));
+		sys_error("unable to restore logfile %s from %s",
+			  oldrefname, newrefname);
 	if (!logmoved && log &&
 	    rename(git_path(TMP_RENAMED_LOG), git_path("logs/%s", oldrefname)))
-		error("unable to restore logfile %s from "TMP_RENAMED_LOG": %s",
-			oldrefname, strerror(errno));
+		sys_error("unable to restore logfile %s from "TMP_RENAMED_LOG"",
+			  oldrefname);
 
 	return 1;
 }
@@ -2871,16 +2871,15 @@ static int create_symref_locked(struct ref_lock *lock, const char *refname,
 	}
 
 	if (!fdopen_lock_file(lock->lk, "w"))
-		return error("unable to fdopen %s: %s",
-			     lock->lk->tempfile.filename.buf, strerror(errno));
+		return sys_error("unable to fdopen %s",
+				 lock->lk->tempfile.filename.buf);
 
 	update_symref_reflog(lock, refname, target, logmsg);
 
 	/* no error check; commit_ref will check ferror */
 	fprintf(lock->lk->tempfile.fp, "ref: %s\n", target);
 	if (commit_ref(lock) < 0)
-		return error("unable to write symref for %s: %s", refname,
-			     strerror(errno));
+		return sys_error("unable to write symref for %s", refname);
 	return 0;
 }
 
@@ -2968,8 +2967,7 @@ int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void
 
 	/* Jump to the end */
 	if (fseek(logfp, 0, SEEK_END) < 0)
-		return error("cannot seek back reflog for %s: %s",
-			     refname, strerror(errno));
+		return sys_error("cannot seek back reflog for %s", refname);
 	pos = ftell(logfp);
 	while (!ret && 0 < pos) {
 		int cnt;
@@ -2980,12 +2978,11 @@ int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void
 		/* Fill next block from the end */
 		cnt = (sizeof(buf) < pos) ? sizeof(buf) : pos;
 		if (fseek(logfp, pos - cnt, SEEK_SET))
-			return error("cannot seek back reflog for %s: %s",
-				     refname, strerror(errno));
+			return sys_error("cannot seek back reflog for %s", refname);
 		nread = fread(buf, cnt, 1, logfp);
 		if (nread != 1)
-			return error("cannot read %d bytes from reflog for %s: %s",
-				     cnt, refname, strerror(errno));
+			return sys_error("cannot read %d bytes from reflog for %s",
+					 cnt, refname);
 		pos -= cnt;
 
 		scanp = endp = buf + cnt;
@@ -3483,8 +3480,8 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 		}
 		cb.newlog = fdopen_lock_file(&reflog_lock, "w");
 		if (!cb.newlog) {
-			error("cannot fdopen %s (%s)",
-			      get_lock_file_path(&reflog_lock), strerror(errno));
+			sys_error("cannot fdopen %s",
+				  get_lock_file_path(&reflog_lock));
 			goto failure;
 		}
 	}
@@ -3506,8 +3503,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 			!is_null_sha1(cb.last_kept_sha1);
 
 		if (close_lock_file(&reflog_lock)) {
-			status |= error("couldn't write %s: %s", log_file,
-					strerror(errno));
+			status |= sys_error("couldn't write %s", log_file);
 		} else if (update &&
 			   (write_in_full(get_lock_file_fd(lock->lk),
 				sha1_to_hex(cb.last_kept_sha1), 40) != 40 ||
@@ -3517,8 +3513,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 					get_lock_file_path(lock->lk));
 			rollback_lock_file(&reflog_lock);
 		} else if (commit_lock_file(&reflog_lock)) {
-			status |= error("unable to write reflog '%s' (%s)",
-					log_file, strerror(errno));
+			status |= sys_error("unable to write reflog '%s'", log_file);
 		} else if (update && commit_ref(lock)) {
 			status |= error("couldn't set %s", lock->ref_name);
 		}
