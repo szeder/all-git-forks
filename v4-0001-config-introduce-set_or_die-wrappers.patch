@@ -1,0 +1,102 @@
+From f0bf42fe50082f46ae7321ac49a0269358dd3e6a Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Mon, 23 Nov 2015 10:25:24 +0100
+Subject: [PATCH v4 01/15] config: introduce set_or_die wrappers
+
+A lot of call-sites for the existing family of `git_config_set`
+functions do not check for errors that may occur, e.g. when the
+configuration file is locked. In many cases we simply want to die
+when such a situation arises.
+
+Introduce wrappers that will cause the program to die in those
+cases. These wrappers are temporary only to ease the transition
+to let `git_config_set` die by default. They will be removed
+later on when `git_config_set` itself has been replaced by
+`git_config_set_gently`.
+
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ cache.h  |  4 ++++
+ config.c | 27 +++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
+
+diff --git a/cache.h b/cache.h
+index dfc459c..c1f844d 100644
+--- a/cache.h
++++ b/cache.h
+@@ -1508,11 +1508,15 @@ extern int git_config_maybe_bool(const char *, const char *);
+ extern int git_config_string(const char **, const char *, const char *);
+ extern int git_config_pathname(const char **, const char *, const char *);
+ extern int git_config_set_in_file(const char *, const char *, const char *);
++extern void git_config_set_in_file_or_die(const char *, const char *, const char *);
+ extern int git_config_set(const char *, const char *);
++extern void git_config_set_or_die(const char *, const char *);
+ extern int git_config_parse_key(const char *, char **, int *);
+ extern int git_config_key_is_valid(const char *key);
+ extern int git_config_set_multivar(const char *, const char *, const char *, int);
++extern void git_config_set_multivar_or_die(const char *, const char *, const char *, int);
+ extern int git_config_set_multivar_in_file(const char *, const char *, const char *, const char *, int);
++extern void git_config_set_multivar_in_file_or_die(const char *, const char *, const char *, const char *, int);
+ extern int git_config_rename_section(const char *, const char *);
+ extern int git_config_rename_section_in_file(const char *, const char *, const char *);
+ extern const char *git_etc_gitconfig(void);
+diff --git a/config.c b/config.c
+index 86a5eb2..856f7d34 100644
+--- a/config.c
++++ b/config.c
+@@ -1831,11 +1831,22 @@ int git_config_set_in_file(const char *config_filename,
+ 	return git_config_set_multivar_in_file(config_filename, key, value, NULL, 0);
+ }
+ 
++void git_config_set_in_file_or_die(const char *config_filename,
++			const char *key, const char *value)
++{
++	git_config_set_multivar_in_file_or_die(config_filename, key, value, NULL, 0);
++}
++
+ int git_config_set(const char *key, const char *value)
+ {
+ 	return git_config_set_multivar(key, value, NULL, 0);
+ }
+ 
++void git_config_set_or_die(const char *key, const char *value)
++{
++	git_config_set_multivar_or_die(key, value, NULL, 0);
++}
++
+ /*
+  * Auxiliary function to sanity-check and split the key into the section
+  * identifier and variable name.
+@@ -2179,6 +2190,15 @@ write_err_out:
+ 
+ }
+ 
++void git_config_set_multivar_in_file_or_die(const char *config_filename,
++				const char *key, const char *value,
++				const char *value_regex, int multi_replace)
++{
++	if (git_config_set_multivar_in_file(config_filename, key, value,
++					    value_regex, multi_replace) < 0)
++		die(_("Could not set '%s' to '%s'"), key, value);
++}
++
+ int git_config_set_multivar(const char *key, const char *value,
+ 			const char *value_regex, int multi_replace)
+ {
+@@ -2186,6 +2206,13 @@ int git_config_set_multivar(const char *key, const char *value,
+ 					       multi_replace);
+ }
+ 
++void git_config_set_multivar_or_die(const char *key, const char *value,
++			const char *value_regex, int multi_replace)
++{
++	git_config_set_multivar_in_file_or_die(NULL, key, value, value_regex,
++					       multi_replace);
++}
++
+ static int section_name_match (const char *buf, const char *name)
+ {
+ 	int i = 0, j = 0, dot = 0;
+-- 
+2.7.0
+
