@@ -800,6 +800,8 @@ extern void check_repository_format(void);
 extern const char *mkpath(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
 extern const char *git_path(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
 extern const char *git_common_path(const char *fmt, ...) __attribute__((format (printf, 1, 2)));
+extern int is_git_path_shared(const char *path);
+
 
 extern char *mksnpath(char *buf, size_t n, const char *fmt, ...)
 	__attribute__((format (printf, 3, 4)));

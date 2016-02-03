@@ -336,15 +336,18 @@ static int check_common(const char *unmatched, void *value, void *baton)
 	return 0;
 }
 
-static void update_common_dir(struct strbuf *buf, int git_dir_len,
-			      const char *common_dir)
+static int update_common_dir(struct strbuf *buf, int git_dir_len,
+			     const char *common_dir)
 {
 	char *base = buf->buf + git_dir_len;
 	init_common_trie();
 	if (!common_dir)
 		common_dir = get_git_common_dir();
-	if (trie_find(&common_trie, base, check_common, NULL) > 0)
+	if (trie_find(&common_trie, base, check_common, NULL) > 0) {
 		replace_dir(buf, git_dir_len, common_dir);
+		return 1;
+	}
+	return 0;
 }
 
 void report_linked_checkout_garbage(void)
@@ -369,7 +372,7 @@ void report_linked_checkout_garbage(void)
 	strbuf_release(&sb);
 }
 
-static void adjust_git_path(struct strbuf *buf, int git_dir_len)
+static int adjust_git_path(struct strbuf *buf, int git_dir_len)
 {
 	const char *base = buf->buf + git_dir_len;
 	if (git_graft_env && is_dir_file(base, "info", "grafts"))
@@ -381,7 +384,10 @@ static void adjust_git_path(struct strbuf *buf, int git_dir_len)
 	else if (git_db_env && dir_prefix(base, "objects"))
 		replace_dir(buf, git_dir_len + 7, get_object_directory());
 	else if (git_common_dir_env)
-		update_common_dir(buf, git_dir_len, NULL);
+		return update_common_dir(buf, git_dir_len, NULL);
+	else
+		return 0;
+	return 1;
 }
 
 static void do_git_path(const struct worktree *wt, struct strbuf *buf,
@@ -542,6 +548,17 @@ void strbuf_git_common_path(struct strbuf *sb, const char *fmt, ...)
 	va_start(args, fmt);
 	do_git_common_path(sb, fmt, args);
 	va_end(args);
+}
+
+int is_git_path_shared(const char *path)
+{
+	struct strbuf buf = STRBUF_INIT;
+	int ret;
+
+	strbuf_addf(&buf, ".git/%s", path);
+	ret = adjust_git_path(&buf, 5);
+	strbuf_release(&buf);
+	return ret;
 }
 
 int validate_headref(const char *path)
