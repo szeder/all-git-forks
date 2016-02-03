@@ -235,6 +235,24 @@ int is_main_worktree(const struct worktree *wt)
 	return wt && !wt->id;
 }
 
+const char *is_worktree_locked(const struct worktree *wt)
+{
+	static struct strbuf sb = STRBUF_INIT;
+
+	if (!file_exists(git_common_path("worktrees/%s/locked", wt->id)))
+		return NULL;
+
+	strbuf_reset(&sb);
+	if (strbuf_read_file(&sb,
+			     git_common_path("worktrees/%s/locked", wt->id),
+			     0) < 0)
+		die_errno(_("failed to read '%s'"),
+			  git_common_path("worktrees/%s/locked", wt->id));
+
+	strbuf_rtrim(&sb);
+	return sb.buf;
+}
+
 int is_worktree_being_rebased(const struct worktree *wt,
 			      const char *target)
 {
