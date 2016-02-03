@@ -39,6 +39,11 @@ extern struct worktree *find_worktree_by_path(struct worktree **list,
 extern int is_main_worktree(const struct worktree *wt);
 
 /*
+ * Return zero if the worktree is in good condition.
+ */
+extern int validate_worktree(const struct worktree *wt, int quiet);
+
+/*
  * Free up the memory for worktree
  */
 extern void clear_worktree(struct worktree *);
