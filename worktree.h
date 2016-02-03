@@ -57,6 +57,13 @@ extern int validate_worktree(const struct worktree *wt, int quiet);
 extern int update_worktree_location(struct worktree *wt,
 				    const char *path_);
 /*
+ * Update .git file to point to the new repository's location.
+ */
+extern int update_worktree_gitfile(const char *gitfile,
+				   const char *repo_path,
+				   const char *id);
+
+/*
  * Free up the memory for worktree
  */
 extern void clear_worktree(struct worktree *);
