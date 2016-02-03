@@ -327,6 +327,19 @@ int update_worktree_location(struct worktree *wt, const char *path_)
 	return ret;
 }
 
+int update_worktree_gitfile(const char *gitfile,
+			    const char *repo_path,
+			    const char *id)
+{
+	if (!id)
+		return error(_("cannot update .git of main worktree"));
+
+	if (write_file_gently(gitfile, "gitdir: %s/worktrees/%s", real_path(repo_path), id))
+		return sys_error(_("failed to update '%s'"), gitfile);
+
+	return 0;
+}
+
 char *find_shared_symref(const char *symref, const char *target)
 {
 	char *existing = NULL;
