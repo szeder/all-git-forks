@@ -74,8 +74,50 @@ test_expect_success 'move main worktree' '
 	test_must_fail git worktree move . def
 '
 
+test_expect_success 'move repo with a locked worktree' '
+	git worktree lock destination &&
+	test_must_fail git worktree move --repository repo &&
+	git worktree unlock destination
+'
+
 test_expect_success 'remove main worktree' '
 	test_must_fail git worktree remove .
+'
+
+test_expect_success 'move repository and convert main worktree' '
+	git worktree move --repository repo &&
+	test_path_is_file .git &&
+	test_path_is_dir repo &&
+	git fsck &&
+	git worktree list --porcelain | grep "^worktree" >actual &&
+	cat <<-EOF >expected &&
+	worktree $TRASH_DIRECTORY
+	worktree $TRASH_DIRECTORY/destination
+	EOF
+	test_cmp expected actual &&
+	git -C destination log --format=%s >actual2 &&
+	echo init >expected2 &&
+	test_cmp expected2 actual2 &&
+	git log --format=%s >actual3 &&
+	test_cmp expected2 actual3
+'
+
+test_expect_success 'move repository alone' '
+	git worktree move --repository repo2 &&
+	test_path_is_file .git &&
+	test_path_is_dir repo2 &&
+	git fsck &&
+	git worktree list --porcelain | grep "^worktree" >actual &&
+	cat <<-EOF >expected &&
+	worktree $TRASH_DIRECTORY
+	worktree $TRASH_DIRECTORY/destination
+	EOF
+	test_cmp expected actual &&
+	git -C destination log --format=%s >actual2 &&
+	echo init >expected2 &&
+	test_cmp expected2 actual2 &&
+	git log --format=%s >actual3 &&
+	test_cmp expected2 actual3
 '
 
 test_expect_success 'remove locked worktree' '
