@@ -39,6 +39,12 @@ extern struct worktree *find_worktree_by_path(struct worktree **list,
 extern int is_main_worktree(const struct worktree *wt);
 
 /*
+ * Return the reason string if the given worktree is locked. Return
+ * NULL otherwise.
+ */
+extern const char *is_worktree_locked(const struct worktree *wt);
+
+/*
  * Return zero if the worktree is in good condition.
  */
 extern int validate_worktree(const struct worktree *wt, int quiet);
