@@ -1089,8 +1089,11 @@ static int refs_from_alternate_cb(struct alternate_object_database *e,
 		goto out;
 	/* Is this a git repository with refs? */
 	memcpy(other + len - 8, "/refs", 6);
-	if (!is_directory(other))
-		goto out;
+	if (!is_directory(other)) {
+		memcpy(other + len - 8, "/refdb", 7);
+		if (!is_directory(other))
+			goto out;
+	}
 	other[len - 8] = '\0';
 	remote = remote_get(other);
 	transport = transport_get(remote, other);
