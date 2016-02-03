@@ -573,9 +573,11 @@ static int unlock_worktree(int ac, const char **av, const char *prefix)
 
 static int move_gitdir(int ac, const char **av, const char *prefix)
 {
+	struct string_list per_worktree = STRING_LIST_INIT_DUP;
 	struct strbuf dst = STRBUF_INIT;
 	struct strbuf src = STRBUF_INIT;
 	struct worktree **worktrees, *mwt = NULL;
+	struct worktree tmp;
 	int i, ret = 0, moved;
 
 	if (ac != 1)
@@ -601,8 +603,38 @@ static int move_gitdir(int ac, const char **av, const char *prefix)
 			return -1;
 	}
 
-	if (mwt)
-		die(_("converting main worktree is not supported"));
+	if (mwt) {
+		struct strbuf sb = STRBUF_INIT;
+
+		strbuf_addstr(&sb, real_path(get_git_common_dir()));
+		if (ends_with(sb.buf, "/.git"))
+			sb.len -= strlen("/.git");
+		else
+			die(_("unrecognized repository directory layout: %s"),
+			    sb.buf);
+		sb.buf[sb.len] = '\0';
+		prepare_new_worktree(sb.buf, &tmp, 0);
+		strbuf_release(&sb);
+
+		if (collect_per_worktree_git_paths(&per_worktree))
+			die(_("failed to collect per-worktree paths"));
+
+		for (i = 0; !ret && i < per_worktree.nr; i++) {
+			const char *path = per_worktree.items[i].string;
+
+			if (safe_create_leading_directories_const(
+				git_common_path("worktrees/%s/%s", tmp.id, path)) ||
+			    copy_file(git_common_path("worktrees/%s/%s", tmp.id, path),
+				      git_common_path("%s", path),
+				      0777))
+				die_errno(_("failed to copy '%s' to '%s'"),
+					  git_common_path("%s", path),
+					  git_common_path("worktrees/%s/%s", tmp.id, path));
+		}
+
+		mwt->id = xstrdup(tmp.id);
+		cleanup_new_worktree(&tmp);
+	}
 
 	if ((moved = !rename(src.buf, dst.buf))) {
 		undo_rename_source = xstrdup(dst.buf);
@@ -614,6 +646,40 @@ static int move_gitdir(int ac, const char **av, const char *prefix)
 		ret = copy_dir_recursively(src.buf, dst.buf);
 		if (ret)
 			die(_("failed to copy '%s' to '%s'"), src.buf, dst.buf);
+	}
+
+	if (mwt) {
+		struct strbuf sb = STRBUF_INIT;
+		int len;
+
+		new_worktree_complete();
+
+		strbuf_addbuf(&sb, &dst);
+		if (sb.buf[sb.len - 1] != '/')
+			strbuf_addch(&sb, '/');
+		len = sb.len;
+		for (i = 0; !ret && i < per_worktree.nr; i++) {
+			const char *path = per_worktree.items[i].string;
+
+			strbuf_addstr(&sb, path);
+			unlink_or_warn(sb.buf);
+			strbuf_setlen(&sb, len);
+		}
+		string_list_clear(&per_worktree, 0);
+
+		strbuf_addstr(&sb, "HEAD");
+		write_file(sb.buf, sha1_to_hex(null_sha1));
+
+		if (!moved) {
+			strbuf_reset(&sb);
+			strbuf_addf(&sb, "%s.old", src.buf);
+			if (rename(src.buf, sb.buf))
+				die_errno(_("failed to move '%s' to '%s'"), src.buf, sb.buf);
+			undo_rename_source = xstrdup(sb.buf);
+			undo_rename_dest = xstrdup(src.buf);
+			strbuf_swap(&sb, &src);
+		}
+		strbuf_release(&sb);
 	}
 
 	for (i = 0; worktrees[i]; i++) {
