@@ -364,6 +364,64 @@ int update_worktree_gitfile(const char *gitfile,
 	return 0;
 }
 
+static int collect_per_worktree_1(struct strbuf *base, int commonlen,
+				  struct string_list *paths)
+{
+	int base_len = base->len;
+	struct dirent *d;
+	DIR *dir;
+	int ret = 0;
+
+	dir = opendir(base->buf);
+	if (!dir)
+		return sys_error(_("failed to open '%s'"), base->buf);
+
+	while ((d = readdir(dir))) {
+		struct stat st;
+
+		if (is_dot_or_dotdot(d->d_name))
+			continue;
+
+		strbuf_setlen(base, base_len);
+		strbuf_addstr(base, d->d_name);
+
+		if (stat(base->buf, &st)) {
+			if (errno == ENOENT)
+				continue;
+			ret = sys_error(_("failed to stat '%s'"), base->buf);
+			break;
+		}
+		if (!S_ISDIR(st.st_mode)) {
+			const char *path = base->buf + commonlen;
+			if (!is_git_path_shared(path))
+				string_list_append(paths, path);
+			continue;
+		}
+
+		strbuf_addch(base, '/');
+		if ((ret = collect_per_worktree_1(base, commonlen, paths)))
+			break;
+	}
+	closedir(dir);
+	return ret;
+}
+
+int collect_per_worktree_git_paths(struct string_list *paths)
+{
+	struct strbuf base = STRBUF_INIT;
+	int ret;
+
+	/* force adjust_git_path() to always adjust paths */
+	git_common_dir_env = 1;
+
+	strbuf_addstr(&base, get_git_common_dir());
+	if (base.len && base.buf[base.len - 1] != '/')
+		strbuf_addch(&base, '/');
+	ret = collect_per_worktree_1(&base, base.len, paths);
+	strbuf_release(&base);
+	return ret;
+}
+
 int is_worktree_being_rebased(const struct worktree *wt,
 			      const char *target)
 {

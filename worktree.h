@@ -64,6 +64,12 @@ extern int update_worktree_gitfile(const char *gitfile,
 				   const char *id);
 
 /*
+ * Given .git directory in "base", search all paths, collect the list
+ * of paths that are not shared in "paths".
+ */
+extern int collect_per_worktree_git_paths(struct string_list *paths);
+
+/*
  * Free up the memory for worktree
  */
 extern void clear_worktree(struct worktree *);
