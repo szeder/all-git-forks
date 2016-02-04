@@ -3,6 +3,7 @@
 #include "color.h"
 #include "parse-options.h"
 #include "urlmatch.h"
+#include "quote.h"
 
 static const char *const builtin_config_usage[] = {
 	N_("git config [<options>]"),
@@ -27,6 +28,7 @@ static int actions, types;
 static const char *get_color_slot, *get_colorbool_slot;
 static int end_null;
 static int respect_includes = -1;
+static int show_sources;
 
 #define ACTION_GET (1<<0)
 #define ACTION_GET_ALL (1<<1)
@@ -81,6 +83,7 @@ static struct option builtin_config_options[] = {
 	OPT_BOOL('z', "null", &end_null, N_("terminate values with NUL byte")),
 	OPT_BOOL(0, "name-only", &omit_values, N_("show variable names only")),
 	OPT_BOOL(0, "includes", &respect_includes, N_("respect include directives on lookup")),
+	OPT_BOOL(0, "sources", &show_sources, N_("show source filenames of config")),
 	OPT_END(),
 };
 
@@ -91,8 +94,35 @@ static void check_argc(int argc, int min, int max) {
 	usage_with_options(builtin_config_usage, builtin_config_options);
 }
 
+/* output to either fp or buf; only one should be non-NULL */
+static void show_config_source(struct strbuf *buf, FILE *fp)
+{
+	char term = '\t';
+	const char *fn = current_config_filename();
+
+	if (!fn)
+		fn = "";
+
+	if (!end_null)
+		quote_c_style(fn, buf, fp, 0);
+	else {
+		term = '\0';
+		if (fp)
+			fprintf(fp, "%s", fn);
+		else
+			strbuf_addstr(buf, fn);
+	}
+
+	if (fp)
+		fputc(term, fp);
+	else
+		strbuf_addch(buf, term);
+}
+
 static int show_all_config(const char *key_, const char *value_, void *cb)
 {
+	if (show_sources)
+		show_config_source(NULL, stdout);
 	if (!omit_values && value_)
 		printf("%s%c%s%c", key_, delim, value_, term);
 	else
@@ -108,6 +138,8 @@ struct strbuf_list {
 
 static int format_config(struct strbuf *buf, const char *key_, const char *value_)
 {
+	if (show_sources)
+		show_config_source(buf, NULL);
 	if (show_keys)
 		strbuf_addstr(buf, key_);
 	if (!omit_values) {
@@ -538,6 +570,17 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		error("--name-only is only applicable to --list or --get-regexp");
 		usage_with_options(builtin_config_usage, builtin_config_options);
 	}
+
+	const int is_get_action = actions & (
+		ACTION_GET|ACTION_GET_ALL|ACTION_GET_REGEXP|ACTION_LIST|
+		ACTION_GET_COLOR|ACTION_GET_COLORBOOL|ACTION_GET_URLMATCH
+	);
+
+	if (show_sources && !is_get_action) {
+		error("--sources is only applicable to --list or --get-* actions");
+		usage_with_options(builtin_config_usage, builtin_config_options);
+	}
+
 	if (actions == ACTION_LIST) {
 		check_argc(argc, 0, 0);
 		if (git_config_with_options(show_all_config, NULL,

@@ -1525,6 +1525,7 @@ extern const char *get_log_output_encoding(void);
 extern const char *get_commit_output_encoding(void);
 
 extern int git_config_parse_parameter(const char *, config_fn_t fn, void *data);
+extern const char *current_config_filename(void);
 
 struct config_include_data {
 	int depth;

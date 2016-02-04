@@ -1204,4 +1204,53 @@ test_expect_success POSIXPERM,PERL 'preserves existing permissions' '
 	git config --unset pop.pass
 '
 
+test_expect_success 'test --sources' '
+	>"$HOME"/.gitconfig &&
+	INCLUDE_DIR="$HOME/include" &&
+	mkdir -p "$INCLUDE_DIR" &&
+	cat >"$INCLUDE_DIR"/include.conf <<-EOF &&
+		[user]
+			include = true
+	EOF
+	cat >"$HOME"/file.conf <<-EOF &&
+		[user]
+			custom = true
+	EOF
+	test_config_global user.global "true" &&
+	test_config_global user.override "global" &&
+	test_config_global include.path "$INCLUDE_DIR"/include.conf &&
+	test_config user.local "true" &&
+	test_config user.override "local" &&
+
+	cat >expect <<-EOF &&
+		$HOME/.gitconfig	user.global=true
+		$HOME/.gitconfig	user.override=global
+		$HOME/.gitconfig	include.path=$INCLUDE_DIR/include.conf
+		$INCLUDE_DIR/include.conf	user.include=true
+		.git/config	user.local=true
+		.git/config	user.override=local
+	EOF
+	git config --list --sources >output &&
+	test_cmp expect output &&
+
+	cat >expect <<-EOF &&
+		.git/config	local
+	EOF
+	git config --sources user.override >output &&
+	test_cmp expect output &&
+
+	cat >expect <<-EOF &&
+		$HOME/file.conf	user.custom=true
+	EOF
+	git config --file "$HOME"/file.conf --sources --list >output &&
+	test_cmp expect output &&
+
+	cat >expect <<-EOF &&
+		a9d9f9e555b5c6f07cbe09d3f06fe3df11e09c08	user.custom=true
+	EOF
+	blob=$(git hash-object -w "$HOME"/file.conf) &&
+	git config --blob=$blob --sources --list >output &&
+	test_cmp expect output
+'
+
 test_done

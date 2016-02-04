@@ -2385,3 +2385,10 @@ int parse_config_key(const char *var,
 
 	return 0;
 }
+
+const char *current_config_filename(void)
+{
+	if (cf && cf->name)
+		return cf->name;
+	return NULL;
+}
