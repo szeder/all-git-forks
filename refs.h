@@ -66,6 +66,8 @@ extern int ref_exists(const char *refname);
 
 extern int is_branch(const char *refname);
 
+extern int refs_init_db(struct strbuf *err, int shared);
+
 /*
  * If refname is a non-symbolic reference that refers to a tag object,
  * and the tag can be (recursively) dereferenced to a non-tag object,
@@ -507,5 +509,20 @@ extern int reflog_expire(const char *refname, const unsigned char *sha1,
 			 reflog_expiry_should_prune_fn should_prune_fn,
 			 reflog_expiry_cleanup_fn cleanup_fn,
 			 void *policy_cb_data);
+
+/*
+ * Read the refdb storage backend name out of the config file
+ */
+int ref_storage_backend_config(const char *var, const char *value, void *ptr);
+
+struct ref_storage_be;
+
+extern struct ref_storage_be refs_be_lmdb;
+/*
+ * Switch to an alternate ref storage backend.
+ */
+int set_ref_storage_backend(const char *name);
+
+void register_ref_storage_backend(struct ref_storage_be *be);
 
 #endif /* REFS_H */
