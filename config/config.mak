@@ -69,4 +69,6 @@ NO_GETTEXT = Nope
 NO_TCLTK = Nope
 XDL_FAST_HASH =
 
+CFLAGS += $(EXTRA_CFLAGS)
+
 -include $(Meta)/config/config.mak.local
