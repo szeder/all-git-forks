@@ -15,6 +15,7 @@
 #include "version.h"
 #include "prio-queue.h"
 #include "sha1-array.h"
+#include "dir.h"
 
 static int transfer_unpack_limit = -1;
 static int fetch_unpack_limit = -1;
@@ -330,6 +331,10 @@ static int find_common(struct fetch_pack_args *args,
 		write_shallow_commits(&req_buf, 1, NULL);
 	if (args->depth > 0)
 		packet_buf_write(&req_buf, "deepen %d", args->depth);
+	if (args->resume_path)
+		packet_buf_write(&req_buf, "skip %s %d",
+				 sha1_to_hex(args->skip_hash),
+				 args->skip_offset);
 	packet_buf_flush(&req_buf);
 	state_len = req_buf.len;
 
@@ -730,6 +735,9 @@ static int get_pack(struct fetch_pack_args *args,
 			argv_array_push(&cmd.args, "-v");
 		if (args->use_thin_pack)
 			argv_array_push(&cmd.args, "--fix-thin");
+		if (args->resume_path && args->skip_offset)
+			argv_array_pushf(&cmd.args, "--append-pack=%s",
+					 args->resume_path);
 		if (args->lock_pack || unpack_limit) {
 			char hostname[256];
 			if (gethostname(hostname, sizeof(hostname)))
@@ -856,6 +864,8 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 			fprintf(stderr, "Server supports ofs-delta\n");
 	} else
 		prefer_ofs_delta = 0;
+	if (args->resume_path && !server_supports("partial"))
+		die(_("Server does not support resume capability\n"));
 
 	if ((agent_feature = server_feature_value("agent", &agent_len))) {
 		agent_supported = 1;
@@ -1030,6 +1040,35 @@ static void update_shallow(struct fetch_pack_args *args,
 	sha1_array_clear(&ref);
 }
 
+static void prepare_resume_fetch(struct fetch_pack_args *args)
+{
+	git_SHA_CTX c;
+	char buf[8192];
+	int fd, len;
+
+	if (!args->resume_path)
+		return;
+
+	args->skip_offset = 0;
+	args->keep_pack = 1;
+	if (!file_exists(args->resume_path))
+		return;
+
+	fd = open(args->resume_path, O_RDONLY);
+	if (fd == -1)
+		die_errno(_("failed to open '%s'"), args->resume_path);
+
+	git_SHA1_Init(&c);
+	while ((len = xread(fd, buf, sizeof(buf))) > 0) {
+		git_SHA1_Update(&c, buf, len);
+		args->skip_offset += len;
+	}
+	if (len < 0)
+		die_errno(_("failed to read '%s'"), args->resume_path);
+	git_SHA1_Final(args->skip_hash, &c);
+	close(fd);
+}
+
 struct ref *fetch_pack(struct fetch_pack_args *args,
 		       int fd[], struct child_process *conn,
 		       const struct ref *ref,
@@ -1050,6 +1089,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		die("no matching remote head");
 	}
 	prepare_shallow_info(&si, shallow);
+	prepare_resume_fetch(args);
 	ref_cpy = do_fetch_pack(args, fd, ref, sought, nr_sought,
 				&si, pack_lockfile);
 	reprepare_packed_git();

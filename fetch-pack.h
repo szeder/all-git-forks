@@ -10,6 +10,9 @@ struct fetch_pack_args {
 	const char *uploadpack;
 	int unpacklimit;
 	int depth;
+	const char *resume_path;
+	int skip_offset;
+	unsigned char skip_hash[20];
 	unsigned quiet:1;
 	unsigned keep_pack:1;
 	unsigned lock_pack:1;
