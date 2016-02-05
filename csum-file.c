@@ -11,8 +11,27 @@
 #include "progress.h"
 #include "csum-file.h"
 
+static void check_skip_hash(struct sha1file *f, off_t old_total)
+{
+	if (old_total < f->skip && f->total > f->skip)
+		die("BUG: flush() must stop at skip boundary");
+
+	if (f->total == f->skip) {
+		git_SHA_CTX ctx;
+		unsigned char hash[20];
+
+		ctx = f->ctx;
+		git_SHA1_Final(hash, &ctx);
+		if (hashcmp(hash, f->skip_hash))
+			die("skip hash does not match, expected %s got %s",
+			    sha1_to_hex(f->skip_hash), sha1_to_hex(hash));
+	}
+}
+
 static void flush(struct sha1file *f, const void *buf, unsigned int count)
 {
+	off_t old_total = f->total;
+
 	if (0 <= f->check_fd && count)  {
 		unsigned char check_buffer[8192];
 		ssize_t ret = read_in_full(f->check_fd, check_buffer, count);
@@ -26,7 +45,11 @@ static void flush(struct sha1file *f, const void *buf, unsigned int count)
 	}
 
 	for (;;) {
-		int ret = xwrite(f->fd, buf, count);
+		int ret;
+		if (f->total + count <= f->skip)
+			ret = count;
+		else
+			ret = xwrite(f->fd, buf, count);
 		if (ret > 0) {
 			f->total += ret;
 			display_throughput(f->tp, f->total);
@@ -34,6 +57,8 @@ static void flush(struct sha1file *f, const void *buf, unsigned int count)
 			count -= ret;
 			if (count)
 				continue;
+			if (f->skip > 0)
+				check_skip_hash(f, old_total);
 			return;
 		}
 		if (!ret)
@@ -45,12 +70,25 @@ static void flush(struct sha1file *f, const void *buf, unsigned int count)
 void sha1flush(struct sha1file *f)
 {
 	unsigned offset = f->offset;
+	const unsigned char *buffer = f->buffer;
+
+	if (!offset)
+		return;
+
+	if (f->total < f->skip && f->skip < f->total + offset) {
+		unsigned size = f->skip - f->total;
+		git_SHA1_Update(&f->ctx, buffer, size);
+		flush(f, buffer, size);
+		buffer += size;
+		offset -= size;
+	}
 
 	if (offset) {
-		git_SHA1_Update(&f->ctx, f->buffer, offset);
-		flush(f, f->buffer, offset);
-		f->offset = 0;
+		git_SHA1_Update(&f->ctx, buffer, offset);
+		flush(f, buffer, offset);
 	}
+
+	f->offset = 0;
 }
 
 int sha1close(struct sha1file *f, unsigned char *result, unsigned int flags)
@@ -62,6 +100,8 @@ int sha1close(struct sha1file *f, unsigned char *result, unsigned int flags)
 	if (result)
 		hashcpy(result, f->buffer);
 	if (flags & (CSUM_CLOSE | CSUM_FSYNC)) {
+		if (f->skip > f->total)
+			die(_("can't skip in the middle of, or beyond the trailing SHA-1"));
 		/* write checksum and close fd */
 		flush(f, f->buffer, 20);
 		if (flags & CSUM_FSYNC)
@@ -93,6 +133,9 @@ void sha1write(struct sha1file *f, const void *buf, unsigned int count)
 		unsigned left = sizeof(f->buffer) - offset;
 		unsigned nr = count > left ? left : count;
 		const void *data;
+
+		if (f->total < f->skip && f->skip - f->total < nr)
+			nr = f->skip - f->total;
 
 		if (f->do_crc)
 			f->crc32 = crc32(f->crc32, buf, nr);
@@ -149,6 +192,7 @@ struct sha1file *sha1fd_throughput(int fd, const char *name, struct progress *tp
 	f->tp = tp;
 	f->name = name;
 	f->do_crc = 0;
+	f->skip = 0;
 	git_SHA1_Init(&f->ctx);
 	return f;
 }

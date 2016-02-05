@@ -75,6 +75,9 @@ static unsigned long cache_max_small_delta_size = 1000;
 
 static unsigned long window_memory_limit = 0;
 
+static struct object_id skip_hash;
+static int skip_opt = -1;
+
 /*
  * stats
  */
@@ -780,6 +783,11 @@ static void write_pack_file(void)
 			f = sha1fd_throughput(1, "<stdout>", progress_state);
 		else
 			f = create_tmp_packfile(&pack_tmp_name);
+
+		if (skip_opt > 0) {
+			f->skip = skip_opt;
+			hashcpy(f->skip_hash, skip_hash.hash);
+		}
 
 		offset = write_pack_header(f, nr_remaining);
 
@@ -2597,6 +2605,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	struct argv_array rp = ARGV_ARRAY_INIT;
 	int rev_list_unpacked = 0, rev_list_all = 0, rev_list_reflog = 0;
 	int rev_list_index = 0;
+	const char *skip_hash_hex = NULL;
 	struct option pack_objects_options[] = {
 		OPT_SET_INT('q', "quiet", &progress,
 			    N_("do not show progress meter"), 0),
@@ -2669,6 +2678,10 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			 N_("use a bitmap index if available to speed up counting objects")),
 		OPT_BOOL(0, "write-bitmap-index", &write_bitmap_index,
 			 N_("write a bitmap index together with the pack index")),
+		OPT_STRING(0, "skip-hash", &skip_hash_hex, "hash",
+			   N_("hash of the skipped part of the pack")),
+		OPT_INTEGER(0, "skip", &skip_opt,
+			   N_("do not produce the first <n> bytes of the pack")),
 		OPT_END(),
 	};
 
@@ -2689,6 +2702,14 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	}
 	if (pack_to_stdout != !base_name || argc)
 		usage_with_options(pack_usage, pack_objects_options);
+	if (skip_opt >= 0) {
+		if (skip_opt > 0) {
+			if (!skip_hash_hex)
+				die(_("--skip-hash is required if --skip is non-zero"));
+			if (get_oid_hex(skip_hash_hex, &skip_hash))
+				die(_("%s is not SHA-1"), skip_hash_hex);
+		}
+	}
 
 	argv_array_push(&rp, "pack-objects");
 	if (thin) {

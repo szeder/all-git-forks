@@ -15,6 +15,9 @@ struct sha1file {
 	int do_crc;
 	uint32_t crc32;
 	unsigned char buffer[8192];
+
+	off_t skip;
+	unsigned char skip_hash[20];
 };
 
 /* Checkpoint */
