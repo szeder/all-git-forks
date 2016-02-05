@@ -226,6 +226,7 @@ static int create_default_files(const char *template_path)
 	if (strcmp(ref_storage_backend, "files")) {
 		git_config_set("extensions.refStorage", ref_storage_backend);
 		git_config_set("core.repositoryformatversion", ref_storage_backend);
+		register_ref_storage_backends();
 		if (set_ref_storage_backend(ref_storage_backend))
 			die(_("Unknown ref storage backend %s"),
 			    ref_storage_backend);
@@ -502,6 +503,8 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	};
 
 	argc = parse_options(argc, argv, prefix, init_db_options, init_db_usage, 0);
+
+	register_ref_storage_backends();
 
 	if (requested_ref_storage_backend &&
 	    !ref_storage_backend_exists(requested_ref_storage_backend))
