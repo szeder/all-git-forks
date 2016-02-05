@@ -2709,6 +2709,11 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			if (get_oid_hex(skip_hash_hex, &skip_hash))
 				die(_("%s is not SHA-1"), skip_hash_hex);
 		}
+
+		/*
+		 * Parallel delta search can't produce stable packs.
+		 */
+		delta_search_threads = 1;
 	}
 
 	argv_array_push(&rp, "pack-objects");
