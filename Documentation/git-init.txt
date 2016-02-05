@@ -116,7 +116,7 @@ does not exist, it will be created.
 --ref-storage=<name>::
 Type of refs storage backend. Default is to use the original "files"
 storage, which stores ref data in files in .git/refs and
-.git/packed-refs.
+.git/packed-refs. Set to "lmdb" to activate the lmdb storage backend.
 
 TEMPLATE DIRECTORY
 ------------------

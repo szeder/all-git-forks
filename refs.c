@@ -1561,4 +1561,7 @@ void register_ref_storage_backends(void) {
 	 * default. Add register_ref_storage_backend(ptr-to-backend)
 	 * entries below when you add a new backend.
 	 */
+#ifdef USE_LIBLMDB
+	register_ref_storage_backend(&refs_be_lmdb);
+#endif
 }
