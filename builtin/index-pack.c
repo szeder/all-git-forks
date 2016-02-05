@@ -73,6 +73,7 @@ static int nr_resolved_deltas;
 static int nr_threads;
 
 static int from_stdin;
+static int skip_mode;
 static int strict;
 static int do_fsck_object;
 static struct fsck_options fsck_options = FSCK_OPTIONS_STRICT;
@@ -272,7 +273,29 @@ static void *fill(int min)
 	do {
 		ssize_t ret = xread(input_fd, input_buffer + input_len,
 				sizeof(input_buffer) - input_len);
-		if (ret <= 0) {
+
+		if (ret == 0 && skip_mode) {
+			output_fd = input_fd;
+			input_fd = 0;
+			skip_mode = 0;
+			/*
+			 * At this point we have 'input_len' bytes in
+			 * input_buffer, which is from the existing pack.
+			 * Assuming that we still need to read more, the
+			 * next loop will read from stdin instead.
+			 *
+			 * What's read from stdin must be written down. The
+			 * next flush() will write from &input_buffer[0],
+			 * which appends the 'input_len' bytes from existing
+			 * pack to the pack again.
+			 *
+			 * Seek back to make this an overwrite (of same
+			 * content) instead of an append.
+			 */
+			if (input_len && lseek(output_fd, -input_len, SEEK_CUR))
+				die_errno(_("cannot seek back %d bytes"), input_len);
+		}
+		else if (ret <= 0) {
 			if (!ret)
 				die(_("early EOF"));
 			die_errno(_("read error on input"));
@@ -321,6 +344,26 @@ static const char *open_pack_file(const char *pack_name)
 	}
 	git_SHA1_Init(&input_ctx);
 	return pack_name;
+}
+
+static const char *open_pack_for_append(const char *path)
+{
+	if (!from_stdin)
+		die(_("--append-pack must be used with --stdin"));
+
+	input_fd = open(path, O_CREAT|O_RDWR, 0600);
+	if (input_fd < 0)
+		die_errno(_("cannot open packfile '%s'"), path);
+	output_fd = -1;
+	nothread_data.pack_fd = input_fd;
+	git_SHA1_Init(&input_ctx);
+
+	/*
+	 * fill() will eventually turn this flag off and set output_fd
+	 * after reading everything
+	 */
+	skip_mode = 1;
+	return xstrdup(path);
 }
 
 static void parse_pack_header(void)
@@ -1692,6 +1735,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 					opts.off32_limit = strtoul(c+1, &c, 0);
 				if (*c || opts.off32_limit & 0x80000000)
 					die(_("bad %s"), arg);
+			} else if (skip_prefix(arg, "--append-pack=", &arg)) {
+				curr_pack = open_pack_for_append(arg);
 			} else
 				usage(index_pack_usage);
 			continue;
@@ -1742,7 +1787,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	}
 #endif
 
-	curr_pack = open_pack_file(pack_name);
+	if (!curr_pack)
+		curr_pack = open_pack_file(pack_name);
 	parse_pack_header();
 	objects = xcalloc(nr_objects + 1, sizeof(struct object_entry));
 	if (show_stat)
