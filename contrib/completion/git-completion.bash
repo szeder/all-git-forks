@@ -2477,7 +2477,7 @@ _git_svn ()
 			--branches= --stdlayout --minimize-url
 			--no-metadata --use-svm-props --use-svnsync-props
 			--rewrite-root= --prefix= --use-log-author
-			--add-author-from $remote_opts
+			--add-author-from --ref-storage= $remote_opts
 			"
 		local cmt_opts="
 			--edit --rmdir --find-copies-harder --copy-similarity=
