@@ -1554,3 +1554,11 @@ done:
 	string_list_clear(&affected_refnames, 0);
 	return ret;
 }
+
+void register_ref_storage_backends(void) {
+	/*
+	 * No need to register the files backend; it's registered by
+	 * default. Add register_ref_storage_backend(ptr-to-backend)
+	 * entries below when you add a new backend.
+	 */
+}
