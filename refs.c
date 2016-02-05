@@ -308,6 +308,54 @@ int for_each_tag_ref(each_ref_fn fn, void *cb_data)
 	return for_each_ref_in("refs/tags/", fn, cb_data);
 }
 
+static int submodule_backend(const char *key, const char *value, void *data)
+{
+	const char **path = data;
+	char **old_path = data;
+	if (!strcmp(key, "extensions.refstorage") &&
+	    !git_config_string(path, key, "extensions.refstorage"))
+			free(*old_path);
+
+	return 0;
+}
+
+/*
+ * Check that a submodule exists. If its ref storage backend differs
+ * from the current backend, die.  If the submodule exists, return
+ * 0. Else return -1.
+ */
+static int check_submodule_backend(const char *submodule)
+{
+	struct strbuf sb = STRBUF_INIT;
+	char *submodule_storage_backend;
+	int result = -1;
+
+	if (!submodule)
+		return 0;
+
+	submodule_storage_backend = xstrdup("files");
+
+	strbuf_addstr(&sb, submodule);
+	if (!is_nonbare_repository_dir(&sb))
+		goto done;
+
+	strbuf_reset(&sb);
+	strbuf_git_path_submodule(&sb, submodule, "config");
+
+	git_config_from_file(submodule_backend, sb.buf,
+			     &submodule_storage_backend);
+	if (strcmp(submodule_storage_backend, ref_storage_backend))
+		die(_("Ref storage '%s' for submodule '%s' does not match our storage, '%s'"),
+		    submodule_storage_backend, submodule, ref_storage_backend);
+
+	result = 0;
+done:
+	free(submodule_storage_backend);
+	strbuf_release(&sb);
+
+	return result;
+}
+
 int for_each_tag_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
 	return for_each_ref_in_submodule(submodule, "refs/tags/", fn, cb_data);
@@ -320,6 +368,7 @@ int for_each_branch_ref(each_ref_fn fn, void *cb_data)
 
 int for_each_branch_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return for_each_ref_in_submodule(submodule, "refs/heads/", fn, cb_data);
 }
 
@@ -330,6 +379,7 @@ int for_each_remote_ref(each_ref_fn fn, void *cb_data)
 
 int for_each_remote_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return for_each_ref_in_submodule(submodule, "refs/remotes/", fn, cb_data);
 }
 
@@ -1377,6 +1427,9 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 int resolve_gitlink_ref(const char *path, const char *refname,
 			unsigned char *sha1)
 {
+	if (check_submodule_backend(path))
+		return -1;
+
 	return the_refs_backend->resolve_gitlink_ref(path, refname, sha1);
 }
 
@@ -1387,6 +1440,7 @@ int head_ref(each_ref_fn fn, void *cb_data)
 
 int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return the_refs_backend->head_ref_submodule(submodule, fn, cb_data);
 }
 
@@ -1397,6 +1451,7 @@ int for_each_ref(each_ref_fn fn, void *cb_data)
 
 int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return the_refs_backend->for_each_ref_submodule(submodule, fn, cb_data);
 }
 
@@ -1415,6 +1470,7 @@ int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data,
 int for_each_ref_in_submodule(const char *submodule, const char *prefix,
 			      each_ref_fn fn, void *cb_data)
 {
+	check_submodule_backend(submodule);
 	return the_refs_backend->for_each_ref_in_submodule(submodule, prefix,
 							   fn, cb_data);
 }
