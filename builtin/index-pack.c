@@ -1736,6 +1736,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				if (*c || opts.off32_limit & 0x80000000)
 					die(_("bad %s"), arg);
 			} else if (skip_prefix(arg, "--append-pack=", &arg)) {
+				strict = 1;
+				do_fsck_object = 1;
 				curr_pack = open_pack_for_append(arg);
 			} else
 				usage(index_pack_usage);
