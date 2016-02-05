@@ -48,6 +48,7 @@ static const char *recurse_submodules_default;
 static int shown_url = 0;
 static int refmap_alloc, refmap_nr;
 static const char **refmap_array;
+static const char *resume_path;
 
 static int option_parse_recurse_submodules(const struct option *opt,
 				   const char *arg, int unset)
@@ -115,6 +116,8 @@ static struct option builtin_fetch_options[] = {
 	OPT_BOOL(0, "progress", &progress, N_("force progress reporting")),
 	OPT_STRING(0, "depth", &depth, N_("depth"),
 		   N_("deepen history of shallow clone")),
+	OPT_FILENAME(0, "resume-pack", &resume_path,
+		     N_("perform resumable fetch on the given pack")),
 	{ OPTION_SET_INT, 0, "unshallow", &unshallow, NULL,
 		   N_("convert to a complete repository"),
 		   PARSE_OPT_NONEG | PARSE_OPT_NOARG, NULL, 1 },
@@ -872,6 +875,8 @@ static struct transport *prepare_transport(struct remote *remote)
 		set_option(transport, TRANS_OPT_DEPTH, depth);
 	if (update_shallow)
 		set_option(transport, TRANS_OPT_UPDATE_SHALLOW, "yes");
+	if (resume_path)
+		set_option(transport, TRANS_OPT_RESUME_PATH, resume_path);
 	return transport;
 }
 

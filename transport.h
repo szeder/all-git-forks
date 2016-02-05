@@ -16,6 +16,7 @@ struct git_transport_options {
 	const char *uploadpack;
 	const char *receivepack;
 	struct push_cas_option *cas;
+	const char *resume_path;
 };
 
 struct transport {
@@ -179,6 +180,9 @@ int transport_restrict_protocols(void);
 
 /* Send push certificates */
 #define TRANS_OPT_PUSH_CERT "pushcert"
+
+/* Resumable fetch */
+#define TRANS_OPT_RESUME_PATH "resume-path"
 
 /**
  * Returns 0 if the option was used, non-zero otherwise. Prints a

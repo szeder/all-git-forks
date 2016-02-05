@@ -467,6 +467,9 @@ static int set_git_option(struct git_transport_options *opts,
 	} else if (!strcmp(name, TRANS_OPT_UPDATE_SHALLOW)) {
 		opts->update_shallow = !!value;
 		return 0;
+	} else if (!strcmp(name, TRANS_OPT_RESUME_PATH)) {
+		opts->resume_path = value;
+		return 0;
 	} else if (!strcmp(name, TRANS_OPT_DEPTH)) {
 		if (!value)
 			opts->depth = 0;
@@ -534,6 +537,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 		data->options.check_self_contained_and_connected;
 	args.cloning = transport->cloning;
 	args.update_shallow = data->options.update_shallow;
+	args.resume_path = data->options.resume_path;
 
 	if (!data->got_remote_heads) {
 		connect_setup(transport, 0, 0);

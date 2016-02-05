@@ -20,6 +20,7 @@ static struct strbuf url = STRBUF_INIT;
 struct options {
 	int verbosity;
 	unsigned long depth;
+	const char *resume_path;
 	unsigned progress : 1,
 		check_self_contained_and_connected : 1,
 		cloning : 1,
@@ -118,6 +119,9 @@ static int set_option(const char *name, const char *value)
 			options.push_cert = SEND_PACK_PUSH_CERT_IF_ASKED;
 		else
 			return -1;
+		return 0;
+	} else if (!strcmp(name, "resume-path")) {
+		options.resume_path = xstrdup(value);
 		return 0;
 	} else {
 		return 1 /* unsupported */;
@@ -727,7 +731,7 @@ static int fetch_git(struct discovery *heads,
 	struct strbuf preamble = STRBUF_INIT;
 	char *depth_arg = NULL;
 	int argc = 0, i, err;
-	const char *argv[17];
+	const char *argv[18];
 
 	argv[argc++] = "fetch-pack";
 	argv[argc++] = "--stateless-rpc";
@@ -755,6 +759,8 @@ static int fetch_git(struct discovery *heads,
 		depth_arg = strbuf_detach(&buf, NULL);
 		argv[argc++] = depth_arg;
 	}
+	if (options.resume_path)
+		argv[argc++] = xstrfmt("--resume-path=%s", options.resume_path);
 	argv[argc++] = url.buf;
 	argv[argc++] = NULL;
 

@@ -129,6 +129,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.update_shallow = 1;
 			continue;
 		}
+		if (skip_prefix(arg, "--resume-path=", &arg)) {
+			args.resume_path = arg;
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
 
