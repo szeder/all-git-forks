@@ -275,3 +275,12 @@ to accept a signed push certificate, and asks the <nonce> to be
 included in the push certificate.  A send-pack client MUST NOT
 send a push-cert packet unless the receive-pack server advertises
 this capability.
+
+partial
+------
+
+This capability adds "skip" line to the protocol, which passes --skip
+and --skip-hash to pack-objects. When "skip" line is present, given
+the same set of input from the client (e.g. have, want and shallow
+lines, "skip" line excluded), the exact same pack must be produced.
+

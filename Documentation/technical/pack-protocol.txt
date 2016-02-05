@@ -167,6 +167,7 @@ MUST peel the ref if it's an annotated tag.
 ----
   advertised-refs  =  (no-refs / list-of-refs)
 		      *shallow
+		      skip
 		      flush-pkt
 
   no-refs          =  PKT-LINE(zero-id SP "capabilities^{}"
@@ -181,6 +182,7 @@ MUST peel the ref if it's an annotated tag.
   other-peeled     =  obj-id SP refname "^{}"
 
   shallow          =  PKT-LINE("shallow" SP obj-id)
+  skip             =  PKT-LINE("skip" SP obj-id SP 1*DIGIT)
 
   capability-list  =  capability *(SP capability)
   capability       =  1*(LC_ALPHA / DIGIT / "-" / "_")

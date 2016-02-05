@@ -53,6 +53,9 @@ static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
 
+static struct object_id skip_hash;
+static int skip_opt = -1;
+
 static void reset_timeout(void)
 {
 	alarm(timeout);
@@ -90,7 +93,7 @@ static void create_pack_file(void)
 		"corruption on the remote side.";
 	int buffered = -1;
 	ssize_t sz;
-	const char *argv[13];
+	const char *argv[17];
 	int i, arg = 0;
 	FILE *pipe_fd;
 
@@ -112,6 +115,14 @@ static void create_pack_file(void)
 		argv[arg++] = "--delta-base-offset";
 	if (use_include_tag)
 		argv[arg++] = "--include-tag";
+	if (skip_opt >= 0) {
+		argv[arg++] = "--skip";
+		argv[arg++] = xstrfmt("%d", skip_opt);
+		if (skip_opt > 0) {
+			argv[arg++] = "--skip-hash";
+			argv[arg++] = xstrdup(oid_to_hex(&skip_hash));
+		}
+	}
 	argv[arg++] = NULL;
 
 	pack_objects.in = -1;
@@ -550,6 +561,8 @@ static void receive_needs(void)
 		const char *features;
 		unsigned char sha1_buf[20];
 		char *line = packet_read_line(0, NULL);
+		const char *arg;
+
 		reset_timeout();
 		if (!line)
 			break;
@@ -575,6 +588,19 @@ static void receive_needs(void)
 			depth = strtol(line + 7, &end, 0);
 			if (end == line + 7 || depth <= 0)
 				die("Invalid deepen: %s", line);
+			continue;
+		}
+		if (skip_prefix(line, "skip ", &arg)) {
+			char *end = NULL;
+
+			if (get_oid_hex(arg, &skip_hash))
+				die("invalid skip line: %s", line);
+			arg += 40;
+			if (*arg++ != ' ')
+				die("invalid skip line: %s", line);
+			skip_opt = strtol(arg, &end, 0);
+			if (!end || *end || skip_opt < 0)
+				die("Invalid skip line: %s", line);
 			continue;
 		}
 		if (!starts_with(line, "want ") ||
@@ -725,7 +751,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
+		" include-tag multi_ack_detailed partial";
 	const char *refname_nons = strip_namespace(refname);
 	struct object_id peeled;
 
