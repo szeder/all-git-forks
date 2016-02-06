@@ -403,9 +403,11 @@ static void compile_regexp(struct grep_pat *p, struct grep_opt *opt)
 	p->word_regexp = opt->word_regexp;
 	p->ignore_case = opt->ignore_case;
 
-	if (opt->fixed || is_fixed(p->pattern, p->patternlen))
+	if (is_fixed(p->pattern, p->patternlen))
 		p->fixed = 1;
-	else
+	else if (opt->fixed) {
+		p->fixed = 1;
+	} else
 		p->fixed = 0;
 
 	if (p->fixed) {
