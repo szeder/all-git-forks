@@ -65,6 +65,29 @@ test_expect_success 'clone respects GIT_WORK_TREE' '
 
 '
 
+test_expect_success 'clone from hooks' '
+
+	test_create_repo r0 &&
+	cd r0 &&
+	test_commit initial &&
+	cd .. &&
+	git init r1 &&
+	cd r1 &&
+	cat >.git/hooks/pre-commit <<-\EOF &&
+	#!/bin/sh
+	git clone ../r0 ../r2
+	exit 1
+	EOF
+	chmod u+x .git/hooks/pre-commit &&
+	: >file &&
+	git add file &&
+	test_must_fail git commit -m invoke-hook &&
+	cd .. &&
+	test_cmp r0/.git/HEAD r2/.git/HEAD &&
+	test_cmp r0/initial.t r2/initial.t
+
+'
+
 test_expect_success 'clone creates intermediate directories' '
 
 	git clone src long/path/to/dst &&
@@ -221,7 +244,7 @@ test_expect_success 'clone separate gitdir' '
 '
 
 test_expect_success 'clone separate gitdir: output' '
-	echo "gitdir: `pwd`/realgitdir" >expected &&
+	echo "gitdir: $(pwd)/realgitdir" >expected &&
 	test_cmp expected dst/.git
 '
 
@@ -296,6 +319,12 @@ setup_ssh_wrapper () {
 	'
 }
 
+copy_ssh_wrapper_as () {
+	cp "$TRASH_DIRECTORY/ssh-wrapper" "$1" &&
+	GIT_SSH="$1" &&
+	export GIT_SSH
+}
+
 expect_ssh () {
 	test_when_finished '
 		(cd "$TRASH_DIRECTORY" && rm -f ssh-expect && >ssh-output)
@@ -332,8 +361,35 @@ test_expect_success !MINGW,!CYGWIN 'clone local path foo:bar' '
 
 test_expect_success 'bracketed hostnames are still ssh' '
 	git clone "[myhost:123]:src" ssh-bracket-clone &&
-	expect_ssh myhost '-p 123' src
+	expect_ssh "-p 123" myhost src
 '
+
+test_expect_success 'uplink is not treated as putty' '
+	copy_ssh_wrapper_as "$TRASH_DIRECTORY/uplink" &&
+	git clone "[myhost:123]:src" ssh-bracket-clone-uplink &&
+	expect_ssh "-p 123" myhost src
+'
+
+test_expect_success 'plink is treated specially (as putty)' '
+	copy_ssh_wrapper_as "$TRASH_DIRECTORY/plink" &&
+	git clone "[myhost:123]:src" ssh-bracket-clone-plink-0 &&
+	expect_ssh "-P 123" myhost src
+'
+
+test_expect_success 'plink.exe is treated specially (as putty)' '
+	copy_ssh_wrapper_as "$TRASH_DIRECTORY/plink.exe" &&
+	git clone "[myhost:123]:src" ssh-bracket-clone-plink-1 &&
+	expect_ssh "-P 123" myhost src
+'
+
+test_expect_success 'tortoiseplink is like putty, with extra arguments' '
+	copy_ssh_wrapper_as "$TRASH_DIRECTORY/tortoiseplink" &&
+	git clone "[myhost:123]:src" ssh-bracket-clone-plink-2 &&
+	expect_ssh "-batch -P 123" myhost src
+'
+
+# Reset the GIT_SSH environment variable for clone tests.
+setup_ssh_wrapper
 
 counter=0
 # $1 url
@@ -461,6 +517,13 @@ test_expect_success 'shallow clone locally' '
 	git clone ssrrcc ddsstt &&
 	test_cmp ssrrcc/.git/shallow ddsstt/.git/shallow &&
 	( cd ddsstt && git fsck )
+'
+
+test_expect_success 'GIT_TRACE_PACKFILE produces a usable pack' '
+	rm -rf dst.git &&
+	GIT_TRACE_PACKFILE=$PWD/tmp.pack git clone --no-local --bare src dst.git &&
+	git init --bare replay.git &&
+	git -C replay.git index-pack -v --stdin <tmp.pack
 '
 
 test_done

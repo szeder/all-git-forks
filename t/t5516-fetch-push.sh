@@ -16,7 +16,7 @@ This test checks the following functionality:
 
 . ./test-lib.sh
 
-D=`pwd`
+D=$(pwd)
 
 mk_empty () {
 	repo_name="$1"
@@ -422,7 +422,7 @@ test_expect_success 'push tag with non-existent, incomplete dest' '
 test_expect_success 'push sha1 with non-existent, incomplete dest' '
 
 	mk_test testrepo &&
-	test_must_fail git push testrepo `git rev-parse master`:foo
+	test_must_fail git push testrepo $(git rev-parse master):foo
 
 '
 
@@ -1119,6 +1119,61 @@ test_expect_success 'fetch exact SHA1' '
 		test_cmp expect actual
 	)
 '
+
+for configallowtipsha1inwant in true false
+do
+	test_expect_success "shallow fetch reachable SHA1 (but not a ref), allowtipsha1inwant=$configallowtipsha1inwant" '
+		mk_empty testrepo &&
+		(
+			cd testrepo &&
+			git config uploadpack.allowtipsha1inwant $configallowtipsha1inwant &&
+			git commit --allow-empty -m foo &&
+			git commit --allow-empty -m bar
+		) &&
+		SHA1=$(git --git-dir=testrepo/.git rev-parse HEAD^) &&
+		mk_empty shallow &&
+		(
+			cd shallow &&
+			test_must_fail git fetch --depth=1 ../testrepo/.git $SHA1 &&
+			git --git-dir=../testrepo/.git config uploadpack.allowreachablesha1inwant true &&
+			git fetch --depth=1 ../testrepo/.git $SHA1 &&
+			git cat-file commit $SHA1
+		)
+	'
+
+	test_expect_success "deny fetch unreachable SHA1, allowtipsha1inwant=$configallowtipsha1inwant" '
+		mk_empty testrepo &&
+		(
+			cd testrepo &&
+			git config uploadpack.allowtipsha1inwant $configallowtipsha1inwant &&
+			git commit --allow-empty -m foo &&
+			git commit --allow-empty -m bar &&
+			git commit --allow-empty -m xyz
+		) &&
+		SHA1_1=$(git --git-dir=testrepo/.git rev-parse HEAD^^) &&
+		SHA1_2=$(git --git-dir=testrepo/.git rev-parse HEAD^) &&
+		SHA1_3=$(git --git-dir=testrepo/.git rev-parse HEAD) &&
+		(
+			cd testrepo &&
+			git reset --hard $SHA1_2 &&
+			git cat-file commit $SHA1_1 &&
+			git cat-file commit $SHA1_3
+		) &&
+		mk_empty shallow &&
+		(
+			cd shallow &&
+			test_must_fail ok=sigpipe git fetch ../testrepo/.git $SHA1_3 &&
+			test_must_fail ok=sigpipe git fetch ../testrepo/.git $SHA1_1 &&
+			git --git-dir=../testrepo/.git config uploadpack.allowreachablesha1inwant true &&
+			git fetch ../testrepo/.git $SHA1_1 &&
+			git cat-file commit $SHA1_1 &&
+			test_must_fail git cat-file commit $SHA1_2 &&
+			git fetch ../testrepo/.git $SHA1_2 &&
+			git cat-file commit $SHA1_2 &&
+			test_must_fail ok=sigpipe git fetch ../testrepo/.git $SHA1_3
+		)
+	'
+done
 
 test_expect_success 'fetch follows tags by default' '
 	mk_test testrepo heads/master &&

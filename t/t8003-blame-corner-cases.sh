@@ -153,7 +153,7 @@ test_expect_success 'blame path that used to be a directory' '
 '
 
 test_expect_success 'blame to a commit with no author name' '
-  TREE=`git rev-parse HEAD:` &&
+  TREE=$(git rev-parse HEAD:) &&
   cat >badcommit <<EOF &&
 tree $TREE
 author <noname> 1234567890 +0000
@@ -161,7 +161,7 @@ committer David Reiss <dreiss@facebook.com> 1234567890 +0000
 
 some message
 EOF
-  COMMIT=`git hash-object -t commit -w badcommit` &&
+  COMMIT=$(git hash-object -t commit -w badcommit) &&
   git --no-pager blame $COMMIT -- uno >/dev/null
 '
 
@@ -191,12 +191,24 @@ test_expect_success 'indent of line numbers, ten lines' '
 	test $(grep -c "  " actual) = 9
 '
 
-test_expect_success 'blaming files with CRLF newlines' '
+test_expect_success 'setup file with CRLF newlines' '
 	git config core.autocrlf false &&
-	printf "testcase\r\n" >crlffile &&
+	printf "testcase\n" >crlffile &&
 	git add crlffile &&
 	git commit -m testcase &&
-	git -c core.autocrlf=input blame crlffile >actual &&
+	printf "testcase\r\n" >crlffile
+'
+
+test_expect_success 'blame file with CRLF core.autocrlf true' '
+	git config core.autocrlf true &&
+	git blame crlffile >actual &&
+	grep "A U Thor" actual
+'
+
+test_expect_success 'blame file with CRLF attributes text' '
+	git config core.autocrlf false &&
+	echo "crlffile text" >.gitattributes &&
+	git blame crlffile >actual &&
 	grep "A U Thor" actual
 '
 

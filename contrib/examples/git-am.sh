@@ -69,6 +69,8 @@ then
 	cmdline="$cmdline -3"
 fi
 
+empty_tree=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+
 sq () {
 	git rev-parse --sq-quote "$@"
 }
@@ -85,7 +87,7 @@ safe_to_abort () {
 		return 1
 	fi
 
-	if ! test -s "$dotest/abort-safety"
+	if ! test -f "$dotest/abort-safety"
 	then
 		return 0
 	fi
@@ -177,7 +179,8 @@ It does not apply to blobs recorded in its index.")"
     then
 	    GIT_MERGE_VERBOSITY=0 && export GIT_MERGE_VERBOSITY
     fi
-    git-merge-recursive $orig_tree -- HEAD $his_tree || {
+    our_tree=$(git rev-parse --verify -q HEAD || echo $empty_tree)
+    git-merge-recursive $orig_tree -- $our_tree $his_tree || {
 	    git rerere $allow_rerere_autoupdate
 	    die "$(gettext "Failed to merge in the changes.")"
     }
@@ -297,6 +300,7 @@ split_patches () {
 		;;
 	stgit)
 		this=0
+		test 0 -eq "$#" && set -- -
 		for stgit in "$@"
 		do
 			this=$(expr "$this" + 1)
@@ -318,7 +322,7 @@ split_patches () {
 					print "Subject: ", $_ ;
 					$subject = 1;
 				}
-			' < "$stgit" > "$dotest/$msgnum" || clean_abort
+			' -- "$stgit" >"$dotest/$msgnum" || clean_abort
 		done
 		echo "$this" > "$dotest/last"
 		this=
@@ -326,6 +330,7 @@ split_patches () {
 		;;
 	hg)
 		this=0
+		test 0 -eq "$#" && set -- -
 		for hg in "$@"
 		do
 			this=$(( $this + 1 ))
@@ -342,17 +347,17 @@ split_patches () {
 				elsif (/^\# User /) { s/\# User/From:/ ; print ; }
 				elsif (/^\# Date /) {
 					my ($hashsign, $str, $time, $tz) = split ;
-					$tz = sprintf "%+05d", (0-$tz)/36;
+					$tz_str = sprintf "%+05d", (0-$tz)/36;
 					print "Date: " .
 					      strftime("%a, %d %b %Y %H:%M:%S ",
-						       localtime($time))
-					      . "$tz\n";
+						       gmtime($time-$tz))
+					      . "$tz_str\n";
 				} elsif (/^\# /) { next ; }
 				else {
 					print "\n", $_ ;
 					$subject = 1;
 				}
-			' <"$hg" >"$dotest/$msgnum" || clean_abort
+			' -- "$hg" >"$dotest/$msgnum" || clean_abort
 		done
 		echo "$this" >"$dotest/last"
 		this=
@@ -378,6 +383,7 @@ committer_date_is_author_date=
 ignore_date=
 allow_rerere_autoupdate=
 gpg_sign_opt=
+threeway=
 
 if test "$(git config --bool --get am.messageid)" = true
 then
@@ -502,10 +508,11 @@ then
 		;;
 	t,)
 		git rerere clear
-		git read-tree --reset -u HEAD HEAD
-		orig_head=$(cat "$GIT_DIR/ORIG_HEAD")
-		git reset HEAD
-		git update-ref ORIG_HEAD $orig_head
+		head_tree=$(git rev-parse --verify -q HEAD || echo $empty_tree) &&
+		git read-tree --reset -u $head_tree $head_tree &&
+		index_tree=$(git write-tree) &&
+		git read-tree -m -u $index_tree $head_tree
+		git read-tree -m $head_tree
 		;;
 	,t)
 		if test -f "$dotest/rebasing"
@@ -515,8 +522,19 @@ then
 		git rerere clear
 		if safe_to_abort
 		then
-			git read-tree --reset -u HEAD ORIG_HEAD
-			git reset ORIG_HEAD
+			head_tree=$(git rev-parse --verify -q HEAD || echo $empty_tree) &&
+			git read-tree --reset -u $head_tree $head_tree &&
+			index_tree=$(git write-tree) &&
+			orig_head=$(git rev-parse --verify -q ORIG_HEAD || echo $empty_tree) &&
+			git read-tree -m -u $index_tree $orig_head
+			if git rev-parse --verify -q ORIG_HEAD >/dev/null 2>&1
+			then
+				git reset ORIG_HEAD
+			else
+				git read-tree $empty_tree
+				curr_branch=$(git symbolic-ref HEAD 2>/dev/null) &&
+				git update-ref -d $curr_branch
+			fi
 		fi
 		rm -fr "$dotest"
 		exit ;;
@@ -827,10 +845,10 @@ To restore the original branch and stop patching run \"\$cmdline --abort\"."
 		continue
 	fi
 
-	if test -x "$GIT_DIR"/hooks/applypatch-msg
+	hook="$(git rev-parse --git-path hooks/applypatch-msg)"
+	if test -x "$hook"
 	then
-		"$GIT_DIR"/hooks/applypatch-msg "$dotest/final-commit" ||
-		stop_here $this
+		"$hook" "$dotest/final-commit" || stop_here $this
 	fi
 
 	if test -f "$dotest/final-commit"
@@ -904,9 +922,10 @@ did you forget to use 'git add'?"
 		stop_here_user_resolve $this
 	fi
 
-	if test -x "$GIT_DIR"/hooks/pre-applypatch
+	hook="$(git rev-parse --git-path hooks/pre-applypatch)"
+	if test -x "$hook"
 	then
-		"$GIT_DIR"/hooks/pre-applypatch || stop_here $this
+		"$hook" || stop_here $this
 	fi
 
 	tree=$(git write-tree) &&
@@ -933,18 +952,17 @@ did you forget to use 'git add'?"
 		echo "$(cat "$dotest/original-commit") $commit" >> "$dotest/rewritten"
 	fi
 
-	if test -x "$GIT_DIR"/hooks/post-applypatch
-	then
-		"$GIT_DIR"/hooks/post-applypatch
-	fi
+	hook="$(git rev-parse --git-path hooks/post-applypatch)"
+	test -x "$hook" && "$hook"
 
 	go_next
 done
 
 if test -s "$dotest"/rewritten; then
     git notes copy --for-rewrite=rebase < "$dotest"/rewritten
-    if test -x "$GIT_DIR"/hooks/post-rewrite; then
-	"$GIT_DIR"/hooks/post-rewrite rebase < "$dotest"/rewritten
+    hook="$(git rev-parse --git-path hooks/post-rewrite)"
+    if test -x "$hook"; then
+	"$hook" rebase < "$dotest"/rewritten
     fi
 fi
 

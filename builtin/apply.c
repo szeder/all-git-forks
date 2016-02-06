@@ -77,8 +77,7 @@ static enum ws_ignore {
 
 
 static const char *patch_input_file;
-static const char *root;
-static int root_len;
+static struct strbuf root = STRBUF_INIT;
 static int read_stdin = 1;
 static int options;
 
@@ -208,7 +207,7 @@ struct patch {
 	struct patch *next;
 
 	/* three-way fallback result */
-	unsigned char threeway_stage[3][20];
+	struct object_id threeway_stage[3];
 };
 
 static void free_fragment_list(struct fragment *list)
@@ -494,8 +493,8 @@ static char *find_name_gnu(const char *line, const char *def, int p_value)
 	}
 
 	strbuf_remove(&name, 0, cp - name.buf);
-	if (root)
-		strbuf_insert(&name, 0, root, root_len);
+	if (root.len)
+		strbuf_insert(&name, 0, root.buf, root.len);
 	return squash_slash(strbuf_detach(&name, NULL));
 }
 
@@ -697,11 +696,8 @@ static char *find_name_common(const char *line, const char *def,
 			return squash_slash(xstrdup(def));
 	}
 
-	if (root) {
-		char *ret = xmalloc(root_len + len + 1);
-		strcpy(ret, root);
-		memcpy(ret + root_len, start, len);
-		ret[root_len + len] = '\0';
+	if (root.len) {
+		char *ret = xstrfmt("%s%.*s", root.buf, len, start);
 		return squash_slash(ret);
 	}
 
@@ -785,7 +781,7 @@ static int guess_p_value(const char *nameline)
 }
 
 /*
- * Does the ---/+++ line has the POSIX timestamp after the last HT?
+ * Does the ---/+++ line have the POSIX timestamp after the last HT?
  * GNU diff puts epoch there to signal a creation/deletion event.  Is
  * this such a timestamp?
  */
@@ -1277,8 +1273,8 @@ static int parse_git_header(const char *line, int len, unsigned int size, struct
 	 * the default name from the header.
 	 */
 	patch->def_name = git_header_name(line, len);
-	if (patch->def_name && root) {
-		char *s = xstrfmt("%s%s", root, patch->def_name);
+	if (patch->def_name && root.len) {
+		char *s = xstrfmt("%s%s", root.buf, patch->def_name);
 		free(patch->def_name);
 		patch->def_name = s;
 	}
@@ -1638,6 +1634,9 @@ static int parse_fragment(const char *line, unsigned long size,
 	}
 	if (oldlines || newlines)
 		return -1;
+	if (!deleted && !added)
+		return -1;
+
 	fragment->leading = leading;
 	fragment->trailing = trailing;
 
@@ -3426,11 +3425,11 @@ static int try_threeway(struct image *image, struct patch *patch,
 	if (status) {
 		patch->conflicted_threeway = 1;
 		if (patch->is_new)
-			hashclr(patch->threeway_stage[0]);
+			oidclr(&patch->threeway_stage[0]);
 		else
-			hashcpy(patch->threeway_stage[0], pre_sha1);
-		hashcpy(patch->threeway_stage[1], our_sha1);
-		hashcpy(patch->threeway_stage[2], post_sha1);
+			hashcpy(patch->threeway_stage[0].hash, pre_sha1);
+		hashcpy(patch->threeway_stage[1].hash, our_sha1);
+		hashcpy(patch->threeway_stage[2].hash, post_sha1);
 		fprintf(stderr, "Applied patch to '%s' with conflicts.\n", patch->new_name);
 	} else {
 		fprintf(stderr, "Applied patch to '%s' cleanly.\n", patch->new_name);
@@ -4186,14 +4185,14 @@ static void add_conflicted_stages_file(struct patch *patch)
 
 	remove_file_from_cache(patch->new_name);
 	for (stage = 1; stage < 4; stage++) {
-		if (is_null_sha1(patch->threeway_stage[stage - 1]))
+		if (is_null_oid(&patch->threeway_stage[stage - 1]))
 			continue;
 		ce = xcalloc(1, ce_size);
 		memcpy(ce->name, patch->new_name, namelen);
 		ce->ce_mode = create_ce_mode(mode);
 		ce->ce_flags = create_ce_flags(stage);
 		ce->ce_namelen = namelen;
-		hashcpy(ce->sha1, patch->threeway_stage[stage - 1]);
+		hashcpy(ce->sha1, patch->threeway_stage[stage - 1].hash);
 		if (add_cache_entry(ce, ADD_CACHE_OK_TO_ADD) < 0)
 			die(_("unable to add cache entry for %s"), patch->new_name);
 	}
@@ -4498,14 +4497,9 @@ static int option_parse_whitespace(const struct option *opt,
 static int option_parse_directory(const struct option *opt,
 				  const char *arg, int unset)
 {
-	root_len = strlen(arg);
-	if (root_len && arg[root_len - 1] != '/') {
-		char *new_root;
-		root = new_root = xmalloc(root_len + 2);
-		strcpy(new_root, arg);
-		strcpy(new_root + root_len++, "/");
-	} else
-		root = arg;
+	strbuf_reset(&root);
+	strbuf_addstr(&root, arg);
+	strbuf_complete(&root, '/');
 	return 0;
 }
 

@@ -1,0 +1,235 @@
+Git 2.8 Release Notes
+=====================
+
+Updates since v2.7
+------------------
+
+UI, Workflows & Features
+
+ * "branch --delete" has "branch -d" but "push --delete" does not.
+
+ * "git blame" learned to produce the progress eye-candy when it takes
+   too much time before emitting the first line of the result.
+
+ * "git grep" can now be configured (or told from the command line)
+   how many threads to use when searching in the working tree files.
+
+ * Some "git notes" operations, e.g. "git log --notes=<note>", should
+   be able to read notes from any tree-ish that is shaped like a notes
+   tree, but the notes infrastructure required that the argument must
+   be a ref under refs/notes/.  Loosen it to require a valid ref only
+   when the operation would update the notes (in which case we must
+   have a place to store the updated notes tree, iow, a ref).
+
+ * "git grep" by default does not fall back to its "--no-index"
+   behaviour outside a directory under Git's control (otherwise the
+   user may by mistake end up running a huge recursive search); with a
+   new configuration (set in $HOME/.gitconfig--by definition this
+   cannot be set in the config file per project), this safety can be
+   disabled.
+
+ * "git pull --rebase" has been extended to allow invoking
+   "rebase -i".
+
+ * "git p4" learned to cope with the type of a file getting changed.
+
+ * "git format-patch" learned to notice format.outputDirectory
+   configuration variable.  This allows "-o <dir>" option to be
+   omitted on the command line if you always use the same directory in
+   your workflow.
+
+ * "interpret-trailers" has been taught to optionally update a file in
+   place, instead of always writing the result to the standard output.
+
+ * Many commands that read files that are expected to contain text
+   that is generated (or can be edited) by the end user to control
+   their behaviour (e.g. "git grep -f <filename>") have been updated
+   to be more tolerant to lines that are terminated with CRLF (they
+   used to treat such a line to contain payload that ends with CR,
+   which is usually not what the users expect).
+
+ * "git notes merge" used to limit the source of the merged notes tree
+   to somewhere under refs/notes/ hierarchy, which was too limiting
+   when inventing a workflow to exchange notes with remote
+   repositories using remote-tracking notes trees (located in e.g.
+   refs/remote-notes/ or somesuch).
+
+ * "git ls-files" learned a new "--eol" option to help diagnose
+   end-of-line problems.
+
+ * "ls-remote" learned an option to show which branch the remote
+   repository advertises as its primary by pointing its HEAD at.
+
+ * New http.proxyAuthMethod configuration variable can be used to
+   specify what authentication method to use, as a way to work around
+   proxies that do not give error response expected by libcurl when
+   CURLAUTH_ANY is used.  Also, the codepath for proxy authentication
+   has been taught to use credential API to store the authentication
+   material in user's keyrings.
+
+
+Performance, Internal Implementation, Development Support etc.
+
+ * Add a framework to spawn a group of processes in parallel, and use
+   it to run "git fetch --recurse-submodules" in parallel.
+
+ * A slight update to the Makefile to mark "phoney" targets
+   as such correctly.
+
+ * In-core storage of the reverse index for .pack files (which lets
+   you go from a pack offset to an object name) has been streamlined.
+
+ * d95138e6 (setup: set env $GIT_WORK_TREE when work tree is set, like
+   $GIT_DIR, 2015-06-26) attempted to work around a glitch in alias
+   handling by overwriting GIT_WORK_TREE environment variable to
+   affect subprocesses when set_git_work_tree() gets called, which
+   resulted in a rather unpleasant regression to "clone" and "init".
+   Try to address the same issue by always restoring the environment
+   and respawning the real underlying command when handling alias.
+
+ * The low-level code that is used to create symbolic references has
+   been updated to share more code with the code that deals with
+   normal references.
+
+ * strbuf_getline() and friends have been redefined to make it easier
+   to identify which callsite of (new) strbuf_getline_lf() should
+   allow and silently ignore carriage-return at the end of the line to
+   help users on DOSsy systems.
+
+ * "git shortlog" used to accumulate various pieces of information
+   regardless of what was asked to be shown in the final output.  It
+   has been optimized by noticing what need not to be collected
+   (e.g. there is no need to collect the log messages when showing
+   only the number of changes).
+
+ * "git checkout $branch" (and other operations that share the same
+   underlying machinery) has been optimized.
+
+ * Automated tests in Travis CI environment has been optimized by
+   persisting runtime statistics of previous "prove" run, executing
+   tests that take longer before other ones; this reduces the total
+   wallclock time.
+
+
+Also contains various documentation updates and code clean-ups.
+
+
+Fixes since v2.7
+----------------
+
+Unless otherwise noted, all the fixes since v2.7 in the maintenance
+track are contained in this release (see the maintenance releases'
+notes for details).
+
+ * An earlier change in 2.5.x-era broke users' hooks and aliases by
+   exporting GIT_WORK_TREE to point at the root of the working tree,
+   interfering when they tried to use a different working tree without
+   setting GIT_WORK_TREE environment themselves.
+   (merge df1e6ea nd/stop-setenv-work-tree later to maint).
+
+ * The "exclude_list" structure has the usual "alloc, nr" pair of
+   fields to be used by ALLOC_GROW(), but clear_exclude_list() forgot
+   to reset 'alloc' to 0 when it cleared 'nr' to discard the managed
+   array.
+   (merge 2653a8c nd/dir-exclude-cleanup later to maint).
+
+ * Paths that have been told the index about with "add -N" are not
+   quite yet in the index, but a few commands behaved as if they
+   already are in a harmful way.
+   (merge 4d55200 nd/ita-cleanup later to maint).
+
+ * "git send-email" was confused by escaped quotes stored in the alias
+   files saved by "mutt", which has been corrected.
+   (merge 2c510f2 ew/send-email-mutt-alias-fix later to maint).
+
+ * A few unportable C construct have been spotted by clang compiler
+   and have been fixed.
+   (merge a0df2e5 jk/clang-pedantic later to maint).
+
+ * The documentation has been updated to hint the connection between
+   the '--signoff' option and DCO.
+   (merge b2c150d dw/signoff-doc later to maint).
+
+ * "git reflog" incorrectly assumed that all objects that used to be
+   at the tip of a ref must be commits, which caused it to segfault.
+   (merge aecad37 dk/reflog-walk-with-non-commit later to maint).
+
+ * The ignore mechanism saw a few regressions around untracked file
+   listing and sparse checkout selection areas in 2.7.0; the change
+   that is responsible for the regression has been reverted.
+   (merge 8c72236 nd/exclusion-regression-fix later to maint).
+
+ * Some codepaths used fopen(3) when opening a fixed path in $GIT_DIR
+   (e.g. COMMIT_EDITMSG) that is meant to be left after the command is
+   done.  This however did not work well if the repository is set to
+   be shared with core.sharedRepository and the umask of the previous
+   user is tighter.  They have been made to work better by calling
+   unlink(2) and retrying after fopen(3) fails with EPERM.
+   (merge ea56518 js/fopen-harder later to maint).
+
+ * Asking gitweb for a nonexistent commit left a warning in the server
+   log.
+
+   Somebody may want to follow this up with an additional test, perhaps?
+   IIRC, we do test that no Perl warnings are given to the server log,
+   so this should have been caught if our test coverage were good.
+   (merge a9eb90a ho/gitweb-squelch-undef-warning later to maint).
+
+ * "git rebase", unlike all other callers of "gc --auto", did not
+   ignore the exit code from "gc --auto".
+   (merge 8c24f5b jk/ok-to-fail-gc-auto-in-rebase later to maint).
+
+ * Many codepaths that run "gc --auto" before exiting kept packfiles
+   mapped and left the file descriptors to them open, which was not
+   friendly to systems that cannot remove files that are open.  They
+   now close the packs before doing so.
+   (merge d562102 js/close-packs-before-gc later to maint).
+
+ * A recent optimization to filter-branch in v2.7.0 introduced a
+   regression when --prune-empty filter is used, which has been
+   corrected.
+   (merge 1dc413e jk/filter-branch-no-index later to maint).
+
+ * The description for SANITY prerequisite the test suite uses has
+   been clarified both in the comment and in the implementation.
+   (merge 719c3da jk/sanity later to maint).
+
+ * "git tag" started listing a tag "foo" as "tags/foo" when a branch
+   named "foo" exists in the same repository; remove this unnecessary
+   disambiguation, which is a regression introduced in v2.7.0.
+   (merge 0571979 jk/list-tag-2.7-regression later to maint).
+
+ * The way "git svn" uses auth parameter was broken by Subversion
+   1.9.0 and later.
+   (merge 0b66415 ew/svn-1.9.0-auth later to maint).
+
+ * The "split" subcommand of "git subtree" (in contrib/) incorrectly
+   skipped merges when it shouldn't, which was corrected.
+   (merge 933cfeb dw/subtree-split-do-not-drop-merge later to maint).
+
+ * A few options of "git diff" did not work well when the command was
+   run from a subdirectory.
+   (merge a97262c nd/diff-with-path-params later to maint).
+
+ * The command line completion learned a handful of additional options
+   and command specific syntax.
+   (merge fa4b5e3 jk/completion-rebase later to maint).
+   (merge f7c2e1a pw/completion-show-branch later to maint).
+   (merge d7d4ca8 pw/completion-stash later to maint).
+   (merge e6414b4 tb/complete-word-diff-regex later to maint).
+
+ * dirname() emulation has been added, as Msys2 lacks it.
+   (merge e7d5ce8 js/dirname-basename later to maint).
+
+ * The underlying machinery used by "ls-files -o" and other commands
+   have been taught not to create empty submodule ref cache for a
+   directory that is not a submodule.  This removes a ton of wasted
+   CPU cycles.
+   (merge a2d5156 jk/ref-cache-non-repository-optim later to maint).
+
+ * Other minor clean-ups and documentation updates
+   (merge 99487cf ss/user-manual later to maint).
+   (merge e914ef0 ew/for-each-ref-doc later to maint).
+   (merge 36fc7d8 sg/t6050-failing-editor-test-fix later to maint).
+   (merge 60253a6 ss/clone-depth-single-doc later to maint).
+   (merge bd02e97 lv/add-doc-working-tree later to maint).

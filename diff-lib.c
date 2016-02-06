@@ -125,7 +125,7 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 			dpath->next = NULL;
 			memcpy(dpath->path, ce->name, path_len);
 			dpath->path[path_len] = '\0';
-			hashclr(dpath->sha1);
+			oidclr(&dpath->oid);
 			memset(&(dpath->parent[0]), 0,
 			       sizeof(struct combine_diff_parent)*5);
 
@@ -155,7 +155,7 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 				if (2 <= stage) {
 					int mode = nce->ce_mode;
 					num_compare_stages++;
-					hashcpy(dpath->parent[stage-2].sha1, nce->sha1);
+					hashcpy(dpath->parent[stage-2].oid.hash, nce->sha1);
 					dpath->parent[stage-2].mode = ce_mode_from_stat(nce, mode);
 					dpath->parent[stage-2].status =
 						DIFF_STATUS_MODIFIED;
@@ -339,14 +339,14 @@ static int show_modified(struct rev_info *revs,
 		memcpy(p->path, new->name, pathlen);
 		p->path[pathlen] = 0;
 		p->mode = mode;
-		hashclr(p->sha1);
+		oidclr(&p->oid);
 		memset(p->parent, 0, 2 * sizeof(struct combine_diff_parent));
 		p->parent[0].status = DIFF_STATUS_MODIFIED;
 		p->parent[0].mode = new->ce_mode;
-		hashcpy(p->parent[0].sha1, new->sha1);
+		hashcpy(p->parent[0].oid.hash, new->sha1);
 		p->parent[1].status = DIFF_STATUS_MODIFIED;
 		p->parent[1].mode = old->ce_mode;
-		hashcpy(p->parent[1].sha1, old->sha1);
+		hashcpy(p->parent[1].oid.hash, old->sha1);
 		show_combined_diff(p, 2, revs->dense_combined_merges, revs);
 		free(p);
 		return 0;
@@ -493,7 +493,7 @@ int run_diff_index(struct rev_info *revs, int cached)
 	struct object_array_entry *ent;
 
 	ent = revs->pending.objects;
-	if (diff_cache(revs, ent->item->sha1, ent->name, cached))
+	if (diff_cache(revs, ent->item->oid.hash, ent->name, cached))
 		exit(128);
 
 	diff_set_mnemonic_prefix(&revs->diffopt, "c/", cached ? "i/" : "w/");
