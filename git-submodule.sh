@@ -15,9 +15,9 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
 OPTIONS_SPEC=
 SUBDIRECTORY_OK=Yes
-. git-sh-setup
-. git-sh-i18n
-. git-parse-remote
+. /home/pks/Development/elego/git/git/git-sh-setup
+. /home/pks/Development/elego/git/git/git-sh-i18n
+. /home/pks/Development/elego/git/git/git-parse-remote
 require_work_tree
 wt_prefix=$(git rev-parse --show-prefix)
 cd_to_toplevel
@@ -1100,13 +1100,14 @@ cmd_status()
 		shift
 	done
 
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	/home/pks/Development/elego/git/git/git-submodule--helper list --prefix "$wt_prefix" "$@" |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		displaypath=$(relative_path "$prefix$sm_path")
+
 		if test "$stage" = U
 		then
 			say "U$sha1 $displaypath"
