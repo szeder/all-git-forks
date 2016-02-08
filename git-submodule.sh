@@ -1104,6 +1104,13 @@ cmd_status()
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
+
+		if test $sha1 = 0000000000000000000000000000000000000000
+		then
+		    say "-$sha1 $sm_path"
+		    continue
+		fi
+
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		displaypath=$(relative_path "$prefix$sm_path")
