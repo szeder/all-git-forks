@@ -14,6 +14,8 @@ test_expect_success setup '
 
 	for w in Hello world how are you; do echo $w; done >LFonly &&
 	for w in I am very very fine thank you; do echo ${w}Q; done | q_to_cr >CRLFonly &&
+	cp CRLFonly CRLFonly1 &&
+	cp CRLFonly CRLFonly2 &&
 	for w in Oh here is a QNUL byte how alarming; do echo ${w}; done | q_to_nul >LFwithNUL &&
 	git add . &&
 
@@ -23,6 +25,28 @@ test_expect_success setup '
 	CRLFonly=$(git rev-parse HEAD:CRLFonly) &&
 	LFwithNUL=$(git rev-parse HEAD:LFwithNUL) &&
 
+	cp CRLFonly CRLFonly.orig &&
+	for w in I am very very fine thank YOU; do echo ${w}Q; done | q_to_cr >CRLFonly.changed &&
+	cat >expnorm  <<-EOF &&
+		MIQ
+		MamQ
+		MveryQ
+		MveryQ
+		MfineQ
+		MthankQ
+		MyouQ
+		PI
+		Pam
+		Pvery
+		Pvery
+		Pfine
+		Pthank
+		PYOU
+	EOF
+	cat >expunor  <<-EOF &&
+		MyouQ
+		PYOUQ
+	EOF
 	echo happy.
 '
 
@@ -39,7 +63,7 @@ test_expect_success 'default settings cause no changes' '
 	test -z "$LFonlydiff" -a -z "$CRLFonlydiff" -a -z "$LFwithNULdiff"
 '
 
-test_expect_success 'crlf=true causes a CRLF file to be normalized' '
+test_expect_success 'crlf=true causes an unchanged CRLF file not to be normalized' '
 
 	# Backwards compatibility check
 	rm -f .gitattributes tmp LFonly CRLFonly LFwithNUL &&
@@ -49,10 +73,10 @@ test_expect_success 'crlf=true causes a CRLF file to be normalized' '
 	# Note, "normalized" means that git will normalize it if added
 	has_cr CRLFonly &&
 	CRLFonlydiff=$(git diff CRLFonly) &&
-	test -n "$CRLFonlydiff"
+	test -z "$CRLFonlydiff"
 '
 
-test_expect_success 'text=true causes a CRLF file to be normalized' '
+test_expect_success 'text=true causes an unchanged CRLF file not to be normalized' '
 
 	rm -f .gitattributes tmp LFonly CRLFonly LFwithNUL &&
 	echo "CRLFonly text" > .gitattributes &&
@@ -61,7 +85,7 @@ test_expect_success 'text=true causes a CRLF file to be normalized' '
 	# Note, "normalized" means that git will normalize it if added
 	has_cr CRLFonly &&
 	CRLFonlydiff=$(git diff CRLFonly) &&
-	test -n "$CRLFonlydiff"
+	test -z "$CRLFonlydiff"
 '
 
 test_expect_success 'eol=crlf gives a normalized file CRLFs with autocrlf=false' '
@@ -114,7 +138,7 @@ test_expect_success 'autocrlf=true does not normalize CRLF files' '
 	test -z "$LFonlydiff" -a -z "$CRLFonlydiff" -a -z "$LFwithNULdiff"
 '
 
-test_expect_success 'text=auto, autocrlf=true _does_ normalize CRLF files' '
+test_expect_success 'text=auto, autocrlf=true  causes an unchanged CRLF file not to be normalized' '
 
 	rm -f .gitattributes tmp LFonly CRLFonly LFwithNUL &&
 	git config core.autocrlf true &&
@@ -126,7 +150,7 @@ test_expect_success 'text=auto, autocrlf=true _does_ normalize CRLF files' '
 	LFonlydiff=$(git diff LFonly) &&
 	CRLFonlydiff=$(git diff CRLFonly) &&
 	LFwithNULdiff=$(git diff LFwithNUL) &&
-	test -z "$LFonlydiff" -a -n "$CRLFonlydiff" -a -z "$LFwithNULdiff"
+	test -z "$LFonlydiff" -a -z "$CRLFonlydiff" -a -z "$LFwithNULdiff"
 '
 
 test_expect_success 'text=auto, autocrlf=true does not normalize binary files' '
@@ -152,4 +176,25 @@ test_expect_success 'eol=crlf _does_ normalize binary files' '
 	test -z "$LFwithNULdiff"
 '
 
+test_expect_success 'crlf=true causes a changed CRLF file to be normalized' '
+	git config core.autocrlf false &&
+	echo "CRLFonly1 crlf" > .gitattributes &&
+	# Note, "normalized" means that git will normalize it if added
+	cp CRLFonly.changed CRLFonly1 &&
+	git add CRLFonly1 &&
+	git diff --cached CRLFonly1 |
+	tr "\015" Q | sed -ne "/^[+-][a-zA-Z]/p" | tr "+-" PM >actual1 &&
+	test_cmp expnorm actual1
+'
+
+test_expect_success 'autocrlf=true causes a changed CRLF file not to be normalized' '
+	git config core.autocrlf true &&
+	echo > .gitattributes &&
+	# Note, "normalized" means that git will normalize it if added
+	cp CRLFonly.changed CRLFonly2 &&
+	git add CRLFonly2 &&
+	git diff --cached CRLFonly2 |
+	tr "\015" Q  | sed -ne "/^[+-][a-zA-Z]/p" |	tr "+-" PM >actual2 &&
+	test_cmp expunor actual2
+'
 test_done
