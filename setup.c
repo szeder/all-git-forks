@@ -130,6 +130,19 @@ int path_inside_repo(const char *prefix, const char *path)
 	return 0;
 }
 
+static int dwim_as_wildcard(const char *arg)
+{
+	if (no_wildcard(arg))
+		return 0;
+	if (strstr(arg, "^{"))
+		return 0; /* probably "^{something}" */
+	if (strstr(arg, "@{"))
+		return 0; /* probably "ref@{something}" */
+	if (strchr(arg, ':'))
+		return 0;
+	return 1;
+}
+
 int check_filename(const char *prefix, const char *arg)
 {
 	const char *name;
@@ -139,7 +152,7 @@ int check_filename(const char *prefix, const char *arg)
 		if (arg[2] == '\0') /* ":/" is root dir, always exists */
 			return 1;
 		name = arg + 2;
-	} else if (!no_wildcard(arg))
+	} else if (dwim_as_wildcard(arg))
 		return 1;
 	else if (prefix)
 		name = prefix_filename(prefix, strlen(prefix), arg);
