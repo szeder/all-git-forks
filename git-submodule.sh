@@ -1100,7 +1100,7 @@ cmd_status()
 		shift
 	done
 
-	/home/pks/Development/elego/git/git/git-submodule--helper list --prefix "$wt_prefix" "$@" |
+	/home/pks/Development/elego/git/git/git-submodule--helper list --prefix "$wt_prefix" "$all" "$@" |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
