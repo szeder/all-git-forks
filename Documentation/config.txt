@@ -2844,3 +2844,7 @@ web.browser::
 	Specify a web browser that may be used by some commands.
 	Currently only linkgit:git-instaweb[1] and linkgit:git-help[1]
 	may use it.
+
+combinepack.size-limit::
+	The size upper bound for 'combine-pack' when run from
+	'journal-fetch'. If not specified, 128 MiB.

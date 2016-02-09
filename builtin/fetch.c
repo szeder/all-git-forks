@@ -31,10 +31,13 @@ enum {
 };
 
 static int fetch_prune_config = -1; /* unspecified */
+static int fetch_disable_journal_config = -1;
 static int prune = -1; /* unspecified */
 #define PRUNE_BY_DEFAULT 0 /* do we prune by default? */
 
-static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity;
+#define JOURNAL_EXIT_SKIPPED -2
+
+static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity, disable_journal;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow, update_shallow;
 static int max_children = 1;
@@ -69,6 +72,12 @@ static int git_fetch_config(const char *k, const char *v, void *cb)
 		fetch_prune_config = git_config_bool(k, v);
 		return 0;
 	}
+
+	if (!strcmp(k, "fetch.journal.disable")) {
+		fetch_disable_journal_config = git_config_bool(k, v);
+		return 0;
+	}
+
 	return git_default_config(k, v, cb);
 }
 
@@ -125,6 +134,8 @@ static struct option builtin_fetch_options[] = {
 		   N_("default mode for recursion"), PARSE_OPT_HIDDEN },
 	OPT_BOOL(0, "update-shallow", &update_shallow,
 		 N_("accept refs that update .git/shallow")),
+	OPT_BOOL(0, "disable-journal", &disable_journal,
+		 N_("disable using the journal for fetching")),
 	{ OPTION_CALLBACK, 0, "refmap", NULL, N_("refmap"),
 	  N_("specify fetch refmap"), PARSE_OPT_NONEG, parse_refmap_arg },
 	OPT_END()
@@ -976,6 +987,58 @@ static int do_fetch(struct transport *transport,
 	return retcode;
 }
 
+static int do_journal_fetch(struct remote *remote, int argc, const char **argv)
+{
+
+	struct stat sb;
+	struct argv_array journal_fetch_args = ARGV_ARRAY_INIT;
+	const char *path;
+	size_t i;
+	int rc;
+
+	/* XXX: verbosity, etc. */
+	if (disable_journal) {
+		trace_printf("journal: explicitly disabled via flag (--disable-journal)\n");
+		return JOURNAL_EXIT_SKIPPED;
+	}
+
+	if (fetch_disable_journal_config == 1) {
+		trace_printf("journal: explicitly disabled via config (fetch.journal.disable)\n");
+		return JOURNAL_EXIT_SKIPPED;
+	}
+
+	path = mkpath("%s/journals/%s", get_object_directory(), remote->name);
+
+	if (stat(path, &sb) != 0) {
+		if (errno == ENOENT) {
+			trace_printf("journal: no directory for remote, skipping\n");
+		} else {
+			die_errno("stat");
+		}
+		return JOURNAL_EXIT_SKIPPED;
+	}
+
+	if (!(sb.st_mode & S_IFDIR)) {
+		trace_printf("journal: remote dir not a directory, skipping\n");
+		return JOURNAL_EXIT_SKIPPED;
+	}
+
+	argv_array_push(&journal_fetch_args, "journal-fetch");
+
+	if (verbosity < 0) {
+		argv_array_push(&journal_fetch_args, "-q");
+	} else 	if (verbosity >= 2) {
+		argv_array_push(&journal_fetch_args, "-v");
+	}
+	argv_array_push(&journal_fetch_args, remote->name);
+	for (i = 0; i < argc; ++i) {
+		argv_array_push(&journal_fetch_args, argv[i]);
+	}
+	rc = run_command_v_opt(journal_fetch_args.argv, RUN_GIT_CMD);
+	argv_array_clear(&journal_fetch_args);
+	return rc;
+}
+
 static int get_one_remote_for_fetch(struct remote *remote, void *priv)
 {
 	struct string_list *list = priv;
@@ -1090,10 +1153,25 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 	struct refspec *refspec;
 	int ref_nr = 0;
 	int exit_code;
+	int journal_exit_code;
 
 	if (!remote)
 		die(_("No remote repository specified.  Please, specify either a URL or a\n"
 		    "remote name from which new revisions should be fetched."));
+
+	journal_exit_code = do_journal_fetch(remote, argc, argv);
+	if (journal_exit_code == 0) {
+		if (verbosity >= 2) {
+			printf("journal: fetch ok\n");
+		}
+		return journal_exit_code;
+	} else if (journal_exit_code == JOURNAL_EXIT_SKIPPED) {
+		if (verbosity >= 1)
+			warning("journal: skipped fetch\n");
+	} else {
+		die("journal: fetch failed (%d)",
+			journal_exit_code);
+	}
 
 	gtransport = prepare_transport(remote);
 

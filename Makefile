@@ -567,6 +567,7 @@ PROGRAM_OBJS += imap-send.o
 PROGRAM_OBJS += journal-control.o
 PROGRAM_OBJS += journal-dump.o
 PROGRAM_OBJS += journal-extents-dump.o
+PROGRAM_OBJS += journal-fetch.o
 PROGRAM_OBJS += journal-identity.o
 PROGRAM_OBJS += journal-verify.o
 PROGRAM_OBJS += sh-i18n--envsubst.o
@@ -734,6 +735,7 @@ LIB_OBJS += hex.o
 LIB_OBJS += ident.o
 LIB_OBJS += journal.o
 LIB_OBJS += journal-client.o
+LIB_OBJS += journal-update-ref.o
 LIB_OBJS += journal-util.o
 LIB_OBJS += kwset.o
 LIB_OBJS += levenshtein.o
@@ -2020,6 +2022,9 @@ git-http-fetch$X: http.o http-walker.o http-fetch.o GIT-LDFLAGS $(GITLIBS)
 git-http-push$X: http.o http-push.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(CURL_LIBCURL) $(EXPAT_LIBEXPAT) $(LIBS)
+git-journal-fetch$X: http.o journal-fetch.o GIT-LDFLAGS $(GITLIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
+		$(CURL_LIBCURL) $(LIBS)
 
 git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \

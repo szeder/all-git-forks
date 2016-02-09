@@ -1,0 +1,9 @@
+In order to optimize git fetches on large repositories, a
+journal-based replication scheme can be used.  The advantage of this
+scheme is that there is no need for the client and server to
+negotiate, nor for the server to construct custom packs for each
+client.  Instead, the client is simply given all data that the server
+has received.
+
+The disadvantage is that selective fetches are not possible.  The
+server sends all refs and objects that it knows about to the client.
