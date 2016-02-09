@@ -272,12 +272,27 @@ AS_HELP_STRING([],           [ARG can be also prefix for libpcre library and hea
 	GIT_CONF_SUBST([LIBPCREDIR])
     fi)
 
-AC_CHECK_LIB([lmdb], [mdb_get],
-  [LMDB_LIBS="-llmdb"
-  USE_LIBLMDB=YesPlease],
-  [USE_LIBLMDB=])
-GIT_CONF_SUBST([LMDB_LIBS])
-GIT_CONF_SUBST([USE_LIBLMDB])
+# Define USE_LIBLMDB if you have and want to use liblmdb.  This is
+# used for journal-based replication, on the server side.
+#
+# Define LIBLMDBDIR=/foo/bar if your liblmdb header and library files are in
+# /foo/bar/include and /foo/bar/lib directories.
+#
+AC_ARG_WITH(liblmdb,
+AS_HELP_STRING([--with-liblmdb],[support lmdb. This is required for servers for journal-based replication (default is NO)])
+AS_HELP_STRING([],           [ARG can be also prefix for liblmdb library and headers]),
+    if test "$withval" = "no"; then
+	USE_LIBLMDB=
+    elif test "$withval" = "yes"; then
+	USE_LIBLMDB=YesPlease
+    else
+	USE_LIBLMDB=YesPlease
+	LIBLMDBDIR=$withval
+	AC_MSG_NOTICE([Setting LIBLMDBDIR to $LIBLMDBDIR])
+        dnl USE_LIBLMDB can still be modified below, so don't substitute
+        dnl it yet.
+	GIT_CONF_SUBST([LIBLMDBDIR])
+    fi)
 
 #
 # Define HAVE_ALLOCA_H if you have working alloca(3) defined in that header.
@@ -517,6 +532,23 @@ GIT_UNSTASH_FLAGS($LIBPCREDIR)
 GIT_CONF_SUBST([USE_LIBPCRE])
 
 fi
+
+if test -n "$USE_LIBLMDB"; then
+
+GIT_STASH_FLAGS($LIBLMDBDIR)
+
+# Define USE_LIBLMDB if you have and want to use liblmdb.  This is required
+# for journal-based replication
+AC_CHECK_LIB([lmdb], [mdb_get],
+[USE_LIBLMDB=YesPlease],
+[USE_LIBLMDB=])
+
+GIT_UNSTASH_FLAGS($LIBLMDBDIR)
+
+GIT_CONF_SUBST([USE_LIBLMDB])
+
+fi
+
 
 #
 # Define NO_CURL if you do not have libcurl installed.  git-http-pull and

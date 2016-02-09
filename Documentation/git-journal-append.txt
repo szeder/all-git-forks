@@ -1,0 +1,57 @@
+git-journal-append(1)
+===================
+
+NAME
+----
+git-journal-append - Append packs or refs to the journal
+
+
+SYNOPSIS
+--------
+[verse]
+'git journal-append'  auto <refname> <sha>
+'git journal-append'  ref <refname> <sha>
+'git journal-append'  pack <sha>
+'git journal-append'  tips < ref-sha
+'git journal-append'  upgrade
+
+DESCRIPTION
+-----------
+
+Append to the journal.
+
+include::journal.txt[]
+
+This command should be used as an update-journal hook to append
+newly-uploaded packs/refs to the journal.
+
+COMMANDS
+-------
+auto::
+	If it is not already present, append whatever pack contains
+	the object with the provided sha.  Regardless, append a ref
+	update.  The pack, together with all already-journaled packs,
+	should contain all of the commit's contents (trees, blobs).
+
+ref::
+	Append just a ref update.  The sha is the ref's new sha.
+
+pack::
+	Append just a pack.  The sha is the pack's sha.
+
+tips::
+	Append a series of refs and packs from stdin; this is the bulk
+	version of 'auto' (format: ref<sp>sha)
+
+upgrade::
+	Append a journal format upgrade notification.  Presently unused,
+	since there is only one journal format.
+
+
+SEE ALSO
+--------
+linkgit:git-receive-pack[1]
+
+GIT
+---
+Part of the linkgit:git[1] suite
