@@ -10,6 +10,7 @@
 #include "pkt-line.h"
 #include "gettext.h"
 #include "transport.h"
+#include "safe-append.h"
 
 int active_requests;
 int http_is_verbose;
@@ -1083,6 +1084,8 @@ static int handle_curl_result(struct slot_results *results)
 		return HTTP_OK;
 	} else if (missing_target(results))
 		return HTTP_MISSING_TARGET;
+	else if (results->http_code == 416)
+		return HTTP_RANGE_NOT_SATISFIABLE;
 	else if (results->http_code == 401) {
 		if (http_auth.username && http_auth.password) {
 			credential_reject(&http_auth);
@@ -1351,8 +1354,22 @@ static int http_request(const char *url,
 		curl_easy_setopt(slot->curl, CURLOPT_NOBODY, 0);
 		curl_easy_setopt(slot->curl, CURLOPT_FILE, result);
 
-		if (target == HTTP_REQUEST_FILE) {
-			off_t posn = ftello(result);
+		if (options && options->range && target == HTTP_REQUEST_FILE) {
+			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
+					 fwrite);
+
+			/*
+			 * This assert is because upper isn't handled
+			 * in this code, because it's unneeded.
+			 *
+			 * We need to supply our own range bottom because we
+			 * have already maybe discarded part of the file.
+			 */
+			assert(options->range->unbounded_upwards);
+			http_opt_request_remainder(slot->curl, options->range->lower);
+		} else if (target == HTTP_REQUEST_FILE) {
+			long posn = ftello(result);
+
 			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
 					 fwrite);
 			if (posn > 0)
@@ -1525,6 +1542,74 @@ static int http_get_file(const char *url, const char *filename,
 		ret = HTTP_ERROR;
 cleanup:
 	strbuf_release(&tmpfile);
+	return ret;
+}
+
+/*
+ * Download the remainder of a file.  The file at `filename` is the
+ * destination of the download.  It is assumed to be a safeappend
+ * file.  If the file already contains some data or if `discard` is
+ * set, a HTTP Range request will be made starting at the length of
+ * the file plus `discard`.
+ */
+int http_resume_file(const char *url, const char *filename,
+		     struct http_get_options *options, off_t discard)
+{
+	int ret;
+	FILE *original = NULL;
+	off_t original_len;
+	struct http_range range;
+	int fd;
+
+	fd = open_safeappend_file(filename, O_CREAT|O_WRONLY|O_APPEND, 0666);
+	if (fd < 0) {
+		error("Unable to open local file %s", filename);
+		ret = HTTP_ERROR;
+		goto finish;
+	}
+
+	original = fdopen(fd, "a");
+	if (!original) {
+		error("Unable to open local file %s", filename);
+		ret = HTTP_ERROR;
+		goto finish;
+	}
+	original_len = ftello(original);
+	if (original_len < 0)
+		die("Unable to ftello on %s", filename);
+
+	range.unbounded_upwards = 1;
+	range.lower = original_len + discard;
+	range.upper = 0;
+	options->range = &range;
+
+	ret = http_request_reauth(url, original, HTTP_REQUEST_FILE, options);
+
+	if (ret == HTTP_RANGE_NOT_SATISFIABLE) {
+		goto finish;
+	} else if (ret != HTTP_OK) {
+		warning("failed to download %s to %s: %s", url, filename,
+			curl_easy_strerror(ret));
+		fclose(original);
+		original = NULL;
+		goto finish;
+	}
+
+finish:
+	if (original) {
+		int result = fflush(original);
+
+		assert(!result);
+		ret = commit_safeappend_file(filename, fd);
+		/*
+		 * This will fail because the underlying fd was
+		 * already closed by commit_safeappend_file, but is
+		 * necessary to free the memory associated with
+		 * original.
+		 */
+		fclose(original);
+	}
+
 	return ret;
 }
 
