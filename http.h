@@ -137,7 +137,8 @@ extern char *get_remote_object_url(const char *url, const char *hex,
 /* Options for http_get_*() */
 struct http_get_options {
 	unsigned no_cache:1,
-		 keep_error:1;
+		 keep_error:1,
+		 display_progress : 1;
 
 	/* If non-NULL, returns the content-type of the response. */
 	struct strbuf *content_type;

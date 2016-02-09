@@ -1393,6 +1393,9 @@ static int http_request(const char *url,
 		curlinfo_strbuf(slot->curl, CURLINFO_EFFECTIVE_URL,
 				options->effective_url);
 
+	if (options && options->display_progress)
+		curl_easy_setopt(slot->curl, CURLOPT_NOPROGRESS, 0);
+
 	curl_slist_free_all(headers);
 	strbuf_release(&buf);
 
