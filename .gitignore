@@ -79,6 +79,8 @@
 /git-instaweb
 /git-journal-append
 /git-journal-control
+/git-journal-dump
+/git-journal-extents-dump
 /git-log
 /git-ls-files
 /git-ls-remote
