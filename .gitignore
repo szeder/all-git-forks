@@ -81,6 +81,7 @@
 /git-journal-control
 /git-journal-dump
 /git-journal-extents-dump
+/git-journal-verify
 /git-log
 /git-ls-files
 /git-ls-remote
