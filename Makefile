@@ -567,6 +567,7 @@ PROGRAM_OBJS += imap-send.o
 PROGRAM_OBJS += journal-control.o
 PROGRAM_OBJS += journal-dump.o
 PROGRAM_OBJS += journal-extents-dump.o
+PROGRAM_OBJS += journal-identity.o
 PROGRAM_OBJS += journal-verify.o
 PROGRAM_OBJS += sh-i18n--envsubst.o
 PROGRAM_OBJS += shell.o
