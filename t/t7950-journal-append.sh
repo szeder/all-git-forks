@@ -36,7 +36,7 @@ test_expect_success 'setup' '
 	commit_and_write_pack 8
 '
 
-test_expect_success 'journal-append will work ab initio' '
+test_expect_success 'journal-append will work when jcdb has not been set up' '
 	packsha=$(head -n1 packsha) &&
 	packsha2=$(head -n1 packsha2) &&
 	headsha=$(git rev-parse commit1) &&
@@ -50,11 +50,14 @@ test_expect_success 'journal-append will work ab initio' '
 		git journal-append ref refs/heads/morx "${headsha}" &&
 		test_path_is_file objects/journals/0.bin &&
 		test_path_is_file objects/journals/metadata.bin &&
-		test "$(wc -c < objects/journals/extents.bin)" -eq 80
+		test "$(wc -c < objects/journals/extents.bin)" -eq 48 &&
+		test_path_is_dir connectivity-lmdb &&
+		git journal-control --packlog-dump | grep -q "$packsha" &&
+		git journal-control --packlog-dump | grep -vq "$packsha2"
 	)
 '
 
-test_expect_success 'journal-append will work again' '
+test_expect_success 'journal-append will work when jcdb has been set up' '
 	packsha=$(head -n1 packsha) &&
 	packsha2=$(head -n1 packsha2) &&
 	packsha3=$(head -n1 packsha3) &&
@@ -68,7 +71,11 @@ test_expect_success 'journal-append will work again' '
 		git journal-append ref refs/heads/morx "${headsha}" &&
 		test_path_is_file objects/journals/0.bin &&
 		test_path_is_file objects/journals/metadata.bin &&
-		test "$(wc -c < objects/journals/extents.bin)" -eq 160
+		test "$(wc -c < objects/journals/extents.bin)" -eq 96 &&
+		test_path_is_dir connectivity-lmdb &&
+		git journal-control --packlog-dump | grep -q "$packsha" &&
+		git journal-control --packlog-dump | grep -q "$packsha2" &&
+		git journal-control --packlog-dump | grep -vq "$packsha3"
 	)
 '
 
@@ -92,7 +99,10 @@ test_expect_success 'journal-append will roll over to new journal' '
 		test -r objects/journals/0.bin &&
 		test_path_is_file objects/journals/1.bin &&
 		test_path_is_file objects/journals/metadata.bin &&
-		test "$(wc -c < objects/journals/extents.bin)" -eq 240
+		test "$(wc -c < objects/journals/extents.bin)" -eq 144 &&
+		git journal-control --packlog-dump | grep -q "$packsha" &&
+		git journal-control --packlog-dump | grep -q "$packsha2" &&
+		git journal-control --packlog-dump | grep -q "$packsha3"
 
 	)
 '
@@ -198,6 +208,49 @@ test_expect_success 'The journal will not be corrupted if garbage data is writte
 		! grep "stark raving gibberish" objects/journals/2.bin &&
 		! grep "stark raving gibberish" objects/journals/extents.bin &&
 		! grep "stark raving gibberish" objects/journals/integrity.bin
+	)
+'
+
+
+test_expect_success 'journal-append will not journal deletion of non-existent ref' '
+	(
+		cd bear.git &&
+		GIT_DIR=. &&
+		export GIT_DIR &&
+		test_must_fail git journal-append ref refs/heads/nosuchref $_z40
+	)
+'
+
+test_expect_success 'journal-append will not journal addition of pack which references missing object' '
+	PACKSHA8=$(head -n1 packsha8) &&
+	export PACKSHA8 &&
+	headsha=$(git rev-parse commit8) &&
+	export headsha &&
+	(
+		cd bear.git &&
+		GIT_DIR=. &&
+		export GIT_DIR &&
+		test_must_fail git journal-append pack "$PACKSHA8"
+	)
+'
+
+test_expect_success 'journal-append will not journal addition of pack which references dead object' '
+	PACKSHA7=$(head -n1 packsha7) &&
+	PACKSHA8=$(head -n1 packsha8) &&
+	export PACKSHA7 PACKSHA8 &&
+	headsha=$(git rev-parse commit7) &&
+	export headsha &&
+	(
+		cd bear.git &&
+		GIT_DIR=. &&
+		export GIT_DIR &&
+
+		git journal-append pack "$PACKSHA7" &&
+		git journal-append ref refs/heads/seven "$headsha" &&
+		git update-ref refs/heads/seven "$headsha" &&
+		git journal-append ref refs/heads/seven "$_z40" &&
+		git update-ref -d refs/heads/seven &&
+		test_must_fail git journal-append pack "$PACKSHA8"
 	)
 '
 

@@ -8,6 +8,9 @@
 #include "progress.h"
 #include "refs.h"
 #include "journal-common.h"
+#ifdef USE_LIBLMDB
+#include "journal-connectivity.h"
+#endif
 #include "journal-client.h"
 #include "journal-update-ref.h"
 #include "journal-util.h"
@@ -165,6 +168,15 @@ static int ref_context_write_ops(struct ref_op_ctx *ctx, struct ref_map_entry *e
 		log_ref_update_fail(update_ctx, e);
 		return 1;
 	}
+
+#ifdef USE_LIBLMDB
+	if (mirror) {
+		unsigned char old_sha1[20];
+		if (read_ref(e->name, old_sha1))
+			hashcpy(old_sha1, null_sha1);
+		jcdb_record_update_ref(old_sha1, e->sha1);
+	}
+#endif
 
 	return 0;
 }
@@ -1037,12 +1049,16 @@ static int journal_extract_file(struct journal_extraction_ctx *ctx)
 		die("cannot move temp file '%s' into place as '%s'",
 		    tmp_name, final_name);
 
+#ifdef USE_LIBLMDB
 	if (mirror && ctx->rec->opcode == JOURNAL_OP_INDEX) {
 		struct packed_git *pack;
 
 		pack = journal_find_pack(ctx->header.sha);
 		assert(pack);
+		if (jcdb_check_and_record_pack(pack) < 0)
+			die("Incoming pack was not connected.");
 	}
+#endif
 	return 0;
 }
 
@@ -1652,6 +1668,11 @@ int main(int argc, const char **argv)
 
 	argc = parse_options(argc, argv, NULL, opts, journal_fetch_usage, 0);
 	git_config(git_default_config, NULL);
+
+#ifndef USE_LIBLMDB
+	if (mirror)
+		die(_("Mirror mode requires that git be built with liblmdb."));
+#endif
 
 	if (argc > 1) {
 		remote = argv[i++];

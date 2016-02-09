@@ -4,6 +4,7 @@
 #include "journal.h"
 #include "object.h"
 #include "refs.h"
+#include "journal-connectivity.h"
 #include "string-list.h"
 #include "lockfile.h"
 
@@ -24,6 +25,8 @@ static size_t journal_max_pack_size;
 
 static void journal_append_pack(struct journal_ctx *c, struct packed_git *pack)
 {
+	enum pack_check_result result;
+
 	if (!pack)
 		die("pack not found '%s'",
 		    sha1_to_hex(pack->sha1));
@@ -31,7 +34,21 @@ static void journal_append_pack(struct journal_ctx *c, struct packed_git *pack)
 	trace_printf("Append [pack] %s\n",
 		     sha1_to_hex(pack->sha1));
 
-	journal_write_pack(c, pack, journal_max_pack_size);
+	result = jcdb_check_and_record_pack(pack);
+	switch(result) {
+	case PACK_PRESENT:
+		warning("ignoring previously journaled pack %s",
+			sha1_to_hex(pack->sha1));
+		break;
+	case PACK_ADDED:
+		journal_write_pack(c, pack, journal_max_pack_size);
+		break;
+	case PACK_INVALID:
+		die("Invalid pack %s\n", sha1_to_hex(pack->sha1));
+	default:
+		die("BUG: unexpected result %d from jcdb_check_and_record_pack",
+		    result);
+	}
 }
 
 static void journal_append_auto_or_ref(struct journal_ctx *c, const char *ref_name, const unsigned char *commit_sha1)
@@ -53,6 +70,7 @@ static void journal_append_auto_or_ref(struct journal_ctx *c, const char *ref_na
 		journal_write_tip(c, ref_name, commit_sha1);
 		trace_printf("Append [rm-ref] %s\n",
 			     ref_name);
+		jcdb_record_update_ref(old_sha1, commit_sha1);
 		return;
 	}
 	type = sha1_object_info(commit_sha1, NULL);
@@ -70,6 +88,8 @@ static void journal_append_auto_or_ref(struct journal_ctx *c, const char *ref_na
 
 	journal_append_pack(c, pack);
 	journal_write_tip(c, ref_name, commit_sha1);
+
+	jcdb_record_update_ref(old_sha1, commit_sha1);
 }
 
 static void journal_append_upgrade(struct journal_ctx *c, const struct journal_wire_version *v)

@@ -16,6 +16,7 @@
 /git-apply
 /git-archimport
 /git-archive
+/git-backfill-journal-connectivity
 /git-bisect
 /git-bisect--helper
 /git-blame

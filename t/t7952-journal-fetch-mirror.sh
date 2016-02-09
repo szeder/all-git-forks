@@ -48,6 +48,7 @@ test_expect_success 'setup' '
 		test_path_is_file objects/journals/0.bin &&
 		test_path_is_file objects/journals/metadata.bin &&
 		test_path_is_file objects/journals/extents.bin &&
+		git journal-control --packlog-dump | grep -q "$PACKSHA" &&
 		git journal-append ref refs/heads/dir "$HEADSHA" &&
 		git update-ref refs/heads/dir "$HEADSHA"
 	)
@@ -62,7 +63,8 @@ test_expect_success 'client can fetch from empty' '
 	test_cmp actual expect &&
 	test_cmp "$ORIGIN_REPO"/objects/journals/0.bin .git/objects/journals/origin/0.bin &&
 	test_cmp "$ORIGIN_REPO"/objects/journals/extents.bin .git/objects/journals/origin/extents.bin &&
-	test_cmp "$ORIGIN_REPO"/objects/journals/metadata.bin .git/objects/journals/origin/metadata.bin
+	test_cmp "$ORIGIN_REPO"/objects/journals/metadata.bin .git/objects/journals/origin/metadata.bin &&
+	test_path_is_dir .git/connectivity-lmdb
 '
 
 test_expect_success 'client can fetch from non-empty' '

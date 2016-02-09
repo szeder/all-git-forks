@@ -4,6 +4,7 @@
 #include "journal-client.h"
 #include "parse-options.h"
 #include "version.h"
+#include "journal-connectivity.h"
 #include "lockfile.h"
 
 static char const * const my_usage[] = {
@@ -23,6 +24,10 @@ int main(int argc, const char **argv)
 			    "Show the current journal serial number", 's'),
 		OPT_CMDMODE(0, "increment-serial", &cmdmode,
 			    "Force a move to the next journal", 'i'),
+		OPT_CMDMODE(0, "packlog-append", &cmdmode,
+			    "Add hashes from STDIN to the packlog (hexadecimal, endline-separated)", 'p'),
+		OPT_CMDMODE(0, "packlog-dump", &cmdmode,
+				"dump the hashes from the packlog to STDOUT", 'd'),
 		OPT_GROUP("Software Metadata"),
 		OPT_CMDMODE(0, "version", &cmdmode,
 			 "Show version information", 'v'),
@@ -52,6 +57,37 @@ int main(int argc, const char **argv)
 		}
 
 		journal_ctx_close(c);
+	} else if (cmdmode == 'p') {
+#ifdef USE_LIBLMDB
+		char *line = NULL;
+		size_t linecap = 0;
+		ssize_t linelen;
+		unsigned char sha1[20];
+		size_t line_count = 0;
+		size_t add_count = 0;
+		struct jcdb_transaction transaction;
+		jcdb_transaction_begin(&transaction, JCDB_CREATE);
+
+		while ((linelen = getline(&line, &linecap, stdin)) > 0) {
+			++line_count;
+			if (!get_sha1_hex(line, sha1)) {
+				++add_count;
+				jcdb_add_pack(&transaction, sha1);
+			} else {
+				warning("invalid hash at line %zu data: %s", line_count, line);
+			}
+		}
+		jcdb_transaction_commit(&transaction);
+#else
+		die(_("git was not built with liblmdb"));
+#endif
+	} else if (cmdmode == 'd') {
+#ifdef USE_LIBLMDB
+		jcdb_packlog_dump();
+#else
+		die(_("git was not built with liblmdb"));
+#endif
+
 	} else if (cmdmode == 'v') {
 		printf("git suite: %s\n",
 		       git_user_agent_sanitized());

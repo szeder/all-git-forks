@@ -49,6 +49,7 @@ test_expect_success 'setup' '
 		test_path_is_file objects/journals/0.bin &&
 		test_path_is_file objects/journals/metadata.bin &&
 		test_path_is_file objects/journals/extents.bin &&
+		git journal-control --packlog-dump | grep -q "$PACKSHA" &&
 		git journal-append ref refs/heads/dir "$HEADSHA" &&
 		git update-ref refs/heads/dir "$HEADSHA"
 	)
@@ -66,7 +67,7 @@ test_expect_success 'client can fetch from empty' '
 	test_path_is_missing .git/objects/journals/origin/0.bin &&
 	test_cmp httpd/www/origin.git/objects/journals/extents.bin .git/objects/journals/origin/extents.bin &&
 	./hexdump .git/objects/journals/origin/state.bin >state &&
-	printf 00000050 >expect &&
+	printf 00000030 >expect &&
 	test_cmp state expect
 '
 

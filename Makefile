@@ -1060,7 +1060,9 @@ ifdef USE_LIBLMDB
 		EXTLIBS += -L$(LIBLMDBDIR)/$(lib) $(CC_LD_DYNPATH)$(LIBLMDBDIR)/$(lib)
 	endif
 	EXTLIBS += -llmdb
+	LIB_OBJS += journal-connectivity.o
 	LIB_OBJS += lmdb-utils.o
+	PROGRAM_OBJS += backfill-journal-connectivity.o
 	PROGRAM_OBJS += journal-append.o
 endif
 
