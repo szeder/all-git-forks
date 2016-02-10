@@ -42,6 +42,15 @@ test "$1" = refs/heads/master || exit
 EOF
 chmod u+x victim.git/hooks/update
 
+cat >victim.git/hooks/update-journal <<'EOF'
+#!/bin/sh
+printf %s "$@" >>$GIT_DIR/update-journal.args
+cat - >$GIT_DIR/update-journal.stdin
+echo STDOUT update-journal
+echo STDERR update-journal >&2
+EOF
+chmod u+x victim.git/hooks/update-journal
+
 cat >victim.git/hooks/post-receive <<'EOF'
 #!/bin/sh
 printf %s "$@" >>$GIT_DIR/post-receive.args
@@ -122,6 +131,8 @@ remote: STDOUT pre-receive
 remote: STDERR pre-receive
 remote: STDOUT update refs/heads/master
 remote: STDERR update refs/heads/master
+remote: STDOUT update-journal
+remote: STDERR update-journal
 remote: STDOUT update refs/heads/tofail
 remote: STDERR update refs/heads/tofail
 remote: error: hook declined to update refs/heads/tofail
@@ -135,11 +146,23 @@ test_expect_success 'send-pack stderr contains hook messages' '
 	test_cmp expect actual
 '
 
+test_expect_success 'receive-pack fails if ref is locked' '
+	(
+		cd victim.git &&
+		test_config receive.retryreflocktimeout 1
+	) &&
+	test_commit x &&
+	test_when_finished rm -f victim.git/update-lock-972c6d2dc6dd5efdad1377c0d224e03eb8f276f7.lock &&
+	touch victim.git/update-lock-972c6d2dc6dd5efdad1377c0d224e03eb8f276f7.lock &&
+	test_must_fail git send-pack --force ./victim.git \
+		master >send.out 2>send.err
+'
+
 test_expect_success 'pre-receive hook that forgets to read its input' '
 	write_script victim.git/hooks/pre-receive <<-\EOF &&
 	exit 0
 	EOF
-	rm -f victim.git/hooks/update victim.git/hooks/post-update &&
+	rm -f victim.git/hooks/update victim.git/hooks/update-journal victim.git/hooks/post-update &&
 
 	for v in $(test_seq 100 999)
 	do

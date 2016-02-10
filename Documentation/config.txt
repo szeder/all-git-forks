@@ -2373,6 +2373,14 @@ receive.fsck.skipList::
 	can be safely ignored such as invalid committer email addresses.
 	Note: corrupt objects cannot be skipped with this setting.
 
+receive.retryRefLockTimeout::
+	`receive-pack` will hold a lock before updating a ref so that
+	update-journal hooks on the same ref don't run simultaneously.
+	If the ref is already locked, `receive-pack` will retry until
+	`receive.retryRefLockTimeout` milliseconds have passed.  A
+	value of 0 means "retry exactly once", and a value of -1 means
+	"retry forever."  The default is 10,000 ms, or ten seconds.
+
 receive.unpackLimit::
 	If the number of objects received in a push is below this
 	limit then the objects will be unpacked into loose object
