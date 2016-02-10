@@ -271,6 +271,14 @@ AS_HELP_STRING([],           [ARG can be also prefix for libpcre library and hea
         dnl it yet.
 	GIT_CONF_SUBST([LIBPCREDIR])
     fi)
+
+AC_CHECK_LIB([lmdb], [mdb_get],
+  [LMDB_LIBS="-llmdb"
+  USE_LIBLMDB=YesPlease],
+  [USE_LIBLMDB=])
+GIT_CONF_SUBST([LMDB_LIBS])
+GIT_CONF_SUBST([USE_LIBLMDB])
+
 #
 # Define HAVE_ALLOCA_H if you have working alloca(3) defined in that header.
 AC_FUNC_ALLOCA
