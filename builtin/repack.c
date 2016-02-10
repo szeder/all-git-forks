@@ -7,6 +7,9 @@
 #include "strbuf.h"
 #include "string-list.h"
 #include "argv-array.h"
+#ifdef USE_JOURNAL
+#include "journal-connectivity.h"
+#endif
 
 static int delta_base_offset = 1;
 static int pack_kept_objects = -1;
@@ -123,6 +126,15 @@ static void remove_redundant_pack(const char *dir_name, const char *base_name)
 #define ALL_INTO_ONE 1
 #define LOOSEN_UNREACHABLE 2
 
+#ifndef USE_JOURNAL
+struct jcdb_transaction {
+	int open;
+};
+#define jcdb_transaction_begin(a, b) /* nothing */
+#define jcdb_transaction_commit(a) /* nothing */
+#define jcdb_add_pack(a, b) /* nothing */
+#endif
+
 int cmd_repack(int argc, const char **argv, const char *prefix)
 {
 	struct {
@@ -153,6 +165,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	int no_update_server_info = 0;
 	int quiet = 0;
 	int local = 0;
+	struct jcdb_transaction transaction = {0};
 
 	struct option builtin_repack_options[] = {
 		OPT_BIT('a', NULL, &pack_everything,
@@ -345,6 +358,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 		exit(1);
 	}
 
+	jcdb_transaction_begin(&transaction, 0);
+
 	/* Now the ones with the same name are out of the way... */
 	for_each_string_list_item(item, &names) {
 		for (ext = 0; ext < ARRAY_SIZE(exts); ext++) {
@@ -363,11 +378,20 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 			if (exists || !exts[ext].optional) {
 				if (rename(fname_old, fname))
 					die_errno(_("renaming '%s' failed"), fname_old);
+				if (transaction.open) {
+					unsigned char sha1[20];
+					if (get_sha1_hex(item->string, sha1))
+						die("BUG: could not convert pack hex to sha1: %s\n", item->string);
+					jcdb_add_pack(&transaction, sha1);
+				}
 			}
 			free(fname);
 			free(fname_old);
 		}
 	}
+
+	if (transaction.open)
+		jcdb_transaction_commit(&transaction);
 
 	/* Remove the "old-" files */
 	for_each_string_list_item(item, &names) {
