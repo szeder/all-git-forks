@@ -206,26 +206,7 @@ static int ce_compare_data(const struct cache_entry *ce, struct stat *st)
 	 * Would another "git checkout -f" out of the index change
 	 * what is in the working tree file?
 	 */
-	fd = open(ce->name, O_RDONLY);
-	if (fd >= 0) {
-		enum object_type type;
-		unsigned long size;
-		void *data = read_sha1_file(ce->sha1, &type, &size);
-
-		if (type == OBJ_BLOB) {
-			struct strbuf worktree = STRBUF_INIT;
-			if (convert_to_working_tree(ce->name, data, size,
-																	&worktree)) {
-				free(data);
-				data = strbuf_detach(&worktree, &size);
-			}
-			if (!compare_with_fd(data, size, fd))
-				match = 0;
-		}
-		free(data);
-		close(fd);
-	}
-	return match;
+	return convert_cmp_checkout(ce->name);
 }
 
 static int ce_compare_link(const struct cache_entry *ce, size_t expected_size)

@@ -217,6 +217,34 @@ static void check_safe_crlf(const char *path, enum crlf_action crlf_action,
 	}
 }
 
+/*
+ * Compare the data in buf with the data in the file pointed by fd and
+ * return 0 if they are identical, and non-zero if they differ.
+ */
+static int compare_with_fd(const char *input, unsigned long len, int fd)
+{
+	for (;;) {
+		char buf[1024 * 16];
+		ssize_t chunk_len, read_len;
+
+		chunk_len = sizeof(buf) < len ? sizeof(buf) : len;
+		read_len = xread(fd, buf, chunk_len ? chunk_len : 1);
+
+		if (!read_len)
+			/* EOF on the working tree file */
+			return !len ? 0 : -1;
+
+		if (!len)
+			/* we expected there is nothing left */
+			return -1;
+
+		if (memcmp(buf, input, read_len))
+			return -1;
+		input += read_len;
+		len -= read_len;
+	}
+}
+
 static int has_cr_in_index(const char *path)
 {
 	unsigned long sz;
@@ -807,6 +835,37 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 		ca->crlf_action = CRLF_AUTO_INPUT;
 }
 
+int convert_cmp_checkout(const char *path)
+{
+	struct conv_attrs ca;
+	int match = -1; /* no match */
+	int fd;
+	convert_attrs(&ca, path);
+	if (ca.crlf_action == CRLF_BINARY && !ca.drv && !ca.ident)
+	  return -1; /* No eol conversion, no ident, no filter */
+
+	fd = open(path, O_RDONLY);
+	if (fd >= 0) {
+		unsigned long sz;
+		void *data;
+		data = read_blob_data_from_cache(path, &sz);
+		if (!data)
+			match = -1;
+		else {
+			struct strbuf worktree = STRBUF_INIT;
+			if (convert_to_working_tree(path, data, sz, &worktree)) {
+				free(data);
+				data = strbuf_detach(&worktree, &sz);
+			}
+			if (!compare_with_fd(data, sz, fd))
+				match = 0;
+		}
+		free(data);
+		close(fd);
+	}
+	return match;
+}
+
 int would_convert_to_git_filter_fd(const char *path)
 {
 	struct conv_attrs ca;
@@ -898,22 +957,21 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	ident_to_git(path, dst->buf, dst->len, dst, ca.ident);
 }
 
-static int convert_to_working_tree_internal(const char *path, const char *src,
+static int convert_to_working_tree_internal(const char *path,
+					    struct conv_attrs *ca,
+					    const char *src,
 					    size_t len, struct strbuf *dst,
 					    int normalizing)
 {
 	int ret = 0, ret_filter = 0;
 	const char *filter = NULL;
 	int required = 0;
-	struct conv_attrs ca;
-
-	convert_attrs(&ca, path);
-	if (ca.drv) {
-		filter = ca.drv->smudge;
-		required = ca.drv->required;
+	if (ca->drv) {
+		filter = ca->drv->smudge;
+		required = ca->drv->required;
 	}
 
-	ret |= ident_to_worktree(path, src, len, dst, ca.ident);
+	ret |= ident_to_worktree(path, src, len, dst, ca->ident);
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;
@@ -923,7 +981,7 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 	 * is a smudge filter.  The filter might expect CRLFs.
 	 */
 	if (filter || !normalizing) {
-		ret |= crlf_to_worktree(path, src, len, dst, ca.crlf_action);
+		ret |= crlf_to_worktree(path, src, len, dst, ca->crlf_action);
 		if (ret) {
 			src = dst->buf;
 			len = dst->len;
@@ -932,19 +990,24 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 
 	ret_filter = apply_filter(path, src, len, -1, dst, filter);
 	if (!ret_filter && required)
-		die("%s: smudge filter %s failed", path, ca.drv->name);
+		die("%s: smudge filter %s failed", path, ca->drv->name);
 
 	return ret | ret_filter;
 }
 
 int convert_to_working_tree(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	return convert_to_working_tree_internal(path, src, len, dst, 0);
+	struct conv_attrs ca;
+	convert_attrs(&ca, path);
+	return convert_to_working_tree_internal(path, &ca, src, len, dst, 0);
 }
 
 int renormalize_buffer(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	int ret = convert_to_working_tree_internal(path, src, len, dst, 1);
+	struct conv_attrs ca;
+	int ret;
+	convert_attrs(&ca, path);
+	ret = convert_to_working_tree_internal(path, &ca, src, len, dst, 1);
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;
