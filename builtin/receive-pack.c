@@ -41,6 +41,7 @@ static struct strbuf fsck_msg_types = STRBUF_INIT;
 static int receive_unpack_limit = -1;
 static int transfer_unpack_limit = -1;
 static int advertise_atomic_push = 1;
+static int retry_ref_lock_timeout = 10000;
 static int unpack_limit = 100;
 static int report_status;
 static int use_sideband;
@@ -187,6 +188,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 
 	if (strcmp(var, "receive.advertiseatomic") == 0) {
 		advertise_atomic_push = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (strcmp(var, "receive.retryreflocktimeout") == 0) {
+		retry_ref_lock_timeout = git_config_int(var, value);
 		return 0;
 	}
 
@@ -648,13 +654,13 @@ static int run_receive_hook(struct command *commands, const char *hook_name,
 	return status;
 }
 
-static int run_update_hook(struct command *cmd)
+static int run_update_hook(const char *hook_name, struct command *cmd)
 {
 	const char *argv[5];
 	struct child_process proc = CHILD_PROCESS_INIT;
 	int code;
 
-	argv[0] = find_hook("update");
+	argv[0] = find_hook(hook_name);
 	if (!argv[0])
 		return 0;
 
@@ -889,14 +895,22 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 {
 	const char *name = cmd->ref_name;
 	struct strbuf namespaced_name_buf = STRBUF_INIT;
-	const char *namespaced_name, *ret;
+	const char *namespaced_name, *ret = NULL;
 	unsigned char *old_sha1 = cmd->old_sha1;
 	unsigned char *new_sha1 = cmd->new_sha1;
+	static struct lock_file update_lock;
+	struct strbuf update_lock_name = STRBUF_INIT;
+	struct strbuf err = STRBUF_INIT;
+	git_SHA_CTX c;
+	unsigned char sha1[20];
+	int lock_fd;
+	int namelen;
 
 	/* only refs/... are allowed */
 	if (!starts_with(name, "refs/") || check_refname_format(name + 5, 0)) {
 		rp_error("refusing to create funny ref '%s' remotely", name);
-		return "funny refname";
+		ret = "funny refname";
+		goto finish;
 	}
 
 	strbuf_addf(&namespaced_name_buf, "%s%s", get_git_namespace(), name);
@@ -914,11 +928,12 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			rp_error("refusing to update checked out branch: %s", name);
 			if (deny_current_branch == DENY_UNCONFIGURED)
 				refuse_unconfigured_deny();
-			return "branch is currently checked out";
+			ret = "branch is currently checked out";
+			goto finish;
 		case DENY_UPDATE_INSTEAD:
 			ret = update_worktree(new_sha1);
 			if (ret)
-				return ret;
+				goto finish;
 			break;
 		}
 	}
@@ -926,13 +941,15 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 	if (!is_null_sha1(new_sha1) && !has_sha1_file(new_sha1)) {
 		error("unpack should have generated %s, "
 		      "but I can't find it!", sha1_to_hex(new_sha1));
-		return "bad pack";
+		ret = "bad pack";
+		goto finish;
 	}
 
 	if (!is_null_sha1(old_sha1) && is_null_sha1(new_sha1)) {
 		if (deny_deletes && starts_with(name, "refs/heads/")) {
 			rp_error("denying ref deletion for %s", name);
-			return "deletion prohibited";
+			ret = "deletion prohibited";
+			goto finish;
 		}
 
 		if (head_name && !strcmp(namespaced_name, head_name)) {
@@ -947,10 +964,13 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			case DENY_UPDATE_INSTEAD:
 				if (deny_delete_current == DENY_UNCONFIGURED)
 					refuse_unconfigured_deny_delete_current();
+
 				rp_error("refusing to delete the current branch: %s", name);
-				return "deletion of the current branch prohibited";
+				ret = "deletion of the current branch prohibited";
+				goto finish;
 			default:
-				return "Invalid denyDeleteCurrent setting";
+				ret = "Invalid denyDeleteCurrent setting";
+				goto finish;
 			}
 		}
 	}
@@ -968,23 +988,52 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 		    old_object->type != OBJ_COMMIT ||
 		    new_object->type != OBJ_COMMIT) {
 			error("bad sha1 objects for %s", name);
-			return "bad ref";
+			ret = "bad ref";
+			goto finish;
 		}
 		old_commit = (struct commit *)old_object;
 		new_commit = (struct commit *)new_object;
 		if (!in_merge_bases(old_commit, new_commit)) {
 			rp_error("denying non-fast-forward %s"
 				 " (you should pull first)", name);
-			return "non-fast-forward";
+			ret = "non-fast-forward";
+			goto finish;
 		}
 	}
-	if (run_update_hook(cmd)) {
+	if (run_update_hook("update", cmd)) {
 		rp_error("hook declined to update %s", name);
-		return "hook declined";
+		ret = "hook declined";
+		goto finish;
+	}
+
+	/*
+	 * If we are using an update-journal hook, we need to ensure
+	 * that no other receive-pack is updating this ref at the same
+	 * time as us, as there is a race between updating the ref and
+	 * running the update-journal hook.
+	 */
+	namelen = strlen(name);
+	git_SHA1_Init(&c);
+	git_SHA1_Update(&c, name, namelen);
+	git_SHA1_Final(sha1, &c);
+	strbuf_addf(&update_lock_name, "%s/update-lock-%s", get_git_dir(),
+		    sha1_to_hex(sha1));
+	lock_fd = hold_lock_file_for_update_timeout(&update_lock,
+						    update_lock_name.buf, 0,
+						    retry_ref_lock_timeout);
+	if (lock_fd < 0) {
+		/* We didn't get the lock */
+		rp_error("failed to lock - update (%s)", update_lock_name.buf);
+		ret = "failed to lock";
+		goto finish;
+	}
+
+	if (write_in_full(lock_fd, name, namelen) != namelen) {
+		ret = "failed to write to lock file";
+		goto finish;
 	}
 
 	if (is_null_sha1(new_sha1)) {
-		struct strbuf err = STRBUF_INIT;
 		if (!parse_object(old_sha1)) {
 			old_sha1 = NULL;
 			if (ref_exists(name)) {
@@ -999,17 +1048,22 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 					   old_sha1,
 					   0, "push", &err)) {
 			rp_error("%s", err.buf);
-			strbuf_release(&err);
-			return "failed to delete";
+			ret = "failed to delete";
+			goto finish;
 		}
-		strbuf_release(&err);
-		return NULL; /* good */
+		if (run_update_hook("update-journal", cmd)) {
+			rp_error("hook declined (journal) to delete %s", name);
+			ret = "journal hook declined";
+			goto finish;
+		}
+		ret = NULL; /* good */
 	}
 	else {
-		struct strbuf err = STRBUF_INIT;
 		if (shallow_update && si->shallow_ref[cmd->index] &&
-		    update_shallow_ref(cmd, si))
-			return "shallow error";
+		    update_shallow_ref(cmd, si)) {
+			ret = "shallow error";
+			goto finish;
+		}
 
 		if (ref_transaction_update(transaction,
 					   namespaced_name,
@@ -1019,12 +1073,30 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 			rp_error("%s", err.buf);
 			strbuf_release(&err);
 
-			return "failed to update ref";
+			ret = "failed to update ref";
+			goto finish;
 		}
-		strbuf_release(&err);
+		if (run_update_hook("update-journal", cmd)) {
+			rp_error("hook declined (journal) to update %s", name);
+			if (ref_transaction_update(transaction,
+					   namespaced_name,
+					   old_sha1, new_sha1,
+					   0, "push",
+					   &err)) {
+				rp_warning("failed to revert ref after update-journal failed");
+			}
 
-		return NULL; /* good */
+			ret = "journal hook declined";
+			goto finish;
+		}
+		ret = NULL; /* good */
 	}
+
+finish:
+	if (update_lock_name.len)
+		rollback_lock_file(&update_lock);
+	strbuf_release(&err);
+	return ret;
 }
 
 static void run_update_post_hook(struct command *commands)
