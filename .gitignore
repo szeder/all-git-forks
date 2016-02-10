@@ -33,6 +33,7 @@
 /git-clean
 /git-clone
 /git-column
+/git-combine-pack
 /git-commit
 /git-commit-tree
 /git-config

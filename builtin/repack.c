@@ -67,7 +67,7 @@ static void remove_temporary_files(void)
 	strbuf_release(&buf);
 }
 
-static void remove_pack_on_signal(int signo)
+void remove_pack_on_signal(int signo)
 {
 	remove_temporary_files();
 	sigchain_pop(signo);
