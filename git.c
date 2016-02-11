@@ -25,14 +25,14 @@ static const char *env_names[] = {
 	GIT_PREFIX_ENVIRONMENT
 };
 static char *orig_env[4];
-static int save_restore_env_balance;
+static int saved_env_before_alias;
 
 static void save_env_before_alias(void)
 {
 	int i;
-
-	assert(save_restore_env_balance == 0);
-	save_restore_env_balance = 1;
+	if (saved_env_before_alias)
+		return;
+	saved_env_before_alias = 1;
 	orig_cwd = xgetcwd();
 	for (i = 0; i < ARRAY_SIZE(env_names); i++) {
 		orig_env[i] = getenv(env_names[i]);
@@ -44,9 +44,6 @@ static void save_env_before_alias(void)
 static void restore_env(int external_alias)
 {
 	int i;
-
-	assert(save_restore_env_balance == 1);
-	save_restore_env_balance = 0;
 	if (!external_alias && orig_cwd && chdir(orig_cwd))
 		die_errno("could not move to %s", orig_cwd);
 	free(orig_cwd);
@@ -54,12 +51,10 @@ static void restore_env(int external_alias)
 		if (external_alias &&
 		    !strcmp(env_names[i], GIT_PREFIX_ENVIRONMENT))
 			continue;
-		if (orig_env[i]) {
+		if (orig_env[i])
 			setenv(env_names[i], orig_env[i], 1);
-			free(orig_env[i]);
-		} else {
+		else
 			unsetenv(env_names[i]);
-		}
 	}
 }
 
@@ -536,8 +531,16 @@ static void handle_builtin(int argc, const char **argv)
 	}
 
 	builtin = get_builtin(cmd);
-	if (builtin)
-		exit(run_builtin(builtin, argc, argv));
+	if (builtin) {
+		/*
+		 * XXX: if we can figure out cases where it is _safe_
+		 * to do, we can avoid spawning a new process when
+		 * saved_env_before_alias is true
+		 * (i.e. setup_git_dir* has been run once)
+		 */
+		if (!saved_env_before_alias)
+			exit(run_builtin(builtin, argc, argv));
+	}
 }
 
 static void execv_dashed_external(const char **argv)
@@ -581,17 +584,8 @@ static int run_argv(int *argcp, const char ***argv)
 	int done_alias = 0;
 
 	while (1) {
-		/*
-		 * If we tried alias and futzed with our environment,
-		 * it no longer is safe to invoke builtins directly in
-		 * general.  We have to spawn them as dashed externals.
-		 *
-		 * NEEDSWORK: if we can figure out cases
-		 * where it is safe to do, we can avoid spawning a new
-		 * process.
-		 */
-		if (!done_alias)
-			handle_builtin(*argcp, *argv);
+		/* See if it's a builtin */
+		handle_builtin(*argcp, *argv);
 
 		/* .. then try the external ones */
 		execv_dashed_external(*argv);

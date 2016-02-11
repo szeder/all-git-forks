@@ -30,7 +30,8 @@ test_expect_success \
 		echo "deep dir" >dir/a/b/c/d/e/file &&
 		mkdir bar &&
 		echo "zzz" >bar/zzz &&
-		write_script exec.sh </dev/null &&
+		echo "#!/bin/sh" >exec.sh &&
+		chmod +x exec.sh &&
 		svn_cmd import -m "import for git svn" . "$svnrepo" >/dev/null
 	) &&
 	rm -rf import &&
@@ -116,7 +117,7 @@ test_expect_success "$name" '
 
 
 name='remove executable bit from a file'
-test_expect_success POSIXPERM "$name" '
+test_expect_success "$name" '
 	rm -f "$GIT_DIR"/index &&
 	git checkout -f -b mybranch5 ${remotes_git_svn} &&
 	chmod -x exec.sh &&
@@ -129,7 +130,7 @@ test_expect_success POSIXPERM "$name" '
 
 
 name='add executable bit back file'
-test_expect_success POSIXPERM "$name" '
+test_expect_success "$name" '
 	chmod +x exec.sh &&
 	git update-index exec.sh &&
 	git commit -m "$name" &&
@@ -140,7 +141,7 @@ test_expect_success POSIXPERM "$name" '
 
 
 name='executable file becomes a symlink to file'
-test_expect_success SYMLINKS "$name" '
+test_expect_success "$name" '
 	rm exec.sh &&
 	ln -s file exec.sh &&
 	git update-index exec.sh &&
@@ -152,7 +153,7 @@ test_expect_success SYMLINKS "$name" '
 
 name='new symlink is added to a file that was also just made executable'
 
-test_expect_success POSIXPERM,SYMLINKS "$name" '
+test_expect_success "$name" '
 	chmod +x file &&
 	ln -s file exec-2.sh &&
 	git update-index --add file exec-2.sh &&
@@ -164,7 +165,7 @@ test_expect_success POSIXPERM,SYMLINKS "$name" '
 	test -h "$SVN_TREE"/exec-2.sh'
 
 name='modify a symlink to become a file'
-test_expect_success POSIXPERM,SYMLINKS "$name" '
+test_expect_success "$name" '
 	echo git help >help &&
 	rm exec-2.sh &&
 	cp help exec-2.sh &&
@@ -180,8 +181,7 @@ test_expect_success POSIXPERM,SYMLINKS "$name" '
 name="commit with UTF-8 message: locale: $GIT_SVN_LC_ALL"
 LC_ALL="$GIT_SVN_LC_ALL"
 export LC_ALL
-# This test relies on the previous test, hence requires POSIXPERM,SYMLINKS
-test_expect_success UTF8,POSIXPERM,SYMLINKS "$name" "
+test_expect_success UTF8 "$name" "
 	echo '# hello' >> exec-2.sh &&
 	git update-index exec-2.sh &&
 	git commit -m 'éï∏' &&
@@ -214,7 +214,7 @@ tree d667270a1f7b109f5eb3aaea21ede14b56bfdd6e
 tree 8f51f74cf0163afc9ad68a4b1537288c4558b5a4
 EOF
 
-test_expect_success POSIXPERM,SYMLINKS "$name" "test_cmp a expected"
+test_expect_success "$name" "test_cmp a expected"
 
 test_expect_success 'exit if remote refs are ambigious' "
         git config --add svn-remote.svn.fetch \

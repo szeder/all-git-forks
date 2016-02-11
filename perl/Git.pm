@@ -188,8 +188,7 @@ sub repository {
 		};
 
 		if ($dir) {
-			_verify_require();
-			File::Spec->file_name_is_absolute($dir) or $dir = $opts{Directory} . '/' . $dir;
+			$dir =~ m#^/# or $dir = $opts{Directory} . '/' . $dir;
 			$opts{Repository} = abs_path($dir);
 
 			# If --git-dir went ok, this shouldn't die either.
