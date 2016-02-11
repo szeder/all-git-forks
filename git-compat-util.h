@@ -388,6 +388,8 @@ static inline char *git_find_last_dir_sep(const char *path)
 #endif
 #endif
 
+#define FORMAT_PRINTF(a,b) __attribute__((format (printf, a, b)))
+
 /* The sentinel attribute is valid from gcc version 4.0 */
 #if defined(__GNUC__) && (__GNUC__ >= 4)
 #define LAST_ARG_MUST_BE_NULL __attribute__((sentinel))
@@ -404,11 +406,11 @@ struct strbuf;
 /* General helper functions */
 extern void vreportf(const char *prefix, const char *err, va_list params);
 extern NORETURN void usage(const char *err);
-extern NORETURN void usagef(const char *err, ...) __attribute__((format (printf, 1, 2)));
-extern NORETURN void die(const char *err, ...) __attribute__((format (printf, 1, 2)));
-extern NORETURN void die_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
-extern int error(const char *err, ...) __attribute__((format (printf, 1, 2)));
-extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)));
+extern NORETURN void usagef(const char *err, ...) FORMAT_PRINTF(1, 2);
+extern NORETURN void die(const char *err, ...) FORMAT_PRINTF(1, 2);
+extern NORETURN void die_errno(const char *err, ...) FORMAT_PRINTF(1, 2);
+extern int error(const char *err, ...) FORMAT_PRINTF(1, 2);
+extern void warning(const char *err, ...) FORMAT_PRINTF(1, 2);
 
 #ifndef NO_OPENSSL
 #ifdef APPLE_COMMON_CRYPTO
@@ -759,7 +761,7 @@ static inline size_t xsize_t(off_t len)
 	return (size_t)len;
 }
 
-__attribute__((format (printf, 3, 4)))
+FORMAT_PRINTF(3, 4)
 extern int xsnprintf(char *dst, size_t max, const char *fmt, ...);
 
 /* in ctype.c, for kwset users */
