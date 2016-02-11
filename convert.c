@@ -838,30 +838,30 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 int convert_cmp_checkout(const char *path)
 {
 	struct conv_attrs ca;
-	int match = -1; /* no match */
-	int fd;
+	size_t sz;
+	void *data;
+	int match = -1; /* no match, or unknown */
 	convert_attrs(&ca, path);
 	if (ca.crlf_action == CRLF_BINARY && !ca.drv && !ca.ident)
 	  return -1; /* No eol conversion, no ident, no filter */
 
-	fd = open(path, O_RDONLY);
-	if (fd >= 0) {
-		unsigned long sz;
-		void *data;
-		data = read_blob_data_from_cache(path, &sz);
-		if (!data)
-			match = -1;
-		else {
-			struct strbuf worktree = STRBUF_INIT;
-			if (convert_to_working_tree(path, data, sz, &worktree)) {
-				free(data);
-				data = strbuf_detach(&worktree, &sz);
+	data = read_blob_data_from_cache(path, &sz);
+	if (data) {
+		struct strbuf worktree = STRBUF_INIT;
+		struct stat st;
+		if (convert_to_working_tree(path, data, sz, &worktree)) {
+			free(data);
+			data = strbuf_detach(&worktree, &sz);
+		}
+		if (!lstat(path, &st) && sz == xsize_t(st.st_size)) {
+			int fd = open(path, O_RDONLY);
+			if (fd >= 0) {
+				if (!compare_with_fd(data, sz, fd))
+					match = 0;
+				close(fd);
 			}
-			if (!compare_with_fd(data, sz, fd))
-				match = 0;
 		}
 		free(data);
-		close(fd);
 	}
 	return match;
 }
