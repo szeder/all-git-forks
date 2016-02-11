@@ -1069,7 +1069,7 @@ int transport_helper_init(struct transport *transport, const char *name)
 #define PBUFFERSIZE 8192
 
 /* Print bidirectional transfer loop debug message. */
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 static void transfer_debug(const char *fmt, ...)
 {
 	va_list args;
