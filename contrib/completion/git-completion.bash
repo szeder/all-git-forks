@@ -418,15 +418,10 @@ __git_refs_PoC ()
 			# employ the heuristic used by git checkout
 			# Try to find a remote branch that matches the completion word
 			# but only output if the branch name is unique
-			local ref
 			git --git-dir="$dir" for-each-ref \
 				--format="%(refname:strip=3)" \
-				"refs/remotes/" | \
-			while read -r refs; do
-				if [[ "$ref" == "$cur"* ]]; then
-					echo "$ref"
-				fi
-			done | sort | uniq -u
+				"refs/remotes/*/$cur*" "refs/remotes/*/$cur*/**" | \
+			sort | uniq -u
 		fi
 		return
 	fi
