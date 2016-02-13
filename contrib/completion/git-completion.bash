@@ -404,7 +404,12 @@ __git_refs_PoC ()
 			;;
 		*)
 			for i in HEAD FETCH_HEAD ORIG_HEAD MERGE_HEAD; do
-				if [ -e "$dir/$i" ]; then echo $i; fi
+				case "$i" in
+				$cur*)	if [ -e "$dir/$i" ]; then
+						echo $i
+					fi
+					;;
+				esac
 			done
 			format="refname:strip=2"
 			refs=("refs/tags/$cur*" "refs/tags/$cur*/**"
