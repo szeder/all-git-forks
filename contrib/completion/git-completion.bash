@@ -420,10 +420,9 @@ __git_refs_PoC ()
 			# but only output if the branch name is unique
 			local ref
 			git --git-dir="$dir" for-each-ref \
-				--format="%(refname:strip=2)" \
+				--format="%(refname:strip=3)" \
 				"refs/remotes/" | \
 			while read -r refs; do
-				ref="${ref#*/}"
 				if [[ "$ref" == "$cur"* ]]; then
 					echo "$ref"
 				fi
