@@ -6,6 +6,13 @@ test_description='test fetching over git protocol'
 . "$TEST_DIRECTORY"/lib-git-daemon.sh
 start_git_daemon
 
+check_verbose_connect () {
+	grep -qF "Looking up 127.0.0.1 ..." stderr &&
+	grep -qF "Connecting to 127.0.0.1 (port " stderr &&
+	grep -qF "done." stderr &&
+	rm stderr
+}
+
 test_expect_success 'setup repository' '
 	git config push.default matching &&
 	echo content >file &&
@@ -24,16 +31,30 @@ test_expect_success 'create git-accessible bare repository' '
 '
 
 test_expect_success 'clone git repository' '
-	git clone "$GIT_DAEMON_URL/repo.git" clone &&
+	git clone -v "$GIT_DAEMON_URL/repo.git" clone 2>stderr &&
 	test_cmp file clone/file
 '
+
+test_expect_success 'clone -v stderr is as expected' check_verbose_connect
 
 test_expect_success 'fetch changes via git protocol' '
 	echo content >>file &&
 	git commit -a -m two &&
 	git push public &&
-	(cd clone && git pull) &&
+	(cd clone && git pull -v) 2>stderr &&
 	test_cmp file clone/file
+'
+
+test_expect_success 'pull -v stderr is as expected' check_verbose_connect
+
+test_expect_success 'no-op fetch -v stderr is as expected' '
+	(cd clone && git fetch -v) 2>stderr &&
+	check_verbose_connect
+'
+
+test_expect_success 'no-op fetch without "-v" is quiet' '
+	(cd clone && git fetch) 2>stderr &&
+	! test -s stderr
 '
 
 test_expect_success 'remote detects correct HEAD' '
