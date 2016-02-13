@@ -395,6 +395,7 @@ __git_refs_PoC ()
 {
 	local i hash dir="$(__gitdir "${1-}")" track="${2-}"
 	local format refs
+	local suffix=" " # Hardcoded!!
 	if [ -d "$dir" ]; then
 		case "$cur" in
 		refs|refs/*)
@@ -406,7 +407,7 @@ __git_refs_PoC ()
 			for i in HEAD FETCH_HEAD ORIG_HEAD MERGE_HEAD; do
 				case "$i" in
 				$cur*)	if [ -e "$dir/$i" ]; then
-						echo $i
+						echo "$i$suffix"
 					fi
 					;;
 				esac
@@ -417,14 +418,14 @@ __git_refs_PoC ()
 				"refs/remotes/$cur*" "refs/remotes/$cur*/**")
 			;;
 		esac
-		git --git-dir="$dir" for-each-ref --format="%($format)" \
+		git --git-dir="$dir" for-each-ref --format="%($format)$suffix" \
 			"${refs[@]}"
 		if [ -n "$track" ]; then
 			# employ the heuristic used by git checkout
 			# Try to find a remote branch that matches the completion word
 			# but only output if the branch name is unique
 			git --git-dir="$dir" for-each-ref \
-				--format="%(refname:strip=3)" \
+				--format="%(refname:strip=3)$suffix" \
 				--sort="refname:strip=3" \
 				"refs/remotes/*/$cur*" "refs/remotes/*/$cur*/**" | \
 			uniq -u
