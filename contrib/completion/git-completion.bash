@@ -185,6 +185,16 @@ _get_comp_words_by_ref ()
 }
 fi
 
+# Fills COMPREPLY with all the pre-filtered words.
+# Callers must take care of providing only words that match the current word
+# to be completed and adding any prefix and/or suffix (trailing space!), if
+# necessary.
+# 1: List of matching completion words, complete with prefix and suffix.
+__gitcomp_direct ()
+{
+	local IFS=$'\n'
+	COMPREPLY=($1)
+}
 __gitcompappend ()
 {
 	local x i=${#COMPREPLY[@]}
@@ -1092,7 +1102,7 @@ _git_checkout ()
 		if [ -n "$(__git_find_on_cmdline "$flags")" ]; then
 			track=''
 		fi
-		__gitcomp_nl "$(__git_refs '' $track)"
+		__gitcomp_direct "$(__git_refs_PoC '' $track)"
 		;;
 	esac
 }
