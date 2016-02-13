@@ -399,7 +399,7 @@ __git_refs_PoC ()
 		case "$cur" in
 		refs|refs/*)
 			format="refname"
-			refs="${cur%/*}"
+			refs=("$cur*" "$cur*/**")
 			track=""
 			;;
 		*)
@@ -407,11 +407,13 @@ __git_refs_PoC ()
 				if [ -e "$dir/$i" ]; then echo $i; fi
 			done
 			format="refname:strip=2"
-			refs="refs/tags refs/heads refs/remotes"
+			refs=("refs/tags/$cur*" "refs/tags/$cur*/**"
+				"refs/heads/$cur*" "refs/heads/$cur*/**"
+				"refs/remotes/$cur*" "refs/remotes/$cur*/**")
 			;;
 		esac
 		git --git-dir="$dir" for-each-ref --format="%($format)" \
-			$refs
+			"${refs[@]}"
 		if [ -n "$track" ]; then
 			# employ the heuristic used by git checkout
 			# Try to find a remote branch that matches the completion word
