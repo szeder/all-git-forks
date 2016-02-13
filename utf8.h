@@ -10,7 +10,7 @@ int utf8_strwidth(const char *string);
 int is_utf8(const char *text);
 int is_encoding_utf8(const char *name);
 int same_encoding(const char *, const char *);
-__attribute__((format (printf, 2, 3)))
+FORMAT_PRINTF(2, 3)
 int utf8_fprintf(FILE *, const char *, ...);
 
 extern const char utf8_bom[];

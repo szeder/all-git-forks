@@ -44,7 +44,7 @@ enum uc_mode {
 	UC_FORCE
 };
 
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 static void report(const char *fmt, ...)
 {
 	va_list vp;

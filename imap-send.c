@@ -59,14 +59,14 @@ static struct option imap_send_options[] = {
 #define DRV_BOX_BAD     -2
 #define DRV_STORE_BAD   -3
 
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 static void imap_info(const char *, ...);
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 static void imap_warn(const char *, ...);
 
 static char *next_arg(char **);
 
-__attribute__((format (printf, 3, 4)))
+FORMAT_PRINTF(3, 4)
 static int nfsnprintf(char *buf, int blen, const char *fmt, ...);
 
 static int nfvasprintf(char **strp, const char *fmt, va_list ap)
@@ -578,7 +578,7 @@ static struct imap_cmd *issue_imap_cmd(struct imap_store *ctx,
 	return cmd;
 }
 
-__attribute__((format (printf, 3, 4)))
+FORMAT_PRINTF(3, 4)
 static int imap_exec(struct imap_store *ctx, struct imap_cmd_cb *cb,
 		     const char *fmt, ...)
 {
@@ -594,7 +594,7 @@ static int imap_exec(struct imap_store *ctx, struct imap_cmd_cb *cb,
 	return get_cmd_result(ctx, cmdp);
 }
 
-__attribute__((format (printf, 3, 4)))
+FORMAT_PRINTF(3, 4)
 static int imap_exec_m(struct imap_store *ctx, struct imap_cmd_cb *cb,
 		       const char *fmt, ...)
 {

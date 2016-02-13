@@ -46,7 +46,7 @@ int cmd_upload_archive_writer(int argc, const char **argv, const char *prefix)
 	return write_archive(sent_argv.argc, sent_argv.argv, prefix, 0, NULL, 1);
 }
 
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 static void error_clnt(const char *fmt, ...)
 {
 	struct strbuf buf = STRBUF_INIT;
