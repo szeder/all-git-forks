@@ -391,6 +391,62 @@ __git_refs ()
 	esac
 }
 
+__git_refs_PoC ()
+{
+	local i hash dir="$(__gitdir "${1-}")" track="${2-}"
+	local format refs
+	if [ -d "$dir" ]; then
+		case "$cur" in
+		refs|refs/*)
+			format="refname"
+			refs="${cur%/*}"
+			track=""
+			;;
+		*)
+			for i in HEAD FETCH_HEAD ORIG_HEAD MERGE_HEAD; do
+				if [ -e "$dir/$i" ]; then echo $i; fi
+			done
+			format="refname:strip=2"
+			refs="refs/tags refs/heads refs/remotes"
+			;;
+		esac
+		git --git-dir="$dir" for-each-ref --format="%($format)" \
+			$refs
+		if [ -n "$track" ]; then
+			# employ the heuristic used by git checkout
+			# Try to find a remote branch that matches the completion word
+			# but only output if the branch name is unique
+			local ref entry
+			git --git-dir="$dir" for-each-ref --shell --format="ref=%(refname:strip=2)" \
+				"refs/remotes/" | \
+			while read -r entry; do
+				eval "$entry"
+				ref="${ref#*/}"
+				if [[ "$ref" == "$cur"* ]]; then
+					echo "$ref"
+				fi
+			done | sort | uniq -u
+		fi
+		return
+	fi
+	case "$cur" in
+	refs|refs/*)
+		git ls-remote "$dir" "$cur*" 2>/dev/null | \
+		while read -r hash i; do
+			case "$i" in
+			*^{}) ;;
+			*) echo "$i" ;;
+			esac
+		done
+		;;
+	*)
+		echo "HEAD"
+		git for-each-ref --format="%(refname:strip=2)" -- \
+			"refs/remotes/$dir/" 2>/dev/null | sed -e "s#^$dir/##"
+		;;
+	esac
+}
+
 # __git_refs2 requires 1 argument (to pass to __git_refs)
 __git_refs2 ()
 {
