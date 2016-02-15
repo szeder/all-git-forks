@@ -2294,15 +2294,14 @@ static void try_remove_empty_parents(const char *refname)
 	for (i = 0; i < 2; i++) { /* refs/{heads,tags,...}/ */
 		while (*p && *p != '/')
 			p++;
-		/* tolerate duplicate slashes; see check_refname_format() */
-		while (*p == '/')
+		if (*p == '/')
 			p++;
 	}
 	q = buf.buf + buf.len;
 	while (1) {
 		while (q > p && *q != '/')
 			q--;
-		while (q > p && *(q-1) == '/')
+		if (q > p && *(q-1) == '/')
 			q--;
 		if (q == p)
 			break;
