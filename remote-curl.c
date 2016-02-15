@@ -696,9 +696,10 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 {
 	struct walker *walker;
-	char **targets = xmalloc(nr_heads * sizeof(char*));
+	char **targets;
 	int ret, i;
 
+	ALLOC_ARRAY(targets, nr_heads);
 	if (options.depth)
 		die("dumb http transport does not support --depth");
 	for (i = 0; i < nr_heads; i++)
@@ -845,9 +846,10 @@ static void parse_fetch(struct strbuf *buf)
 
 static int push_dav(int nr_spec, char **specs)
 {
-	const char **argv = xmalloc((10 + nr_spec) * sizeof(char*));
+	const char **argv;
 	int argc = 0, i;
 
+	ALLOC_ARRAY(argv, 10 + nr_spec);
 	argv[argc++] = "http-push";
 	argv[argc++] = "--helper-status";
 	if (options.dry_run)

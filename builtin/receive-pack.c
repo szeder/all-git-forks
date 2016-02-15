@@ -1044,7 +1044,7 @@ static void run_update_post_hook(struct command *commands)
 	if (!argc || !hook)
 		return;
 
-	argv = xmalloc(sizeof(*argv) * (2 + argc));
+	ALLOC_ARRAY(argv, 2 + argc);
 	argv[0] = hook;
 
 	for (argc = 1, cmd = commands; cmd; cmd = cmd->next) {
@@ -1378,7 +1378,7 @@ static struct command **queue_command(struct command **tail,
 
 	refname = line + 82;
 	reflen = linelen - 82;
-	cmd = xcalloc(1, sizeof(struct command) + reflen + 1);
+	cmd = xcalloc(1, st_add3(sizeof(struct command), reflen, 1));
 	hashcpy(cmd->old_sha1, old_sha1);
 	hashcpy(cmd->new_sha1, new_sha1);
 	memcpy(cmd->ref_name, refname, reflen);
@@ -1597,8 +1597,7 @@ static void prepare_shallow_update(struct command *commands,
 {
 	int i, j, k, bitmap_size = (si->ref->nr + 31) / 32;
 
-	si->used_shallow = xmalloc(sizeof(*si->used_shallow) *
-				   si->shallow->nr);
+	ALLOC_ARRAY(si->used_shallow, si->shallow->nr);
 	assign_shallow_commits_to_refs(si, si->used_shallow, NULL);
 
 	si->need_reachability_test =
@@ -1664,7 +1663,7 @@ static void update_shallow_info(struct command *commands,
 		return;
 	}
 
-	ref_status = xmalloc(sizeof(*ref_status) * ref->nr);
+	ALLOC_ARRAY(ref_status, ref->nr);
 	assign_shallow_commits_to_refs(si, NULL, ref_status);
 	for (cmd = commands; cmd; cmd = cmd->next) {
 		if (is_null_sha1(cmd->new_sha1))
