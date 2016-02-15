@@ -115,7 +115,7 @@ void strbuf_tolower(struct strbuf *sb)
 }
 
 struct strbuf **strbuf_split_buf(const char *str, size_t slen,
-				 int terminator, int max)
+				 int terminator, int max, int omit_term)
 {
 	struct strbuf **ret = NULL;
 	size_t nr = 0, alloc = 0;
@@ -123,14 +123,18 @@ struct strbuf **strbuf_split_buf(const char *str, size_t slen,
 
 	while (slen) {
 		int len = slen;
+		int copylen = len;
+		const char *end = NULL;
 		if (max <= 0 || nr + 1 < max) {
-			const char *end = memchr(str, terminator, slen);
-			if (end)
+			end = memchr(str, terminator, slen);
+			if (end) {
 				len = end - str + 1;
+				copylen = len - !!omit_term;
+			}
 		}
 		t = xmalloc(sizeof(struct strbuf));
-		strbuf_init(t, len);
-		strbuf_add(t, str, len);
+		strbuf_init(t, copylen);
+		strbuf_add(t, str, copylen);
 		ALLOC_GROW(ret, nr + 2, alloc);
 		ret[nr++] = t;
 		str += len;
