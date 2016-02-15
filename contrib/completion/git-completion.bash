@@ -355,7 +355,7 @@ __git_refs ()
 			;;
 		esac
 		git --git-dir="$dir" for-each-ref --format="%($format)" \
-			$refs
+			$refs 2> /dev/null
 		if [ -n "$track" ]; then
 			# employ the heuristic used by git checkout
 			# Try to find a remote branch that matches the completion word
