@@ -343,9 +343,7 @@ static int grab_objectname(const char *name, const unsigned char *sha1,
 			    struct atom_value *v)
 {
 	if (!strcmp(name, "objectname")) {
-		char *s = xmalloc(41);
-		strcpy(s, sha1_to_hex(sha1));
-		v->s = s;
+		v->s = xstrdup(sha1_to_hex(sha1));
 		return 1;
 	}
 	if (!strcmp(name, "objectname:short")) {
@@ -370,13 +368,11 @@ static void grab_common_values(struct atom_value *val, int deref, struct object 
 		if (!strcmp(name, "objecttype"))
 			v->s = typename(obj->type);
 		else if (!strcmp(name, "objectsize")) {
-			char *s = xmalloc(40);
-			sprintf(s, "%lu", sz);
 			v->ul = sz;
-			v->s = s;
+			v->s = xstrfmt("%lu", sz);
 		}
 		else if (deref)
-			grab_objectname(name, obj->sha1, v);
+			grab_objectname(name, obj->oid.hash, v);
 	}
 }
 
@@ -397,11 +393,8 @@ static void grab_tag_values(struct atom_value *val, int deref, struct object *ob
 			v->s = tag->tag;
 		else if (!strcmp(name, "type") && tag->tagged)
 			v->s = typename(tag->tagged->type);
-		else if (!strcmp(name, "object") && tag->tagged) {
-			char *s = xmalloc(41);
-			strcpy(s, sha1_to_hex(tag->tagged->sha1));
-			v->s = s;
-		}
+		else if (!strcmp(name, "object") && tag->tagged)
+			v->s = xstrdup(oid_to_hex(&tag->tagged->oid));
 	}
 }
 
@@ -419,32 +412,22 @@ static void grab_commit_values(struct atom_value *val, int deref, struct object 
 		if (deref)
 			name++;
 		if (!strcmp(name, "tree")) {
-			char *s = xmalloc(41);
-			strcpy(s, sha1_to_hex(commit->tree->object.sha1));
-			v->s = s;
+			v->s = xstrdup(oid_to_hex(&commit->tree->object.oid));
 		}
-		if (!strcmp(name, "numparent")) {
-			char *s = xmalloc(40);
+		else if (!strcmp(name, "numparent")) {
 			v->ul = commit_list_count(commit->parents);
-			sprintf(s, "%lu", v->ul);
-			v->s = s;
+			v->s = xstrfmt("%lu", v->ul);
 		}
 		else if (!strcmp(name, "parent")) {
-			int num = commit_list_count(commit->parents);
-			int i;
 			struct commit_list *parents;
-			char *s = xmalloc(41 * num + 1);
-			v->s = s;
-			for (i = 0, parents = commit->parents;
-			     parents;
-			     parents = parents->next, i = i + 41) {
+			struct strbuf s = STRBUF_INIT;
+			for (parents = commit->parents; parents; parents = parents->next) {
 				struct commit *parent = parents->item;
-				strcpy(s+i, sha1_to_hex(parent->object.sha1));
-				if (parents->next)
-					s[i+40] = ' ';
+				if (parents != commit->parents)
+					strbuf_addch(&s, ' ');
+				strbuf_addstr(&s, oid_to_hex(&parent->object.oid));
 			}
-			if (!i)
-				*s = '\0';
+			v->s = strbuf_detach(&s, NULL);
 		}
 	}
 }
@@ -780,6 +763,29 @@ static inline char *copy_advance(char *dst, const char *src)
 	return dst;
 }
 
+static const char *strip_ref_components(const char *refname, const char *nr_arg)
+{
+	char *end;
+	long nr = strtol(nr_arg, &end, 10);
+	long remaining = nr;
+	const char *start = refname;
+
+	if (nr < 1 || *end != '\0')
+		die(":strip= requires a positive integer argument");
+
+	while (remaining) {
+		switch (*start++) {
+		case '\0':
+			die("ref '%s' does not have %ld components to :strip",
+			    refname, nr);
+		case '/':
+			remaining--;
+			break;
+		}
+	}
+	return start;
+}
+
 /*
  * Parse the object referred by ref, and grab needed value.
  */
@@ -926,15 +932,17 @@ static void populate_value(struct ref_array_item *ref)
 		formatp = strchr(name, ':');
 		if (formatp) {
 			int num_ours, num_theirs;
+			const char *arg;
 
 			formatp++;
 			if (!strcmp(formatp, "short"))
 				refname = shorten_unambiguous_ref(refname,
 						      warn_ambiguous_refs);
+			else if (skip_prefix(formatp, "strip=", &arg))
+				refname = strip_ref_components(refname, arg);
 			else if (!strcmp(formatp, "track") &&
 				 (starts_with(name, "upstream") ||
 				  starts_with(name, "push"))) {
-				char buf[40];
 
 				if (stat_tracking_info(branch, &num_ours,
 						       &num_theirs, NULL))
@@ -942,17 +950,13 @@ static void populate_value(struct ref_array_item *ref)
 
 				if (!num_ours && !num_theirs)
 					v->s = "";
-				else if (!num_ours) {
-					sprintf(buf, "[behind %d]", num_theirs);
-					v->s = xstrdup(buf);
-				} else if (!num_theirs) {
-					sprintf(buf, "[ahead %d]", num_ours);
-					v->s = xstrdup(buf);
-				} else {
-					sprintf(buf, "[ahead %d, behind %d]",
-						num_ours, num_theirs);
-					v->s = xstrdup(buf);
-				}
+				else if (!num_ours)
+					v->s = xstrfmt("[behind %d]", num_theirs);
+				else if (!num_theirs)
+					v->s = xstrfmt("[ahead %d]", num_ours);
+				else
+					v->s = xstrfmt("[ahead %d, behind %d]",
+						       num_ours, num_theirs);
 				continue;
 			} else if (!strcmp(formatp, "trackshort") &&
 				   (starts_with(name, "upstream") ||
@@ -979,12 +983,8 @@ static void populate_value(struct ref_array_item *ref)
 
 		if (!deref)
 			v->s = refname;
-		else {
-			int len = strlen(refname);
-			char *s = xmalloc(len + 4);
-			sprintf(s, "%s^{}", refname);
-			v->s = s;
-		}
+		else
+			v->s = xstrfmt("%s^{}", refname);
 	}
 
 	for (i = 0; i < used_atom_cnt; i++) {
@@ -1018,7 +1018,7 @@ static void populate_value(struct ref_array_item *ref)
 	 * If it is a tag object, see if we use a value that derefs
 	 * the object, and if we do grab the object it refers to.
 	 */
-	tagged = ((struct tag *)obj)->tagged->sha1;
+	tagged = ((struct tag *)obj)->tagged->oid.hash;
 
 	/*
 	 * NEEDSWORK: This derefs tag only once, which
@@ -1075,7 +1075,7 @@ struct contains_stack {
 static int in_commit_list(const struct commit_list *want, struct commit *c)
 {
 	for (; want; want = want->next)
-		if (!hashcmp(want->item->object.sha1, c->object.sha1))
+		if (!oidcmp(&want->item->object.oid, &c->object.oid))
 			return 1;
 	return 0;
 }
@@ -1244,7 +1244,7 @@ static const unsigned char *match_points_at(struct sha1_array *points_at,
 	if (!obj)
 		die(_("malformed object at '%s'"), refname);
 	if (obj->type == OBJ_TAG)
-		tagged_sha1 = ((struct tag *)obj)->tagged->sha1;
+		tagged_sha1 = ((struct tag *)obj)->tagged->oid.hash;
 	if (tagged_sha1 && sha1_array_lookup(points_at, tagged_sha1) >= 0)
 		return tagged_sha1;
 	return NULL;
@@ -1331,7 +1331,7 @@ static int ref_filter_handler(const char *refname, const struct object_id *oid, 
 	 * obtain the commit using the 'oid' available and discard all
 	 * non-commits early. The actual filtering is done later.
 	 */
-	if (filter->merge_commit || filter->with_commit) {
+	if (filter->merge_commit || filter->with_commit || filter->verbose) {
 		commit = lookup_commit_reference_gently(oid->hash, 1);
 		if (!commit)
 			return 0;
@@ -1483,7 +1483,7 @@ static int cmp_ref_sorting(struct ref_sorting *s, struct ref_array_item *a, stru
 		if (va->ul < vb->ul)
 			cmp = -1;
 		else if (va->ul == vb->ul)
-			cmp = 0;
+			cmp = strcmp(a->refname, b->refname);
 		else
 			cmp = 1;
 	}

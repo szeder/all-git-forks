@@ -1594,6 +1594,30 @@ int git_config_get_pathname(const char *key, const char **dest)
 	return ret;
 }
 
+int git_config_get_untracked_cache(void)
+{
+	int val = -1;
+	const char *v;
+
+	/* Hack for test programs like test-dump-untracked-cache */
+	if (ignore_untracked_cache_config)
+		return -1;
+
+	if (!git_config_get_maybe_bool("core.untrackedcache", &val))
+		return val;
+
+	if (!git_config_get_value("core.untrackedcache", &v)) {
+		if (!strcasecmp(v, "keep"))
+			return -1;
+
+		error("unknown core.untrackedCache value '%s'; "
+		      "using 'keep' default value", v);
+		return -1;
+	}
+
+	return -1; /* default value */
+}
+
 NORETURN
 void git_die_config_linenr(const char *key, const char *filename, int linenr)
 {
@@ -2144,7 +2168,8 @@ int git_config_set_multivar_in_file(const char *config_filename,
 	}
 
 	if (commit_lock_file(lock) < 0) {
-		error("could not commit config file %s", config_filename);
+		error("could not write config file %s: %s", config_filename,
+		      strerror(errno));
 		ret = CONFIG_NO_WRITE;
 		lock = NULL;
 		goto out_free;
@@ -2330,7 +2355,8 @@ int git_config_rename_section_in_file(const char *config_filename,
 	fclose(config_file);
 unlock_and_out:
 	if (commit_lock_file(lock) < 0)
-		ret = error("could not commit config file %s", config_filename);
+		ret = error("could not write config file %s: %s",
+			    config_filename, strerror(errno));
 out:
 	free(filename_buf);
 	return ret;

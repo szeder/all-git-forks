@@ -335,12 +335,15 @@ static int check_common(const char *unmatched, void *value, void *baton)
 	return 0;
 }
 
-static void update_common_dir(struct strbuf *buf, int git_dir_len)
+static void update_common_dir(struct strbuf *buf, int git_dir_len,
+			      const char *common_dir)
 {
 	char *base = buf->buf + git_dir_len;
 	init_common_trie();
+	if (!common_dir)
+		common_dir = get_git_common_dir();
 	if (trie_find(&common_trie, base, check_common, NULL) > 0)
-		replace_dir(buf, git_dir_len, get_git_common_dir());
+		replace_dir(buf, git_dir_len, common_dir);
 }
 
 void report_linked_checkout_garbage(void)
@@ -360,7 +363,7 @@ void report_linked_checkout_garbage(void)
 		strbuf_setlen(&sb, len);
 		strbuf_addstr(&sb, path);
 		if (file_exists(sb.buf))
-			report_garbage("unused in linked checkout", sb.buf);
+			report_garbage(PACKDIR_FILE_GARBAGE, sb.buf);
 	}
 	strbuf_release(&sb);
 }
@@ -377,7 +380,7 @@ static void adjust_git_path(struct strbuf *buf, int git_dir_len)
 	else if (git_db_env && dir_prefix(base, "objects"))
 		replace_dir(buf, git_dir_len + 7, get_object_directory());
 	else if (git_common_dir_env)
-		update_common_dir(buf, git_dir_len);
+		update_common_dir(buf, git_dir_len, NULL);
 }
 
 static void do_git_path(struct strbuf *buf, const char *fmt, va_list args)
@@ -390,6 +393,16 @@ static void do_git_path(struct strbuf *buf, const char *fmt, va_list args)
 	strbuf_vaddf(buf, fmt, args);
 	adjust_git_path(buf, gitdir_len);
 	strbuf_cleanup_path(buf);
+}
+
+char *git_path_buf(struct strbuf *buf, const char *fmt, ...)
+{
+	va_list args;
+	strbuf_reset(buf);
+	va_start(args, fmt);
+	do_git_path(buf, fmt, args);
+	va_end(args);
+	return buf->buf;
 }
 
 void strbuf_git_path(struct strbuf *sb, const char *fmt, ...)
@@ -445,10 +458,11 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 			      const char *fmt, va_list args)
 {
 	const char *git_dir;
+	struct strbuf git_submodule_common_dir = STRBUF_INIT;
+	struct strbuf git_submodule_dir = STRBUF_INIT;
 
 	strbuf_addstr(buf, path);
-	if (buf->len && buf->buf[buf->len - 1] != '/')
-		strbuf_addch(buf, '/');
+	strbuf_complete(buf, '/');
 	strbuf_addstr(buf, ".git");
 
 	git_dir = read_gitfile(buf->buf);
@@ -457,9 +471,17 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 		strbuf_addstr(buf, git_dir);
 	}
 	strbuf_addch(buf, '/');
+	strbuf_addstr(&git_submodule_dir, buf->buf);
 
 	strbuf_vaddf(buf, fmt, args);
+
+	if (get_common_dir_noenv(&git_submodule_common_dir, git_submodule_dir.buf))
+		update_common_dir(buf, git_submodule_dir.len, git_submodule_common_dir.buf);
+
 	strbuf_cleanup_path(buf);
+
+	strbuf_release(&git_submodule_dir);
+	strbuf_release(&git_submodule_common_dir);
 }
 
 char *git_pathdup_submodule(const char *path, const char *fmt, ...)
@@ -598,8 +620,8 @@ return_null:
  */
 const char *enter_repo(const char *path, int strict)
 {
-	static char used_path[PATH_MAX];
-	static char validated_path[PATH_MAX];
+	static struct strbuf validated_path = STRBUF_INIT;
+	static struct strbuf used_path = STRBUF_INIT;
 
 	if (!path)
 		return NULL;
@@ -614,52 +636,57 @@ const char *enter_repo(const char *path, int strict)
 		while ((1 < len) && (path[len-1] == '/'))
 			len--;
 
+		/*
+		 * We can handle arbitrary-sized buffers, but this remains as a
+		 * sanity check on untrusted input.
+		 */
 		if (PATH_MAX <= len)
 			return NULL;
-		strncpy(used_path, path, len); used_path[len] = 0 ;
-		strcpy(validated_path, used_path);
 
-		if (used_path[0] == '~') {
-			char *newpath = expand_user_path(used_path);
-			if (!newpath || (PATH_MAX - 10 < strlen(newpath))) {
-				free(newpath);
+		strbuf_reset(&used_path);
+		strbuf_reset(&validated_path);
+		strbuf_add(&used_path, path, len);
+		strbuf_add(&validated_path, path, len);
+
+		if (used_path.buf[0] == '~') {
+			char *newpath = expand_user_path(used_path.buf);
+			if (!newpath)
 				return NULL;
-			}
-			/*
-			 * Copy back into the static buffer. A pity
-			 * since newpath was not bounded, but other
-			 * branches of the if are limited by PATH_MAX
-			 * anyway.
-			 */
-			strcpy(used_path, newpath); free(newpath);
+			strbuf_attach(&used_path, newpath, strlen(newpath),
+				      strlen(newpath));
 		}
-		else if (PATH_MAX - 10 < len)
-			return NULL;
-		len = strlen(used_path);
 		for (i = 0; suffix[i]; i++) {
 			struct stat st;
-			strcpy(used_path + len, suffix[i]);
-			if (!stat(used_path, &st) &&
+			size_t baselen = used_path.len;
+			strbuf_addstr(&used_path, suffix[i]);
+			if (!stat(used_path.buf, &st) &&
 			    (S_ISREG(st.st_mode) ||
-			    (S_ISDIR(st.st_mode) && is_git_directory(used_path)))) {
-				strcat(validated_path, suffix[i]);
+			    (S_ISDIR(st.st_mode) && is_git_directory(used_path.buf)))) {
+				strbuf_addstr(&validated_path, suffix[i]);
 				break;
 			}
+			strbuf_setlen(&used_path, baselen);
 		}
 		if (!suffix[i])
 			return NULL;
-		gitfile = read_gitfile(used_path) ;
-		if (gitfile)
-			strcpy(used_path, gitfile);
-		if (chdir(used_path))
+		gitfile = read_gitfile(used_path.buf);
+		if (gitfile) {
+			strbuf_reset(&used_path);
+			strbuf_addstr(&used_path, gitfile);
+		}
+		if (chdir(used_path.buf))
 			return NULL;
-		path = validated_path;
+		path = validated_path.buf;
 	}
-	else if (chdir(path))
-		return NULL;
+	else {
+		const char *gitfile = read_gitfile(path);
+		if (gitfile)
+			path = gitfile;
+		if (chdir(path))
+			return NULL;
+	}
 
-	if (access("objects", X_OK) == 0 && access("refs", X_OK) == 0 &&
-	    validate_headref("HEAD") == 0) {
+	if (is_git_directory(".")) {
 		set_git_dir(".");
 		check_repository_format();
 		return path;
@@ -713,6 +740,18 @@ int adjust_shared_perm(const char *path)
 	return 0;
 }
 
+void safe_create_dir(const char *dir, int share)
+{
+	if (mkdir(dir, 0777) < 0) {
+		if (errno != EEXIST) {
+			perror(dir);
+			exit(1);
+		}
+	}
+	else if (share && adjust_shared_perm(dir))
+		die(_("Could not make %s writable by group"), dir);
+}
+
 static int have_same_root(const char *path1, const char *path2)
 {
 	int is_abs1, is_abs2;
@@ -743,13 +782,10 @@ const char *relative_path(const char *in, const char *prefix,
 	else if (!prefix_len)
 		return in;
 
-	if (have_same_root(in, prefix)) {
+	if (have_same_root(in, prefix))
 		/* bypass dos_drive, for "c:" is identical to "C:" */
-		if (has_dos_drive_prefix(in)) {
-			i = 2;
-			j = 2;
-		}
-	} else {
+		i = j = has_dos_drive_prefix(in);
+	else {
 		return in;
 	}
 
@@ -838,7 +874,7 @@ const char *relative_path(const char *in, const char *prefix,
  */
 const char *remove_leading_path(const char *in, const char *prefix)
 {
-	static char buf[PATH_MAX + 1];
+	static struct strbuf buf = STRBUF_INIT;
 	int i = 0, j = 0;
 
 	if (!prefix || !prefix[0])
@@ -867,11 +903,13 @@ const char *remove_leading_path(const char *in, const char *prefix)
 		return in;
 	while (is_dir_sep(in[j]))
 		j++;
+
+	strbuf_reset(&buf);
 	if (!in[j])
-		strcpy(buf, ".");
+		strbuf_addstr(&buf, ".");
 	else
-		strcpy(buf, in + j);
-	return buf;
+		strbuf_addstr(&buf, in + j);
+	return buf.buf;
 }
 
 /*
@@ -893,15 +931,19 @@ const char *remove_leading_path(const char *in, const char *prefix)
  * normalized, any time "../" eats up to the prefix_len part,
  * prefix_len is reduced. In the end prefix_len is the remaining
  * prefix that has not been overridden by user pathspec.
+ *
+ * NEEDSWORK: This function doesn't perform normalization w.r.t. trailing '/'.
+ * For everything but the root folder itself, the normalized path should not
+ * end with a '/', then the callers need to be fixed up accordingly.
+ *
  */
 int normalize_path_copy_len(char *dst, const char *src, int *prefix_len)
 {
 	char *dst0;
+	int i;
 
-	if (has_dos_drive_prefix(src)) {
+	for (i = has_dos_drive_prefix(src); i > 0; i--)
 		*dst++ = *src++;
-		*dst++ = *src++;
-	}
 	dst0 = dst;
 
 	if (is_dir_sep(*src)) {

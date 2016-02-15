@@ -281,11 +281,8 @@ static int try_difference(const char *arg)
 			b = lookup_commit_reference(end);
 			exclude = get_merge_bases(a, b);
 			while (exclude) {
-				struct commit_list *n = exclude->next;
-				show_rev(REVERSED,
-					 exclude->item->object.sha1,NULL);
-				free(exclude);
-				exclude = n;
+				struct commit *commit = pop_commit(&exclude);
+				show_rev(REVERSED, commit->object.oid.hash, NULL);
 			}
 		}
 		*dotdot = '.';
@@ -322,7 +319,7 @@ static int try_parent_shorthands(const char *arg)
 	commit = lookup_commit_reference(sha1);
 	for (parents = commit->parents; parents; parents = parents->next)
 		show_rev(parents_only ? NORMAL : REVERSED,
-				parents->item->object.sha1, arg);
+				parents->item->object.oid.hash, arg);
 
 	*dotdot = '^';
 	return 1;
@@ -386,7 +383,7 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 
 	/* get the usage up to the first line with a -- on it */
 	for (;;) {
-		if (strbuf_getline(&sb, stdin, '\n') == EOF)
+		if (strbuf_getline(&sb, stdin) == EOF)
 			die("premature end of input");
 		ALLOC_GROW(usage, unb + 1, usz);
 		if (!strcmp("--", sb.buf)) {
@@ -399,7 +396,7 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 	}
 
 	/* parse: (<short>|<short>,<long>|<long>)[*=?!]*<arghint>? SP+ <help> */
-	while (strbuf_getline(&sb, stdin, '\n') != EOF) {
+	while (strbuf_getline(&sb, stdin) != EOF) {
 		const char *s;
 		const char *help;
 		struct option *o;

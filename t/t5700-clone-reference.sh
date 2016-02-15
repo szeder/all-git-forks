@@ -6,7 +6,7 @@
 test_description='test clone --reference'
 . ./test-lib.sh
 
-base_dir=`pwd`
+base_dir=$(pwd)
 
 U=$base_dir/UPLOAD_LOG
 
@@ -187,6 +187,38 @@ test_expect_success 'clone and dissociate from reference' '
 	rm -fr P &&
 	test_must_fail git -C R fsck &&
 	git -C S fsck
+'
+test_expect_success 'clone, dissociate from partial reference and repack' '
+	rm -fr P Q R &&
+	git init P &&
+	(
+		cd P &&
+		test_commit one &&
+		git repack &&
+		test_commit two &&
+		git repack
+	) &&
+	git clone --bare P Q &&
+	(
+		cd P &&
+		git checkout -b second &&
+		test_commit three &&
+		git repack
+	) &&
+	git clone --bare --dissociate --reference=P Q R &&
+	ls R/objects/pack/*.pack >packs.txt &&
+	test_line_count = 1 packs.txt
+'
+
+test_expect_success 'clone, dissociate from alternates' '
+	rm -fr A B C &&
+	test_create_repo A &&
+	commit_in A file1 &&
+	git clone --reference=A A B &&
+	test_line_count = 1 B/.git/objects/info/alternates &&
+	git clone --local --dissociate B C &&
+	! test -f C/.git/objects/info/alternates &&
+	( cd C && git fsck )
 '
 
 test_done

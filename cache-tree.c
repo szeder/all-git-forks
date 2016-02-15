@@ -377,7 +377,7 @@ static int update_one(struct cache_tree *it,
 		 * they are not part of generated trees. Invalidate up
 		 * to root to force cache-tree users to read elsewhere.
 		 */
-		if (ce->ce_flags & CE_INTENT_TO_ADD) {
+		if (ce_intent_to_add(ce)) {
 			to_invalidate = 1;
 			continue;
 		}
@@ -657,7 +657,7 @@ static void prime_cache_tree_rec(struct cache_tree *it, struct tree *tree)
 	struct name_entry entry;
 	int cnt;
 
-	hashcpy(it->sha1, tree->object.sha1);
+	hashcpy(it->sha1, tree->object.oid.hash);
 	init_tree_desc(&desc, tree->buffer, tree->size);
 	cnt = 0;
 	while (tree_entry(&desc, &entry)) {

@@ -123,10 +123,10 @@ test_expect_success 'checkout from a bare repo without "add"' '
 test_expect_success 'checkout with grafts' '
 	test_when_finished rm .git/info/grafts &&
 	test_commit abc &&
-	SHA1=`git rev-parse HEAD` &&
+	SHA1=$(git rev-parse HEAD) &&
 	test_commit def &&
 	test_commit xyz &&
-	echo "`git rev-parse HEAD` $SHA1" >.git/info/grafts &&
+	echo "$(git rev-parse HEAD) $SHA1" >.git/info/grafts &&
 	cat >expected <<-\EOF &&
 	xyz
 	abc
@@ -191,6 +191,11 @@ test_expect_success '"add" -b/--detach mutually exclusive' '
 
 test_expect_success '"add" -B/--detach mutually exclusive' '
 	test_must_fail git worktree add -B poodle --detach bamboo master
+'
+
+test_expect_success 'local clone from linked checkout' '
+	git clone --local here here-clone &&
+	( cd here-clone && git fsck )
 '
 
 test_done

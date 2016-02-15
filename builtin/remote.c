@@ -251,7 +251,7 @@ static int add(int argc, const char **argv)
 struct branch_info {
 	char *remote_name;
 	struct string_list merge;
-	int rebase;
+	enum { NO_REBASE, NORMAL_REBASE, INTERACTIVE_REBASE } rebase;
 };
 
 static struct string_list branch_list;
@@ -311,7 +311,9 @@ static int config_read_branches(const char *key, const char *value, void *cb)
 			if (v >= 0)
 				info->rebase = v;
 			else if (!strcmp(value, "preserve"))
-				info->rebase = 1;
+				info->rebase = NORMAL_REBASE;
+			else if (!strcmp(value, "interactive"))
+				info->rebase = INTERACTIVE_REBASE;
 		}
 	}
 	return 0;
@@ -401,7 +403,7 @@ static int get_push_ref_states(const struct ref *remote_refs,
 
 		if (!ref->peer_ref)
 			continue;
-		hashcpy(ref->new_sha1, ref->peer_ref->new_sha1);
+		oidcpy(&ref->new_oid, &ref->peer_ref->new_oid);
 
 		item = string_list_append(&states->push,
 					  abbrev_branch(ref->peer_ref->name));
@@ -410,14 +412,14 @@ static int get_push_ref_states(const struct ref *remote_refs,
 		info->forced = ref->force;
 		info->dest = xstrdup(abbrev_branch(ref->name));
 
-		if (is_null_sha1(ref->new_sha1)) {
+		if (is_null_oid(&ref->new_oid)) {
 			info->status = PUSH_STATUS_DELETE;
-		} else if (!hashcmp(ref->old_sha1, ref->new_sha1))
+		} else if (!oidcmp(&ref->old_oid, &ref->new_oid))
 			info->status = PUSH_STATUS_UPTODATE;
-		else if (is_null_sha1(ref->old_sha1))
+		else if (is_null_oid(&ref->old_oid))
 			info->status = PUSH_STATUS_CREATE;
-		else if (has_sha1_file(ref->old_sha1) &&
-			 ref_newer(ref->new_sha1, ref->old_sha1))
+		else if (has_object_file(&ref->old_oid) &&
+			 ref_newer(&ref->new_oid, &ref->old_oid))
 			info->status = PUSH_STATUS_FASTFORWARD;
 		else
 			info->status = PUSH_STATUS_OUTOFDATE;
@@ -980,7 +982,9 @@ static int show_local_info_item(struct string_list_item *item, void *cb_data)
 
 	printf("    %-*s ", show_info->width, item->string);
 	if (branch_info->rebase) {
-		printf_ln(_("rebases onto remote %s"), merge->items[0].string);
+		printf_ln(_(branch_info->rebase == INTERACTIVE_REBASE ?
+			"rebases interactively onto remote %s" :
+			"rebases onto remote %s"), merge->items[0].string);
 		return 0;
 	} else if (show_info->any_rebase) {
 		printf_ln(_(" merges with remote %s"), merge->items[0].string);

@@ -13,7 +13,6 @@
 #include "run-command.h"
 #include "utf8.h"
 #include "userdiff.h"
-#include "sigchain.h"
 #include "submodule-config.h"
 #include "submodule.h"
 #include "ll-merge.h"
@@ -322,7 +321,7 @@ static struct diff_tempfile {
 	 */
 	const char *name;
 
-	char hex[41];
+	char hex[GIT_SHA1_HEXSZ + 1];
 	char mode[10];
 
 	/*
@@ -2882,9 +2881,8 @@ static void prep_temp_blob(const char *path, struct diff_tempfile *temp,
 		die_errno("unable to write temp-file");
 	close_tempfile(&temp->tempfile);
 	temp->name = get_tempfile_path(&temp->tempfile);
-	strcpy(temp->hex, sha1_to_hex(sha1));
-	temp->hex[40] = 0;
-	sprintf(temp->mode, "%06o", mode);
+	sha1_to_hex_r(temp->hex, sha1);
+	xsnprintf(temp->mode, sizeof(temp->mode), "%06o", mode);
 	strbuf_release(&buf);
 	strbuf_release(&template);
 	free(path_dup);
@@ -2901,8 +2899,8 @@ static struct diff_tempfile *prepare_temp_file(const char *name,
 		 * a '+' entry produces this for file-1.
 		 */
 		temp->name = "/dev/null";
-		strcpy(temp->hex, ".");
-		strcpy(temp->mode, ".");
+		xsnprintf(temp->hex, sizeof(temp->hex), ".");
+		xsnprintf(temp->mode, sizeof(temp->mode), ".");
 		return temp;
 	}
 
@@ -2930,16 +2928,16 @@ static struct diff_tempfile *prepare_temp_file(const char *name,
 			/* we can borrow from the file in the work tree */
 			temp->name = name;
 			if (!one->sha1_valid)
-				strcpy(temp->hex, sha1_to_hex(null_sha1));
+				sha1_to_hex_r(temp->hex, null_sha1);
 			else
-				strcpy(temp->hex, sha1_to_hex(one->sha1));
+				sha1_to_hex_r(temp->hex, one->sha1);
 			/* Even though we may sometimes borrow the
 			 * contents from the work tree, we always want
 			 * one->mode.  mode is trustworthy even when
 			 * !(one->sha1_valid), as long as
 			 * DIFF_FILE_VALID(one).
 			 */
-			sprintf(temp->mode, "%06o", one->mode);
+			xsnprintf(temp->mode, sizeof(temp->mode), "%06o", one->mode);
 		}
 		return temp;
 	}
@@ -3695,11 +3693,15 @@ static int parse_ws_error_highlight(struct diff_options *opt, const char *arg)
 	return 1;
 }
 
-int diff_opt_parse(struct diff_options *options, const char **av, int ac)
+int diff_opt_parse(struct diff_options *options,
+		   const char **av, int ac, const char *prefix)
 {
 	const char *arg = av[0];
 	const char *optarg;
 	int argcount;
+
+	if (!prefix)
+		prefix = "";
 
 	/* Output format options */
 	if (!strcmp(arg, "-p") || !strcmp(arg, "-u") || !strcmp(arg, "--patch")
@@ -3917,7 +3919,8 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	else if (!strcmp(arg, "--pickaxe-regex"))
 		options->pickaxe_opts |= DIFF_PICKAXE_REGEX;
 	else if ((argcount = short_opt('O', av, &optarg))) {
-		options->orderfile = optarg;
+		const char *path = prefix_filename(prefix, strlen(prefix), optarg);
+		options->orderfile = xstrdup(path);
 		return argcount;
 	}
 	else if ((argcount = parse_long_opt("diff-filter", av, &optarg))) {
@@ -3956,9 +3959,10 @@ int diff_opt_parse(struct diff_options *options, const char **av, int ac)
 	else if (!strcmp(arg, "--no-function-context"))
 		DIFF_OPT_CLR(options, FUNCCONTEXT);
 	else if ((argcount = parse_long_opt("output", av, &optarg))) {
-		options->file = fopen(optarg, "w");
+		const char *path = prefix_filename(prefix, strlen(prefix), optarg);
+		options->file = fopen(path, "w");
 		if (!options->file)
-			die_errno("Could not open '%s'", optarg);
+			die_errno("Could not open '%s'", path);
 		options->close_file = 1;
 		return argcount;
 	} else
@@ -4085,9 +4089,9 @@ const char *diff_unique_abbrev(const unsigned char *sha1, int len)
 	if (abblen < 37) {
 		static char hex[41];
 		if (len < abblen && abblen <= len + 2)
-			sprintf(hex, "%s%.*s", abbrev, len+3-abblen, "..");
+			xsnprintf(hex, sizeof(hex), "%s%.*s", abbrev, len+3-abblen, "..");
 		else
-			sprintf(hex, "%s...", abbrev);
+			xsnprintf(hex, sizeof(hex), "%s...", abbrev);
 		return hex;
 	}
 	return sha1_to_hex(sha1);

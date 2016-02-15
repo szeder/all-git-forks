@@ -644,8 +644,9 @@ static void *pool_calloc(size_t count, size_t size)
 
 static char *pool_strdup(const char *s)
 {
-	char *r = pool_alloc(strlen(s) + 1);
-	strcpy(r, s);
+	size_t len = strlen(s) + 1;
+	char *r = pool_alloc(len);
+	memcpy(r, s, len);
 	return r;
 }
 
@@ -702,7 +703,7 @@ static struct atom_str *to_atom(const char *s, unsigned short len)
 
 	c = pool_alloc(sizeof(struct atom_str) + len + 1);
 	c->str_len = len;
-	strncpy(c->str_dat, s, len);
+	memcpy(c->str_dat, s, len);
 	c->str_dat[len] = 0;
 	c->next_atom = atom_table[hc];
 	atom_table[hc] = c;
@@ -863,13 +864,15 @@ static void start_packfile(void)
 {
 	static char tmp_file[PATH_MAX];
 	struct packed_git *p;
+	int namelen;
 	struct pack_header hdr;
 	int pack_fd;
 
 	pack_fd = odb_mkstemp(tmp_file, sizeof(tmp_file),
 			      "pack/tmp_pack_XXXXXX");
-	p = xcalloc(1, sizeof(*p) + strlen(tmp_file) + 2);
-	strcpy(p->pack_name, tmp_file);
+	namelen = strlen(tmp_file) + 2;
+	p = xcalloc(1, sizeof(*p) + namelen);
+	xsnprintf(p->pack_name, namelen, "%s", tmp_file);
 	p->pack_fd = pack_fd;
 	p->do_not_close = 1;
 	pack_file = sha1fd(pack_fd, p->pack_name);
@@ -1035,8 +1038,8 @@ static int store_object(
 	git_SHA_CTX c;
 	git_zstream s;
 
-	hdrlen = sprintf((char *)hdr,"%s %lu", typename(type),
-		(unsigned long)dat->len) + 1;
+	hdrlen = xsnprintf((char *)hdr, sizeof(hdr), "%s %lu",
+			   typename(type), (unsigned long)dat->len) + 1;
 	git_SHA1_Init(&c);
 	git_SHA1_Update(&c, hdr, hdrlen);
 	git_SHA1_Update(&c, dat->buf, dat->len);
@@ -1821,7 +1824,7 @@ static void dump_marks(void)
 
 	dump_marks_helper(f, 0, marks);
 	if (commit_lock_file(&mark_lock)) {
-		failure |= error("Unable to commit marks file %s: %s",
+		failure |= error("Unable to write file %s: %s",
 			export_marks_file, strerror(errno));
 		return;
 	}
@@ -1885,7 +1888,7 @@ static int read_next_command(void)
 			struct recent_command *rc;
 
 			strbuf_detach(&command_buf, NULL);
-			stdin_eof = strbuf_getline(&command_buf, stdin, '\n');
+			stdin_eof = strbuf_getline_lf(&command_buf, stdin);
 			if (stdin_eof)
 				return EOF;
 
@@ -1957,7 +1960,7 @@ static int parse_data(struct strbuf *sb, uintmax_t limit, uintmax_t *len_res)
 
 		strbuf_detach(&command_buf, NULL);
 		for (;;) {
-			if (strbuf_getline(&command_buf, stdin, '\n') == EOF)
+			if (strbuf_getline_lf(&command_buf, stdin) == EOF)
 				die("EOF in data (terminator '%s' not found)", term);
 			if (term_len == command_buf.len
 				&& !strcmp(term, command_buf.buf))

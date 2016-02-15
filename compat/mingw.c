@@ -6,6 +6,8 @@
 #include "../run-command.h"
 #include "../cache.h"
 
+#define HCAST(type, handle) ((type)(intptr_t)handle)
+
 static const int delay[] = { 0, 1, 10, 20, 40 };
 
 int err_win_to_posix(DWORD winerr)
@@ -394,6 +396,23 @@ int mingw_fflush(FILE *stream)
 	return ret;
 }
 
+#undef write
+ssize_t mingw_write(int fd, const void *buf, size_t len)
+{
+	ssize_t result = write(fd, buf, len);
+
+	if (result < 0 && errno == EINVAL && buf) {
+		/* check if fd is a pipe */
+		HANDLE h = (HANDLE) _get_osfhandle(fd);
+		if (GetFileType(h) == FILE_TYPE_PIPE)
+			errno = EPIPE;
+		else
+			errno = EINVAL;
+	}
+
+	return result;
+}
+
 int mingw_access(const char *filename, int mode)
 {
 	wchar_t wfilename[MAX_PATH];
@@ -674,13 +693,13 @@ int pipe(int filedes[2])
 		errno = err_win_to_posix(GetLastError());
 		return -1;
 	}
-	filedes[0] = _open_osfhandle((int)h[0], O_NOINHERIT);
+	filedes[0] = _open_osfhandle(HCAST(int, h[0]), O_NOINHERIT);
 	if (filedes[0] < 0) {
 		CloseHandle(h[0]);
 		CloseHandle(h[1]);
 		return -1;
 	}
-	filedes[1] = _open_osfhandle((int)h[1], O_NOINHERIT);
+	filedes[1] = _open_osfhandle(HCAST(int, h[1]), O_NOINHERIT);
 	if (filedes[1] < 0) {
 		close(filedes[0]);
 		CloseHandle(h[1]);
@@ -1829,7 +1848,8 @@ void mingw_open_html(const char *unixpath)
 		die("cannot run browser");
 
 	printf("Launching default browser to display HTML ...\n");
-	r = (int)ShellExecute(NULL, "open", htmlpath, NULL, "\\", SW_SHOWNORMAL);
+	r = HCAST(int, ShellExecute(NULL, "open", htmlpath,
+				NULL, "\\", SW_SHOWNORMAL));
 	FreeLibrary(shell32);
 	/* see the MSDN documentation referring to the result codes here */
 	if (r <= 32) {
@@ -1915,28 +1935,31 @@ pid_t waitpid(pid_t pid, int *status, int options)
 	return -1;
 }
 
+int mingw_skip_dos_drive_prefix(char **path)
+{
+	int ret = has_dos_drive_prefix(*path);
+	*path += ret;
+	return ret;
+}
+
 int mingw_offset_1st_component(const char *path)
 {
-	int offset = 0;
-	if (has_dos_drive_prefix(path))
-		offset = 2;
+	char *pos = (char *)path;
 
 	/* unc paths */
-	else if (is_dir_sep(path[0]) && is_dir_sep(path[1])) {
-
+	if (!skip_dos_drive_prefix(&pos) &&
+			is_dir_sep(pos[0]) && is_dir_sep(pos[1])) {
 		/* skip server name */
-		char *pos = strpbrk(path + 2, "\\/");
+		pos = strpbrk(pos + 2, "\\/");
 		if (!pos)
 			return 0; /* Error: malformed unc path */
 
 		do {
 			pos++;
 		} while (*pos && !is_dir_sep(*pos));
-
-		offset = pos - path;
 	}
 
-	return offset + is_dir_sep(path[offset]);
+	return pos + is_dir_sep(*pos) - path;
 }
 
 int xutftowcsn(wchar_t *wcs, const char *utfs, size_t wcslen, int utflen)
@@ -2131,11 +2154,13 @@ void mingw_startup()
 
 int uname(struct utsname *buf)
 {
-	DWORD v = GetVersion();
+	unsigned v = (unsigned)GetVersion();
 	memset(buf, 0, sizeof(*buf));
-	strcpy(buf->sysname, "Windows");
-	sprintf(buf->release, "%u.%u", v & 0xff, (v >> 8) & 0xff);
+	xsnprintf(buf->sysname, sizeof(buf->sysname), "Windows");
+	xsnprintf(buf->release, sizeof(buf->release),
+		 "%u.%u", v & 0xff, (v >> 8) & 0xff);
 	/* assuming NT variants only.. */
-	sprintf(buf->version, "%u", (v >> 16) & 0x7fff);
+	xsnprintf(buf->version, sizeof(buf->version),
+		  "%u", (v >> 16) & 0x7fff);
 	return 0;
 }

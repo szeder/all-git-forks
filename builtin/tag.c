@@ -44,14 +44,15 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 	if (!format) {
 		if (filter->lines) {
 			to_free = xstrfmt("%s %%(contents:lines=%d)",
-					  "%(align:15)%(refname:short)%(end)",
+					  "%(align:15)%(refname:strip=2)%(end)",
 					  filter->lines);
 			format = to_free;
 		} else
-			format = "%(refname:short)";
+			format = "%(refname:strip=2)";
 	}
 
 	verify_ref_format(format);
+	filter->with_commit_tag_algo = 1;
 	filter_refs(&array, filter, FILTER_REFS_TAGS);
 	ref_array_sort(sorting, &array);
 
@@ -268,7 +269,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 	}
 
 	if (opt->cleanup_mode != CLEANUP_NONE)
-		stripspace(buf, opt->cleanup_mode == CLEANUP_ALL);
+		strbuf_stripspace(buf, opt->cleanup_mode == CLEANUP_ALL);
 
 	if (!opt->message_given && !buf->len)
 		die(_("no tag message?"));

@@ -229,7 +229,7 @@ typedef unsigned long uintptr_t;
 #else
 #define precompose_str(in,i_nfd2nfc)
 #define precompose_argv(c,v)
-#define probe_utf8_pathname_composition(a,b)
+#define probe_utf8_pathname_composition()
 #endif
 
 #ifdef MKDIR_WO_TRAILING_SLASH
@@ -253,6 +253,8 @@ struct itimerval {
 #else
 #define basename gitbasename
 extern char *gitbasename(char *);
+#define dirname gitdirname
+extern char *gitdirname(char *);
 #endif
 
 #ifndef NO_ICONV
@@ -296,6 +298,10 @@ extern char *gitbasename(char *);
 #define PRIuMAX "llu"
 #endif
 
+#ifndef SCNuMAX
+#define SCNuMAX PRIuMAX
+#endif
+
 #ifndef PRIu32
 #define PRIu32 "u"
 #endif
@@ -329,6 +335,14 @@ static inline int git_has_dos_drive_prefix(const char *path)
 	return 0;
 }
 #define has_dos_drive_prefix git_has_dos_drive_prefix
+#endif
+
+#ifndef skip_dos_drive_prefix
+static inline int git_skip_dos_drive_prefix(char **path)
+{
+	return 0;
+}
+#define skip_dos_drive_prefix git_skip_dos_drive_prefix
 #endif
 
 #ifndef is_dir_sep
@@ -568,7 +582,7 @@ extern int git_lstat(const char *, struct stat *);
 #endif
 
 #define DEFAULT_PACKED_GIT_LIMIT \
-	((1024L * 1024L) * (sizeof(void*) >= 8 ? 8192 : 256))
+	((1024L * 1024L) * (size_t)(sizeof(void*) >= 8 ? 8192 : 256))
 
 #ifdef NO_PREAD
 #define pread git_pread
@@ -729,6 +743,7 @@ extern int xmkstemp_mode(char *template, int mode);
 extern int odb_mkstemp(char *template, size_t limit, const char *pattern);
 extern int odb_pack_keep(char *name, size_t namesz, const unsigned char *sha1);
 extern char *xgetcwd(void);
+extern FILE *fopen_for_writing(const char *path);
 
 #define REALLOC_ARRAY(x, alloc) (x) = xrealloc((x), (alloc) * sizeof(*(x)))
 
@@ -743,6 +758,9 @@ static inline size_t xsize_t(off_t len)
 		die("Cannot handle files this big");
 	return (size_t)len;
 }
+
+__attribute__((format (printf, 3, 4)))
+extern int xsnprintf(char *dst, size_t max, const char *fmt, ...);
 
 /* in ctype.c, for kwset users */
 extern const unsigned char tolower_trans_tbl[256];
@@ -921,9 +939,6 @@ int access_or_die(const char *path, int mode, unsigned flag);
 
 /* Warn on an inaccessible file that ought to be accessible */
 void warn_on_inaccessible(const char *path);
-
-/* Get the passwd entry for the UID of the current process. */
-struct passwd *xgetpwuid_self(void);
 
 #ifdef GMTIME_UNRELIABLE_ERRORS
 struct tm *git_gmtime(const time_t *);
