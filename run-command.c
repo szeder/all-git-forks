@@ -166,7 +166,7 @@ static const char **prepare_shell_cmd(const char **argv)
 	for (argc = 0; argv[argc]; argc++)
 		; /* just counting */
 	/* +1 for NULL, +3 for "sh -c" plus extra $0 */
-	nargv = xmalloc(sizeof(*nargv) * (argc + 1 + 3));
+	ALLOC_ARRAY(nargv, argc + 1 + 3);
 
 	if (argc < 1)
 		die("BUG: shell command is empty");
