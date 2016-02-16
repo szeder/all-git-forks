@@ -385,7 +385,7 @@ static int check_repo_format(const char *var, const char *value, void *vdata)
 		 * we fall through to recording it as unknown, and
 		 * check_repository_format will complain
 		 */
-		if (!strcmp(ext, "noop"))
+		if (!strcmp(ext, "noop") || !strcmp(ext, "worktree"))
 			;
 		else if (!strcmp(ext, "preciousobjects"))
 			data->precious_objects = git_config_bool(var, value);
