@@ -331,17 +331,17 @@ extern void strbuf_humanise_bytes(struct strbuf *buf, off_t bytes);
 /**
  * Add a formatted string to the buffer.
  */
-__attribute__((format (printf,2,3)))
+FORMAT_PRINTF(2, 3)
 extern void strbuf_addf(struct strbuf *sb, const char *fmt, ...);
 
 /**
  * Add a formatted string prepended by a comment character and a
  * blank to the buffer.
  */
-__attribute__((format (printf, 2, 3)))
+FORMAT_PRINTF(2, 3)
 extern void strbuf_commented_addf(struct strbuf *sb, const char *fmt, ...);
 
-__attribute__((format (printf,2,0)))
+FORMAT_PRINTF(2, 0)
 extern void strbuf_vaddf(struct strbuf *sb, const char *fmt, va_list ap);
 
 /**
@@ -563,9 +563,9 @@ extern int strbuf_check_branch_ref(struct strbuf *sb, const char *name);
 extern void strbuf_addstr_urlencode(struct strbuf *, const char *,
 				    int reserved);
 
-__attribute__((format (printf,1,2)))
+FORMAT_PRINTF(1, 2)
 extern int printf_ln(const char *fmt, ...);
-__attribute__((format (printf,2,3)))
+FORMAT_PRINTF(2, 3)
 extern int fprintf_ln(FILE *fp, const char *fmt, ...);
 
 char *xstrdup_tolower(const char *);
@@ -574,9 +574,9 @@ char *xstrdup_tolower(const char *);
  * Create a newly allocated string using printf format. You can do this easily
  * with a strbuf, but this provides a shortcut to save a few lines.
  */
-__attribute__((format (printf, 1, 0)))
+FORMAT_PRINTF(1, 0)
 char *xstrvfmt(const char *fmt, va_list ap);
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 char *xstrfmt(const char *fmt, ...);
 
 #endif /* STRBUF_H */

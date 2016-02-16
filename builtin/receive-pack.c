@@ -277,8 +277,8 @@ struct command {
 	char ref_name[FLEX_ARRAY]; /* more */
 };
 
-static void rp_error(const char *err, ...) __attribute__((format (printf, 1, 2)));
-static void rp_warning(const char *err, ...) __attribute__((format (printf, 1, 2)));
+static void rp_error(const char *err, ...) FORMAT_PRINTF(1, 2);
+static void rp_warning(const char *err, ...) FORMAT_PRINTF(1, 2);
 
 static void report_message(const char *prefix, const char *err, va_list params)
 {
