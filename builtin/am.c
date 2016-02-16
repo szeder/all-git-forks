@@ -1806,8 +1806,9 @@ static int do_interactive(struct am_state *state)
 
 			if (!pager)
 				pager = "cat";
-			argv_array_push(&cp.args, pager);
-			argv_array_push(&cp.args, am_path(state, "patch"));
+
+			prepare_pager_args(&cp, pager,
+					   am_path(state, "patch"), NULL);
 			run_command(&cp);
 		}
 	}
