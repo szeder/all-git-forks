@@ -29,10 +29,22 @@ const char *git_editor(void)
 	return editor;
 }
 
-int launch_editor(const char *path, struct strbuf *buffer, const char *const *env)
+const char *git_sequence_editor(void)
 {
-	const char *editor = git_editor();
+	const char *sequence_editor = getenv("GIT_SEQUENCE_EDITOR");
 
+	if (sequence_editor && *sequence_editor)
+		return sequence_editor;
+
+	git_config_get_string_const("sequence.editor", &sequence_editor);
+	if (sequence_editor && *sequence_editor)
+		return sequence_editor;
+
+	return git_editor();
+}
+
+static int launch_specific_editor(const char *editor, const char *path, struct strbuf *buffer, const char *const *env)
+{
 	if (!editor)
 		return error("Terminal is dumb, but EDITOR unset");
 
@@ -65,5 +77,16 @@ int launch_editor(const char *path, struct strbuf *buffer, const char *const *en
 	if (strbuf_read_file(buffer, path, 0) < 0)
 		return error("could not read file '%s': %s",
 				path, strerror(errno));
+
 	return 0;
+}
+
+int launch_editor(const char *path, struct strbuf *buffer, const char *const *env)
+{
+	return launch_specific_editor(git_editor(), path, buffer, env);
+}
+
+int launch_sequence_editor(const char *path, struct strbuf *buffer, const char *const *env)
+{
+	return launch_specific_editor(git_sequence_editor(), path, buffer, env);
 }
