@@ -51,19 +51,16 @@ static void *three_way_filemerge(const char *path, mmfile_t *base, mmfile_t *our
 static int common_outf(void *priv_, mmbuffer_t *mb, int nbuf)
 {
 	int i;
-	mmfile_t *dst = priv_;
+	struct strbuf *dst = priv_;
 
-	for (i = 0; i < nbuf; i++) {
-		memcpy(dst->ptr + dst->size, mb[i].ptr, mb[i].size);
-		dst->size += mb[i].size;
-	}
+	for (i = 0; i < nbuf; i++)
+		strbuf_add(dst, mb[i].ptr, mb[i].size);
 	return 0;
 }
 
 static int generate_common_file(mmfile_t *res, mmfile_t *f1, mmfile_t *f2)
 {
-	unsigned long size = f1->size < f2->size ? f1->size : f2->size;
-	void *ptr = xmalloc(size);
+	struct strbuf out = STRBUF_INIT;
 	xpparam_t xpp;
 	xdemitconf_t xecfg;
 	xdemitcb_t ecb;
@@ -75,11 +72,15 @@ static int generate_common_file(mmfile_t *res, mmfile_t *f1, mmfile_t *f2)
 	xecfg.flags = XDL_EMIT_COMMON;
 	ecb.outf = common_outf;
 
-	res->ptr = ptr;
-	res->size = 0;
+	ecb.priv = &out;
+	if (xdi_diff(f1, f2, &xpp, &xecfg, &ecb) < 0) {
+		strbuf_release(&out);
+		return -1;
+	}
 
-	ecb.priv = res;
-	return xdi_diff(f1, f2, &xpp, &xecfg, &ecb);
+	res->size = out.len; /* avoid long/size_t pointer mismatch below */
+	res->ptr = strbuf_detach(&out, NULL);
+	return 0;
 }
 
 void *merge_blobs(const char *path, struct blob *base, struct blob *our, struct blob *their, unsigned long *size)
