@@ -709,6 +709,29 @@ int write_file_gently(const char *path, const char *fmt, ...)
 	return status;
 }
 
+void append_file(const char *path, const char *fmt, ...)
+{
+	struct strbuf sb = STRBUF_INIT;
+	int fd = open(path, O_WRONLY | O_CREAT | O_APPEND, 0666);
+	va_list params;
+	if (fd < 0)
+		die_errno(_("could not open %s for appending"), path);
+	va_start(params, fmt);
+	strbuf_vaddf(&sb, fmt, params);
+	va_end(params);
+	strbuf_complete_line(&sb);
+	if (write_in_full(fd, sb.buf, sb.len) != sb.len) {
+		int err = errno;
+		close(fd);
+		strbuf_release(&sb);
+		errno = err;
+		die_errno(_("could not write to %s"), path);
+	}
+	strbuf_release(&sb);
+	if (close(fd))
+		die_errno(_("could not close %s"), path);
+}
+
 void sleep_millisec(int millisec)
 {
 	poll(NULL, 0, millisec);
