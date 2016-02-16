@@ -210,7 +210,9 @@ struct cache_entry {
 #error "CE_EXTENDED_FLAGS out of range"
 #endif
 
+/* Forward structure decls */
 struct pathspec;
+struct child_process;
 
 /*
  * Copy the sha1 and stat state of a cache entry from one to
@@ -1550,6 +1552,8 @@ extern int pager_use_color;
 extern int term_columns(void);
 extern int decimal_width(uintmax_t);
 extern int check_pager_config(const char *cmd);
+LAST_ARG_MUST_BE_NULL
+extern void prepare_pager_args(struct child_process *, ...);
 
 extern const char *editor_program;
 extern const char *askpass_program;
