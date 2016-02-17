@@ -7,6 +7,20 @@
 # The original idea comes from Eric W. Biederman, in
 # http://article.gmane.org/gmane.comp.version-control.git/22407
 #
+
+. git-sh-setup
+. git-sh-i18n
+. git-rebase--lib
+require_work_tree_exists
+
+GIT_QUIET=$git_quiet
+GIT_REFLOG_ACTION=$git_reflog_action
+resolvemsg="
+$(gettext 'When you have resolved this problem, run "git rebase --continue".
+If you prefer to skip this patch, run "git rebase --skip" instead.
+To check out the original branch and stop rebasing, run "git rebase --abort".')
+"
+
 # The file containing rebase commands, comments, and empty lines.
 # This file is created by "git rebase -i" then edited by the user.  As
 # the lines are processed, they are removed from the front of this
@@ -1294,3 +1308,4 @@ do_rest
 }
 # ... and then we call the whole thing.
 git_rebase__interactive
+exit_rebase $?
