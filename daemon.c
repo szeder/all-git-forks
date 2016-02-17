@@ -95,7 +95,7 @@ static void logreport(int priority, const char *err, va_list params)
 	}
 }
 
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 static void logerror(const char *err, ...)
 {
 	va_list params;
@@ -104,7 +104,7 @@ static void logerror(const char *err, ...)
 	va_end(params);
 }
 
-__attribute__((format (printf, 1, 2)))
+FORMAT_PRINTF(1, 2)
 static void loginfo(const char *err, ...)
 {
 	va_list params;
