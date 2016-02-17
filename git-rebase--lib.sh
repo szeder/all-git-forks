@@ -39,3 +39,41 @@ move_to_original_branch () {
 		;;
 	esac
 }
+
+apply_autostash () {
+	if test -f "$state_dir/autostash"
+	then
+		stash_sha1=$(cat "$state_dir/autostash")
+		if git stash apply $stash_sha1 2>&1 >/dev/null
+		then
+			echo "$(gettext 'Applied autostash.')"
+		else
+			git stash store -m "autostash" -q $stash_sha1 ||
+			die "$(eval_gettext "Cannot store \$stash_sha1")"
+			gettext 'Applying autostash resulted in conflicts.
+Your changes are safe in the stash.
+You can run "git stash pop" or "git stash drop" at any time.
+'
+		fi
+	fi
+}
+
+finish_rebase () {
+	apply_autostash &&
+	{ git gc --auto || true; } &&
+	rm -rf "$state_dir"
+}
+
+exit_rebase () {
+	ret=$1
+	if test $ret -eq 0
+	then
+		finish_rebase
+	elif test $ret -eq 2 # special exit status for rebase -i
+	then
+		apply_autostash &&
+		rm -rf "$state_dir" &&
+		die "Nothing to do"
+	fi
+	exit $ret
+}
