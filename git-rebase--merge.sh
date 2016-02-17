@@ -5,6 +5,19 @@
 # Copyright (c) 2010 Junio C Hamano.
 #
 
+. git-sh-setup
+. git-sh-i18n
+. git-rebase--lib
+require_work_tree_exists
+
+GIT_QUIET=$git_quiet
+GIT_REFLOG_ACTION=$git_reflog_action
+resolvemsg="
+$(gettext 'When you have resolved this problem, run "git rebase --continue".
+If you prefer to skip this patch, run "git rebase --skip" instead.
+To check out the original branch and stop rebasing, run "git rebase --abort".')
+"
+
 prec=4
 
 read_state () {
@@ -165,3 +178,4 @@ finish_rb_merge
 }
 # ... and then we call the whole thing.
 git_rebase__merge
+exit_rebase $?

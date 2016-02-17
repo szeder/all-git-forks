@@ -54,11 +54,6 @@ cd_to_toplevel
 LF='
 '
 ok_to_skip_pre_rebase=
-resolvemsg="
-$(gettext 'When you have resolved this problem, run "git rebase --continue".
-If you prefer to skip this patch, run "git rebase --skip" instead.
-To check out the original branch and stop rebasing, run "git rebase --abort".')
-"
 unset onto
 unset restrict_revision
 cmd=
@@ -121,8 +116,22 @@ run_specific_rebase () {
 		export GIT_EDITOR
 		autosquash=
 	fi
-	. git-rebase--$type
-	exit_rebase $?
+	git_quiet=$GIT_QUIET
+	git_reflog_action=$GIT_REFLOG_ACTION
+	export GIT_PAGER
+	# these are for write_basic_state()
+	export allow_rerere_autoupdate gpg_sign_opt head_name onto
+	export orig_head state_dir strategy strategy_opts verbose
+	# common variables
+	export action git_reflog_action git_quiet keep_empty
+	export rebase_root restrict_revision revisions upstream
+	# git-rebase--am specific
+	export git_am_opt
+	# git-rebase--interactive specific
+	export autosquash cmd force_rebase onto_name preserve_merges
+	export squash_onto switch_to
+
+	exec git-rebase--$type
 }
 
 run_pre_rebase_hook () {

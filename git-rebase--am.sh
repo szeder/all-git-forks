@@ -4,15 +4,19 @@
 # Copyright (c) 2010 Junio C Hamano.
 #
 
-# The whole contents of this file is run by dot-sourcing it from
-# inside a shell function.  It used to be that "return"s we see
-# below were not inside any function, and expected to return
-# to the function that dot-sourced us.
-#
-# However, FreeBSD /bin/sh misbehaves on such a construct and
-# continues to run the statements that follow such a "return".
-# As a work-around, we introduce an extra layer of a function
-# here, and immediately call it after defining it.
+. git-sh-setup
+. git-sh-i18n
+. git-rebase--lib
+require_work_tree_exists
+
+GIT_QUIET=$git_quiet
+GIT_REFLOG_ACTION=$git_reflog_action
+resolvemsg="
+$(gettext 'When you have resolved this problem, run "git rebase --continue".
+If you prefer to skip this patch, run "git rebase --skip" instead.
+To check out the original branch and stop rebasing, run "git rebase --abort".')
+"
+
 git_rebase__am () {
 
 case "$action" in
@@ -99,3 +103,4 @@ move_to_original_branch
 }
 # ... and then we call the whole thing.
 git_rebase__am
+exit_rebase $?
