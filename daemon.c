@@ -1374,7 +1374,7 @@ int main(int argc, char **argv)
 		write_file(pid_file, "%"PRIuMAX, (uintmax_t) getpid());
 
 	/* prepare argv for serving-processes */
-	cld_argv = xmalloc(sizeof (char *) * (argc + 2));
+	ALLOC_ARRAY(cld_argv, argc + 2);
 	cld_argv[0] = argv[0];	/* git-daemon */
 	cld_argv[1] = "--serve";
 	for (i = 1; i < argc; ++i)

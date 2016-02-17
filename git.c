@@ -254,7 +254,7 @@ static int handle_alias(int *argcp, const char ***argv)
 			restore_env(1);
 
 			/* build alias_argv */
-			alias_argv = xmalloc(sizeof(*alias_argv) * (argc + 1));
+			ALLOC_ARRAY(alias_argv, argc + 1);
 			alias_argv[0] = alias_string + 1;
 			for (i = 1; i < argc; ++i)
 				alias_argv[i] = (*argv)[i];
