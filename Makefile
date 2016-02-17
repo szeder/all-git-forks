@@ -496,6 +496,7 @@ SCRIPT_LIB += git-parse-remote
 SCRIPT_LIB += git-rebase--am
 SCRIPT_LIB += git-rebase--interactive
 SCRIPT_LIB += git-rebase--merge
+SCRIPT_LIB += git-rebase--lib
 SCRIPT_LIB += git-sh-setup
 SCRIPT_LIB += git-sh-i18n
 
