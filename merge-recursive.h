@@ -18,6 +18,7 @@ struct merge_options {
 	unsigned gently : 1;
 	long xdl_opts;
 	int verbosity;
+	int detect_rename;
 	int diff_rename_limit;
 	int merge_rename_limit;
 	int rename_score;
