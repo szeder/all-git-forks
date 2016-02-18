@@ -133,7 +133,7 @@ static const char **parse_argv(const char *arg, const char *service)
 			temparray[arguments++] = expanded;
 	}
 
-	ret = xmalloc((arguments + 1) * sizeof(char *));
+	ALLOC_ARRAY(ret, arguments + 1);
 	for (i = 0; i < arguments; i++)
 		ret[i] = temparray[i];
 	ret[arguments] = NULL;

@@ -114,7 +114,7 @@ const char **prepare_git_cmd(const char **argv)
 
 	for (argc = 0; argv[argc]; argc++)
 		; /* just counting */
-	nargv = xmalloc(sizeof(*nargv) * (argc + 2));
+	ALLOC_ARRAY(nargv, argc + 2);
 
 	nargv[0] = "git";
 	for (argc = 0; argv[argc]; argc++)
