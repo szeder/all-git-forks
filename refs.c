@@ -1306,5 +1306,11 @@ int delete_refs(struct string_list *refnames)
 
 int rename_ref(const char *oldref, const char *newref, const char *logmsg)
 {
+	if ((ref_type(oldref) == REF_TYPE_NORMAL) !=
+	    (ref_type(newref) == REF_TYPE_NORMAL)) {
+		error(_("Both ref arguments to rename_ref must be normal "
+			"(or both must be per-worktree/pseudorefs)"));
+		return -1;
+	}
 	return the_refs_backend->rename_ref(oldref, newref, logmsg);
 }
