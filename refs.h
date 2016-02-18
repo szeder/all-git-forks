@@ -525,4 +525,6 @@ int ref_storage_backend_exists(const char *name);
 
 void register_ref_storage_backend(struct ref_storage_be *be);
 
+void register_ref_storage_backends(void);
+
 #endif /* REFS_H */
