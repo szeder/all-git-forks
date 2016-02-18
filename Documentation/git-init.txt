@@ -12,7 +12,7 @@ SYNOPSIS
 'git init' [-q | --quiet] [--bare] [--template=<template_directory>]
 	  [--separate-git-dir <git dir>]
 	  [--shared[=<permissions>]] [directory]
-
+	  [--ref-storage=<name>]
 
 DESCRIPTION
 -----------
@@ -112,6 +112,11 @@ If you provide a 'directory', the command is run inside it. If this directory
 does not exist, it will be created.
 
 --
+
+--ref-storage=<name>::
+Type of refs storage backend. Default is to use the original "files"
+storage, which stores ref data in files in `$GIT_DIR/refs` and
+`$GIT_DIR/packed-refs`.
 
 TEMPLATE DIRECTORY
 ------------------
