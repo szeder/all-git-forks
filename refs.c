@@ -14,14 +14,11 @@ static const char split_transaction_fail_warning[] = N_(
 	"transaction succeeded, but then the update to the per-worktree refs "
 	"failed.  Your repository may be in an inconsistent state.");
 
-/*
- * We always have a files backend and it is the default.
- */
 static struct ref_storage_be *the_refs_backend = &refs_be_files;
 /*
  * List of all available backends
  */
-static struct ref_storage_be *refs_backends = &refs_be_files;
+static struct ref_storage_be *refs_backends = NULL;
 
 const char *ref_storage_backend = "files";
 
@@ -1579,4 +1576,12 @@ int rename_ref(const char *oldref, const char *newref, const char *logmsg)
 		return -1;
 	}
 	return the_refs_backend->rename_ref(oldref, newref, logmsg);
+}
+
+void register_ref_storage_backends(void) {
+	/*
+	 * Add register_ref_storage_backend(ptr-to-backend)
+	 * entries below when you add a new backend.
+	 */
+	register_ref_storage_backend(&refs_be_files);
 }
