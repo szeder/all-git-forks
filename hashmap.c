@@ -10,11 +10,17 @@
 unsigned int strhash(const char *str)
 {
 	unsigned int c, hash = FNV32_BASE;
-	while ((c = (unsigned char) *str++))
+	while ((c = (unsigned char) *str++)) {
 		hash = (hash * FNV32_PRIME) ^ c;
+		/*
+		  h * FNV32_PRIME 等同于
+		  h+(h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24)
+		*/ 
+	}
 	return hash;
 }
 
+// 忽略大小写
 unsigned int strihash(const char *str)
 {
 	unsigned int c, hash = FNV32_BASE;

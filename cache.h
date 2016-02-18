@@ -26,6 +26,7 @@
 #define platform_SHA1_Final    	SHA1_Final
 #endif
 
+// SHA 安全hash算法
 #define git_SHA_CTX		platform_SHA_CTX
 #define git_SHA1_Init		platform_SHA1_Init
 #define git_SHA1_Update		platform_SHA1_Update

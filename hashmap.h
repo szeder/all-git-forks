@@ -7,9 +7,10 @@
  */
 
 /* FNV-1 functions */
+// FNV哈希算法
 
 extern unsigned int strhash(const char *buf);
-extern unsigned int strihash(const char *buf);
+extern unsigned int strihash(const char *buf);  // 忽略大小写
 extern unsigned int memhash(const void *buf, size_t len);
 extern unsigned int memihash(const void *buf, size_t len);
 
