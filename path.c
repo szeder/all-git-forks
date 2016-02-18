@@ -112,6 +112,7 @@ static struct common_dir common_list[] = {
 	{ 0, 1, 0, "lost-found" },
 	{ 0, 1, 0, "objects" },
 	{ 0, 1, 0, "refs" },
+	{ 0, 1, 0, "refs.lmdb" },
 	{ 0, 1, 1, "refs/bisect" },
 	{ 0, 1, 0, "remotes" },
 	{ 0, 1, 0, "worktrees" },

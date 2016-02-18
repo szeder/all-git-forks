@@ -310,8 +310,10 @@ static int submodule_backend(const char *key, const char *value, void *data)
 	const char **path = data;
 	char **old_path = data;
 	if (!strcmp(key, "extensions.refstorage") &&
-	    !git_config_string(path, key, "extensions.refstorage"))
-			free(*old_path);
+	    !git_config_string(path, key, "extensions.refstorage")) {
+		free(*old_path);
+		*path = xstrdup(value);
+	}
 
 	return 0;
 }
@@ -1584,4 +1586,7 @@ void register_ref_storage_backends(void) {
 	 * entries below when you add a new backend.
 	 */
 	register_ref_storage_backend(&refs_be_files);
+#ifdef USE_LIBLMDB
+	register_ref_storage_backend(&refs_be_lmdb);
+#endif
 }
