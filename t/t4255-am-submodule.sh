@@ -22,7 +22,7 @@ test_expect_success 'setup diff.submodule' '
 	test_commit one &&
 	INITIAL=$(git rev-parse HEAD) &&
 
-	git init submodule &&
+	git init $ref_storage_arg submodule &&
 	(
 		cd submodule &&
 		test_commit two &&

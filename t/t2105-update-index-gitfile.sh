@@ -11,7 +11,7 @@ test_description='git update-index for gitlink to .git file.
 test_expect_success 'submodule with absolute .git file' '
 	mkdir sub1 &&
 	(cd sub1 &&
-	 git init &&
+	 git init $ref_storage_arg &&
 	 REAL="$(pwd)/.real" &&
 	 mv .git "$REAL" &&
 	 echo "gitdir: $REAL" >.git &&
@@ -25,7 +25,7 @@ test_expect_success 'add gitlink to absolute .git file' '
 test_expect_success 'submodule with relative .git file' '
 	mkdir sub2 &&
 	(cd sub2 &&
-	 git init &&
+	 git init $ref_storage_arg &&
 	 mv .git .real &&
 	 echo "gitdir: .real" >.git &&
 	 test_commit first)

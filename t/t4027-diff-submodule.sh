@@ -344,7 +344,7 @@ test_expect_success 'combined (empty submodule)' '
 
 test_expect_success 'combined (with submodule)' '
 	rm -fr sub &&
-	git clone --no-checkout . sub &&
+	git clone $ref_storage_arg --no-checkout . sub &&
 	git diff >actual &&
 	test_cmp expect.withsub actual
 '
