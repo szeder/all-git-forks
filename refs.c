@@ -1192,6 +1192,11 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 }
 
 /* backend functions */
+int refs_init_db(int shared, struct strbuf *err)
+{
+	return the_refs_backend->init_db(shared, err);
+}
+
 int ref_transaction_commit(struct ref_transaction *transaction,
 			   struct strbuf *err)
 {
