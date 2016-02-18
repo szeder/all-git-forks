@@ -516,6 +516,8 @@ extern int reflog_expire(const char *refname, const unsigned char *sha1,
 int ref_storage_backend_config(const char *var, const char *value, void *ptr);
 
 struct ref_storage_be;
+
+extern struct ref_storage_be refs_be_lmdb;
 /*
  * Switch to an alternate ref storage backend.
  */
