@@ -285,7 +285,7 @@ int validate_worktree(const struct worktree *wt, int quiet)
 int update_worktree_location(struct worktree *wt, const char *path_)
 {
 	struct strbuf path = STRBUF_INIT;
-	int ret;
+	int ret = 0;
 
 	if (is_main_worktree(wt))
 		return 0;
