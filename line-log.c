@@ -14,6 +14,7 @@
 #include "graph.h"
 #include "userdiff.h"
 #include "line-log.h"
+#include "argv-array.h"
 
 static void range_set_grow(struct range_set *rs, size_t extra)
 {
@@ -746,23 +747,16 @@ void line_log_init(struct rev_info *rev, const char *prefix, struct string_list 
 	add_line_range(rev, commit, range);
 
 	if (!rev->diffopt.detect_rename) {
-		int i, count = 0;
-		struct line_log_data *r = range;
-		const char **paths;
-		while (r) {
-			count++;
-			r = r->next;
-		}
-		paths = xmalloc((count+1)*sizeof(char *));
-		r = range;
-		for (i = 0; i < count; i++) {
-			paths[i] = xstrdup(r->path);
-			r = r->next;
-		}
-		paths[count] = NULL;
+		struct line_log_data *r;
+		struct argv_array paths = ARGV_ARRAY_INIT;
+
+		for (r = range; r; r = r->next)
+			argv_array_push(&paths, r->path);
 		parse_pathspec(&rev->diffopt.pathspec, 0,
-			       PATHSPEC_PREFER_FULL, "", paths);
-		free(paths);
+			       PATHSPEC_PREFER_FULL, "", paths.argv);
+		/* argv strings are now owned by pathspec */
+		paths.argc = 0;
+		argv_array_clear(&paths);
 	}
 }
 
