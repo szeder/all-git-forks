@@ -1153,6 +1153,15 @@ difftool.<tool>.cmd::
 difftool.prompt::
 	Prompt before each invocation of the diff tool.
 
+extensions.refStorage::
+	Type of ref storage backend. Default is to use the original
+	files based ref storage.  When set to "lmdb", refs are stored
+	in an LMDB database.  This setting reflects the refs storage
+	backend that was chosen via the --ref-storage option when the
+	repository was originally created. It is currently not
+	possible to change the refs storage backend of an existing
+	repository.
+
 fetch.recurseSubmodules::
 	This option can be either set to a boolean value or to 'on-demand'.
 	Setting it to a boolean changes the behavior of fetch and pull to

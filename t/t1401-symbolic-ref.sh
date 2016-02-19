@@ -35,15 +35,16 @@ reset_to_sane
 
 test_expect_success 'symbolic-ref deletes HEAD' '
 	git symbolic-ref -d HEAD &&
-	test_path_is_file .git/refs/heads/foo &&
-	test_path_is_missing .git/HEAD
+	test_path_is_missing .git/HEAD &&
+	reset_to_sane &&
+	git rev-parse --verify refs/heads/foo
 '
 reset_to_sane
 
 test_expect_success 'symbolic-ref deletes dangling HEAD' '
 	git symbolic-ref HEAD refs/heads/missing &&
 	git symbolic-ref -d HEAD &&
-	test_path_is_missing .git/refs/heads/missing &&
+	test_must_fail git rev-parse --verify refs/heads/missing &&
 	test_path_is_missing .git/HEAD
 '
 reset_to_sane
@@ -58,7 +59,7 @@ reset_to_sane
 test_expect_success 'symbolic-ref fails to delete real ref' '
 	echo "fatal: Cannot delete refs/heads/foo, not a symbolic ref" >expect &&
 	test_must_fail git symbolic-ref -d refs/heads/foo >actual 2>&1 &&
-	test_path_is_file .git/refs/heads/foo &&
+	git rev-parse --verify refs/heads/foo &&
 	test_cmp expect actual
 '
 reset_to_sane
@@ -114,7 +115,13 @@ test_expect_success 'symbolic-ref writes reflog entry' '
 	test_cmp expect actual
 '
 
-test_expect_success 'symbolic-ref does not create ref d/f conflicts' '
+if test "$ref_storage" = "files"
+then
+    test_cmd=test_expect_success
+else
+    test_cmd=test_expect_failure
+fi
+$test_cmd 'symbolic-ref does not create ref d/f conflicts' '
 	git checkout -b df &&
 	test_commit df &&
 	test_must_fail git symbolic-ref refs/heads/df/conflict refs/heads/df &&
