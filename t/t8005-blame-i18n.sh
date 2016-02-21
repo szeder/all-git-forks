@@ -35,8 +35,8 @@ EOF
 
 test_expect_success !MINGW \
 	'blame respects i18n.commitencoding' '
-	git blame --incremental file | \
-		egrep "^(author|summary) " > actual &&
+	git blame --incremental file >output &&
+	sed -ne "/^\(author\|summary\) /p" output >actual &&
 	test_cmp actual expected
 '
 
@@ -52,8 +52,8 @@ EOF
 test_expect_success !MINGW \
 	'blame respects i18n.logoutputencoding' '
 	git config i18n.logoutputencoding eucJP &&
-	git blame --incremental file | \
-		egrep "^(author|summary) " > actual &&
+	git blame --incremental file >output &&
+	sed -ne "/^\(author\|summary\) /p" output >actual &&
 	test_cmp actual expected
 '
 
@@ -68,8 +68,8 @@ EOF
 
 test_expect_success !MINGW \
 	'blame respects --encoding=UTF-8' '
-	git blame --incremental --encoding=UTF-8 file | \
-		egrep "^(author|summary) " > actual &&
+	git blame --incremental --encoding=UTF-8 file >output &&
+	sed -ne "/^\(author\|summary\) /p" output >actual &&
 	test_cmp actual expected
 '
 
@@ -84,8 +84,8 @@ EOF
 
 test_expect_success !MINGW \
 	'blame respects --encoding=none' '
-	git blame --incremental --encoding=none file | \
-		egrep "^(author|summary) " > actual &&
+	git blame --incremental --encoding=none file >output &&
+	sed -ne "/^\(author\|summary\) /p" output >actual &&
 	test_cmp actual expected
 '
 
