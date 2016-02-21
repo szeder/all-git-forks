@@ -29,6 +29,7 @@ TEST_RESULTS_DIRECTORY_SQ = $(subst ','\'',$(TEST_RESULTS_DIRECTORY))
 T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
 TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
 THELPERS = $(sort $(filter-out $(T),$(wildcard *.sh)))
+TBASH = t9902-completion.sh t9903-bash-prompt.sh
 
 all: $(DEFAULT_TEST_TARGET)
 
@@ -79,10 +80,29 @@ aggregate-results:
 gitweb-test:
 	$(MAKE) $(TGITWEB)
 
+full-bash-test:
+ifndef GIT_TEST_BASH_BINARIES
+	$(error Please set GIT_TEST_BASH_BINARIES to the list of Bash binaries you want to run the Bash-dependent tests with.)
+endif
+
+define create_bash_test_target
+$(eval bash_test_target := $(bash_test).$(notdir $(bash_bin)))
+$(eval bash_test_trash := trash directory.$(basename $(bash_test)).$(notdir $(bash_bin)))
+
+$(bash_test_target):
+	@echo "*** $(notdir $(bash_bin)) $(bash_test) ***"; env TRASH_DIRECTORY="$(bash_test_trash)" $(bash_bin) $(bash_test) $(GIT_TEST_OPTS)
+
+full-bash-test: $(bash_test_target)
+
+.PHONY: $(bash_test_target)
+endef
+
+$(foreach bash_test,$(TBASH),$(foreach bash_bin,$(GIT_TEST_BASH_BINARIES),$(eval $(create_bash_test_target))))
+
 valgrind:
 	$(MAKE) GIT_TEST_OPTS="$(GIT_TEST_OPTS) --valgrind"
 
 perf:
 	$(MAKE) -C perf/ all
 
-.PHONY: pre-clean $(T) aggregate-results clean valgrind perf
+.PHONY: pre-clean $(T) aggregate-results clean valgrind perf full-bash-test
