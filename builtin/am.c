@@ -2234,6 +2234,7 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 	int patch_format = PATCH_FORMAT_UNKNOWN;
 	enum resume_mode resume = RESUME_FALSE;
 	int in_progress;
+	uint64_t start;
 
 	const char * const usage[] = {
 		N_("git am [<options>] [(<mbox>|<Maildir>)...]"),
@@ -2326,6 +2327,9 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 
+	trace_printf("Start performance tracing 1!");
+	start = getnanotime();
+
 	git_config(git_am_config, NULL);
 
 	am_state_init(&state, git_path("rebase-apply"));
@@ -2403,6 +2407,12 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		argv_array_clear(&paths);
 	}
 
+	trace_performance_since(start, "am perf 1");
+	trace_printf("End performance tracing 1!");
+
+	trace_printf("Start performance tracing 2!");
+	start = getnanotime();
+
 	switch (resume) {
 	case RESUME_FALSE:
 		am_run(&state, 0);
@@ -2422,6 +2432,9 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 	default:
 		die("BUG: invalid resume value");
 	}
+
+	trace_performance_since(start, "am perf 2");
+	trace_printf("End performance tracing 2!");
 
 	am_state_release(&state);
 
