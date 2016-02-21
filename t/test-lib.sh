@@ -246,6 +246,9 @@ do
 	--root=*)
 		root=${1#--*=}
 		shift ;;
+	--suffix=*)
+		suffix=${1#--*=}
+		shift ;;
 	--chain-lint)
 		GIT_TEST_CHAIN_LINT=1
 		shift ;;
@@ -912,7 +915,7 @@ then
 fi
 
 # Test repository
-TRASH_DIRECTORY="trash directory.$(basename "$0" .sh)"
+TRASH_DIRECTORY="trash directory.$(basename "$0" .sh)${suffix:+.$suffix}"
 test -n "$root" && TRASH_DIRECTORY="$root/$TRASH_DIRECTORY"
 case "$TRASH_DIRECTORY" in
 /*) ;; # absolute path is good
