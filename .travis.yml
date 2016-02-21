@@ -24,6 +24,7 @@ env:
     - DEVELOPER=1
     - P4_VERSION="15.2"
     - GIT_LFS_VERSION="1.1.0"
+    - BASH_BINARIES="bash-v3.0 bash-v3.1 bash-v3.2 bash-v4.0 bash-v4.1 bash-v4.2 bash-v4.3"
     - DEFAULT_TEST_TARGET=prove
     - GIT_PROVE_OPTS="--timer --jobs 3 --state=failed,slow,save"
     - GIT_TEST_OPTS="--verbose --tee"
@@ -49,6 +50,17 @@ before_install:
         wget --quiet https://github.com/github/git-lfs/releases/download/v$GIT_LFS_VERSION/git-lfs-linux-amd64-$GIT_LFS_VERSION.tar.gz
         tar --extract --gunzip --file "git-lfs-linux-amd64-$GIT_LFS_VERSION.tar.gz"
         cp git-lfs-$GIT_LFS_VERSION/git-lfs .
+        export PATH="$(pwd):$PATH"
+      popd
+      mkdir --parents custom/bash-binaries
+      pushd custom/bash-binaries
+        for bin in $BASH_BINARIES; do
+          ver="${bin#bash-}"
+          archive="bash-${ver}-linux-amd64.tar.gz"
+          wget --quiet "https://github.com/szeder/bash/releases/download/$ver/$archive"
+          tar --extract --gunzip --file "$archive"
+          rm "$archive"
+        done
         export PATH="$(pwd):$PATH"
       popd
       ;;
@@ -78,7 +90,14 @@ before_install:
 
 before_script: make --jobs=2
 
-script: make --quiet test
+script:
+  - make --quiet test
+  - >
+    case "${TRAVIS_OS_NAME:-linux}" in
+    linux)
+      make --quiet --jobs=3 -C t/ full-bash-test GIT_TEST_BASH_BINARIES="$BASH_BINARIES"
+      ;;
+    esac
 
 after_failure:
   - >
