@@ -1,16 +1,19 @@
-CFLAGS=-g
+CFLAGS="-g" "-I/usr/local/opt/openssl/include"
 CC=gcc
 
-PROG=update-cache show-diff init-db write-tree read-tree commit-tree cat-file
+PROG=update-cache show-diff init-db write-tree read-tree commit-tree cat-file dump-cache
 
 all: $(PROG)
 
 install: $(PROG)
 	install $(PROG) $(HOME)/bin/
 
-LIBS= -lssl
+LIBS= -lssl -lcrypto -lz
 
 init-db: init-db.o
+
+dump-cache: dump-cache.o read-cache.o
+	$(CC) $(CFLAGS) -o dump-cache dump-cache.o read-cache.o $(LIBS)
 
 update-cache: update-cache.o read-cache.o
 	$(CC) $(CFLAGS) -o update-cache update-cache.o read-cache.o $(LIBS)
