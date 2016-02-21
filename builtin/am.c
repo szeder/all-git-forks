@@ -1523,6 +1523,10 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
 static int run_apply(const struct am_state *state, const char *index_file)
 {
 	struct child_process cp = CHILD_PROCESS_INIT;
+	uint64_t start;
+
+	trace_printf("Start performance tracing run_apply() 1!");
+	start = getnanotime();
 
 	cp.git_cmd = 1;
 
@@ -1552,9 +1556,18 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	if (run_command(&cp))
 		return -1;
 
+	trace_performance_since(start, "run_apply() 1");
+	trace_printf("End performance tracing run_apply() 1!");
+
+	trace_printf("Start performance tracing run_apply() 2!");
+	start = getnanotime();
+
 	/* Reload index as git-apply will have modified it. */
 	discard_cache();
 	read_cache_from(index_file ? index_file : get_index_file());
+
+	trace_performance_since(start, "run_apply() 2");
+	trace_printf("End performance tracing run_apply() 2!");
 
 	return 0;
 }
