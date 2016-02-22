@@ -112,7 +112,7 @@ test_expect_success 'diff-tree -r with wildcard' '
 
 test_expect_success 'setup submodules' '
 	test_tick &&
-	git init submod &&
+	git init $ref_storage_arg submod &&
 	( cd submod && test_commit first; ) &&
 	git add submod &&
 	git commit -m first &&

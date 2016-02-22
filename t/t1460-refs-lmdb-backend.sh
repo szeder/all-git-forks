@@ -1,21 +1,48 @@
 #!/bin/sh
 #
+# Copyright (c) 2015 Twitter, Inc
 # Copyright (c) 2006 Shawn Pearce
+# This test is based on t1400-update-ref.sh
 #
 
-test_description='Test git update-ref and basic ref logging'
+test_description='Test lmdb refs backend'
+TEST_NO_CREATE_REPO=1
 . ./test-lib.sh
 
-if test "$ref_storage" != "files"
+if ! test_have_prereq LMDB
 then
-	skip_all="This test is ref storage backend-specific"
+	skip_all="Skipping lmdb refs backend tests, lmdb backend not built"
 	test_done
 fi
+
+raw_ref() {
+	test-refs-lmdb-backend "$1"
+}
+
+delete_ref() {
+	test-refs-lmdb-backend -d "$1"
+}
+
+write_ref() {
+	test-refs-lmdb-backend "$1" "$2"
+}
+
+raw_reflog() {
+	test-refs-lmdb-backend -l "$1"
+}
+
+delete_all_reflogs() {
+	test-refs-lmdb-backend -c
+}
+
+append_reflog() {
+	test-refs-lmdb-backend -a "$1"
+}
 
 Z=$_z40
 
 test_expect_success setup '
-
+	git init --ref-storage=lmdb &&
 	for name in A B C D E F
 	do
 		test_tick &&
@@ -23,106 +50,87 @@ test_expect_success setup '
 		sha1=$(echo $name | git commit-tree $T) &&
 		eval $name=$sha1
 	done
-
 '
 
 m=refs/heads/master
 n_dir=refs/heads/gu
 n=$n_dir/fixes
-outside=foo
 
 test_expect_success \
 	"create $m" \
 	"git update-ref $m $A &&
-	 test $A"' = $(cat .git/'"$m"')'
+	 test $A"' = $(raw_ref '"$m"')'
 test_expect_success \
 	"create $m" \
 	"git update-ref $m $B $A &&
-	 test $B"' = $(cat .git/'"$m"')'
+	 test $B"' = $(raw_ref '"$m"')'
 test_expect_success "fail to delete $m with stale ref" '
 	test_must_fail git update-ref -d $m $A &&
-	test $B = "$(cat .git/$m)"
+	test $B = "$(raw_ref $m)"
 '
 test_expect_success "delete $m" '
 	git update-ref -d $m $B &&
-	! test -f .git/$m
+	! raw_ref $m
 '
-rm -f .git/$m
+delete_ref $m
 
 test_expect_success "delete $m without oldvalue verification" "
 	git update-ref $m $A &&
-	test $A = \$(cat .git/$m) &&
+	test $A = \$(raw_ref $m) &&
 	git update-ref -d $m &&
-	! test -f .git/$m
+	! raw_ref $m
 "
-rm -f .git/$m
+delete_ref $m
 
 test_expect_success \
 	"fail to create $n" \
-	"touch .git/$n_dir &&
+	"git update-ref $n_dir $A &&
 	 test_must_fail git update-ref $n $A >out 2>err"
-rm -f .git/$n_dir out err
+
+delete_ref $n_dir
+rm -f out err
 
 test_expect_success \
 	"create $m (by HEAD)" \
 	"git update-ref HEAD $A &&
-	 test $A"' = $(cat .git/'"$m"')'
+	 test $A"' = $(raw_ref '"$m"')'
 test_expect_success \
 	"create $m (by HEAD)" \
 	"git update-ref HEAD $B $A &&
-	 test $B"' = $(cat .git/'"$m"')'
+	 test $B"' = $(raw_ref '"$m"')'
 test_expect_success "fail to delete $m (by HEAD) with stale ref" '
 	test_must_fail git update-ref -d HEAD $A &&
-	test $B = $(cat .git/$m)
+	test $B = $(raw_ref '"$m"')
 '
 test_expect_success "delete $m (by HEAD)" '
 	git update-ref -d HEAD $B &&
-	! test -f .git/$m
+	! raw_ref $m
 '
-rm -f .git/$m
-
-test_expect_success 'update-ref does not create reflogs by default' '
-	test_when_finished "git update-ref -d $outside" &&
-	git update-ref $outside $A &&
-	git rev-parse $A >expect &&
-	git rev-parse $outside >actual &&
-	test_cmp expect actual &&
-	test_must_fail git reflog exists $outside
-'
-
-test_expect_success 'update-ref creates reflogs with --create-reflog' '
-	test_when_finished "git update-ref -d $outside" &&
-	git update-ref --create-reflog $outside $A &&
-	git rev-parse $A >expect &&
-	git rev-parse $outside >actual &&
-	test_cmp expect actual &&
-	git reflog exists $outside
-'
+delete_ref $m
 
 test_expect_success \
 	"create $m (by HEAD)" \
 	"git update-ref HEAD $A &&
-	 test $A"' = $(cat .git/'"$m"')'
+	 test $A"' = $(raw_ref '"$m"')'
 test_expect_success \
 	"pack refs" \
 	"git pack-refs --all"
 test_expect_success \
 	"move $m (by HEAD)" \
 	"git update-ref HEAD $B $A &&
-	 test $B"' = $(cat .git/'"$m"')'
+	 test $B"' = $(raw_ref '"$m"')'
 test_expect_success "delete $m (by HEAD) should remove both packed and loose $m" '
 	git update-ref -d HEAD $B &&
-	! grep "$m" .git/packed-refs &&
-	! test -f .git/$m
+	! raw_ref $m
 '
-rm -f .git/$m
+delete_ref $m
 
-cp -f .git/HEAD .git/HEAD.orig
+OLD_HEAD=$(raw_ref HEAD)
 test_expect_success "delete symref without dereference" '
 	git update-ref --no-deref -d HEAD &&
-	! test -f .git/HEAD
+	! raw_ref HEAD
 '
-cp -f .git/HEAD.orig .git/HEAD
+write_ref HEAD "$OLD_HEAD"
 
 test_expect_success "delete symref without dereference when the referred ref is packed" '
 	echo foo >foo.c &&
@@ -130,44 +138,40 @@ test_expect_success "delete symref without dereference when the referred ref is 
 	git commit -m foo &&
 	git pack-refs --all &&
 	git update-ref --no-deref -d HEAD &&
-	! test -f .git/HEAD
+	! raw_ref HEAD
 '
-cp -f .git/HEAD.orig .git/HEAD
-git update-ref -d $m
+write_ref HEAD "$OLD_HEAD"
+delete_ref $m
 
 test_expect_success 'update-ref -d is not confused by self-reference' '
 	git symbolic-ref refs/heads/self refs/heads/self &&
-	test_when_finished "rm -f .git/refs/heads/self" &&
-	test_path_is_file .git/refs/heads/self &&
-	test_must_fail git update-ref -d refs/heads/self &&
-	test_path_is_file .git/refs/heads/self
+	test_when_finished "delete_ref refs/heads/self" &&
+	test_must_fail git update-ref -d refs/heads/self
 '
 
 test_expect_success 'update-ref --no-deref -d can delete self-reference' '
 	git symbolic-ref refs/heads/self refs/heads/self &&
-	test_when_finished "rm -f .git/refs/heads/self" &&
-	test_path_is_file .git/refs/heads/self &&
-	git update-ref --no-deref -d refs/heads/self &&
-	test_path_is_missing .git/refs/heads/self
+	test_when_finished "delete_ref refs/heads/self" &&
+	git update-ref --no-deref -d refs/heads/self
 '
 
 test_expect_success 'update-ref --no-deref -d can delete reference to bad ref' '
-	>.git/refs/heads/bad &&
-	test_when_finished "rm -f .git/refs/heads/bad" &&
+	test-refs-lmdb-backend refs/heads/bad "" &&
+	test_when_finished "delete_ref refs/heads/bad" &&
 	git symbolic-ref refs/heads/ref-to-bad refs/heads/bad &&
-	test_when_finished "rm -f .git/refs/heads/ref-to-bad" &&
-	test_path_is_file .git/refs/heads/ref-to-bad &&
+	test_when_finished "delete_ref refs/heads/ref-to-bad" &&
+	raw_ref refs/heads/ref-to-bad &&
 	git update-ref --no-deref -d refs/heads/ref-to-bad &&
-	test_path_is_missing .git/refs/heads/ref-to-bad
+	! raw_ref refs/heads/ref-to-bad
 '
 
 test_expect_success '(not) create HEAD with old sha1' "
 	test_must_fail git update-ref HEAD $A $B
 "
 test_expect_success "(not) prior created .git/$m" "
-	! test -f .git/$m
+	! raw_ref $m
 "
-rm -f .git/$m
+delete_ref $m
 
 test_expect_success \
 	"create HEAD" \
@@ -176,26 +180,29 @@ test_expect_success '(not) change HEAD with wrong SHA1' "
 	test_must_fail git update-ref HEAD $B $Z
 "
 test_expect_success "(not) changed .git/$m" "
-	! test $B"' = $(cat .git/'"$m"')
+	! test $B"' = $(raw_ref '"$m"')
 '
-rm -f .git/$m
 
-rm -f .git/logs/refs/heads/master
+: a repository with working tree always has reflog these days...
+delete_all_reflogs
+: | append_reflog $m
+delete_ref $m
+
 test_expect_success \
 	"create $m (logged by touch)" \
 	'GIT_COMMITTER_DATE="2005-05-26 23:30" \
-	 git update-ref --create-reflog HEAD '"$A"' -m "Initial Creation" &&
-	 test '"$A"' = $(cat .git/'"$m"')'
+	 git update-ref HEAD '"$A"' -m "Initial Creation" &&
+	 test '"$A"' = $(raw_ref '"$m"')'
 test_expect_success \
 	"update $m (logged by touch)" \
 	'GIT_COMMITTER_DATE="2005-05-26 23:31" \
 	 git update-ref HEAD'" $B $A "'-m "Switch" &&
-	 test '"$B"' = $(cat .git/'"$m"')'
+	 test '"$B"' = $(raw_ref '"$m"')'
 test_expect_success \
 	"set $m (logged by touch)" \
 	'GIT_COMMITTER_DATE="2005-05-26 23:41" \
 	 git update-ref HEAD'" $A &&
-	 test $A"' = $(cat .git/'"$m"')'
+	 test $A"' = $(raw_ref '"$m"')'
 
 cat >expect <<EOF
 $Z $A $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150200 +0000	Initial Creation
@@ -204,8 +211,12 @@ $B $A $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150860 +0000
 EOF
 test_expect_success \
 	"verifying $m's log" \
-	"test_cmp expect .git/logs/$m"
-rm -rf .git/$m .git/logs expect
+	"raw_reflog $m >actual &&
+	 test_cmp expect actual"
+delete_ref $m
+delete_all_reflogs
+: | append_reflog $m
+rm -f actual expect
 
 test_expect_success \
 	'enable core.logAllRefUpdates' \
@@ -216,17 +227,17 @@ test_expect_success \
 	"create $m (logged by config)" \
 	'GIT_COMMITTER_DATE="2005-05-26 23:32" \
 	 git update-ref HEAD'" $A "'-m "Initial Creation" &&
-	 test '"$A"' = $(cat .git/'"$m"')'
+	 test '"$A"' = $(raw_ref '"$m"')'
 test_expect_success \
 	"update $m (logged by config)" \
 	'GIT_COMMITTER_DATE="2005-05-26 23:33" \
 	 git update-ref HEAD'" $B $A "'-m "Switch" &&
-	 test '"$B"' = $(cat .git/'"$m"')'
+	 test '"$B"' = $(raw_ref '"$m"')'
 test_expect_success \
 	"set $m (logged by config)" \
 	'GIT_COMMITTER_DATE="2005-05-26 23:43" \
 	 git update-ref HEAD '"$A &&
-	 test $A"' = $(cat .git/'"$m"')'
+	 test $A"' = $(raw_ref '"$m"')'
 
 cat >expect <<EOF
 $Z $A $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150320 +0000	Initial Creation
@@ -235,11 +246,15 @@ $B $A $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150980 +0000
 EOF
 test_expect_success \
 	"verifying $m's log" \
-	'test_cmp expect .git/logs/$m'
-rm -f .git/$m .git/logs/$m expect
+	'raw_reflog $m >actual &&
+	test_cmp expect actual'
+delete_ref $m
+rm -f expect
 
 git update-ref $m $D
-cat >.git/logs/$m <<EOF
+git reflog expire --expire=all $m
+
+append_reflog $m <<EOF
 0000000000000000000000000000000000000000 $C $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150320 -0500
 $C $A $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150350 -0500
 $A $B $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150380 -0500
@@ -306,7 +321,8 @@ test_expect_success \
 	 test "warning: Log for ref '"$m unexpectedly ended on $ld"'." = "$(cat e)"'
 
 
-rm -f .git/$m .git/logs/$m expect
+git reflog expire --expire=all $m
+delete_ref $m
 
 test_expect_success \
     'creating initial files' \
@@ -339,7 +355,8 @@ $h_FIXED $h_MERGED $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117151100 +0000	c
 EOF
 test_expect_success \
 	'git commit logged updates' \
-	"test_cmp expect .git/logs/$m"
+	"raw_reflog $m >actual &&
+	test_cmp expect actual"
 unset h_TEST h_OTHER h_FIXED h_MERGED
 
 test_expect_success \
@@ -496,25 +513,6 @@ test_expect_success 'stdin create ref works' '
 	test_cmp expect actual
 '
 
-test_expect_success 'stdin does not create reflogs by default' '
-	test_when_finished "git update-ref -d $outside" &&
-	echo "create $outside $m" >stdin &&
-	git update-ref --stdin <stdin &&
-	git rev-parse $m >expect &&
-	git rev-parse $outside >actual &&
-	test_cmp expect actual &&
-	test_must_fail git reflog exists $outside
-'
-
-test_expect_success 'stdin creates reflogs with --create-reflog' '
-	echo "create $outside $m" >stdin &&
-	git update-ref --create-reflog --stdin <stdin &&
-	git rev-parse $m >expect &&
-	git rev-parse $outside >actual &&
-	test_cmp expect actual &&
-	git reflog exists $outside
-'
-
 test_expect_success 'stdin succeeds with quoted argument' '
 	git update-ref -d $a &&
 	echo "create $a \"$m\"" >stdin &&
@@ -562,7 +560,7 @@ test_expect_success 'stdin create ref works with path with space to blob' '
 test_expect_success 'stdin update ref fails with wrong old value' '
 	echo "update $c $m $m~1" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock the ref '"'"'$c'"'"'" err &&
 	test_must_fail git rev-parse --verify -q $c
 '
 
@@ -598,7 +596,7 @@ test_expect_success 'stdin update ref works with right old value' '
 test_expect_success 'stdin delete ref fails with wrong old value' '
 	echo "delete $a $m~1" >stdin &&
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: cannot lock ref '"'"'$a'"'"'" err &&
+	grep "fatal: cannot lock the ref '"'"'$a'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual
@@ -614,13 +612,13 @@ test_expect_success 'stdin delete ref fails with zero old value' '
 '
 
 test_expect_success 'stdin update symref works option no-deref' '
-	git symbolic-ref TESTSYMREF $b &&
+	git symbolic-ref refs/TESTSYMREF $b &&
 	cat >stdin <<-EOF &&
 	option no-deref
-	update TESTSYMREF $a $b
+	update refs/TESTSYMREF $a $b
 	EOF
 	git update-ref --stdin <stdin &&
-	git rev-parse TESTSYMREF >expect &&
+	git rev-parse refs/TESTSYMREF >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual &&
 	git rev-parse $m~1 >expect &&
@@ -629,13 +627,13 @@ test_expect_success 'stdin update symref works option no-deref' '
 '
 
 test_expect_success 'stdin delete symref works option no-deref' '
-	git symbolic-ref TESTSYMREF $b &&
+	git symbolic-ref refs/TESTSYMREF $b &&
 	cat >stdin <<-EOF &&
 	option no-deref
-	delete TESTSYMREF $b
+	delete refs/TESTSYMREF $b
 	EOF
 	git update-ref --stdin <stdin &&
-	test_must_fail git rev-parse --verify -q TESTSYMREF &&
+	test_must_fail git rev-parse --verify -q refs/TESTSYMREF &&
 	git rev-parse $m~1 >expect &&
 	git rev-parse $b >actual &&
 	test_cmp expect actual
@@ -731,7 +729,7 @@ test_expect_success 'stdin update refs fails with wrong old value' '
 	update $c  ''
 	EOF
 	test_must_fail git update-ref --stdin <stdin 2>err &&
-	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock the ref '"'"'$c'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual &&
@@ -842,7 +840,7 @@ test_expect_success 'stdin -z fails update with no old value' '
 '
 
 test_expect_success 'stdin -z fails update with too many arguments' '
-	printf $F "update $a" "$m" "$m" "$m" >stdin &&
+	printf $F "update $m" "$m" "$m" "$m" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
 	grep "fatal: unknown command: $m" err
 '
@@ -860,13 +858,13 @@ test_expect_success 'stdin -z fails delete with no old value' '
 '
 
 test_expect_success 'stdin -z fails delete with too many arguments' '
-	printf $F "delete $a" "$m" "$m" >stdin &&
+	printf $F "delete $m" "$m" "$m" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
 	grep "fatal: unknown command: $m" err
 '
 
 test_expect_success 'stdin -z fails verify with too many arguments' '
-	printf $F "verify $a" "$m" "$m" >stdin &&
+	printf $F "verify $m" "$m" "$m" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
 	grep "fatal: unknown command: $m" err
 '
@@ -926,7 +924,7 @@ test_expect_success 'stdin -z create ref works with path with space to blob' '
 test_expect_success 'stdin -z update ref fails with wrong old value' '
 	printf $F "update $c" "$m" "$m~1" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock the ref '"'"'$c'"'"'" err &&
 	test_must_fail git rev-parse --verify -q $c
 '
 
@@ -942,7 +940,7 @@ test_expect_success 'stdin -z create ref fails when ref exists' '
 	git rev-parse "$c" >expect &&
 	printf $F "create $c" "$m~1" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock the ref '"'"'$c'"'"'" err &&
 	git rev-parse "$c" >actual &&
 	test_cmp expect actual
 '
@@ -973,7 +971,7 @@ test_expect_success 'stdin -z update ref works with right old value' '
 test_expect_success 'stdin -z delete ref fails with wrong old value' '
 	printf $F "delete $a" "$m~1" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: cannot lock ref '"'"'$a'"'"'" err &&
+	grep "fatal: cannot lock the ref '"'"'$a'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual
@@ -989,10 +987,10 @@ test_expect_success 'stdin -z delete ref fails with zero old value' '
 '
 
 test_expect_success 'stdin -z update symref works option no-deref' '
-	git symbolic-ref TESTSYMREF $b &&
-	printf $F "option no-deref" "update TESTSYMREF" "$a" "$b" >stdin &&
+	git symbolic-ref refs/TESTSYMREF $b &&
+	printf $F "option no-deref" "update refs/TESTSYMREF" "$a" "$b" >stdin &&
 	git update-ref -z --stdin <stdin &&
-	git rev-parse TESTSYMREF >expect &&
+	git rev-parse refs/TESTSYMREF >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual &&
 	git rev-parse $m~1 >expect &&
@@ -1001,10 +999,10 @@ test_expect_success 'stdin -z update symref works option no-deref' '
 '
 
 test_expect_success 'stdin -z delete symref works option no-deref' '
-	git symbolic-ref TESTSYMREF $b &&
-	printf $F "option no-deref" "delete TESTSYMREF" "$b" >stdin &&
+	git symbolic-ref refs/TESTSYMREF $b &&
+	printf $F "option no-deref" "delete refs/TESTSYMREF" "$b" >stdin &&
 	git update-ref -z --stdin <stdin &&
-	test_must_fail git rev-parse --verify -q TESTSYMREF &&
+	test_must_fail git rev-parse --verify -q refs/TESTSYMREF &&
 	git rev-parse $m~1 >expect &&
 	git rev-parse $b >actual &&
 	test_cmp expect actual
@@ -1088,7 +1086,7 @@ test_expect_success 'stdin -z update refs fails with wrong old value' '
 	git update-ref $c $m &&
 	printf $F "update $a" "$m" "$m" "update $b" "$m" "$m" "update $c" "$m" "$Z" >stdin &&
 	test_must_fail git update-ref -z --stdin <stdin 2>err &&
-	grep "fatal: cannot lock ref '"'"'$c'"'"'" err &&
+	grep "fatal: cannot lock the ref '"'"'$c'"'"'" err &&
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual &&
@@ -1106,53 +1104,6 @@ test_expect_success 'stdin -z delete refs works with packed and loose refs' '
 	test_must_fail git rev-parse --verify -q $a &&
 	test_must_fail git rev-parse --verify -q $b &&
 	test_must_fail git rev-parse --verify -q $c
-'
-
-run_with_limited_open_files () {
-	(ulimit -n 32 && "$@")
-}
-
-test_lazy_prereq ULIMIT_FILE_DESCRIPTORS 'run_with_limited_open_files true'
-
-test_expect_success ULIMIT_FILE_DESCRIPTORS 'large transaction creating branches does not burst open file limit' '
-(
-	for i in $(test_seq 33)
-	do
-		echo "create refs/heads/$i HEAD"
-	done >large_input &&
-	run_with_limited_open_files git update-ref --stdin <large_input &&
-	git rev-parse --verify -q refs/heads/33
-)
-'
-
-test_expect_success ULIMIT_FILE_DESCRIPTORS 'large transaction deleting branches does not burst open file limit' '
-(
-	for i in $(test_seq 33)
-	do
-		echo "delete refs/heads/$i HEAD"
-	done >large_input &&
-	run_with_limited_open_files git update-ref --stdin <large_input &&
-	test_must_fail git rev-parse --verify -q refs/heads/33
-)
-'
-
-test_expect_success 'handle per-worktree refs in refs/bisect' '
-	git commit --allow-empty -m "initial commit" &&
-	git worktree add -b branch worktree &&
-	(
-		cd worktree &&
-		git commit --allow-empty -m "test commit"  &&
-		git for-each-ref >for-each-ref.out &&
-		! grep refs/bisect for-each-ref.out &&
-		git update-ref refs/bisect/something HEAD &&
-		git rev-parse refs/bisect/something >../worktree-head &&
-		git for-each-ref | grep refs/bisect/something
-	) &&
-	test_path_is_missing .git/refs/bisect &&
-	test_must_fail git rev-parse refs/bisect/something &&
-	git update-ref refs/bisect/something HEAD &&
-	git rev-parse refs/bisect/something >main-head &&
-	! test_cmp main-head worktree-head
 '
 
 test_done

@@ -11,10 +11,10 @@ test_expect_success 'setup: create superproject' '
 
 test_expect_success 'setup: create subprojects' '
 	mkdir sub1 &&
-	( cd sub1 && git init && : >Makefile && git add * &&
+	( cd sub1 && git init $ref_storage_arg && : >Makefile && git add * &&
 	git commit -q -m "subproject 1" ) &&
 	mkdir sub2 &&
-	( cd sub2 && git init && : >Makefile && git add * &&
+	( cd sub2 && git init $ref_storage_arg && : >Makefile && git add * &&
 	git commit -q -m "subproject 2" ) &&
 	git update-index --add sub1 &&
 	git add sub2 &&

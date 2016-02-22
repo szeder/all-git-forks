@@ -42,7 +42,7 @@ test_expect_success 'fast-export | fast-import' '
 	WER=$(git rev-parse --verify wer) &&
 	MUSS=$(git rev-parse --verify muss) &&
 	mkdir new &&
-	git --git-dir=new/.git init &&
+	git --git-dir=new/.git init $ref_storage_arg &&
 	git fast-export --all |
 	(cd new &&
 	 git fast-import &&
@@ -158,7 +158,7 @@ test_expect_success 'setup submodule' '
 	mkdir sub &&
 	(
 		cd sub &&
-		git init  &&
+		git init $ref_storage_arg &&
 		echo test file > file &&
 		git add file &&
 		git commit -m sub_initial
@@ -183,7 +183,7 @@ test_expect_success 'submodule fast-export | fast-import' '
 	SUBENT2=$(git ls-tree master sub) &&
 	rm -rf new &&
 	mkdir new &&
-	git --git-dir=new/.git init &&
+	git --git-dir=new/.git init $ref_storage_arg &&
 	git fast-export --signed-tags=strip --all |
 	(cd new &&
 	 git fast-import &&
