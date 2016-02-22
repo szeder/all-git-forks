@@ -159,6 +159,39 @@ stats_ascii () {
 
 }
 
+attr_ascii () {
+	case "$1" in
+	"-text") echo "-text"	;;
+	lf)	echo "text eol=lf" ;;
+	crlf)	echo "text eol=crlf" ;;
+	text)
+		case "$2" in
+		"")	echo "text" ;;
+		lf)	echo "text eol=lf" ;;
+		crlf)	echo "text eol=crlf" ;;
+		*) echo invalid_attr2 "$2" ;;
+		esac
+		;;
+	auto)
+		case "$2" in
+		"")	echo "text=auto" ;;
+		lf)	echo "text=auto eol=lf" ;;
+		crlf)	echo "text=auto eol=crlf" ;;
+		*) echo invalid_attr2 "$2"	;;
+		esac
+		;;
+	"")
+		case "$2" in
+		"")	echo "" ;;
+		lf)	echo "text eol=lf" ;;
+		crlf)	echo "text eol=crlf" ;;
+		*) echo invalid_attr2 "$2" ;;
+		esac
+		;;
+	*)echo invalid_attr1 "$1"	;;
+	esac
+}
+
 check_files_in_repo () {
 	crlf=$1
 	attr=$2
@@ -228,15 +261,15 @@ checkout_files () {
 	test_expect_success "ls-files --eol attr=$attr $ident $aeol core.autocrlf=$crlf core.eol=$ceol" '
 		test_when_finished "rm expect actual" &&
 		sort <<-EOF >expect &&
-		i/crlf w/$(stats_ascii $crlfname) crlf_false_attr__CRLF.txt
-		i/mixed w/$(stats_ascii $lfmixcrlf) crlf_false_attr__CRLF_mix_LF.txt
-		i/lf w/$(stats_ascii $lfname) crlf_false_attr__LF.txt
-		i/-text w/$(stats_ascii $lfmixcr) crlf_false_attr__LF_mix_CR.txt
-		i/-text w/$(stats_ascii $crlfnul) crlf_false_attr__CRLF_nul.txt
-		i/-text w/$(stats_ascii $crlfnul) crlf_false_attr__LF_nul.txt
+		i/crlf w/$(stats_ascii $crlfname) attr/$(attr_ascii $attr $aeol) crlf_false_attr__CRLF.txt
+		i/mixed w/$(stats_ascii $lfmixcrlf) attr/$(attr_ascii $attr $aeol) crlf_false_attr__CRLF_mix_LF.txt
+		i/lf w/$(stats_ascii $lfname) attr/$(attr_ascii $attr $aeol) crlf_false_attr__LF.txt
+		i/-text w/$(stats_ascii $lfmixcr) attr/$(attr_ascii $attr $aeol) crlf_false_attr__LF_mix_CR.txt
+		i/-text w/$(stats_ascii $crlfnul) attr/$(attr_ascii $attr $aeol) crlf_false_attr__CRLF_nul.txt
+		i/-text w/$(stats_ascii $crlfnul) attr/$(attr_ascii $attr $aeol) crlf_false_attr__LF_nul.txt
 		EOF
 		git ls-files --eol crlf_false_attr__* |
-		sed -e "s!attr/[^	]*!!g" -e "s/	/ /g" -e "s/  */ /g" |
+		sed -e "s/	/ /g" -e "s/  */ /g" |
 		sort >actual &&
 		test_cmp expect actual
 	'
