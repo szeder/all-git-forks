@@ -335,18 +335,21 @@ add_msg()
 	dir="$1"
 	latest_old="$2"
 	latest_new="$3"
+	repo="$4" # optional
 	if [ -n "$message" ]; then
 		commit_message="$message"
 	else
 		commit_message="Add '$dir/' from commit '$latest_new'"
 	fi
-	cat <<-EOF
-		$commit_message
-		
-		git-subtree-dir: $dir
-		git-subtree-mainline: $latest_old
-		git-subtree-split: $latest_new
-	EOF
+	echo $commit_message
+	echo
+	echo git-subtree-dir: $dir
+	echo git-subtree-mainline: $latest_old
+	echo git-subtree-split: $latest_new
+	if [ -n "$repo" ]; then
+		repo_url=$(get_repository_url "$repo")
+		echo "git-subtree-repo: $repo_url"
+	fi
 }
 
 add_squashed_msg()
@@ -382,8 +385,9 @@ squash_msg()
 	dir="$1"
 	oldsub="$2"
 	newsub="$3"
+	repo="$4" # optional
 	newsub_short=$(git rev-parse --short "$newsub")
-	
+
 	if [ -n "$oldsub" ]; then
 		oldsub_short=$(git rev-parse --short "$oldsub")
 		echo "Squashed '$dir/' changes from $oldsub_short..$newsub_short"
@@ -397,6 +401,10 @@ squash_msg()
 	echo
 	echo "git-subtree-dir: $dir"
 	echo "git-subtree-split: $newsub"
+	if [ -n "$repo" ]; then
+		repo_url=$(get_repository_url "$repo")
+		echo "git-subtree-repo: $repo_url"
+	fi
 }
 
 toptree_for_commit()
@@ -440,12 +448,13 @@ new_squash_commit()
 	old="$1"
 	oldsub="$2"
 	newsub="$3"
+	repo="$4" # optional
 	tree=$(toptree_for_commit $newsub) || exit $?
 	if [ -n "$old" ]; then
-		squash_msg "$dir" "$oldsub" "$newsub" | 
+		squash_msg "$dir" "$oldsub" "$newsub" "$repo" |
 			git commit-tree "$tree" -p "$old" || exit $?
 	else
-		squash_msg "$dir" "" "$newsub" |
+		squash_msg "$dir" "" "$newsub" "$repo" |
 			git commit-tree "$tree" || exit $?
 	fi
 }
@@ -517,6 +526,16 @@ ensure_valid_ref_format()
 	    die "'$1' does not look like a ref"
 }
 
+get_repository_url()
+{
+	repo=$1
+	repo_url=$(git config --get remote.$repo.url)
+	if [ -z "$repo_url" ]; then
+		repo_url=$repo
+	fi
+	echo $repo_url
+}
+
 cmd_add()
 {
 	if [ -e "$dir" ]; then
@@ -548,19 +567,18 @@ cmd_add()
 cmd_add_repository()
 {
 	echo "git fetch" "$@"
-	repository=$1
+	repo=$1
 	refspec=$2
 	git fetch "$@" || exit $?
 	revs=FETCH_HEAD
-	set -- $revs
+	set -- $revs $repo
 	cmd_add_commit "$@"
 }
 
 cmd_add_commit()
 {
-	revs=$(git rev-parse $default --revs-only "$@") || exit $?
-	set -- $revs
-	rev="$1"
+	rev=$(git rev-parse $default --revs-only "$1") || exit $?
+	repo="$2" # optional
 	
 	debug "Adding $dir as '$rev'..."
 	git read-tree --prefix="$dir" $rev || exit $?
@@ -575,12 +593,12 @@ cmd_add_commit()
 	fi
 	
 	if [ -n "$squash" ]; then
-		rev=$(new_squash_commit "" "" "$rev") || exit $?
+		rev=$(new_squash_commit "" "" "$rev" "$repo") || exit $?
 		commit=$(add_squashed_msg "$rev" "$dir" |
 			 git commit-tree $tree $headp -p "$rev") || exit $?
 	else
 		revp=$(peel_committish "$rev") &&
-		commit=$(add_msg "$dir" "$headrev" "$rev" |
+		commit=$(add_msg "$dir" "$headrev" "$rev" "$repo" |
 			 git commit-tree $tree $headp -p "$revp") || exit $?
 	fi
 	git reset "$commit" || exit $?
@@ -609,7 +627,8 @@ cmd_split()
 	else
 		unrevs="$(find_existing_splits "$dir" "$revs")"
 	fi
-	
+e
+	rev="$1"
 	# We can't restrict rev-list to only $dir here, because some of our
 	# parents have the $dir contents the root, and those won't match.
 	# (and rev-list --follow doesn't seem to solve this)
@@ -683,15 +702,20 @@ cmd_split()
 
 cmd_merge()
 {
-	revs=$(git rev-parse $default --revs-only "$@") || exit $?
+	revs=$(git rev-parse $default --revs-only "$1") || exit $?
 	ensure_clean
-	
 	set -- $revs
 	if [ $# -ne 1 ]; then
 		die "You must provide exactly one revision.  Got: '$revs'"
 	fi
+	do_merge "$@"
+}
+
+do_merge()
+{
 	rev="$1"
-	
+	repo="$2" # optional
+
 	if [ -n "$squash" ]; then
 		first_split="$(find_latest_squash "$dir")"
 		if [ -z "$first_split" ]; then
@@ -704,7 +728,7 @@ cmd_merge()
 			say "Subtree is already at commit $rev."
 			exit 0
 		fi
-		new=$(new_squash_commit "$old" "$sub" "$rev") || exit $?
+		new=$(new_squash_commit "$old" "$sub" "$rev" "$repo") || exit $?
 		debug "New squash commit: $new"
 		rev="$new"
 	fi
@@ -730,12 +754,13 @@ cmd_pull()
 	if [ $# -ne 2 ]; then
 	    die "You must provide <repository> <ref>"
 	fi
+	repo=$1
 	ensure_clean
 	ensure_valid_ref_format "$2"
 	git fetch "$@" || exit $?
 	revs=FETCH_HEAD
-	set -- $revs
-	cmd_merge "$@"
+	set -- $revs $repo
+	do_merge "$@"
 }
 
 cmd_push()
