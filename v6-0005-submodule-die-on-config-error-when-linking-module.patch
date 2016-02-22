@@ -1,0 +1,45 @@
+From 495b81b7b905981be34673605d5ab5201a52cc51 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Tue, 2 Feb 2016 10:41:21 +0100
+Subject: [PATCH v6 05/15] submodule: die on config error when linking modules
+
+When trying to connect a submodule with its corresponding
+repository in '.git/modules' we try to set the core.worktree
+setting in the submodule, which may fail due to an error
+encountered in `git_config_set_in_file`.
+
+The function is used in the git-mv command when trying to move a
+submodule to another location. We already die when renaming a
+file fails but do not pay attention to the case where updating
+the connection between submodule and its repository fails. As
+this leaves the repository in an inconsistent state, as well,
+abort the program by dying early and presenting the failure to
+the user.
+
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ submodule.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/submodule.c b/submodule.c
+index b83939c..589a82c 100644
+--- a/submodule.c
++++ b/submodule.c
+@@ -1087,11 +1087,9 @@ void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
+ 	/* Update core.worktree setting */
+ 	strbuf_reset(&file_name);
+ 	strbuf_addf(&file_name, "%s/config", git_dir);
+-	if (git_config_set_in_file(file_name.buf, "core.worktree",
+-				   relative_path(real_work_tree, git_dir,
+-						 &rel_path)))
+-		die(_("Could not set core.worktree in %s"),
+-		    file_name.buf);
++	git_config_set_in_file_or_die(file_name.buf, "core.worktree",
++				      relative_path(real_work_tree, git_dir,
++						    &rel_path));
+ 
+ 	strbuf_release(&file_name);
+ 	strbuf_release(&rel_path);
+-- 
+2.7.1
+

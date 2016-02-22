@@ -1,0 +1,34 @@
+From bae21a45875365a6f0f09338873961460caeb4ef Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Mon, 23 Nov 2015 14:33:11 +0100
+Subject: [PATCH v6 13/15] compat: die when unable to set
+ core.precomposeunicode
+
+When calling `git_config_set` to set 'core.precomposeunicode' we
+ignore the return value of the function, which may indicate that
+we were unable to write the value back to disk. As the function
+is only called by init-db we can and should die when an error
+occurs.
+
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ compat/precompose_utf8.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/compat/precompose_utf8.c b/compat/precompose_utf8.c
+index 079070f..9ff1ebe 100644
+--- a/compat/precompose_utf8.c
++++ b/compat/precompose_utf8.c
+@@ -50,7 +50,8 @@ void probe_utf8_pathname_composition(void)
+ 		close(output_fd);
+ 		git_path_buf(&path, "%s", auml_nfd);
+ 		precomposed_unicode = access(path.buf, R_OK) ? 0 : 1;
+-		git_config_set("core.precomposeunicode", precomposed_unicode ? "true" : "false");
++		git_config_set_or_die("core.precomposeunicode",
++				      precomposed_unicode ? "true" : "false");
+ 		git_path_buf(&path, "%s", auml_nfc);
+ 		if (unlink(path.buf))
+ 			die_errno(_("failed to unlink '%s'"), path.buf);
+-- 
+2.7.1
+

@@ -1,0 +1,35 @@
+From 5a15d4b6eef8e22d420f9dac12bb37b42d29ac51 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Mon, 23 Nov 2015 12:06:56 +0100
+Subject: [PATCH v6 06/15] submodule--helper: die on config error when cloning
+ module
+
+When setting the 'core.worktree' option for a newly cloned
+submodule we ignore the return value of `git_config_set_in_file`.
+As this leaves the submodule in an inconsistent state, we instead
+want to inform the user that something has gone wrong by printing
+an error and aborting the program.
+
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ builtin/submodule--helper.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/builtin/submodule--helper.c b/builtin/submodule--helper.c
+index f4c3eff..c7e1ea2 100644
+--- a/builtin/submodule--helper.c
++++ b/builtin/submodule--helper.c
+@@ -245,8 +245,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
+ 	p = git_pathdup_submodule(path, "config");
+ 	if (!p)
+ 		die(_("could not get submodule directory for '%s'"), path);
+-	git_config_set_in_file(p, "core.worktree",
+-			       relative_path(sb.buf, sm_gitdir, &rel_path));
++	git_config_set_in_file_or_die(p, "core.worktree",
++				      relative_path(sb.buf, sm_gitdir, &rel_path));
+ 	strbuf_release(&sb);
+ 	strbuf_release(&rel_path);
+ 	free(sm_gitdir);
+-- 
+2.7.1
+

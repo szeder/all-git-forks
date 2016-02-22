@@ -1,0 +1,107 @@
+From 8aab40550c75e5498fac55ac9f9fd93ff2f1cdb9 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Mon, 22 Feb 2016 12:12:49 +0100
+Subject: [PATCH v6 00/15] config: make git_config_set die on failure
+
+Next revision of my patch series to improve error handling on
+git_config_set. Only three small changes to v5 [1], thanks for
+pointing these out:
+
+    - fixed missing conversion of git_config_set_or_die in
+      compat/precompose_utf8.c
+    - fixed indentation in install_branch_config
+    - improved advise message to give the complete command for
+      fixing up the upstream configuration, including the actual
+      tracking branch
+
+[1]: http://article.gmane.org/gmane.comp.version-control.git/286355
+
+Interdiff to v5:
+
+diff --git a/branch.c b/branch.c
+index 06942ef..c50ea42 100644
+--- a/branch.c
++++ b/branch.c
+@@ -53,7 +53,7 @@ static const char tracking_advice[] =
+ N_("\n"
+ "After fixing the error cause you may try to fix up\n"
+ "the remote tracking information by invoking\n"
+-"\"git branch --set-upstream-to=\".");
++"\"git branch --set-upstream-to=%s%s%s\".");
+ 
+ int install_branch_config(int flag, const char *local, const char *origin, const char *remote)
+ {
+@@ -82,7 +82,7 @@ int install_branch_config(int flag, const char *local, const char *origin, const
+ 		strbuf_reset(&key);
+ 		strbuf_addf(&key, "branch.%s.rebase", local);
+ 		if (git_config_set_gently(key.buf, "true") < 0)
+-		    goto out_err;
++			goto out_err;
+ 	}
+ 	strbuf_release(&key);
+ 
+@@ -117,7 +117,12 @@ int install_branch_config(int flag, const char *local, const char *origin, const
+ out_err:
+ 	strbuf_release(&key);
+ 	error(_("Unable to write upstream branch configuration"));
+-	advise(_(tracking_advice));
++
++	advise(_(tracking_advice),
++	       origin ? origin : "",
++	       origin ? "/" : "",
++	       shortname ? shortname : remote);
++
+ 	return -1;
+ }
+ 
+diff --git a/compat/precompose_utf8.c b/compat/precompose_utf8.c
+index 9ff1ebe..dfbe6d8 100644
+--- a/compat/precompose_utf8.c
++++ b/compat/precompose_utf8.c
+@@ -50,8 +50,8 @@ void probe_utf8_pathname_composition(void)
+ 		close(output_fd);
+ 		git_path_buf(&path, "%s", auml_nfd);
+ 		precomposed_unicode = access(path.buf, R_OK) ? 0 : 1;
+-		git_config_set_or_die("core.precomposeunicode",
+-				      precomposed_unicode ? "true" : "false");
++		git_config_set("core.precomposeunicode",
++			       precomposed_unicode ? "true" : "false");
+ 		git_path_buf(&path, "%s", auml_nfc);
+ 		if (unlink(path.buf))
+ 			die_errno(_("failed to unlink '%s'"), path.buf);
+
+Patrick Steinhardt (15):
+  config: introduce set_or_die wrappers
+  branch: report errors in tracking branch setup
+  branch: die on config error when unsetting upstream
+  branch: die on config error when editing branch description
+  submodule: die on config error when linking modules
+  submodule--helper: die on config error when cloning module
+  remote: die on config error when setting URL
+  remote: die on config error when setting/adding branches
+  remote: die on config error when manipulating remotes
+  clone: die on config error in cmd_clone
+  init-db: die on config errors when initializing empty repo
+  sequencer: die on config error when saving replay opts
+  compat: die when unable to set core.precomposeunicode
+  config: rename git_config_set to git_config_set_gently
+  config: rename git_config_set_or_die to git_config_set
+
+ branch.c                 | 50 ++++++++++++++++++++++++----------
+ branch.h                 |  3 ++-
+ builtin/branch.c         |  5 ++--
+ builtin/clone.c          |  2 +-
+ builtin/config.c         | 28 +++++++++----------
+ builtin/init-db.c        |  2 +-
+ builtin/remote.c         | 70 +++++++++++++++++-------------------------------
+ cache.h                  | 14 ++++++----
+ compat/precompose_utf8.c |  3 ++-
+ config.c                 | 52 ++++++++++++++++++++++++++---------
+ submodule.c              | 10 +++----
+ t/t3200-branch.sh        | 16 ++++++++++-
+ t/t5505-remote.sh        |  9 +++++++
+ 13 files changed, 159 insertions(+), 105 deletions(-)
+
+-- 
+2.7.1
+
