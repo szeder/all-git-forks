@@ -708,7 +708,7 @@ static enum crlf_action git_path_check_crlf(struct git_attr_check *check)
 	const char *value = check->value;
 
 	if (ATTR_TRUE(value))
-		return text_eol_is_crlf() ? CRLF_TEXT_CRLF : CRLF_TEXT_INPUT;
+		return CRLF_TEXT;
 	else if (ATTR_FALSE(value))
 		return CRLF_BINARY;
 	else if (ATTR_UNSET(value))
@@ -792,6 +792,7 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 			ca->crlf_action = CRLF_TEXT_INPUT;
 		else if (eol_attr == EOL_CRLF)
 			ca->crlf_action = CRLF_TEXT_CRLF;
+		ca->attr_action = ca->crlf_action;
 	} else {
 		ca->drv = NULL;
 		ca->crlf_action = CRLF_UNDEFINED;
