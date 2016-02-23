@@ -368,7 +368,7 @@ Use -f if you really want to add it." >&2
 			esac
 		) || die "$(eval_gettext "Unable to checkout submodule '\$sm_path'")"
 	fi
-	git config submodule."$sm_name".url "$realrepo"
+	git config --repo submodule."$sm_name".url "$realrepo"
 
 	git add $force "$sm_path" ||
 	die "$(eval_gettext "Failed to add submodule '\$sm_path'")"
@@ -498,7 +498,7 @@ cmd_init()
 				url=$(resolve_relative_url "$url") || exit
 				;;
 			esac
-			git config submodule."$name".url "$url" ||
+			git config --repo submodule."$name".url "$url" ||
 			die "$(eval_gettext "Failed to register url for submodule path '\$displaypath'")"
 
 			say "$(eval_gettext "Submodule '\$name' (\$url) registered for path '\$displaypath'")"
@@ -517,7 +517,7 @@ cmd_init()
 				upd=none
 				;;
 			esac
-			git config submodule."$name".update "$upd" ||
+			git config --repo submodule."$name".update "$upd" ||
 			die "$(eval_gettext "Failed to register update mode for submodule path '\$displaypath'")"
 		fi
 	done
@@ -596,6 +596,7 @@ cmd_deinit()
 			# the user later decides to init this submodule again
 			url=$(git config submodule."$name".url)
 			git config --remove-section submodule."$name" 2>/dev/null &&
+			git config --repo --remove-section submodule."$name" 2>/dev/null &&
 			say "$(eval_gettext "Submodule '\$name' (\$url) unregistered for path '\$displaypath'")"
 		fi
 	done
@@ -1226,7 +1227,7 @@ cmd_sync()
 		then
 			displaypath=$(relative_path "$prefix$sm_path")
 			say "$(eval_gettext "Synchronizing submodule url for '\$displaypath'")"
-			git config submodule."$name".url "$super_config_url"
+			git config --repo submodule."$name".url "$super_config_url"
 
 			if test -e "$sm_path"/.git
 			then
@@ -1234,7 +1235,7 @@ cmd_sync()
 				sanitize_submodule_env
 				cd "$sm_path"
 				remote=$(get_default_remote)
-				git config remote."$remote".url "$sub_origin_url"
+				git config --repo remote."$remote".url "$sub_origin_url"
 
 				if test -n "$recursive"
 				then
