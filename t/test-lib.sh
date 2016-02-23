@@ -186,6 +186,8 @@ test "x$TERM" != "xdumb" && (
 	) &&
 	color=t
 
+ref_storage="files"
+ref_storage_arg=
 while test "$#" -ne 0
 do
 	case "$1" in
@@ -201,6 +203,9 @@ do
 			exit 1;
 		}
 		run_list=$1; shift ;;
+	--ref-storage=*)
+	    GIT_TEST_REF_STORAGE=$(expr "z$1" : 'z[^=]*=\(.*\)'); shift
+	    ;;
 	--run=*)
 		run_list=$(expr "z$1" : 'z[^=]*=\(.*\)'); shift ;;
 	-h|--h|--he|--hel|--help)
@@ -246,6 +251,12 @@ do
 		echo "error: unknown test option '$1'" >&2; exit 1 ;;
 	esac
 done
+
+if test -n "$GIT_TEST_REF_STORAGE"
+then
+	ref_storage=$GIT_TEST_REF_STORAGE
+	ref_storage_arg="--ref-storage=$ref_storage"
+fi
 
 if test -n "$valgrind_only"
 then
@@ -960,6 +971,7 @@ test -z "$NO_PERL" && test_set_prereq PERL
 test -z "$NO_PYTHON" && test_set_prereq PYTHON
 test -n "$USE_LIBPCRE" && test_set_prereq LIBPCRE
 test -z "$NO_GETTEXT" && test_set_prereq GETTEXT
+test -n "$USE_LIBLMDB" && test_set_prereq LMDB
 
 # Can we rely on git's output in the C locale?
 if test -n "$GETTEXT_POISON"

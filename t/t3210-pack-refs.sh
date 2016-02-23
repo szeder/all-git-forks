@@ -11,6 +11,13 @@ semantic is still the same.
 '
 . ./test-lib.sh
 
+backend=$ref_storage
+if test "$backend" = "lmdb"
+then
+	skip_all="The lmdb ref storage doesn't pack refs"
+	test_done
+fi
+
 test_expect_success 'enable reflogs' '
 	git config core.logallrefupdates true
 '

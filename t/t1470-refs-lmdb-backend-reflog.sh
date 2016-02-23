@@ -1,16 +1,26 @@
 #!/bin/sh
 #
+# Copyright (c) 2015 Twitter, Inc
 # Copyright (c) 2007 Junio C Hamano
 #
 
 test_description='Test prune and reflog expiration'
+TEST_NO_CREATE_REPO=1
 . ./test-lib.sh
 
-if test "$ref_storage" != "files"
+if ! test_have_prereq LMDB
 then
-	skip_all="This test is ref storage backend-specific"
+	skip_all="Skipping lmdb refs backend tests, lmdb backend not built"
 	test_done
 fi
+
+raw_reflog() {
+	cat .git/logs/$1 2>/dev/null || test-refs-lmdb-backend -l "$1"
+}
+
+append_reflog() {
+	test-refs-lmdb-backend -a "$1"
+}
 
 check_have () {
 	gaah= &&
@@ -61,6 +71,7 @@ check_dont_have () {
 }
 
 test_expect_success setup '
+	git init --ref-storage=lmdb &&
 	mkdir -p A/B &&
 	echo rat >C &&
 	echo ox >A/D &&
@@ -68,18 +79,18 @@ test_expect_success setup '
 	git add . &&
 
 	test_tick && git commit -m rabbit &&
-	H=$(git rev-parse --verify HEAD) &&
-	A=$(git rev-parse --verify HEAD:A) &&
-	B=$(git rev-parse --verify HEAD:A/B) &&
-	C=$(git rev-parse --verify HEAD:C) &&
-	D=$(git rev-parse --verify HEAD:A/D) &&
-	E=$(git rev-parse --verify HEAD:A/B/E) &&
+	H=`git rev-parse --verify HEAD` &&
+	A=`git rev-parse --verify HEAD:A` &&
+	B=`git rev-parse --verify HEAD:A/B` &&
+	C=`git rev-parse --verify HEAD:C` &&
+	D=`git rev-parse --verify HEAD:A/D` &&
+	E=`git rev-parse --verify HEAD:A/B/E` &&
 	check_fsck &&
 
 	test_chmod +x C &&
 	git add C &&
 	test_tick && git commit -m dragon &&
-	L=$(git rev-parse --verify HEAD) &&
+	L=`git rev-parse --verify HEAD` &&
 	check_fsck &&
 
 	rm -f C A/B/E &&
@@ -87,15 +98,15 @@ test_expect_success setup '
 	echo horse >A/G &&
 	git add F A/G &&
 	test_tick && git commit -a -m sheep &&
-	F=$(git rev-parse --verify HEAD:F) &&
-	G=$(git rev-parse --verify HEAD:A/G) &&
-	I=$(git rev-parse --verify HEAD:A) &&
-	J=$(git rev-parse --verify HEAD) &&
+	F=`git rev-parse --verify HEAD:F` &&
+	G=`git rev-parse --verify HEAD:A/G` &&
+	I=`git rev-parse --verify HEAD:A` &&
+	J=`git rev-parse --verify HEAD` &&
 	check_fsck &&
 
 	rm -f A/G &&
 	test_tick && git commit -a -m monkey &&
-	K=$(git rev-parse --verify HEAD) &&
+	K=`git rev-parse --verify HEAD` &&
 	check_fsck &&
 
 	check_have A B C D E F G H I J K L &&
@@ -106,8 +117,9 @@ test_expect_success setup '
 
 	check_fsck &&
 
-	git reflog refs/heads/master >output &&
-	test_line_count = 4 output
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 4 reflog
 '
 
 test_expect_success rewind '
@@ -123,8 +135,9 @@ test_expect_success rewind '
 
 	check_have A B C D E F G H I J K L &&
 
-	git reflog refs/heads/master >output &&
-	test_line_count = 5 output
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 5 reflog
 '
 
 test_expect_success 'corrupt and check' '
@@ -142,8 +155,9 @@ test_expect_success 'reflog expire --dry-run should not touch reflog' '
 		--stale-fix \
 		--all &&
 
-	git reflog refs/heads/master >output &&
-	test_line_count = 5 output &&
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 5 reflog &&
 
 	check_fsck "missing blob $F"
 '
@@ -156,8 +170,15 @@ test_expect_success 'reflog expire' '
 		--stale-fix \
 		--all &&
 
-	git reflog refs/heads/master >output &&
-	test_line_count = 2 output &&
+	echo git reflog expire --verbose \
+		--expire=$(($test_tick - 10000)) \
+		--expire-unreachable=$(($test_tick - 10000)) \
+		--stale-fix \
+		--all &&
+
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 2 reflog &&
 
 	check_fsck "dangling commit $K"
 '
@@ -223,8 +244,9 @@ test_expect_success 'delete' '
 test_expect_success 'rewind2' '
 
 	test_tick && git reset --hard HEAD~2 &&
-	git reflog refs/heads/master >output &&
-	test_line_count = 4 output
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 4 reflog
 '
 
 test_expect_success '--expire=never' '
@@ -233,8 +255,9 @@ test_expect_success '--expire=never' '
 		--expire=never \
 		--expire-unreachable=never \
 		--all &&
-	git reflog refs/heads/master >output &&
-	test_line_count = 4 output
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 4 reflog
 '
 
 test_expect_success 'gc.reflogexpire=never' '
@@ -242,8 +265,9 @@ test_expect_success 'gc.reflogexpire=never' '
 	git config gc.reflogexpire never &&
 	git config gc.reflogexpireunreachable never &&
 	git reflog expire --verbose --all &&
-	git reflog refs/heads/master >output &&
-	test_line_count = 4 output
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 4 reflog
 '
 
 test_expect_success 'gc.reflogexpire=false' '
@@ -251,8 +275,9 @@ test_expect_success 'gc.reflogexpire=false' '
 	git config gc.reflogexpire false &&
 	git config gc.reflogexpireunreachable false &&
 	git reflog expire --verbose --all &&
-	git reflog refs/heads/master >output &&
-	test_line_count = 4 output &&
+	raw_reflog refs/heads/master >reflog &&
+	test_when_finished rm -f reflog &&
+	test_line_count = 4 reflog &&
 
 	git config --unset gc.reflogexpire &&
 	git config --unset gc.reflogexpireunreachable
@@ -325,33 +350,10 @@ test_expect_success 'parsing reverse reflogs at BUFSIZ boundaries' '
 			printf X
 		fi &&
 		printf "\n"
-	done >.git/logs/refs/heads/reflogskip &&
+	done | append_reflog refs/heads/reflogskip &&
 	git rev-parse reflogskip@{73} >actual &&
 	echo ${z38}03 >expect &&
 	test_cmp expect actual
-'
-
-test_expect_success 'no segfaults for reflog containing non-commit sha1s' '
-	git update-ref --create-reflog -m "Creating ref" \
-		refs/tests/tree-in-reflog HEAD &&
-	git update-ref -m "Forcing tree" refs/tests/tree-in-reflog HEAD^{tree} &&
-	git update-ref -m "Restoring to commit" refs/tests/tree-in-reflog HEAD &&
-	git reflog refs/tests/tree-in-reflog
-'
-
-test_expect_failure 'reflog with non-commit entries displays all entries' '
-	git reflog refs/tests/tree-in-reflog >actual &&
-	test_line_count = 3 actual
-'
-
-test_expect_success 'reflog expire operates on symref not referrent' '
-	git branch -l the_symref &&
-	git branch -l referrent &&
-	git update-ref referrent HEAD &&
-	git symbolic-ref refs/heads/the_symref refs/heads/referrent &&
-	test_when_finished "rm -f .git/refs/heads/referrent.lock" &&
-	touch .git/refs/heads/referrent.lock &&
-	git reflog expire --expire=all the_symref
 '
 
 test_done
