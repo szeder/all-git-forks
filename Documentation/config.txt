@@ -2474,6 +2474,10 @@ receive.shallowUpdate::
 	If set to true, .git/shallow can be updated when new refs
 	require new shallow roots. Otherwise those refs are rejected.
 
+remote.*::
+	Remote specific settings. By default they are stored in
+	per-repository common config file.
+
 remote.pushDefault::
 	The remote to push to by default.  Overrides
 	`branch.<name>.remote` for all branches, and is overridden by
