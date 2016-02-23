@@ -389,8 +389,10 @@ static int check_repo_format(const char *var, const char *value, void *vdata)
 			;
 		else if (!strcmp(ext, "preciousobjects"))
 			data->precious_objects = git_config_bool(var, value);
-		else if (!strcmp(ext, "worktree"))
-			data->worktree_version = git_config_ulong(var, value);
+		else if (!strcmp(ext, "worktree")) {
+			if (strcmp(value, "inherit"))
+				data->worktree_version = git_config_ulong(var, value);
+		}
 		else
 			string_list_append(&data->unknown_extensions, ext);
 	} else if (strcmp(var, "core.bare") == 0) {

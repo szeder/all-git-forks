@@ -91,4 +91,6 @@ objects in the repository MUST NOT be deleted (e.g., by `git-prune` or
 ~~~~~~~~~~
 
 Define behavior in multiple worktree setup. The value specifies the
-version. Default version is zero.
+version. Default version is zero. The special value "inherit" is
+accepted and ignored, the version remains unchanged (if set by another
+config file)
