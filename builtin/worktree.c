@@ -141,7 +141,7 @@ static char *junk_work_tree;
 static char *junk_git_dir;
 static int is_junk;
 static pid_t junk_pid;
-static int target_version;
+static int target_version = 1;
 
 static void remove_junk(void)
 {
