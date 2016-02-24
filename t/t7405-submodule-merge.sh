@@ -18,7 +18,7 @@ test_expect_success setup '
 
 	mkdir sub &&
 	(cd sub &&
-	 git init &&
+	 git init $ref_storage_arg &&
 	 echo original > file &&
 	 git add file &&
 	 test_tick &&
@@ -68,10 +68,10 @@ test_expect_success setup '
 test_expect_success 'setup for merge search' '
 	mkdir merge-search &&
 	(cd merge-search &&
-	git init &&
+	git init $ref_storage_arg &&
 	mkdir sub &&
 	(cd sub &&
-	 git init &&
+	 git init $ref_storage_arg &&
 	 echo "file-a" > file-a &&
 	 git add file-a &&
 	 git commit -m "sub-a" &&
@@ -232,10 +232,10 @@ test_expect_success 'merging with a modify/modify conflict between merge bases' 
 test_expect_success 'setup for recursive merge with submodule' '
 	mkdir merge-recursive &&
 	(cd merge-recursive &&
-	 git init &&
+	 git init $ref_storage_arg &&
 	 mkdir sub &&
 	 (cd sub &&
-	  git init &&
+	  git init $ref_storage_arg &&
 	  test_commit a &&
 	  git checkout -b sub-b master &&
 	  test_commit b &&

@@ -6,6 +6,12 @@
 test_description='Test git update-ref and basic ref logging'
 . ./test-lib.sh
 
+if test "$ref_storage" != "files"
+then
+	skip_all="This test is ref storage backend-specific"
+	test_done
+fi
+
 Z=$_z40
 
 test_expect_success setup '

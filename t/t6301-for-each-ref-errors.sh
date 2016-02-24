@@ -16,8 +16,8 @@ test_expect_success setup '
 
 test_expect_success 'Broken refs are reported correctly' '
 	r=refs/heads/bogus &&
-	: >.git/$r &&
-	test_when_finished "rm -f .git/$r" &&
+	write_ref $r '' &&
+	test_when_finished "delete_ref $r" &&
 	echo "warning: ignoring broken ref $r" >broken-err &&
 	git for-each-ref >out 2>err &&
 	test_cmp full-list out &&
@@ -26,8 +26,8 @@ test_expect_success 'Broken refs are reported correctly' '
 
 test_expect_success 'NULL_SHA1 refs are reported correctly' '
 	r=refs/heads/zeros &&
-	echo $ZEROS >.git/$r &&
-	test_when_finished "rm -f .git/$r" &&
+	write_ref $r $ZEROS &&
+	test_when_finished "delete_ref $r" &&
 	echo "warning: ignoring broken ref $r" >zeros-err &&
 	git for-each-ref >out 2>err &&
 	test_cmp full-list out &&
@@ -39,8 +39,8 @@ test_expect_success 'NULL_SHA1 refs are reported correctly' '
 
 test_expect_success 'Missing objects are reported correctly' '
 	r=refs/heads/missing &&
-	echo $MISSING >.git/$r &&
-	test_when_finished "rm -f .git/$r" &&
+	write_ref $r $MISSING &&
+	test_when_finished "delete_ref $r" &&
 	echo "fatal: missing object $MISSING for $r" >missing-err &&
 	test_must_fail git for-each-ref 2>err &&
 	test_cmp missing-err err &&

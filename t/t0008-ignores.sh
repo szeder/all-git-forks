@@ -184,7 +184,7 @@ test_expect_success 'setup' '
 	fi &&
 	(
 		cd a/submodule &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo a >a &&
 		git add a &&
 		git commit -m"commit in submodule"

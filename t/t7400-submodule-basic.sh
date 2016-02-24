@@ -32,7 +32,7 @@ test_expect_success 'setup - repository in init subdirectory' '
 	mkdir init &&
 	(
 		cd init &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo a >a &&
 		git add a &&
 		git commit -m "submodule commit 1" &&
@@ -52,8 +52,8 @@ test_expect_success 'setup - hide init subdirectory' '
 '
 
 test_expect_success 'setup - repository to add submodules to' '
-	git init addtest &&
-	git init addtest-ignore
+	git init $ref_storage_arg addtest &&
+	git init $ref_storage_arg addtest-ignore
 '
 
 # The 'submodule add' tests need some repository to add as a submodule.
@@ -540,7 +540,7 @@ test_expect_success 'add submodules without specifying an explicit path' '
 	mkdir repo &&
 	(
 		cd repo &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo r >r &&
 		git add r &&
 		git commit -m "repo commit 1"
@@ -585,11 +585,11 @@ test_expect_success 'set up for relative path tests' '
 	mkdir reltest &&
 	(
 		cd reltest &&
-		git init &&
+		git init $ref_storage_arg &&
 		mkdir sub &&
 		(
 			cd sub &&
-			git init &&
+			git init $ref_storage_arg &&
 			test_commit foo
 		) &&
 		git add sub &&
@@ -754,7 +754,7 @@ test_expect_success '../bar/a/b/c works with relative local path - ../foo/bar.gi
 		cp pristine-.git-config .git/config &&
 		cp pristine-.gitmodules .gitmodules &&
 		mkdir -p a/b/c &&
-		(cd a/b/c; git init) &&
+		(cd a/b/c; git init $ref_storage_arg) &&
 		git config remote.origin.url ../foo/bar.git &&
 		git submodule add ../bar/a/b/c ./a/b/c &&
 		git submodule init &&
@@ -975,7 +975,7 @@ test_expect_success 'submodule with UTF-8 name' '
 	mkdir "$svname" &&
 	(
 		cd "$svname" &&
-		git init &&
+		git init $ref_storage_arg &&
 		>sub &&
 		git add sub &&
 		git commit -m "init sub"
@@ -990,7 +990,7 @@ test_expect_success 'submodule add clone shallow submodule' '
 	pwd=$(pwd) &&
 	(
 		cd super &&
-		git init &&
+		git init $ref_storage_arg &&
 		git submodule add --depth=1 file://"$pwd"/example2 submodule &&
 		(
 			cd submodule &&
@@ -1003,7 +1003,7 @@ test_expect_success 'submodule helper list is not confused by common prefixes' '
 	mkdir -p dir1/b &&
 	(
 		cd dir1/b &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo hi >testfile2 &&
 		git add . &&
 		git commit -m "test1"
@@ -1011,7 +1011,7 @@ test_expect_success 'submodule helper list is not confused by common prefixes' '
 	mkdir -p dir2/b &&
 	(
 		cd dir2/b &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo hello >testfile1 &&
 		git add .  &&
 		git commit -m "test2"

@@ -224,7 +224,7 @@ EOF
 
 test_expect_success \
     'allow empty tag email' \
-    'git mktag <tag.sig >.git/refs/tags/mytag 2>message'
+    'write_ref refs/tags/mytag $(git mktag <tag.sig 2>message)'
 
 ############################################################
 # 16. disallow spaces in tag email
@@ -352,7 +352,7 @@ EOF
 
 test_expect_success \
     'create valid tag' \
-    'git mktag <tag.sig >.git/refs/tags/mytag 2>message'
+    'write_ref refs/tags/mytag $(git mktag <tag.sig 2>message)'
 
 ############################################################
 # 25. check mytag

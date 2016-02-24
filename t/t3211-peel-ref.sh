@@ -3,6 +3,12 @@
 test_description='tests for the peel_ref optimization of packed-refs'
 . ./test-lib.sh
 
+if test "$ref_storage" = "lmdb"
+then
+	skip_all="The lmdb ref storage doesn't pack refs"
+	test_done
+fi
+
 test_expect_success 'create annotated tag in refs/tags' '
 	test_commit base &&
 	git tag -m annotated foo

@@ -7,6 +7,12 @@ test_description='Test revision walking api'
 
 . ./test-lib.sh
 
+if test "$ref_storage" != "files"
+then
+	skip_all="Alternate storage doesn't do test-revision-walking"
+	test_done
+fi
+
 cat >run_twice_expected <<-EOF
 1st
  > add b

@@ -93,12 +93,16 @@ test_expect_success 'git whatchanged -p --root' '
 
 test_expect_success 'git tag my-first-tag' '
 	git tag my-first-tag &&
-	test_cmp .git/refs/heads/master .git/refs/tags/my-first-tag
+	git rev-parse --verify refs/heads/master >expect &&
+	git rev-parse --verify refs/tags/my-first-tag >actual &&
+	test_cmp expect actual
 '
 
 test_expect_success 'git checkout -b mybranch' '
 	git checkout -b mybranch &&
-	test_cmp .git/refs/heads/master .git/refs/heads/mybranch
+	git rev-parse --verify refs/heads/master >expect &&
+	git rev-parse --verify refs/heads/mybranch >actual &&
+	test_cmp expect actual
 '
 
 cat > branch.expect <<EOF

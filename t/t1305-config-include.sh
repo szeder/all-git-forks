@@ -45,14 +45,23 @@ test_expect_success 'include options can still be examined' '
 	test_cmp expect actual
 '
 
-test_expect_success 'listing includes option and expansion' '
-	echo "[test]one = 1" >one &&
-	echo "[include]path = one" >.gitconfig &&
-	cat >expect <<-\EOF &&
+write_expected_config()
+{
+	cat <<-\EOF &&
 	include.path=one
 	test.one=1
 	EOF
+	if test "$ref_storage" != "files"
+	then
+		echo "extensions.refstorage=$ref_storage"
+	fi
+}
+
+test_expect_success 'listing includes option and expansion' '
+	echo "[test]one = 1" >one &&
+	echo "[include]path = one" >.gitconfig &&
 	git config --list >actual.full &&
+	write_expected_config >expect &&
 	grep -v ^core actual.full >actual &&
 	test_cmp expect actual
 '

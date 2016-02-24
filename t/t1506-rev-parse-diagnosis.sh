@@ -166,10 +166,18 @@ test_expect_success 'relative path when cwd is outside worktree' '
 	grep "relative path syntax can.t be used outside working tree." error
 '
 
+# This test depends on a weird test hack, "test-match-trees", which,
+# on non-files backends, will fail *before* the BUG is triggered.
+# Since the purpose of test-match-trees seems to be just to trigger
+# this bug, it's OK if we only test it under the standard
+# configuration.
+if test "$ref_storage" == "files"
+then
 test_expect_success 'relative path when startup_info is NULL' '
 	test_must_fail test-match-trees HEAD:./file.txt HEAD:./file.txt 2>error &&
 	grep "BUG: startup_info struct is not initialized." error
 '
+fi
 
 test_expect_success '<commit>:file correctly diagnosed after a pathname' '
 	test_must_fail git rev-parse file.txt HEAD:file.txt 1>actual 2>error &&
@@ -213,7 +221,7 @@ test_expect_success 'arg before dashdash must be a revision (ambiguous)' '
 	{
 		# we do not want to use rev-parse here, because
 		# we are testing it
-		cat .git/refs/heads/foobar &&
+		raw_ref refs/heads/foobar &&
 		printf "%s\n" --
 	} >expect &&
 	git rev-parse foobar -- >actual &&

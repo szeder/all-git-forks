@@ -6,6 +6,12 @@
 test_description='Test prune and reflog expiration'
 . ./test-lib.sh
 
+if test "$ref_storage" != "files"
+then
+	skip_all="This test is ref storage backend-specific"
+	test_done
+fi
+
 check_have () {
 	gaah= &&
 	for N in "$@"
