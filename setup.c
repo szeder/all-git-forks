@@ -457,6 +457,13 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 		ret = -1;
 	}
 
+	if (ret == 0) {
+		register_ref_storage_backends();
+		if (set_ref_storage_backend(ref_storage_backend))
+			die(_("Unknown ref storage backend %s"),
+			    ref_storage_backend);
+	}
+
 	strbuf_release(&sb);
 	return ret;
 }
