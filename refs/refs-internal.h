@@ -230,6 +230,13 @@ int do_for_each_per_worktree_ref(const char *submodule, const char *base,
 				 each_ref_fn fn, int trim, int flags,
 				 void *cb_data);
 
+
+const char *resolve_ref_unsafe_submodule(const char *submodule,
+					 const char *refname,
+					 int resolve_flags,
+					 unsigned char *sha1,
+					 int *flags);
+
 /* refs backends */
 typedef int ref_init_db_fn(int shared, struct strbuf *err);
 typedef int ref_transaction_commit_fn(struct ref_transaction *transaction,
@@ -266,8 +273,9 @@ typedef int rename_ref_fn(const char *oldref, const char *newref,
 			  const char *logmsg);
 
 /* resolution methods */
-typedef int read_raw_ref_fn(const char *refname, unsigned char *sha1,
-			    struct strbuf *symref, unsigned int *flags);
+typedef int read_raw_ref_fn(const char *submodule, const char *refname,
+			    unsigned char *sha1, struct strbuf *symref,
+			    unsigned int *flags);
 typedef int verify_refname_available_fn(const char *refname, struct string_list *extra, struct string_list *skip, struct strbuf *err);
 typedef int resolve_gitlink_ref_fn(const char *path, const char *refname,
 				   unsigned char *sha1);
@@ -304,5 +312,9 @@ struct ref_storage_be {
 };
 
 extern struct ref_storage_be refs_be_files;
+
+#ifdef USE_LIBLMDB
+extern struct ref_storage_be refs_be_lmdb;
+#endif
 
 #endif /* REFS_REFS_INTERNAL_H */
