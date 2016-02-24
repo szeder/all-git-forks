@@ -1157,3 +1157,107 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 	return do_for_each_ref(NULL, "", fn, 0,
 			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
 }
+/* This function needs to return a meaningful errno on failure */
+static const char *resolve_ref_1(const char *refname,
+				 int resolve_flags,
+				 unsigned char *sha1,
+				 int *flags,
+				 struct strbuf *sb_refname,
+				 struct strbuf *sb_path)
+{
+	int bad_name = 0;
+	int symref_count;
+
+	if (flags)
+		*flags = 0;
+
+	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
+		if (flags)
+			*flags |= REF_BAD_NAME;
+
+		if (!(resolve_flags & RESOLVE_REF_ALLOW_BAD_NAME) ||
+		    !refname_is_safe(refname)) {
+			errno = EINVAL;
+			return NULL;
+		}
+		/*
+		 * dwim_ref() uses REF_ISBROKEN to distinguish between
+		 * missing refs and refs that were present but invalid,
+		 * to complain about the latter to stderr.
+		 *
+		 * We don't know whether the ref exists, so don't set
+		 * REF_ISBROKEN yet.
+		 */
+		bad_name = 1;
+	}
+
+	for (symref_count = 0; symref_count < SYMREF_MAXDEPTH; symref_count++) {
+		unsigned int read_flags = 0;
+
+		if (read_raw_ref(refname, sha1, sb_refname, sb_path, &read_flags)) {
+			int saved_errno = errno;
+			if (flags)
+				*flags |= read_flags;
+			errno = saved_errno;
+			if (bad_name) {
+				hashclr(sha1);
+				if (flags)
+					*flags |= REF_ISBROKEN;
+			}
+			if (resolve_flags & RESOLVE_REF_READING || errno != ENOENT) {
+				return NULL;
+			} else {
+				hashclr(sha1);
+				return refname;
+			}
+		}
+		if (flags)
+			*flags |= read_flags;
+
+		if (!(read_flags & REF_ISSYMREF)) {
+			if (bad_name) {
+				hashclr(sha1);
+				if (flags)
+					*flags |= REF_ISBROKEN;
+			}
+			return refname;
+		}
+
+		refname = sb_refname->buf;
+		if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
+			hashclr(sha1);
+			if (bad_name && flags)
+				*flags |= REF_ISBROKEN;
+			return refname;
+		}
+
+		if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
+			if (flags)
+				*flags |= REF_ISBROKEN;
+			if (!(resolve_flags & RESOLVE_REF_ALLOW_BAD_NAME) ||
+			    !refname_is_safe(refname)) {
+				errno = EINVAL;
+				return NULL;
+			}
+			bad_name = 1;
+		}
+	}
+
+	if (flags)
+		*flags |= REF_ISBROKEN;
+	return NULL;
+}
+
+const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
+			       unsigned char *sha1, int *flags)
+{
+	static struct strbuf sb_refname = STRBUF_INIT;
+	struct strbuf sb_path = STRBUF_INIT;
+	const char *ret;
+
+	ret = resolve_ref_1(refname, resolve_flags, sha1, flags,
+			    &sb_refname, &sb_path);
+
+	strbuf_release(&sb_path);
+	return ret;
+}
