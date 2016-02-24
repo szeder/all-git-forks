@@ -218,6 +218,7 @@ int do_for_each_per_worktree_ref(const char *submodule, const char *base,
 /* refs backends */
 typedef int ref_init_db_fn(struct strbuf *err);
 typedef int ref_transaction_commit_fn(struct ref_transaction *transaction,
+				      struct string_list *affected_refnames,
 				      struct strbuf *err);
 
 /* reflog functions */
