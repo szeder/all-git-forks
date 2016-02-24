@@ -442,8 +442,14 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	}
 
 	repository_format_precious_objects = candidate.precious_objects;
-	if (candidate.ref_storage_backend)
+	if (candidate.ref_storage_backend) {
+		register_ref_storage_backends();
 		ref_storage_backend = candidate.ref_storage_backend;
+		if (set_ref_storage_backend(ref_storage_backend))
+			die(_("Unknown ref storage backend %s"),
+			    ref_storage_backend);
+	}
+
 	string_list_clear(&candidate.unknown_extensions, 0);
 	if (!has_common) {
 		if (candidate.is_bare != -1) {
