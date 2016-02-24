@@ -1307,16 +1307,20 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
 }
 
-static int read_raw_ref(const char *refname, unsigned char *sha1,
-			struct strbuf *symref, unsigned int *flags)
+static int read_raw_ref(const char *submodule, const char *refname,
+			unsigned char *sha1, struct strbuf *symref,
+			unsigned int *flags)
 {
-	return the_refs_backend->read_raw_ref(refname, sha1, symref,
-					      flags);
+	return the_refs_backend->read_raw_ref(submodule, refname, sha1,
+					      symref, flags);
 }
 
 /* This function needs to return a meaningful errno on failure */
-const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
-			       unsigned char *sha1, int *flags)
+const char *resolve_ref_unsafe_submodule(const char *submodule,
+					 const char *refname,
+					 int resolve_flags,
+					 unsigned char *sha1,
+					 int *flags)
 {
 	static struct strbuf sb_refname = STRBUF_INIT;
 	int unused_flags;
@@ -1348,7 +1352,7 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 	for (symref_count = 0; symref_count < SYMREF_MAXDEPTH; symref_count++) {
 		unsigned int read_flags = 0;
 
-		if (read_raw_ref(refname, sha1, &sb_refname, &read_flags)) {
+		if (read_raw_ref(submodule, refname, sha1, &sb_refname, &read_flags)) {
 			*flags |= read_flags;
 			if (errno != ENOENT || (resolve_flags & RESOLVE_REF_READING))
 				return NULL;
@@ -1386,6 +1390,13 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 
 	errno = ELOOP;
 	return NULL;
+}
+
+const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
+			       unsigned char *sha1, int *flags)
+{
+	return resolve_ref_unsafe_submodule(NULL, refname, resolve_flags,
+					    sha1, flags);
 }
 
 /* backend functions */

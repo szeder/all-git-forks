@@ -1418,7 +1418,8 @@ static int resolve_missing_loose_ref(const char *refname,
  * - in all other cases, symref will be untouched, and therefore
  *   refname will still be valid and unchanged.
  */
-static int files_read_raw_ref(const char *refname, unsigned char *sha1,
+static int files_read_raw_ref(const char *submodule,
+			      const char *refname, unsigned char *sha1,
 			      struct strbuf *symref, unsigned int *flags)
 {
 	struct strbuf sb_contents = STRBUF_INIT;
@@ -1431,7 +1432,10 @@ static int files_read_raw_ref(const char *refname, unsigned char *sha1,
 	int save_errno;
 
 	strbuf_reset(&sb_path);
-	strbuf_git_path(&sb_path, "%s", refname);
+	if (submodule)
+		strbuf_git_path_submodule(&sb_path, submodule, "%s", refname);
+	else
+		strbuf_git_path(&sb_path, "%s", refname);
 	path = sb_path.buf;
 
 stat_ref:
