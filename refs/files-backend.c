@@ -560,6 +560,10 @@ static int do_one_ref(struct ref_entry *entry, void *cb_data)
 	struct ref_entry *old_current_ref;
 	int retval;
 
+	if (data->flags & DO_FOR_EACH_PER_WORKTREE_ONLY &&
+	    ref_type(entry->name) != REF_TYPE_PER_WORKTREE)
+		return 0;
+
 	if (!starts_with(entry->name, data->base))
 		return 0;
 
@@ -1694,6 +1698,18 @@ static int files_do_for_each_ref(const char *submodule, const char *base,
 		data.flags |= DO_FOR_EACH_INCLUDE_BROKEN;
 
 	return do_for_each_entry(refs, base, do_one_ref, &data);
+}
+
+int do_for_each_per_worktree_ref(const char *submodule, const char *base,
+				 each_ref_fn fn, int trim, int flags,
+				 void *cb_data)
+{
+	/*
+	 * It's important that this one use the files backend, since
+	 *  that's what controls the per-worktree refs
+	 */
+	return files_do_for_each_ref(submodule, base, fn, trim,
+				     flags | DO_FOR_EACH_PER_WORKTREE_ONLY, cb_data);
 }
 
 static void unlock_ref(struct ref_lock *lock)
