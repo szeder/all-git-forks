@@ -313,4 +313,8 @@ struct ref_storage_be {
 
 extern struct ref_storage_be refs_be_files;
 
+#ifdef USE_LIBLMDB
+extern struct ref_storage_be refs_be_lmdb;
+#endif
+
 #endif /* REFS_REFS_INTERNAL_H */
