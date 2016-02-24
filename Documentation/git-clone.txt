@@ -235,7 +235,8 @@ objects from the source repository into a pack in the cloned repository.
 
 --ref-storage=<name>::
 	Type of ref storage backend. Default is to use the original files
-	based ref storage.
+	based ref storage. Set to "lmdb" to store refs in the LMDB database
+	backend.
 
 <repository>::
 	The (possibly remote) repository to clone from.  See the
