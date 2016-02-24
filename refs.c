@@ -10,6 +10,38 @@
 #include "tag.h"
 
 /*
+ * We always have a files backend and it is the default.
+ */
+static struct ref_storage_be *the_refs_backend = &refs_be_files;
+/*
+ * List of all available backends
+ */
+static struct ref_storage_be *refs_backends = &refs_be_files;
+
+static struct ref_storage_be *find_ref_storage_backend(const char *name)
+{
+	struct ref_storage_be *be;
+	for (be = refs_backends; be; be = be->next)
+		if (!strcmp(be->name, name))
+			return be;
+	return NULL;
+}
+
+int set_ref_storage_backend(const char *name)
+{
+	struct ref_storage_be *be = find_ref_storage_backend(name);
+	if (!be)
+		return -1;
+	the_refs_backend = be;
+	return 0;
+}
+
+int ref_storage_backend_exists(const char *name)
+{
+	return find_ref_storage_backend(name) != NULL;
+}
+
+/*
  * How to handle various characters in refnames:
  * 0: An acceptable character for refs
  * 1: End-of-component
@@ -1234,4 +1266,11 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 
 	errno = ELOOP;
 	return NULL;
+}
+
+/* backend functions */
+int ref_transaction_commit(struct ref_transaction *transaction,
+			   struct strbuf *err)
+{
+	return the_refs_backend->transaction_commit(transaction, err);
 }
