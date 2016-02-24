@@ -28,6 +28,9 @@ git_dir=$(cd "$orig_git" 2>/dev/null &&
   git rev-parse --git-dir 2>/dev/null) ||
   die "Not a git repository: \"$orig_git\""
 
+ref_storage=$(git config extensions.refstorage || echo "files")
+test "$ref_storage" != "files" && die "git-new-workdir is incompatible with ref storage other than 'files'"
+
 case "$git_dir" in
 .git)
 	git_dir="$orig_git/.git"
