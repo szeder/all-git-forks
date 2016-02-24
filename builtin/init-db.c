@@ -220,6 +220,7 @@ static int create_default_files(const char *template_path)
 			      requested_ref_storage_backend);
 	}
 
+	register_ref_storage_backends();
 	if (requested_ref_storage_backend)
 		ref_storage_backend = requested_ref_storage_backend;
 	if (strcmp(ref_storage_backend, "files")) {
@@ -501,6 +502,8 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 	};
 
 	argc = parse_options(argc, argv, prefix, init_db_options, init_db_usage, 0);
+
+	register_ref_storage_backends();
 
 	if (requested_ref_storage_backend &&
 	    !ref_storage_backend_exists(requested_ref_storage_backend))
