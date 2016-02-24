@@ -252,6 +252,10 @@ static int handle_alias(int *argcp, const char ***argv)
 
 			alias_string++;
 			commit_pager_choice();
+			if (*alias_string == '!') {
+				keep_cwd = 0;
+				alias_string++;
+			}
 			restore_env(keep_cwd);
 
 			child.use_shell = 1;
