@@ -534,4 +534,6 @@ int set_ref_storage_backend(const char *name);
 
 int ref_storage_backend_exists(const char *name);
 
+void register_ref_storage_backends(void);
+
 #endif /* REFS_H */
