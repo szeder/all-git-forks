@@ -1380,5 +1380,15 @@ int delete_refs(struct string_list *refnames)
 
 int rename_ref(const char *oldref, const char *newref, const char *logmsg)
 {
-	return the_refs_backend->rename_ref(oldref, newref, logmsg);
+	if ((ref_type(oldref) == REF_TYPE_NORMAL) !=
+	    (ref_type(newref) == REF_TYPE_NORMAL)) {
+		return error(
+			_("Both ref arguments to rename_ref must be normal, "
+			  "or both must be per-worktree/pseudorefs"));
+	}
+	if (ref_type(oldref) == REF_TYPE_NORMAL)
+		/* The files backend always deals with non-normal refs */
+		return the_refs_backend->rename_ref(oldref, newref, logmsg);
+	else
+		return refs_be_files.rename_ref(oldref, newref, logmsg);
 }
