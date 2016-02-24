@@ -897,6 +897,7 @@ struct parallel_processes {
 	struct pollfd *pfd;
 
 	unsigned shutdown : 1;
+	unsigned ended_with_newline: 1;
 
 	int output_owner;
 	struct strbuf buffered_output; /* of finished children */
@@ -979,6 +980,7 @@ static void pp_init(struct parallel_processes *pp,
 	pp->nr_processes = 0;
 	pp->output_owner = 0;
 	pp->shutdown = 0;
+	pp->ended_with_newline = 1;
 	pp->children = xcalloc(n, sizeof(*pp->children));
 	pp->pfd = xcalloc(n, sizeof(*pp->pfd));
 	strbuf_init(&pp->buffered_output, 0);
@@ -1053,6 +1055,7 @@ static int pp_start_one(struct parallel_processes *pp)
 					 pp->data,
 					 &pp->children[i].data);
 		strbuf_addbuf(&pp->buffered_output, &pp->children[i].err);
+		strbuf_addch(&pp->buffered_output, '\n');
 		strbuf_reset(&pp->children[i].err);
 		if (code)
 			pp->shutdown = 1;
@@ -1095,9 +1098,11 @@ static void pp_buffer_stderr(struct parallel_processes *pp, int output_timeout)
 static void pp_output(struct parallel_processes *pp)
 {
 	int i = pp->output_owner;
-	if (pp->children[i].state == GIT_CP_WORKING &&
-	    pp->children[i].err.len) {
+	size_t len = pp->children[i].err.len;
+	if (pp->children[i].state == GIT_CP_WORKING && len) {
 		fputs(pp->children[i].err.buf, stderr);
+		pp->ended_with_newline =
+			(pp->children[i].err.buf[len - 1] == '\n');
 		strbuf_reset(&pp->children[i].err);
 	}
 }
@@ -1107,6 +1112,7 @@ static int pp_collect_finished(struct parallel_processes *pp)
 	int i, code;
 	int n = pp->max_processes;
 	int result = 0;
+	ssize_t len;
 
 	while (pp->nr_processes > 0) {
 		for (i = 0; i < pp->max_processes; i++)
@@ -1131,12 +1137,19 @@ static int pp_collect_finished(struct parallel_processes *pp)
 		pp->pfd[i].fd = -1;
 		child_process_init(&pp->children[i].process);
 
+		len = pp->children[i].err.len - 1;
+		if (len >= 0 && pp->children[i].err.buf[len] != '\n')
+			strbuf_addch(&pp->children[i].err, '\n');
+
 		if (i != pp->output_owner) {
 			strbuf_addbuf(&pp->buffered_output, &pp->children[i].err);
 			strbuf_reset(&pp->children[i].err);
 		} else {
+			if (len == -1 && !pp->ended_with_newline)
+				strbuf_addch(&pp->children[i].err, '\n');
 			fputs(pp->children[i].err.buf, stderr);
 			strbuf_reset(&pp->children[i].err);
+			pp->ended_with_newline = 1;
 
 			/* Output all other finished child processes */
 			fputs(pp->buffered_output.buf, stderr);

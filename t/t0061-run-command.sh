@@ -77,6 +77,32 @@ test_expect_success 'run_command runs in parallel with more tasks than jobs avai
 	test_cmp expect actual
 '
 
+test_expect_success 'run_command ensures each command ends in LF' '
+	test-run-command run-command-parallel 3 sh -c "printf \"%s\n%s\" Hello World" 2>actual &&
+	test_cmp expect actual
+'
+
+cat >expect <<-EOF
+preloaded output of a child
+preloaded output of a child
+preloaded output of a child
+preloaded output of a child
+EOF
+
+test_expect_success 'run_command ensures each command ends in LF when output is only in starting cb' '
+	test-run-command run-command-parallel 3 sh -c true  2>actual &&
+	test_cmp expect actual
+'
+
+cat >expect <<-EOF
+EOF
+
+test_expect_success 'run_command ensures each command ends in LF except when there is no output' '
+	test-run-command run-command-parallel-silent 3 sh -c true  2>actual &&
+	test_cmp expect actual
+'
+
+
 cat >expect <<-EOF
 preloaded output of a child
 asking for a quick stop
