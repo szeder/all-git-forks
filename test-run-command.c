@@ -31,6 +31,20 @@ static int parallel_next(struct child_process *cp,
 	return 1;
 }
 
+static int parallel_next_silent(struct child_process *cp,
+			 struct strbuf *err,
+			 void *cb,
+			 void **task_cb)
+{
+	struct child_process *d = cb;
+	if (number_callbacks >= 4)
+		return 0;
+
+	argv_array_pushv(&cp->args, d->argv);
+	number_callbacks++;
+	return 1;
+}
+
 static int no_job(struct child_process *cp,
 		  struct strbuf *err,
 		  void *cb,
@@ -70,6 +84,10 @@ int main(int argc, char **argv)
 
 	jobs = atoi(argv[2]);
 	proc.argv = (const char **)argv + 3;
+
+	if (!strcmp(argv[1], "run-command-parallel-silent"))
+		exit(run_processes_parallel(jobs, parallel_next_silent,
+					    NULL, NULL, &proc));
 
 	if (!strcmp(argv[1], "run-command-parallel"))
 		exit(run_processes_parallel(jobs, parallel_next,
