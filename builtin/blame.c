@@ -196,7 +196,7 @@ static void fill_origin_blob(struct diff_options *opt,
 		file->size = file_size;
 
 		if (!file->ptr)
-			die("Cannot read blob %s for path %s",
+			die(_("Cannot read blob %s for path %s"),
 			    sha1_to_hex(o->blob_sha1),
 			    o->path);
 		o->file = *file;
@@ -981,7 +981,7 @@ static void pass_blame_to_parent(struct scoreboard *sb,
 	num_get_patch++;
 
 	if (diff_hunks(&file_p, &file_o, 0, blame_chunk_cb, &d))
-		die("unable to generate diff (%s -> %s)",
+		die(_("unable to generate diff (%s -> %s)"),
 		    oid_to_hex(&parent->commit->object.oid),
 		    oid_to_hex(&target->commit->object.oid));
 	/* The rest are the same as the parent */
@@ -1130,7 +1130,7 @@ static void find_copy_in_blob(struct scoreboard *sb,
 	 */
 	memset(split, 0, sizeof(struct blame_entry [3]));
 	if (diff_hunks(file_p, &file_o, 1, handle_split_cb, &d))
-		die("unable to generate diff (%s)",
+		die(_("unable to generate diff (%s)"),
 		    oid_to_hex(&parent->commit->object.oid));
 	/* remainder, if any, all match the preimage */
 	handle_split(sb, ent, d.tlno, d.plno, ent->num_lines, parent, split);
@@ -2240,7 +2240,7 @@ static void verify_working_tree_path(struct commit *work_tree, const char *path)
 		    sha1_object_info(blob_sha1, NULL) == OBJ_BLOB)
 			return;
 	}
-	die("no such path '%s' in HEAD", path);
+	die(_("no such path '%s' in HEAD"), path);
 }
 
 static struct commit_list **append_parent(struct commit_list **tail, const unsigned char *sha1)
@@ -2249,7 +2249,7 @@ static struct commit_list **append_parent(struct commit_list **tail, const unsig
 
 	parent = lookup_commit_reference(sha1);
 	if (!parent)
-		die("no such commit %s", sha1_to_hex(sha1));
+		die(_("no such commit %s"), sha1_to_hex(sha1));
 	return &commit_list_insert(parent, tail)->next;
 }
 
@@ -2262,13 +2262,13 @@ static void append_merge_parents(struct commit_list **tail)
 	if (merge_head < 0) {
 		if (errno == ENOENT)
 			return;
-		die("cannot open '%s' for reading", git_path_merge_head());
+		die(_("cannot open '%s' for reading"), git_path_merge_head());
 	}
 
 	while (!strbuf_getwholeline_fd(&line, merge_head, '\n')) {
 		unsigned char sha1[20];
 		if (line.len < 40 || get_sha1_hex(line.buf, sha1))
-			die("unknown line in '%s': %s", git_path_merge_head(), line.buf);
+			die(_("unknown line in '%s': %s"), git_path_merge_head(), line.buf);
 		tail = append_parent(tail, sha1);
 	}
 	close(merge_head);
@@ -2314,7 +2314,7 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	parent_tail = &commit->parents;
 
 	if (!resolve_ref_unsafe("HEAD", RESOLVE_REF_READING, head_sha1, NULL))
-		die("no such ref: HEAD");
+		die(_("no such ref: HEAD"));
 
 	parent_tail = append_parent(parent_tail, head_sha1);
 	append_merge_parents(parent_tail);
@@ -2344,12 +2344,12 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 
 		if (contents_from) {
 			if (stat(contents_from, &st) < 0)
-				die_errno("Cannot stat '%s'", contents_from);
+				die_errno(_("Cannot stat '%s'"), contents_from);
 			read_from = contents_from;
 		}
 		else {
 			if (lstat(path, &st) < 0)
-				die_errno("Cannot lstat '%s'", path);
+				die_errno(_("Cannot lstat '%s'"), path);
 			read_from = path;
 		}
 		mode = canon_mode(st.st_mode);
@@ -2360,21 +2360,21 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 			    textconv_object(read_from, mode, null_sha1, 0, &buf_ptr, &buf_len))
 				strbuf_attach(&buf, buf_ptr, buf_len, buf_len + 1);
 			else if (strbuf_read_file(&buf, read_from, st.st_size) != st.st_size)
-				die_errno("cannot open or read '%s'", read_from);
+				die_errno(_("cannot open or read '%s'"), read_from);
 			break;
 		case S_IFLNK:
 			if (strbuf_readlink(&buf, read_from, st.st_size) < 0)
-				die_errno("cannot readlink '%s'", read_from);
+				die_errno(_("cannot readlink '%s'"), read_from);
 			break;
 		default:
-			die("unsupported file type %s", read_from);
+			die(_("unsupported file type %s"), read_from);
 		}
 	}
 	else {
 		/* Reading from stdin */
 		mode = 0;
 		if (strbuf_read(&buf, 0, 0) < 0)
-			die_errno("failed to read from stdin");
+			die_errno(_("failed to read from stdin"));
 	}
 	convert_to_git(path, buf.buf, buf.len, &buf, 0);
 	origin->file.ptr = buf.buf;
@@ -2427,9 +2427,9 @@ static struct commit *find_single_final(struct rev_info *revs,
 		while (obj->type == OBJ_TAG)
 			obj = deref_tag(obj, NULL, 0);
 		if (obj->type != OBJ_COMMIT)
-			die("Non commit %s?", revs->pending.objects[i].name);
+			die(_("Non commit %s?"), revs->pending.objects[i].name);
 		if (found)
-			die("More than one commit to dig from %s and %s?",
+			die(_("More than one commit to dig from %s and %s?"),
 			    revs->pending.objects[i].name, name);
 		found = (struct commit *)obj;
 		name = revs->pending.objects[i].name;
@@ -2463,16 +2463,16 @@ static char *prepare_initial(struct scoreboard *sb)
 		while (obj->type == OBJ_TAG)
 			obj = deref_tag(obj, NULL, 0);
 		if (obj->type != OBJ_COMMIT)
-			die("Non commit %s?", revs->pending.objects[i].name);
+			die(_("Non commit %s?"), revs->pending.objects[i].name);
 		if (sb->final)
-			die("More than one commit to dig down to %s and %s?",
+			die(_("More than one commit to dig down to %s and %s?"),
 			    revs->pending.objects[i].name,
 			    final_commit_name);
 		sb->final = (struct commit *) obj;
 		final_commit_name = revs->pending.objects[i].name;
 	}
 	if (!final_commit_name)
-		die("No commit to dig down to?");
+		die(_("No commit to dig down to?"));
 	return xstrdup(final_commit_name);
 }
 
@@ -2594,7 +2594,7 @@ parse_done:
 
 	if (incremental || (output_option & OUTPUT_PORCELAIN)) {
 		if (show_progress > 0)
-			die("--progress can't be used with --incremental or porcelain formats");
+			die(_("--progress can't be used with --incremental or porcelain formats"));
 		show_progress = 0;
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
@@ -2604,7 +2604,7 @@ parse_done:
 		abbrev++;
 
 	if (revs_file && read_ancestry(revs_file))
-		die_errno("reading graft file '%s' failed", revs_file);
+		die_errno(_("reading graft file '%s' failed"), revs_file);
 
 	if (cmd_is_annotate) {
 		output_option |= OUTPUT_ANNOTATE_COMPAT;
@@ -2704,7 +2704,7 @@ parse_done:
 
 		setup_work_tree();
 		if (!file_exists(path))
-			die_errno("cannot stat path '%s'", path);
+			die_errno(_("cannot stat path '%s'"), path);
 	}
 
 	revs.disable_stdin = 1;
@@ -2717,7 +2717,7 @@ parse_done:
 		sb.commits.compare = compare_commits_by_commit_date;
 	}
 	else if (contents_from)
-		die("--contents and --reverse do not blend well.");
+		die(_("--contents and --reverse do not blend well."));
 	else {
 		final_commit_name = prepare_initial(&sb);
 		sb.commits.compare = compare_commits_by_reverse_commit_date;
@@ -2737,12 +2737,12 @@ parse_done:
 		add_pending_object(&revs, &(sb.final->object), ":");
 	}
 	else if (contents_from)
-		die("Cannot use --contents with final commit object name");
+		die(_("Cannot use --contents with final commit object name"));
 
 	if (reverse && revs.first_parent_only) {
 		final_commit = find_single_final(sb.revs, NULL);
 		if (!final_commit)
-			die("--reverse and --first-parent together require specified latest commit");
+			die(_("--reverse and --first-parent together require specified latest commit"));
 	}
 
 	/*
@@ -2769,7 +2769,7 @@ parse_done:
 		}
 
 		if (oidcmp(&c->object.oid, &sb.final->object.oid))
-			die("--reverse --first-parent together require range along first-parent chain");
+			die(_("--reverse --first-parent together require range along first-parent chain"));
 	}
 
 	if (is_null_oid(&sb.final->object.oid)) {
@@ -2780,7 +2780,7 @@ parse_done:
 	else {
 		o = get_origin(&sb, sb.final, path);
 		if (fill_blob_sha1_and_mode(o))
-			die("no such path %s in %s", path, final_commit_name);
+			die(_("no such path %s in %s"), path, final_commit_name);
 
 		if (DIFF_OPT_TST(&sb.revs->diffopt, ALLOW_TEXTCONV) &&
 		    textconv_object(path, o->mode, o->blob_sha1, 1, (char **) &sb.final_buf,
@@ -2791,7 +2791,7 @@ parse_done:
 						      &sb.final_buf_size);
 
 		if (!sb.final_buf)
-			die("Cannot read blob %s for path %s",
+			die(_("Cannot read blob %s for path %s"),
 			    sha1_to_hex(o->blob_sha1),
 			    path);
 	}
@@ -2810,7 +2810,7 @@ parse_done:
 				    &bottom, &top, sb.path))
 			usage(blame_usage);
 		if (lno < top || ((lno || bottom) && lno < bottom))
-			die("file %s has only %lu lines", path, lno);
+			die(_("file %s has only %lu lines"), path, lno);
 		if (bottom < 1)
 			bottom = 1;
 		if (top < 1)
