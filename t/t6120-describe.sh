@@ -128,7 +128,8 @@ test_expect_success 'no warning was displayed for A' '
 '
 
 test_expect_success 'rename tag A to Q locally' '
-	mv .git/refs/tags/A .git/refs/tags/Q
+	write_ref refs/tags/Q $(raw_ref refs/tags/A) &&
+	delete_ref refs/tags/A
 '
 cat - >err.expect <<EOF
 warning: tag 'A' is really 'Q' here
@@ -138,7 +139,8 @@ test_expect_success 'warning was displayed for Q' '
 	test_i18ncmp err.expect err.actual
 '
 test_expect_success 'rename tag Q back to A' '
-	mv .git/refs/tags/Q .git/refs/tags/A
+	write_ref refs/tags/A $(raw_ref refs/tags/Q) &&
+	delete_ref refs/tags/Q
 '
 
 test_expect_success 'pack tag refs' 'git pack-refs'

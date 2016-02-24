@@ -7,6 +7,12 @@ test_description='Test repository version check'
 
 . ./test-lib.sh
 
+if test "$ref_storage" != "files"
+then
+	skip_all="Alternate ref storage sets core.repositoryformatversion=1"
+	test_done
+fi
+
 test_expect_success 'setup' '
 	cat >test.patch <<-\EOF &&
 	diff --git a/test.txt b/test.txt

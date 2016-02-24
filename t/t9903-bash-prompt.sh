@@ -148,6 +148,7 @@ test_expect_success 'prompt - inside .git directory' '
 test_expect_success 'prompt - deep inside .git directory' '
 	printf " (GIT_DIR!)" >expected &&
 	(
+		mkdir -p .git/refs/heads &&
 		cd .git/refs/heads &&
 		__git_ps1 >"$actual"
 	) &&
