@@ -13,7 +13,7 @@ test_expect_success setup '
 	git add file &&
 	test_tick &&
 	git commit -m initial &&
-	git clone . submodule &&
+	git clone $ref_storage_arg . submodule &&
 	git add submodule &&
 	test_tick &&
 	git commit -m submodule &&

@@ -431,7 +431,7 @@ test_expect_success 'nested git work tree' '
 	mkdir -p foo bar baz/boo &&
 	(
 		cd foo &&
-		git init &&
+		git init $ref_storage_arg &&
 		test_commit nested hello.world
 	) &&
 	(
@@ -440,7 +440,7 @@ test_expect_success 'nested git work tree' '
 	) &&
 	(
 		cd baz/boo &&
-		git init &&
+		git init $ref_storage_arg &&
 		test_commit deeply.nested deeper.world
 	) &&
 	git clean -f -d &&
@@ -455,6 +455,7 @@ test_expect_success 'should clean things that almost look like git but are not' 
 	rm -fr almost_git almost_bare_git almost_submodule &&
 	mkdir -p almost_git/.git/objects &&
 	mkdir -p almost_git/.git/refs &&
+	mkdir -p almost_git/.git/refs.lmdb &&
 	cat >almost_git/.git/HEAD <<-\EOF &&
 	garbage
 	EOF
@@ -475,7 +476,7 @@ test_expect_success 'should not clean submodules' '
 	mkdir repo to_clean &&
 	(
 		cd repo &&
-		git init &&
+		git init $ref_storage_arg &&
 		test_commit msg hello.world
 	) &&
 	git submodule add ./repo/.git sub1 &&
@@ -511,7 +512,7 @@ test_expect_success POSIXPERM 'should avoid cleaning possible submodules' '
 
 test_expect_success 'nested (empty) git should be kept' '
 	rm -fr empty_repo to_clean &&
-	git init empty_repo &&
+	git init $ref_storage_arg empty_repo &&
 	mkdir to_clean &&
 	>to_clean/should_clean.this &&
 	git clean -f -d &&
@@ -521,7 +522,7 @@ test_expect_success 'nested (empty) git should be kept' '
 
 test_expect_success 'nested bare repositories should be cleaned' '
 	rm -fr bare1 bare2 subdir &&
-	git init --bare bare1 &&
+	git init $ref_storage_arg --bare bare1 &&
 	git clone --local --bare . bare2 &&
 	mkdir subdir &&
 	cp -r bare2 subdir/bare3 &&
@@ -534,7 +535,7 @@ test_expect_success 'nested bare repositories should be cleaned' '
 test_expect_failure 'nested (empty) bare repositories should be cleaned even when in .git' '
 	rm -fr strange_bare &&
 	mkdir strange_bare &&
-	git init --bare strange_bare/.git &&
+	git init $ref_storage_arg --bare strange_bare/.git &&
 	git clean -f -d &&
 	test_path_is_missing strange_bare
 '
@@ -552,7 +553,7 @@ test_expect_success 'giving path in nested git work tree will remove it' '
 	mkdir repo &&
 	(
 		cd repo &&
-		git init &&
+		git init $ref_storage_arg &&
 		mkdir -p bar/baz &&
 		test_commit msg bar/baz/hello.world
 	) &&
@@ -567,7 +568,7 @@ test_expect_success 'giving path to nested .git will not remove it' '
 	mkdir repo untracked &&
 	(
 		cd repo &&
-		git init &&
+		git init $ref_storage_arg &&
 		test_commit msg hello.world
 	) &&
 	git clean -f -d repo/.git &&
@@ -582,7 +583,7 @@ test_expect_success 'giving path to nested .git/ will remove contents' '
 	mkdir repo untracked &&
 	(
 		cd repo &&
-		git init &&
+		git init $ref_storage_arg &&
 		test_commit msg hello.world
 	) &&
 	git clean -f -d repo/.git/ &&
@@ -596,7 +597,7 @@ test_expect_success 'force removal of nested git work tree' '
 	mkdir -p foo bar baz/boo &&
 	(
 		cd foo &&
-		git init &&
+		git init $ref_storage_arg &&
 		test_commit nested hello.world
 	) &&
 	(
@@ -605,7 +606,7 @@ test_expect_success 'force removal of nested git work tree' '
 	) &&
 	(
 		cd baz/boo &&
-		git init &&
+		git init $ref_storage_arg &&
 		test_commit deeply.nested deeper.world
 	) &&
 	git clean -f -f -d &&
@@ -619,7 +620,7 @@ test_expect_success 'git clean -e' '
 	mkdir repo &&
 	(
 		cd repo &&
-		git init &&
+		git init $ref_storage_arg &&
 		touch known 1 2 3 &&
 		git add known &&
 		git clean -f -e 1 -e 2 &&
