@@ -23,6 +23,8 @@ static struct ref_storage_be *the_refs_backend = &refs_be_files;
  */
 static struct ref_storage_be *refs_backends = &refs_be_files;
 
+const char *ref_storage_backend = "files";
+
 static struct ref_storage_be *find_ref_storage_backend(const char *name)
 {
 	struct ref_storage_be *be;

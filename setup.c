@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "dir.h"
+#include "refs.h"
 #include "string-list.h"
 
 static int inside_git_dir = -1;
@@ -261,6 +262,15 @@ int get_common_dir_noenv(struct strbuf *sb, const char *gitdir)
 	return ret;
 }
 
+int ref_storage_backend_config(const char *var, const char *value, void *ptr)
+{
+	const char **cdata = ptr;
+
+	if (!strcmp(var, "extensions.refstorage"))
+		return git_config_string(cdata, var, value);
+	return 0;
+}
+
 /*
  * Test if it looks like we're at a git directory.
  * We want to see:
@@ -388,6 +398,8 @@ static int check_repo_format(const char *var, const char *value, void *cb)
 			;
 		else if (!strcmp(ext, "preciousobjects"))
 			repository_format_precious_objects = git_config_bool(var, value);
+		else if (!strcmp(ext, "refstorage"))
+			ref_storage_backend = xstrdup(value);
 		else
 			string_list_append(&unknown_extensions, ext);
 	}

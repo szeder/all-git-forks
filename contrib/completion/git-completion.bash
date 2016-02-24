@@ -1362,7 +1362,8 @@ _git_init ()
 		return
 		;;
 	--*)
-		__gitcomp "--quiet --bare --template= --shared --shared="
+		__gitcomp "--quiet --bare --template= --shared --shared=
+			--ref-storage="
 		return
 		;;
 	esac
