@@ -14,6 +14,7 @@ SYNOPSIS
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
 	  [--dissociate] [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
+	  [--ref-storage=<name>]
 	  [--recursive | --recurse-submodules] [--jobs <n>] [--] <repository>
 	  [<directory>]
 
@@ -231,6 +232,10 @@ objects from the source repository into a pack in the cloned repository.
 --jobs <n>::
 	The number of submodules fetched at the same time.
 	Defaults to the `submodule.fetchJobs` option.
+
+--ref-storage=<name>::
+	Type of ref storage backend. Default is to use the original files
+	based ref storage.
 
 <repository>::
 	The (possibly remote) repository to clone from.  See the

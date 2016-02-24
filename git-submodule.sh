@@ -545,6 +545,14 @@ cmd_update()
 		--checkout)
 			update="checkout"
 			;;
+		--ref-storage=*)
+			ref_storage="$1"
+			;;
+		--ref-storage)
+			case "$2" in '') usage ;; esac
+			ref_storage="$2"
+			shift
+			;;
 		--depth)
 			case "$2" in '') usage ;; esac
 			depth="--depth=$2"
@@ -578,6 +586,11 @@ cmd_update()
 	if test -n "$init"
 	then
 		cmd_init "--" "$@" || return
+	else
+		if test -n "$ref_storage"
+		then
+			usage
+		fi
 	fi
 
 	{
