@@ -1421,7 +1421,8 @@ static int resolve_missing_loose_ref(const char *refname,
  *
  * sb_path is workspace: the caller should allocate and free it.
  */
-static int files_read_raw_ref(const char *refname, unsigned char *sha1,
+static int files_read_raw_ref(const char *submodule,
+			      const char *refname, unsigned char *sha1,
 			      struct strbuf *symref, struct strbuf *sb_path,
 			      unsigned int *flags)
 {
@@ -1431,7 +1432,10 @@ static int files_read_raw_ref(const char *refname, unsigned char *sha1,
 	const char *buf;
 
 	strbuf_reset(sb_path);
-	strbuf_git_path(sb_path, "%s", refname);
+	if (submodule)
+		strbuf_git_path_submodule(sb_path, submodule, "%s", refname);
+	else
+		strbuf_git_path(sb_path, "%s", refname);
 	path = sb_path->buf;
 
 	for (;;) {
