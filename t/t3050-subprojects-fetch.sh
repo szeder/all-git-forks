@@ -8,7 +8,7 @@ test_expect_success setup '
 	test_tick &&
 	mkdir -p sub && (
 		cd sub &&
-		git init &&
+		git init $ref_storage_arg &&
 		>subfile &&
 		git add subfile &&
 		git commit -m "subproject commit #1"
