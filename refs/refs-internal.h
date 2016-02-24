@@ -211,6 +211,7 @@ int do_for_each_per_worktree_ref(const char *submodule, const char *base,
 				 void *cb_data);
 
 /* refs backends */
+typedef int ref_init_db_fn(int shared, struct strbuf *err);
 typedef int ref_transaction_commit_fn(struct ref_transaction *transaction,
 				      struct strbuf *err);
 
@@ -254,6 +255,7 @@ typedef int do_for_each_ref_fn(const char *submodule, const char *base,
 struct ref_storage_be {
 	struct ref_storage_be *next;
 	const char *name;
+	ref_init_db_fn *init_db;
 	ref_transaction_commit_fn *transaction_commit;
 	ref_transaction_commit_fn *initial_transaction_commit;
 
