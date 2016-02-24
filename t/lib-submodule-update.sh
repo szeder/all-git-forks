@@ -32,7 +32,7 @@
 #                     invalid_sub1
 #
 create_lib_submodule_repo () {
-	git init submodule_update_repo &&
+	git init $ref_storage_arg submodule_update_repo &&
 	(
 		cd submodule_update_repo &&
 		echo "expect" >>.gitignore &&
@@ -125,7 +125,16 @@ test_git_directory_is_unchanged () {
 		# "$1/.git/config" lacks it...
 		git config --unset core.worktree
 	) &&
-	diff -r ".git/modules/$1" "$1/.git" &&
+	if test "$ref_storage" = "lmdb"
+	then
+	    diff -x refs.lmdb -r ".git/modules/$1" "$1/.git" &&
+	    mdb_dump -p ".git/modules/$1/refs.lmdb" >one &&
+	    mdb_dump -p "$1/.git/refs.lmdb" >two &&
+	    diff one two &&
+	    rm one two
+	else
+	    diff -r ".git/modules/$1" "$1/.git"
+	fi
 	(
 		# ... and then restore.
 		cd ".git/modules/$1" &&
@@ -147,7 +156,7 @@ prolog () {
 # should be updated to an existing commit.
 reset_work_tree_to () {
 	rm -rf submodule_update &&
-	git clone submodule_update_repo submodule_update &&
+	git clone $ref_storage_arg submodule_update_repo submodule_update &&
 	(
 		cd submodule_update &&
 		rm -rf sub1 &&

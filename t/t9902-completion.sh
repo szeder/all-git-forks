@@ -126,7 +126,7 @@ actual="$TRASH_DIRECTORY/actual"
 
 test_expect_success 'setup for __gitdir tests' '
 	mkdir -p subdir/subsubdir &&
-	git init otherrepo
+	git init $ref_storage_arg otherrepo
 '
 
 test_expect_success '__gitdir - from command line (through $__git_dir)' '
@@ -177,7 +177,7 @@ test_expect_success '__gitdir - cwd is a .git directory' '
 test_expect_success '__gitdir - parent is a .git directory' '
 	echo "$(pwd -P)/.git" >expected &&
 	(
-		cd .git/refs/heads &&
+		cd .git/objects &&
 		__gitdir >"$actual"
 	) &&
 	test_cmp expected "$actual"

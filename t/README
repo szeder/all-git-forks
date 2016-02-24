@@ -178,6 +178,12 @@ appropriately before running "make".
 	this feature by setting the GIT_TEST_CHAIN_LINT environment
 	variable to "1" or "0", respectively.
 
+--ref-storage=<backend>::
+	If --ref-storage is set, run tests under an alternate ref
+	backend.  Tests that rely on the original files backend will
+	be skipped.  You may also enable or disable this feature by
+	setting the GIT_TEST_REF_STORAGE environment variable
+
 You can also set the GIT_TEST_INSTALLED environment variable to
 the bindir of an existing git installation to test that installation.
 You still need to have built this git sandbox, from which various

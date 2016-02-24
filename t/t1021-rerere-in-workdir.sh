@@ -3,6 +3,12 @@
 test_description='rerere run in a workdir'
 . ./test-lib.sh
 
+if test "$ref_storage" != "files"
+then
+	skip_all="Workdirs don't support alternate ref backends"
+	test_done
+fi
+
 test_expect_success SYMLINKS setup '
 	git config rerere.enabled true &&
 	>world &&

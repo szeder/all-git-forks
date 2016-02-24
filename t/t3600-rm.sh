@@ -220,7 +220,7 @@ test_expect_success 'Remove nonexistent file returns nonzero exit status' '
 test_expect_success 'Call "rm" from outside the work tree' '
 	mkdir repo &&
 	(cd repo &&
-	 git init &&
+	 git init $ref_storage_arg &&
 	 echo something > somefile &&
 	 git add somefile &&
 	 git commit -m "add a file" &&

@@ -19,26 +19,26 @@ test_expect_success 'prepare a trivial repository' '
 
 test_expect_success 'git branch --help should not have created a bogus branch' '
 	test_might_fail git branch --man --help </dev/null >/dev/null 2>&1 &&
-	test_path_is_missing .git/refs/heads/--help
+	test_must_fail git rev-parse --verify refs/heads/--help
 '
 
 test_expect_success 'branch -h in broken repository' '
 	mkdir broken &&
 	(
 		cd broken &&
-		git init &&
-		>.git/refs/heads/master &&
+		git init $ref_storage_arg &&
+		write_ref refs/heads/master "" &&
 		test_expect_code 129 git branch -h >usage 2>&1
 	) &&
 	test_i18ngrep "[Uu]sage" broken/usage
 '
 
 test_expect_success 'git branch abc should create a branch' '
-	git branch abc && test_path_is_file .git/refs/heads/abc
+	git branch abc && git rev-parse --verify refs/heads/abc
 '
 
 test_expect_success 'git branch a/b/c should create a branch' '
-	git branch a/b/c && test_path_is_file .git/refs/heads/a/b/c
+	git branch a/b/c && git rev-parse --verify refs/heads/a/b/c
 '
 
 test_expect_success 'git branch HEAD should fail' '
@@ -51,14 +51,14 @@ EOF
 test_expect_success 'git branch -l d/e/f should create a branch and a log' '
 	GIT_COMMITTER_DATE="2005-05-26 23:30" \
 	git branch -l d/e/f &&
-	test_path_is_file .git/refs/heads/d/e/f &&
-	test_path_is_file .git/logs/refs/heads/d/e/f &&
-	test_cmp expect .git/logs/refs/heads/d/e/f
+	git rev-parse --verify refs/heads/d/e/f &&
+	raw_reflog refs/heads/d/e/f > reflog &&
+	test_cmp expect reflog
 '
 
 test_expect_success 'git branch -d d/e/f should delete a branch and a log' '
 	git branch -d d/e/f &&
-	test_path_is_missing .git/refs/heads/d/e/f &&
+	test_must_fail git rev-parse --verify refs/heads/d/e/f &&
 	test_must_fail git reflog exists refs/heads/d/e/f
 '
 
@@ -156,34 +156,34 @@ test_expect_success 'git branch -M master2 master2 should work when master is ch
 
 test_expect_success 'git branch -v -d t should work' '
 	git branch t &&
-	test_path_is_file .git/refs/heads/t &&
+	git rev-parse --verify refs/heads/t &&
 	git branch -v -d t &&
-	test_path_is_missing .git/refs/heads/t
+	test_must_fail git rev-parse --verify refs/heads/t
 '
 
 test_expect_success 'git branch -v -m t s should work' '
 	git branch t &&
-	test_path_is_file .git/refs/heads/t &&
+	git rev-parse --verify refs/heads/t &&
 	git branch -v -m t s &&
-	test_path_is_missing .git/refs/heads/t &&
-	test_path_is_file .git/refs/heads/s &&
+	test_must_fail git rev-parse --verify refs/heads/t &&
+	git rev-parse --verify refs/heads/s &&
 	git branch -d s
 '
 
 test_expect_success 'git branch -m -d t s should fail' '
 	git branch t &&
-	test_path_is_file .git/refs/heads/t &&
+	git rev-parse refs/heads/t &&
 	test_must_fail git branch -m -d t s &&
 	git branch -d t &&
-	test_path_is_missing .git/refs/heads/t
+	test_must_fail git rev-parse refs/heads/t
 '
 
 test_expect_success 'git branch --list -d t should fail' '
 	git branch t &&
-	test_path_is_file .git/refs/heads/t &&
+	git rev-parse refs/heads/t &&
 	test_must_fail git branch --list -d t &&
 	git branch -d t &&
-	test_path_is_missing .git/refs/heads/t
+	test_must_fail git rev-parse refs/heads/t
 '
 
 test_expect_success 'git branch --column' '
@@ -263,6 +263,10 @@ EOF
 	test_cmp expected actual
 '
 
+# All alternate ref storage backends require config, so we just skip
+# the "no-config" test if we're using one.
+if test $ref_storage = "files"
+then
 mv .git/config .git/config-saved
 
 test_expect_success 'git branch -m q q2 without config should succeed' '
@@ -271,6 +275,7 @@ test_expect_success 'git branch -m q q2 without config should succeed' '
 '
 
 mv .git/config-saved .git/config
+fi
 
 git config branch.s/s.dummy Hello
 
@@ -294,26 +299,26 @@ test_expect_success 'deleting a symref' '
 	git symbolic-ref refs/heads/symref refs/heads/target &&
 	echo "Deleted branch symref (was refs/heads/target)." >expect &&
 	git branch -d symref >actual &&
-	test_path_is_file .git/refs/heads/target &&
-	test_path_is_missing .git/refs/heads/symref &&
+	git rev-parse refs/heads/target &&
+	test_must_fail git rev-parse refs/heads/symref &&
 	test_i18ncmp expect actual
 '
 
 test_expect_success 'deleting a dangling symref' '
 	git symbolic-ref refs/heads/dangling-symref nowhere &&
-	test_path_is_file .git/refs/heads/dangling-symref &&
+	raw_ref refs/heads/dangling-symref &&
 	echo "Deleted branch dangling-symref (was nowhere)." >expect &&
 	git branch -d dangling-symref >actual &&
-	test_path_is_missing .git/refs/heads/dangling-symref &&
+	test_must_fail git rev-parse refs/heads/dangling-symref &&
 	test_i18ncmp expect actual
 '
 
 test_expect_success 'deleting a self-referential symref' '
 	git symbolic-ref refs/heads/self-reference refs/heads/self-reference &&
-	test_path_is_file .git/refs/heads/self-reference &&
+	raw_ref refs/heads/self-reference &&
 	echo "Deleted branch self-reference (was refs/heads/self-reference)." >expect &&
 	git branch -d self-reference >actual &&
-	test_path_is_missing .git/refs/heads/self-reference &&
+	test_must_fail git rev-parse refs/heads/self-reference &&
 	test_i18ncmp expect actual
 '
 
@@ -321,16 +326,20 @@ test_expect_success 'renaming a symref is not allowed' '
 	git symbolic-ref refs/heads/master2 refs/heads/master &&
 	test_must_fail git branch -m master2 master3 &&
 	git symbolic-ref refs/heads/master2 &&
-	test_path_is_file .git/refs/heads/master &&
-	test_path_is_missing .git/refs/heads/master3
+	git rev-parse refs/heads/master &&
+	test_must_fail git rev-parse refs/heads/master3
 '
 
+# lmdb doesn't support store reflogs in the filesystem
+if test $ref_storage != "lmdb"
+then
 test_expect_success SYMLINKS 'git branch -m u v should fail when the reflog for u is a symlink' '
 	git branch -l u &&
 	mv .git/logs/refs/heads/u real-u &&
 	ln -s real-u .git/logs/refs/heads/u &&
 	test_must_fail git branch -m u v
 '
+fi
 
 test_expect_success 'test tracking setup via --track' '
 	git config remote.local.url . &&
@@ -570,9 +579,9 @@ EOF
 test_expect_success 'git checkout -b g/h/i -l should create a branch and a log' '
 	GIT_COMMITTER_DATE="2005-05-26 23:30" \
 	git checkout -b g/h/i -l master &&
-	test_path_is_file .git/refs/heads/g/h/i &&
-	test_path_is_file .git/logs/refs/heads/g/h/i &&
-	test_cmp expect .git/logs/refs/heads/g/h/i
+	git rev-parse refs/heads/g/h/i &&
+	raw_reflog refs/heads/g/h/i > reflog &&
+	test_cmp expect reflog
 '
 
 test_expect_success 'checkout -b makes reflog by default' '
@@ -922,17 +931,17 @@ test_expect_success '--merged catches invalid object names' '
 
 test_expect_success 'tracking with unexpected .fetch refspec' '
 	rm -rf a b c d &&
-	git init a &&
+	git init $ref_storage_arg a &&
 	(
 		cd a &&
 		test_commit a
 	) &&
-	git init b &&
+	git init $ref_storage_arg b &&
 	(
 		cd b &&
 		test_commit b
 	) &&
-	git init c &&
+	git init $ref_storage_arg c &&
 	(
 		cd c &&
 		test_commit c &&
@@ -940,7 +949,7 @@ test_expect_success 'tracking with unexpected .fetch refspec' '
 		git remote add b ../b &&
 		git fetch --all
 	) &&
-	git init d &&
+	git init $ref_storage_arg d &&
 	(
 		cd d &&
 		git remote add c ../c &&

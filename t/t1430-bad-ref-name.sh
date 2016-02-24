@@ -3,6 +3,12 @@
 test_description='Test handling of ref names that check-ref-format rejects'
 . ./test-lib.sh
 
+if test "$ref_storage" = "lmdb"
+then
+	skip_all="The lmdb backend refuses to save refs with bad names"
+	test_done
+fi
+
 test_expect_success setup '
 	test_commit one &&
 	test_commit two

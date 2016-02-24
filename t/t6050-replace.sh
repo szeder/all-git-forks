@@ -124,13 +124,13 @@ tagger T A Gger <> 0 +0000
 EOF
 
 test_expect_success 'tag replaced commit' '
-     git mktag <tag.sig >.git/refs/tags/mytag 2>message
+    write_ref refs/tags/mytag $(git mktag <tag.sig 2>message)
 '
 
 test_expect_success '"git fsck" works' '
      git fsck master >fsck_master.out &&
      grep "dangling commit $R" fsck_master.out &&
-     grep "dangling tag $(cat .git/refs/tags/mytag)" fsck_master.out &&
+     grep "dangling tag $(raw_ref refs/tags/mytag)" fsck_master.out &&
      test -z "$(git fsck)"
 '
 

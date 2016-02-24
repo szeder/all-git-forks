@@ -173,6 +173,13 @@ EOF
 	)
 '
 
+backend=$ref_storage
+if test "$backend" = "lmdb"
+then
+	skip="The lmdb backend needs write access for its locks"
+	test_done
+fi
+
 test_expect_success POSIXPERM,SANITY 'shallow fetch from a read-only repo' '
 	cp -R .git read-only.git &&
 	find read-only.git -print | xargs chmod -w &&

@@ -194,7 +194,7 @@ test_expect_success 'subdirectory ignore (setup)' '
 	mkdir -p top/l1/l2 &&
 	(
 		cd top &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo /.gitignore >.gitignore &&
 		echo l1 >>.gitignore &&
 		echo l2 >l1/.gitignore &&

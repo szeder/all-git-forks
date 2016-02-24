@@ -28,20 +28,20 @@ test_expect_success setup '
 	git commit -a -m original'
 
 test_expect_success "clone and setup child repos" '
-	git clone . one &&
+	git clone $ref_storage_arg . one &&
 	(
 		cd one &&
 		echo >file updated by one &&
 		git commit -a -m "updated by one"
 	) &&
-	git clone . two &&
+	git clone $ref_storage_arg  . two &&
 	(
 		cd two &&
 		git config branch.master.remote one &&
 		git config remote.one.url ../one/.git/ &&
 		git config remote.one.fetch refs/heads/master:refs/heads/one
 	) &&
-	git clone . three &&
+	git clone $ref_storage_arg  . three &&
 	(
 		cd three &&
 		git config branch.master.remote two &&
@@ -53,8 +53,8 @@ test_expect_success "clone and setup child repos" '
 			echo "Pull: refs/heads/one:refs/heads/one"
 		} >.git/remotes/two
 	) &&
-	git clone . bundle &&
-	git clone . seven
+	git clone $ref_storage_arg  . bundle &&
+	git clone $ref_storage_arg  . seven
 '
 
 test_expect_success "fetch test" '
@@ -63,7 +63,7 @@ test_expect_success "fetch test" '
 	git commit -a -m "updated by origin" &&
 	cd two &&
 	git fetch &&
-	test -f .git/refs/heads/one &&
+	git rev-parse --verify refs/heads/one &&
 	mine=$(git rev-parse refs/heads/one) &&
 	his=$(cd ../one && git rev-parse refs/heads/master) &&
 	test "z$mine" = "z$his"
@@ -73,8 +73,8 @@ test_expect_success "fetch test for-merge" '
 	cd "$D" &&
 	cd three &&
 	git fetch &&
-	test -f .git/refs/heads/two &&
-	test -f .git/refs/heads/one &&
+	git rev-parse --verify refs/heads/two &&
+	git rev-parse --verify refs/heads/one &&
 	master_in_two=$(cd ../two && git rev-parse master) &&
 	one_in_two=$(cd ../two && git rev-parse one) &&
 	{
@@ -180,7 +180,7 @@ test_expect_success 'fetch tags when there is no tags' '
 
     mkdir notags &&
     cd notags &&
-    git init &&
+    git init $ref_storage_arg &&
 
     git fetch -t ..
 
@@ -194,7 +194,7 @@ test_expect_success 'fetch following tags' '
 
 	mkdir four &&
 	cd four &&
-	git init &&
+	git init $ref_storage_arg &&
 
 	git fetch .. :track &&
 	git show-ref --verify refs/tags/anno &&
@@ -204,7 +204,7 @@ test_expect_success 'fetch following tags' '
 
 test_expect_success 'fetch uses remote ref names to describe new refs' '
 	cd "$D" &&
-	git init descriptive &&
+	git init $ref_storage_arg descriptive &&
 	(
 		cd descriptive &&
 		git config remote.o.url .. &&
@@ -238,7 +238,7 @@ test_expect_success 'fetch must not resolve short tag name' '
 
 	mkdir five &&
 	cd five &&
-	git init &&
+	git init $ref_storage_arg &&
 
 	test_must_fail git fetch .. anno:five
 
@@ -251,7 +251,7 @@ test_expect_success 'fetch can now resolve short remote name' '
 
 	mkdir six &&
 	cd six &&
-	git init &&
+	git init $ref_storage_arg &&
 
 	git fetch .. six:six
 '
@@ -529,7 +529,7 @@ test_expect_success "should be able to fetch with duplicate refspecs" '
 	mkdir dups &&
 	(
 		cd dups &&
-		git init &&
+		git init $ref_storage_arg &&
 		git config branch.master.remote three &&
 		git config remote.three.url ../three/.git &&
 		git config remote.three.fetch +refs/heads/*:refs/remotes/origin/* &&
@@ -665,7 +665,7 @@ test_expect_success 'fetching a one-level ref works' '
 	test_commit extra &&
 	git reset --hard HEAD^ &&
 	git update-ref refs/foo extra &&
-	git init one-level &&
+	git init $ref_storage_arg one-level &&
 	(
 		cd one-level &&
 		git fetch .. HEAD refs/foo

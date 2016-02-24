@@ -60,7 +60,7 @@ test_expect_success 'add a file with plus signs' '
 	'
 
 test_expect_success 'clone the repository to test rebase' '
-	git svn clone "$svnrepo" test-rebase &&
+	git svn clone $ref_storage_arg "$svnrepo" test-rebase &&
 	(
 		cd test-rebase &&
 		echo test-rebase >test-rebase &&

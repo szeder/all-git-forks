@@ -22,7 +22,7 @@ test_expect_success 'update-index -h with corrupt index' '
 	mkdir broken &&
 	(
 		cd broken &&
-		git init &&
+		git init $ref_storage_arg &&
 		>.git/index &&
 		test_expect_code 129 git update-index -h >usage 2>&1
 	) &&
@@ -43,7 +43,7 @@ test_expect_success '--cacheinfo does not accept blob null sha1' '
 '
 
 test_expect_success '--cacheinfo does not accept gitlink null sha1' '
-	git init submodule &&
+	git init submodule $ref_storage_arg &&
 	(cd submodule && test_commit foo) &&
 	git add submodule &&
 	git rev-parse :submodule >expect &&
@@ -70,7 +70,7 @@ test_expect_success '.lock files cleaned up' '
 	(
 	cd cleanup &&
 	mkdir worktree &&
-	git init repo &&
+	git init $ref_storage_arg repo &&
 	cd repo &&
 	git config core.worktree ../../worktree &&
 	# --refresh triggers late setup_work_tree,

@@ -167,7 +167,7 @@ test_expect_success 'relative path when cwd is outside worktree' '
 '
 
 test_expect_success 'relative path when startup_info is NULL' '
-	test_must_fail test-match-trees HEAD:./file.txt HEAD:./file.txt 2>error &&
+	test_must_fail test-match-trees $(git rev-parse HEAD):./file.txt $(git rev-parse HEAD):./file.txt 2>error &&
 	grep "BUG: startup_info struct is not initialized." error
 '
 
@@ -213,7 +213,7 @@ test_expect_success 'arg before dashdash must be a revision (ambiguous)' '
 	{
 		# we do not want to use rev-parse here, because
 		# we are testing it
-		cat .git/refs/heads/foobar &&
+		raw_ref refs/heads/foobar &&
 		printf "%s\n" --
 	} >expect &&
 	git rev-parse foobar -- >actual &&

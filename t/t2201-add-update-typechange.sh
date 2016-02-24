@@ -46,7 +46,7 @@ test_expect_success modify '
 	>yomin/yomin &&
 	(
 		cd yomin &&
-		git init &&
+		git init $ref_storage_arg &&
 		git add yomin &&
 		git commit -m "sub initial"
 	) &&
@@ -60,7 +60,7 @@ test_expect_success modify '
 	>yonk/yonk &&
 	(
 		cd yonk &&
-		git init &&
+		git init $ref_storage_arg &&
 		git add yonk &&
 		git commit -m "sub initial"
 	) &&

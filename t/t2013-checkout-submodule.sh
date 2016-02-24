@@ -8,7 +8,7 @@ test_description='checkout can handle submodules'
 test_expect_success 'setup' '
 	mkdir submodule &&
 	(cd submodule &&
-	 git init &&
+	 git init $ref_storage_arg &&
 	 test_commit first) &&
 	git add submodule &&
 	test_tick &&
