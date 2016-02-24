@@ -738,6 +738,8 @@ extern enum object_creation_mode object_creation_mode;
 
 extern char *notes_ref_name;
 
+extern const char *ref_storage_backend;
+
 extern int grafts_replace_parents;
 
 /*
@@ -754,6 +756,7 @@ struct repository_format {
 	int precious_objects;
 	int is_bare;
 	char *work_tree;
+	char *ref_storage_backend;
 	struct string_list unknown_extensions;
 };
 
