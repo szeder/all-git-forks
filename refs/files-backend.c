@@ -1347,13 +1347,9 @@ static int files_resolve_gitlink_ref(const char *path, const char *refname,
 
 	strbuf_add(&submodule, path, len);
 	refs = lookup_ref_cache(submodule.buf);
-	if (!refs) {
-		if (!is_nonbare_repository_dir(&submodule)) {
-			strbuf_release(&submodule);
-			return -1;
-		}
+	if (!refs)
 		refs = create_ref_cache(submodule.buf);
-	}
+
 	strbuf_release(&submodule);
 
 	retval = resolve_gitlink_ref_recursive(refs, refname, sha1, 0);
