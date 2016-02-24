@@ -61,6 +61,9 @@ void register_ref_storage_backends(void)
 	 * entries below when you add a new backend.
 	 */
 	register_ref_storage_backend(&refs_be_files);
+#ifdef USE_LIBLMDB
+	register_ref_storage_backend(&refs_be_lmdb);
+#endif
 }
 
 /*
@@ -321,8 +324,10 @@ static int submodule_backend(const char *key, const char *value, void *data)
 	const char **path = data;
 	char **old_path = data;
 	if (!strcmp(key, "extensions.refstorage") &&
-	    !git_config_string(path, key, "extensions.refstorage"))
-			free(*old_path);
+	    !git_config_string(path, key, "extensions.refstorage")) {
+		free(*old_path);
+		*path = xstrdup(value);
+	}
 
 	return 0;
 }
@@ -1310,21 +1315,22 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
 }
 
-static int read_raw_ref(const char *refname, unsigned char *sha1,
-			struct strbuf *symref, struct strbuf *sb_path,
-			unsigned int *flags)
+static int read_raw_ref(const char *submodule, const char *refname,
+			unsigned char *sha1, struct strbuf *symref,
+			struct strbuf *sb_path, unsigned int *flags)
 {
-	return the_refs_backend->read_raw_ref(refname, sha1, symref, sb_path,
-					      flags);
+	return the_refs_backend->read_raw_ref(submodule, refname, sha1,
+					      symref, sb_path, flags);
 }
 
 /* This function needs to return a meaningful errno on failure */
-static const char *resolve_ref_1(const char *refname,
-				 int resolve_flags,
-				 unsigned char *sha1,
-				 int *flags,
-				 struct strbuf *sb_refname,
-				 struct strbuf *sb_path)
+const char *resolve_ref_unsafe_submodule(const char *submodule,
+					 const char *refname,
+					 int resolve_flags,
+					 unsigned char *sha1,
+					 int *flags,
+					 struct strbuf *sb_refname,
+					 struct strbuf *sb_path)
 {
 	int bad_name = 0;
 	int symref_count;
@@ -1355,7 +1361,8 @@ static const char *resolve_ref_1(const char *refname,
 	for (symref_count = 0; symref_count < SYMREF_MAXDEPTH; symref_count++) {
 		unsigned int read_flags = 0;
 
-		if (read_raw_ref(refname, sha1, sb_refname, sb_path, &read_flags)) {
+		if (read_raw_ref(submodule, refname, sha1, sb_refname, sb_path,
+				 &read_flags)) {
 			int saved_errno = errno;
 			if (flags)
 				*flags |= read_flags;
@@ -1416,8 +1423,8 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 	struct strbuf sb_path = STRBUF_INIT;
 	const char *ret;
 
-	ret = resolve_ref_1(refname, resolve_flags, sha1, flags,
-			    &sb_refname, &sb_path);
+	ret = resolve_ref_unsafe_submodule(NULL, refname, resolve_flags, sha1,
+					   flags, &sb_refname, &sb_path);
 
 	strbuf_release(&sb_path);
 	return ret;
@@ -1660,6 +1667,8 @@ int safe_create_reflog(const char *refname, int force_create,
 
 int delete_reflog(const char *refname)
 {
+	if (ref_type(refname) != REF_TYPE_NORMAL)
+		return refs_be_files.delete_reflog(refname);
 	return the_refs_backend->delete_reflog(refname);
 }
 
