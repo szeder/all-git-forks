@@ -226,6 +226,9 @@ typedef int read_raw_ref_fn(const char *refname, unsigned char *sha1,
 typedef int verify_refname_available_fn(const char *refname, struct string_list *extra, struct string_list *skip, struct strbuf *err);
 typedef int resolve_gitlink_ref_fn(const char *path, const char *refname,
 				   unsigned char *sha1);
+typedef int do_for_each_ref_fn(const char *submodule, const char *base,
+			       each_ref_fn fn, int trim, int flags,
+			       void *cb_data);
 
 struct ref_storage_be {
 	struct ref_storage_be *next;
@@ -239,6 +242,8 @@ struct ref_storage_be {
 	read_raw_ref_fn *read_raw_ref;
 	verify_refname_available_fn *verify_refname_available;
 	resolve_gitlink_ref_fn *resolve_gitlink_ref;
+
+	do_for_each_ref_fn *do_for_each_ref;
 };
 
 extern struct ref_storage_be refs_be_files;
