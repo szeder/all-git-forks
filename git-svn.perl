@@ -141,7 +141,7 @@ my %fc_opts = ( 'follow-parent|follow!' => \$Git::SVN::_follow_parent,
 		'localtime' => \$Git::SVN::_localtime,
 		%remote_opts );
 
-my ($_trunk, @_tags, @_branches, $_stdlayout);
+my ($_trunk, @_tags, @_branches, $_stdlayout, $_ref_storage);
 my %icv;
 my %init_opts = ( 'template=s' => \$_template, 'shared:s' => \$_shared,
                   'trunk|T=s' => \$_trunk, 'tags|t=s@' => \@_tags,
@@ -153,6 +153,7 @@ my %init_opts = ( 'template=s' => \$_template, 'shared:s' => \$_shared,
 		  'use-svnsync-props' => sub { $icv{useSvnsyncProps} = 1 },
 		  'rewrite-root=s' => sub { $icv{rewriteRoot} = $_[1] },
 		  'rewrite-uuid=s' => sub { $icv{rewriteUUID} = $_[1] },
+		  'ref-storage=s' => \$_ref_storage,
                   %remote_opts );
 my %cmt_opts = ( 'edit|e' => \$_edit,
 		'rmdir' => \$Git::SVN::Editor::_rmdir,
@@ -468,6 +469,9 @@ sub do_git_init_db {
 			} else {
 				push @init_db, "--shared";
 			}
+		}
+		if (defined $_ref_storage) {
+			push @init_db, "--ref-storage=" . $_ref_storage;
 		}
 		command_noisy(@init_db);
 		$_repository = Git->repository(Repository => ".git");
