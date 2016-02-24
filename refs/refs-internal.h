@@ -212,4 +212,16 @@ int do_for_each_ref(const char *submodule, const char *base,
 int read_raw_ref(const char *refname, unsigned char *sha1,
 		 struct strbuf *symref, unsigned int *flags);
 
+/* refs backends */
+typedef int ref_transaction_commit_fn(struct ref_transaction *transaction,
+				      struct strbuf *err);
+
+struct ref_storage_be {
+	struct ref_storage_be *next;
+	const char *name;
+	ref_transaction_commit_fn *transaction_commit;
+};
+
+extern struct ref_storage_be refs_be_files;
+
 #endif /* REFS_REFS_INTERNAL_H */
