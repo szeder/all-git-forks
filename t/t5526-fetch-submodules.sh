@@ -38,7 +38,7 @@ test_expect_success setup '
 	mkdir deepsubmodule &&
 	(
 		cd deepsubmodule &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo deepsubcontent > deepsubfile &&
 		git add deepsubfile &&
 		git commit -m new deepsubfile
@@ -46,7 +46,7 @@ test_expect_success setup '
 	mkdir submodule &&
 	(
 		cd submodule &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo subcontent > subfile &&
 		git add subfile &&
 		git submodule add "$pwd/deepsubmodule" subdir/deepsubmodule &&

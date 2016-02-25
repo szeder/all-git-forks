@@ -34,14 +34,14 @@ test_expect_success 'preparing first repository' '
 '
 
 test_expect_success 'preparing second repository' '
-	git clone A B &&
+	git clone $ref_storage_arg A B &&
 	commit_in B file2 &&
 	git -C B repack -ad &&
 	git -C B prune
 '
 
 test_expect_success 'cloning with reference (-l -s)' '
-	git clone -l -s --reference B A C
+	git clone $ref_storage_arg -l -s --reference B A C
 '
 
 test_expect_success 'existence of info/alternates' '
@@ -57,7 +57,7 @@ test_expect_success 'that reference gets used' '
 '
 
 test_expect_success 'cloning with reference (no -l -s)' '
-	GIT_TRACE_PACKET=$U.D git clone --reference B "file://$(pwd)/A" D
+	GIT_TRACE_PACKET=$U.D git clone $ref_storage_arg --reference B "file://$(pwd)/A" D
 '
 
 test_expect_success 'fetched no objects' '
@@ -108,20 +108,20 @@ test_expect_success 'preparing alternate repository #1' '
 '
 
 test_expect_success 'cloning alternate repo #2 and adding changes to repo #1' '
-	git clone F G &&
+	git clone $ref_storage_arg F G &&
 	commit_in F file2
 '
 
 test_expect_success 'cloning alternate repo #1, using #2 as reference' '
-	git clone --reference G F H
+	git clone $ref_storage_arg --reference G F H
 '
 
 test_expect_success 'cloning with reference being subset of source (-l -s)' '
-	git clone -l -s --reference A B E
+	git clone $ref_storage_arg -l -s --reference A B E
 '
 
 test_expect_success 'cloning with multiple references drops duplicates' '
-	git clone -s --reference B --reference A --reference B A dups &&
+	git clone $ref_storage_arg -s --reference B --reference A --reference B A dups &&
 	test_line_count = 2 dups/.git/objects/info/alternates
 '
 
@@ -129,11 +129,11 @@ test_expect_success 'clone with reference from a tagged repository' '
 	(
 		cd A && git tag -a -m tagged HEAD
 	) &&
-	git clone --reference=A A I
+	git clone $ref_storage_arg --reference=A A I
 '
 
 test_expect_success 'prepare branched repository' '
-	git clone A J &&
+	git clone $ref_storage_arg A J &&
 	(
 		cd J &&
 		git checkout -b other master^ &&
@@ -145,7 +145,7 @@ test_expect_success 'prepare branched repository' '
 '
 
 test_expect_success 'fetch with incomplete alternates' '
-	git init K &&
+	git init $ref_storage_arg K &&
 	echo "$base_dir/A/.git/objects" >K/.git/objects/info/alternates &&
 	(
 		cd K &&
@@ -160,29 +160,29 @@ test_expect_success 'fetch with incomplete alternates' '
 '
 
 test_expect_success 'clone using repo with gitfile as a reference' '
-	git clone --separate-git-dir=L A M &&
-	git clone --reference=M A N &&
+	git clone $ref_storage_arg --separate-git-dir=L A M &&
+	git clone $ref_storage_arg --reference=M A N &&
 	echo "$base_dir/L/objects" >expected &&
 	test_cmp expected "$base_dir/N/.git/objects/info/alternates"
 '
 
 test_expect_success 'clone using repo pointed at by gitfile as reference' '
-	git clone --reference=M/.git A O &&
+	git clone $ref_storage_arg --reference=M/.git A O &&
 	echo "$base_dir/L/objects" >expected &&
 	test_cmp expected "$base_dir/O/.git/objects/info/alternates"
 '
 
 test_expect_success 'clone and dissociate from reference' '
-	git init P &&
+	git init $ref_storage_arg P &&
 	(
 		cd P &&	test_commit one
 	) &&
-	git clone P Q &&
+	git clone $ref_storage_arg P Q &&
 	(
 		cd Q && test_commit two
 	) &&
-	git clone --no-local --reference=P Q R &&
-	git clone --no-local --reference=P --dissociate Q S &&
+	git clone $ref_storage_arg --no-local --reference=P Q R &&
+	git clone $ref_storage_arg --no-local --reference=P --dissociate Q S &&
 	# removing the reference P would corrupt R but not S
 	rm -fr P &&
 	test_must_fail git -C R fsck &&
@@ -198,14 +198,14 @@ test_expect_success 'clone, dissociate from partial reference and repack' '
 		test_commit two &&
 		git repack
 	) &&
-	git clone --bare P Q &&
+	git clone $ref_storage_arg  --bare P Q &&
 	(
 		cd P &&
 		git checkout -b second &&
 		test_commit three &&
 		git repack
 	) &&
-	git clone --bare --dissociate --reference=P Q R &&
+	git clone $ref_storage_arg  --bare --dissociate --reference=P Q R &&
 	ls R/objects/pack/*.pack >packs.txt &&
 	test_line_count = 1 packs.txt
 '
@@ -214,9 +214,9 @@ test_expect_success 'clone, dissociate from alternates' '
 	rm -fr A B C &&
 	test_create_repo A &&
 	commit_in A file1 &&
-	git clone --reference=A A B &&
+	git clone $ref_storage_arg  --reference=A A B &&
 	test_line_count = 1 B/.git/objects/info/alternates &&
-	git clone --local --dissociate B C &&
+	git clone $ref_storage_arg  --local --dissociate B C &&
 	! test -f C/.git/objects/info/alternates &&
 	( cd C && git fsck )
 '
