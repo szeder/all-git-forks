@@ -21,7 +21,7 @@ test_expect_success 'create history reachable only from a bogus-named ref' '
 	test_tick && git commit --allow-empty -m bogus &&
 	bogus=$(git rev-parse HEAD) &&
 	git cat-file commit $bogus >saved &&
-	echo $bogus >.git/refs/heads/bogus..name &&
+	write_ref refs/heads/bogus..name $bogus &&
 	git reset --hard HEAD^
 '
 
@@ -47,7 +47,7 @@ test_expect_success 'destructive repack keeps packed object' '
 
 # subsequent tests will have different corruptions
 test_expect_success 'clean up bogus ref' '
-	rm .git/refs/heads/bogus..name
+	delete_ref refs/heads/bogus..name
 '
 
 # We create two new objects here, "one" and "two". Our
@@ -84,6 +84,13 @@ test_expect_success 'pack-refs does not silently delete broken loose ref' '
 	git rev-parse refs/heads/master >actual &&
 	test_cmp expect actual
 '
+
+backend=$ref_storage
+if test "$backend" = "lmdb"
+then
+       skip="The lmdb backend doesn't write a packed-refs file"
+       test_done
+fi
 
 # we do not want to count on running pack-refs to
 # actually pack it, as it is perfectly reasonable to

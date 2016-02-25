@@ -13,7 +13,7 @@ test_expect_success 'setup' '
 	git commit -a -m second &&
 	mkdir -p test-outside/repo && (
 		cd test-outside/repo &&
-		git init &&
+		git init $ref_storage_arg &&
 		echo "1 1" >a &&
 		git add . &&
 		git commit -m 1

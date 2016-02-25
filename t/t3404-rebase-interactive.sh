@@ -608,7 +608,7 @@ test_expect_success 'submodule rebase setup' '
 	git checkout A &&
 	mkdir sub &&
 	(
-		cd sub && git init && >elif &&
+		cd sub && git init $ref_storage_arg && >elif &&
 		git add elif && git commit -m "submodule initial"
 	) &&
 	echo 1 >file1 &&
