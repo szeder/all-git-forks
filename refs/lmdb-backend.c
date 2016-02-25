@@ -551,7 +551,6 @@ static int lmdb_read_raw_ref(const char *submodule, const char *refname,
 {
 	char *buf;
 	struct MDB_val key, val;
-	struct strbuf err = STRBUF_INIT;
 	int needs_free = 0;
 	int ret = -1;
 	struct lmdb_transaction *transaction;
@@ -1622,7 +1621,7 @@ static int lmdb_do_for_each_ref(const char *submodule, const char *base,
 			break;
 
 		refname = (const char *)key.mv_data;
-		const char *c = resolve_ref_unsafe_submodule(submodule, refname, 0, oid.hash,
+		resolve_ref_unsafe_submodule(submodule, refname, 0, oid.hash,
 					     &parsed_flags, &sb_refname,
 					     &sb_path);
 		if (!(parsed_flags & REF_ISBROKEN) && is_null_oid(&oid))
