@@ -783,8 +783,8 @@ test_create_repo () {
 	repo="$1"
 	mkdir -p "$repo"
 	(
-		cd "$repo" || error "Cannot setup test environment"
-		"$GIT_EXEC_PATH/git-init" "--template=$GIT_BUILD_DIR/templates/blt/" >&3 2>&4 ||
+	    cd "$repo" || error "Cannot setup test environment"
+		"$GIT_EXEC_PATH/git-init" $ref_storage_arg "--template=$GIT_BUILD_DIR/templates/blt/" >&3 2>&4 ||
 		error "cannot run git init -- have you built things yet?"
 		mv .git/hooks .git/hooks-disabled
 	) || exit
@@ -940,4 +940,53 @@ mingw_read_file_strip_cr_ () {
 		fi
 		eval "$1=\$$1\$line"
 	done
+}
+
+raw_ref() {
+    if test $ref_storage = "lmdb"
+    then
+	test-refs-lmdb-backend "$1" 2>/dev/null
+    else
+	cat ".git/$1"
+    fi
+}
+
+delete_ref() {
+    if test $ref_storage = "lmdb"
+    then
+	test-refs-lmdb-backend -d "$1" 2>/dev/null
+    else
+	rm ".git/$1"
+    fi
+}
+
+write_ref() {
+    if test $ref_storage = "lmdb"
+    then
+	test-refs-lmdb-backend "$1" "$2" 2>/dev/null
+    else
+	echo "$2" > ".git/$1"
+    fi
+}
+
+raw_reflog() {
+    if test $ref_storage = "lmdb"
+    then
+	test-refs-lmdb-backend -l "$1" 2>/dev/null
+    else
+	cat ".git/logs/$1"
+    fi
+}
+
+delete_all_reflogs() {
+    if test $ref_storage = "lmdb"
+    then
+	test-refs-lmdb-backend -c
+    fi
+    # We have to do this in any case to handle logs for per-worktree refs
+    rm -rf .git/logs
+}
+
+append_reflog() {
+	test-refs-lmdb-backend -a "$1"
 }

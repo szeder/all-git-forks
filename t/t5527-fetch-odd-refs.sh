@@ -26,6 +26,13 @@ test_expect_success 'suffix ref is ignored during fetch' '
 	test_cmp expect actual
 '
 
+backend=$ref_storage
+if test "$backend" = "lmdb"
+then
+    skip="The lmdb backend doesn't do crazy-long refs"
+    test_done
+fi
+
 test_expect_success 'try to create repo with absurdly long refname' '
 	ref240=$_z40/$_z40/$_z40/$_z40/$_z40/$_z40 &&
 	ref1440=$ref240/$ref240/$ref240/$ref240/$ref240/$ref240 &&

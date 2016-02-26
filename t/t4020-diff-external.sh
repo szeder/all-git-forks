@@ -247,7 +247,7 @@ test_expect_success 'clean up crlf leftovers' '
 '
 
 test_expect_success 'submodule diff' '
-	git init sub &&
+	git init $ref_storage_arg sub &&
 	( cd sub && test_commit sub1 ) &&
 	git add sub &&
 	test_tick &&
