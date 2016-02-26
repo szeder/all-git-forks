@@ -1207,14 +1207,6 @@ exit:
 }
 
 /**
- * Appends signoff to the "msg" field of the am_state.
- */
-static void am_append_signoff(struct am_state *state)
-{
-	am_signoff(&state->msg);
-}
-
-/**
  * Parses `mail` using git-mailinfo, extracting its patch and authorship info.
  * state->msg will be set to the patch message. state->author_name,
  * state->author_email and state->author_date will be set to the patch author's
@@ -2338,7 +2330,7 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 			resume = RESUME_APPLY;
 
 		if (state.signoff == SIGNOFF_EXPLICIT)
-			am_append_signoff(&state);
+			am_signoff(&state.msg);
 	} else {
 		struct argv_array paths = ARGV_ARRAY_INIT;
 		int i;
