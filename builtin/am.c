@@ -103,8 +103,7 @@ struct am_state {
 	char *author_name;
 	char *author_email;
 	char *author_date;
-	char *msg;
-	size_t msg_len;
+	struct strbuf msg;
 
 	/* when --rebasing, records the original commit the patch came from */
 	unsigned char orig_commit[GIT_SHA1_RAWSZ];
@@ -143,6 +142,8 @@ static void am_state_init(struct am_state *state, const char *dir)
 	assert(dir);
 	state->dir = xstrdup(dir);
 
+	strbuf_init(&state->msg, 0);
+
 	state->prec = 4;
 
 	git_config_get_bool("am.threeway", &state->threeway);
@@ -168,7 +169,7 @@ static void am_state_release(struct am_state *state)
 	free(state->author_name);
 	free(state->author_email);
 	free(state->author_date);
-	free(state->msg);
+	strbuf_release(&state->msg);
 	argv_array_clear(&state->git_apply_opts);
 }
 
@@ -384,17 +385,7 @@ static void write_author_script(const struct am_state *state)
  */
 static int read_commit_msg(struct am_state *state)
 {
-	struct strbuf sb = STRBUF_INIT;
-
-	assert(!state->msg);
-
-	if (read_state_file(&sb, state, "final-commit", 0) < 0) {
-		strbuf_release(&sb);
-		return -1;
-	}
-
-	state->msg = strbuf_detach(&sb, &state->msg_len);
-	return 0;
+	return read_state_file(&state->msg, state, "final-commit", 0);
 }
 
 /**
@@ -406,7 +397,7 @@ static void write_commit_msg(const struct am_state *state)
 	const char *filename = am_path(state, "final-commit");
 
 	fd = xopen(filename, O_WRONLY | O_CREAT, 0666);
-	if (write_in_full(fd, state->msg, state->msg_len) < 0)
+	if (write_in_full(fd, state->msg.buf, state->msg.len) < 0)
 		die_errno(_("could not write to %s"), filename);
 	close(fd);
 }
@@ -497,12 +488,9 @@ static int run_applypatch_msg_hook(struct am_state *state)
 {
 	int ret;
 
-	assert(state->msg);
 	ret = run_hook_le(NULL, "applypatch-msg", am_path(state, "final-commit"), NULL);
 
 	if (!ret) {
-		free(state->msg);
-		state->msg = NULL;
 		if (read_commit_msg(state) < 0)
 			die(_("'%s' was deleted by the applypatch-msg hook"),
 				am_path(state, "final-commit"));
@@ -1092,9 +1080,7 @@ static void am_next(struct am_state *state)
 	free(state->author_date);
 	state->author_date = NULL;
 
-	free(state->msg);
-	state->msg = NULL;
-	state->msg_len = 0;
+	strbuf_reset(&state->msg);
 
 	unlink(am_path(state, "author-script"));
 	unlink(am_path(state, "final-commit"));
@@ -1225,11 +1211,7 @@ exit:
  */
 static void am_append_signoff(struct am_state *state)
 {
-	struct strbuf sb = STRBUF_INIT;
-
-	strbuf_attach(&sb, state->msg, state->msg_len, state->msg_len);
-	am_signoff(&sb);
-	state->msg = strbuf_detach(&sb, &state->msg_len);
+	am_signoff(&state->msg);
 }
 
 /**
@@ -1245,7 +1227,6 @@ static int parse_mail(struct am_state *state, const char *mail)
 {
 	FILE *fp;
 	struct strbuf sb = STRBUF_INIT;
-	struct strbuf msg = STRBUF_INIT;
 	struct strbuf author_name = STRBUF_INIT;
 	struct strbuf author_date = STRBUF_INIT;
 	struct strbuf author_email = STRBUF_INIT;
@@ -1302,13 +1283,14 @@ static int parse_mail(struct am_state *state, const char *mail)
 
 	/* Extract message and author information */
 	fp = xfopen(am_path(state, "info"), "r");
+	strbuf_reset(&state->msg);
 	while (!strbuf_getline_lf(&sb, fp)) {
 		const char *x;
 
 		if (skip_prefix(sb.buf, "Subject: ", &x)) {
-			if (msg.len)
-				strbuf_addch(&msg, '\n');
-			strbuf_addstr(&msg, x);
+			if (state->msg.len)
+				strbuf_addch(&state->msg, '\n');
+			strbuf_addstr(&state->msg, x);
 		} else if (skip_prefix(sb.buf, "Author: ", &x))
 			strbuf_addstr(&author_name, x);
 		else if (skip_prefix(sb.buf, "Email: ", &x))
@@ -1329,12 +1311,12 @@ static int parse_mail(struct am_state *state, const char *mail)
 		die_user_resolve(state);
 	}
 
-	strbuf_addstr(&msg, "\n\n");
-	strbuf_addbuf(&msg, &mi.log_message);
-	strbuf_stripspace(&msg, 0);
+	strbuf_addstr(&state->msg, "\n\n");
+	strbuf_addbuf(&state->msg, &mi.log_message);
+	strbuf_stripspace(&state->msg, 0);
 
 	if (state->signoff)
-		am_signoff(&msg);
+		am_signoff(&state->msg);
 
 	assert(!state->author_name);
 	state->author_name = strbuf_detach(&author_name, NULL);
@@ -1345,11 +1327,7 @@ static int parse_mail(struct am_state *state, const char *mail)
 	assert(!state->author_date);
 	state->author_date = strbuf_detach(&author_date, NULL);
 
-	assert(!state->msg);
-	state->msg = strbuf_detach(&msg, &state->msg_len);
-
 finish:
-	strbuf_release(&msg);
 	strbuf_release(&author_date);
 	strbuf_release(&author_email);
 	strbuf_release(&author_name);
@@ -1423,12 +1401,11 @@ static void get_commit_info(struct am_state *state, struct commit *commit)
 	assert(!state->author_date);
 	state->author_date = strbuf_detach(&sb, NULL);
 
-	assert(!state->msg);
+	assert(!state->msg.len);
 	msg = strstr(buffer, "\n\n");
 	if (!msg)
 		die(_("unable to parse commit %s"), oid_to_hex(&commit->object.oid));
-	state->msg = xstrdup(msg + 2);
-	state->msg_len = strlen(state->msg);
+	strbuf_addstr(&state->msg, msg + 2);
 }
 
 /**
@@ -1594,7 +1571,7 @@ static int run_fallback_merge_recursive(const struct am_state *state,
 	cp.git_cmd = 1;
 
 	argv_array_pushf(&cp.env_array, "GITHEAD_%s=%.*s",
-			 sha1_to_hex(his_tree), linelen(state->msg), state->msg);
+			 sha1_to_hex(his_tree), linelen(state->msg.buf), state->msg.buf);
 	if (state->quiet)
 		argv_array_push(&cp.env_array, "GIT_MERGE_VERBOSITY=0");
 
@@ -1712,7 +1689,7 @@ static void do_commit(const struct am_state *state)
 		setenv("GIT_COMMITTER_DATE",
 			state->ignore_date ? "" : state->author_date, 1);
 
-	if (commit_tree(state->msg, state->msg_len, tree, parents, commit,
+	if (commit_tree(state->msg.buf, state->msg.len, tree, parents, commit,
 				author, state->sign_commit))
 		die(_("failed to write commit object"));
 
@@ -1720,8 +1697,8 @@ static void do_commit(const struct am_state *state)
 	if (!reflog_msg)
 		reflog_msg = "am";
 
-	strbuf_addf(&sb, "%s: %.*s", reflog_msg, linelen(state->msg),
-			state->msg);
+	strbuf_addf(&sb, "%s: %.*s", reflog_msg, linelen(state->msg.buf),
+			state->msg.buf);
 
 	update_ref(sb.buf, "HEAD", commit, ptr, 0, UPDATE_REFS_DIE_ON_ERR);
 
@@ -1745,7 +1722,7 @@ static void do_commit(const struct am_state *state)
  */
 static void validate_resume_state(const struct am_state *state)
 {
-	if (!state->msg)
+	if (!state->msg.len && !file_exists(am_path(state, "final-commit")))
 		die(_("cannot resume: %s does not exist."),
 			am_path(state, "final-commit"));
 
@@ -1763,8 +1740,6 @@ static void validate_resume_state(const struct am_state *state)
  */
 static int do_interactive(struct am_state *state)
 {
-	assert(state->msg);
-
 	if (!isatty(0))
 		die(_("cannot be interactive without stdin connected to a terminal."));
 
@@ -1773,7 +1748,7 @@ static int do_interactive(struct am_state *state)
 
 		puts(_("Commit Body is:"));
 		puts("--------------------------");
-		printf("%s", state->msg);
+		printf("%s", state->msg.buf);
 		puts("--------------------------");
 
 		/*
@@ -1793,13 +1768,10 @@ static int do_interactive(struct am_state *state)
 		} else if (*reply == 'n' || *reply == 'N') {
 			return 1;
 		} else if (*reply == 'e' || *reply == 'E') {
-			struct strbuf msg = STRBUF_INIT;
-
-			if (!launch_editor(am_path(state, "final-commit"), &msg, NULL)) {
-				free(state->msg);
-				state->msg = strbuf_detach(&msg, &state->msg_len);
-			}
-			strbuf_release(&msg);
+			if (launch_editor(am_path(state, "final-commit"), NULL, NULL) < 0)
+				continue;
+			if (read_commit_msg(state) < 0)
+				die(_("'%s' was deleted by the editor"), am_path(state, "final-commit"));
 		} else if (*reply == 'v' || *reply == 'V') {
 			const char *pager = git_pager(1);
 			struct child_process cp = CHILD_PROCESS_INIT;
@@ -1866,7 +1838,7 @@ static void am_run(struct am_state *state, int resume)
 		if (run_applypatch_msg_hook(state))
 			exit(1);
 
-		say(state, stdout, _("Applying: %.*s"), linelen(state->msg), state->msg);
+		say(state, stdout, _("Applying: %.*s"), linelen(state->msg.buf), state->msg.buf);
 
 		apply_status = run_apply(state, NULL);
 
@@ -1891,7 +1863,7 @@ static void am_run(struct am_state *state, int resume)
 			int advice_amworkdir = 1;
 
 			printf_ln(_("Patch failed at %s %.*s"), msgnum(state),
-				linelen(state->msg), state->msg);
+				linelen(state->msg.buf), state->msg.buf);
 
 			git_config_get_bool("advice.amworkdir", &advice_amworkdir);
 
@@ -1938,7 +1910,7 @@ static void am_resolve(struct am_state *state)
 {
 	validate_resume_state(state);
 
-	say(state, stdout, _("Applying: %.*s"), linelen(state->msg), state->msg);
+	say(state, stdout, _("Applying: %.*s"), linelen(state->msg.buf), state->msg.buf);
 
 	if (!index_has_changes(NULL)) {
 		printf_ln(_("No changes - did you forget to use 'git add'?\n"
