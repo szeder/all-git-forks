@@ -39,4 +39,29 @@ test_expect_success 'rev-list --graph --no-walk is forbidden' '
 	test_must_fail git rev-list --graph --no-walk HEAD
 '
 
+test_expect_success 'setup worktree tests' '
+	mkdir newtree &&
+	git worktree add --detach newtree master^ &&
+	(
+		cd newtree &&
+		commit detached2
+	)
+'
+
+test_expect_failure 'prune in main worktree does not lose detached HEAD in new worktree' '
+	git prune --expire=now &&
+	(
+		cd newtree &&
+		git show HEAD
+	)
+'
+
+test_expect_failure 'prune in new worktree does not lose detached HEAD in main worktree' '
+	(
+		cd newtree &&
+		git prune --expire=now
+	) &&
+	git show HEAD
+'
+
 test_done
