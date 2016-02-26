@@ -23,6 +23,7 @@ static int init_is_bare_repository = 0;
 static int init_shared_repository = -1;
 static const char *init_db_template_dir;
 static const char *git_link;
+static char *requested_ref_storage_backend;
 
 static void copy_templates_1(struct strbuf *path, struct strbuf *template,
 			     DIR *dir)
@@ -177,13 +178,8 @@ static int create_default_files(const char *template_path)
 	char junk[2];
 	int reinit;
 	int filemode;
-
-	/*
-	 * Create .git/refs/{heads,tags}
-	 */
-	safe_create_dir(git_path_buf(&buf, "refs"), 1);
-	safe_create_dir(git_path_buf(&buf, "refs/heads"), 1);
-	safe_create_dir(git_path_buf(&buf, "refs/tags"), 1);
+	struct strbuf err = STRBUF_INIT;
+	int repo_version = 0;
 
 	/* Just look for `init.templatedir` */
 	git_config(git_init_db_config, NULL);
@@ -207,18 +203,44 @@ static int create_default_files(const char *template_path)
 	 */
 	if (shared_repository) {
 		adjust_shared_perm(get_git_dir());
-		adjust_shared_perm(git_path_buf(&buf, "refs"));
-		adjust_shared_perm(git_path_buf(&buf, "refs/heads"));
-		adjust_shared_perm(git_path_buf(&buf, "refs/tags"));
 	}
 
 	/*
-	 * Create the default symlink from ".git/HEAD" to the "master"
+	 * Create the default symref from ".git/HEAD" to the "master"
 	 * branch, if it does not exist yet.
 	 */
 	path = git_path_buf(&buf, "HEAD");
 	reinit = (!access(path, R_OK)
 		  || readlink(path, junk, sizeof(junk)-1) != -1);
+	if (reinit) {
+		if (requested_ref_storage_backend &&
+		    strcmp(ref_storage_backend, requested_ref_storage_backend))
+			die(_("You can't change the refs storage type (was %s; you requested %s)"),
+			      ref_storage_backend,
+			      requested_ref_storage_backend);
+	}
+
+	register_ref_storage_backends();
+	if (requested_ref_storage_backend)
+		ref_storage_backend = requested_ref_storage_backend;
+	if (strcmp(ref_storage_backend, "files")) {
+		git_config_set("extensions.refStorage", ref_storage_backend);
+		git_config_set("core.repositoryformatversion", ref_storage_backend);
+		if (set_ref_storage_backend(ref_storage_backend))
+			die(_("Unknown ref storage backend %s"),
+			    ref_storage_backend);
+		repo_version = 1;
+	}
+
+	/*
+	 * We need to create a "refs" dir in any case so that older
+	 * versions of git can tell that this is a repository.
+	 */
+	safe_create_dir(git_path("refs"), 1);
+
+	if (refs_init_db(shared_repository, &err))
+		die("failed to set up refs db: %s", err.buf);
+
 	if (!reinit) {
 		if (create_symref("HEAD", "refs/heads/master", NULL) < 0)
 			exit(1);
@@ -226,7 +248,7 @@ static int create_default_files(const char *template_path)
 
 	/* This forces creation of new config file */
 	xsnprintf(repo_version_string, sizeof(repo_version_string),
-		  "%d", GIT_REPO_VERSION);
+		  "%d", repo_version);
 	git_config_set("core.repositoryformatversion", repo_version_string);
 
 	/* Check filemode trustability */
@@ -474,10 +496,19 @@ int cmd_init_db(int argc, const char **argv, const char *prefix)
 		OPT_BIT('q', "quiet", &flags, N_("be quiet"), INIT_DB_QUIET),
 		OPT_STRING(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
 			   N_("separate git dir from working tree")),
+		OPT_STRING(0, "ref-storage", &requested_ref_storage_backend,
+			   N_("name"), N_("name of backend type to use")),
 		OPT_END()
 	};
 
 	argc = parse_options(argc, argv, prefix, init_db_options, init_db_usage, 0);
+
+	register_ref_storage_backends();
+
+	if (requested_ref_storage_backend &&
+	    !ref_storage_backend_exists(requested_ref_storage_backend))
+		die(_("Unknown ref storage backend %s"),
+		    requested_ref_storage_backend);
 
 	if (real_git_dir && !is_absolute_path(real_git_dir))
 		real_git_dir = xstrdup(real_path(real_git_dir));

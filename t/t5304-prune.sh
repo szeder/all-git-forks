@@ -93,7 +93,7 @@ test_expect_success 'prune: prune nonsense parameters' '
 test_expect_success 'prune: prune unreachable heads' '
 
 	git config core.logAllRefUpdates false &&
-	mv .git/logs .git/logs.old &&
+	delete_all_reflogs &&
 	: > file2 &&
 	git add file2 &&
 	git commit -m temporary &&
