@@ -909,7 +909,7 @@ static int default_start_failure(struct child_process *cp,
 {
 	int i;
 
-	strbuf_addstr(err, "Starting a child failed:");
+	strbuf_addstr(err, _("Starting a child failed:"));
 	for (i = 0; cp->argv[i]; i++)
 		strbuf_addf(err, " %s", cp->argv[i]);
 
@@ -927,7 +927,7 @@ static int default_task_finished(int result,
 	if (!result)
 		return 0;
 
-	strbuf_addf(err, "A child failed with return code %d:", result);
+	strbuf_addf(err, _("A child failed with return code %d:"), result);
 	for (i = 0; cp->argv[i]; i++)
 		strbuf_addf(err, " %s", cp->argv[i]);
 
