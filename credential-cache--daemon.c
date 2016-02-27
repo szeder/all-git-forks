@@ -263,6 +263,8 @@ int main(int argc, const char **argv)
 		OPT_END()
 	};
 
+	git_setup_gettext();
+
 	git_config_get_bool("credentialcache.ignoresighup", &ignore_sighup);
 
 	argc = parse_options(argc, argv, NULL, options, usage, 0);
