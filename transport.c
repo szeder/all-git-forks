@@ -83,7 +83,7 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 		close(data->fd);
 	data->fd = read_bundle_header(transport->url, &data->header);
 	if (data->fd < 0)
-		die ("Could not read bundle '%s'.", transport->url);
+		die(_("Could not read bundle '%s'."), transport->url);
 	for (i = 0; i < data->header.references.nr; i++) {
 		struct ref_list_entry *e = data->header.references.list + i;
 		struct ref *ref = alloc_ref(e->name);
@@ -148,7 +148,7 @@ static int set_git_option(struct git_transport_options *opts,
 			char *end;
 			opts->depth = strtol(value, &end, 0);
 			if (*end)
-				die("transport: invalid depth option '%s'", value);
+				die(_("transport: invalid depth option '%s'"), value);
 		}
 		return 0;
 	}
@@ -285,7 +285,7 @@ void transport_update_tracking_ref(struct remote *remote, struct ref *ref, int v
 
 	if (!remote_find_tracking(remote, &rs)) {
 		if (verbose)
-			fprintf(stderr, "updating local tracking ref '%s'\n", rs.dst);
+			fprintf_ln(stderr, _("updating local tracking ref '%s'"), rs.dst);
 		if (ref->deletion) {
 			delete_ref(rs.dst, NULL, 0);
 		} else
@@ -480,8 +480,8 @@ void transport_verify_remote_names(int nr_heads, const char **heads)
 		remote = remote ? (remote + 1) : local;
 		if (check_refname_format(remote,
 				REFNAME_ALLOW_ONELEVEL|REFNAME_REFSPEC_PATTERN))
-			die("remote part of refspec is not a valid name in %s",
-				heads[i]);
+			die(_("remote part of refspec is not a valid name in %s"),
+			    heads[i]);
 	}
 }
 
@@ -626,7 +626,7 @@ int is_transport_allowed(const char *type)
 void transport_check_allowed(const char *type)
 {
 	if (!is_transport_allowed(type))
-		die("transport '%s' not allowed", type);
+		die(_("transport '%s' not allowed"), type);
 }
 
 int transport_restrict_protocols(void)
@@ -665,7 +665,7 @@ struct transport *transport_get(struct remote *remote, const char *url)
 	if (helper) {
 		transport_helper_init(ret, helper);
 	} else if (starts_with(url, "rsync:")) {
-		die("git-over-rsync is no longer supported");
+		die(_("git-over-rsync is no longer supported"));
 	} else if (url_is_local_not_ssh(url) && is_file(url) && is_bundle(url, 1)) {
 		struct bundle_transport_data *data = xcalloc(1, sizeof(*data));
 		transport_check_allowed("file");
@@ -766,19 +766,22 @@ static void die_with_unpushed_submodules(struct string_list *needs_pushing)
 {
 	int i;
 
-	fprintf(stderr, "The following submodule paths contain changes that can\n"
-			"not be found on any remote:\n");
+	fprintf_ln(stderr, _("The following submodule paths contain changes that can\n"
+			     "not be found on any remote:"));
 	for (i = 0; i < needs_pushing->nr; i++)
 		printf("  %s\n", needs_pushing->items[i].string);
-	fprintf(stderr, "\nPlease try\n\n"
-			"	git push --recurse-submodules=on-demand\n\n"
-			"or cd to the path and use\n\n"
-			"	git push\n\n"
-			"to push them to a remote.\n\n");
+	fputc('\n', stderr);
+	fprintf_ln(stderr,
+		   _("Please try\n\n"
+		     "	git push --recurse-submodules=on-demand\n\n"
+		     "or cd to the path and use\n\n"
+		     "	git push\n\n"
+		     "to push them to a remote."));
+	fprintf(stderr, "\n\n");
 
 	string_list_clear(needs_pushing, 0);
 
-	die("Aborting.");
+	die(_("Aborting."));
 }
 
 static int run_pre_push_hook(struct transport *transport,
@@ -853,7 +856,7 @@ int transport_push(struct transport *transport,
 	if (transport->push) {
 		/* Maybe FIXME. But no important transport uses this case. */
 		if (flags & TRANSPORT_PUSH_SET_UPSTREAM)
-			die("This transport does not support using --set-upstream");
+			die(_("This transport does not support using --set-upstream"));
 
 		return transport->push(transport, refspec_nr, refspec, flags);
 	} else if (transport->push_refs) {
@@ -905,7 +908,7 @@ int transport_push(struct transport *transport,
 				if (!is_null_oid(&ref->new_oid) &&
 				    !push_unpushed_submodules(ref->new_oid.hash,
 					    transport->remote->name))
-				    die ("Failed to push all needed submodules!");
+				    die(_("Failed to push all needed submodules!"));
 		}
 
 		if ((flags & (TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND |
@@ -941,7 +944,7 @@ int transport_push(struct transport *transport,
 		if (porcelain && !push_ret)
 			puts("Done");
 		else if (!quiet && !ret && !transport_refs_pushed(remote_refs))
-			fprintf(stderr, "Everything up-to-date\n");
+			fprintf_ln(stderr, _("Everything up-to-date"));
 
 		return ret;
 	}
@@ -1009,7 +1012,7 @@ int transport_connect(struct transport *transport, const char *name,
 	if (transport->connect)
 		return transport->connect(transport, name, exec, fd);
 	else
-		die("Operation not supported by protocol");
+		die(_("Operation not supported by protocol"));
 }
 
 int transport_disconnect(struct transport *transport)
