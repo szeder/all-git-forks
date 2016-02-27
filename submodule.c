@@ -193,7 +193,7 @@ void gitmodules_config(void)
 		strbuf_addstr(&gitmodules_path, work_tree);
 		strbuf_addstr(&gitmodules_path, "/.gitmodules");
 		if (read_cache() < 0)
-			die("index file corrupt");
+			die(_("index file corrupt"));
 		pos = cache_name_pos(".gitmodules", 11);
 		if (pos < 0) { /* .gitmodules not found or isn't merged */
 			pos = -1 - pos;
@@ -272,7 +272,7 @@ void handle_ignore_submodules_arg(struct diff_options *diffopt,
 	else if (!strcmp(arg, "dirty"))
 		DIFF_OPT_SET(diffopt, IGNORE_DIRTY_SUBMODULES);
 	else if (strcmp(arg, "none"))
-		die("bad --ignore-submodules argument: %s", arg);
+		die(_("bad --ignore-submodules argument: %s"), arg);
 }
 
 static int prepare_submodule_summary(struct rev_info *rev, const char *path,
@@ -420,7 +420,7 @@ static int submodule_needs_pushing(const char *path, const unsigned char sha1[20
 		cp.out = -1;
 		cp.dir = path;
 		if (start_command(&cp))
-			die("Could not run 'git rev-list %s --not --remotes -n 1' command in submodule %s",
+			die(_("Could not run 'git rev-list %s --not --remotes -n 1' command in submodule %s"),
 				sha1_to_hex(sha1), path);
 		if (strbuf_read(&buf, cp.out, 41))
 			needs_pushing = 1;
@@ -479,7 +479,7 @@ int find_unpushed_submodules(unsigned char new_sha1[20],
 	argv[3] = remotes_arg.buf;
 	setup_revisions(argc, argv, &rev, NULL);
 	if (prepare_revision_walk(&rev))
-		die("revision walk setup failed");
+		die(_("revision walk setup failed"));
 
 	while ((commit = get_revision(&rev)) != NULL)
 		find_unpushed_submodule_commits(commit, needs_pushing);
@@ -631,7 +631,7 @@ static void calculate_changed_submodule_paths(void)
 				   add_sha1_to_argv, &argv);
 	setup_revisions(argv.argc, argv.argv, &rev, NULL);
 	if (prepare_revision_walk(&rev))
-		die("revision walk setup failed");
+		die(_("revision walk setup failed"));
 
 	/*
 	 * Collect all submodules (whether checked out or not) for which new
@@ -733,7 +733,7 @@ static int get_next_submodule(struct child_process *cp,
 			cp->env = local_repo_env;
 			cp->git_cmd = 1;
 			if (!spf->quiet)
-				strbuf_addf(err, "Fetching submodule %s%s\n",
+				strbuf_addf(err, _("Fetching submodule %s%s\n"),
 					    spf->prefix, ce->name);
 			argv_array_init(&cp->args);
 			argv_array_pushv(&cp->args, spf->args.argv);
@@ -791,7 +791,7 @@ int fetch_populated_submodules(const struct argv_array *options,
 		goto out;
 
 	if (read_cache() < 0)
-		die("index file corrupt");
+		die(_("index file corrupt"));
 
 	argv_array_push(&spf.args, "fetch");
 	for (i = 0; i < options->argc; i++)
@@ -852,7 +852,7 @@ unsigned is_submodule_modified(const char *path, int ignore_untracked)
 	cp.out = -1;
 	cp.dir = path;
 	if (start_command(&cp))
-		die("Could not run 'git status --porcelain' in submodule %s", path);
+		die(_("Could not run 'git status --porcelain' in submodule %s"), path);
 
 	len = strbuf_read(&buf, cp.out, 1024);
 	line = buf.buf;
@@ -877,7 +877,7 @@ unsigned is_submodule_modified(const char *path, int ignore_untracked)
 	close(cp.out);
 
 	if (finish_command(&cp))
-		die("'git status --porcelain' failed in submodule %s", path);
+		die(_("'git status --porcelain' failed in submodule %s"), path);
 
 	strbuf_release(&buf);
 	return dirty_submodule;
@@ -946,7 +946,7 @@ int ok_to_remove_submodule(const char *path)
 	cp.out = -1;
 	cp.dir = path;
 	if (start_command(&cp))
-		die("Could not run 'git status --porcelain -uall --ignore-submodules=none' in submodule %s", path);
+		die(_("Could not run 'git status --porcelain -uall --ignore-submodules=none' in submodule %s"), path);
 
 	len = strbuf_read(&buf, cp.out, 1024);
 	if (len > 2)
@@ -954,7 +954,7 @@ int ok_to_remove_submodule(const char *path)
 	close(cp.out);
 
 	if (finish_command(&cp))
-		die("'git status --porcelain -uall --ignore-submodules=none' failed in submodule %s", path);
+		die(_("'git status --porcelain -uall --ignore-submodules=none' failed in submodule %s"), path);
 
 	strbuf_release(&buf);
 	return ok_to_remove;
@@ -986,7 +986,7 @@ static int find_first_merges(struct object_array *result, const char *path,
 
 	/* save all revisions from the above list that contain b */
 	if (prepare_revision_walk(&revs))
-		die("revision walk setup failed");
+		die(_("revision walk setup failed"));
 	while ((commit = get_revision(&revs)) != NULL) {
 		struct object *o = &(commit->object);
 		if (in_merge_bases(b, commit))
@@ -1029,7 +1029,7 @@ static void print_commit(struct commit *commit)
 }
 
 #define MERGE_WARNING(path, msg) \
-	warning("Failed to merge submodule %s (%s)", path, msg);
+	warning(_("Failed to merge submodule %s (%s)"), path, msg);
 
 int merge_submodule(unsigned char result[20], const char *path,
 		    const unsigned char base[20], const unsigned char a[20],

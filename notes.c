@@ -422,7 +422,7 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 
 	buf = fill_tree_descriptor(&desc, subtree->val_sha1);
 	if (!buf)
-		die("Could not read %s for notes-index",
+		die(_("Could not read %s for notes-index"),
 		     sha1_to_hex(subtree->val_sha1));
 
 	prefix_len = subtree->key_sha1[19];
@@ -455,8 +455,8 @@ static void load_subtree(struct notes_tree *t, struct leaf_node *subtree,
 			}
 			if (note_tree_insert(t, node, n, l, type,
 					     combine_notes_concatenate))
-				die("Failed to load %s %s into notes tree "
-				    "from %s",
+				die(_("Failed to load %s %s into notes tree "
+				      "from %s"),
 				    type == PTR_TYPE_NOTE ? "note" : "subtree",
 				    sha1_to_hex(l->key_sha1), t->ref);
 		}
@@ -942,7 +942,7 @@ void string_list_add_refs_by_glob(struct string_list *list, const char *glob)
 	} else {
 		unsigned char sha1[20];
 		if (get_sha1(glob, sha1))
-			warning("notes ref %s is invalid", glob);
+			warning(_("notes ref %s is invalid"), glob);
 		if (!unsorted_string_list_has_string(list, glob))
 			string_list_append(list, glob);
 	}
@@ -1020,9 +1020,9 @@ void init_notes(struct notes_tree *t, const char *notes_ref,
 	    get_sha1_treeish(notes_ref, object_sha1))
 		return;
 	if (flags & NOTES_INIT_WRITABLE && read_ref(notes_ref, object_sha1))
-		die("Cannot use notes ref %s", notes_ref);
+		die(_("Cannot use notes ref %s"), notes_ref);
 	if (get_tree_entry(object_sha1, "", sha1, &mode))
-		die("Failed to read notes tree referenced by %s (%s)",
+		die(_("Failed to read notes tree referenced by %s (%s)"),
 		    notes_ref, sha1_to_hex(object_sha1));
 
 	hashclr(root_tree.key_sha1);
