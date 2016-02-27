@@ -203,7 +203,7 @@ static struct ref_entry *create_ref_entry(const char *refname,
 
 	if (check_name &&
 	    check_refname_format(refname, REFNAME_ALLOW_ONELEVEL))
-		die("Reference has invalid format: '%s'", refname);
+		die(_("Reference has invalid format: '%s'"), refname);
 	FLEX_ALLOC_STR(ref, name, refname);
 	hashcpy(ref->u.value.oid.hash, sha1);
 	oidclr(&ref->u.value.peeled);
@@ -475,12 +475,12 @@ static int is_dup_ref(const struct ref_entry *ref1, const struct ref_entry *ref2
 
 	if ((ref1->flag & REF_DIR) || (ref2->flag & REF_DIR))
 		/* This is impossible by construction */
-		die("Reference directory conflict: %s", ref1->name);
+		die(_("Reference directory conflict: %s"), ref1->name);
 
 	if (oidcmp(&ref1->u.value.oid, &ref2->u.value.oid))
-		die("Duplicated ref, and SHA1s don't match: %s", ref1->name);
+		die(_("Duplicated ref, and SHA1s don't match: %s"), ref1->name);
 
-	warning("Duplicated ref: %s", ref1->name);
+	warning(_("Duplicated ref: %s"), ref1->name);
 	return 1;
 }
 
@@ -526,7 +526,7 @@ static int ref_resolves_to_object(struct ref_entry *entry)
 	if (entry->flag & REF_ISBROKEN)
 		return 0;
 	if (!has_sha1_file(entry->u.value.oid.hash)) {
-		error("%s does not point to a valid object!", entry->name);
+		error(_("%s does not point to a valid object!"), entry->name);
 		return 0;
 	}
 	return 1;
@@ -653,7 +653,7 @@ static int do_for_each_entry_in_dirs(struct ref_dir *dir1,
 				i1++;
 				i2++;
 			} else {
-				die("conflict between reference and directory: %s",
+				die(_("conflict between reference and directory: %s"),
 				    e1->name);
 			}
 		} else {
@@ -914,7 +914,7 @@ static void clear_packed_ref_cache(struct ref_cache *refs)
 		struct packed_ref_cache *packed_refs = refs->packed;
 
 		if (packed_refs->lock)
-			die("internal error: packed-ref cache cleared while locked");
+			die(_("internal error: packed-ref cache cleared while locked"));
 		refs->packed = NULL;
 		release_packed_ref_cache(packed_refs);
 	}
@@ -1069,7 +1069,7 @@ static void read_packed_refs(FILE *f, struct ref_dir *dir)
 
 			if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
 				if (!refname_is_safe(refname))
-					die("packed refname is dangerous: %s", refname);
+					die(_("packed refname is dangerous: %s"), refname);
 				hashclr(sha1);
 				flag |= REF_BAD_NAME | REF_ISBROKEN;
 			}
@@ -1239,7 +1239,7 @@ static void read_loose_refs(const char *dirname, struct ref_dir *dir)
 			if (check_refname_format(refname.buf,
 						 REFNAME_ALLOW_ONELEVEL)) {
 				if (!refname_is_safe(refname.buf))
-					die("loose refname is dangerous: %s", refname.buf);
+					die(_("loose refname is dangerous: %s"), refname.buf);
 				hashclr(sha1);
 				flag |= REF_BAD_NAME | REF_ISBROKEN;
 			}
@@ -2099,7 +2099,7 @@ static int commit_packed_refs(void)
 
 	out = fdopen_lock_file(packed_ref_cache->lock, "w");
 	if (!out)
-		die_errno("unable to fdopen packed-refs descriptor");
+		die_errno(_("unable to fdopen packed-refs descriptor"));
 
 	fprintf_or_die(out, "%s", PACKED_REFS_HEADER);
 	do_for_each_entry_in_dir(get_packed_ref_dir(packed_ref_cache),
@@ -2275,7 +2275,7 @@ int pack_refs(unsigned int flags)
 				 pack_if_possible_fn, &cbdata);
 
 	if (commit_packed_refs())
-		die_errno("unable to overwrite old ref-pack file");
+		die_errno(_("unable to overwrite old ref-pack file"));
 
 	prune_refs(cbdata.ref_to_prune);
 	return 0;
@@ -2417,7 +2417,7 @@ static int rename_tmp_log(const char *newrefname)
 			goto retry;
 		/* fall through */
 	default:
-		error("unable to create directory for %s", newrefname);
+		error(_("unable to create directory for %s"), newrefname);
 		goto out;
 	}
 
@@ -2429,7 +2429,7 @@ static int rename_tmp_log(const char *newrefname)
 			 * Solaris 5.8 gives ENOTDIR.  Sheesh.
 			 */
 			if (remove_empty_directories(&path)) {
-				error("Directory not empty: logs/%s", newrefname);
+				error(_("Directory not empty: logs/%s"), newrefname);
 				goto out;
 			}
 			goto retry;
@@ -2441,8 +2441,8 @@ static int rename_tmp_log(const char *newrefname)
 			 */
 			goto retry;
 		} else {
-			error("unable to move logfile "TMP_RENAMED_LOG" to logs/%s: %s",
-				newrefname, strerror(errno));
+			error(_("unable to move logfile %s to logs/%s: %s"),
+				TMP_RENAMED_LOG, newrefname, strerror(errno));
 			goto out;
 		}
 	}
@@ -2486,25 +2486,25 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	struct strbuf err = STRBUF_INIT;
 
 	if (log && S_ISLNK(loginfo.st_mode))
-		return error("reflog for %s is a symlink", oldrefname);
+		return error(_("reflog for %s is a symlink"), oldrefname);
 
 	symref = resolve_ref_unsafe(oldrefname, RESOLVE_REF_READING,
 				    orig_sha1, &flag);
 	if (flag & REF_ISSYMREF)
-		return error("refname %s is a symbolic ref, renaming it is not supported",
+		return error(_("refname %s is a symbolic ref, renaming it is not supported"),
 			oldrefname);
 	if (!symref)
-		return error("refname %s not found", oldrefname);
+		return error(_("refname %s not found"), oldrefname);
 
 	if (!rename_ref_available(oldrefname, newrefname))
 		return 1;
 
 	if (log && rename(git_path("logs/%s", oldrefname), git_path(TMP_RENAMED_LOG)))
-		return error("unable to move logfile logs/%s to "TMP_RENAMED_LOG": %s",
-			oldrefname, strerror(errno));
+		return error(_("unable to move logfile logs/%s to %s: %s"),
+			     TMP_RENAMED_LOG, oldrefname, strerror(errno));
 
 	if (delete_ref(oldrefname, orig_sha1, REF_NODEREF)) {
-		error("unable to delete old %s", oldrefname);
+		error(_("unable to delete old %s"), oldrefname);
 		goto rollback;
 	}
 
@@ -2519,11 +2519,11 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 			strbuf_release(&path);
 
 			if (result) {
-				error("Directory not empty: %s", newrefname);
+				error(_("Directory not empty: %s"), newrefname);
 				goto rollback;
 			}
 		} else {
-			error("unable to delete existing %s", newrefname);
+			error(_("unable to delete existing %s"), newrefname);
 			goto rollback;
 		}
 	}
@@ -2535,7 +2535,7 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 
 	lock = lock_ref_sha1_basic(newrefname, NULL, NULL, NULL, 0, NULL, &err);
 	if (!lock) {
-		error("unable to rename '%s' to '%s': %s", oldrefname, newrefname, err.buf);
+		error(_("unable to rename '%s' to '%s': %s"), oldrefname, newrefname, err.buf);
 		strbuf_release(&err);
 		goto rollback;
 	}
@@ -2543,7 +2543,7 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 
 	if (write_ref_to_lockfile(lock, orig_sha1, &err) ||
 	    commit_ref_update(lock, orig_sha1, logmsg, 0, &err)) {
-		error("unable to write current sha1 into %s: %s", newrefname, err.buf);
+		error(_("unable to write current sha1 into %s: %s"), newrefname, err.buf);
 		strbuf_release(&err);
 		goto rollback;
 	}
@@ -2553,7 +2553,7 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
  rollback:
 	lock = lock_ref_sha1_basic(oldrefname, NULL, NULL, NULL, 0, NULL, &err);
 	if (!lock) {
-		error("unable to lock %s for rollback: %s", oldrefname, err.buf);
+		error(_("unable to lock %s for rollback: %s"), oldrefname, err.buf);
 		strbuf_release(&err);
 		goto rollbacklog;
 	}
@@ -2562,19 +2562,19 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	log_all_ref_updates = 0;
 	if (write_ref_to_lockfile(lock, orig_sha1, &err) ||
 	    commit_ref_update(lock, orig_sha1, NULL, 0, &err)) {
-		error("unable to write current sha1 into %s: %s", oldrefname, err.buf);
+		error(_("unable to write current sha1 into %s: %s"), oldrefname, err.buf);
 		strbuf_release(&err);
 	}
 	log_all_ref_updates = flag;
 
  rollbacklog:
 	if (logmoved && rename(git_path("logs/%s", newrefname), git_path("logs/%s", oldrefname)))
-		error("unable to restore logfile %s from %s: %s",
+		error(_("unable to restore logfile %s from %s: %s"),
 			oldrefname, newrefname, strerror(errno));
 	if (!logmoved && log &&
 	    rename(git_path(TMP_RENAMED_LOG), git_path("logs/%s", oldrefname)))
-		error("unable to restore logfile %s from "TMP_RENAMED_LOG": %s",
-			oldrefname, strerror(errno));
+		error(_("unable to restore logfile %s from %s: %s"),
+		      TMP_RENAMED_LOG, oldrefname, strerror(errno));
 
 	return 1;
 }
@@ -2817,7 +2817,7 @@ static int commit_ref_update(struct ref_lock *lock,
 		}
 	}
 	if (commit_ref(lock)) {
-		error("Couldn't set %s", lock->ref_name);
+		error(_("Couldn't set %s"), lock->ref_name);
 		unlock_ref(lock);
 		return -1;
 	}
@@ -2862,7 +2862,7 @@ static int create_symref_locked(struct ref_lock *lock, const char *refname,
 	}
 
 	if (!fdopen_lock_file(lock->lk, "w"))
-		return error("unable to fdopen %s: %s",
+		return error(_("unable to fdopen %s: %s"),
 			     lock->lk->tempfile.filename.buf, strerror(errno));
 
 	update_symref_reflog(lock, refname, target, logmsg);
@@ -2870,7 +2870,7 @@ static int create_symref_locked(struct ref_lock *lock, const char *refname,
 	/* no error check; commit_ref will check ferror */
 	fprintf(lock->lk->tempfile.fp, "ref: %s\n", target);
 	if (commit_ref(lock) < 0)
-		return error("unable to write symref for %s: %s", refname,
+		return error(_("unable to write symref for %s: %s"), refname,
 			     strerror(errno));
 	return 0;
 }
@@ -2959,7 +2959,7 @@ int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void
 
 	/* Jump to the end */
 	if (fseek(logfp, 0, SEEK_END) < 0)
-		return error("cannot seek back reflog for %s: %s",
+		return error(_("cannot seek back reflog for %s: %s"),
 			     refname, strerror(errno));
 	pos = ftell(logfp);
 	while (!ret && 0 < pos) {
@@ -2971,11 +2971,11 @@ int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void
 		/* Fill next block from the end */
 		cnt = (sizeof(buf) < pos) ? sizeof(buf) : pos;
 		if (fseek(logfp, pos - cnt, SEEK_SET))
-			return error("cannot seek back reflog for %s: %s",
+			return error(_("cannot seek back reflog for %s: %s"),
 				     refname, strerror(errno));
 		nread = fread(buf, cnt, 1, logfp);
 		if (nread != 1)
-			return error("cannot read %d bytes from reflog for %s: %s",
+			return error(_("cannot read %d bytes from reflog for %s: %s"),
 				     cnt, refname, strerror(errno));
 		pos -= cnt;
 
@@ -3097,7 +3097,7 @@ static int do_for_each_reflog(struct strbuf *name, each_ref_fn fn, void *cb_data
 				struct object_id oid;
 
 				if (read_ref_full(name->buf, 0, oid.hash, NULL))
-					retval = error("bad ref for %s", name->buf);
+					retval = error(_("bad ref for %s"), name->buf);
 				else
 					retval = fn(name->buf, &oid, 0, cb_data);
 			}
@@ -3447,7 +3447,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 	 */
 	lock = lock_ref_sha1_basic(refname, sha1, NULL, NULL, 0, &type, &err);
 	if (!lock) {
-		error("cannot lock ref '%s': %s", refname, err.buf);
+		error(_("cannot lock ref '%s': %s"), refname, err.buf);
 		strbuf_release(&err);
 		return -1;
 	}
@@ -3474,7 +3474,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 		}
 		cb.newlog = fdopen_lock_file(&reflog_lock, "w");
 		if (!cb.newlog) {
-			error("cannot fdopen %s (%s)",
+			error(_("cannot fdopen %s (%s)"),
 			      get_lock_file_path(&reflog_lock), strerror(errno));
 			goto failure;
 		}
@@ -3497,21 +3497,21 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 			!is_null_sha1(cb.last_kept_sha1);
 
 		if (close_lock_file(&reflog_lock)) {
-			status |= error("couldn't write %s: %s", log_file,
+			status |= error(_("couldn't write %s: %s"), log_file,
 					strerror(errno));
 		} else if (update &&
 			   (write_in_full(get_lock_file_fd(lock->lk),
 				sha1_to_hex(cb.last_kept_sha1), 40) != 40 ||
 			    write_str_in_full(get_lock_file_fd(lock->lk), "\n") != 1 ||
 			    close_ref(lock) < 0)) {
-			status |= error("couldn't write %s",
+			status |= error(_("couldn't write %s"),
 					get_lock_file_path(lock->lk));
 			rollback_lock_file(&reflog_lock);
 		} else if (commit_lock_file(&reflog_lock)) {
-			status |= error("unable to write reflog '%s' (%s)",
+			status |= error(_("unable to write reflog '%s' (%s)"),
 					log_file, strerror(errno));
 		} else if (update && commit_ref(lock)) {
-			status |= error("couldn't set %s", lock->ref_name);
+			status |= error(_("couldn't set %s"), lock->ref_name);
 		}
 	}
 	free(log_file);
