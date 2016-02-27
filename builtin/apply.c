@@ -4361,9 +4361,22 @@ static int apply_patch(int fd, const char *filename, int options)
 	struct strbuf buf = STRBUF_INIT; /* owns the patch text */
 	struct patch *list = NULL, **listp = &list;
 	int skipped_patch = 0;
+	uint64_t start;
+
+	trace_printf("Start performance tracing apply_patch() 0!");
+	start = getnanotime();
 
 	patch_input_file = filename;
 	read_patch_file(&buf, fd);
+
+
+	trace_performance_since(start, "apply_patch() 0");
+	trace_printf("End performance tracing apply_patch() 0!");
+
+	trace_printf("Start performance tracing apply_patch() 1!");
+	start = getnanotime();
+
+
 	offset = 0;
 	while (offset < buf.len) {
 		struct patch *patch;
@@ -4389,6 +4402,12 @@ static int apply_patch(int fd, const char *filename, int options)
 		offset += nr;
 	}
 
+	trace_performance_since(start, "apply_patch() 1");
+	trace_printf("End performance tracing apply_patch() 1!");
+
+	trace_printf("Start performance tracing apply_patch() 2!");
+	start = getnanotime();
+
 	if (!list && !skipped_patch)
 		die(_("unrecognized input"));
 
@@ -4404,10 +4423,22 @@ static int apply_patch(int fd, const char *filename, int options)
 			die(_("unable to read index file"));
 	}
 
+	trace_performance_since(start, "apply_patch() 2");
+	trace_printf("End performance tracing apply_patch() 2!");
+
+	trace_printf("Start performance tracing apply_patch() 3!");
+	start = getnanotime();
+
 	if ((check || apply) &&
 	    check_patch_list(list) < 0 &&
 	    !apply_with_reject)
 		exit(1);
+
+	trace_performance_since(start, "apply_patch() 3");
+	trace_printf("End performance tracing apply_patch() 3!");
+
+	trace_printf("Start performance tracing apply_patch() 4!");
+	start = getnanotime();
 
 	if (apply && write_out_results(list)) {
 		if (apply_with_reject)
@@ -4416,8 +4447,20 @@ static int apply_patch(int fd, const char *filename, int options)
 		return 1;
 	}
 
+	trace_performance_since(start, "apply_patch() 4");
+	trace_printf("End performance tracing apply_patch() 4!");
+
+	trace_printf("Start performance tracing apply_patch() 5!");
+	start = getnanotime();
+
 	if (fake_ancestor)
 		build_fake_ancestor(list, fake_ancestor);
+
+	trace_performance_since(start, "apply_patch() 5");
+	trace_printf("End performance tracing apply_patch() 5!");
+
+	trace_printf("Start performance tracing apply_patch() 6!");
+	start = getnanotime();
 
 	if (diffstat)
 		stat_patch_list(list);
@@ -4428,9 +4471,19 @@ static int apply_patch(int fd, const char *filename, int options)
 	if (summary)
 		summary_patch_list(list);
 
+	trace_performance_since(start, "apply_patch() 6");
+	trace_printf("End performance tracing apply_patch() 6!");
+
+	trace_printf("Start performance tracing apply_patch() 7!");
+	start = getnanotime();
+
 	free_patch_list(list);
 	strbuf_release(&buf);
 	string_list_clear(&fn_table, 0);
+
+	trace_performance_since(start, "apply_patch() 7");
+	trace_printf("End performance tracing apply_patch() 7!");
+
 	return 0;
 }
 
