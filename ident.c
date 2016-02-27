@@ -75,13 +75,13 @@ static int add_mailname_host(struct strbuf *buf)
 	mailname = fopen("/etc/mailname", "r");
 	if (!mailname) {
 		if (errno != ENOENT)
-			warning("cannot open /etc/mailname: %s",
+			warning(_("cannot open /etc/mailname: %s"),
 				strerror(errno));
 		return -1;
 	}
 	if (strbuf_getline(&mailnamebuf, mailname) == EOF) {
 		if (ferror(mailname))
-			warning("cannot read /etc/mailname: %s",
+			warning(_("cannot read /etc/mailname: %s"),
 				strerror(errno));
 		strbuf_release(&mailnamebuf);
 		fclose(mailname);
@@ -125,7 +125,7 @@ static void add_domainname(struct strbuf *out, int *is_bogus)
 	char buf[1024];
 
 	if (gethostname(buf, sizeof(buf))) {
-		warning("cannot get host name: %s", strerror(errno));
+		warning(_("cannot get host name: %s"), strerror(errno));
 		strbuf_addstr(out, "(none)");
 		*is_bogus = 1;
 		return;
@@ -355,18 +355,18 @@ const char *fmt_ident(const char *name, const char *email,
 			using_default = 1;
 			if (strict && default_name_is_bogus) {
 				fputs(env_hint, stderr);
-				die("unable to auto-detect name (got '%s')", name);
+				die(_("unable to auto-detect name (got '%s')"), name);
 			}
 			if (strict && ident_use_config_only
 			    && !(ident_config_given & IDENT_NAME_GIVEN))
-				die("user.useConfigOnly set but no name given");
+				die(_("user.useConfigOnly set but no name given"));
 		}
 		if (!*name) {
 			struct passwd *pw;
 			if (strict) {
 				if (using_default)
 					fputs(env_hint, stderr);
-				die("empty ident name (for <%s>) not allowed", email);
+				die(_("empty ident name (for <%s>) not allowed"), email);
 			}
 			pw = xgetpwuid_self(NULL);
 			name = pw->pw_name;
@@ -377,11 +377,11 @@ const char *fmt_ident(const char *name, const char *email,
 		email = ident_default_email();
 		if (strict && default_email_is_bogus) {
 			fputs(env_hint, stderr);
-			die("unable to auto-detect email address (got '%s')", email);
+			die(_("unable to auto-detect email address (got '%s')"), email);
 		}
 		if (strict && ident_use_config_only
 		    && !(ident_config_given & IDENT_MAIL_GIVEN))
-			die("user.useConfigOnly set but no mail given");
+			die(_("user.useConfigOnly set but no mail given"));
 	}
 
 	strbuf_reset(&ident);
@@ -396,7 +396,7 @@ const char *fmt_ident(const char *name, const char *email,
 		strbuf_addch(&ident, ' ');
 		if (date_str && date_str[0]) {
 			if (parse_date(date_str, &ident) < 0)
-				die("invalid date format: %s", date_str);
+				die(_("invalid date format: %s"), date_str);
 		}
 		else
 			strbuf_addstr(&ident, ident_default_date());
