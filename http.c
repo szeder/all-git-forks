@@ -404,7 +404,7 @@ static void init_curl_proxy_auth(CURL *result)
 			}
 		}
 		if (i == ARRAY_SIZE(proxy_authmethods)) {
-			warning("unsupported proxy authentication method %s: using anyauth",
+			warning(_("unsupported proxy authentication method %s: using anyauth"),
 					http_proxy_authmethod);
 			curl_easy_setopt(result, CURLOPT_PROXYAUTH, CURLAUTH_ANY);
 		}
@@ -445,7 +445,7 @@ static int sockopt_callback(void *client, curl_socket_t fd, curlsocktype type)
 
 	rc = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&ka, len);
 	if (rc < 0)
-		warning("unable to set SO_KEEPALIVE on socket %s",
+		warning(_("unable to set SO_KEEPALIVE on socket %s"),
 			strerror(errno));
 
 	return 0; /* CURL_SOCKOPT_OK only exists since curl 7.21.5 */
@@ -469,7 +469,7 @@ static CURL *get_curl_handle(void)
 	long allowed_protocols = 0;
 
 	if (!result)
-		die("curl_easy_init failed");
+		die(_("curl_easy_init failed"));
 
 	if (!curl_ssl_verify) {
 		curl_easy_setopt(result, CURLOPT_SSL_VERIFYPEER, 0);
@@ -503,7 +503,7 @@ static CURL *get_curl_handle(void)
 			}
 		}
 		if (i == ARRAY_SIZE(sslversions))
-			warning("unsupported ssl version %s: using default",
+			warning(_("unsupported ssl version %s: using default"),
 				ssl_version);
 	}
 
@@ -558,8 +558,8 @@ static CURL *get_curl_handle(void)
 	curl_easy_setopt(result, CURLOPT_REDIR_PROTOCOLS, allowed_protocols);
 #else
 	if (transport_restrict_protocols())
-		warning("protocol restrictions not applied to curl redirects because\n"
-			"your curl version is too old (>= 7.19.4)");
+		warning(_("protocol restrictions not applied to curl redirects because\n"
+			  "your curl version is too old (>= 7.19.4)"));
 #endif
 
 	if (getenv("GIT_CURL_VERBOSE"))
@@ -659,7 +659,7 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	free(normalized_url);
 
 	if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK)
-		die("curl_global_init failed");
+		die(_("curl_global_init failed"));
 
 	http_proactive_auth = proactive_auth;
 
@@ -681,7 +681,7 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 
 	curlm = curl_multi_init();
 	if (!curlm)
-		die("curl_multi_init failed");
+		die(_("curl_multi_init failed"));
 #endif
 
 	if (getenv("GIT_SSL_NO_VERIFY"))
@@ -1544,7 +1544,7 @@ static int http_get_file(const char *url, const char *filename,
 	strbuf_addf(&tmpfile, "%s.temp", filename);
 	result = fopen(tmpfile.buf, "a");
 	if (!result) {
-		error("Unable to open local file %s", tmpfile.buf);
+		error(_("Unable to open local file %s"), tmpfile.buf);
 		ret = HTTP_ERROR;
 		goto cleanup;
 	}
@@ -1601,7 +1601,7 @@ static char *fetch_pack_index(unsigned char *sha1, const char *base_url)
 	tmp = strbuf_detach(&buf, NULL);
 
 	if (http_get_file(url, tmp, NULL) != HTTP_OK) {
-		error("Unable to get pack index %s", url);
+		error(_("Unable to get pack index %s"), url);
 		free(tmp);
 		tmp = NULL;
 	}
@@ -1778,7 +1778,7 @@ struct http_pack_request *new_http_pack_request(
 		sha1_pack_name(target->sha1));
 	preq->packfile = fopen(preq->tmpfile, "a");
 	if (!preq->packfile) {
-		error("Unable to open local file %s for pack",
+		error(_("Unable to open local file %s for pack"),
 		      preq->tmpfile);
 		goto abort;
 	}
@@ -1866,7 +1866,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	unlink_or_warn(freq->tmpfile);
 
 	if (freq->localfile != -1)
-		error("fd leakage in start: %d", freq->localfile);
+		error(_("fd leakage in start: %d"), freq->localfile);
 	freq->localfile = open(freq->tmpfile,
 			       O_WRONLY | O_CREAT | O_EXCL, 0666);
 	/*
@@ -1885,7 +1885,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	}
 
 	if (freq->localfile < 0) {
-		error("Couldn't create temporary file %s: %s",
+		error(_("Couldn't create temporary file %s: %s"),
 		      freq->tmpfile, strerror(errno));
 		goto abort;
 	}
@@ -1931,7 +1931,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 			prev_posn = 0;
 			lseek(freq->localfile, 0, SEEK_SET);
 			if (ftruncate(freq->localfile, 0) < 0) {
-				error("Couldn't truncate temporary file %s: %s",
+				error(_("Couldn't truncate temporary file %s: %s"),
 					  freq->tmpfile, strerror(errno));
 				goto abort;
 			}
@@ -1985,7 +1985,7 @@ int finish_http_object_request(struct http_object_request *freq)
 	process_http_object_request(freq);
 
 	if (freq->http_code == 416) {
-		warning("requested range invalid; we may already have all the data.");
+		warning(_("requested range invalid; we may already have all the data."));
 	} else if (freq->curl_result != CURLE_OK) {
 		if (stat(freq->tmpfile, &st) == 0)
 			if (st.st_size == 0)
