@@ -88,7 +88,7 @@ char *prefix_path_gently(const char *prefix, int len,
 	const char *orig = path;
 	char *sanitized;
 	if (is_absolute_path(orig)) {
-		sanitized = xmalloc(strlen(path) + 1);
+		sanitized = xmallocz(strlen(path));
 		if (remaining_prefix)
 			*remaining_prefix = 0;
 		if (normalize_path_copy_len(sanitized, path, remaining_prefix)) {
@@ -139,9 +139,7 @@ int check_filename(const char *prefix, const char *arg)
 		if (arg[2] == '\0') /* ":/" is root dir, always exists */
 			return 1;
 		name = arg + 2;
-	} else if (!no_wildcard(arg))
-		return 1;
-	else if (prefix)
+	} else if (prefix)
 		name = prefix_filename(prefix, strlen(prefix), arg);
 	else
 		name = arg;
@@ -202,7 +200,7 @@ void verify_filename(const char *prefix,
 {
 	if (*arg == '-')
 		die("bad flag '%s' used after filename", arg);
-	if (check_filename(prefix, arg))
+	if (check_filename(prefix, arg) || !no_wildcard(arg))
 		return;
 	die_verify_filename(prefix, arg, diagnose_misspelt_rev);
 }
@@ -488,14 +486,13 @@ const char *read_gitfile_gently(const char *path, int *return_error_code)
 		error_code = READ_GITFILE_ERR_OPEN_FAILED;
 		goto cleanup_return;
 	}
-	buf = xmalloc(st.st_size + 1);
+	buf = xmallocz(st.st_size);
 	len = read_in_full(fd, buf, st.st_size);
 	close(fd);
 	if (len != st.st_size) {
 		error_code = READ_GITFILE_ERR_READ_FAILED;
 		goto cleanup_return;
 	}
-	buf[len] = '\0';
 	if (!starts_with(buf, "gitdir: ")) {
 		error_code = READ_GITFILE_ERR_INVALID_FORMAT;
 		goto cleanup_return;

@@ -229,7 +229,9 @@ struct cache_entry {
 #error "CE_EXTENDED_FLAGS out of range"
 #endif
 
+/* Forward structure decls */
 struct pathspec;
+struct child_process;
 
 /*
  * Copy the sha1 and stat state of a cache entry from one to
@@ -1487,7 +1489,7 @@ extern int update_server_info(int);
 /* git_config_parse_key() returns these negated: */
 #define CONFIG_INVALID_KEY 1
 #define CONFIG_NO_SECTION_OR_NAME 2
-/* git_config_set(), git_config_set_multivar() return the above or these: */
+/* git_config_set_gently(), git_config_set_multivar_gently() return the above or these: */
 #define CONFIG_NO_LOCK -1
 #define CONFIG_INVALID_FILE 3
 #define CONFIG_NO_WRITE 4
@@ -1506,8 +1508,8 @@ struct git_config_source {
 typedef int (*config_fn_t)(const char *, const char *, void *);
 extern int git_default_config(const char *, const char *, void *);
 extern int git_config_from_file(config_fn_t fn, const char *, void *);
-extern int git_config_from_buf(config_fn_t fn, const char *name,
-			       const char *buf, size_t len, void *data);
+extern int git_config_from_mem(config_fn_t fn, const char *origin_type,
+					const char *name, const char *buf, size_t len, void *data);
 extern void git_config_push_parameter(const char *text);
 extern int git_config_from_parameters(config_fn_t fn, void *data);
 extern void git_config(config_fn_t fn, void *);
@@ -1525,12 +1527,16 @@ extern int git_config_bool(const char *, const char *);
 extern int git_config_maybe_bool(const char *, const char *);
 extern int git_config_string(const char **, const char *, const char *);
 extern int git_config_pathname(const char **, const char *, const char *);
-extern int git_config_set_in_file(const char *, const char *, const char *);
-extern int git_config_set(const char *, const char *);
+extern int git_config_set_in_file_gently(const char *, const char *, const char *);
+extern void git_config_set_in_file(const char *, const char *, const char *);
+extern int git_config_set_gently(const char *, const char *);
+extern void git_config_set(const char *, const char *);
 extern int git_config_parse_key(const char *, char **, int *);
 extern int git_config_key_is_valid(const char *key);
-extern int git_config_set_multivar(const char *, const char *, const char *, int);
-extern int git_config_set_multivar_in_file(const char *, const char *, const char *, const char *, int);
+extern int git_config_set_multivar_gently(const char *, const char *, const char *, int);
+extern void git_config_set_multivar(const char *, const char *, const char *, int);
+extern int git_config_set_multivar_in_file_gently(const char *, const char *, const char *, const char *, int);
+extern void git_config_set_multivar_in_file(const char *, const char *, const char *, const char *, int);
 extern int git_config_rename_section(const char *, const char *);
 extern int git_config_rename_section_in_file(const char *, const char *, const char *);
 extern const char *git_etc_gitconfig(void);
@@ -1546,6 +1552,8 @@ extern const char *get_log_output_encoding(void);
 extern const char *get_commit_output_encoding(void);
 
 extern int git_config_parse_parameter(const char *, config_fn_t fn, void *data);
+extern const char *current_config_origin_type(void);
+extern const char *current_config_name(void);
 
 struct config_include_data {
 	int depth;
@@ -1685,6 +1693,7 @@ extern int pager_use_color;
 extern int term_columns(void);
 extern int decimal_width(uintmax_t);
 extern int check_pager_config(const char *cmd);
+extern void prepare_pager_args(struct child_process *, const char *pager);
 
 extern const char *editor_program;
 extern const char *askpass_program;

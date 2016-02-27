@@ -144,6 +144,39 @@ test_expect_success 'remove remote protects local branches' '
 	)
 '
 
+test_expect_success 'remove errors out early when deleting non-existent branch' '
+	(
+		cd test &&
+		echo "fatal: No such remote: foo" >expect &&
+		test_must_fail git remote rm foo 2>actual &&
+		test_i18ncmp expect actual
+	)
+'
+
+test_expect_success 'rename errors out early when deleting non-existent branch' '
+	(
+		cd test &&
+		echo "fatal: No such remote: foo" >expect &&
+		test_must_fail git remote rename foo bar 2>actual &&
+		test_i18ncmp expect actual
+	)
+'
+
+test_expect_success 'add existing foreign_vcs remote' '
+	test_config remote.foo.vcs bar &&
+	echo "fatal: remote foo already exists." >expect &&
+	test_must_fail git remote add foo bar 2>actual &&
+	test_i18ncmp expect actual
+'
+
+test_expect_success 'add existing foreign_vcs remote' '
+	test_config remote.foo.vcs bar &&
+	test_config remote.bar.vcs bar &&
+	echo "fatal: remote bar already exists." >expect &&
+	test_must_fail git remote rename foo bar 2>actual &&
+	test_i18ncmp expect actual
+'
+
 cat >test/expect <<EOF
 * remote origin
   Fetch URL: $(pwd)/one
@@ -935,6 +968,15 @@ test_expect_success 'get-url on new remote' '
 	echo foo | get_url_test --all someremote &&
 	echo foo | get_url_test --push someremote &&
 	echo foo | get_url_test --push --all someremote
+'
+
+test_expect_success 'remote set-url with locked config' '
+	test_when_finished "rm -f .git/config.lock" &&
+	git config --get-all remote.someremote.url >expect &&
+	>.git/config.lock &&
+	test_must_fail git remote set-url someremote baz &&
+	git config --get-all remote.someremote.url >actual &&
+	cmp expect actual
 '
 
 test_expect_success 'remote set-url bar' '

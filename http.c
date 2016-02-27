@@ -11,6 +11,11 @@
 #include "gettext.h"
 #include "transport.h"
 
+#if LIBCURL_VERSION_NUM >= 0x070a08
+long int git_curl_ipresolve = CURL_IPRESOLVE_WHATEVER;
+#else
+long int git_curl_ipresolve;
+#endif
 int active_requests;
 int http_is_verbose;
 size_t http_post_buffer = 16 * LARGE_PACKET_MAX;
@@ -57,6 +62,9 @@ static const char *ssl_key;
 #if LIBCURL_VERSION_NUM >= 0x070908
 static const char *ssl_capath;
 #endif
+#if LIBCURL_VERSION_NUM >= 0x072c00
+static const char *ssl_pinnedkey;
+#endif
 static const char *ssl_cainfo;
 static long curl_low_speed_limit = -1;
 static long curl_low_speed_time = -1;
@@ -87,6 +95,7 @@ static int curl_save_cookies;
 struct credential http_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
 static const char *user_agent;
+static int curl_empty_auth;
 
 #if LIBCURL_VERSION_NUM >= 0x071700
 /* Use CURLOPT_KEYPASSWD as is */
@@ -299,14 +308,31 @@ static int http_options(const char *var, const char *value, void *cb)
 	if (!strcmp("http.useragent", var))
 		return git_config_string(&user_agent, var, value);
 
+	if (!strcmp("http.emptyauth", var)) {
+		curl_empty_auth = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp("http.pinnedpubkey", var)) {
+#if LIBCURL_VERSION_NUM >= 0x072c00
+		return git_config_pathname(&ssl_pinnedkey, var, value);
+#else
+		warning(_("Public key pinning not supported with cURL < 7.44.0"));
+		return 0;
+#endif
+	}
+
 	/* Fall back on the default ones */
 	return git_default_config(var, value, cb);
 }
 
 static void init_curl_http_auth(CURL *result)
 {
-	if (!http_auth.username)
+	if (!http_auth.username) {
+		if (curl_empty_auth)
+			curl_easy_setopt(result, CURLOPT_USERPWD, ":");
 		return;
+	}
 
 	credential_fill(&http_auth);
 
@@ -498,6 +524,10 @@ static CURL *get_curl_handle(void)
 #if LIBCURL_VERSION_NUM >= 0x070908
 	if (ssl_capath != NULL)
 		curl_easy_setopt(result, CURLOPT_CAPATH, ssl_capath);
+#endif
+#if LIBCURL_VERSION_NUM >= 0x072c00
+	if (ssl_pinnedkey != NULL)
+		curl_easy_setopt(result, CURLOPT_PINNEDPUBLICKEY, ssl_pinnedkey);
 #endif
 	if (ssl_cainfo != NULL)
 		curl_easy_setopt(result, CURLOPT_CAINFO, ssl_cainfo);
@@ -824,10 +854,14 @@ struct active_request_slot *get_active_slot(void)
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPGET, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_FAILONERROR, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_RANGE, NULL);
+
+#if LIBCURL_VERSION_NUM >= 0x070a08
+	curl_easy_setopt(slot->curl, CURLOPT_IPRESOLVE, git_curl_ipresolve);
+#endif
 #ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
 	curl_easy_setopt(slot->curl, CURLOPT_HTTPAUTH, http_auth_methods);
 #endif
-	if (http_auth.password)
+	if (http_auth.password || curl_empty_auth)
 		init_curl_http_auth(slot->curl);
 
 	return slot;
