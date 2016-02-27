@@ -98,12 +98,12 @@ static int read_request(FILE *fh, struct credential *c,
 
 	strbuf_getline_lf(&item, fh);
 	if (!skip_prefix(item.buf, "action=", &p))
-		return error("client sent bogus action line: %s", item.buf);
+		return error(_("client sent bogus action line: %s"), item.buf);
 	strbuf_addstr(action, p);
 
 	strbuf_getline_lf(&item, fh);
 	if (!skip_prefix(item.buf, "timeout=", &p))
-		return error("client sent bogus timeout line: %s", item.buf);
+		return error(_("client sent bogus timeout line: %s"), item.buf);
 	*timeout = atoi(p);
 
 	if (credential_read(c, fh) < 0)
@@ -132,16 +132,16 @@ static void serve_one_client(FILE *in, FILE *out)
 		remove_credential(&c);
 	else if (!strcmp(action.buf, "store")) {
 		if (timeout < 0)
-			warning("cache client didn't specify a timeout");
+			warning(_("cache client didn't specify a timeout"));
 		else if (!c.username || !c.password)
-			warning("cache client gave us a partial credential");
+			warning(_("cache client gave us a partial credential"));
 		else {
 			remove_credential(&c);
 			cache_credential(&c, timeout);
 		}
 	}
 	else
-		warning("cache client sent unknown action: %s", action.buf);
+		warning(_("cache client sent unknown action: %s"), action.buf);
 
 	credential_clear(&c);
 	strbuf_release(&action);
@@ -160,7 +160,7 @@ static int serve_cache_loop(int fd)
 	pfd.events = POLLIN;
 	if (poll(&pfd, 1, 1000 * wakeup) < 0) {
 		if (errno != EINTR)
-			die_errno("poll failed");
+			die_errno(_("poll failed"));
 		return 1;
 	}
 
@@ -170,12 +170,12 @@ static int serve_cache_loop(int fd)
 
 		client = accept(fd, NULL, NULL);
 		if (client < 0) {
-			warning("accept failed: %s", strerror(errno));
+			warning(_("accept failed: %s"), strerror(errno));
 			return 1;
 		}
 		client2 = dup(client);
 		if (client2 < 0) {
-			warning("dup failed: %s", strerror(errno));
+			warning(_("dup failed: %s"), strerror(errno));
 			close(client);
 			return 1;
 		}
@@ -195,13 +195,13 @@ static void serve_cache(const char *socket_path, int debug)
 
 	fd = unix_stream_listen(socket_path);
 	if (fd < 0)
-		die_errno("unable to bind to '%s'", socket_path);
+		die_errno(_("unable to bind to '%s'"), socket_path);
 
 	printf("ok\n");
 	fclose(stdout);
 	if (!debug) {
 		if (!freopen("/dev/null", "w", stderr))
-			die_errno("unable to point stderr to /dev/null");
+			die_errno(_("unable to point stderr to /dev/null"));
 	}
 
 	while (serve_cache_loop(fd))
@@ -211,10 +211,10 @@ static void serve_cache(const char *socket_path, int debug)
 }
 
 static const char permissions_advice[] =
-"The permissions on your socket directory are too loose; other\n"
+N_("The permissions on your socket directory are too loose; other\n"
 "users may be able to read your cached credentials. Consider running:\n"
 "\n"
-"	chmod 0700 %s";
+"	chmod 0700 %s");
 static void init_socket_directory(const char *path)
 {
 	struct stat st;
@@ -223,7 +223,7 @@ static void init_socket_directory(const char *path)
 
 	if (!stat(dir, &st)) {
 		if (st.st_mode & 077)
-			die(permissions_advice, dir);
+			die(_(permissions_advice), dir);
 	} else {
 		/*
 		 * We must be sure to create the directory with the correct mode,
@@ -232,9 +232,9 @@ static void init_socket_directory(const char *path)
 		 * our protected socket.
 		 */
 		if (safe_create_leading_directories_const(dir) < 0)
-			die_errno("unable to create directories for '%s'", dir);
+			die_errno(_("unable to create directories for '%s'"), dir);
 		if (mkdir(dir, 0700) < 0)
-			die_errno("unable to mkdir '%s'", dir);
+			die_errno(_("unable to mkdir '%s'"), dir);
 	}
 
 	if (chdir(dir))
@@ -253,7 +253,7 @@ int main(int argc, const char **argv)
 	const char *socket_path;
 	int ignore_sighup = 0;
 	static const char *usage[] = {
-		"git-credential-cache--daemon [opts] <socket_path>",
+		N_("git-credential-cache--daemon [opts] <socket_path>"),
 		NULL
 	};
 	int debug = 0;
@@ -274,7 +274,7 @@ int main(int argc, const char **argv)
 		usage_with_options(usage, options);
 
 	if (!is_absolute_path(socket_path))
-		die("socket directory must be an absolute path");
+		die(_("socket directory must be an absolute path"));
 
 	init_socket_directory(socket_path);
 	register_tempfile(&socket_file, socket_path);
