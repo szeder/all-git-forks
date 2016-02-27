@@ -1,0 +1,29 @@
+#!/bin/sh
+
+test=$1; shift
+test=$(cd t && echo $test*.sh)
+: ${GIT_STRESS_LOAD:=$(( 2 * $(grep -c ^processor /proc/cpuinfo)))}
+: ${GIT_STRESS_ROOT:=/var/ram/git-stress}
+
+mkdir -p "$GIT_STRESS_ROOT" || exit 1
+rm -f "$GIT_STRESS_ROOT/fail"
+trap 'echo aborted >"$GIT_STRESS_ROOT/fail"' TERM INT HUP
+for i in $(seq $GIT_STRESS_LOAD); do
+	(
+		cd t &&
+		while ! test -e "$GIT_STRESS_ROOT/fail"
+		do
+			if ./$test \
+			   --root="$GIT_STRESS_ROOT/trash-$i" \
+			   -v -i >"$GIT_STRESS_ROOT/output-$i" 2>&1
+			then
+				echo >&2 "OK $i"
+			else
+				echo >&2 "FAIL $i"
+				cp "$GIT_STRESS_ROOT/output-$i" "$GIT_STRESS_ROOT/fail"
+			fi
+		done
+	) &
+done
+wait
+cat "$GIT_STRESS_ROOT/fail"
