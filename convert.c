@@ -199,9 +199,11 @@ static void check_safe_crlf(const char *path, enum crlf_action crlf_action,
 		 */
 		if (stats->crlf) {
 			if (checksafe == SAFE_CRLF_WARN)
-				warning("CRLF will be replaced by LF in %s.\nThe file will have its original line endings in your working directory.", path);
+				warning(_("CRLF will be replaced by LF in %s.\n"
+					  "The file will have its original line "
+					  "endings in your working directory."), path);
 			else /* i.e. SAFE_CRLF_FAIL */
-				die("CRLF would be replaced by LF in %s.", path);
+				die(_("CRLF would be replaced by LF in %s."), path);
 		}
 	} else if (output_eol(crlf_action) == EOL_CRLF) {
 		/*
@@ -210,9 +212,11 @@ static void check_safe_crlf(const char *path, enum crlf_action crlf_action,
 		 */
 		if (stats->lonelf) {
 			if (checksafe == SAFE_CRLF_WARN)
-				warning("LF will be replaced by CRLF in %s.\nThe file will have its original line endings in your working directory.", path);
+				warning(_("LF will be replaced by CRLF in %s.\n"
+					  "The file will have its original line "
+					  "endings in your working directory."), path);
 			else /* i.e. SAFE_CRLF_FAIL */
-				die("LF would be replaced by CRLF in %s", path);
+				die(_("LF would be replaced by CRLF in %s"), path);
 		}
 	}
 }
@@ -397,7 +401,7 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	child_process.out = out;
 
 	if (start_command(&child_process))
-		return error("cannot fork to run external filter %s", params->cmd);
+		return error(_("cannot fork to run external filter %s"), params->cmd);
 
 	sigchain_push(SIGPIPE, SIG_IGN);
 
@@ -415,13 +419,13 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	if (close(child_process.in))
 		write_err = 1;
 	if (write_err)
-		error("cannot feed the input to external filter %s", params->cmd);
+		error(_("cannot feed the input to external filter %s"), params->cmd);
 
 	sigchain_pop(SIGPIPE);
 
 	status = finish_command(&child_process);
 	if (status)
-		error("external filter %s failed %d", params->cmd, status);
+		error(_("external filter %s failed %d"), params->cmd, status);
 
 	strbuf_release(&cmd);
 	return (write_err || status);
@@ -462,15 +466,15 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 		return 0;	/* error was already reported */
 
 	if (strbuf_read(&nbuf, async.out, len) < 0) {
-		error("read from external filter %s failed", cmd);
+		error(_("read from external filter %s failed"), cmd);
 		ret = 0;
 	}
 	if (close(async.out)) {
-		error("read from external filter %s failed", cmd);
+		error(_("read from external filter %s failed"), cmd);
 		ret = 0;
 	}
 	if (finish_async(&async)) {
-		error("external filter %s failed", cmd);
+		error(_("external filter %s failed"), cmd);
 		ret = 0;
 	}
 
@@ -868,7 +872,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 
 	ret |= apply_filter(path, src, len, -1, dst, filter);
 	if (!ret && required)
-		die("%s: clean filter '%s' failed", path, ca.drv->name);
+		die(_("%s: clean filter '%s' failed"), path, ca.drv->name);
 
 	if (ret && dst) {
 		src = dst->buf;
@@ -892,7 +896,7 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv->clean);
 
 	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
-		die("%s: clean filter '%s' failed", path, ca.drv->name);
+		die(_("%s: clean filter '%s' failed"), path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action, checksafe);
 	ident_to_git(path, dst->buf, dst->len, dst, ca.ident);
@@ -932,7 +936,7 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 
 	ret_filter = apply_filter(path, src, len, -1, dst, filter);
 	if (!ret_filter && required)
-		die("%s: smudge filter %s failed", path, ca.drv->name);
+		die(_("%s: smudge filter %s failed"), path, ca.drv->name);
 
 	return ret | ret_filter;
 }
