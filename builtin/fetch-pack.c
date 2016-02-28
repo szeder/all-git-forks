@@ -16,10 +16,12 @@ static void add_sought_entry(struct ref ***sought, int *nr, int *alloc,
 	struct ref *ref;
 	struct object_id oid;
 
-	if (!get_oid_hex(name, &oid) && name[GIT_SHA1_HEXSZ] == ' ')
-		name += GIT_SHA1_HEXSZ + 1;
-	else
+	if (get_oid_hex(name, &oid) ||
+			(name[GIT_SHA1_HEXSZ] != ' ' &&
+			 name[GIT_SHA1_HEXSZ] != '\0'))
 		oidclr(&oid);
+	else if (name[GIT_SHA1_HEXSZ] == ' ')
+		name += GIT_SHA1_HEXSZ + 1;
 
 	ref = alloc_ref(name);
 	oidcpy(&ref->old_oid, &oid);
