@@ -175,13 +175,10 @@ test_expect_success 'negated exclude matches can override previous ones' '
 	grep "^a.1" output
 '
 
-test_expect_success 'excluded directory overrides content patterns' '
+test_expect_success 'excluded directory does not override content patterns' '
 
 	git ls-files --others --exclude="one" --exclude="!one/a.1" >output &&
-	if grep "^one/a.1" output
-	then
-		false
-	fi
+	grep "^one/a.1" output
 '
 
 test_expect_success 'negated directory doesn'\''t affect content patterns' '
@@ -303,31 +300,6 @@ test_expect_success 'ls-files with "**" patterns and no slashes' '
 	: >expect &&
 	git ls-files -o -i --exclude "one**a.1" >actual &&
 	test_cmp expect actual
-'
-
-test_expect_success 'negative patterns' '
-	git init reinclude &&
-	(
-		cd reinclude &&
-		cat >.gitignore <<-\EOF &&
-		/fooo
-		/foo
-		!foo/bar/bar
-		EOF
-		mkdir fooo &&
-		cat >fooo/.gitignore <<-\EOF &&
-		!/*
-		EOF
-		mkdir -p foo/bar &&
-		touch abc foo/def foo/bar/ghi foo/bar/bar &&
-		git ls-files -o --exclude-standard >../actual &&
-		cat >../expected <<-\EOF &&
-		.gitignore
-		abc
-		foo/bar/bar
-		EOF
-		test_cmp ../expected ../actual
-	)
 '
 
 test_done

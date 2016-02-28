@@ -380,6 +380,18 @@ ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS)
 ALL_LDFLAGS = $(LDFLAGS)
 STRIP ?= strip
 
+ifdef DEVELOPER
+CFLAGS += -Werror \
+	-Wdeclaration-after-statement \
+	-Wno-format-zero-length \
+	-Wold-style-definition \
+	-Woverflow \
+	-Wpointer-arith \
+	-Wstrict-prototypes \
+	-Wunused \
+	-Wvla
+endif
+
 # Create as necessary, replace existing, make ranlib unneeded.
 ARFLAGS = rcs
 
@@ -583,6 +595,7 @@ TEST_PROGRAMS_NEED_X += test-delta
 TEST_PROGRAMS_NEED_X += test-dump-cache-tree
 TEST_PROGRAMS_NEED_X += test-dump-split-index
 TEST_PROGRAMS_NEED_X += test-dump-untracked-cache
+TEST_PROGRAMS_NEED_X += test-fake-ssh
 TEST_PROGRAMS_NEED_X += test-genrandom
 TEST_PROGRAMS_NEED_X += test-hashmap
 TEST_PROGRAMS_NEED_X += test-index-version
@@ -2025,6 +2038,7 @@ $(VCSSVN_LIB): $(VCSSVN_OBJS)
 
 export DEFAULT_EDITOR DEFAULT_PAGER
 
+.PHONY: doc man html info pdf
 doc:
 	$(MAKE) -C Documentation all
 
@@ -2068,6 +2082,7 @@ po/git.pot: $(GENERATED_H) FORCE
 		$(LOCALIZED_PERL)
 	mv $@+ $@
 
+.PHONY: pot
 pot: po/git.pot
 
 POFILES := $(wildcard po/*.po)
@@ -2277,6 +2292,7 @@ mergetools_instdir_SQ = $(subst ','\'',$(mergetools_instdir))
 
 install_bindir_programs := $(patsubst %,%$X,$(BINDIR_PROGRAMS_NEED_X)) $(BINDIR_PROGRAMS_NO_X)
 
+.PHONY: profile-install profile-fast-install
 profile-install: profile
 	$(MAKE) install
 
@@ -2343,6 +2359,8 @@ endif
 	done && \
 	./check_bindir "z$$bindir" "z$$execdir" "$$bindir/git-add$X"
 
+.PHONY: install-gitweb install-doc install-man install-html install-info install-pdf
+.PHONY: quick-install-doc quick-install-man quick-install-html
 install-gitweb:
 	$(MAKE) -C gitweb install
 
@@ -2402,6 +2420,7 @@ rpm: dist
 
 htmldocs = git-htmldocs-$(GIT_VERSION)
 manpages = git-manpages-$(GIT_VERSION)
+.PHONY: dist-doc distclean
 dist-doc:
 	$(RM) -r .doc-tmp-dir
 	mkdir .doc-tmp-dir
@@ -2470,6 +2489,8 @@ ALL_COMMANDS += git
 ALL_COMMANDS += gitk
 ALL_COMMANDS += gitweb
 ALL_COMMANDS += git-gui git-citool
+
+.PHONY: check-docs
 check-docs::
 	@(for v in $(ALL_COMMANDS); \
 	do \
@@ -2514,6 +2535,7 @@ check-builtins::
 ### Test suite coverage testing
 #
 .PHONY: coverage coverage-clean coverage-compile coverage-test coverage-report
+.PHONY: coverage-untested-functions cover_db cover_db_html
 .PHONY: coverage-clean-results
 
 coverage:

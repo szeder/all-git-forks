@@ -43,9 +43,17 @@ unreleased) version of Git, that is available from the 'master'
 branch of the `git.git` repository.
 Documentation for older releases are available here:
 
-* link:v2.6.4/git.html[documentation for release 2.6.4]
+* link:v2.7.2/git.html[documentation for release 2.7.2]
 
 * release notes for
+  link:RelNotes/2.7.2.txt[2.7.2],
+  link:RelNotes/2.7.1.txt[2.7.1],
+  link:RelNotes/2.7.0.txt[2.7].
+
+* link:v2.6.5/git.html[documentation for release 2.6.5]
+
+* release notes for
+  link:RelNotes/2.6.5.txt[2.6.5],
   link:RelNotes/2.6.4.txt[2.6.4],
   link:RelNotes/2.6.3.txt[2.6.3],
   link:RelNotes/2.6.2.txt[2.6.2],
@@ -1057,6 +1065,11 @@ of clones and fetches.
 	cloning of shallow repositories.
 	See 'GIT_TRACE' for available trace output options.
 
+'GIT_TRACE_EXCLUDE'::
+	Enables trace messages that can help debugging .gitignore
+	processing. See 'GIT_TRACE' for available trace output
+	options.
+
 'GIT_LITERAL_PATHSPECS'::
 	Setting this variable to `1` will cause Git to treat all
 	pathspecs literally, rather than as glob patterns. For example,
@@ -1116,8 +1129,6 @@ of clones and fetches.
 
 	  - `ssh`: git over ssh (including `host:path` syntax,
 	    `git+ssh://`, etc).
-
-	  - `rsync`: git over rsync
 
 	  - `http`: git over http, both "smart http" and "dumb http".
 	    Note that this does _not_ include `https`; if you want both,

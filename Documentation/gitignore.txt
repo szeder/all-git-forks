@@ -150,12 +150,6 @@ excluded, the following conditions must be met:
  - The directory part in the re-include rules must be literal (i.e. no
    wildcards)
 
- - The rules to exclude the parent directory must not end with a
-   trailing slash.
-
- - The rules to exclude the parent directory must have at least one
-   slash.
-
 EXAMPLES
 --------
 
