@@ -290,7 +290,7 @@ static int notes_copy_from_stdin(int force, const char *rewrite_cmd)
 		t = &default_notes_tree;
 	}
 
-	while (strbuf_getline_lf(&buf, stdin) != EOF) {
+	while (strbuf_getline(&buf, stdin) != EOF) {
 		unsigned char from_obj[20], to_obj[20];
 		struct strbuf **split;
 		int err;
@@ -299,7 +299,6 @@ static int notes_copy_from_stdin(int force, const char *rewrite_cmd)
 		if (!split[0] || !split[1])
 			die(_("Malformed input line: '%s'."), buf.buf);
 		strbuf_rtrim(split[0]);
-		strbuf_rtrim(split[1]);
 		if (get_sha1(split[0]->buf, from_obj))
 			die(_("Failed to resolve '%s' as a valid ref."), split[0]->buf);
 		if (get_sha1(split[1]->buf, to_obj))
