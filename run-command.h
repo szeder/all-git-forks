@@ -158,8 +158,7 @@ typedef int (*get_next_task_fn)(struct child_process *cp,
  * To send a signal to other child processes for abortion, return
  * the negative signal number.
  */
-typedef int (*start_failure_fn)(struct child_process *cp,
-				struct strbuf *err,
+typedef int (*start_failure_fn)(struct strbuf *err,
 				void *pp_cb,
 				void *pp_task_cb);
 
@@ -178,7 +177,6 @@ typedef int (*start_failure_fn)(struct child_process *cp,
  * the negative signal number.
  */
 typedef int (*task_finished_fn)(int result,
-				struct child_process *cp,
 				struct strbuf *err,
 				void *pp_cb,
 				void *pp_task_cb);
