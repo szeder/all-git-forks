@@ -1516,7 +1516,7 @@ static int find_header(const char *line, unsigned long size, int *hdrsize, struc
 	return -1;
 }
 
-static void record_ws_error(unsigned result, const char *line, int len, int linenr)
+static void record_ws_error(unsigned result, const char *line, int len, int l_nr)
 {
 	char *err;
 
@@ -1530,7 +1530,7 @@ static void record_ws_error(unsigned result, const char *line, int len, int line
 
 	err = whitespace_error_string(result);
 	fprintf(stderr, "%s:%d: %s.\n%.*s\n",
-		patch_input_file, linenr, err, len, line);
+		patch_input_file, l_nr, err, len, line);
 	free(err);
 }
 
