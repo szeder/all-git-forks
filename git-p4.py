@@ -1163,7 +1163,7 @@ class P4UserMap:
             self.users[output["User"]] = output["FullName"] + " <" + output["Email"] + ">"
             self.emails[output["Email"]] = output["User"]
 
-        mapUserConfigRegex = re.compile(r'^(\S+)\s->\s(.+)\s<(\S+)>$', re.VERBOSE)
+        mapUserConfigRegex = re.compile(r'^(\S+)\s=\s(.+)\s<(\S+)>$', re.VERBOSE)
         for mapUserConfig in gitConfigList('git-p4.mapUser'):
             mapUser = mapUserConfigRegex.findall(mapUserConfig)
             if mapUser and len(mapUser[0]) == 3:
