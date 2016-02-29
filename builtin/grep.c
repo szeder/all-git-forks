@@ -531,6 +531,7 @@ static int grep_directory(struct grep_opt *opt, const struct pathspec *pathspec,
 	if (exc_std)
 		setup_standard_excludes(&dir);
 
+	dir.flags |= DIR_NO_GITLINKS;
 	fill_directory(&dir, pathspec);
 	for (i = 0; i < dir.nr; i++) {
 		if (!dir_path_match(dir.entries[i], pathspec, 0, NULL))
