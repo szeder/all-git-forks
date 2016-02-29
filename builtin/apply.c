@@ -469,7 +469,7 @@ static char *squash_slash(char *name)
 	return name;
 }
 
-static char *find_name_gnu(const char *line, const char *def, int p_value)
+static char *find_name_gnu(const char *line, const char *def, int p_v)
 {
 	struct strbuf name = STRBUF_INIT;
 	char *cp;
@@ -483,7 +483,7 @@ static char *find_name_gnu(const char *line, const char *def, int p_value)
 		return NULL;
 	}
 
-	for (cp = name.buf; p_value; p_value--) {
+	for (cp = name.buf; p_v; p_v--) {
 		cp = strchr(cp, '/');
 		if (!cp) {
 			strbuf_release(&name);
@@ -658,12 +658,12 @@ static size_t diff_timestamp_len(const char *line, size_t len)
 }
 
 static char *find_name_common(const char *line, const char *def,
-			      int p_value, const char *end, int terminate)
+			      int p_v, const char *end, int terminate)
 {
 	int len;
 	const char *start = NULL;
 
-	if (p_value == 0)
+	if (p_v == 0)
 		start = line;
 	while (line != end) {
 		char c = *line;
@@ -675,7 +675,7 @@ static char *find_name_common(const char *line, const char *def,
 				break;
 		}
 		line++;
-		if (c == '/' && !--p_value)
+		if (c == '/' && !--p_v)
 			start = line;
 	}
 	if (!start)
@@ -704,24 +704,24 @@ static char *find_name_common(const char *line, const char *def,
 	return squash_slash(xmemdupz(start, len));
 }
 
-static char *find_name(const char *line, char *def, int p_value, int terminate)
+static char *find_name(const char *line, char *def, int p_v, int terminate)
 {
 	if (*line == '"') {
-		char *name = find_name_gnu(line, def, p_value);
+		char *name = find_name_gnu(line, def, p_v);
 		if (name)
 			return name;
 	}
 
-	return find_name_common(line, def, p_value, NULL, terminate);
+	return find_name_common(line, def, p_v, NULL, terminate);
 }
 
-static char *find_name_traditional(const char *line, char *def, int p_value)
+static char *find_name_traditional(const char *line, char *def, int p_v)
 {
 	size_t len;
 	size_t date_len;
 
 	if (*line == '"') {
-		char *name = find_name_gnu(line, def, p_value);
+		char *name = find_name_gnu(line, def, p_v);
 		if (name)
 			return name;
 	}
@@ -729,10 +729,10 @@ static char *find_name_traditional(const char *line, char *def, int p_value)
 	len = strchrnul(line, '\n') - line;
 	date_len = diff_timestamp_len(line, len);
 	if (!date_len)
-		return find_name_common(line, def, p_value, NULL, TERM_TAB);
+		return find_name_common(line, def, p_v, NULL, TERM_TAB);
 	len -= date_len;
 
-	return find_name_common(line, def, p_value, line + len, 0);
+	return find_name_common(line, def, p_v, line + len, 0);
 }
 
 static int count_slashes(const char *cp)
