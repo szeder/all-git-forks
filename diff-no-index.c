@@ -46,10 +46,8 @@ static int get_mode(const char *path, int *mode)
 
 	if (!path || !strcmp(path, "/dev/null"))
 		*mode = 0;
-#ifdef GIT_WINDOWS_NATIVE
-	else if (!strcasecmp(path, "nul"))
+	else if (windows_native() && !strcasecmp(path, "nul"))
 		*mode = 0;
-#endif
 	else if (path == file_from_standard_input)
 		*mode = create_ce_mode(0666);
 	else if (lstat(path, &st))
