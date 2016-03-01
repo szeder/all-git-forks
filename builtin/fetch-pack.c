@@ -41,6 +41,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	struct child_process *conn;
 	struct fetch_pack_args args;
 	struct sha1_array shallow = SHA1_ARRAY_INIT;
+	struct string_list deepen_not = STRING_LIST_INIT_DUP;
 
 	packet_trace_identity("fetch-pack");
 
@@ -50,12 +51,12 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	for (i = 1; i < argc && *argv[i] == '-'; i++) {
 		const char *arg = argv[i];
 
-		if (starts_with(arg, "--upload-pack=")) {
-			args.uploadpack = arg + 14;
+		if (skip_prefix(arg, "--upload-pack=", &arg)) {
+			args.uploadpack = arg;
 			continue;
 		}
-		if (starts_with(arg, "--exec=")) {
-			args.uploadpack = arg + 7;
+		if (skip_prefix(arg, "--exec=", &arg)) {
+			args.uploadpack = arg;
 			continue;
 		}
 		if (!strcmp("--quiet", arg) || !strcmp("-q", arg)) {
@@ -91,8 +92,20 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.verbose = 1;
 			continue;
 		}
-		if (starts_with(arg, "--depth=")) {
-			args.depth = strtol(arg + 8, NULL, 0);
+		if (skip_prefix(arg, "--depth=", &arg)) {
+			args.depth = strtol(arg, NULL, 0);
+			continue;
+		}
+		if (skip_prefix(arg, "--shallow-since=", &arg)) {
+			args.deepen_since = xstrdup(arg);
+			continue;
+		}
+		if (skip_prefix(arg, "--shallow-exclude=", &arg)) {
+			string_list_append(&deepen_not, arg);
+			continue;
+		}
+		if (!strcmp(arg, "--deepen-relative")) {
+			args.deepen_relative = 1;
 			continue;
 		}
 		if (!strcmp("--no-progress", arg)) {
@@ -122,6 +135,8 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		}
 		usage(fetch_pack_usage);
 	}
+	if (deepen_not.nr)
+		args.deepen_not = &deepen_not;
 
 	if (i < argc)
 		dest = argv[i++];
