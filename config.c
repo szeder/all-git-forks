@@ -11,6 +11,7 @@
 #include "strbuf.h"
 #include "quote.h"
 #include "hashmap.h"
+#include "refs.h"
 #include "string-list.h"
 #include "utf8.h"
 
