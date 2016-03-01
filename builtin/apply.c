@@ -25,6 +25,8 @@ struct apply_state {
 	const char *prefix;
 	int prefix_length;
 	int newfd;
+
+	int unidiff_zero;
 };
 
 /*
@@ -37,7 +39,6 @@ struct apply_state {
  *  --cached updates only the cache without ever touching the working tree.
  */
 
-static int unidiff_zero;
 static int p_value = 1;
 static int p_value_known;
 static int check_index;
@@ -83,11 +84,13 @@ static const char *patch_input_file;
 static struct strbuf root = STRBUF_INIT;
 static int read_stdin = 1;
 
-static void init_apply_state(struct apply_state *state, const char *prefix_)
+static void init_apply_state(struct apply_state *state, const char *prefix_, int unidiff_zero)
 {
 	state->prefix = prefix_;
 	state->prefix_length = state->prefix ? strlen(state->prefix) : 0;
 	state->newfd = -1;
+
+	state->unidiff_zero = unidiff_zero;
 }
 
 static void parse_whitespace_option(const char *option)
@@ -2705,7 +2708,8 @@ static void update_image(struct image *img,
  * postimage) for the hunk.  Find lines that match "preimage" in "img" and
  * replace the part of "img" with "postimage" text.
  */
-static int apply_one_fragment(struct image *img, struct fragment *frag,
+static int apply_one_fragment(struct apply_state *state,
+			      struct image *img, struct fragment *frag,
 			      int inaccurate_eof, unsigned ws_rule,
 			      int nth_fragment)
 {
@@ -2847,7 +2851,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 	 * without leading context must match at the beginning.
 	 */
 	match_beginning = (!frag->oldpos ||
-			   (frag->oldpos == 1 && !unidiff_zero));
+			   (frag->oldpos == 1 && !state->unidiff_zero));
 
 	/*
 	 * A hunk without trailing lines must match at the end.
@@ -2855,7 +2859,7 @@ static int apply_one_fragment(struct image *img, struct fragment *frag,
 	 * from the lack of trailing lines if the patch was generated
 	 * with unidiff without any context.
 	 */
-	match_end = !unidiff_zero && !trailing;
+	match_end = !state->unidiff_zero && !trailing;
 
 	pos = frag->newpos ? (frag->newpos - 1) : 0;
 	preimage.buf = oldlines;
@@ -3078,7 +3082,7 @@ static int apply_binary(struct image *img, struct patch *patch)
 	return 0;
 }
 
-static int apply_fragments(struct image *img, struct patch *patch)
+static int apply_fragments(struct apply_state *state, struct image *img, struct patch *patch)
 {
 	struct fragment *frag = patch->fragments;
 	const char *name = patch->old_name ? patch->old_name : patch->new_name;
@@ -3091,7 +3095,7 @@ static int apply_fragments(struct image *img, struct patch *patch)
 
 	while (frag) {
 		nth++;
-		if (apply_one_fragment(img, frag, inaccurate_eof, ws_rule, nth)) {
+		if (apply_one_fragment(state, img, frag, inaccurate_eof, ws_rule, nth)) {
 			error(_("patch failed: %s:%ld"), name, frag->oldpos);
 			if (!apply_with_reject)
 				return -1;
@@ -3399,8 +3403,11 @@ static int load_current(struct image *image, struct patch *patch)
 	return 0;
 }
 
-static int try_threeway(struct image *image, struct patch *patch,
-			struct stat *st, const struct cache_entry *ce)
+static int try_threeway(struct apply_state *state,
+			struct image *image,
+			struct patch *patch,
+			struct stat *st,
+			const struct cache_entry *ce)
 {
 	unsigned char pre_sha1[20], post_sha1[20], our_sha1[20];
 	struct strbuf buf = STRBUF_INIT;
@@ -3426,7 +3433,7 @@ static int try_threeway(struct image *image, struct patch *patch,
 	img = strbuf_detach(&buf, &len);
 	prepare_image(&tmp_image, img, len, 1);
 	/* Apply the patch to get the post image */
-	if (apply_fragments(&tmp_image, patch) < 0) {
+	if (apply_fragments(state, &tmp_image, patch) < 0) {
 		clear_image(&tmp_image);
 		return -1;
 	}
@@ -3470,7 +3477,8 @@ static int try_threeway(struct image *image, struct patch *patch,
 	return 0;
 }
 
-static int apply_data(struct patch *patch, struct stat *st, const struct cache_entry *ce)
+static int apply_data(struct apply_state *state, struct patch *patch,
+		      struct stat *st, const struct cache_entry *ce)
 {
 	struct image image;
 
@@ -3478,9 +3486,9 @@ static int apply_data(struct patch *patch, struct stat *st, const struct cache_e
 		return -1;
 
 	if (patch->direct_to_threeway ||
-	    apply_fragments(&image, patch) < 0) {
+	    apply_fragments(state, &image, patch) < 0) {
 		/* Note: with --reject, apply_fragments() returns 0 */
-		if (!threeway || try_threeway(&image, patch, st, ce) < 0)
+		if (!threeway || try_threeway(state, &image, patch, st, ce) < 0)
 			return -1;
 	}
 	patch->result = image.buf;
@@ -3728,7 +3736,7 @@ static void die_on_unsafe_path(struct patch *patch)
  * Check and apply the patch in-core; leave the result in patch->result
  * for the caller to write it out to the final destination.
  */
-static int check_patch(struct patch *patch)
+static int check_patch(struct apply_state *state, struct patch *patch)
 {
 	struct stat st;
 	const char *old_name = patch->old_name;
@@ -3827,13 +3835,13 @@ static int check_patch(struct patch *patch)
 		return error(_("affected file '%s' is beyond a symbolic link"),
 			     patch->new_name);
 
-	if (apply_data(patch, &st, ce) < 0)
+	if (apply_data(state, patch, &st, ce) < 0)
 		return error(_("%s: patch does not apply"), name);
 	patch->rejected = 0;
 	return 0;
 }
 
-static int check_patch_list(struct patch *patch)
+static int check_patch_list(struct apply_state *state, struct patch *patch)
 {
 	int err = 0;
 
@@ -3843,7 +3851,7 @@ static int check_patch_list(struct patch *patch)
 		if (apply_verbosely)
 			say_patch_name(stderr,
 				       _("Checking patch %s..."), patch);
-		err |= check_patch(patch);
+		err |= check_patch(state, patch);
 		patch = patch->next;
 	}
 	return err;
@@ -4441,7 +4449,7 @@ static int apply_patch(struct apply_state *state,
 	}
 
 	if ((check || apply) &&
-	    check_patch_list(list) < 0 &&
+	    check_patch_list(state, list) < 0 &&
 	    !apply_with_reject)
 		exit(1);
 
@@ -4537,6 +4545,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	int force_apply = 0;
 	int options;
 	struct apply_state apply_state;
+	int unidiff_zero = 0;
 
 	const char *whitespace_option = NULL;
 
@@ -4609,15 +4618,16 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		OPT_END()
 	};
 
-	init_apply_state(&apply_state, prefix_);
 	git_apply_config();
 	if (apply_default_whitespace)
 		parse_whitespace_option(apply_default_whitespace);
 	if (apply_default_ignorewhitespace)
 		parse_ignorewhitespace_option(apply_default_ignorewhitespace);
 
-	argc = parse_options(argc, argv, apply_state.prefix, builtin_apply_options,
+	argc = parse_options(argc, argv, prefix_, builtin_apply_options,
 			apply_usage, 0);
+
+	init_apply_state(&apply_state, prefix_, unidiff_zero);
 
 	if (apply_with_reject && threeway)
 		die("--reject and --3way cannot be used together.");
