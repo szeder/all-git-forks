@@ -528,7 +528,7 @@ git-p4.largeFileSystem::
 git config       git-p4.largeFileSystem GitLFS
 -------------
 +
-	[1] https://git-lfs.github.com/
+[1] https://git-lfs.github.com/
 
 git-p4.largeFileExtensions::
 	All files matching a file extension in the list will be processed
