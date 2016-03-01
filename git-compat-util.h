@@ -1045,4 +1045,13 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #define getc_unlocked(fh) getc(fh)
 #endif
 
+static inline int windows_native(void)
+{
+#ifdef GIT_WINDOWS_NATIVE
+	return 1;
+#else
+	return 0;
+#endif
+}
+
 #endif
