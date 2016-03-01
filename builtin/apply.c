@@ -24,6 +24,7 @@
 struct apply_state {
 	const char *prefix;
 	int prefix_length;
+	int newfd;
 };
 
 /*
@@ -35,7 +36,6 @@ struct apply_state {
  *  --index updates the cache as well.
  *  --cached updates only the cache without ever touching the working tree.
  */
-static int newfd = -1;
 
 static int unidiff_zero;
 static int p_value = 1;
@@ -87,6 +87,7 @@ static void init_apply_state(struct apply_state *state, const char *prefix_)
 {
 	state->prefix = prefix_;
 	state->prefix_length = state->prefix ? strlen(state->prefix) : 0;
+	state->newfd = -1;
 }
 
 static void parse_whitespace_option(const char *option)
@@ -4431,8 +4432,8 @@ static int apply_patch(struct apply_state *state,
 		apply = 0;
 
 	update_index = check_index && apply;
-	if (update_index && newfd < 0)
-		newfd = hold_locked_index(&lock_file, 1);
+	if (update_index && state->newfd < 0)
+		state->newfd = hold_locked_index(&lock_file, 1);
 
 	if (check_index) {
 		if (read_cache() < 0)
