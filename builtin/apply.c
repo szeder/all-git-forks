@@ -26,6 +26,7 @@ struct apply_state {
 	int prefix_length;
 	int newfd;
 
+	int check;
 	int unidiff_zero;
 };
 
@@ -47,7 +48,6 @@ static int cached;
 static int diffstat;
 static int numstat;
 static int summary;
-static int check;
 static int apply = 1;
 static int apply_in_reverse;
 static int apply_with_reject;
@@ -2055,7 +2055,7 @@ static int parse_chunk(struct apply_state *state, char *buffer, unsigned long si
 		 * without metadata change.  A binary patch appears
 		 * empty to us here.
 		 */
-		if ((apply || check) &&
+		if ((apply || state->check) &&
 		    (!patch->is_binary && !metadata_changes(patch)))
 			die(_("patch with only garbage at line %d"), linenr);
 	}
@@ -4439,7 +4439,7 @@ static int apply_patch(struct apply_state *state,
 			die(_("unable to read index file"));
 	}
 
-	if ((check || apply) &&
+	if ((state->check || apply) &&
 	    check_patch_list(state, list) < 0 &&
 	    !apply_with_reject)
 		exit(1);
@@ -4536,6 +4536,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	int force_apply = 0;
 	int options;
 	struct apply_state state;
+	int check = 0;
 	int unidiff_zero = 0;
 
 	const char *whitespace_option = NULL;
@@ -4614,6 +4615,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	state.prefix_length = state.prefix ? strlen(state.prefix) : 0;
 	state.newfd = -1;
 
+	state.check = check;
 	state.unidiff_zero = unidiff_zero;
 
 	git_apply_config();
