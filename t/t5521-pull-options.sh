@@ -62,6 +62,22 @@ test_expect_success 'git pull -v --rebase' '
 	test_must_be_empty out)
 '
 
+test_expect_success 'git pull --rebase --autostash' '
+	mkdir clonedrbas &&
+	(cd clonedrbas  && git init &&
+	git pull --rebase --autostash "../parent" >out 2>err &&
+	test -s err &&
+	test_must_be_empty out)
+'
+
+test_expect_success 'git pull --rebase --no-autostash' '
+	mkdir clonedrbnas &&
+	(cd clonedrbnas  && git init &&
+	git pull --rebase --no-autostash "../parent" >out 2>err &&
+	test -s err &&
+	test_must_be_empty out)
+'
+
 test_expect_success 'git pull -v -q' '
 	mkdir clonedvq &&
 	(cd clonedvq && git init &&
