@@ -821,9 +821,10 @@ inside:
 				return 0;
 			c = *path++;
 			if ((c == '.' && !verify_dotfile(path)) ||
-			    is_dir_sep(c) || c == '\0')
+			    is_dir_sep(c) || c == ':' || c == '\0')
 				return 0;
-		}
+		} else if (c == ':')
+			return 0;
 		c = *path++;
 	}
 }
