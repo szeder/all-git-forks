@@ -128,6 +128,21 @@ unless you have read linkgit:git-rebase[1] carefully.
 --no-rebase::
 	Override earlier --rebase.
 
+--autostash::
+--no-autostash::
+	Automatically create a temporary stash before the operation
+	begins, and apply it after the operation ends. This means
+	that you can run rebase on a dirty worktree.
++
+This option is only valid when '--rebase' option is used.
++
+The default is --no-autostash, unless rebase.autoStash configuration 
+is set.
++
+[NOTE]
+Use with care: the final stash application after a successful
+rebase might result in non-trivial conflicts.
+
 Options related to fetching
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
