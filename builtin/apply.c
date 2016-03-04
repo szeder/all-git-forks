@@ -25,6 +25,8 @@ struct apply_state {
 	const char *prefix;
 	int prefix_length;
 
+	int apply_in_reverse;
+
 	/*
 	 *  --check turns on checking that the working tree matches the
 	 *    files that are being modified, but doesn't apply the patch
@@ -53,7 +55,6 @@ static int diffstat;
 static int numstat;
 static int summary;
 static int apply = 1;
-static int apply_in_reverse;
 static int apply_with_reject;
 static int apply_verbosely;
 static int allow_overlap;
@@ -1570,8 +1571,11 @@ static void check_whitespace(const char *line, int len, unsigned ws_rule)
  * between a "---" that is part of a patch, and a "---" that starts
  * the next patch is to look at the line counts..
  */
-static int parse_fragment(const char *line, unsigned long size,
-			  struct patch *patch, struct fragment *fragment)
+static int parse_fragment(struct apply_state *state,
+			  const char *line,
+			  unsigned long size,
+			  struct patch *patch,
+			  struct fragment *fragment)
 {
 	int added, deleted;
 	int len = linelen(line, size), offset;
@@ -1611,12 +1615,12 @@ static int parse_fragment(const char *line, unsigned long size,
 			if (!deleted && !added)
 				leading++;
 			trailing++;
-			if (!apply_in_reverse &&
+			if (!state->apply_in_reverse &&
 			    ws_error_action == correct_ws_error)
 				check_whitespace(line, len, patch->ws_rule);
 			break;
 		case '-':
-			if (apply_in_reverse &&
+			if (state->apply_in_reverse &&
 			    ws_error_action != nowarn_ws_error)
 				check_whitespace(line, len, patch->ws_rule);
 			deleted++;
@@ -1624,7 +1628,7 @@ static int parse_fragment(const char *line, unsigned long size,
 			trailing = 0;
 			break;
 		case '+':
-			if (!apply_in_reverse &&
+			if (!state->apply_in_reverse &&
 			    ws_error_action != nowarn_ws_error)
 				check_whitespace(line, len, patch->ws_rule);
 			added++;
@@ -1680,7 +1684,10 @@ static int parse_fragment(const char *line, unsigned long size,
  * The (fragment->patch, fragment->size) pair points into the memory given
  * by the caller, not a copy, when we return.
  */
-static int parse_single_patch(const char *line, unsigned long size, struct patch *patch)
+static int parse_single_patch(struct apply_state *state,
+			      const char *line,
+			      unsigned long size,
+			      struct patch *patch)
 {
 	unsigned long offset = 0;
 	unsigned long oldlines = 0, newlines = 0, context = 0;
@@ -1692,7 +1699,7 @@ static int parse_single_patch(const char *line, unsigned long size, struct patch
 
 		fragment = xcalloc(1, sizeof(*fragment));
 		fragment->linenr = linenr;
-		len = parse_fragment(line, size, patch, fragment);
+		len = parse_fragment(state, line, size, patch, fragment);
 		if (len <= 0)
 			die(_("corrupt patch at line %d"), linenr);
 		fragment->patch = line;
@@ -2017,8 +2024,10 @@ static int parse_chunk(struct apply_state *state, char *buffer, unsigned long si
 						 ? patch->new_name
 						 : patch->old_name);
 
-	patchsize = parse_single_patch(buffer + offset + hdrsize,
-				       size - offset - hdrsize, patch);
+	patchsize = parse_single_patch(state,
+				       buffer + offset + hdrsize,
+				       size - offset - hdrsize,
+				       patch);
 
 	if (!patchsize) {
 		static const char git_binary[] = "GIT binary patch\n";
@@ -2749,7 +2758,7 @@ static int apply_one_fragment(struct apply_state *state,
 		if (len < size && patch[len] == '\\')
 			plen--;
 		first = *patch;
-		if (apply_in_reverse) {
+		if (state->apply_in_reverse) {
 			if (first == '-')
 				first = '+';
 			else if (first == '+')
@@ -2922,7 +2931,7 @@ static int apply_one_fragment(struct apply_state *state,
 
 		if (apply_verbosely && applied_pos != pos) {
 			int offset = applied_pos - pos;
-			if (apply_in_reverse)
+			if (state->apply_in_reverse)
 				offset = 0 - offset;
 			fprintf_ln(stderr,
 				   Q_("Hunk #%d succeeded at %d (offset %d line).",
@@ -2956,7 +2965,9 @@ out:
 	return (applied_pos < 0);
 }
 
-static int apply_binary_fragment(struct image *img, struct patch *patch)
+static int apply_binary_fragment(struct apply_state *state,
+				 struct image *img,
+				 struct patch *patch)
 {
 	struct fragment *fragment = patch->fragments;
 	unsigned long len;
@@ -2969,7 +2980,7 @@ static int apply_binary_fragment(struct image *img, struct patch *patch)
 			     patch->old_name);
 
 	/* Binary patch is irreversible without the optional second hunk */
-	if (apply_in_reverse) {
+	if (state->apply_in_reverse) {
 		if (!fragment->next)
 			return error("cannot reverse-apply a binary patch "
 				     "without the reverse hunk to '%s'",
@@ -3002,7 +3013,9 @@ static int apply_binary_fragment(struct image *img, struct patch *patch)
  * but the preimage prepared by the caller in "img" is freed here
  * or in the helper function apply_binary_fragment() this calls.
  */
-static int apply_binary(struct image *img, struct patch *patch)
+static int apply_binary(struct apply_state *state,
+			struct image *img,
+			struct patch *patch)
 {
 	const char *name = patch->old_name ? patch->old_name : patch->new_name;
 	unsigned char sha1[20];
@@ -3063,7 +3076,7 @@ static int apply_binary(struct image *img, struct patch *patch)
 		 * apply the patch data to it, which is stored
 		 * in the patch->fragments->{patch,size}.
 		 */
-		if (apply_binary_fragment(img, patch))
+		if (apply_binary_fragment(state, img, patch))
 			return error(_("binary patch does not apply to '%s'"),
 				     name);
 
@@ -3086,7 +3099,7 @@ static int apply_fragments(struct apply_state *state, struct image *img, struct 
 	int nth = 0;
 
 	if (patch->is_binary)
-		return apply_binary(img, patch);
+		return apply_binary(state, img, patch);
 
 	while (frag) {
 		nth++;
@@ -4423,7 +4436,7 @@ static int apply_patch(struct apply_state *state,
 		nr = parse_chunk(state, buf.buf + offset, buf.len - offset, patch);
 		if (nr < 0)
 			break;
-		if (apply_in_reverse)
+		if (state->apply_in_reverse)
 			reverse_patches(patch);
 		if (use_patch(state, patch)) {
 			patch_stats(patch);
@@ -4600,7 +4613,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		{ OPTION_CALLBACK, 0, "ignore-whitespace", NULL, NULL,
 			N_("ignore changes in whitespace when finding context"),
 			PARSE_OPT_NOARG, option_parse_space_change },
-		OPT_BOOL('R', "reverse", &apply_in_reverse,
+		OPT_BOOL('R', "reverse", &state.apply_in_reverse,
 			N_("apply the patch in reverse")),
 		OPT_BOOL(0, "unidiff-zero", &state.unidiff_zero,
 			N_("don't expect at least one line of context")),
