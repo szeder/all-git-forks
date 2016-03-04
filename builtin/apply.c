@@ -54,6 +54,7 @@ struct apply_state {
 
 	int unidiff_zero;
 	int update_index;
+	int unsafe_paths;
 };
 
 /*
@@ -64,7 +65,6 @@ static int newfd = -1;
 static int state_p_value = 1;
 static int p_value_known;
 static int apply = 1;
-static int unsafe_paths;
 static const char *fake_ancestor;
 static int line_termination = '\n';
 static unsigned int p_context = UINT_MAX;
@@ -3837,7 +3837,7 @@ static int check_patch(struct apply_state *state, struct patch *patch)
 		}
 	}
 
-	if (!unsafe_paths)
+	if (!state->unsafe_paths)
 		die_on_unsafe_path(patch);
 
 	/*
@@ -4626,7 +4626,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix)
 			N_("make sure the patch is applicable to the current index")),
 		OPT_BOOL(0, "cached", &state.cached,
 			N_("apply a patch without touching the working tree")),
-		OPT_BOOL(0, "unsafe-paths", &unsafe_paths,
+		OPT_BOOL(0, "unsafe-paths", &state.unsafe_paths,
 			N_("accept a patch that touches outside the working area")),
 		OPT_BOOL(0, "apply", &force_apply,
 			N_("also apply the patch (use with --stat/--summary/--check)")),
@@ -4695,7 +4695,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix)
 		state.check_index = 1;
 	}
 	if (state.check_index)
-		unsafe_paths = 0;
+		state.unsafe_paths = 0;
 
 	for (i = 0; i < argc; i++) {
 		const char *arg = argv[i];
