@@ -45,6 +45,8 @@ struct apply_state {
 
 	int summary;
 
+	int threeway;
+
 /*
  *  --check turns on checking that the working tree matches the
  *    files that are being modified, but doesn't apply the patch
@@ -66,7 +68,6 @@ static int p_value = 1;
 static int p_value_known;
 static int apply = 1;
 static int no_add;
-static int threeway;
 static int unsafe_paths;
 static const char *fake_ancestor;
 static int line_termination = '\n';
@@ -3508,7 +3509,7 @@ static int apply_data(struct apply_state *state, struct patch *patch,
 	if (patch->direct_to_threeway ||
 	    apply_fragments(state, &image, patch) < 0) {
 		/* Note: with --reject, apply_fragments() returns 0 */
-		if (!threeway || try_threeway(state, &image, patch, st, ce) < 0)
+		if (!state->threeway || try_threeway(state, &image, patch, st, ce) < 0)
 			return -1;
 	}
 	patch->result = image.buf;
@@ -3803,7 +3804,7 @@ static int check_patch(struct apply_state *state, struct patch *patch)
 	    ((0 < patch->is_new) || patch->is_rename || patch->is_copy)) {
 		int err = check_to_create(state, new_name, ok_if_exists);
 
-		if (err && threeway) {
+		if (err && state->threeway) {
 			patch->direct_to_threeway = 1;
 		} else switch (err) {
 		case 0:
@@ -4614,7 +4615,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			N_("accept a patch that touches outside the working area")),
 		OPT_BOOL(0, "apply", &force_apply,
 			N_("also apply the patch (use with --stat/--summary/--check)")),
-		OPT_BOOL('3', "3way", &threeway,
+		OPT_BOOL('3', "3way", &state.threeway,
 			 N_( "attempt three-way merge if a patch does not apply")),
 		OPT_FILENAME(0, "build-fake-ancestor", &fake_ancestor,
 			N_("build a temporary index based on embedded index information")),
@@ -4667,11 +4668,11 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	argc = parse_options(argc, argv, state.prefix, builtin_apply_options,
 			apply_usage, 0);
 
-	if (state.apply_with_reject && threeway)
+	if (state.apply_with_reject && state.threeway)
 		die("--reject and --3way cannot be used together.");
-	if (state.cached && threeway)
+	if (state.cached && state.threeway)
 		die("--cached and --3way cannot be used together.");
-	if (threeway) {
+	if (state.threeway) {
 		if (is_not_gitdir)
 			die(_("--3way outside a repository"));
 		state.check_index = 1;
