@@ -60,6 +60,8 @@ struct apply_state {
 	int update_index;
 
 	int unsafe_paths;
+
+	int line_termination;
 };
 
 /*
@@ -70,7 +72,6 @@ static int p_value = 1;
 static int p_value_known;
 static int apply = 1;
 static const char *fake_ancestor;
-static int line_termination = '\n';
 static unsigned int p_context = UINT_MAX;
 static const char * const apply_usage[] = {
 	N_("git apply [<options>] [<patch>...]"),
@@ -3995,7 +3996,8 @@ static void stat_patch_list(struct patch *patch)
 	print_stat_summary(stdout, files, adds, dels);
 }
 
-static void numstat_patch_list(struct patch *patch)
+static void numstat_patch_list(struct apply_state *state,
+			       struct patch *patch)
 {
 	for ( ; patch; patch = patch->next) {
 		const char *name;
@@ -4004,7 +4006,7 @@ static void numstat_patch_list(struct patch *patch)
 			printf("-\t-\t");
 		else
 			printf("%d\t%d\t", patch->lines_added, patch->lines_deleted);
-		write_name_quoted(name, stdout, line_termination);
+		write_name_quoted(name, stdout, state->line_termination);
 	}
 }
 
@@ -4504,7 +4506,7 @@ static int apply_patch(struct apply_state *state,
 		stat_patch_list(list);
 
 	if (state->numstat)
-		numstat_patch_list(list);
+		numstat_patch_list(state, list);
 
 	if (state->summary)
 		summary_patch_list(list);
@@ -4620,7 +4622,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		OPT_FILENAME(0, "build-fake-ancestor", &fake_ancestor,
 			N_("build a temporary index based on embedded index information")),
 		/* Think twice before adding "--nul" synonym to this */
-		OPT_SET_INT('z', NULL, &line_termination,
+		OPT_SET_INT('z', NULL, &state.line_termination,
 			N_("paths are separated with NUL character"), '\0'),
 		OPT_INTEGER('C', NULL, &p_context,
 				N_("ensure at least <n> lines of context match")),
@@ -4658,6 +4660,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	state.prefix = prefix_;
 	state.prefix_length = state.prefix ? strlen(state.prefix) : 0;
 	state.newfd = -1;
+	state.line_termination = '\n';
 
 	git_apply_config();
 	if (apply_default_whitespace)
