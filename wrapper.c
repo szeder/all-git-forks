@@ -152,6 +152,9 @@ void *xcalloc(size_t nmemb, size_t size)
 {
 	void *ret;
 
+	if (unsigned_mult_overflows(nmemb, size))
+		die("data too large to fit into virtual memory space");
+
 	memory_limit_check(size * nmemb, 0);
 	ret = calloc(nmemb, size);
 	if (!ret && (!nmemb || !size))
@@ -189,6 +192,41 @@ void *xcalloc(size_t nmemb, size_t size)
 # endif
 #endif
 
+/**
+ * xopen() is the same as open(), but it die()s if the open() fails.
+ */
+int xopen(const char *path, int oflag, ...)
+{
+	mode_t mode = 0;
+	va_list ap;
+
+	/*
+	 * va_arg() will have undefined behavior if the specified type is not
+	 * compatible with the argument type. Since integers are promoted to
+	 * ints, we fetch the next argument as an int, and then cast it to a
+	 * mode_t to avoid undefined behavior.
+	 */
+	va_start(ap, oflag);
+	if (oflag & O_CREAT)
+		mode = va_arg(ap, int);
+	va_end(ap);
+
+	for (;;) {
+		int fd = open(path, oflag, mode);
+		if (fd >= 0)
+			return fd;
+		if (errno == EINTR)
+			continue;
+
+		if ((oflag & O_RDWR) == O_RDWR)
+			die_errno(_("could not open '%s' for reading and writing"), path);
+		else if ((oflag & O_WRONLY) == O_WRONLY)
+			die_errno(_("could not open '%s' for writing"), path);
+		else
+			die_errno(_("could not open '%s' for reading"), path);
+	}
+}
+
 /*
  * xread() is the same a read(), but it automatically restarts read()
  * operations with a recoverable error (EAGAIN and EINTR). xread()
@@ -201,8 +239,24 @@ ssize_t xread(int fd, void *buf, size_t len)
 	    len = MAX_IO_SIZE;
 	while (1) {
 		nr = read(fd, buf, len);
-		if ((nr < 0) && (errno == EAGAIN || errno == EINTR))
-			continue;
+		if (nr < 0) {
+			if (errno == EINTR)
+				continue;
+			if (errno == EAGAIN || errno == EWOULDBLOCK) {
+				struct pollfd pfd;
+				pfd.events = POLLIN;
+				pfd.fd = fd;
+				/*
+				 * it is OK if this poll() failed; we
+				 * want to leave this infinite loop
+				 * only when read() returns with
+				 * success, or an expected failure,
+				 * which would be checked by the next
+				 * call to read(2).
+				 */
+				poll(&pfd, 1, -1);
+			}
+		}
 		return nr;
 	}
 }
@@ -311,12 +365,46 @@ int xdup(int fd)
 	return ret;
 }
 
+/**
+ * xfopen() is the same as fopen(), but it die()s if the fopen() fails.
+ */
+FILE *xfopen(const char *path, const char *mode)
+{
+	for (;;) {
+		FILE *fp = fopen(path, mode);
+		if (fp)
+			return fp;
+		if (errno == EINTR)
+			continue;
+
+		if (*mode && mode[1] == '+')
+			die_errno(_("could not open '%s' for reading and writing"), path);
+		else if (*mode == 'w' || *mode == 'a')
+			die_errno(_("could not open '%s' for writing"), path);
+		else
+			die_errno(_("could not open '%s' for reading"), path);
+	}
+}
+
 FILE *xfdopen(int fd, const char *mode)
 {
 	FILE *stream = fdopen(fd, mode);
 	if (stream == NULL)
 		die_errno("Out of memory? fdopen failed");
 	return stream;
+}
+
+FILE *fopen_for_writing(const char *path)
+{
+	FILE *ret = fopen(path, "w");
+
+	if (!ret && errno == EPERM) {
+		if (!unlink(path))
+			ret = fopen(path, "w");
+		else
+			errno = EPERM;
+	}
+	return ret;
 }
 
 int xmkstemp(char *template)
@@ -545,18 +633,6 @@ int access_or_die(const char *path, int mode, unsigned flag)
 	return ret;
 }
 
-struct passwd *xgetpwuid_self(void)
-{
-	struct passwd *pw;
-
-	errno = 0;
-	pw = getpwuid(getuid());
-	if (!pw)
-		die(_("unable to look up current user in the passwd file: %s"),
-		    errno ? strerror(errno) : _("no such user"));
-	return pw;
-}
-
 char *xgetcwd(void)
 {
 	struct strbuf sb = STRBUF_INIT;
@@ -565,19 +641,34 @@ char *xgetcwd(void)
 	return strbuf_detach(&sb, NULL);
 }
 
-int write_file(const char *path, int fatal, const char *fmt, ...)
+int xsnprintf(char *dst, size_t max, const char *fmt, ...)
+{
+	va_list ap;
+	int len;
+
+	va_start(ap, fmt);
+	len = vsnprintf(dst, max, fmt, ap);
+	va_end(ap);
+
+	if (len < 0)
+		die("BUG: your snprintf is broken");
+	if (len >= max)
+		die("BUG: attempt to snprintf into too-small buffer");
+	return len;
+}
+
+static int write_file_v(const char *path, int fatal,
+			const char *fmt, va_list params)
 {
 	struct strbuf sb = STRBUF_INIT;
-	va_list params;
 	int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0666);
 	if (fd < 0) {
 		if (fatal)
 			die_errno(_("could not open %s for writing"), path);
 		return -1;
 	}
-	va_start(params, fmt);
 	strbuf_vaddf(&sb, fmt, params);
-	va_end(params);
+	strbuf_complete_line(&sb);
 	if (write_in_full(fd, sb.buf, sb.len) != sb.len) {
 		int err = errno;
 		close(fd);
@@ -594,6 +685,28 @@ int write_file(const char *path, int fatal, const char *fmt, ...)
 		return -1;
 	}
 	return 0;
+}
+
+int write_file(const char *path, const char *fmt, ...)
+{
+	int status;
+	va_list params;
+
+	va_start(params, fmt);
+	status = write_file_v(path, 1, fmt, params);
+	va_end(params);
+	return status;
+}
+
+int write_file_gently(const char *path, const char *fmt, ...)
+{
+	int status;
+	va_list params;
+
+	va_start(params, fmt);
+	status = write_file_v(path, 0, fmt, params);
+	va_end(params);
+	return status;
 }
 
 void sleep_millisec(int millisec)

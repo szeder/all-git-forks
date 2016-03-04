@@ -308,6 +308,15 @@ core.trustctime::
 	crawlers and some backup systems).
 	See linkgit:git-update-index[1]. True by default.
 
+core.untrackedCache::
+	Determines what to do about the untracked cache feature of the
+	index. It will be kept, if this variable is unset or set to
+	`keep`. It will automatically be added if set to `true`. And
+	it will automatically be removed, if set to `false`. Before
+	setting it to `true`, you should check that mtime is working
+	properly on your system.
+	See linkgit:git-update-index[1]. `keep` by default.
+
 core.checkStat::
 	Determines which stat fields to match between the index
 	and work tree. The user can set this to 'default' or
@@ -769,6 +778,14 @@ am.keepcr::
 	by giving '--no-keep-cr' from the command line.
 	See linkgit:git-am[1], linkgit:git-mailsplit[1].
 
+am.threeWay::
+	By default, `git am` will fail if the patch does not apply cleanly. When
+	set to true, this setting tells `git am` to fall back on 3-way merge if
+	the patch records the identity of blobs it is supposed to apply to and
+	we have those blobs available locally (equivalent to giving the `--3way`
+	option from the command line). Defaults to `false`.
+	See linkgit:git-am[1].
+
 apply.ignoreWhitespace::
 	When set to 'change', tells 'git apply' to ignore changes in
 	whitespace, in the same way as the '--ignore-space-change'
@@ -858,9 +875,11 @@ branch.<name>.rebase::
 	"git pull" is run. See "pull.rebase" for doing this in a non
 	branch-specific manner.
 +
-	When preserve, also pass `--preserve-merges` along to 'git rebase'
-	so that locally committed merge commits will not be flattened
-	by running 'git pull'.
+When preserve, also pass `--preserve-merges` along to 'git rebase'
+so that locally committed merge commits will not be flattened
+by running 'git pull'.
++
+When the value is `interactive`, the rebase is run in interactive mode.
 +
 *NOTE*: this is a possibly dangerous operation; do *not* use
 it unless you understand the implications (see linkgit:git-rebase[1]
@@ -1114,6 +1133,9 @@ credential.<url>.*::
 	example.com. See linkgit:gitcredentials[7] for details on how URLs are
 	matched.
 
+credentialCache.ignoreSIGHUP::
+	Tell git-credential-cache--daemon to ignore SIGHUP, instead of quitting.
+
 include::diff-config.txt[]
 
 difftool.<tool>.path::
@@ -1232,6 +1254,10 @@ format.coverLetter::
 	format-patch is invoked, but in addition can be set to "auto", to
 	generate a cover-letter only when there's more than one patch.
 
+format.outputDirectory::
+	Set a custom directory to store the resulting files instead of the
+	current working directory.
+
 filter.<driver>.clean::
 	The command which is used to convert the content of a worktree
 	file to a blob upon checkin.  See linkgit:gitattributes[5] for
@@ -1241,6 +1267,25 @@ filter.<driver>.smudge::
 	The command which is used to convert the content of a blob
 	object to a worktree file upon checkout.  See
 	linkgit:gitattributes[5] for details.
+
+fsck.<msg-id>::
+	Allows overriding the message type (error, warn or ignore) of a
+	specific message ID such as `missingEmail`.
++
+For convenience, fsck prefixes the error/warning with the message ID,
+e.g.  "missingEmail: invalid author/committer line - missing email" means
+that setting `fsck.missingEmail = ignore` will hide that issue.
++
+This feature is intended to support working with legacy repositories
+which cannot be repaired without disruptive changes.
+
+fsck.skipList::
+	The path to a sorted list of object names (i.e. one SHA-1 per
+	line) that are known to be broken in a non-fatal way and should
+	be ignored. This feature is useful when an established project
+	should be accepted despite early commits containing errors that
+	can be safely ignored such as invalid committer email addresses.
+	Note: corrupt objects cannot be skipped with this setting.
 
 gc.aggressiveDepth::
 	The depth parameter used in the delta compression
@@ -1280,28 +1325,34 @@ gc.packRefs::
 gc.pruneExpire::
 	When 'git gc' is run, it will call 'prune --expire 2.weeks.ago'.
 	Override the grace period with this config variable.  The value
-	"now" may be used to disable this  grace period and always prune
-	unreachable objects immediately.
+	"now" may be used to disable this grace period and always prune
+	unreachable objects immediately, or "never" may be used to
+	suppress pruning.
 
-gc.pruneWorktreesExpire::
-	When 'git gc' is run, it will call
-	'prune --worktrees --expire 3.months.ago'.
-	Override the grace period with this config variable. The value
-	"now" may be used to disable the grace period and prune
-	$GIT_DIR/worktrees immediately.
+gc.worktreePruneExpire::
+	When 'git gc' is run, it calls
+	'git worktree prune --expire 3.months.ago'.
+	This config variable can be used to set a different grace
+	period. The value "now" may be used to disable the grace
+	period and prune $GIT_DIR/worktrees immediately, or "never"
+	may be used to suppress pruning.
 
 gc.reflogExpire::
 gc.<pattern>.reflogExpire::
 	'git reflog expire' removes reflog entries older than
-	this time; defaults to 90 days.  With "<pattern>" (e.g.
+	this time; defaults to 90 days. The value "now" expires all
+	entries immediately, and "never" suppresses expiration
+	altogether. With "<pattern>" (e.g.
 	"refs/stash") in the middle the setting applies only to
 	the refs that match the <pattern>.
 
 gc.reflogExpireUnreachable::
-gc.<ref>.reflogExpireUnreachable::
+gc.<pattern>.reflogExpireUnreachable::
 	'git reflog expire' removes reflog entries older than
 	this time and are not reachable from the current tip;
-	defaults to 30 days.  With "<pattern>" (e.g. "refs/stash")
+	defaults to 30 days. The value "now" expires all entries
+	immediately, and "never" suppresses expiration altogether.
+	With "<pattern>" (e.g. "refs/stash")
 	in the middle, the setting applies only to the refs that
 	match the <pattern>.
 
@@ -1413,6 +1464,14 @@ grep.extendedRegexp::
 	If set to true, enable '--extended-regexp' option by default. This
 	option is ignored when the 'grep.patternType' option is set to a value
 	other than 'default'.
+
+grep.threads::
+	Number of grep worker threads to use.
+	See `grep.threads` in linkgit:git-grep[1] for more information.
+
+grep.fallbackToNoIndex::
+	If set to true, fall back to git grep --no-index if git grep
+	is executed outside of a git repository.  Defaults to false.
 
 gpg.program::
 	Use this custom program instead of "gpg" found on $PATH when
@@ -1560,9 +1619,40 @@ help.htmlPath::
 
 http.proxy::
 	Override the HTTP proxy, normally configured using the 'http_proxy',
-	'https_proxy', and 'all_proxy' environment variables (see
-	`curl(1)`).  This can be overridden on a per-remote basis; see
-	remote.<name>.proxy
+	'https_proxy', and 'all_proxy' environment variables (see `curl(1)`). In
+	addition to the syntax understood by curl, it is possible to specify a
+	proxy string with a user name but no password, in which case git will
+	attempt to acquire one in the same way it does for other credentials. See
+	linkgit:gitcredentials[7] for more information. The syntax thus is
+	'[protocol://][user[:password]@]proxyhost[:port]'. This can be overridden
+	on a per-remote basis; see remote.<name>.proxy
+
+http.proxyAuthMethod::
+	Set the method with which to authenticate against the HTTP proxy. This
+	only takes effect if the configured proxy string contains a user name part
+	(i.e. is of the form 'user@host' or 'user@host:port'). This can be
+	overridden on a per-remote basis; see `remote.<name>.proxyAuthMethod`.
+	Both can be overridden by the 'GIT_HTTP_PROXY_AUTHMETHOD' environment
+	variable.  Possible values are:
++
+--
+* `anyauth` - Automatically pick a suitable authentication method. It is
+  assumed that the proxy answers an unauthenticated request with a 407
+  status code and one or more Proxy-authenticate headers with supported
+  authentication methods. This is the default.
+* `basic` - HTTP Basic authentication
+* `digest` - HTTP Digest authentication; this prevents the password from being
+  transmitted to the proxy in clear text
+* `negotiate` - GSS-Negotiate authentication (compare the --negotiate option
+  of `curl(1)`)
+* `ntlm` - NTLM authentication (compare the --ntlm option of `curl(1)`)
+--
+
+http.emptyAuth::
+	Attempt authentication without seeking a username or password.  This
+	can be used to attempt GSS-Negotiate authentication without specifying
+	a username in the URL, as libcurl normally requires a username for
+	authentication.
 
 http.cookieFile::
 	File containing previously stored cookie lines which should be used
@@ -1575,6 +1665,29 @@ http.cookieFile::
 http.saveCookies::
 	If set, store cookies received during requests to the file specified by
 	http.cookieFile. Has no effect if http.cookieFile is unset.
+
+http.sslVersion::
+	The SSL version to use when negotiating an SSL connection, if you
+	want to force the default.  The available and default version
+	depend on whether libcurl was built against NSS or OpenSSL and the
+	particular configuration of the crypto library in use. Internally
+	this sets the 'CURLOPT_SSL_VERSION' option; see the libcurl
+	documentation for more details on the format of this option and
+	for the ssl version supported. Actually the possible values of
+	this option are:
+
+	- sslv2
+	- sslv3
+	- tlsv1
+	- tlsv1.0
+	- tlsv1.1
+	- tlsv1.2
+
++
+Can be overridden by the 'GIT_SSL_VERSION' environment variable.
+To force git to use libcurl's default ssl version and ignore any
+explicit http.sslversion option, set 'GIT_SSL_VERSION' to the
+empty string.
 
 http.sslCipherList::
   A list of SSL ciphers to use when negotiating an SSL connection.
@@ -1619,6 +1732,14 @@ http.sslCAPath::
 	Path containing files with the CA certificates to verify the peer
 	with when fetching or pushing over HTTPS. Can be overridden
 	by the 'GIT_SSL_CAPATH' environment variable.
+
+http.pinnedpubkey::
+	Public key of the https service. It may either be the filename of
+	a PEM or DER encoded public key file or a string starting with
+	'sha256//' followed by the base64 encoded sha256 hash of the
+	public key. See also libcurl 'CURLOPT_PINNEDPUBLICKEY'. git will
+	exit with an error if this option is set but not supported by
+	cURL.
 
 http.sslTry::
 	Attempt to use AUTH SSL/TLS and encrypted data transfers
@@ -1773,9 +1894,7 @@ log.abbrevCommit::
 log.date::
 	Set the default date-time mode for the 'log' command.
 	Setting a value for log.date is similar to using 'git log''s
-	`--date` option.  Possible values are `relative`, `local`,
-	`default`, `iso`, `rfc`, and `short`; see linkgit:git-log[1]
-	for details.
+	`--date` option.  See linkgit:git-log[1] for details.
 
 log.decorate::
 	Print out the ref names of any commits that are shown by the log
@@ -1783,6 +1902,12 @@ log.decorate::
 	'refs/tags/' and 'refs/remotes/' will not be printed. If 'full' is
 	specified, the full ref name (including prefix) will be printed.
 	This is the same as the log commands '--decorate' option.
+
+log.follow::
+	If `true`, `git log` will act as if the `--follow` option was used when
+	a single <path> is given.  This has the same limitations as `--follow`,
+	i.e. it cannot be used to follow multiple files and does not work well
+	on non-linear history.
 
 log.showRoot::
 	If true, the initial commit will be shown as a big creation event.
@@ -1886,6 +2011,18 @@ mergetool.writeToTemp::
 mergetool.prompt::
 	Prompt before each invocation of the merge resolution program.
 
+notes.mergeStrategy::
+	Which merge strategy to choose by default when resolving notes
+	conflicts.  Must be one of `manual`, `ours`, `theirs`, `union`, or
+	`cat_sort_uniq`.  Defaults to `manual`.  See "NOTES MERGE STRATEGIES"
+	section of linkgit:git-notes[1] for more information on each strategy.
+
+notes.<name>.mergeStrategy::
+	Which merge strategy to choose when doing a notes merge into
+	refs/notes/<name>.  This overrides the more general
+	"notes.mergeStrategy".  See the "NOTES MERGE STRATEGIES" section in
+	linkgit:git-notes[1] for more information on the available strategies.
+
 notes.displayRef::
 	The (fully qualified) refname from which to show notes when
 	showing commit messages.  The value of this variable can be set
@@ -1914,8 +2051,8 @@ notes.rewriteMode::
 	When copying notes during a rewrite (see the
 	"notes.rewrite.<command>" option), determines what to do if
 	the target commit already has a note.  Must be one of
-	`overwrite`, `concatenate`, or `ignore`.  Defaults to
-	`concatenate`.
+	`overwrite`, `concatenate`, `cat_sort_uniq`, or `ignore`.
+	Defaults to `concatenate`.
 +
 This setting can be overridden with the `GIT_NOTES_REWRITE_MODE`
 environment variable.
@@ -1999,7 +2136,7 @@ pack.indexVersion::
 	larger than 2 GB.
 +
 If you have an old Git that does not understand the version 2 `*.idx` file,
-cloning or fetching over a non native protocol (e.g. "http" and "rsync")
+cloning or fetching over a non native protocol (e.g. "http")
 that will copy both `*.pack` file and corresponding `*.idx` file from the
 other side may give you a repository that cannot be accessed with your
 older version of Git. If the `*.pack` file is smaller than 2 GB, however,
@@ -2070,9 +2207,11 @@ pull.rebase::
 	pull" is run. See "branch.<name>.rebase" for setting this on a
 	per-branch basis.
 +
-	When preserve, also pass `--preserve-merges` along to 'git rebase'
-	so that locally committed merge commits will not be flattened
-	by running 'git pull'.
+When preserve, also pass `--preserve-merges` along to 'git rebase'
+so that locally committed merge commits will not be flattened
+by running 'git pull'.
++
+When the value is `interactive`, the rebase is run in interactive mode.
 +
 *NOTE*: this is a possibly dangerous operation; do *not* use
 it unless you understand the implications (see linkgit:git-rebase[1]
@@ -2145,6 +2284,28 @@ push.followTags::
 	may override this configuration at time of push by specifying
 	'--no-follow-tags'.
 
+push.gpgSign::
+	May be set to a boolean value, or the string 'if-asked'. A true
+	value causes all pushes to be GPG signed, as if '--signed' is
+	passed to linkgit:git-push[1]. The string 'if-asked' causes
+	pushes to be signed if the server supports it, as if
+	'--signed=if-asked' is passed to 'git push'. A false value may
+	override a value from a lower-priority config file. An explicit
+	command-line flag always overrides this config option.
+
+push.recurseSubmodules::
+	Make sure all submodule commits used by the revisions to be pushed
+	are available on a remote-tracking branch. If the value is 'check'
+	then Git will verify that all submodule commits that changed in the
+	revisions to be pushed are available on at least one remote of the
+	submodule. If any commits are missing, the push will be aborted and
+	exit with non-zero status. If the value is 'on-demand' then all
+	submodules that changed in the revisions to be pushed will be
+	pushed. If on-demand was not able to push all necessary revisions
+	it will also be aborted and exit with non-zero status. If the value
+	is 'no' then default behavior of ignoring submodules when pushing
+	is retained. You may override this configuration at time of push by
+	specifying '--recurse-submodules=check|on-demand|no'.
 
 rebase.stat::
 	Whether to show a diffstat of what changed upstream since the last
@@ -2160,6 +2321,22 @@ rebase.autoStash::
 	However, use with care: the final stash application after a
 	successful rebase might result in non-trivial conflicts.
 	Defaults to false.
+
+rebase.missingCommitsCheck::
+	If set to "warn", git rebase -i will print a warning if some
+	commits are removed (e.g. a line was deleted), however the
+	rebase will still proceed. If set to "error", it will print
+	the previous warning and stop the rebase, 'git rebase
+	--edit-todo' can then be used to correct the error. If set to
+	"ignore", no checking is done.
+	To drop a commit without warning or error, use the `drop`
+	command in the todo-list.
+	Defaults to "ignore".
+
+rebase.instructionFormat
+	A format string, as specified in linkgit:git-log[1], to be used for
+	the instruction list during an interactive rebase.  The format will automatically
+	have the long commit hash prepended to the format.
 
 receive.advertiseAtomic::
 	By default, git-receive-pack will advertise the atomic push
@@ -2196,6 +2373,28 @@ receive.fsckObjects::
 	broken link. The result of an abort are only dangling objects.
 	Defaults to false. If not set, the value of `transfer.fsckObjects`
 	is used instead.
+
+receive.fsck.<msg-id>::
+	When `receive.fsckObjects` is set to true, errors can be switched
+	to warnings and vice versa by configuring the `receive.fsck.<msg-id>`
+	setting where the `<msg-id>` is the fsck message ID and the value
+	is one of `error`, `warn` or `ignore`. For convenience, fsck prefixes
+	the error/warning with the message ID, e.g. "missingEmail: invalid
+	author/committer line - missing email" means that setting
+	`receive.fsck.missingEmail = ignore` will hide that issue.
++
+This feature is intended to support working with legacy repositories
+which would not pass pushing when `receive.fsckObjects = true`, allowing
+the host to accept repositories with certain known issues but still catch
+other issues.
+
+receive.fsck.skipList::
+	The path to a sorted list of object names (i.e. one SHA-1 per
+	line) that are known to be broken in a non-fatal way and should
+	be ignored. This feature is useful when an established project
+	should be accepted despite early commits containing errors that
+	can be safely ignored such as invalid committer email addresses.
+	Note: corrupt objects cannot be skipped with this setting.
 
 receive.unpackLimit::
 	If the number of objects received in a push is below this
@@ -2242,13 +2441,10 @@ receive.denyNonFastForwards::
 	set when initializing a shared repository.
 
 receive.hideRefs::
-	String(s) `receive-pack` uses to decide which refs to omit
-	from its initial advertisement.  Use more than one
-	definitions to specify multiple prefix strings. A ref that
-	are under the hierarchies listed on the value of this
-	variable is excluded, and is hidden when responding to `git
-	push`, and an attempt to update or delete a hidden ref by
-	`git push` is rejected.
+	This variable is the same as `transfer.hideRefs`, but applies
+	only to `receive-pack` (and so affects pushes, but not fetches).
+	An attempt to update or delete a hidden ref by `git push` is
+	rejected.
 
 receive.updateServerInfo::
 	If set to true, git-receive-pack will run git-update-server-info
@@ -2274,6 +2470,11 @@ remote.<name>.proxy::
 	For remotes that require curl (http, https and ftp), the URL to
 	the proxy to use for that remote.  Set to the empty string to
 	disable proxying for that remote.
+
+remote.<name>.proxyAuthMethod::
+	For remotes that require curl (http, https and ftp), the method to use for
+	authenticating against the proxy in use (probably set in
+	`remote.<name>.proxy`). See `http.proxyAuthMethod`.
 
 remote.<name>.fetch::
 	The default set of "refspec" for linkgit:git-fetch[1]. See
@@ -2476,6 +2677,16 @@ status.submoduleSummary::
 	submodule summary' command, which shows a similar output but does
 	not honor these settings.
 
+stash.showPatch::
+	If this is set to true, the `git stash show` command without an
+	option will show the stash in patch form.  Defaults to false.
+	See description of 'show' command in linkgit:git-stash[1].
+
+stash.showStat::
+	If this is set to true, the `git stash show` command without an
+	option will show diffstat of the stash.  Defaults to true.
+	See description of 'show' command in linkgit:git-stash[1].
+
 submodule.<name>.path::
 submodule.<name>.url::
 	The path within this project and URL for a submodule. These
@@ -2536,9 +2747,27 @@ transfer.fsckObjects::
 	Defaults to false.
 
 transfer.hideRefs::
-	This variable can be used to set both `receive.hideRefs`
-	and `uploadpack.hideRefs` at the same time to the same
-	values.  See entries for these other variables.
+	String(s) `receive-pack` and `upload-pack` use to decide which
+	refs to omit from their initial advertisements.  Use more than
+	one definition to specify multiple prefix strings. A ref that is
+	under the hierarchies listed in the value of this variable is
+	excluded, and is hidden when responding to `git push` or `git
+	fetch`.  See `receive.hideRefs` and `uploadpack.hideRefs` for
+	program-specific versions of this config.
++
+You may also include a `!` in front of the ref name to negate the entry,
+explicitly exposing it, even if an earlier entry marked it as hidden.
+If you have multiple hideRefs values, later entries override earlier ones
+(and entries in more-specific config files override less-specific ones).
++
+If a namespace is in use, the namespace prefix is stripped from each
+reference before it is matched against `transfer.hiderefs` patterns.
+For example, if `refs/heads/master` is specified in `transfer.hideRefs` and
+the current namespace is `foo`, then `refs/namespaces/foo/refs/heads/master`
+is omitted from the advertisements but `refs/heads/master` and
+`refs/namespaces/bar/refs/heads/master` are still advertised as so-called
+"have" lines. In order to match refs before stripping, add a `^` in front of
+the ref name. If you combine `!` and `^`, `!` must be specified first.
 
 transfer.unpackLimit::
 	When `fetch.unpackLimit` or `receive.unpackLimit` are
@@ -2553,13 +2782,10 @@ uploadarchive.allowUnreachable::
 	`false`.
 
 uploadpack.hideRefs::
-	String(s) `upload-pack` uses to decide which refs to omit
-	from its initial advertisement.  Use more than one
-	definitions to specify multiple prefix strings. A ref that
-	are under the hierarchies listed on the value of this
-	variable is excluded, and is hidden from `git ls-remote`,
-	`git fetch`, etc.  An attempt to fetch a hidden ref by `git
-	fetch` will fail.  See also `uploadpack.allowTipSHA1InWant`.
+	This variable is the same as `transfer.hideRefs`, but applies
+	only to `upload-pack` (and so affects only fetches, not pushes).
+	An attempt to fetch a hidden ref by `git fetch` will fail.  See
+	also `uploadpack.allowTipSHA1InWant`.
 
 uploadpack.allowTipSHA1InWant::
 	When `uploadpack.hideRefs` is in effect, allow `upload-pack`
@@ -2617,6 +2843,16 @@ user.name::
 	Your full name to be recorded in any newly created commits.
 	Can be overridden by the 'GIT_AUTHOR_NAME' and 'GIT_COMMITTER_NAME'
 	environment variables.  See linkgit:git-commit-tree[1].
+
+user.useConfigOnly::
+	Instruct Git to avoid trying to guess defaults for 'user.email'
+	and 'user.name', and instead retrieve the values only from the
+	configuration. For example, if you have multiple email addresses
+	and would like to use a different one for each repository, then
+	with this configuration option set to `true` in the global config
+	along with a name, Git will prompt you to set up an email before
+	making new commits in a newly cloned repository.
+	Defaults to `false`.
 
 user.signingKey::
 	If linkgit:git-tag[1] or linkgit:git-commit[1] is not selecting the

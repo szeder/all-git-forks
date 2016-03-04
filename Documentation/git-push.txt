@@ -10,8 +10,9 @@ SYNOPSIS
 --------
 [verse]
 'git push' [--all | --mirror | --tags] [--follow-tags] [--atomic] [-n | --dry-run] [--receive-pack=<git-receive-pack>]
-	   [--repo=<repository>] [-f | --force] [--prune] [-v | --verbose]
-	   [-u | --set-upstream] [--signed]
+	   [--repo=<repository>] [-f | --force] [-d | --delete] [--prune] [-v | --verbose]
+	   [-u | --set-upstream]
+	   [--[no-]signed|--sign=(true|false|if-asked)]
 	   [--force-with-lease[=<refname>[:<expect>]]]
 	   [--no-verify] [<repository> [<refspec>...]]
 
@@ -35,6 +36,13 @@ arguments or `--all`, `--mirror`, `--tags` options, the command finds
 the default `<refspec>` by consulting `remote.*.push` configuration,
 and if it is not found, honors `push.default` configuration to decide
 what to push (See linkgit:git-config[1] for the meaning of `push.default`).
+
+When neither the command-line nor the configuration specify what to
+push, the default behavior is used, which corresponds to the `simple`
+value for `push.default`: the current branch is pushed to the
+corresponding upstream branch, but as a safety measure, the push is
+aborted if the upstream branch does not have the same name as the
+local one.
 
 
 OPTIONS[[OPTIONS]]
@@ -61,7 +69,7 @@ be named.
 If `git push [<repository>]` without any `<refspec>` argument is set to
 update some ref at the destination with `<src>` with
 `remote.<repository>.push` configuration variable, `:<dst>` part can
-be omitted---such a push will update a ref that `<src>` normally updates
+be omitted--such a push will update a ref that `<src>` normally updates
 without any `<refspec>` on the command line.  Otherwise, missing
 `:<dst>` means to update the same ref as the `<src>`.
 +
@@ -132,12 +140,16 @@ already exists on the remote side.
 	with configuration variable 'push.followTags'.  For more
 	information, see 'push.followTags' in linkgit:git-config[1].
 
-
---signed::
+--[no-]signed::
+--sign=(true|false|if-asked)::
 	GPG-sign the push request to update refs on the receiving
 	side, to allow it to be checked by the hooks and/or be
-	logged.  See linkgit:git-receive-pack[1] for the details
-	on the receiving end.
+	logged.  If `false` or `--no-signed`, no signing will be
+	attempted.  If `true` or `--signed`, the push will fail if the
+	server does not support signed pushes.  If set to `if-asked`,
+	sign if and only if the server supports signed pushes.  The push
+	will also fail if the actual call to `gpg --sign` fails.  See
+	linkgit:git-receive-pack[1] for the details on the receiving end.
 
 --[no-]atomic::
 	Use an atomic transaction on the remote side if available.
@@ -252,22 +264,33 @@ origin +master` to force a push to the `master` branch). See the
 	is specified. This flag forces progress status even if the
 	standard error stream is not directed to a terminal.
 
---recurse-submodules=check|on-demand::
-	Make sure all submodule commits used by the revisions to be
-	pushed are available on a remote-tracking branch. If 'check' is
-	used Git will verify that all submodule commits that changed in
-	the revisions to be pushed are available on at least one remote
-	of the submodule. If any commits are missing the push will be
-	aborted and exit with non-zero status. If 'on-demand' is used
-	all submodules that changed in the revisions to be pushed will
-	be pushed. If on-demand was not able to push all necessary
-	revisions it will also be aborted and exit with non-zero status.
+--no-recurse-submodules::
+--recurse-submodules=check|on-demand|no::
+	May be used to make sure all submodule commits used by the
+	revisions to be pushed are available on a remote-tracking branch.
+	If 'check' is used Git will verify that all submodule commits that
+	changed in the revisions to be pushed are available on at least one
+	remote of the submodule. If any commits are missing the push will
+	be aborted and exit with non-zero status. If 'on-demand' is used
+	all submodules that changed in the revisions to be pushed will be
+	pushed. If on-demand was not able to push all necessary revisions
+	it will also be aborted and exit with non-zero status. A value of
+	'no' or using '--no-recurse-submodules' can be used to override the
+	push.recurseSubmodules configuration variable when no submodule
+	recursion is required.
 
 --[no-]verify::
 	Toggle the pre-push hook (see linkgit:githooks[5]).  The
 	default is --verify, giving the hook a chance to prevent the
 	push.  With --no-verify, the hook is bypassed completely.
 
+-4::
+--ipv4::
+	Use IPv4 addresses only, ignoring IPv6 addresses.
+
+-6::
+--ipv6::
+	Use IPv6 addresses only, ignoring IPv4 addresses.
 
 include::urls-remotes.txt[]
 

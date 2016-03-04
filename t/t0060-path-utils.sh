@@ -36,12 +36,21 @@ if test $rootoff = 2; then
 	rootoff=	# we are on Unix
 else
 	rootoff=$(($rootoff-1))
+	# In MSYS2, the root directory "/" is translated into a Windows
+	# directory *with* trailing slash. Let's test for that and adjust
+	# our expected longest ancestor length accordingly.
+	case "$(test-path-utils print_path /)" in
+	*/) rootslash=1;;
+	*) rootslash=0;;
+	esac
 fi
 
 ancestor() {
 	# We do some math with the expected ancestor length.
 	expected=$3
 	if test -n "$rootoff" && test "x$expected" != x-1; then
+		expected=$(($expected-$rootslash))
+		test $expected -lt 0 ||
 		expected=$(($expected+$rootoff))
 	fi
 	test_expect_success "longest ancestor: $1 $2 => $expected" \
@@ -58,6 +67,9 @@ case $(uname -s) in
 	test_set_prereq POSIX
 	;;
 esac
+
+test_expect_success basename 'test-path-utils basename'
+test_expect_success dirname 'test-path-utils dirname'
 
 norm_path "" ""
 norm_path . ""
@@ -266,15 +278,21 @@ test_expect_success 'setup common repository' 'git --git-dir=bar init'
 test_git_path GIT_COMMON_DIR=bar index                    .git/index
 test_git_path GIT_COMMON_DIR=bar HEAD                     .git/HEAD
 test_git_path GIT_COMMON_DIR=bar logs/HEAD                .git/logs/HEAD
+test_git_path GIT_COMMON_DIR=bar logs/refs/bisect/foo     .git/logs/refs/bisect/foo
+test_git_path GIT_COMMON_DIR=bar logs/refs/bisec/foo      bar/logs/refs/bisec/foo
+test_git_path GIT_COMMON_DIR=bar logs/refs/bisec          bar/logs/refs/bisec
+test_git_path GIT_COMMON_DIR=bar logs/refs/bisectfoo      bar/logs/refs/bisectfoo
 test_git_path GIT_COMMON_DIR=bar objects                  bar/objects
 test_git_path GIT_COMMON_DIR=bar objects/bar              bar/objects/bar
 test_git_path GIT_COMMON_DIR=bar info/exclude             bar/info/exclude
 test_git_path GIT_COMMON_DIR=bar info/grafts              bar/info/grafts
 test_git_path GIT_COMMON_DIR=bar info/sparse-checkout     .git/info/sparse-checkout
+test_git_path GIT_COMMON_DIR=bar info//sparse-checkout    .git/info//sparse-checkout
 test_git_path GIT_COMMON_DIR=bar remotes/bar              bar/remotes/bar
 test_git_path GIT_COMMON_DIR=bar branches/bar             bar/branches/bar
 test_git_path GIT_COMMON_DIR=bar logs/refs/heads/master   bar/logs/refs/heads/master
 test_git_path GIT_COMMON_DIR=bar refs/heads/master        bar/refs/heads/master
+test_git_path GIT_COMMON_DIR=bar refs/bisect/foo          .git/refs/bisect/foo
 test_git_path GIT_COMMON_DIR=bar hooks/me                 bar/hooks/me
 test_git_path GIT_COMMON_DIR=bar config                   bar/config
 test_git_path GIT_COMMON_DIR=bar packed-refs              bar/packed-refs
