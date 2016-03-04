@@ -32,6 +32,11 @@ struct apply_state {
 	int apply_verbosely;
 
 /*
+ *  --cached updates only the cache without ever touching the working tree.
+ */
+	int cached;
+
+/*
  *  --check turns on checking that the working tree matches the
  *    files that are being modified, but doesn't apply the patch
  */
@@ -47,12 +52,10 @@ struct apply_state {
  *  --numstat does numeric diffstat, and doesn't actually apply
  *  --index-info shows the old and new index info for paths if available.
  *  --index updates the cache as well.
- *  --cached updates only the cache without ever touching the working tree.
  */
 
 static int p_value = 1;
 static int p_value_known;
-static int cached;
 static int diffstat;
 static int numstat;
 static int summary;
@@ -3272,7 +3275,7 @@ static int load_patch_target(struct apply_state *state,
 			     const char *name,
 			     unsigned expected_mode)
 {
-	if (cached || state->check_index) {
+	if (state->cached || state->check_index) {
 		if (read_file_or_gitlink(ce, buf))
 			return error(_("read of %s failed"), name);
 	} else if (name) {
@@ -3545,7 +3548,7 @@ static int check_preimage(struct apply_state *state,
 		return error(_("path %s has been renamed/deleted"), old_name);
 	if (previous) {
 		st_mode = previous->new_mode;
-	} else if (!cached) {
+	} else if (!state->cached) {
 		stat_ret = lstat(old_name, st);
 		if (stat_ret && errno != ENOENT)
 			return error(_("%s: %s"), old_name, strerror(errno));
@@ -3563,9 +3566,9 @@ static int check_preimage(struct apply_state *state,
 			if (checkout_target(&the_index, *ce, st))
 				return -1;
 		}
-		if (!cached && verify_index_match(*ce, st))
+		if (!state->cached && verify_index_match(*ce, st))
 			return error(_("%s: does not match index"), old_name);
-		if (cached)
+		if (state->cached)
 			st_mode = (*ce)->ce_mode;
 	} else if (stat_ret < 0) {
 		if (patch->is_new < 0)
@@ -3573,7 +3576,7 @@ static int check_preimage(struct apply_state *state,
 		return error(_("%s: %s"), old_name, strerror(errno));
 	}
 
-	if (!cached && !previous)
+	if (!state->cached && !previous)
 		st_mode = ce_mode_from_stat(*ce, st->st_mode);
 
 	if (patch->is_new < 0)
@@ -3611,7 +3614,7 @@ static int check_to_create(struct apply_state *state,
 	    cache_name_pos(new_name, strlen(new_name)) >= 0 &&
 	    !ok_if_exists)
 		return EXISTS_IN_INDEX;
-	if (cached)
+	if (state->cached)
 		return 0;
 
 	if (!lstat(new_name, &nst)) {
@@ -4105,7 +4108,7 @@ static void remove_file(struct apply_state *state, struct patch *patch, int rmdi
 		if (remove_file_from_cache(patch->old_name) < 0)
 			die(_("unable to remove %s from index"), patch->old_name);
 	}
-	if (!cached) {
+	if (!state->cached) {
 		if (!remove_or_warn(patch->old_mode, patch->old_name) && rmdir_empty) {
 			remove_path(patch->old_name);
 		}
@@ -4138,7 +4141,7 @@ static void add_index_file(struct apply_state *state,
 		    get_sha1_hex(s, ce->sha1))
 			die(_("corrupt patch for submodule %s"), path);
 	} else {
-		if (!cached) {
+		if (!state->cached) {
 			if (lstat(path, &st) < 0)
 				die_errno(_("unable to stat newly created file '%s'"),
 					  path);
@@ -4190,9 +4193,13 @@ static int try_create_file(const char *path, unsigned int mode, const char *buf,
  * which is true 99% of the time anyway. If they don't,
  * we create them and try again.
  */
-static void create_one_file(char *path, unsigned mode, const char *buf, unsigned long size)
+static void create_one_file(struct apply_state *state,
+			    char *path,
+			    unsigned mode,
+			    const char *buf,
+			    unsigned long size)
 {
-	if (cached)
+	if (state->cached)
 		return;
 	if (!try_create_file(path, mode, buf, size))
 		return;
@@ -4270,7 +4277,7 @@ static void create_file(struct apply_state *state, struct patch *patch)
 
 	if (!mode)
 		mode = S_IFREG | 0644;
-	create_one_file(path, mode, buf, size);
+	create_one_file(state, path, mode, buf, size);
 
 	if (patch->conflicted_threeway)
 		add_conflicted_stages_file(state, patch);
@@ -4596,7 +4603,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			N_("instead of applying the patch, see if the patch is applicable")),
 		OPT_BOOL(0, "index", &state.check_index,
 			N_("make sure the patch is applicable to the current index")),
-		OPT_BOOL(0, "cached", &cached,
+		OPT_BOOL(0, "cached", &state.cached,
 			N_("apply a patch without touching the working tree")),
 		OPT_BOOL(0, "unsafe-paths", &unsafe_paths,
 			N_("accept a patch that touches outside the working area")),
@@ -4657,7 +4664,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 
 	if (state.apply_with_reject && threeway)
 		die("--reject and --3way cannot be used together.");
-	if (cached && threeway)
+	if (state.cached && threeway)
 		die("--cached and --3way cannot be used together.");
 	if (threeway) {
 		if (is_not_gitdir)
@@ -4670,7 +4677,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		apply = 0;
 	if (state.check_index && is_not_gitdir)
 		die(_("--index outside a repository"));
-	if (cached) {
+	if (state.cached) {
 		if (is_not_gitdir)
 			die(_("--cached outside a repository"));
 		state.check_index = 1;
