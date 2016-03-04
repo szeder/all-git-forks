@@ -27,6 +27,7 @@ struct apply_state {
 
 	int apply_in_reverse;
 	int apply_with_reject;
+	int apply_verbosely;
 
 	/*
 	 *  --check turns on checking that the working tree matches the
@@ -56,7 +57,6 @@ static int diffstat;
 static int numstat;
 static int summary;
 static int apply = 1;
-static int apply_verbosely;
 static int allow_overlap;
 static int no_add;
 static int threeway;
@@ -2812,7 +2812,7 @@ static int apply_one_fragment(struct apply_state *state,
 			/* Ignore it, we already handled it */
 			break;
 		default:
-			if (apply_verbosely)
+			if (state->apply_verbosely)
 				error(_("invalid start of line: '%c'"), first);
 			applied_pos = -1;
 			goto out;
@@ -2927,7 +2927,7 @@ static int apply_one_fragment(struct apply_state *state,
 				apply = 0;
 		}
 
-		if (apply_verbosely && applied_pos != pos) {
+		if (state->apply_verbosely && applied_pos != pos) {
 			int offset = applied_pos - pos;
 			if (state->apply_in_reverse)
 				offset = 0 - offset;
@@ -2949,7 +2949,7 @@ static int apply_one_fragment(struct apply_state *state,
 				   leading, trailing, applied_pos+1);
 		update_image(img, applied_pos, &preimage, &postimage);
 	} else {
-		if (apply_verbosely)
+		if (state->apply_verbosely)
 			error(_("while searching for:\n%.*s"),
 			      (int)(old - oldlines), oldlines);
 	}
@@ -3863,7 +3863,7 @@ static int check_patch_list(struct apply_state *state, struct patch *patch)
 	prepare_symlink_changes(patch);
 	prepare_fn_table(patch);
 	while (patch) {
-		if (apply_verbosely)
+		if (state->apply_verbosely)
 			say_patch_name(stderr,
 				       _("Checking patch %s..."), patch);
 		err |= check_patch(state, patch);
@@ -4294,7 +4294,7 @@ static void write_out_one_result(struct patch *patch, int phase)
 		create_file(patch);
 }
 
-static int write_out_one_reject(struct patch *patch)
+static int write_out_one_reject(struct apply_state *state, struct patch *patch)
 {
 	FILE *rej;
 	char namebuf[PATH_MAX];
@@ -4309,7 +4309,7 @@ static int write_out_one_reject(struct patch *patch)
 	}
 
 	if (!cnt) {
-		if (apply_verbosely)
+		if (state->apply_verbosely)
 			say_patch_name(stderr,
 				       _("Applied patch %s cleanly."), patch);
 		return 0;
@@ -4365,7 +4365,7 @@ static int write_out_one_reject(struct patch *patch)
 	return -1;
 }
 
-static int write_out_results(struct patch *list)
+static int write_out_results(struct apply_state *state, struct patch *list)
 {
 	int phase;
 	int errs = 0;
@@ -4380,7 +4380,7 @@ static int write_out_results(struct patch *list)
 			else {
 				write_out_one_result(l, phase);
 				if (phase == 1) {
-					if (write_out_one_reject(l))
+					if (write_out_one_reject(state, l))
 						errs = 1;
 					if (l->conflicted_threeway) {
 						string_list_append(&cpath, l->new_name);
@@ -4444,7 +4444,7 @@ static int apply_patch(struct apply_state *state,
 			listp = &patch->next;
 		}
 		else {
-			if (apply_verbosely)
+			if (state->apply_verbosely)
 				say_patch_name(stderr, _("Skipped patch '%s'."), patch);
 			free_patch(patch);
 			skipped_patch++;
@@ -4472,7 +4472,7 @@ static int apply_patch(struct apply_state *state,
 	    !state->apply_with_reject)
 		exit(1);
 
-	if (apply && write_out_results(list)) {
+	if (apply && write_out_results(state, list)) {
 		if (state->apply_with_reject)
 			exit(1);
 		/* with --3way, we still need to write the index out */
@@ -4623,7 +4623,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			N_("leave the rejected hunks in corresponding *.rej files")),
 		OPT_BOOL(0, "allow-overlap", &allow_overlap,
 			N_("allow overlapping hunks")),
-		OPT__VERBOSE(&apply_verbosely, N_("be verbose")),
+		OPT__VERBOSE(&state.apply_verbosely, N_("be verbose")),
 		OPT_BIT(0, "inaccurate-eof", &options,
 			N_("tolerate incorrectly detected missing new-line at the end of file"),
 			INACCURATE_EOF),
@@ -4659,7 +4659,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		state.check_index = 1;
 	}
 	if (state.apply_with_reject)
-		apply = apply_verbosely = 1;
+		apply = state.apply_verbosely = 1;
 	if (!force_apply && (diffstat || numstat || summary || state.check || fake_ancestor))
 		apply = 0;
 	if (state.check_index && is_not_gitdir)
