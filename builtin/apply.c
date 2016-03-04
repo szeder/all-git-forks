@@ -39,6 +39,8 @@ struct apply_state {
 	/* --numstat does numeric diffstat, and doesn't actually apply */
 	int numstat;
 
+	int summary;
+
 	/*
 	 *  --check turns on checking that the working tree matches the
 	 *    files that are being modified, but doesn't apply the patch
@@ -60,7 +62,6 @@ static int newfd = -1;
 
 static int state_p_value = 1;
 static int p_value_known;
-static int summary;
 static int apply = 1;
 static int no_add;
 static int threeway;
@@ -4493,7 +4494,7 @@ static int apply_patch(struct apply_state *state,
 	if (state->numstat)
 		numstat_patch_list(list);
 
-	if (summary)
+	if (state->summary)
 		summary_patch_list(list);
 
 	free_patch_list(list);
@@ -4590,7 +4591,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		OPT_NOOP_NOARG(0, "binary"),
 		OPT_BOOL(0, "numstat", &state.numstat,
 			N_("show number of added and deleted lines in decimal notation")),
-		OPT_BOOL(0, "summary", &summary,
+		OPT_BOOL(0, "summary", &state.summary,
 			N_("instead of applying the patch, output a summary for the input")),
 		OPT_BOOL(0, "check", &state.check,
 			N_("instead of applying the patch, see if the patch is applicable")),
@@ -4665,7 +4666,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	}
 	if (state.apply_with_reject)
 		apply = state.apply_verbosely = 1;
-	if (!force_apply && (state.diffstat || state.numstat || summary || state.check || fake_ancestor))
+	if (!force_apply && (state.diffstat || state.numstat || state.summary || state.check || fake_ancestor))
 		apply = 0;
 	if (state.check_index && is_not_gitdir)
 		die(_("--index outside a repository"));
