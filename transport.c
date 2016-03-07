@@ -690,6 +690,10 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		|| starts_with(url, "file://")
 		|| starts_with(url, "git://")
 		|| starts_with(url, "ssh://")
+		/*
+		 * These ways to spell the ssh transport remain supported for
+		 * compat but are undocumented and their use is discouraged
+		 */
 		|| starts_with(url, "git+ssh://")
 		|| starts_with(url, "ssh+git://")) {
 		/*
