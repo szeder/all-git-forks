@@ -64,12 +64,13 @@ struct apply_state {
 	int unsafe_paths;
 
 	int line_termination;
+
+	unsigned int p_context;
 };
 
 static int p_value = 1;
 static int p_value_known;
 static int apply = 1;
-static unsigned int p_context = UINT_MAX;
 static const char * const apply_usage[] = {
 	N_("git apply [<options>] [<patch>...]"),
 	NULL
@@ -2889,7 +2890,7 @@ static int apply_one_fragment(struct apply_state *state,
 			break;
 
 		/* Am I at my context limits? */
-		if ((leading <= p_context) && (trailing <= p_context))
+		if ((leading <= state->p_context) && (trailing <= state->p_context))
 			break;
 		if (match_beginning || match_end) {
 			match_beginning = match_end = 0;
@@ -4621,7 +4622,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		/* Think twice before adding "--nul" synonym to this */
 		OPT_SET_INT('z', NULL, &state.line_termination,
 			N_("paths are separated with NUL character"), '\0'),
-		OPT_INTEGER('C', NULL, &p_context,
+		OPT_INTEGER('C', NULL, &state.p_context,
 				N_("ensure at least <n> lines of context match")),
 		{ OPTION_CALLBACK, 0, "whitespace", &whitespace_option, N_("action"),
 			N_("detect new or modified lines that have whitespace errors"),
@@ -4658,6 +4659,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	state.prefix_length = state.prefix ? strlen(state.prefix) : 0;
 	state.newfd = -1;
 	state.line_termination = '\n';
+	state.p_context = UINT_MAX;
 
 	git_apply_config();
 	if (apply_default_whitespace)
