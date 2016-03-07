@@ -66,6 +66,8 @@ struct apply_state {
 	int line_termination;
 
 	unsigned int p_context;
+
+	const char *patch_input_file;
 };
 
 static int newfd = -1;
@@ -94,7 +96,6 @@ static enum ws_ignore {
 } ws_ignore_action = ignore_ws_none;
 
 
-static const char *patch_input_file;
 static struct strbuf root = STRBUF_INIT;
 
 static void parse_whitespace_option(const char *option)
@@ -1549,7 +1550,11 @@ static int find_header(struct apply_state *state,
 	return -1;
 }
 
-static void record_ws_error(unsigned result, const char *line, int len, int l_nr)
+static void record_ws_error(struct apply_state *state,
+			    unsigned result,
+			    const char *line,
+			    int len,
+			    int l_nr)
 {
 	char *err;
 
@@ -1563,15 +1568,18 @@ static void record_ws_error(unsigned result, const char *line, int len, int l_nr
 
 	err = whitespace_error_string(result);
 	fprintf(stderr, "%s:%d: %s.\n%.*s\n",
-		patch_input_file, l_nr, err, len, line);
+		state->patch_input_file, l_nr, err, len, line);
 	free(err);
 }
 
-static void check_whitespace(const char *line, int len, unsigned ws_rule)
+static void check_whitespace(struct apply_state *state,
+			     const char *line,
+			     int len,
+			     unsigned ws_rule)
 {
 	unsigned result = ws_check(line + 1, len - 1, ws_rule);
 
-	record_ws_error(result, line + 1, len - 2, linenr);
+	record_ws_error(state, result, line + 1, len - 2, linenr);
 }
 
 /*
@@ -1626,12 +1634,12 @@ static int parse_fragment(struct apply_state *state,
 			trailing++;
 			if (!state->apply_in_reverse &&
 			    ws_error_action == correct_ws_error)
-				check_whitespace(line, len, patch->ws_rule);
+				check_whitespace(state, line, len, patch->ws_rule);
 			break;
 		case '-':
 			if (state->apply_in_reverse &&
 			    ws_error_action != nowarn_ws_error)
-				check_whitespace(line, len, patch->ws_rule);
+				check_whitespace(state, line, len, patch->ws_rule);
 			deleted++;
 			oldlines--;
 			trailing = 0;
@@ -1639,7 +1647,7 @@ static int parse_fragment(struct apply_state *state,
 		case '+':
 			if (!state->apply_in_reverse &&
 			    ws_error_action != nowarn_ws_error)
-				check_whitespace(line, len, patch->ws_rule);
+				check_whitespace(state, line, len, patch->ws_rule);
 			added++;
 			newlines--;
 			trailing = 0;
@@ -2922,7 +2930,7 @@ static int apply_one_fragment(struct apply_state *state,
 		    preimage.nr + applied_pos >= img->nr &&
 		    (ws_rule & WS_BLANK_AT_EOF) &&
 		    ws_error_action != nowarn_ws_error) {
-			record_ws_error(WS_BLANK_AT_EOF, "+", 1,
+			record_ws_error(state, WS_BLANK_AT_EOF, "+", 1,
 					found_new_blank_lines_at_end);
 			if (ws_error_action == correct_ws_error) {
 				while (new_blank_lines_at_end--)
@@ -4445,7 +4453,7 @@ static int apply_patch(struct apply_state *state,
 	struct patch *list = NULL, **listp = &list;
 	int skipped_patch = 0;
 
-	patch_input_file = filename;
+	state->patch_input_file = filename;
 	read_patch_file(&buf, fd);
 	offset = 0;
 	while (offset < buf.len) {
