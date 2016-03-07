@@ -67,6 +67,8 @@ struct apply_state {
 	int line_termination;
 
 	unsigned int p_context;
+
+	struct lock_file lock_file;
 };
 
 /*
@@ -4435,8 +4437,6 @@ static int write_out_results(struct apply_state *state, struct patch *list)
 	return errs;
 }
 
-static struct lock_file lock_file;
-
 #define INACCURATE_EOF	(1<<0)
 #define RECOUNT		(1<<1)
 
@@ -4485,7 +4485,7 @@ static int apply_patch(struct apply_state *state,
 
 	state->update_index = state->check_index && state->apply;
 	if (state->update_index && state->newfd < 0)
-		state->newfd = hold_locked_index(&lock_file, 1);
+		state->newfd = hold_locked_index(&state->lock_file, 1);
 
 	if (state->check_index) {
 		if (read_cache() < 0)
@@ -4754,7 +4754,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	}
 
 	if (state.update_index) {
-		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, &state.lock_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 
