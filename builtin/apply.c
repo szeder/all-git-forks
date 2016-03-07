@@ -96,7 +96,6 @@ static enum ws_ignore {
 
 static const char *patch_input_file;
 static struct strbuf root = STRBUF_INIT;
-static int read_stdin = 1;
 
 static void parse_whitespace_option(const char *option)
 {
@@ -4584,6 +4583,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	int is_not_gitdir = !startup_info->have_repository;
 	int force_apply = 0;
 	int options = 0;
+	int read_stdin = 1;
 	struct apply_state state;
 
 	const char *whitespace_option = NULL;
