@@ -25,6 +25,7 @@ struct apply_state {
 	const char *prefix;
 	int prefix_length;
 
+	int apply;
 	int allow_overlap;
 	int apply_in_reverse;
 	int apply_with_reject;
@@ -71,7 +72,7 @@ static int newfd = -1;
 
 static int state_p_value = 1;
 static int p_value_known;
-static int apply = 1;
+
 static const char * const apply_usage[] = {
 	N_("git apply [<options>] [<patch>...]"),
 	NULL
@@ -142,10 +143,11 @@ static void parse_ignorewhitespace_option(const char *option)
 	die(_("unrecognized whitespace ignore option '%s'"), option);
 }
 
-static void set_default_whitespace_mode(const char *whitespace_option)
+static void set_default_whitespace_mode(struct apply_state *state,
+					const char *whitespace_option)
 {
 	if (!whitespace_option && !apply_default_whitespace)
-		ws_error_action = (apply ? warn_on_ws_error : nowarn_ws_error);
+		ws_error_action = (state->apply ? warn_on_ws_error : nowarn_ws_error);
 }
 
 /*
@@ -2074,7 +2076,7 @@ static int parse_chunk(struct apply_state *state, char *buffer, unsigned long si
 		 * without metadata change.  A binary patch appears
 		 * empty to us here.
 		 */
-		if ((apply || state->check) &&
+		if ((state->apply || state->check) &&
 		    (!patch->is_binary && !metadata_changes(patch)))
 			die(_("patch with only garbage at line %d"), linenr);
 	}
@@ -2933,7 +2935,7 @@ static int apply_one_fragment(struct apply_state *state,
 			 * apply_data->apply_fragments->apply_one_fragment
 			 */
 			if (ws_error_action == die_on_ws_error)
-				apply = 0;
+				state->apply = 0;
 		}
 
 		if (state->apply_verbosely && applied_pos != pos) {
@@ -4477,9 +4479,9 @@ static int apply_patch(struct apply_state *state,
 		die(_("unrecognized input"));
 
 	if (whitespace_error && (ws_error_action == die_on_ws_error))
-		apply = 0;
+		state->apply = 0;
 
-	state->update_index = state->check_index && apply;
+	state->update_index = state->check_index && state->apply;
 	if (state->update_index && newfd < 0)
 		newfd = hold_locked_index(&lock_file, 1);
 
@@ -4488,12 +4490,12 @@ static int apply_patch(struct apply_state *state,
 			die(_("unable to read index file"));
 	}
 
-	if ((state->check || apply) &&
+	if ((state->check || state->apply) &&
 	    check_patch_list(state, list) < 0 &&
 	    !state->apply_with_reject)
 		exit(1);
 
-	if (apply && write_out_results(state, list)) {
+	if (state->apply && write_out_results(state, list)) {
 		if (state->apply_with_reject)
 			exit(1);
 		/* with --3way, we still need to write the index out */
@@ -4660,6 +4662,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	memset(&state, 0, sizeof(state));
 	state.prefix = prefix_;
 	state.prefix_length = state.prefix ? strlen(state.prefix) : 0;
+	state.apply = 1;
 	state.line_termination = '\n';
 	state.p_context = UINT_MAX;
 
@@ -4682,9 +4685,9 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		state.check_index = 1;
 	}
 	if (state.apply_with_reject)
-		apply = state.apply_verbosely = 1;
+		state.apply = state.apply_verbosely = 1;
 	if (!force_apply && (state.diffstat || state.numstat || state.summary || state.check || state.fake_ancestor))
-		apply = 0;
+		state.apply = 0;
 	if (state.check_index && is_not_gitdir)
 		die(_("--index outside a repository"));
 	if (state.cached) {
@@ -4712,11 +4715,11 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		if (fd < 0)
 			die_errno(_("can't open patch '%s'"), arg);
 		read_stdin = 0;
-		set_default_whitespace_mode(whitespace_option);
+		set_default_whitespace_mode(&state, whitespace_option);
 		errs |= apply_patch(&state, fd, arg, options);
 		close(fd);
 	}
-	set_default_whitespace_mode(whitespace_option);
+	set_default_whitespace_mode(&state, whitespace_option);
 	if (read_stdin)
 		errs |= apply_patch(&state, 0, "<stdin>", options);
 	if (whitespace_error) {
@@ -4734,7 +4737,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			       "%d lines add whitespace errors.",
 			       whitespace_error),
 			    whitespace_error);
-		if (applied_after_fixing_ws && apply)
+		if (applied_after_fixing_ws && state.apply)
 			warning("%d line%s applied after"
 				" fixing whitespace errors.",
 				applied_after_fixing_ws,
