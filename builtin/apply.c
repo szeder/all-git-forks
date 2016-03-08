@@ -86,6 +86,13 @@ struct apply_state {
 	int max_change;
 	int max_len;
 
+	/*
+	 * Various "current state", notably line numbers and what
+	 * file (and how) we're patching right now.. The "is_xxxx"
+	 * things are flags, where -1 means "don't know yet".
+	 */
+	int linenr;
+
 	int p_value;
 	int p_value_known;
 	unsigned int p_context;
@@ -164,13 +171,6 @@ static void set_default_whitespace_mode(struct apply_state *state)
 	if (!state->whitespace_option && !apply_default_whitespace)
 		state->ws_error_action = (state->apply ? warn_on_ws_error : nowarn_ws_error);
 }
-
-/*
- * Various "current state", notably line numbers and what
- * file (and how) we're patching right now.. The "is_xxxx"
- * things are flags, where -1 means "don't know yet".
- */
-static int linenr = 1;
 
 /*
  * This represents one "hunk" from a patch, starting with
@@ -948,7 +948,7 @@ static void parse_traditional_patch(struct apply_state *state,
 		}
 	}
 	if (!name)
-		die(_("unable to find filename in patch at line %d"), linenr);
+		die(_("unable to find filename in patch at line %d"), state->linenr);
 }
 
 static int gitdiff_hdrend(struct apply_state *state,
@@ -986,17 +986,17 @@ static void gitdiff_verify_name(struct apply_state *state,
 		char *another;
 		if (isnull)
 			die(_("git apply: bad git-diff - expected /dev/null, got %s on line %d"),
-			    *name, linenr);
+			    *name, state->linenr);
 		another = find_name(state, line, NULL, state->p_value, TERM_TAB);
 		if (!another || memcmp(another, *name, len + 1))
 			die((side == DIFF_NEW_NAME) ?
 			    _("git apply: bad git-diff - inconsistent new filename on line %d") :
-			    _("git apply: bad git-diff - inconsistent old filename on line %d"), linenr);
+			    _("git apply: bad git-diff - inconsistent old filename on line %d"), state->linenr);
 		free(another);
 	} else {
 		/* expect "/dev/null" */
 		if (memcmp("/dev/null", line, 9) || line[9] != '\n')
-			die(_("git apply: bad git-diff - expected /dev/null on line %d"), linenr);
+			die(_("git apply: bad git-diff - expected /dev/null on line %d"), state->linenr);
 	}
 }
 
@@ -1359,8 +1359,8 @@ static int parse_git_header(struct apply_state *state,
 
 	line += len;
 	size -= len;
-	linenr++;
-	for (offset = len ; size > 0 ; offset += len, size -= len, line += len, linenr++) {
+	state->linenr++;
+	for (offset = len ; size > 0 ; offset += len, size -= len, line += len, state->linenr++) {
 		static const struct opentry {
 			const char *str;
 			int (*fn)(struct apply_state *, const char *, struct patch *);
@@ -1531,7 +1531,7 @@ static int find_header(struct apply_state *state,
 	patch->is_new = patch->is_delete = -1;
 	patch->old_mode = patch->new_mode = 0;
 	patch->old_name = patch->new_name = NULL;
-	for (offset = 0; size > 0; offset += len, size -= len, line += len, linenr++) {
+	for (offset = 0; size > 0; offset += len, size -= len, line += len, state->linenr++) {
 		unsigned long nextlen;
 
 		len = linelen(line, size);
@@ -1552,7 +1552,7 @@ static int find_header(struct apply_state *state,
 			if (parse_fragment_header(line, len, &dummy) < 0)
 				continue;
 			die(_("patch fragment without header at line %d: %.*s"),
-			    linenr, (int)len-1, line);
+			    state->linenr, (int)len-1, line);
 		}
 
 		if (size < len + 6)
@@ -1573,13 +1573,13 @@ static int find_header(struct apply_state *state,
 					       "git diff header lacks filename information when removing "
 					       "%d leading pathname components (line %d)",
 					       state->p_value),
-					    state->p_value, linenr);
+					    state->p_value, state->linenr);
 				patch->old_name = xstrdup(patch->def_name);
 				patch->new_name = xstrdup(patch->def_name);
 			}
 			if (!patch->is_delete && !patch->new_name)
 				die("git diff header lacks filename information "
-				    "(line %d)", linenr);
+				    "(line %d)", state->linenr);
 			patch->is_toplevel_relative = 1;
 			*hdrsize = git_hdr_len;
 			return offset;
@@ -1601,7 +1601,7 @@ static int find_header(struct apply_state *state,
 		/* Ok, we'll consider it a patch */
 		parse_traditional_patch(state, line, line+len, patch);
 		*hdrsize = len + nextlen;
-		linenr += 2;
+		state->linenr += 2;
 		return offset;
 	}
 	return -1;
@@ -1636,7 +1636,7 @@ static void check_whitespace(struct apply_state *state,
 {
 	unsigned result = ws_check(line + 1, len - 1, ws_rule);
 
-	record_ws_error(state, result, line + 1, len - 2, linenr);
+	record_ws_error(state, result, line + 1, len - 2, state->linenr);
 }
 
 /*
@@ -1669,11 +1669,11 @@ static int parse_fragment(struct apply_state *state,
 	/* Parse the thing.. */
 	line += len;
 	size -= len;
-	linenr++;
+	state->linenr++;
 	added = deleted = 0;
 	for (offset = len;
 	     0 < size;
-	     offset += len, size -= len, line += len, linenr++) {
+	     offset += len, size -= len, line += len, state->linenr++) {
 		if (!oldlines && !newlines)
 			break;
 		len = linelen(line, size);
@@ -1772,10 +1772,10 @@ static int parse_single_patch(struct apply_state *state,
 		int len;
 
 		fragment = xcalloc(1, sizeof(*fragment));
-		fragment->linenr = linenr;
+		fragment->linenr = state->linenr;
 		len = parse_fragment(state, line, size, patch, fragment);
 		if (len <= 0)
-			die(_("corrupt patch at line %d"), linenr);
+			die(_("corrupt patch at line %d"), state->linenr);
 		fragment->patch = line;
 		fragment->size = len;
 		oldlines += fragment->oldlines;
@@ -1861,7 +1861,8 @@ static char *inflate_it(const void *data, unsigned long size,
  * points at an allocated memory that the caller must free, so
  * it is marked as "->free_patch = 1".
  */
-static struct fragment *parse_binary_hunk(char **buf_p,
+static struct fragment *parse_binary_hunk(struct apply_state *state,
+					  char **buf_p,
 					  unsigned long *sz_p,
 					  int *status_p,
 					  int *used_p)
@@ -1903,13 +1904,13 @@ static struct fragment *parse_binary_hunk(char **buf_p,
 	else
 		return NULL;
 
-	linenr++;
+	state->linenr++;
 	buffer += llen;
 	while (1) {
 		int byte_length, max_byte_length, newsize;
 		llen = linelen(buffer, size);
 		used += llen;
-		linenr++;
+		state->linenr++;
 		if (llen == 1) {
 			/* consume the blank line */
 			buffer++;
@@ -1963,11 +1964,14 @@ static struct fragment *parse_binary_hunk(char **buf_p,
 	free(data);
 	*status_p = -1;
 	error(_("corrupt binary patch at line %d: %.*s"),
-	      linenr-1, llen-1, buffer);
+	      state->linenr-1, llen-1, buffer);
 	return NULL;
 }
 
-static int parse_binary(char *buffer, unsigned long size, struct patch *patch)
+static int parse_binary(struct apply_state *state,
+			char *buffer,
+			unsigned long size,
+			struct patch *patch)
 {
 	/*
 	 * We have read "GIT binary patch\n"; what follows is a line
@@ -1988,15 +1992,15 @@ static int parse_binary(char *buffer, unsigned long size, struct patch *patch)
 	int status;
 	int used, used_1;
 
-	forward = parse_binary_hunk(&buffer, &size, &status, &used);
+	forward = parse_binary_hunk(state, &buffer, &size, &status, &used);
 	if (!forward && !status)
 		/* there has to be one hunk (forward hunk) */
-		return error(_("unrecognized binary patch at line %d"), linenr-1);
+		return error(_("unrecognized binary patch at line %d"), state->linenr-1);
 	if (status)
 		/* otherwise we already gave an error message */
 		return status;
 
-	reverse = parse_binary_hunk(&buffer, &size, &status, &used_1);
+	reverse = parse_binary_hunk(state, &buffer, &size, &status, &used_1);
 	if (reverse)
 		used += used_1;
 	else if (status) {
@@ -2111,8 +2115,8 @@ static int parse_chunk(struct apply_state *state, char *buffer, unsigned long si
 		if (llen == sizeof(git_binary) - 1 &&
 		    !memcmp(git_binary, buffer + hd, llen)) {
 			int used;
-			linenr++;
-			used = parse_binary(buffer + hd + llen,
+			state->linenr++;
+			used = parse_binary(state, buffer + hd + llen,
 					    size - hd - llen, patch);
 			if (used)
 				patchsize = used + llen;
@@ -2130,7 +2134,7 @@ static int parse_chunk(struct apply_state *state, char *buffer, unsigned long si
 				int len = strlen(binhdr[i]);
 				if (len < size - hd &&
 				    !memcmp(binhdr[i], buffer + hd, len)) {
-					linenr++;
+					state->linenr++;
 					patch->is_binary = 1;
 					patchsize = llen;
 					break;
@@ -2144,7 +2148,7 @@ static int parse_chunk(struct apply_state *state, char *buffer, unsigned long si
 		 */
 		if ((state->apply || state->check) &&
 		    (!patch->is_binary && !metadata_changes(patch)))
-			die(_("patch with only garbage at line %d"), linenr);
+			die(_("patch with only garbage at line %d"), state->linenr);
 	}
 
 	return offset + hdrsize + patchsize;
@@ -4737,6 +4741,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	state.squelch_whitespace_errors = 5;
 	state.ws_error_action = warn_on_ws_error;
 	state.ws_ignore_action = ignore_ws_none;
+	state.linenr = 1;
 	strbuf_init(&state.root, 0);
 
 	git_apply_config();
