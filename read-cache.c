@@ -809,6 +809,9 @@ int verify_path(const char *path)
 	if (has_dos_drive_prefix(path))
 		return 0;
 
+	if (known_invalid(path))
+		return 0;
+
 	goto inside;
 	for (;;) {
 		if (!c)
@@ -821,10 +824,9 @@ inside:
 				return 0;
 			c = *path++;
 			if ((c == '.' && !verify_dotfile(path)) ||
-			    is_dir_sep(c) || c == ':' || c == '\0')
+			    is_dir_sep(c) || c == '\0')
 				return 0;
-		} else if (c == ':')
-			return 0;
+		}
 		c = *path++;
 	}
 }

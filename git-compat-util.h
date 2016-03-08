@@ -347,6 +347,14 @@ static inline int git_skip_dos_drive_prefix(char **path)
 #define skip_dos_drive_prefix git_skip_dos_drive_prefix
 #endif
 
+#ifndef known_invalid
+static inline int git_known_invalid(const char *path)
+{
+	return 0;
+}
+#define known_invalid git_known_invalid
+#endif
+
 #ifndef has_unc_prefix
 static inline int git_has_unc_prefix(const char *path)
 {

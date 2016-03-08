@@ -2444,6 +2444,21 @@ int mingw_skip_dos_drive_prefix(char **path)
 	return ret;
 }
 
+int mingw_known_invalid(const char *path)
+{
+    // Colon is admissible as part of absolute path (e.g. "C:\file.txt")
+    // but otherwise invalid. Explicit checking done to prevent
+    // unintentional writing to alternate data stream path, e.g.
+    // "some\path\file:streamname"
+    if (path) {
+        path += has_dos_drive_prefix(path);
+        for (; *path; ++path)
+            if (*path == ':')
+                return 1;
+    }
+    return 0;
+}
+
 int mingw_offset_1st_component(const char *path)
 {
 	char *pos = (char *)path;
