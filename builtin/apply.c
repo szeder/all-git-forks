@@ -70,6 +70,7 @@ struct apply_state {
 	const char *patch_input_file;
 
 	struct string_list limit_by_name;
+	int has_include;
 };
 
 static int newfd = -1;
@@ -1971,7 +1972,6 @@ static void prefix_patch(struct apply_state *state, struct patch *p)
  * include/exclude
  */
 
-static int has_include;
 static void add_name_limit(struct apply_state *state,
 			   const char *name,
 			   int exclude)
@@ -2007,7 +2007,7 @@ static int use_patch(struct apply_state *state, struct patch *p)
 	 * not used.  Otherwise, we saw bunch of exclude rules (or none)
 	 * and such a path is used.
 	 */
-	return !has_include;
+	return !state->has_include;
 }
 
 
@@ -4539,7 +4539,7 @@ static int option_parse_include(const struct option *opt,
 {
 	struct apply_state *state = opt->value;
 	add_name_limit(state, arg, 0);
-	has_include = 1;
+	state->has_include = 1;
 	return 0;
 }
 
