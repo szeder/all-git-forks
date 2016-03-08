@@ -21,6 +21,13 @@
 #include "ll-merge.h"
 #include "rerere.h"
 
+enum ws_error_action {
+	nowarn_ws_error,
+	warn_on_ws_error,
+	die_on_ws_error,
+	correct_ws_error
+};
+
 struct apply_state {
 	const char *prefix;
 	int prefix_length;
@@ -83,6 +90,8 @@ struct apply_state {
 	int whitespace_error;
 	int squelch_whitespace_errors;
 	int applied_after_fixing_ws;
+
+	enum ws_error_action ws_error_action;
 };
 
 static const char * const apply_usage[] = {
@@ -90,12 +99,6 @@ static const char * const apply_usage[] = {
 	NULL
 };
 
-static enum ws_error_action {
-	nowarn_ws_error,
-	warn_on_ws_error,
-	die_on_ws_error,
-	correct_ws_error
-} ws_error_action = warn_on_ws_error;
 
 static enum ws_ignore {
 	ignore_ws_none,
@@ -106,28 +109,28 @@ static enum ws_ignore {
 static void parse_whitespace_option(struct apply_state *state, const char *option)
 {
 	if (!option) {
-		ws_error_action = warn_on_ws_error;
+		state->ws_error_action = warn_on_ws_error;
 		return;
 	}
 	if (!strcmp(option, "warn")) {
-		ws_error_action = warn_on_ws_error;
+		state->ws_error_action = warn_on_ws_error;
 		return;
 	}
 	if (!strcmp(option, "nowarn")) {
-		ws_error_action = nowarn_ws_error;
+		state->ws_error_action = nowarn_ws_error;
 		return;
 	}
 	if (!strcmp(option, "error")) {
-		ws_error_action = die_on_ws_error;
+		state->ws_error_action = die_on_ws_error;
 		return;
 	}
 	if (!strcmp(option, "error-all")) {
-		ws_error_action = die_on_ws_error;
+		state->ws_error_action = die_on_ws_error;
 		state->squelch_whitespace_errors = 0;
 		return;
 	}
 	if (!strcmp(option, "strip") || !strcmp(option, "fix")) {
-		ws_error_action = correct_ws_error;
+		state->ws_error_action = correct_ws_error;
 		return;
 	}
 	die(_("unrecognized whitespace option '%s'"), option);
@@ -151,7 +154,7 @@ static void parse_ignorewhitespace_option(const char *option)
 static void set_default_whitespace_mode(struct apply_state *state)
 {
 	if (!state->whitespace_option && !apply_default_whitespace)
-		ws_error_action = (state->apply ? warn_on_ws_error : nowarn_ws_error);
+		state->ws_error_action = (state->apply ? warn_on_ws_error : nowarn_ws_error);
 }
 
 /*
@@ -1695,12 +1698,12 @@ static int parse_fragment(struct apply_state *state,
 				leading++;
 			trailing++;
 			if (!state->apply_in_reverse &&
-			    ws_error_action == correct_ws_error)
+			    state->ws_error_action == correct_ws_error)
 				check_whitespace(state, line, len, patch->ws_rule);
 			break;
 		case '-':
 			if (state->apply_in_reverse &&
-			    ws_error_action != nowarn_ws_error)
+			    state->ws_error_action != nowarn_ws_error)
 				check_whitespace(state, line, len, patch->ws_rule);
 			deleted++;
 			oldlines--;
@@ -1708,7 +1711,7 @@ static int parse_fragment(struct apply_state *state,
 			break;
 		case '+':
 			if (!state->apply_in_reverse &&
-			    ws_error_action != nowarn_ws_error)
+			    state->ws_error_action != nowarn_ws_error)
 				check_whitespace(state, line, len, patch->ws_rule);
 			added++;
 			newlines--;
@@ -2414,7 +2417,8 @@ static int line_by_line_fuzzy_match(struct image *img,
 	return 1;
 }
 
-static int match_fragment(struct image *img,
+static int match_fragment(struct apply_state *state,
+			  struct image *img,
 			  struct image *preimage,
 			  struct image *postimage,
 			  unsigned long try,
@@ -2435,7 +2439,7 @@ static int match_fragment(struct image *img,
 		preimage_limit = preimage->nr;
 		if (match_end && (preimage->nr + try_lno != img->nr))
 			return 0;
-	} else if (ws_error_action == correct_ws_error &&
+	} else if (state->ws_error_action == correct_ws_error &&
 		   (ws_rule & WS_BLANK_AT_EOF)) {
 		/*
 		 * This hunk extends beyond the end of img, and we are
@@ -2508,7 +2512,7 @@ static int match_fragment(struct image *img,
 		return line_by_line_fuzzy_match(img, preimage, postimage,
 						try, try_lno, preimage_limit);
 
-	if (ws_error_action != correct_ws_error)
+	if (state->ws_error_action != correct_ws_error)
 		return 0;
 
 	/*
@@ -2620,7 +2624,8 @@ static int match_fragment(struct image *img,
 	return 0;
 }
 
-static int find_pos(struct image *img,
+static int find_pos(struct apply_state *state,
+		    struct image *img,
 		    struct image *preimage,
 		    struct image *postimage,
 		    int line,
@@ -2664,7 +2669,7 @@ static int find_pos(struct image *img,
 	try_lno = line;
 
 	for (i = 0; ; i++) {
-		if (match_fragment(img, preimage, postimage,
+		if (match_fragment(state, img, preimage, postimage,
 				   try, try_lno, ws_rule,
 				   match_beginning, match_end))
 			return try_lno;
@@ -2877,7 +2882,7 @@ static int apply_one_fragment(struct apply_state *state,
 			start = newlines.len;
 			if (first != '+' ||
 			    !state->whitespace_error ||
-			    ws_error_action != correct_ws_error) {
+			    state->ws_error_action != correct_ws_error) {
 				strbuf_add(&newlines, patch + 1, plen);
 			}
 			else {
@@ -2955,7 +2960,7 @@ static int apply_one_fragment(struct apply_state *state,
 
 	for (;;) {
 
-		applied_pos = find_pos(img, &preimage, &postimage, pos,
+		applied_pos = find_pos(state, img, &preimage, &postimage, pos,
 				       ws_rule, match_beginning, match_end);
 
 		if (applied_pos >= 0)
@@ -2991,10 +2996,10 @@ static int apply_one_fragment(struct apply_state *state,
 		if (new_blank_lines_at_end &&
 		    preimage.nr + applied_pos >= img->nr &&
 		    (ws_rule & WS_BLANK_AT_EOF) &&
-		    ws_error_action != nowarn_ws_error) {
+		    state->ws_error_action != nowarn_ws_error) {
 			record_ws_error(state, WS_BLANK_AT_EOF, "+", 1,
 					found_new_blank_lines_at_end);
-			if (ws_error_action == correct_ws_error) {
+			if (state->ws_error_action == correct_ws_error) {
 				while (new_blank_lines_at_end--)
 					remove_last_line(&postimage);
 			}
@@ -3005,7 +3010,7 @@ static int apply_one_fragment(struct apply_state *state,
 			 * apply_patch->check_patch_list->check_patch->
 			 * apply_data->apply_fragments->apply_one_fragment
 			 */
-			if (ws_error_action == die_on_ws_error)
+			if (state->ws_error_action == die_on_ws_error)
 				state->apply = 0;
 		}
 
@@ -4543,7 +4548,7 @@ static int apply_patch(struct apply_state *state,
 	if (!list && !skipped_patch)
 		die(_("unrecognized input"));
 
-	if (state->whitespace_error && (ws_error_action == die_on_ws_error))
+	if (state->whitespace_error && (state->ws_error_action == die_on_ws_error))
 		state->apply = 0;
 
 	state->update_index = state->check_index && state->apply;
@@ -4736,6 +4741,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	state.p_value = 1;
 	state.p_context = UINT_MAX;
 	state.squelch_whitespace_errors = 5;
+	state.ws_error_action = warn_on_ws_error;
 	strbuf_init(&state.root, 0);
 
 	git_apply_config();
@@ -4804,7 +4810,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 				   squelched),
 				squelched);
 		}
-		if (ws_error_action == die_on_ws_error)
+		if (state.ws_error_action == die_on_ws_error)
 			die(Q_("%d line adds whitespace errors.",
 			       "%d lines add whitespace errors.",
 			       state.whitespace_error),
