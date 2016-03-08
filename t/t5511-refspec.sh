@@ -91,4 +91,6 @@ test_refspec fetch "refs/heads/${good}"
 bad=$(printf '\011tab')
 test_refspec fetch "refs/heads/${bad}"				invalid
 
+test_refspec fetch "refs/heads/.foo"				invalid
+
 test_done
