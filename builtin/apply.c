@@ -69,6 +69,8 @@ struct apply_state {
 	unsigned int p_context;
 
 	const char *patch_input_file;
+
+	struct string_list limit_by_name;
 };
 
 static int p_value = 1;
@@ -1977,13 +1979,14 @@ static void prefix_patch(struct apply_state *state, struct patch *p)
  * include/exclude
  */
 
-static struct string_list limit_by_name;
 static int has_include;
-static void add_name_limit(const char *name, int exclude)
+static void add_name_limit(struct apply_state *state,
+			   const char *name,
+			   int exclude)
 {
 	struct string_list_item *it;
 
-	it = string_list_append(&limit_by_name, name);
+	it = string_list_append(&state->limit_by_name, name);
 	it->util = exclude ? NULL : (void *) 1;
 }
 
@@ -2001,8 +2004,8 @@ static int use_patch(struct apply_state *state, struct patch *p)
 	}
 
 	/* See if it matches any of exclude/include rule */
-	for (i = 0; i < limit_by_name.nr; i++) {
-		struct string_list_item *it = &limit_by_name.items[i];
+	for (i = 0; i < state->limit_by_name.nr; i++) {
+		struct string_list_item *it = &state->limit_by_name.items[i];
 		if (!wildmatch(it->string, pathname, 0, NULL))
 			return (it->util != NULL);
 	}
@@ -4534,14 +4537,16 @@ static void git_apply_config(void)
 static int option_parse_exclude(const struct option *opt,
 				const char *arg, int unset)
 {
-	add_name_limit(arg, 1);
+	struct apply_state *state = opt->value;
+	add_name_limit(state, arg, 1);
 	return 0;
 }
 
 static int option_parse_include(const struct option *opt,
 				const char *arg, int unset)
 {
-	add_name_limit(arg, 0);
+	struct apply_state *state = opt->value;
+	add_name_limit(state, arg, 0);
 	has_include = 1;
 	return 0;
 }
@@ -4596,10 +4601,10 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	const char *whitespace_option = NULL;
 
 	struct option builtin_apply_options[] = {
-		{ OPTION_CALLBACK, 0, "exclude", NULL, N_("path"),
+		{ OPTION_CALLBACK, 0, "exclude", &state, N_("path"),
 			N_("don't apply changes matching the given path"),
 			0, option_parse_exclude },
-		{ OPTION_CALLBACK, 0, "include", NULL, N_("path"),
+		{ OPTION_CALLBACK, 0, "include", &state, N_("path"),
 			N_("apply changes matching the given path"),
 			0, option_parse_include },
 		{ OPTION_CALLBACK, 'p', NULL, NULL, N_("num"),
