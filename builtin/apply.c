@@ -63,12 +63,11 @@ struct apply_state {
 	int line_termination;
 
 	int p_value;
+	int p_value_known;
 	unsigned int p_context;
 };
 
 static int newfd = -1;
-
-static int p_value_known;
 
 static const char * const apply_usage[] = {
 	N_("git apply [<options>] [<patch>...]"),
@@ -882,14 +881,14 @@ static void parse_traditional_patch(struct apply_state *state,
 
 	first += 4;	/* skip "--- " */
 	second += 4;	/* skip "+++ " */
-	if (!p_value_known) {
+	if (!state->p_value_known) {
 		int p, q;
 		p = guess_p_value(state, first);
 		q = guess_p_value(state, second);
 		if (p < 0) p = q;
 		if (0 <= p && p == q) {
 			state->p_value = p;
-			p_value_known = 1;
+			state->p_value_known = 1;
 		}
 	}
 	if (is_dev_null(first)) {
@@ -4595,7 +4594,7 @@ static int option_parse_p(const struct option *opt,
 {
 	struct apply_state *state = opt->value;
 	state->p_value = atoi(arg);
-	p_value_known = 1;
+	state->p_value_known = 1;
 	return 0;
 }
 
