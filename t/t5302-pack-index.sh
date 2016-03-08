@@ -225,8 +225,9 @@ test_expect_success \
      obj=$(git hash-object file_001) &&
      nr=$(index_obj_nr ".git/objects/pack/pack-${pack1}.idx" $obj) &&
      chmod +w ".git/objects/pack/pack-${pack1}.idx" &&
-     printf xxxx | dd of=".git/objects/pack/pack-${pack1}.idx" conv=notrunc \
-        bs=1 count=4 seek=$((8 + 256 * 4 + $(wc -l <obj-list) * 20 + $nr * 4)) &&
+     printf xxxx |
+		test_overwrite_bytes ".git/objects/pack/pack-${pack1}.idx" \
+			$((8 + 256 * 4 + $(wc -l <obj-list) * 20 + $nr * 4)) &&
      ( while read obj
        do git cat-file -p $obj >/dev/null || exit 1
        done <obj-list ) &&

@@ -51,7 +51,7 @@ do_corrupt_object() {
     ofs=$(git show-index < ${pack}.idx | grep $1 | cut -f1 -d" ") &&
     ofs=$(($ofs + $2)) &&
     chmod +w ${pack}.pack &&
-    dd of=${pack}.pack bs=1 conv=notrunc seek=$ofs &&
+    test_overwrite_bytes "${pack}.pack" "$ofs" &&
     test_must_fail git verify-pack ${pack}.pack
 }
 
