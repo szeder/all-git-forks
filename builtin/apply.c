@@ -75,6 +75,8 @@ struct apply_state {
 	int has_include;
 
 	struct strbuf root;
+
+	int whitespace_error;
 };
 
 static int newfd = -1;
@@ -90,7 +92,6 @@ static enum ws_error_action {
 	die_on_ws_error,
 	correct_ws_error
 } ws_error_action = warn_on_ws_error;
-static int whitespace_error;
 static int squelch_whitespace_errors = 5;
 static int applied_after_fixing_ws;
 
@@ -1621,9 +1622,9 @@ static void record_ws_error(struct apply_state *state,
 	if (!result)
 		return;
 
-	whitespace_error++;
+	state->whitespace_error++;
 	if (squelch_whitespace_errors &&
-	    squelch_whitespace_errors < whitespace_error)
+	    squelch_whitespace_errors < state->whitespace_error)
 		return;
 
 	err = whitespace_error_string(result);
@@ -2874,7 +2875,7 @@ static int apply_one_fragment(struct apply_state *state,
 
 			start = newlines.len;
 			if (first != '+' ||
-			    !whitespace_error ||
+			    !state->whitespace_error ||
 			    ws_error_action != correct_ws_error) {
 				strbuf_add(&newlines, patch + 1, plen);
 			}
@@ -4543,7 +4544,7 @@ static int apply_patch(struct apply_state *state,
 	if (!list && !skipped_patch)
 		die(_("unrecognized input"));
 
-	if (whitespace_error && (ws_error_action == die_on_ws_error))
+	if (state->whitespace_error && (ws_error_action == die_on_ws_error))
 		state->apply = 0;
 
 	state->update_index = state->check_index && state->apply;
@@ -4795,11 +4796,11 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 	set_default_whitespace_mode(&state, whitespace_option);
 	if (read_stdin)
 		errs |= apply_patch(&state, 0, "<stdin>", options);
-	if (whitespace_error) {
+	if (state.whitespace_error) {
 		if (squelch_whitespace_errors &&
-		    squelch_whitespace_errors < whitespace_error) {
+		    squelch_whitespace_errors < state.whitespace_error) {
 			int squelched =
-				whitespace_error - squelch_whitespace_errors;
+				state.whitespace_error - squelch_whitespace_errors;
 			warning(Q_("squelched %d whitespace error",
 				   "squelched %d whitespace errors",
 				   squelched),
@@ -4808,18 +4809,18 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		if (ws_error_action == die_on_ws_error)
 			die(Q_("%d line adds whitespace errors.",
 			       "%d lines add whitespace errors.",
-			       whitespace_error),
-			    whitespace_error);
+			       state.whitespace_error),
+			    state.whitespace_error);
 		if (applied_after_fixing_ws && state.apply)
 			warning("%d line%s applied after"
 				" fixing whitespace errors.",
 				applied_after_fixing_ws,
 				applied_after_fixing_ws == 1 ? "" : "s");
-		else if (whitespace_error)
+		else if (state.whitespace_error)
 			warning(Q_("%d line adds whitespace errors.",
 				   "%d lines add whitespace errors.",
-				   whitespace_error),
-				whitespace_error);
+				   state.whitespace_error),
+				state.whitespace_error);
 	}
 
 	if (state.update_index) {
