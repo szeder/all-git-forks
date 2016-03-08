@@ -4522,6 +4522,19 @@ static int option_parse_directory(const struct option *opt,
 	return 0;
 }
 
+static void init_apply_state(struct apply_state *state, const char *prefix)
+{
+	memset(state, 0, sizeof(*state));
+	state->prefix = prefix;
+	state->prefix_length = state->prefix ? strlen(state->prefix) : 0;
+
+	git_apply_config();
+	if (apply_default_whitespace)
+		parse_whitespace_option(apply_default_whitespace);
+	if (apply_default_ignorewhitespace)
+		parse_ignorewhitespace_option(apply_default_ignorewhitespace);
+}
+
 int cmd_apply(int argc, const char **argv, const char *prefix_)
 {
 	int i;
@@ -4603,15 +4616,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		OPT_END()
 	};
 
-	memset(&state, 0, sizeof(state));
-	state.prefix = prefix_;
-	state.prefix_length = state.prefix ? strlen(state.prefix) : 0;
-
-	git_apply_config();
-	if (apply_default_whitespace)
-		parse_whitespace_option(apply_default_whitespace);
-	if (apply_default_ignorewhitespace)
-		parse_ignorewhitespace_option(apply_default_ignorewhitespace);
+	init_apply_state(&state, prefix_);
 
 	argc = parse_options(argc, argv, state.prefix, builtin_apply_options,
 			apply_usage, 0);
