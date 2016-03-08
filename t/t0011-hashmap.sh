@@ -9,6 +9,18 @@ test_hashmap() {
 	test_cmp expect actual
 }
 
+
+if test_have_prereq SSE
+then
+test_expect_success 'hash functions' '
+
+test_hashmap "hash key1" "2090498088 2090498088 29936296 29936296" &&
+test_hashmap "hash key2" "3046800168 3046800168 1523108264 1523108264" &&
+test_hashmap "hash fooBarFrotz" "3674432159 3674432159 690840223 690840223" &&
+test_hashmap "hash foobarfrotz" "990069407 990069407 690840223 690840223"
+
+'
+else
 test_expect_success 'hash functions' '
 
 test_hashmap "hash key1" "2215982743 2215982743 116372151 116372151" &&
@@ -17,6 +29,7 @@ test_hashmap "hash fooBarFrotz" "1383912807 1383912807 3189766727 3189766727" &&
 test_hashmap "hash foobarfrotz" "2862305959 2862305959 3189766727 3189766727"
 
 '
+fi
 
 test_expect_success 'put' '
 
@@ -177,7 +190,8 @@ NULL
 64 1" ignorecase
 
 '
-
+if test_have_prereq SSE
+then
 test_expect_success 'iterate' '
 
 test_hashmap "put key1 value1
@@ -186,9 +200,9 @@ put fooBarFrotz value3
 iterate" "NULL
 NULL
 NULL
+fooBarFrotz value3
 key2 value2
-key1 value1
-fooBarFrotz value3"
+key1 value1"
 
 '
 
@@ -203,8 +217,37 @@ NULL
 fooBarFrotz value3
 key2 value2
 key1 value1" ignorecase
+'
+
+else
+test_expect_success 'iterate' '
+
+test_hashmap "put key1 value1
+put key2 value2
+put fooBarFrotz value3
+iterate" "NULL
+NULL
+NULL
+fooBarFrotz value3
+key2 value2
+key1 value1
+"
 
 '
+
+test_expect_success 'iterate (case insensitive)' '
+
+test_hashmap "put key1 value1
+put key2 value2
+put fooBarFrotz value3
+iterate" "NULL
+NULL
+NULL
+key2 value2
+key1 value1
+fooBarFrotz value3" ignorecase
+'
+fi
 
 test_expect_success 'grow / shrink' '
 
