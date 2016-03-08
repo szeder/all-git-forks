@@ -93,6 +93,12 @@ struct apply_state {
 	 */
 	int linenr;
 
+	/*
+	 * Records filenames that have been touched, in order to handle
+	 * the case where more than one patches touch the same file.
+	 */
+	struct string_list fn_table;
+
 	int p_value;
 	int p_value_known;
 	unsigned int p_context;
@@ -290,13 +296,6 @@ struct image {
 	struct line *line_allocated;
 	struct line *line;
 };
-
-/*
- * Records filenames that have been touched, in order to handle
- * the case where more than one patches touch the same file.
- */
-
-static struct string_list fn_table;
 
 static uint32_t hash_line(const char *cp, size_t len)
 {
@@ -3230,14 +3229,14 @@ static int read_file_or_gitlink(const struct cache_entry *ce, struct strbuf *buf
 	return read_blob_object(buf, ce->sha1, ce->ce_mode);
 }
 
-static struct patch *in_fn_table(const char *name)
+static struct patch *in_fn_table(struct apply_state *state, const char *name)
 {
 	struct string_list_item *item;
 
 	if (name == NULL)
 		return NULL;
 
-	item = string_list_lookup(&fn_table, name);
+	item = string_list_lookup(&state->fn_table, name);
 	if (item != NULL)
 		return (struct patch *)item->util;
 
@@ -3269,7 +3268,7 @@ static int was_deleted(struct patch *patch)
 	return patch == PATH_WAS_DELETED;
 }
 
-static void add_to_fn_table(struct patch *patch)
+static void add_to_fn_table(struct apply_state *state, struct patch *patch)
 {
 	struct string_list_item *item;
 
@@ -3279,7 +3278,7 @@ static void add_to_fn_table(struct patch *patch)
 	 * file creations and copies
 	 */
 	if (patch->new_name != NULL) {
-		item = string_list_insert(&fn_table, patch->new_name);
+		item = string_list_insert(&state->fn_table, patch->new_name);
 		item->util = patch;
 	}
 
@@ -3288,12 +3287,12 @@ static void add_to_fn_table(struct patch *patch)
 	 * later chunks shouldn't patch old names
 	 */
 	if ((patch->new_name == NULL) || (patch->is_rename)) {
-		item = string_list_insert(&fn_table, patch->old_name);
+		item = string_list_insert(&state->fn_table, patch->old_name);
 		item->util = PATH_WAS_DELETED;
 	}
 }
 
-static void prepare_fn_table(struct patch *patch)
+static void prepare_fn_table(struct apply_state *state, struct patch *patch)
 {
 	/*
 	 * store information about incoming file deletion
@@ -3301,7 +3300,7 @@ static void prepare_fn_table(struct patch *patch)
 	while (patch) {
 		if ((patch->new_name == NULL) || (patch->is_rename)) {
 			struct string_list_item *item;
-			item = string_list_insert(&fn_table, patch->old_name);
+			item = string_list_insert(&state->fn_table, patch->old_name);
 			item->util = PATH_TO_BE_DELETED;
 		}
 		patch = patch->next;
@@ -3322,7 +3321,9 @@ static int checkout_target(struct index_state *istate,
 	return 0;
 }
 
-static struct patch *previous_patch(struct patch *patch, int *gone)
+static struct patch *previous_patch(struct apply_state *state,
+				    struct patch *patch,
+				    int *gone)
 {
 	struct patch *previous;
 
@@ -3330,7 +3331,7 @@ static struct patch *previous_patch(struct patch *patch, int *gone)
 	if (patch->is_copy || patch->is_rename)
 		return NULL; /* "git" patches do not depend on the order */
 
-	previous = in_fn_table(patch->old_name);
+	previous = in_fn_table(state, patch->old_name);
 	if (!previous)
 		return NULL;
 
@@ -3399,7 +3400,7 @@ static int load_preimage(struct apply_state *state,
 	struct patch *previous;
 	int status;
 
-	previous = previous_patch(patch, &status);
+	previous = previous_patch(state, patch, &status);
 	if (status)
 		return error(_("path %s has been renamed/deleted"),
 			     patch->old_name);
@@ -3595,7 +3596,7 @@ static int apply_data(struct apply_state *state, struct patch *patch,
 	}
 	patch->result = image.buf;
 	patch->resultsize = image.len;
-	add_to_fn_table(patch);
+	add_to_fn_table(state, patch);
 	free(image.line_allocated);
 
 	if (0 < patch->is_delete && patch->resultsize)
@@ -3629,7 +3630,7 @@ static int check_preimage(struct apply_state *state,
 		return 0;
 
 	assert(patch->is_new <= 0);
-	previous = previous_patch(patch, &status);
+	previous = previous_patch(state, patch, &status);
 
 	if (status)
 		return error(_("path %s has been renamed/deleted"), old_name);
@@ -3875,7 +3876,7 @@ static int check_patch(struct apply_state *state, struct patch *patch)
 	 * B and rename from A to B is handled the same way by asking
 	 * was_deleted().
 	 */
-	if ((tpatch = in_fn_table(new_name)) &&
+	if ((tpatch = in_fn_table(state, new_name)) &&
 	    (was_deleted(tpatch) || to_be_deleted(tpatch)))
 		ok_if_exists = 1;
 	else
@@ -3953,7 +3954,7 @@ static int check_patch_list(struct apply_state *state, struct patch *patch)
 	int err = 0;
 
 	prepare_symlink_changes(patch);
-	prepare_fn_table(patch);
+	prepare_fn_table(state, patch);
 	while (patch) {
 		if (state->apply_verbosely)
 			say_patch_name(stderr,
@@ -4593,7 +4594,7 @@ static int apply_patch(struct apply_state *state,
 
 	free_patch_list(list);
 	strbuf_release(&buf);
-	string_list_clear(&fn_table, 0);
+	string_list_clear(&state->fn_table, 0);
 	return 0;
 }
 
