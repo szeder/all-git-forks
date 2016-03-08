@@ -78,6 +78,14 @@ struct apply_state {
 
 	int line_termination;
 
+	/*
+	 * For "diff-stat" like behaviour, we keep track of the biggest change
+	 * we've seen, and the longest filename. That allows us to do simple
+	 * scaling.
+	 */
+	int max_change;
+	int max_len;
+
 	int p_value;
 	int p_value_known;
 	unsigned int p_context;
@@ -156,13 +164,6 @@ static void set_default_whitespace_mode(struct apply_state *state)
 	if (!state->whitespace_option && !apply_default_whitespace)
 		state->ws_error_action = (state->apply ? warn_on_ws_error : nowarn_ws_error);
 }
-
-/*
- * For "diff-stat" like behaviour, we keep track of the biggest change
- * we've seen, and the longest filename. That allows us to do simple
- * scaling.
- */
-static int max_change, max_len;
 
 /*
  * Various "current state", notably line numbers and what
@@ -2188,7 +2189,7 @@ static const char pluses[] =
 static const char minuses[]=
 "----------------------------------------------------------------------";
 
-static void show_stats(struct patch *patch)
+static void show_stats(struct apply_state *state, struct patch *patch)
 {
 	struct strbuf qname = STRBUF_INIT;
 	char *cp = patch->new_name ? patch->new_name : patch->old_name;
@@ -2199,7 +2200,7 @@ static void show_stats(struct patch *patch)
 	/*
 	 * "scale" the filename
 	 */
-	max = max_len;
+	max = state->max_len;
 	if (max > 50)
 		max = 50;
 
@@ -2222,13 +2223,13 @@ static void show_stats(struct patch *patch)
 	/*
 	 * scale the add/delete
 	 */
-	max = max + max_change > 70 ? 70 - max : max_change;
+	max = max + state->max_change > 70 ? 70 - max : state->max_change;
 	add = patch->lines_added;
 	del = patch->lines_deleted;
 
-	if (max_change > 0) {
-		int total = ((add + del) * max + max_change / 2) / max_change;
-		add = (add * max + max_change / 2) / max_change;
+	if (state->max_change > 0) {
+		int total = ((add + del) * max + state->max_change / 2) / state->max_change;
+		add = (add * max + state->max_change / 2) / state->max_change;
 		del = total - add;
 	}
 	printf("%5d %.*s%.*s\n", patch->lines_added + patch->lines_deleted,
@@ -4055,7 +4056,7 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 	discard_index(&result);
 }
 
-static void stat_patch_list(struct patch *patch)
+static void stat_patch_list(struct apply_state *state, struct patch *patch)
 {
 	int files, adds, dels;
 
@@ -4063,7 +4064,7 @@ static void stat_patch_list(struct patch *patch)
 		files++;
 		adds += patch->lines_added;
 		dels += patch->lines_deleted;
-		show_stats(patch);
+		show_stats(state, patch);
 	}
 
 	print_stat_summary(stdout, files, adds, dels);
@@ -4161,25 +4162,25 @@ static void summary_patch_list(struct patch *patch)
 	}
 }
 
-static void patch_stats(struct patch *patch)
+static void patch_stats(struct apply_state *state, struct patch *patch)
 {
 	int lines = patch->lines_added + patch->lines_deleted;
 
-	if (lines > max_change)
-		max_change = lines;
+	if (lines > state->max_change)
+		state->max_change = lines;
 	if (patch->old_name) {
 		int len = quote_c_style(patch->old_name, NULL, NULL, 0);
 		if (!len)
 			len = strlen(patch->old_name);
-		if (len > max_len)
-			max_len = len;
+		if (len > state->max_len)
+			state->max_len = len;
 	}
 	if (patch->new_name) {
 		int len = quote_c_style(patch->new_name, NULL, NULL, 0);
 		if (!len)
 			len = strlen(patch->new_name);
-		if (len > max_len)
-			max_len = len;
+		if (len > state->max_len)
+			state->max_len = len;
 	}
 }
 
@@ -4536,7 +4537,7 @@ static int apply_patch(struct apply_state *state,
 		if (state->apply_in_reverse)
 			reverse_patches(patch);
 		if (use_patch(state, patch)) {
-			patch_stats(patch);
+			patch_stats(state, patch);
 			*listp = patch;
 			listp = &patch->next;
 		}
@@ -4580,7 +4581,7 @@ static int apply_patch(struct apply_state *state,
 		build_fake_ancestor(list, state->fake_ancestor);
 
 	if (state->diffstat)
-		stat_patch_list(list);
+		stat_patch_list(state, list);
 
 	if (state->numstat)
 		numstat_patch_list(state, list);
