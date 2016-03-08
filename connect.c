@@ -267,6 +267,10 @@ static enum protocol get_protocol(const char *name)
 		return PROTO_SSH;
 	if (!strcmp(name, "git"))
 		return PROTO_GIT;
+	/*
+	 * These ways to spell the ssh transport remain supported for
+	 * compat but are undocumented and their use is discouraged
+	 */
 	if (!strcmp(name, "git+ssh"))
 		return PROTO_SSH;
 	if (!strcmp(name, "ssh+git"))
