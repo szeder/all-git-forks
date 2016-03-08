@@ -4670,6 +4670,29 @@ static int option_parse_directory(const struct option *opt,
 	return 0;
 }
 
+static void init_apply_state(struct apply_state *state, const char *prefix_)
+{
+	memset(state, 0, sizeof(*state));
+	state->prefix = prefix_;
+	state->prefix_length = state->prefix ? strlen(state->prefix) : 0;
+	state->apply = 1;
+	state->newfd = -1;
+	state->line_termination = '\n';
+	state->p_value = 1;
+	state->p_context = UINT_MAX;
+	state->squelch_whitespace_errors = 5;
+	state->ws_error_action = warn_on_ws_error;
+	state->ws_ignore_action = ignore_ws_none;
+	state->linenr = 1;
+	strbuf_init(&state->root, 0);
+
+	git_apply_config();
+	if (apply_default_whitespace)
+		parse_whitespace_option(state, apply_default_whitespace);
+	if (apply_default_ignorewhitespace)
+		parse_ignorewhitespace_option(state, apply_default_ignorewhitespace);
+}
+
 int cmd_apply(int argc, const char **argv, const char *prefix_)
 {
 	int i;
@@ -4749,25 +4772,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		OPT_END()
 	};
 
-	memset(&state, 0, sizeof(state));
-	state.prefix = prefix_;
-	state.prefix_length = state.prefix ? strlen(state.prefix) : 0;
-	state.apply = 1;
-	state.newfd = -1;
-	state.line_termination = '\n';
-	state.p_value = 1;
-	state.p_context = UINT_MAX;
-	state.squelch_whitespace_errors = 5;
-	state.ws_error_action = warn_on_ws_error;
-	state.ws_ignore_action = ignore_ws_none;
-	state.linenr = 1;
-	strbuf_init(&state.root, 0);
-
-	git_apply_config();
-	if (apply_default_whitespace)
-		parse_whitespace_option(&state, apply_default_whitespace);
-	if (apply_default_ignorewhitespace)
-		parse_ignorewhitespace_option(&state, apply_default_ignorewhitespace);
+	init_apply_state(&state, prefix_);
 
 	argc = parse_options(argc, argv, state.prefix, builtin_apply_options,
 			apply_usage, 0);
