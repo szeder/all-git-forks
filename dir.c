@@ -992,6 +992,51 @@ static struct exclude *should_descend(const char *pathname, int pathlen,
 }
 
 /*
+ * Given a "NODIR" pattern, check if it matches any directory
+ * component after the x->base part.
+ *
+ * If the pattern is not NODIR (ie. pathname matching) _and_ is
+ * MUSTBE, check if it matches a directory as well.
+ *
+ * Note that "path" and "len" must cover the basename part as well,
+ * looking from last_exclude_matching_from_list(), not just the dirname.
+ */
+static int match_dir_component(const char *path, int len, struct exclude *x)
+{
+	struct strbuf new_pattern = STRBUF_INIT;
+	int ret;
+
+	if (x->flags & EXC_FLAG_NODIR) {
+		if (!x->baselen) {
+			strbuf_addf(&new_pattern, "%s/**", x->pattern);
+			ret = !fnmatch_icase_mem(new_pattern.buf, new_pattern.len,
+						 path, strlen(path),
+						 WM_PATHNAME);
+			strbuf_reset(&new_pattern);
+			if (ret)
+				return ret;
+		}
+
+		strbuf_addf(&new_pattern, "%.*s**/%s/**", x->baselen, x->base, x->pattern);
+		ret = !fnmatch_icase_mem(new_pattern.buf, new_pattern.len,
+					 path, strlen(path),
+					 WM_PATHNAME);
+		strbuf_reset(&new_pattern);
+		return ret;
+	}
+
+	assert(x->flags & EXC_FLAG_MUSTBEDIR);
+	strbuf_addf(&new_pattern, "%.*s%s/**",
+		    x->baselen, x->base,
+		    *x->pattern == '/' ? x->pattern+1 : x->pattern);
+	ret = !fnmatch_icase_mem(new_pattern.buf, new_pattern.len,
+				 path, strlen(path),
+				 WM_PATHNAME);
+	strbuf_release(&new_pattern);
+	return ret;
+}
+
+/*
  * Scan the given exclude list in reverse to see whether pathname
  * should be ignored.  The first match (i.e. the last on the list), if
  * any, determines the fate.  Returns the exclude_list element which
@@ -1033,7 +1078,8 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 		if (x->flags & EXC_FLAG_MUSTBEDIR) {
 			if (*dtype == DT_UNKNOWN)
 				*dtype = get_dtype(NULL, pathname, pathlen);
-			if (*dtype != DT_DIR)
+			if (*dtype != DT_DIR &&
+			    !match_dir_component(pathname, strlen(pathname), x))
 				continue;
 		}
 
@@ -1041,7 +1087,8 @@ static struct exclude *last_exclude_matching_from_list(const char *pathname,
 			if (match_basename(basename,
 					   pathlen - (basename - pathname),
 					   exclude, prefix, x->patternlen,
-					   x->flags)) {
+					   x->flags) ||
+			    match_dir_component(pathname, strlen(pathname), x)) {
 				exc = x;
 				break;
 			}
