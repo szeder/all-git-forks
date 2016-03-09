@@ -641,7 +641,7 @@ test_expect_success 'fetch --prune prints the remotes url' '
 	git branch -D goodbye &&
 	(
 		cd only-prunes &&
-		git fetch --prune origin 2>&1 | head -n1 >../actual
+		git fetch --prune origin 2>&1 | grep -v "^warning:" | head -n1 >../actual
 	) &&
 	echo "From ${D}/." >expect &&
 	test_cmp expect actual

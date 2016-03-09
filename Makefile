@@ -526,6 +526,7 @@ SCRIPT_PERL += git-send-email.perl
 SCRIPT_PERL += git-svn.perl
 
 SCRIPT_PYTHON += git-p4.py
+SCRIPT_PYTHON += git-manage-config.py
 
 NO_INSTALL += git-remote-testgit
 

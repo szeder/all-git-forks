@@ -398,8 +398,11 @@ GIT_ARG_SET_PATH(shell)
 # Define PERL_PATH to provide path to Perl.
 GIT_ARG_SET_PATH(perl)
 #
+# Must have python2.7 for git-manage-config to work
+AC_CHECK_PROGS(PYTHON_TWO_SEVEN, [python2.7])
+#
 # Define PYTHON_PATH to provide path to Python.
-GIT_ARG_SET_PATH(python, allow-without)
+GIT_ARG_SET_PATH(python)
 #
 # Define ZLIB_PATH to provide path to zlib.
 GIT_ARG_SET_PATH(zlib)

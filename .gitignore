@@ -92,6 +92,7 @@
 /git-ls-tree
 /git-mailinfo
 /git-mailsplit
+/git-manage-config
 /git-merge
 /git-merge-base
 /git-merge-index

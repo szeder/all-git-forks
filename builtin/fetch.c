@@ -37,7 +37,7 @@ static int prune = -1; /* unspecified */
 
 #define JOURNAL_EXIT_SKIPPED -2
 
-static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity, disable_journal;
+static int all, append, dry_run, force, keep, multiple, update_head_ok, verbosity, disable_journal, disable_manage_config;
 static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow, update_shallow;
 static int max_children = 1;
@@ -143,6 +143,8 @@ static struct option builtin_fetch_options[] = {
 			TRANSPORT_FAMILY_IPV4),
 	OPT_SET_INT('6', "ipv6", &family, N_("use IPv6 addresses only"),
 			TRANSPORT_FAMILY_IPV6),
+	OPT_BOOL(0, "disable-manage-config", &disable_manage_config,
+		 N_("do not run manage-config after fetch")),
 	OPT_END()
 };
 
@@ -1225,6 +1227,9 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	struct remote *remote;
 	int result = 0;
 	struct argv_array argv_gc_auto = ARGV_ARRAY_INIT;
+	static const char *argv_manage_config_auto[] = {
+		"manage-config", "update", "--auto", NULL,
+	};
 
 	packet_trace_identity("fetch");
 
@@ -1309,6 +1314,10 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 	string_list_clear(&list, 0);
 
 	close_all_packs();
+
+	if (!disable_manage_config) {
+		run_command_v_opt(argv_manage_config_auto, RUN_GIT_CMD);
+	}
 
 	argv_array_pushl(&argv_gc_auto, "gc", "--auto", NULL);
 	if (verbosity < 0)
