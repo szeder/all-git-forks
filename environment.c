@@ -204,6 +204,8 @@ const char *get_git_dir(void)
 
 const char *get_git_common_dir(void)
 {
+	if (!git_common_dir)
+		setup_git_env();
 	return git_common_dir;
 }
 
