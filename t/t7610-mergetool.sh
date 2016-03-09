@@ -273,6 +273,40 @@ test_expect_success 'mergetool delete/delete conflict' '
 	git reset --hard HEAD
 '
 
+test_expect_success 'mergetool honors tempfile config for deleted files' '
+	test_config mergetool.keepTemporaries false &&
+	test_must_fail git merge move-to-b &&
+	echo d | git mergetool a/a/file.txt &&
+	! test -d a &&
+	git reset --hard HEAD
+'
+
+test_expect_success 'mergetool produces no errors when keepBackup is used' '
+	test_config mergetool.keepBackup true &&
+	test_must_fail git merge move-to-b &&
+	: >expect &&
+	echo d | git mergetool a/a/file.txt 2>actual &&
+	test_cmp expect actual &&
+	! test -d a &&
+	git reset --hard HEAD
+'
+
+test_expect_success 'mergetool keeps tempfiles when aborting delete/delete' '
+	test_config mergetool.keepTemporaries true &&
+	test_must_fail git merge move-to-b &&
+	! (echo a; echo n) | git mergetool a/a/file.txt &&
+	test -d a/a &&
+	cat >expect <<-\EOF &&
+	file_BASE_.txt
+	file_LOCAL_.txt
+	file_REMOTE_.txt
+	EOF
+	ls -1 a/a | sed -e "s/[0-9]*//g" >actual &&
+	test_cmp expect actual &&
+	git clean -fdx &&
+	git reset --hard HEAD
+'
+
 test_expect_success 'deleted vs modified submodule' '
 	git checkout -b test6 branch1 &&
 	git submodule update -N &&
