@@ -2567,9 +2567,10 @@ int is_pack_valid(struct packed_git *p)
 	return !open_packed_git(p);
 }
 
-static int fill_pack_entry(const unsigned char *sha1,
-			   struct pack_entry *e,
-			   struct packed_git *p)
+static int fill_pack_entry_with_retry(const unsigned char *sha1,
+				      struct pack_entry *e,
+				      struct packed_git *p,
+				      int retries)
 {
 	off_t offset;
 
@@ -2591,14 +2592,29 @@ static int fill_pack_entry(const unsigned char *sha1,
 	 * answer, as it may have been deleted since the index was
 	 * loaded!
 	 */
-	if (!is_pack_valid(p))
+	if (!is_pack_valid(p)) {
+		/*
+		 * Allow us to retry after repreparing the packs in the
+		 * event of an error.
+		 */
+		if (retries > 0) {
+			reprepare_packed_git();
+			return fill_pack_entry_with_retry(sha1, e, p, --retries);
+		}
 		return 0;
+	}
 	e->offset = offset;
 	e->p = p;
 	hashcpy(e->sha1, sha1);
 	return 1;
 }
 
+static int fill_pack_entry(const unsigned char *sha1,
+			   struct pack_entry *e,
+			   struct packed_git *p)
+{
+	return fill_pack_entry_with_retry(sha1, e, p, 1);
+}
 /*
  * Iff a pack file contains the object named by sha1, return true and
  * store its location to e.
