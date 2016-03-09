@@ -1147,8 +1147,9 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 		return -1;
 	if (get_sha1("HEAD", sha1) && (opts->action == REPLAY_REVERT))
 		return error(_("Can't revert as initial commit"));
-	if (save_head(sha1_to_hex(sha1)) ||
-			save_opts(opts))
+	if (save_head(sha1_to_hex(sha1)))
+		return -1;
+	if (save_opts(opts))
 		return -1;
 	return pick_commits(todo_list, opts);
 }
