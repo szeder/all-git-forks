@@ -151,3 +151,36 @@ int execl_git_cmd(const char *cmd,...)
 	argv[argc] = NULL;
 	return execv_git_cmd(argv);
 }
+
+/**
+ * find the path of this program
+ */
+char *get_executable_path(void) {
+	static char path[PATH_MAX];
+	uint32_t size = sizeof(path);
+
+#ifdef __linux
+	char procpath[PATH_MAX];
+	pid_t pid;
+
+	(void) size; /* silence unused warnings */
+	pid = getpid();
+	snprintf(procpath, sizeof(procpath), "/proc/%"PRIuMAX"/exe", (uintmax_t) pid);
+
+	if (0 > readlink(procpath, path, sizeof(path)))
+		return NULL;
+
+	return path;
+
+#elif __APPLE__
+	if (_NSGetExecutablePath(path, &size) == 0) {
+		return path;
+	} else {
+		return NULL;
+	}
+
+#else
+	#error "this won't work"
+	return strdup("git"); /* probably won't work */
+#endif
+}
