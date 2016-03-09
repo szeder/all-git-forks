@@ -177,6 +177,24 @@ sub run_cmd_pipe {
 		die "$^O does not support: @invalid\n" if @invalid;
 		my @args = map { m/ /o ? "\"$_\"": $_ } @_;
 		return qx{@args};
+	} elsif (($^O eq 'MSWin32' || $^O eq 'msys') && (scalar @_ > 200) &&
+			grep $_ eq '--', @_) {
+		use File::Temp qw(tempfile);
+		my ($fhargs, $filename) =
+			tempfile('git-args-XXXXXX', UNLINK => 1);
+
+		my $cmd = 'cat '.$filename.' | xargs -0 -s 20000 ';
+		while ($_[0] ne '--') {
+			$cmd = $cmd . shift(@_) . ' ';
+		}
+
+		shift(@_);
+		print $fhargs join("\0", @_);
+		close($fhargs);
+
+		my $fh = undef;
+		open($fh, '-|', $cmd) or die;
+		return <$fh>;
 	} else {
 		my $fh = undef;
 		open($fh, '-|', @_) or die;
@@ -515,6 +533,9 @@ sub error_msg {
 sub list_and_choose {
 	my ($opts, @stuff) = @_;
 	my (@chosen, @return);
+	if (!@stuff) {
+	    return @return;
+	}
 	my $i;
 	my @prefixes = find_unique_prefixes(@stuff) unless $opts->{LIST_ONLY};
 
@@ -725,6 +746,8 @@ sub add_untracked_cmd {
 	if (@add) {
 		system(qw(git update-index --add --), @add);
 		say_n_paths('added', @add);
+	} else {
+		print "No untracked files.\n";
 	}
 	print "\n";
 }
@@ -1356,6 +1379,7 @@ sub patch_update_file {
 		  $patch_mode_flavour{TARGET},
 		  " [y,n,q,a,d,/$other,?]? ";
 		my $line = prompt_single_character;
+		last unless defined $line;
 		if ($line) {
 			if ($line =~ /^y/i) {
 				$hunk[$ix]{USE} = 1;

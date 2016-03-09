@@ -579,7 +579,7 @@ test_expect_success 'update with arguments' '
 		cd one &&
 		for b in $(git branch -r)
 		do
-		git branch -r -d $b || break
+		git branch -r -d $b || exit 1
 		done &&
 		git remote add manduca ../mirror &&
 		git remote add megaloprepus ../mirror &&
@@ -622,7 +622,7 @@ test_expect_success 'update default' '
 		cd one &&
 		for b in $(git branch -r)
 		do
-		git branch -r -d $b || break
+		git branch -r -d $b || exit 1
 		done &&
 		git config remote.drosophila.skipDefaultUpdate true &&
 		git remote update default &&
@@ -642,7 +642,7 @@ test_expect_success 'update default (overridden, with funny whitespace)' '
 		cd one &&
 		for b in $(git branch -r)
 		do
-		git branch -r -d $b || break
+		git branch -r -d $b || exit 1
 		done &&
 		git config remotes.default "$(printf "\t drosophila  \n")" &&
 		git remote update default &&
@@ -656,7 +656,7 @@ test_expect_success 'update (with remotes.default defined)' '
 		cd one &&
 		for b in $(git branch -r)
 		do
-		git branch -r -d $b || break
+		git branch -r -d $b || exit 1
 		done &&
 		git config remotes.default "drosophila" &&
 		git remote update &&
@@ -919,6 +919,19 @@ test_expect_success 'new remote' '
 	cmp expect actual
 '
 
+get_url_test () {
+	cat >expect &&
+	git remote get-url "$@" >actual &&
+	test_cmp expect actual
+}
+
+test_expect_success 'get-url on new remote' '
+	echo foo | get_url_test someremote &&
+	echo foo | get_url_test --all someremote &&
+	echo foo | get_url_test --push someremote &&
+	echo foo | get_url_test --push --all someremote
+'
+
 test_expect_success 'remote set-url bar' '
 	git remote set-url someremote bar &&
 	echo bar >expect &&
@@ -961,6 +974,13 @@ test_expect_success 'remote set-url --push zot' '
 	cmp expect actual
 '
 
+test_expect_success 'get-url with different urls' '
+	echo baz | get_url_test someremote &&
+	echo baz | get_url_test --all someremote &&
+	echo zot | get_url_test --push someremote &&
+	echo zot | get_url_test --push --all someremote
+'
+
 test_expect_success 'remote set-url --push qux zot' '
 	git remote set-url --push someremote qux zot &&
 	echo qux >expect &&
@@ -993,6 +1013,14 @@ test_expect_success 'remote set-url --push --add aaa' '
 	echo "YYY" >>actual &&
 	git config --get-all remote.someremote.url >>actual &&
 	cmp expect actual
+'
+
+test_expect_success 'get-url on multi push remote' '
+	echo foo | get_url_test --push someremote &&
+	get_url_test --push --all someremote <<-\EOF
+	foo
+	aaa
+	EOF
 '
 
 test_expect_success 'remote set-url --push bar aaa' '
@@ -1037,6 +1065,14 @@ test_expect_success 'remote set-url --add bbb' '
 	echo "YYY" >>actual &&
 	git config --get-all remote.someremote.url >>actual &&
 	cmp expect actual
+'
+
+test_expect_success 'get-url on multi fetch remote' '
+	echo baz | get_url_test someremote &&
+	get_url_test --all someremote <<-\EOF
+	baz
+	bbb
+	EOF
 '
 
 test_expect_success 'remote set-url --delete .*' '
@@ -1108,9 +1144,15 @@ test_extra_arg rename origin newname
 test_extra_arg remove origin
 test_extra_arg set-head origin master
 # set-branches takes any number of args
+test_extra_arg get-url origin newurl
 test_extra_arg set-url origin newurl oldurl
 # show takes any number of args
 # prune takes any number of args
 # update takes any number of args
+
+test_expect_success 'add remote matching the "insteadOf" URL' '
+	git config url.xyz@example.com.insteadOf backup &&
+	git remote add backup xyz@example.com
+'
 
 test_done

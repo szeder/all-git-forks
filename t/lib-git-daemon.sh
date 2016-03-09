@@ -23,7 +23,7 @@ then
 	test_done
 fi
 
-if ! test_have_prereq PIPE
+if test_have_prereq !PIPE
 then
 	test_skip_or_die $GIT_TEST_GIT_DAEMON "file system does not support FIFOs"
 fi

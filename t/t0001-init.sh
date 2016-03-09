@@ -12,6 +12,13 @@ check_config () {
 		echo "expected a directory $1, a file $1/config and $1/refs"
 		return 1
 	fi
+
+	if test_have_prereq POSIXPERM && test -x "$1/config"
+	then
+		echo "$1/config is executable?"
+		return 1
+	fi
+
 	bare=$(cd "$1" && git config --bool core.bare)
 	worktree=$(cd "$1" && git config core.worktree) ||
 	worktree=unset
@@ -195,8 +202,8 @@ test_expect_success 'init honors global core.sharedRepository' '
 	x$(git config -f shared-honor-global/.git/config core.sharedRepository)
 '
 
-test_expect_success 'init rejects insanely long --template' '
-	test_must_fail git init --template=$(printf "x%09999dx" 1) test
+test_expect_success 'init allows insanely long --template' '
+	git init --template=$(printf "x%09999dx" 1) test
 '
 
 test_expect_success 'init creates a new directory' '
@@ -350,7 +357,7 @@ test_expect_success MINGW 'plain hidden' '
 '
 
 test_expect_success MINGW 'plain bare not hidden' '
-	rm -rf newdir
+	rm -rf newdir &&
 	(
 		unset GIT_DIR GIT_WORK_TREE GIT_CONFIG
 		mkdir newdir &&

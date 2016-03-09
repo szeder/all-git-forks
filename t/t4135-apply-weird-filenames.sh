@@ -19,7 +19,7 @@ test_expect_success 'setup' '
 
 	test_when_finished "rm -f \"tab	embedded.txt\"" &&
 	test_when_finished "rm -f '\''\"quoteembedded\".txt'\''" &&
-	if ! test_have_prereq MINGW &&
+	if test_have_prereq !MINGW &&
 		touch -- "tab	embedded.txt" '\''"quoteembedded".txt'\''
 	then
 		test_set_prereq FUNNYNAMES

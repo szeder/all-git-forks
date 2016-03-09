@@ -44,8 +44,7 @@ void commit_notes(struct notes_tree *t, const char *msg)
 
 	/* Prepare commit message and reflog message */
 	strbuf_addstr(&buf, msg);
-	if (buf.buf[buf.len - 1] != '\n')
-		strbuf_addch(&buf, '\n'); /* Make sure msg ends with newline */
+	strbuf_complete_line(&buf);
 
 	create_notes_commit(t, NULL, buf.buf, buf.len, commit_sha1);
 	strbuf_insert(&buf, 0, "notes: ", 7); /* commit message starts at index 7 */
@@ -53,6 +52,24 @@ void commit_notes(struct notes_tree *t, const char *msg)
 		   UPDATE_REFS_DIE_ON_ERR);
 
 	strbuf_release(&buf);
+}
+
+int parse_notes_merge_strategy(const char *v, enum notes_merge_strategy *s)
+{
+	if (!strcmp(v, "manual"))
+		*s = NOTES_MERGE_RESOLVE_MANUAL;
+	else if (!strcmp(v, "ours"))
+		*s = NOTES_MERGE_RESOLVE_OURS;
+	else if (!strcmp(v, "theirs"))
+		*s = NOTES_MERGE_RESOLVE_THEIRS;
+	else if (!strcmp(v, "union"))
+		*s = NOTES_MERGE_RESOLVE_UNION;
+	else if (!strcmp(v, "cat_sort_uniq"))
+		*s = NOTES_MERGE_RESOLVE_CAT_SORT_UNIQ;
+	else
+		return -1;
+
+	return 0;
 }
 
 static combine_notes_fn parse_combine_notes_fn(const char *v)

@@ -362,13 +362,14 @@ static int non_note_cmp(const struct non_note *a, const struct non_note *b)
 	return strcmp(a->path, b->path);
 }
 
-static void add_non_note(struct notes_tree *t, const char *path,
+/* note: takes ownership of path string */
+static void add_non_note(struct notes_tree *t, char *path,
 		unsigned int mode, const unsigned char *sha1)
 {
 	struct non_note *p = t->prev_non_note, *n;
 	n = (struct non_note *) xmalloc(sizeof(struct non_note));
 	n->next = NULL;
-	n->path = xstrdup(path);
+	n->path = path;
 	n->mode = mode;
 	hashcpy(n->sha1, sha1);
 	t->prev_non_note = n;
@@ -482,17 +483,17 @@ handle_non_note:
 		 * component.
 		 */
 		{
-			char non_note_path[PATH_MAX];
-			char *p = non_note_path;
+			struct strbuf non_note_path = STRBUF_INIT;
 			const char *q = sha1_to_hex(subtree->key_sha1);
 			int i;
 			for (i = 0; i < prefix_len; i++) {
-				*p++ = *q++;
-				*p++ = *q++;
-				*p++ = '/';
+				strbuf_addch(&non_note_path, *q++);
+				strbuf_addch(&non_note_path, *q++);
+				strbuf_addch(&non_note_path, '/');
 			}
-			strcpy(p, entry.path);
-			add_non_note(t, non_note_path, entry.mode, entry.sha1);
+			strbuf_addstr(&non_note_path, entry.path);
+			add_non_note(t, strbuf_detach(&non_note_path, NULL),
+				     entry.mode, entry.sha1);
 		}
 	}
 	free(buf);
@@ -538,6 +539,9 @@ static unsigned char determine_fanout(struct int_node *tree, unsigned char n,
 	return fanout + 1;
 }
 
+/* hex SHA1 + 19 * '/' + NUL */
+#define FANOUT_PATH_MAX 40 + 19 + 1
+
 static void construct_path_with_fanout(const unsigned char *sha1,
 		unsigned char fanout, char *path)
 {
@@ -550,7 +554,7 @@ static void construct_path_with_fanout(const unsigned char *sha1,
 		path[i++] = '/';
 		fanout--;
 	}
-	strcpy(path + i, hex_sha1 + j);
+	xsnprintf(path + i, FANOUT_PATH_MAX - i, "%s", hex_sha1 + j);
 }
 
 static int for_each_note_helper(struct notes_tree *t, struct int_node *tree,
@@ -561,7 +565,7 @@ static int for_each_note_helper(struct notes_tree *t, struct int_node *tree,
 	void *p;
 	int ret = 0;
 	struct leaf_node *l;
-	static char path[40 + 19 + 1];  /* hex SHA1 + 19 * '/' + NUL */
+	static char path[FANOUT_PATH_MAX];
 
 	fanout = determine_fanout(tree, n, fanout);
 	for (i = 0; i < 16; i++) {
@@ -594,7 +598,7 @@ redo:
 				/* invoke callback with subtree */
 				unsigned int path_len =
 					l->key_sha1[19] * 2 + fanout;
-				assert(path_len < 40 + 19);
+				assert(path_len < FANOUT_PATH_MAX - 1);
 				construct_path_with_fanout(l->key_sha1, fanout,
 							   path);
 				/* Create trailing slash, if needed */
@@ -902,7 +906,7 @@ int combine_notes_cat_sort_uniq(unsigned char *cur_sha1,
 	if (string_list_add_note_lines(&sort_uniq_list, new_sha1))
 		goto out;
 	string_list_remove_empty_items(&sort_uniq_list, 0);
-	sort_string_list(&sort_uniq_list);
+	string_list_sort(&sort_uniq_list);
 	string_list_remove_duplicates(&sort_uniq_list, 0);
 
 	/* create a new blob object from sort_uniq_list */
@@ -918,7 +922,7 @@ out:
 	return ret;
 }
 
-static int string_list_add_one_ref(const char *refname, const unsigned char *sha1,
+static int string_list_add_one_ref(const char *refname, const struct object_id *oid,
 				   int flag, void *cb)
 {
 	struct string_list *refs = cb;
@@ -1006,7 +1010,7 @@ void init_notes(struct notes_tree *t, const char *notes_ref,
 	t->root = (struct int_node *) xcalloc(1, sizeof(struct int_node));
 	t->first_non_note = NULL;
 	t->prev_non_note = NULL;
-	t->ref = notes_ref ? xstrdup(notes_ref) : NULL;
+	t->ref = xstrdup_or_null(notes_ref);
 	t->combine_notes = combine_notes;
 	t->initialized = 1;
 	t->dirty = 0;
@@ -1218,8 +1222,7 @@ static void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 	if (!sha1)
 		return;
 
-	if (!(msg = read_sha1_file(sha1, &type, &msglen)) || !msglen ||
-			type != OBJ_BLOB) {
+	if (!(msg = read_sha1_file(sha1, &type, &msglen)) || type != OBJ_BLOB) {
 		free(msg);
 		return;
 	}

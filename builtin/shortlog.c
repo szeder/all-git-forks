@@ -10,7 +10,7 @@
 #include "parse-options.h"
 
 static char const * const shortlog_usage[] = {
-	N_("git shortlog [<options>] [<revision range>] [[--] [<path>...]]"),
+	N_("git shortlog [<options>] [<revision-range>] [[--] [<path>...]]"),
 	NULL
 };
 
@@ -129,7 +129,7 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
 	}
 	if (!author) {
 		warning(_("Missing author: %s"),
-		    sha1_to_hex(commit->object.sha1));
+		    oid_to_hex(&commit->object.oid));
 		return;
 	}
 	if (log->user_format) {
@@ -138,7 +138,7 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
 		ctx.abbrev = log->abbrev;
 		ctx.subject = "";
 		ctx.after_subject = "";
-		ctx.date_mode = DATE_NORMAL;
+		ctx.date_mode.type = DATE_NORMAL;
 		ctx.output_encoding = get_log_output_encoding();
 		pretty_print_commit(&ctx, commit, &ufbuf);
 		buffer = ufbuf.buf;

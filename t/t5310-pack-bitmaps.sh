@@ -53,6 +53,12 @@ rev_list_tests() {
 		test_cmp expect actual
 	'
 
+	test_expect_success "counting commits with limiting ($state)" '
+		git rev-list --count HEAD -- 1.t >expect &&
+		git rev-list --use-bitmap-index --count HEAD -- 1.t >actual &&
+		test_cmp expect actual
+	'
+
 	test_expect_success "enumerate --objects ($state)" '
 		git rev-list --objects --use-bitmap-index HEAD >tmp &&
 		cut -d" " -f1 <tmp >tmp2 &&
@@ -168,6 +174,15 @@ test_expect_success JGIT 'jgit can read our bitmaps' '
 		# jgit gc will barf if it does not like our bitmaps
 		jgit gc
 	)
+'
+
+test_expect_success 'splitting packs does not generate bogus bitmaps' '
+	test-genrandom foo $((1024 * 1024)) >rand &&
+	git add rand &&
+	git commit -m "commit with big file" &&
+	git -c pack.packSizeLimit=500k repack -adb &&
+	git init --bare no-bitmaps.git &&
+	git -C no-bitmaps.git fetch .. HEAD
 '
 
 test_done

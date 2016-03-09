@@ -6,6 +6,7 @@
  */
 
 #include "cache.h"
+#include "lockfile.h"
 #include "cache-tree.h"
 #include "color.h"
 #include "dir.h"
@@ -31,18 +32,32 @@
 #include "sequencer.h"
 #include "notes-utils.h"
 #include "mailmap.h"
+#include "sigchain.h"
 
 static const char * const builtin_commit_usage[] = {
-	N_("git commit [options] [--] <pathspec>..."),
+	N_("git commit [<options>] [--] <pathspec>..."),
 	NULL
 };
 
 static const char * const builtin_status_usage[] = {
-	N_("git status [options] [--] <pathspec>..."),
+	N_("git status [<options>] [--] <pathspec>..."),
 	NULL
 };
 
-static const char implicit_ident_advice[] =
+static const char implicit_ident_advice_noconfig[] =
+N_("Your name and email address were configured automatically based\n"
+"on your username and hostname. Please check that they are accurate.\n"
+"You can suppress this message by setting them explicitly. Run the\n"
+"following command and follow the instructions in your editor to edit\n"
+"your configuration file:\n"
+"\n"
+"    git config --global --edit\n"
+"\n"
+"After doing this, you may fix the identity used for this commit with:\n"
+"\n"
+"    git commit --amend --reset-author\n");
+
+static const char implicit_ident_advice_config[] =
 N_("Your name and email address were configured automatically based\n"
 "on your username and hostname. Please check that they are accurate.\n"
 "You can suppress this message by setting them explicitly:\n"
@@ -152,11 +167,11 @@ static int opt_parse_m(const struct option *opt, const char *arg, int unset)
 
 static void determine_whence(struct wt_status *s)
 {
-	if (file_exists(git_path("MERGE_HEAD")))
+	if (file_exists(git_path_merge_head()))
 		whence = FROM_MERGE;
-	else if (file_exists(git_path("CHERRY_PICK_HEAD"))) {
+	else if (file_exists(git_path_cherry_pick_head())) {
 		whence = FROM_CHERRY_PICK;
-		if (file_exists(git_path("sequencer")))
+		if (file_exists(git_path(SEQ_DIR)))
 			sequencer_in_use = 1;
 	}
 	else
@@ -215,7 +230,7 @@ static int commit_index_files(void)
 static int list_paths(struct string_list *list, const char *with_tree,
 		      const char *prefix, const struct pathspec *pattern)
 {
-	int i;
+	int i, ret;
 	char *m;
 
 	if (!pattern->nr)
@@ -242,7 +257,9 @@ static int list_paths(struct string_list *list, const char *with_tree,
 			item->util = item; /* better a valid pointer than a fake one */
 	}
 
-	return report_path_error(m, pattern, prefix);
+	ret = report_path_error(m, pattern, prefix);
+	free(m);
+	return ret;
 }
 
 static void add_remove_files(struct string_list *list)
@@ -283,7 +300,7 @@ static void create_base_index(const struct commit *current_head)
 	opts.dst_index = &the_index;
 
 	opts.fn = oneway_merge;
-	tree = parse_tree_indirect(current_head->object.sha1);
+	tree = parse_tree_indirect(current_head->object.oid.hash);
 	if (!tree)
 		die(_("failed to unpack HEAD tree object"));
 	parse_tree(tree);
@@ -302,12 +319,13 @@ static void refresh_cache_or_die(int refresh_flags)
 		die_resolve_conflict("commit");
 }
 
-static char *prepare_index(int argc, const char **argv, const char *prefix,
-			   const struct commit *current_head, int is_status)
+static const char *prepare_index(int argc, const char **argv, const char *prefix,
+				 const struct commit *current_head, int is_status)
 {
 	struct string_list partial;
 	struct pathspec pathspec;
 	int refresh_flags = REFRESH_QUIET;
+	const char *ret;
 
 	if (is_status)
 		refresh_flags |= REFRESH_UNMERGED;
@@ -328,7 +346,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 			die(_("unable to create temporary index"));
 
 		old_index_env = getenv(INDEX_ENVIRONMENT);
-		setenv(INDEX_ENVIRONMENT, index_lock.filename, 1);
+		setenv(INDEX_ENVIRONMENT, get_lock_file_path(&index_lock), 1);
 
 		if (interactive_add(argc, argv, prefix, patch_interactive) != 0)
 			die(_("interactive add failed"));
@@ -339,10 +357,17 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 			unsetenv(INDEX_ENVIRONMENT);
 
 		discard_cache();
-		read_cache_from(index_lock.filename);
+		read_cache_from(get_lock_file_path(&index_lock));
+		if (update_main_cache_tree(WRITE_TREE_SILENT) == 0) {
+			if (reopen_lock_file(&index_lock) < 0)
+				die(_("unable to write index file"));
+			if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
+				die(_("unable to update temporary index"));
+		} else
+			warning(_("Failed to update main cache tree"));
 
 		commit_style = COMMIT_NORMAL;
-		return index_lock.filename;
+		return get_lock_file_path(&index_lock);
 	}
 
 	/*
@@ -365,7 +390,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 		if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
 			die(_("unable to write new_index file"));
 		commit_style = COMMIT_NORMAL;
-		return index_lock.filename;
+		return get_lock_file_path(&index_lock);
 	}
 
 	/*
@@ -380,8 +405,10 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 	if (!only && !pathspec.nr) {
 		hold_locked_index(&index_lock, 1);
 		refresh_cache_or_die(refresh_flags);
-		if (active_cache_changed) {
+		if (active_cache_changed
+		    || !cache_tree_fully_valid(active_cache_tree))
 			update_main_cache_tree(WRITE_TREE_SILENT);
+		if (active_cache_changed) {
 			if (write_locked_index(&the_index, &index_lock,
 					       COMMIT_LOCK))
 				die(_("unable to write new_index file"));
@@ -431,6 +458,7 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 	hold_locked_index(&index_lock, 1);
 	add_remove_files(&partial);
 	refresh_cache(REFRESH_QUIET);
+	update_main_cache_tree(WRITE_TREE_SILENT);
 	if (write_locked_index(&the_index, &index_lock, CLOSE_LOCK))
 		die(_("unable to write new_index file"));
 
@@ -447,9 +475,9 @@ static char *prepare_index(int argc, const char **argv, const char *prefix,
 		die(_("unable to write temporary index file"));
 
 	discard_cache();
-	read_cache_from(false_lock.filename);
-
-	return false_lock.filename;
+	ret = get_lock_file_path(&false_lock);
+	read_cache_from(ret);
+	return ret;
 }
 
 static int run_status(FILE *fp, const char *index_file, const char *prefix, int nowarn,
@@ -496,6 +524,12 @@ static int is_a_merge(const struct commit *current_head)
 	return !!(current_head->parents && current_head->parents->next);
 }
 
+static void assert_split_ident(struct ident_split *id, const struct strbuf *buf)
+{
+	if (split_ident_line(id, buf->buf, buf->len) || !id->date_begin)
+		die("BUG: unable to parse our own ident: %s", buf->buf);
+}
+
 static void export_one(const char *var, const char *s, const char *e, int hack)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -506,107 +540,84 @@ static void export_one(const char *var, const char *s, const char *e, int hack)
 	strbuf_release(&buf);
 }
 
-static int sane_ident_split(struct ident_split *person)
+static int parse_force_date(const char *in, struct strbuf *out)
 {
-	if (!person->name_begin || !person->name_end ||
-	    person->name_begin == person->name_end)
-		return 0; /* no human readable name */
-	if (!person->mail_begin || !person->mail_end ||
-	    person->mail_begin == person->mail_end)
-		return 0; /* no usable mail */
-	if (!person->date_begin || !person->date_end ||
-	    !person->tz_begin || !person->tz_end)
-		return 0;
-	return 1;
-}
+	strbuf_addch(out, '@');
 
-static int parse_force_date(const char *in, char *out, int len)
-{
-	if (len < 1)
-		return -1;
-	*out++ = '@';
-	len--;
-
-	if (parse_date(in, out, len) < 0) {
+	if (parse_date(in, out) < 0) {
 		int errors = 0;
 		unsigned long t = approxidate_careful(in, &errors);
 		if (errors)
 			return -1;
-		snprintf(out, len, "%lu", t);
+		strbuf_addf(out, "%lu", t);
 	}
 
 	return 0;
+}
+
+static void set_ident_var(char **buf, char *val)
+{
+	free(*buf);
+	*buf = val;
 }
 
 static void determine_author_info(struct strbuf *author_ident)
 {
 	char *name, *email, *date;
 	struct ident_split author;
-	char date_buf[64];
 
-	name = getenv("GIT_AUTHOR_NAME");
-	email = getenv("GIT_AUTHOR_EMAIL");
-	date = getenv("GIT_AUTHOR_DATE");
+	name = xstrdup_or_null(getenv("GIT_AUTHOR_NAME"));
+	email = xstrdup_or_null(getenv("GIT_AUTHOR_EMAIL"));
+	date = xstrdup_or_null(getenv("GIT_AUTHOR_DATE"));
 
 	if (author_message) {
-		const char *a, *lb, *rb, *eol;
+		struct ident_split ident;
 		size_t len;
+		const char *a;
 
-		a = strstr(author_message_buffer, "\nauthor ");
+		a = find_commit_header(author_message_buffer, "author", &len);
 		if (!a)
-			die(_("invalid commit: %s"), author_message);
+			die(_("commit '%s' lacks author header"), author_message);
+		if (split_ident_line(&ident, a, len) < 0)
+			die(_("commit '%s' has malformed author line"), author_message);
 
-		lb = strchrnul(a + strlen("\nauthor "), '<');
-		rb = strchrnul(lb, '>');
-		eol = strchrnul(rb, '\n');
-		if (!*lb || !*rb || !*eol)
-			die(_("invalid commit: %s"), author_message);
+		set_ident_var(&name, xmemdupz(ident.name_begin, ident.name_end - ident.name_begin));
+		set_ident_var(&email, xmemdupz(ident.mail_begin, ident.mail_end - ident.mail_begin));
 
-		if (lb == a + strlen("\nauthor "))
-			/* \nauthor <foo@example.com> */
-			name = xcalloc(1, 1);
-		else
-			name = xmemdupz(a + strlen("\nauthor "),
-					(lb - strlen(" ") -
-					 (a + strlen("\nauthor "))));
-		email = xmemdupz(lb + strlen("<"), rb - (lb + strlen("<")));
-		len = eol - (rb + strlen("> "));
-		date = xmalloc(len + 2);
-		*date = '@';
-		memcpy(date + 1, rb + strlen("> "), len);
-		date[len + 1] = '\0';
+		if (ident.date_begin) {
+			struct strbuf date_buf = STRBUF_INIT;
+			strbuf_addch(&date_buf, '@');
+			strbuf_add(&date_buf, ident.date_begin, ident.date_end - ident.date_begin);
+			strbuf_addch(&date_buf, ' ');
+			strbuf_add(&date_buf, ident.tz_begin, ident.tz_end - ident.tz_begin);
+			set_ident_var(&date, strbuf_detach(&date_buf, NULL));
+		}
 	}
 
 	if (force_author) {
-		const char *lb = strstr(force_author, " <");
-		const char *rb = strchr(force_author, '>');
+		struct ident_split ident;
 
-		if (!lb || !rb)
+		if (split_ident_line(&ident, force_author, strlen(force_author)) < 0)
 			die(_("malformed --author parameter"));
-		name = xstrndup(force_author, lb - force_author);
-		email = xstrndup(lb + 2, rb - (lb + 2));
+		set_ident_var(&name, xmemdupz(ident.name_begin, ident.name_end - ident.name_begin));
+		set_ident_var(&email, xmemdupz(ident.mail_begin, ident.mail_end - ident.mail_begin));
 	}
 
 	if (force_date) {
-		if (parse_force_date(force_date, date_buf, sizeof(date_buf)))
+		struct strbuf date_buf = STRBUF_INIT;
+		if (parse_force_date(force_date, &date_buf))
 			die(_("invalid date format: %s"), force_date);
-		date = date_buf;
+		set_ident_var(&date, strbuf_detach(&date_buf, NULL));
 	}
 
 	strbuf_addstr(author_ident, fmt_ident(name, email, date, IDENT_STRICT));
-	if (!split_ident_line(&author, author_ident->buf, author_ident->len) &&
-	    sane_ident_split(&author)) {
-		export_one("GIT_AUTHOR_NAME", author.name_begin, author.name_end, 0);
-		export_one("GIT_AUTHOR_EMAIL", author.mail_begin, author.mail_end, 0);
-		export_one("GIT_AUTHOR_DATE", author.date_begin, author.tz_end, '@');
-	}
-}
-
-static void split_ident_or_die(struct ident_split *id, const struct strbuf *buf)
-{
-	if (split_ident_line(id, buf->buf, buf->len) ||
-	    !sane_ident_split(id))
-		die(_("Malformed ident string: '%s'"), buf->buf);
+	assert_split_ident(&author, author_ident);
+	export_one("GIT_AUTHOR_NAME", author.name_begin, author.name_end, 0);
+	export_one("GIT_AUTHOR_EMAIL", author.mail_begin, author.mail_end, 0);
+	export_one("GIT_AUTHOR_DATE", author.date_begin, author.tz_end, '@');
+	free(name);
+	free(email);
+	free(date);
 }
 
 static int author_date_is_interesting(void)
@@ -714,12 +725,12 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		format_commit_message(commit, "fixup! %s\n\n",
 				      &sb, &ctx);
 		hook_arg1 = "message";
-	} else if (!stat(git_path("MERGE_MSG"), &statbuf)) {
-		if (strbuf_read_file(&sb, git_path("MERGE_MSG"), 0) < 0)
+	} else if (!stat(git_path_merge_msg(), &statbuf)) {
+		if (strbuf_read_file(&sb, git_path_merge_msg(), 0) < 0)
 			die_errno(_("could not read MERGE_MSG"));
 		hook_arg1 = "merge";
-	} else if (!stat(git_path("SQUASH_MSG"), &statbuf)) {
-		if (strbuf_read_file(&sb, git_path("SQUASH_MSG"), 0) < 0)
+	} else if (!stat(git_path_squash_msg(), &statbuf)) {
+		if (strbuf_read_file(&sb, git_path_squash_msg(), 0) < 0)
 			die_errno(_("could not read SQUASH_MSG"));
 		hook_arg1 = "squash";
 	} else if (template_file) {
@@ -750,7 +761,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		hook_arg2 = "";
 	}
 
-	s->fp = fopen(git_path(commit_editmsg), "w");
+	s->fp = fopen_for_writing(git_path(commit_editmsg));
 	if (s->fp == NULL)
 		die_errno(_("could not open '%s'"), git_path(commit_editmsg));
 
@@ -765,34 +776,10 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	s->hints = 0;
 
 	if (clean_message_contents)
-		stripspace(&sb, 0);
+		strbuf_stripspace(&sb, 0);
 
-	if (signoff) {
-		/*
-		 * See if we have a Conflicts: block at the end. If yes, count
-		 * its size, so we can ignore it.
-		 */
-		int ignore_footer = 0;
-		int i, eol, previous = 0;
-		const char *nl;
-
-		for (i = 0; i < sb.len; i++) {
-			nl = memchr(sb.buf + i, '\n', sb.len - i);
-			if (nl)
-				eol = nl - sb.buf;
-			else
-				eol = sb.len;
-			if (starts_with(sb.buf + previous, "\nConflicts:\n")) {
-				ignore_footer = sb.len - previous;
-				break;
-			}
-			while (i < eol)
-				i++;
-			previous = eol;
-		}
-
-		append_signoff(&sb, ignore_footer, 0);
-	}
+	if (signoff)
+		append_signoff(&sb, ignore_non_trailer(&sb), 0);
 
 	if (fwrite(sb.buf, 1, sb.len, s->fp) < sb.len)
 		die_errno(_("could not write commit template"));
@@ -847,8 +834,14 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 			status_printf_ln(s, GIT_COLOR_NORMAL,
 					"%s", only_include_assumed);
 
-		split_ident_or_die(&ai, author_ident);
-		split_ident_or_die(&ci, &committer_ident);
+		/*
+		 * These should never fail because they come from our own
+		 * fmt_ident. They may fail the sane_ident test, but we know
+		 * that the name and mail pointers will at least be valid,
+		 * which is enough for our tests and printing here.
+		 */
+		assert_split_ident(&ai, author_ident);
+		assert_split_ident(&ci, &committer_ident);
 
 		if (ident_cmp(&ai, &ci))
 			status_printf_ln(s, GIT_COLOR_NORMAL,
@@ -863,7 +856,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 				_("%s"
 				"Date:      %s"),
 				ident_shown++ ? "" : "\n",
-				show_ident_date(&ai, DATE_NORMAL));
+				show_ident_date(&ai, DATE_MODE(NORMAL)));
 
 		if (!committer_ident_sufficiently_given())
 			status_printf_ln(s, GIT_COLOR_NORMAL,
@@ -1022,7 +1015,7 @@ static int template_untouched(struct strbuf *sb)
 	if (!template_file || strbuf_read_file(&tmpl, template_file, 0) <= 0)
 		return 0;
 
-	stripspace(&tmpl, cleanup_mode == CLEANUP_ALL);
+	strbuf_stripspace(&tmpl, cleanup_mode == CLEANUP_ALL);
 	if (!skip_prefix(sb->buf, tmpl.buf, &start))
 		start = sb->buf;
 	strbuf_release(&tmpl);
@@ -1048,17 +1041,18 @@ static const char *find_author_by_nickname(const char *name)
 	revs.mailmap = &mailmap;
 	read_mailmap(revs.mailmap, NULL);
 
-	prepare_revision_walk(&revs);
+	if (prepare_revision_walk(&revs))
+		die(_("revision walk setup failed"));
 	commit = get_revision(&revs);
 	if (commit) {
 		struct pretty_print_context ctx = {0};
-		ctx.date_mode = DATE_NORMAL;
+		ctx.date_mode.type = DATE_NORMAL;
 		strbuf_release(&buf);
 		format_commit_message(commit, "%aN <%aE>", &buf, &ctx);
 		clear_mailmap(&mailmap);
 		return strbuf_detach(&buf, NULL);
 	}
-	die(_("No existing author found with '%s'"), name);
+	die(_("--author '%s' is not 'Name <email>' and matches no existing author"), name);
 }
 
 
@@ -1238,22 +1232,21 @@ static int dry_run_commit(int argc, const char **argv, const char *prefix,
 	return commitable ? 0 : 1;
 }
 
-static int parse_status_slot(const char *var, int offset)
+static int parse_status_slot(const char *slot)
 {
-	if (!strcasecmp(var+offset, "header"))
+	if (!strcasecmp(slot, "header"))
 		return WT_STATUS_HEADER;
-	if (!strcasecmp(var+offset, "branch"))
+	if (!strcasecmp(slot, "branch"))
 		return WT_STATUS_ONBRANCH;
-	if (!strcasecmp(var+offset, "updated")
-		|| !strcasecmp(var+offset, "added"))
+	if (!strcasecmp(slot, "updated") || !strcasecmp(slot, "added"))
 		return WT_STATUS_UPDATED;
-	if (!strcasecmp(var+offset, "changed"))
+	if (!strcasecmp(slot, "changed"))
 		return WT_STATUS_CHANGED;
-	if (!strcasecmp(var+offset, "untracked"))
+	if (!strcasecmp(slot, "untracked"))
 		return WT_STATUS_UNTRACKED;
-	if (!strcasecmp(var+offset, "nobranch"))
+	if (!strcasecmp(slot, "nobranch"))
 		return WT_STATUS_NOBRANCH;
-	if (!strcasecmp(var+offset, "unmerged"))
+	if (!strcasecmp(slot, "unmerged"))
 		return WT_STATUS_UNMERGED;
 	return -1;
 }
@@ -1261,6 +1254,7 @@ static int parse_status_slot(const char *var, int offset)
 static int git_status_config(const char *k, const char *v, void *cb)
 {
 	struct wt_status *s = cb;
+	const char *slot_name;
 
 	if (starts_with(k, "column."))
 		return git_column_config(k, v, "status", &s->colopts);
@@ -1290,14 +1284,14 @@ static int git_status_config(const char *k, const char *v, void *cb)
 		s->display_comment_prefix = git_config_bool(k, v);
 		return 0;
 	}
-	if (starts_with(k, "status.color.") || starts_with(k, "color.status.")) {
-		int slot = parse_status_slot(k, 13);
+	if (skip_prefix(k, "status.color.", &slot_name) ||
+	    skip_prefix(k, "color.status.", &slot_name)) {
+		int slot = parse_status_slot(slot_name);
 		if (slot < 0)
 			return 0;
 		if (!v)
 			return config_error_nonbool(k);
-		color_parse(v, k, s->color_palette[slot]);
-		return 0;
+		return color_parse(v, s->color_palette[slot]);
 	}
 	if (!strcmp(k, "status.relativepaths")) {
 		s->relative_paths = git_config_bool(k, v);
@@ -1373,12 +1367,13 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, &s.pathspec, NULL, NULL);
 
 	fd = hold_locked_index(&index_lock, 0);
-	if (0 <= fd)
-		update_index_if_able(&the_index, &index_lock);
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	s.ignore_submodule_arg = ignore_submodule_arg;
 	wt_status_collect(&s);
+
+	if (0 <= fd)
+		update_index_if_able(&the_index, &index_lock);
 
 	if (s.relative_paths)
 		s.prefix = prefix;
@@ -1401,6 +1396,22 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		break;
 	}
 	return 0;
+}
+
+static const char *implicit_ident_advice(void)
+{
+	char *user_config = expand_user_path("~/.gitconfig");
+	char *xdg_config = xdg_config_home("config");
+	int config_exists = file_exists(user_config) || file_exists(xdg_config);
+
+	free(user_config);
+	free(xdg_config);
+
+	if (config_exists)
+		return _(implicit_ident_advice_config);
+	else
+		return _(implicit_ident_advice_noconfig);
+
 }
 
 static void print_summary(const char *prefix, const unsigned char *sha1,
@@ -1441,7 +1452,7 @@ static void print_summary(const char *prefix, const unsigned char *sha1,
 		strbuf_addbuf_percentquote(&format, &committer_ident);
 		if (advice_implicit_identity) {
 			strbuf_addch(&format, '\n');
-			strbuf_addstr(&format, _(implicit_ident_advice));
+			strbuf_addstr(&format, implicit_ident_advice());
 		}
 	}
 	strbuf_release(&author_ident);
@@ -1462,14 +1473,12 @@ static void print_summary(const char *prefix, const unsigned char *sha1,
 	rev.diffopt.break_opt = 0;
 	diff_setup_done(&rev.diffopt);
 
-	head = resolve_ref_unsafe("HEAD", junk_sha1, 0, NULL);
-	printf("[%s%s ",
-		starts_with(head, "refs/heads/") ?
-			head + 11 :
-			!strcmp(head, "HEAD") ?
-				_("detached HEAD") :
-				head,
-		initial_commit ? _(" (root-commit)") : "");
+	head = resolve_ref_unsafe("HEAD", 0, junk_sha1, NULL);
+	if (!strcmp(head, "HEAD"))
+		head = _("detached HEAD");
+	else
+		skip_prefix(head, "refs/heads/", &head);
+	printf("[%s%s ", head, initial_commit ? _(" (root-commit)") : "");
 
 	if (!log_tree_commit(&rev, commit)) {
 		rev.always_show_header = 1;
@@ -1509,7 +1518,7 @@ static int run_rewrite_hook(const unsigned char *oldsha1,
 {
 	/* oldsha1 SP newsha1 LF NUL */
 	static char buf[2*40 + 3];
-	struct child_process proc;
+	struct child_process proc = CHILD_PROCESS_INIT;
 	const char *argv[3];
 	int code;
 	size_t n;
@@ -1521,7 +1530,6 @@ static int run_rewrite_hook(const unsigned char *oldsha1,
 	argv[1] = "amend";
 	argv[2] = NULL;
 
-	memset(&proc, 0, sizeof(proc));
 	proc.argv = argv;
 	proc.in = -1;
 	proc.stdout_to_stderr = 1;
@@ -1531,8 +1539,10 @@ static int run_rewrite_hook(const unsigned char *oldsha1,
 		return code;
 	n = snprintf(buf, sizeof(buf), "%s %s\n",
 		     sha1_to_hex(oldsha1), sha1_to_hex(newsha1));
+	sigchain_push(SIGPIPE, SIG_IGN);
 	write_in_full(proc.in, buf, n);
 	close(proc.in);
+	sigchain_pop(SIGPIPE);
 	return finish_command(&proc);
 }
 
@@ -1621,11 +1631,12 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	const char *index_file, *reflog_msg;
 	char *nl;
 	unsigned char sha1[20];
-	struct ref_lock *ref_lock;
 	struct commit_list *parents = NULL, **pptr = &parents;
 	struct stat statbuf;
 	struct commit *current_head = NULL;
 	struct commit_extra_header *extra = NULL;
+	struct ref_transaction *transaction;
+	struct strbuf err = STRBUF_INIT;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(builtin_commit_usage, builtin_commit_options);
@@ -1676,10 +1687,10 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		if (!reflog_msg)
 			reflog_msg = "commit (merge)";
 		pptr = &commit_list_insert(current_head, pptr)->next;
-		fp = fopen(git_path("MERGE_HEAD"), "r");
+		fp = fopen(git_path_merge_head(), "r");
 		if (fp == NULL)
 			die_errno(_("could not open '%s' for reading"),
-				  git_path("MERGE_HEAD"));
+				  git_path_merge_head());
 		while (strbuf_getline(&m, fp, '\n') != EOF) {
 			struct commit *parent;
 
@@ -1690,8 +1701,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		}
 		fclose(fp);
 		strbuf_release(&m);
-		if (!stat(git_path("MERGE_MODE"), &statbuf)) {
-			if (strbuf_read_file(&sb, git_path("MERGE_MODE"), 0) < 0)
+		if (!stat(git_path_merge_mode(), &statbuf)) {
+			if (strbuf_read_file(&sb, git_path_merge_mode(), 0) < 0)
 				die_errno(_("could not read MERGE_MODE"));
 			if (!strcmp(sb.buf, "no-ff"))
 				allow_fast_forward = 0;
@@ -1719,7 +1730,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		wt_status_truncate_message_at_cut_line(&sb);
 
 	if (cleanup_mode != CLEANUP_NONE)
-		stripspace(&sb, cleanup_mode == CLEANUP_ALL);
+		strbuf_stripspace(&sb, cleanup_mode == CLEANUP_ALL);
 	if (template_untouched(&sb) && !allow_empty_message) {
 		rollback_index_files();
 		fprintf(stderr, _("Aborting commit; you did not edit the message.\n"));
@@ -1747,16 +1758,6 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	strbuf_release(&author_ident);
 	free_commit_extra_headers(extra);
 
-	ref_lock = lock_any_ref_for_update("HEAD",
-					   !current_head
-					   ? NULL
-					   : current_head->object.sha1,
-					   0, NULL);
-	if (!ref_lock) {
-		rollback_index_files();
-		die(_("cannot lock HEAD ref"));
-	}
-
 	nl = strchr(sb.buf, '\n');
 	if (nl)
 		strbuf_setlen(&sb, nl + 1 - sb.buf);
@@ -1765,21 +1766,28 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	strbuf_insert(&sb, 0, reflog_msg, strlen(reflog_msg));
 	strbuf_insert(&sb, strlen(reflog_msg), ": ", 2);
 
-	if (write_ref_sha1(ref_lock, sha1, sb.buf) < 0) {
+	transaction = ref_transaction_begin(&err);
+	if (!transaction ||
+	    ref_transaction_update(transaction, "HEAD", sha1,
+				   current_head
+				   ? current_head->object.oid.hash : null_sha1,
+				   0, sb.buf, &err) ||
+	    ref_transaction_commit(transaction, &err)) {
 		rollback_index_files();
-		die(_("cannot update HEAD ref"));
+		die("%s", err.buf);
 	}
+	ref_transaction_free(transaction);
 
-	unlink(git_path("CHERRY_PICK_HEAD"));
-	unlink(git_path("REVERT_HEAD"));
-	unlink(git_path("MERGE_HEAD"));
-	unlink(git_path("MERGE_MSG"));
-	unlink(git_path("MERGE_MODE"));
-	unlink(git_path("SQUASH_MSG"));
+	unlink(git_path_cherry_pick_head());
+	unlink(git_path_revert_head());
+	unlink(git_path_merge_head());
+	unlink(git_path_merge_msg());
+	unlink(git_path_merge_mode());
+	unlink(git_path_squash_msg());
 
 	if (commit_index_files())
 		die (_("Repository has been updated, but unable to write\n"
-		     "new_index file. Check that disk is not full or quota is\n"
+		     "new_index file. Check that disk is not full and quota is\n"
 		     "not exceeded, and then \"git reset HEAD\" to recover."));
 
 	rerere(0);
@@ -1789,13 +1797,14 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		cfg = init_copy_notes_for_rewrite("amend");
 		if (cfg) {
 			/* we are amending, so current_head is not NULL */
-			copy_note_for_rewrite(cfg, current_head->object.sha1, sha1);
+			copy_note_for_rewrite(cfg, current_head->object.oid.hash, sha1);
 			finish_copy_notes_for_rewrite(cfg, "Notes added by 'git commit --amend'");
 		}
-		run_rewrite_hook(current_head->object.sha1, sha1);
+		run_rewrite_hook(current_head->object.oid.hash, sha1);
 	}
 	if (!quiet)
 		print_summary(prefix, sha1, !current_head);
 
+	strbuf_release(&err);
 	return 0;
 }

@@ -161,7 +161,9 @@ ifeq ($(uname_S),Darwin)
 	endif
 endif
 ifneq (,$(findstring MINGW,$(uname_S)))
+ifeq ($(shell expr "$(uname_R)" : '1\.'),2)
 	NO_MSGFMT=1
+endif
 	GITGUI_WINDOWS_WRAPPER := YesPlease
 	GITGUI_RELATIVE := 1
 endif
@@ -177,7 +179,8 @@ git-gui: GIT-VERSION-FILE GIT-GUI-VARS
 	echo then >>$@+ && \
 	echo '	'echo \'git-gui version '$(GITGUI_VERSION)'\' >>$@+ && \
 	echo else >>$@+ && \
-	echo '	'exec \''$(libdir_SQ)/Git Gui.app/Contents/MacOS/$(subst \,,$(TKEXECUTABLE))'\' \
+	echo '	libdir="$${GIT_GUI_LIB_DIR:-$(libdir_SQ)}"' >>$@+ && \
+	echo '	'exec \"'$$libdir/Git Gui.app/Contents/MacOS/$(subst \,,$(TKEXECUTABLE))'\" \
 		'"$$0" "$$@"' >>$@+ && \
 	echo fi >>$@+ && \
 	chmod +x $@+ && \

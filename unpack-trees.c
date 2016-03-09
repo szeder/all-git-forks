@@ -9,6 +9,7 @@
 #include "refs.h"
 #include "attr.h"
 #include "split-index.h"
+#include "dir.h"
 
 /*
  * Error messages expected by scripts out of plumbing commands such as
@@ -98,7 +99,7 @@ void setup_unpack_trees_porcelain(struct unpack_trees_options *opts,
 		opts->unpack_rejects[i].strdup_strings = 1;
 }
 
-static void do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
+static int do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
 			 unsigned int set, unsigned int clear)
 {
 	clear |= CE_HASHED;
@@ -107,8 +108,8 @@ static void do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
 		set |= CE_WT_REMOVE;
 
 	ce->ce_flags = (ce->ce_flags & ~clear) | set;
-	add_index_entry(&o->result, ce,
-			ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
+	return add_index_entry(&o->result, ce,
+			       ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
 }
 
 static struct cache_entry *dup_entry(const struct cache_entry *ce)
@@ -223,6 +224,9 @@ static int check_updates(struct unpack_trees_options *o)
 		struct cache_entry *ce = index->cache[i];
 
 		if (ce->ce_flags & CE_UPDATE) {
+			if (ce->ce_flags & CE_WT_REMOVE)
+				die("BUG: both update and delete flags are set on %s",
+				    ce->name);
 			display_progress(progress, ++cnt);
 			ce->ce_flags &= ~CE_UPDATE;
 			if (o->update && !o->dry_run) {
@@ -292,6 +296,7 @@ static int apply_sparse_checkout(struct index_state *istate,
 		if (!(ce->ce_flags & CE_UPDATE) && verify_uptodate_sparse(ce, o))
 			return -1;
 		ce->ce_flags |= CE_WT_REMOVE;
+		ce->ce_flags &= ~CE_UPDATE;
 	}
 	if (was_skip_worktree && !ce_skip_worktree(ce)) {
 		if (verify_absent_sparse(ce, ERROR_WOULD_LOSE_UNTRACKED_OVERWRITTEN, o))
@@ -609,7 +614,9 @@ static int unpack_nondirectories(int n, unsigned long mask,
 
 	for (i = 0; i < n; i++)
 		if (src[i] && src[i] != o->df_conflict_entry)
-			do_add_entry(o, src[i], 0, 0);
+			if (do_add_entry(o, src[i], 0, 0))
+				return -1;
+
 	return 0;
 }
 
@@ -1022,10 +1029,12 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	if (!core_apply_sparse_checkout || !o->update)
 		o->skip_sparse_checkout = 1;
 	if (!o->skip_sparse_checkout) {
-		if (add_excludes_from_file_to_list(git_path("info/sparse-checkout"), "", 0, &el, 0) < 0)
+		char *sparse = git_pathdup("info/sparse-checkout");
+		if (add_excludes_from_file_to_list(sparse, "", 0, &el, 0) < 0)
 			o->skip_sparse_checkout = 1;
 		else
 			o->el = &el;
+		free(sparse);
 	}
 
 	memset(&o->result, 0, sizeof(o->result));
@@ -1153,8 +1162,18 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	o->src_index = NULL;
 	ret = check_updates(o) ? (-2) : 0;
 	if (o->dst_index) {
+		if (!ret) {
+			if (!o->result.cache_tree)
+				o->result.cache_tree = cache_tree();
+			if (!cache_tree_fully_valid(o->result.cache_tree))
+				cache_tree_update(&o->result,
+						  WRITE_TREE_SILENT |
+						  WRITE_TREE_REPAIR);
+		}
 		discard_index(o->dst_index);
 		*o->dst_index = o->result;
+	} else {
+		discard_index(&o->result);
 	}
 
 done:
@@ -1255,8 +1274,10 @@ static int verify_uptodate_sparse(const struct cache_entry *ce,
 static void invalidate_ce_path(const struct cache_entry *ce,
 			       struct unpack_trees_options *o)
 {
-	if (ce)
-		cache_tree_invalidate_path(o->src_index, ce->name);
+	if (!ce)
+		return;
+	cache_tree_invalidate_path(o->src_index, ce->name);
+	untracked_cache_invalidate_path(o->src_index, ce->name);
 }
 
 /*
@@ -1329,9 +1350,7 @@ static int verify_clean_subdirectory(const struct cache_entry *ce,
 	 * Then we need to make sure that we do not lose a locally
 	 * present file that is not ignored.
 	 */
-	pathbuf = xmalloc(namelen + 2);
-	memcpy(pathbuf, ce->name, namelen);
-	strcpy(pathbuf+namelen, "/");
+	pathbuf = xstrfmt("%.*s/", namelen, ce->name);
 
 	memset(&d, 0, sizeof(d));
 	if (o->dir)
@@ -1430,15 +1449,18 @@ static int verify_absent_1(const struct cache_entry *ce,
 	if (!len)
 		return 0;
 	else if (len > 0) {
-		char path[PATH_MAX + 1];
-		memcpy(path, ce->name, len);
-		path[len] = 0;
-		if (lstat(path, &st))
-			return error("cannot stat '%s': %s", path,
-					strerror(errno));
+		char *path;
+		int ret;
 
-		return check_ok_to_remove(path, len, DT_UNKNOWN, NULL, &st,
-				error_type, o);
+		path = xmemdupz(ce->name, len);
+		if (lstat(path, &st))
+			ret = error("cannot stat '%s': %s", path,
+					strerror(errno));
+		else
+			ret = check_ok_to_remove(path, len, DT_UNKNOWN, NULL,
+						 &st, error_type, o);
+		free(path);
+		return ret;
 	} else if (lstat(ce->name, &st)) {
 		if (errno != ENOENT)
 			return error("cannot stat '%s': %s", ce->name,

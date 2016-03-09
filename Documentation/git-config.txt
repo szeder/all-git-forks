@@ -14,13 +14,13 @@ SYNOPSIS
 'git config' [<file-option>] [type] --replace-all name value [value_regex]
 'git config' [<file-option>] [type] [-z|--null] --get name [value_regex]
 'git config' [<file-option>] [type] [-z|--null] --get-all name [value_regex]
-'git config' [<file-option>] [type] [-z|--null] --get-regexp name_regex [value_regex]
+'git config' [<file-option>] [type] [-z|--null] [--name-only] --get-regexp name_regex [value_regex]
 'git config' [<file-option>] [type] [-z|--null] --get-urlmatch name URL
 'git config' [<file-option>] --unset name [value_regex]
 'git config' [<file-option>] --unset-all name [value_regex]
 'git config' [<file-option>] --rename-section old_name new_name
 'git config' [<file-option>] --remove-section name
-'git config' [<file-option>] [-z|--null] -l | --list
+'git config' [<file-option>] [-z|--null] [--name-only] -l | --list
 'git config' [<file-option>] --get-color name [default]
 'git config' [<file-option>] --get-colorbool name [stdout-is-tty]
 'git config' [<file-option>] -e | --edit
@@ -159,7 +159,7 @@ See also <<FILES>>.
 
 -l::
 --list::
-	List all variables set in config file.
+	List all variables set in config file, along with their values.
 
 --bool::
 	'git config' will ensure that the output is "true" or "false"
@@ -189,6 +189,10 @@ See also <<FILES>>.
 	key and value. This allows for secure parsing of the
 	output without getting confused e.g. by values that
 	contain line breaks.
+
+--name-only::
+	Output only the names of config variables for `--list` or
+	`--get-regexp`.
 
 --get-colorbool name [stdout-is-tty]::
 
@@ -241,6 +245,14 @@ $XDG_CONFIG_HOME/git/config::
 
 $GIT_DIR/config::
 	Repository specific configuration file.
+
+On Windows, as there is no central `/etc/` directory, there is yet another
+config file (located at `$PROGRAMDATA/Git/config`), intended to contain
+settings for *all* Git-related software running on the machine. Consequently,
+this config file takes an even lower precedence than the
+`$(prefix)/etc/gitconfig` file. Typically `$PROGRAMDATA` points to
+`C:\ProgramData` (on Windows XP the equivalent in `$ALLUSERSPROFILE` is used,
+i.e. `C:\Documents and Settings\All Users\Application Data\Git\config`).
 
 If no further options are given, all reading options will read all of these
 files that are available. If the global or the system-wide configuration
@@ -405,7 +417,7 @@ true
 % git config --bool --get-urlmatch http.sslverify https://weak.example.com
 false
 % git config --get-urlmatch http https://weak.example.com
-http.cookiefile /tmp/cookie.txt
+http.cookieFile /tmp/cookie.txt
 http.sslverify false
 ------------
 
