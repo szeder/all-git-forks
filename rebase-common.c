@@ -1,5 +1,8 @@
 #include "cache.h"
 #include "rebase-common.h"
+#include "dir.h"
+#include "run-command.h"
+#include "refs.h"
 
 void rebase_options_init(struct rebase_options *opts)
 {
@@ -94,4 +97,82 @@ void rebase_options_save(const struct rebase_options *opts, const char *dir)
 	write_state_text(dir, "head-name", head_name);
 	write_state_text(dir, "onto", oid_to_hex(&opts->onto));
 	write_state_text(dir, "orig-head", oid_to_hex(&opts->orig_head));
+}
+
+static int detach_head(const struct object_id *commit, const char *onto_name)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	int status;
+	const char *reflog_action = getenv("GIT_REFLOG_ACTION");
+	if (!reflog_action || !*reflog_action)
+		reflog_action = "rebase";
+	cp.git_cmd = 1;
+	argv_array_pushf(&cp.env_array, "GIT_REFLOG_ACTION=%s: checkout %s",
+			reflog_action, onto_name ? onto_name : oid_to_hex(commit));
+	argv_array_push(&cp.args, "checkout");
+	argv_array_push(&cp.args, "-q");
+	argv_array_push(&cp.args, "--detach");
+	argv_array_push(&cp.args, oid_to_hex(commit));
+	status = run_command(&cp);
+
+	/* reload cache as checkout will have modified it */
+	discard_cache();
+	read_cache();
+
+	return status;
+}
+
+void rebase_common_setup(struct rebase_options *opts, const char *dir)
+{
+	/* Detach HEAD and reset the tree */
+	printf_ln(_("First, rewinding head to replay your work on top of it..."));
+	if (detach_head(&opts->onto, opts->onto_name))
+		die(_("could not detach HEAD"));
+	update_ref("rebase", "ORIG_HEAD", opts->orig_head.hash, NULL, 0,
+			UPDATE_REFS_DIE_ON_ERR);
+}
+
+void rebase_common_destroy(struct rebase_options *opts, const char *dir)
+{
+	struct strbuf sb = STRBUF_INIT;
+	strbuf_addstr(&sb, dir);
+	remove_dir_recursively(&sb, 0);
+	strbuf_release(&sb);
+}
+
+static void move_to_original_branch(struct rebase_options *opts)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct object_id curr_head;
+
+	if (!opts->orig_refname || !starts_with(opts->orig_refname, "refs/"))
+		return;
+
+	if (get_sha1("HEAD", curr_head.hash) < 0)
+		die("get_sha1() failed");
+
+	strbuf_addf(&sb, "rebase finished: %s onto %s", opts->orig_refname, oid_to_hex(&opts->onto));
+	if (update_ref(sb.buf, opts->orig_refname, curr_head.hash, opts->orig_head.hash, 0, UPDATE_REFS_MSG_ON_ERR))
+		goto fail;
+
+	strbuf_reset(&sb);
+	strbuf_addf(&sb, "rebase finished: returning to %s", opts->orig_refname);
+	if (create_symref("HEAD", opts->orig_refname, sb.buf))
+		goto fail;
+
+	strbuf_release(&sb);
+
+	return;
+fail:
+	die(_("Could not move back to %s"), opts->orig_refname);
+}
+
+void rebase_common_finish(struct rebase_options *opts, const char *dir)
+{
+	const char *argv_gc_auto[] = {"gc", "--auto", NULL};
+
+	move_to_original_branch(opts);
+	close_all_packs();
+	run_command_v_opt(argv_gc_auto, RUN_GIT_CMD);
+	rebase_common_destroy(opts, dir);
 }

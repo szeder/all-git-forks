@@ -8,6 +8,22 @@
 #include "remote.h"
 #include "branch.h"
 #include "refs.h"
+#include "rebase-am.h"
+
+enum rebase_type {
+	REBASE_TYPE_NONE = 0,
+	REBASE_TYPE_AM
+};
+
+static const char *rebase_dir(enum rebase_type type)
+{
+	switch (type) {
+	case REBASE_TYPE_AM:
+		return git_path_rebase_am_dir();
+	default:
+		die("BUG: invalid rebase_type %d", type);
+	}
+}
 
 /**
  * Used by get_curr_branch_upstream_name() as a for_each_remote() callback to
@@ -206,6 +222,15 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 
 		if (get_oid_commit("HEAD", &rebase_opts.orig_head))
 			die(_("Failed to resolve '%s' as a valid revision."), "HEAD");
+	}
+
+	/* Run the appropriate rebase backend */
+	{
+		struct rebase_am state;
+		rebase_am_init(&state, rebase_dir(REBASE_TYPE_AM));
+		rebase_options_swap(&state.opts, &rebase_opts);
+		rebase_am_run(&state);
+		rebase_am_release(&state);
 	}
 
 	rebase_options_release(&rebase_opts);
