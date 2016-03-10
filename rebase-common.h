@@ -1,6 +1,11 @@
 #ifndef REBASE_COMMON_H
 #define REBASE_COMMON_H
 
+/**
+ * Refresh and write index.
+ */
+void refresh_and_write_cache(void);
+
 /* common rebase backend options */
 struct rebase_options {
 	struct object_id onto;
