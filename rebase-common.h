@@ -4,6 +4,6 @@
 /**
  * Refresh and write index.
  */
-void refresh_and_write_cache(void);
+void refresh_and_write_cache(unsigned int);
 
 #endif /* REBASE_COMMON_H */
