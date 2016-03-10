@@ -17,6 +17,7 @@
 #include "revision.h"
 #include "tempfile.h"
 #include "lockfile.h"
+#include "rebase-common.h"
 
 enum rebase_type {
 	REBASE_INVALID = -1,
@@ -306,22 +307,6 @@ static enum rebase_type config_get_rebase(void)
 }
 
 /**
- * Returns 1 if there are unstaged changes, 0 otherwise.
- */
-static int has_unstaged_changes(const char *prefix)
-{
-	struct rev_info rev_info;
-	int result;
-
-	init_revisions(&rev_info, prefix);
-	DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
-	DIFF_OPT_SET(&rev_info.diffopt, QUICK);
-	diff_setup_done(&rev_info.diffopt);
-	result = run_diff_files(&rev_info, 0);
-	return diff_result_code(&rev_info.diffopt, result);
-}
-
-/**
  * Returns 1 if there are uncommitted changes, 0 otherwise.
  */
 static int has_uncommitted_changes(const char *prefix)
@@ -355,7 +340,7 @@ static void die_on_unclean_work_tree(const char *prefix)
 	update_index_if_able(&the_index, lock_file);
 	rollback_lock_file(lock_file);
 
-	if (has_unstaged_changes(prefix)) {
+	if (cache_has_unstaged_changes()) {
 		error(_("Cannot pull with rebase: You have unstaged changes."));
 		do_die = 1;
 	}

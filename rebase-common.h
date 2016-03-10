@@ -6,4 +6,9 @@
  */
 void refresh_and_write_cache(unsigned int);
 
+/**
+ * Returns 1 if there are unstaged changes, 0 otherwise.
+ */
+int cache_has_unstaged_changes(void);
+
 #endif /* REBASE_COMMON_H */
