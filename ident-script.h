@@ -30,4 +30,9 @@ void ident_script_release(struct ident_script *);
  */
 int read_author_script(struct ident_script *, const char *);
 
+/**
+ * Writes the ident_script to the author-script file.
+ */
+void write_author_script(const struct ident_script *, const char *);
+
 #endif /* IDENT_SCRIPT_H */

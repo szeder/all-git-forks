@@ -92,3 +92,23 @@ int read_author_script(struct ident_script *ident, const char *filename)
 	fclose(fp);
 	return 0;
 }
+
+void write_author_script(const struct ident_script *ident, const char *filename)
+{
+	struct strbuf sb = STRBUF_INIT;
+
+	strbuf_addstr(&sb, "GIT_AUTHOR_NAME=");
+	sq_quote_buf(&sb, ident->name);
+	strbuf_addch(&sb, '\n');
+
+	strbuf_addstr(&sb, "GIT_AUTHOR_EMAIL=");
+	sq_quote_buf(&sb, ident->email);
+	strbuf_addch(&sb, '\n');
+
+	strbuf_addstr(&sb, "GIT_AUTHOR_DATE=");
+	sq_quote_buf(&sb, ident->date);
+	strbuf_addch(&sb, '\n');
+
+	write_file(filename, "%s", sb.buf);
+	strbuf_release(&sb);
+}
