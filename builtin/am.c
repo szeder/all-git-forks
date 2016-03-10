@@ -28,6 +28,7 @@
 #include "rerere.h"
 #include "prompt.h"
 #include "mailinfo.h"
+#include "ident-script.h"
 
 /**
  * Returns 1 if the file is empty or does not exist, 0 otherwise.
@@ -100,9 +101,7 @@ struct am_state {
 	int last;
 
 	/* commit metadata and message */
-	char *author_name;
-	char *author_email;
-	char *author_date;
+	struct ident_script author;
 	char *msg;
 	size_t msg_len;
 
@@ -140,6 +139,7 @@ static void am_state_init(struct am_state *state, const char *dir)
 
 	memset(state, 0, sizeof(*state));
 	state->dir = xstrdup(dir);
+	ident_script_init(&state->author);
 	state->prec = 4;
 	git_config_get_bool("am.threeway", &state->threeway);
 	state->utf8 = 1;
@@ -156,9 +156,7 @@ static void am_state_init(struct am_state *state, const char *dir)
 static void am_state_release(struct am_state *state)
 {
 	free(state->dir);
-	free(state->author_name);
-	free(state->author_email);
-	free(state->author_date);
+	ident_script_release(&state->author);
 	free(state->msg);
 	argv_array_clear(&state->git_apply_opts);
 }
@@ -284,7 +282,7 @@ fail:
 
 /**
  * Reads and parses the state directory's "author-script" file, and sets
- * state->author_name, state->author_email and state->author_date accordingly.
+ * state->author.name, state->author.email and state->author.date accordingly.
  * Returns 0 on success, -1 if the file could not be parsed.
  *
  * The author script is of the format:
@@ -303,10 +301,6 @@ static int read_author_script(struct am_state *state)
 	const char *filename = am_path(state, "author-script");
 	FILE *fp;
 
-	assert(!state->author_name);
-	assert(!state->author_email);
-	assert(!state->author_date);
-
 	fp = fopen(filename, "r");
 	if (!fp) {
 		if (errno == ENOENT)
@@ -314,20 +308,23 @@ static int read_author_script(struct am_state *state)
 		die_errno(_("could not open '%s' for reading"), filename);
 	}
 
-	state->author_name = read_shell_var(fp, "GIT_AUTHOR_NAME");
-	if (!state->author_name) {
+	free(state->author.name);
+	state->author.name = read_shell_var(fp, "GIT_AUTHOR_NAME");
+	if (!state->author.name) {
 		fclose(fp);
 		return -1;
 	}
 
-	state->author_email = read_shell_var(fp, "GIT_AUTHOR_EMAIL");
-	if (!state->author_email) {
+	free(state->author.email);
+	state->author.email = read_shell_var(fp, "GIT_AUTHOR_EMAIL");
+	if (!state->author.email) {
 		fclose(fp);
 		return -1;
 	}
 
-	state->author_date = read_shell_var(fp, "GIT_AUTHOR_DATE");
-	if (!state->author_date) {
+	free(state->author.date);
+	state->author.date = read_shell_var(fp, "GIT_AUTHOR_DATE");
+	if (!state->author.date) {
 		fclose(fp);
 		return -1;
 	}
@@ -350,15 +347,15 @@ static void write_author_script(const struct am_state *state)
 	struct strbuf sb = STRBUF_INIT;
 
 	strbuf_addstr(&sb, "GIT_AUTHOR_NAME=");
-	sq_quote_buf(&sb, state->author_name);
+	sq_quote_buf(&sb, state->author.name);
 	strbuf_addch(&sb, '\n');
 
 	strbuf_addstr(&sb, "GIT_AUTHOR_EMAIL=");
-	sq_quote_buf(&sb, state->author_email);
+	sq_quote_buf(&sb, state->author.email);
 	strbuf_addch(&sb, '\n');
 
 	strbuf_addstr(&sb, "GIT_AUTHOR_DATE=");
-	sq_quote_buf(&sb, state->author_date);
+	sq_quote_buf(&sb, state->author.date);
 	strbuf_addch(&sb, '\n');
 
 	write_state_text(state, "author-script", sb.buf);
@@ -1074,15 +1071,7 @@ static void am_next(struct am_state *state)
 {
 	unsigned char head[GIT_SHA1_RAWSZ];
 
-	free(state->author_name);
-	state->author_name = NULL;
-
-	free(state->author_email);
-	state->author_email = NULL;
-
-	free(state->author_date);
-	state->author_date = NULL;
-
+	ident_script_release(&state->author);
 	free(state->msg);
 	state->msg = NULL;
 	state->msg_len = 0;
@@ -1327,14 +1316,14 @@ static int parse_mail(struct am_state *state, const char *mail)
 	if (state->signoff)
 		am_signoff(&msg);
 
-	assert(!state->author_name);
-	state->author_name = strbuf_detach(&author_name, NULL);
+	assert(!state->author.name);
+	state->author.name = strbuf_detach(&author_name, NULL);
 
-	assert(!state->author_email);
-	state->author_email = strbuf_detach(&author_email, NULL);
+	assert(!state->author.email);
+	state->author.email = strbuf_detach(&author_email, NULL);
 
-	assert(!state->author_date);
-	state->author_date = strbuf_detach(&author_date, NULL);
+	assert(!state->author.date);
+	state->author.date = strbuf_detach(&author_date, NULL);
 
 	assert(!state->msg);
 	state->msg = strbuf_detach(&msg, &state->msg_len);
@@ -1374,7 +1363,7 @@ static int get_mail_commit_sha1(unsigned char *commit_id, const char *mail)
 }
 
 /**
- * Sets state->msg, state->author_name, state->author_email, state->author_date
+ * Sets state->msg, state->author.name, state->author.email, state->author.date
  * to the commit's respective info.
  */
 static void get_commit_info(struct am_state *state, struct commit *commit)
@@ -1393,26 +1382,26 @@ static void get_commit_info(struct am_state *state, struct commit *commit)
 		die(_("invalid ident line: %s"), sb.buf);
 	}
 
-	assert(!state->author_name);
+	assert(!state->author.name);
 	if (ident_split.name_begin) {
 		strbuf_add(&sb, ident_split.name_begin,
 			ident_split.name_end - ident_split.name_begin);
-		state->author_name = strbuf_detach(&sb, NULL);
+		state->author.name = strbuf_detach(&sb, NULL);
 	} else
-		state->author_name = xstrdup("");
+		state->author.name = xstrdup("");
 
-	assert(!state->author_email);
+	assert(!state->author.email);
 	if (ident_split.mail_begin) {
 		strbuf_add(&sb, ident_split.mail_begin,
 			ident_split.mail_end - ident_split.mail_begin);
-		state->author_email = strbuf_detach(&sb, NULL);
+		state->author.email = strbuf_detach(&sb, NULL);
 	} else
-		state->author_email = xstrdup("");
+		state->author.email = xstrdup("");
 
 	author_date = show_ident_date(&ident_split, DATE_MODE(NORMAL));
 	strbuf_addstr(&sb, author_date);
-	assert(!state->author_date);
-	state->author_date = strbuf_detach(&sb, NULL);
+	assert(!state->author.date);
+	state->author.date = strbuf_detach(&sb, NULL);
 
 	assert(!state->msg);
 	msg = strstr(buffer, "\n\n");
@@ -1695,13 +1684,13 @@ static void do_commit(const struct am_state *state)
 		say(state, stderr, _("applying to an empty history"));
 	}
 
-	author = fmt_ident(state->author_name, state->author_email,
-			state->ignore_date ? NULL : state->author_date,
+	author = fmt_ident(state->author.name, state->author.email,
+			state->ignore_date ? NULL : state->author.date,
 			IDENT_STRICT);
 
 	if (state->committer_date_is_author_date)
 		setenv("GIT_COMMITTER_DATE",
-			state->ignore_date ? "" : state->author_date, 1);
+			state->ignore_date ? "" : state->author.date, 1);
 
 	if (commit_tree(state->msg, state->msg_len, tree, parents, commit,
 				author, state->sign_commit))
@@ -1740,7 +1729,7 @@ static void validate_resume_state(const struct am_state *state)
 		die(_("cannot resume: %s does not exist."),
 			am_path(state, "final-commit"));
 
-	if (!state->author_name || !state->author_email || !state->author_date)
+	if (!state->author.name || !state->author.email || !state->author.date)
 		die(_("cannot resume: %s does not exist."),
 			am_path(state, "author-script"));
 }
