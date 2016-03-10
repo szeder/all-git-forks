@@ -281,9 +281,8 @@ fail:
 }
 
 /**
- * Reads and parses the state directory's "author-script" file, and sets
- * state->author.name, state->author.email and state->author.date accordingly.
- * Returns 0 on success, -1 if the file could not be parsed.
+ * Reads and parses an author-script file, setting the ident_script fields
+ * accordingly. Returns 0 on success, -1 if the file could not be parsed.
  *
  * The author script is of the format:
  *
@@ -292,13 +291,12 @@ fail:
  *	GIT_AUTHOR_DATE='$author_date'
  *
  * where $author_name, $author_email and $author_date are quoted. We are strict
- * with our parsing, as the file was meant to be eval'd in the old git-am.sh
- * script, and thus if the file differs from what this function expects, it is
- * better to bail out than to do something that the user does not expect.
+ * with our parsing, as the file was meant to be eval'd in shell scripts, and
+ * thus if the file differs from what this function expects, it is better to
+ * bail out than to do something that the user does not expect.
  */
-static int read_author_script(struct am_state *state)
+static int read_author_script(struct ident_script *ident, const char *filename)
 {
-	const char *filename = am_path(state, "author-script");
 	FILE *fp;
 
 	fp = fopen(filename, "r");
@@ -308,23 +306,23 @@ static int read_author_script(struct am_state *state)
 		die_errno(_("could not open '%s' for reading"), filename);
 	}
 
-	free(state->author.name);
-	state->author.name = read_shell_var(fp, "GIT_AUTHOR_NAME");
-	if (!state->author.name) {
+	free(ident->name);
+	ident->name = read_shell_var(fp, "GIT_AUTHOR_NAME");
+	if (!ident->name) {
 		fclose(fp);
 		return -1;
 	}
 
-	free(state->author.email);
-	state->author.email = read_shell_var(fp, "GIT_AUTHOR_EMAIL");
-	if (!state->author.email) {
+	free(ident->email);
+	ident->email = read_shell_var(fp, "GIT_AUTHOR_EMAIL");
+	if (!ident->email) {
 		fclose(fp);
 		return -1;
 	}
 
-	free(state->author.date);
-	state->author.date = read_shell_var(fp, "GIT_AUTHOR_DATE");
-	if (!state->author.date) {
+	free(ident->date);
+	ident->date = read_shell_var(fp, "GIT_AUTHOR_DATE");
+	if (!ident->date) {
 		fclose(fp);
 		return -1;
 	}
@@ -336,6 +334,11 @@ static int read_author_script(struct am_state *state)
 
 	fclose(fp);
 	return 0;
+}
+
+static int am_read_author_script(struct am_state *state)
+{
+	return read_author_script(&state->author, am_path(state, "author-script"));
 }
 
 /**
@@ -414,7 +417,7 @@ static void am_load(struct am_state *state)
 		die("BUG: state file 'last' does not exist");
 	state->last = strtol(sb.buf, NULL, 10);
 
-	if (read_author_script(state) < 0)
+	if (am_read_author_script(state) < 0)
 		die(_("could not parse author script"));
 
 	read_commit_msg(state);
