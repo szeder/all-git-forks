@@ -4,7 +4,7 @@
 /**
  * Refresh and write index.
  */
-void refresh_and_write_cache(void);
+void refresh_and_write_cache(unsigned int);
 
 /* common rebase backend options */
 struct rebase_options {

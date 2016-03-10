@@ -1815,7 +1815,7 @@ static void am_run(struct am_state *state, int resume)
 
 	unlink(am_path(state, "dirtyindex"));
 
-	refresh_and_write_cache();
+	refresh_and_write_cache(REFRESH_QUIET);
 
 	if (index_has_changes(&sb)) {
 		write_state_bool(state, "dirtyindex", 1);
