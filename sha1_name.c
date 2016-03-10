@@ -1214,6 +1214,11 @@ int get_sha1(const char *name, unsigned char *sha1)
 	return get_sha1_with_context(name, 0, sha1, &unused);
 }
 
+int get_oid(const char *name, struct object_id *oid)
+{
+	return get_sha1(name, oid->hash);
+}
+
 /*
  * Many callers know that the user meant to name a commit-ish by
  * syntactical positions where the object name appears.  Calling this
@@ -1243,6 +1248,11 @@ int get_sha1_commit(const char *name, unsigned char *sha1)
 	struct object_context unused;
 	return get_sha1_with_context(name, GET_SHA1_COMMIT,
 				     sha1, &unused);
+}
+
+int get_oid_commit(const char *name, struct object_id *oid)
+{
+	return get_sha1_commit(name, oid->hash);
 }
 
 int get_sha1_tree(const char *name, unsigned char *sha1)

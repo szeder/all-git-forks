@@ -1116,7 +1116,9 @@ struct object_context {
 #define GET_SHA1_ONLY_TO_DIE    04000
 
 extern int get_sha1(const char *str, unsigned char *sha1);
+extern int get_oid(const char *str, struct object_id *oid);
 extern int get_sha1_commit(const char *str, unsigned char *sha1);
+extern int get_oid_commit(const char *str, struct object_id *oid);
 extern int get_sha1_committish(const char *str, unsigned char *sha1);
 extern int get_sha1_tree(const char *str, unsigned char *sha1);
 extern int get_sha1_treeish(const char *str, unsigned char *sha1);
