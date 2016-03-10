@@ -56,7 +56,7 @@ test_expect_success 'ls-files --others' '
 '
 
 test_expect_success 'ls-files --others --directory' '
-	git ls-files --others --directory >output &&
+	git ls-files --others --directory |grep -v \\.gitdumps >output &&
 	test_cmp expected2 output
 '
 

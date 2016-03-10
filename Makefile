@@ -439,6 +439,7 @@ htmldir_relative = $(patsubst $(prefix)/%,%,$(htmldir))
 export prefix bindir sharedir sysconfdir gitwebdir localedir
 
 CC = cc
+CXX = c++
 AR = ar
 RM = rm -f
 DIFF = diff
@@ -884,6 +885,7 @@ BUILTIN_OBJS += builtin/commit-tree.o
 BUILTIN_OBJS += builtin/commit.o
 BUILTIN_OBJS += builtin/config.o
 BUILTIN_OBJS += builtin/count-objects.o
+BUILTIN_OBJS += builtin/crash.o
 BUILTIN_OBJS += builtin/credential.o
 BUILTIN_OBJS += builtin/describe.o
 BUILTIN_OBJS += builtin/diff-files.o
@@ -1465,6 +1467,35 @@ ifdef USE_WATCHMAN
 	BASIC_CFLAGS += -DUSE_WATCHMAN
 endif
 
+ifdef BREAKPADDIR
+	PROGRAM_OBJS += upload-stats.o
+	LIB_H += stats-report.h breakpad.h zipkin.h
+	LIB_OBJS += stats-report.o zipkin.o parent_proc.o twitter-config.o
+	EXTLIBS += -ljansson $(CURL_LIBCURL)
+	BASIC_CFLAGS += -DBREAKPAD_STATS -I$(BREAKPADDIR)
+
+ifeq ($(uname_S),Darwin)
+	EXTLIBS += -lc++ -framework CoreFoundation -framework Breakpad -F$(prefix)/Frameworks
+	LIB_OBJS += breakpad-mac.o
+else
+	EXTLIBS += -L$(BREAKPADDIR)/client/linux/ -lbreakpad_client -lstdc++
+	LIB_OBJS += breakpad-linux.o
+endif
+
+endif # BREAKPAD_STATS
+
+# set both ../../ and ../ as the rpath searches so both bin/git and
+# libexec/gitcore/git will resolve the library locations for
+# breakpad correctly.  Also add $(prefix) for running local for tests
+ifdef RUNTIME_PREFIX
+ifeq ($(uname_S),Darwin)
+	BASIC_LDFLAGS += -Wl,-rpath,@executable_path/../.. -Wl,-rpath,@executable_path/.. -Wl,-rpath,$(prefix)
+else
+	BASIC_LDFLAGS += -Wl,-R,\$$ORIGIN/../../lib -Wl,-R,\$$ORIGIN/../lib -Wl,
+R,$(prefix)/lib
+endif
+endif
+
 ifdef HAVE_PATHS_H
 	BASIC_CFLAGS += -DHAVE_PATHS_H
 endif
@@ -2001,12 +2032,20 @@ endif
 
 ASM_SRC := $(wildcard $(OBJECTS:o=S))
 ASM_OBJ := $(ASM_SRC:S=o)
-C_OBJ := $(filter-out $(ASM_OBJ),$(OBJECTS))
+CXX_SRC := $(wildcard $(OBJECTS:o=cc))
+CXX_OBJ := $(CXX_SRC:cc=o)
+MXX_SRC := $(wildcard $(OBJECTS:o=mm))
+MXX_OBJ := $(MXX_SRC:mm=o)
+C_OBJ := $(filter-out $(ASM_OBJ) $(CXX_OBJ) $(MXX_OBJ),$(OBJECTS))
 
 .SUFFIXES:
 
 $(C_OBJ): %.o: %.c GIT-CFLAGS $(missing_dep_dirs)
 	$(QUIET_CC)$(CC) -o $*.o -c $(dep_args) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
+$(CXX_OBJ): %.o: %.cc GIT-CFLAGS $(missing_dep_dirs)
+	$(QUIET_CC)$(CXX) -o $*.o -c $(dep_args) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
+$(MXX_OBJ): %.o: %.mm GIT-CFLAGS $(missing_dep_dirs)
+	$(QUIET_CC)$(CXX) -o $*.o -c $(dep_args) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
 $(ASM_OBJ): %.o: %.S GIT-CFLAGS $(missing_dep_dirs)
 	$(QUIET_CC)$(CC) -o $*.o -c $(dep_args) $(ALL_CFLAGS) $(EXTRA_CPPFLAGS) $<
 

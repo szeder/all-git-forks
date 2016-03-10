@@ -39,6 +39,7 @@
 /git-commit-tree
 /git-config
 /git-count-objects
+/git-crash
 /git-credential
 /git-credential-cache
 /git-credential-cache--daemon
@@ -178,6 +179,7 @@
 /git-update-server-info
 /git-upload-archive
 /git-upload-pack
+/git-upload-stats
 /git-var
 /git-verify-commit
 /git-verify-pack

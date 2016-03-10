@@ -21,6 +21,10 @@
 #include "argv-array.h"
 #include "sigchain.h"
 #include "safe-append.h"
+#ifdef BREAKPAD_STATS
+#include "zipkin.h"
+#endif
+#include "breakpad.h"
 
 #include <err.h>
 #include <sys/file.h>
@@ -685,12 +689,19 @@ static int fetch_extents(struct remote *upstream, struct remote_state *r, const 
 	r->rec_count = xsize_t(sb.st_size) / sizeof(struct journal_extent_rec);
 	if (updated_bytes > 0) {
 		int transaction_count = updated_bytes / sizeof(struct journal_extent_rec);
+		struct strbuf msg = STRBUF_INIT;
+
+		strbuf_addf(&msg, Q_("%s: Extents updated: %d transaction\n",
+				     "%s: Extents updated: %d transactions\n",
+				     transaction_count), upstream->name,
+			    transaction_count);
 		if (!quiet) {
-			printf(Q_("%s: Extents updated: %d transaction\n",
-				  "%s: Extents updated: %d transactions\n",
-				  transaction_count),
-			       upstream->name, transaction_count);
+			printf("%s", msg.buf);
 		}
+#ifdef BREAKPAD_STATS
+		trace_record_binary("fetch_transactions", msg.buf);
+		stats.fetch_transactions = transaction_count;
+#endif
 	} else {
 		if (!quiet) {
 			printf("%s: Extents already up-to-date\n",
@@ -1661,6 +1672,8 @@ int main(int argc, const char **argv)
 				"do not detach when processing epilogue actions"),
 		OPT_END()
 	};
+
+	BREAKPAD_INITIALIZE();
 
 	git_extract_argv0_path(argv[0]);
 

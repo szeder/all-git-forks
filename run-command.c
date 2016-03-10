@@ -2,6 +2,7 @@
 #include "run-command.h"
 #include "exec_cmd.h"
 #include "sigchain.h"
+#include "breakpad.h"
 #include "argv-array.h"
 #include "thread-utils.h"
 #include "strbuf.h"
@@ -345,6 +346,8 @@ fail_pipe:
 	cmd->pid = fork();
 	failed_errno = errno;
 	if (!cmd->pid) {
+		BREAKPAD_INITIALIZE();
+
 		/*
 		 * Redirect the channel to write syscall error messages to
 		 * before redirecting the process's stderr so that all die()
@@ -734,6 +737,7 @@ int start_async(struct async *async)
 		goto error;
 	}
 	if (!async->pid) {
+		BREAKPAD_INITIALIZE();
 		if (need_in)
 			close(fdin[1]);
 		if (need_out)

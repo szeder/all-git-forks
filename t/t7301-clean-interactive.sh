@@ -9,6 +9,7 @@ test_expect_success 'setup' '
 	mkdir -p src &&
 	touch src/part1.c Makefile &&
 	echo build >.gitignore &&
+	echo .gitdumps >>.gitignore &&
 	echo \*.o >>.gitignore &&
 	git add . &&
 	git commit -m setup &&

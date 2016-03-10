@@ -5,7 +5,7 @@
 #include "exec_cmd.h"
 #include <watchman.h>
 #include <sys/file.h>
-
+#include "stats-report.h"
 static int core_lockout_watchman;
 
 extern void git_config_nodie(config_fn_t fn, void *);
@@ -52,11 +52,18 @@ static void update_index(struct index_state *istate,
 	int i;
 
 	if (result->is_fresh_instance) {
+#ifdef BREAKPAD_STATS
+		stats.watchman_state = WATCHMAN_RESTARTED;
+#endif
 		/* let refresh clear them later */
 		for (i = 0; i < istate->cache_nr; i++)
 			istate->cache[i]->ce_flags |= CE_WATCHMAN_DIRTY;
 		goto done;
 	}
+
+#ifdef BREAKPAD_STATS
+	stats.watchman_state = result->nr;
+#endif
 
 	for (i = 0; i < result->nr; i++) {
 		struct watchman_stat *wm = result->stats + i;
@@ -120,6 +127,9 @@ int check_watchman(struct index_state *istate)
 	connection = watchman_connect(timeout, &wm_error);
 
 	if (!connection) {
+#ifdef BREAKPAD_STATS
+		stats.watchman_state = WATCHMAN_GONE;
+#endif
 		warning("Watchman watch error: %s", wm_error.message);
 		return -1;
 	}

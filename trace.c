@@ -25,6 +25,13 @@
 #include "cache.h"
 #include "quote.h"
 
+#ifdef BREAKPAD_STATS
+#include "zipkin.h"
+#endif
+
+static struct timeval first_time_;
+static int first_time_init_ = 0;
+
 /* Get a trace file descriptor from "key" env variable. */
 static int get_trace_fd(struct trace_key *key)
 {
@@ -85,13 +92,29 @@ void trace_disable(struct trace_key *key)
 static const char err_msg[] = "Could not trace into fd given by "
 	"GIT_TRACE environment variable";
 
+void trace_append_timestamp(struct strbuf *buf)
+{
+	struct timeval now;
+	uint64_t elapsed_ms;
+
+	gettimeofday(&now, NULL);
+	if (!first_time_init_) {
+	    ++first_time_init_;
+	    first_time_ = now;
+	}
+
+	now.tv_sec -= first_time_.tv_sec;
+	now.tv_usec -= first_time_.tv_usec;
+
+	elapsed_ms = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+	strbuf_addf(buf, "[+%6"PRIu64"ms] ",
+		    elapsed_ms);
+}
+
 static int prepare_trace_line(const char *file, int line,
 			      struct trace_key *key, struct strbuf *buf)
 {
 	static struct trace_key trace_bare = TRACE_KEY_INIT(BARE);
-	struct timeval tv;
-	struct tm tm;
-	time_t secs;
 
 	if (!trace_want(key))
 		return 0;
@@ -103,11 +126,7 @@ static int prepare_trace_line(const char *file, int line,
 		return 1;
 
 	/* print current timestamp */
-	gettimeofday(&tv, NULL);
-	secs = tv.tv_sec;
-	localtime_r(&secs, &tm);
-	strbuf_addf(buf, "%02d:%02d:%02d.%06ld ", tm.tm_hour, tm.tm_min,
-		    tm.tm_sec, (long) tv.tv_usec);
+	trace_append_timestamp(buf);
 
 #ifdef HAVE_VARIADIC_MACROS
 	/* print file:line */

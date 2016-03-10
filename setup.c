@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "dir.h"
 #include "string-list.h"
+#include "breakpad.h"
 
 static int inside_git_dir = -1;
 static int inside_work_tree = -1;
@@ -1029,6 +1030,7 @@ int daemonize(int *daemonized)
 #else
 	switch (fork()) {
 		case 0:
+			BREAKPAD_INITIALIZE();
 			break;
 		case -1:
 			die_errno("fork failed");

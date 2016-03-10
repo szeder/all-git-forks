@@ -1150,6 +1150,11 @@ AC_CHECK_LIB([watchman], [watchman_connect],
 	[USE_WATCHMAN=])
 GIT_CONF_SUBST([USE_WATCHMAN])
 
+# Declare the with-breakpad/without-breakpad options
+AC_ARG_WITH(breakpad,
+AS_HELP_STRING([--with-breakpad],[Location of the built breakpad binaries]),
+GIT_PARSE_WITH(breakpad))
+
 ## Other checks.
 # Define USE_PIC if you need the main git objects to be built with -fPIC
 # in order to build and link perl/Git.so.  x86-64 seems to need this.

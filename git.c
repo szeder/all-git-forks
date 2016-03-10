@@ -3,6 +3,7 @@
 #include "help.h"
 #include "run-command.h"
 #include "twitter-util.h"
+#include "breakpad.h"
 
 const char git_usage_string[] =
 	"git [--version] [--help] [-C <path>] [-c name=value]\n"
@@ -399,6 +400,7 @@ static struct cmd_struct commands[] = {
 	{ "commit-tree", cmd_commit_tree, RUN_SETUP },
 	{ "config", cmd_config, RUN_SETUP_GENTLY },
 	{ "count-objects", cmd_count_objects, RUN_SETUP },
+	{ "crash", cmd_crash },
 	{ "credential", cmd_credential, RUN_SETUP_GENTLY },
 	{ "describe", cmd_describe, RUN_SETUP },
 	{ "diff", cmd_diff },
@@ -637,6 +639,8 @@ int main(int argc, char **av)
 	const char **argv = (const char **) av;
 	const char *cmd;
 	int done_help = 0;
+
+	BREAKPAD_INITIALIZE();
 
 	cmd = git_extract_argv0_path(argv[0]);
 	if (!cmd)
