@@ -11,4 +11,9 @@ void refresh_and_write_cache(unsigned int);
  */
 int cache_has_unstaged_changes(void);
 
+/**
+ * Returns 1 if there are uncommitted changes, 0 otherwise.
+ */
+int cache_has_uncommitted_changes(void);
+
 #endif /* REBASE_COMMON_H */
