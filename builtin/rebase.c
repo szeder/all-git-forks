@@ -9,10 +9,12 @@
 #include "branch.h"
 #include "refs.h"
 #include "rebase-am.h"
+#include "rebase-merge.h"
 
 enum rebase_type {
 	REBASE_TYPE_NONE = 0,
-	REBASE_TYPE_AM
+	REBASE_TYPE_AM,
+	REBASE_TYPE_MERGE
 };
 
 static const char *rebase_dir(enum rebase_type type)
@@ -20,6 +22,8 @@ static const char *rebase_dir(enum rebase_type type)
 	switch (type) {
 	case REBASE_TYPE_AM:
 		return git_path_rebase_am_dir();
+	case REBASE_TYPE_MERGE:
+		return git_path_rebase_merge_dir();
 	default:
 		die("BUG: invalid rebase_type %d", type);
 	}
@@ -137,6 +141,7 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 	struct rebase_options rebase_opts;
 	const char *onto_name = NULL;
 	const char *branch_name;
+	int do_merge = 0;
 
 	const char * const usage[] = {
 		N_("git rebase [options] [--onto <newbase>] [<upstream>] [<branch>]"),
@@ -146,6 +151,8 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 		OPT_GROUP(N_("Available options are")),
 		OPT_STRING(0, "onto", &onto_name, NULL,
 			N_("rebase onto given branch instead of upstream")),
+		OPT_BOOL('m', "merge", &do_merge,
+			N_("use merging strategies to rebase")),
 		OPT_END()
 	};
 
@@ -225,7 +232,13 @@ int cmd_rebase(int argc, const char **argv, const char *prefix)
 	}
 
 	/* Run the appropriate rebase backend */
-	{
+	if (do_merge) {
+		struct rebase_merge state;
+		rebase_merge_init(&state, rebase_dir(REBASE_TYPE_MERGE));
+		rebase_options_swap(&state.opts, &rebase_opts);
+		rebase_merge_run(&state);
+		rebase_merge_release(&state);
+	} else {
 		struct rebase_am state;
 		rebase_am_init(&state, rebase_dir(REBASE_TYPE_AM));
 		rebase_options_swap(&state.opts, &rebase_opts);
