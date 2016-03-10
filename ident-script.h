@@ -35,4 +35,6 @@ int read_author_script(struct ident_script *, const char *);
  */
 void write_author_script(const struct ident_script *, const char *);
 
+int ident_script_from_line(struct ident_script *, const char *, size_t);
+
 #endif /* IDENT_SCRIPT_H */

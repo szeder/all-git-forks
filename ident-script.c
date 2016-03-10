@@ -112,3 +112,22 @@ void write_author_script(const struct ident_script *ident, const char *filename)
 	write_file(filename, "%s", sb.buf);
 	strbuf_release(&sb);
 }
+
+int ident_script_from_line(struct ident_script *ident, const char *line, size_t len)
+{
+	struct ident_split split;
+
+	if (split_ident_line(&split, line, len) < 0)
+		return -1;
+
+	free(ident->name);
+	ident->name = xmemdupz(split.name_begin, split.name_end - split.name_begin);
+
+	free(ident->email);
+	ident->email = xmemdupz(split.mail_begin, split.mail_end - split.mail_begin);
+
+	free(ident->date);
+	ident->date = xstrdup(show_ident_date(&split, DATE_MODE(NORMAL)));
+
+	return 0;
+}
