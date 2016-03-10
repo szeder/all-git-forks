@@ -42,3 +42,26 @@ int cache_has_uncommitted_changes(void)
 	result = run_diff_index(&rev_info, 1);
 	return diff_result_code(&rev_info.diffopt, result);
 }
+
+void rebase_die_on_unclean_worktree(void)
+{
+	int do_die = 0;
+
+	refresh_and_write_cache(REFRESH_QUIET);
+
+	if (cache_has_unstaged_changes()) {
+		error(_("Cannot rebase: You have unstaged changes."));
+		do_die = 1;
+	}
+
+	if (cache_has_uncommitted_changes()) {
+		if (do_die)
+			error(_("Additionally, your index contains uncommitted changes."));
+		else
+			error(_("Cannot rebase: Your index contains uncommitted changes."));
+		do_die = 1;
+	}
+
+	if (do_die)
+		exit(1);
+}

@@ -16,4 +16,10 @@ int cache_has_unstaged_changes(void);
  */
 int cache_has_uncommitted_changes(void);
 
+/**
+ * If the work tree has unstaged or uncommitted changes, die() with the
+ * appropriate message.
+ */
+void rebase_die_on_unclean_worktree(void);
+
 #endif /* REBASE_COMMON_H */
