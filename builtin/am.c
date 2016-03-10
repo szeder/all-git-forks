@@ -342,28 +342,32 @@ static int am_read_author_script(struct am_state *state)
 }
 
 /**
- * Saves state->author_name, state->author_email and state->author_date in the
- * state directory's "author-script" file.
+ * Writes the ident_script to the author-script file.
  */
-static void write_author_script(const struct am_state *state)
+static void write_author_script(const struct ident_script *ident,
+				const char *filename)
 {
 	struct strbuf sb = STRBUF_INIT;
 
 	strbuf_addstr(&sb, "GIT_AUTHOR_NAME=");
-	sq_quote_buf(&sb, state->author.name);
+	sq_quote_buf(&sb, ident->name);
 	strbuf_addch(&sb, '\n');
 
 	strbuf_addstr(&sb, "GIT_AUTHOR_EMAIL=");
-	sq_quote_buf(&sb, state->author.email);
+	sq_quote_buf(&sb, ident->email);
 	strbuf_addch(&sb, '\n');
 
 	strbuf_addstr(&sb, "GIT_AUTHOR_DATE=");
-	sq_quote_buf(&sb, state->author.date);
+	sq_quote_buf(&sb, ident->date);
 	strbuf_addch(&sb, '\n');
 
-	write_state_text(state, "author-script", sb.buf);
-
+	write_file(filename, "%s", sb.buf);
 	strbuf_release(&sb);
+}
+
+static void am_write_author_script(const struct am_state *state)
+{
+	write_author_script(&state->author, am_path(state, "author-script"));
 }
 
 /**
@@ -1839,7 +1843,7 @@ static void am_run(struct am_state *state, int resume)
 			if (skip)
 				goto next; /* mail should be skipped */
 
-			write_author_script(state);
+			am_write_author_script(state);
 			write_commit_msg(state);
 		}
 
