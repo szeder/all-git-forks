@@ -1214,6 +1214,11 @@ int get_sha1(const char *name, unsigned char *sha1)
 	return get_sha1_with_context(name, 0, sha1, &unused);
 }
 
+int get_oid(const char *name, struct object_id *oid)
+{
+	return get_sha1(name, oid->hash);
+}
+
 /*
  * Many callers know that the user meant to name a commit-ish by
  * syntactical positions where the object name appears.  Calling this
@@ -1231,11 +1236,21 @@ int get_sha1_committish(const char *name, unsigned char *sha1)
 				     sha1, &unused);
 }
 
+int get_oid_committish(const char *name, struct object_id *oid)
+{
+	return get_sha1_committish(name, oid->hash);
+}
+
 int get_sha1_treeish(const char *name, unsigned char *sha1)
 {
 	struct object_context unused;
 	return get_sha1_with_context(name, GET_SHA1_TREEISH,
 				     sha1, &unused);
+}
+
+int get_oid_treeish(const char *name, struct object_id *oid)
+{
+	return get_sha1_treeish(name, oid->hash);
 }
 
 int get_sha1_commit(const char *name, unsigned char *sha1)
@@ -1245,6 +1260,11 @@ int get_sha1_commit(const char *name, unsigned char *sha1)
 				     sha1, &unused);
 }
 
+int get_oid_commit(const char *name, struct object_id *oid)
+{
+	return get_sha1_commit(name, oid->hash);
+}
+
 int get_sha1_tree(const char *name, unsigned char *sha1)
 {
 	struct object_context unused;
@@ -1252,11 +1272,21 @@ int get_sha1_tree(const char *name, unsigned char *sha1)
 				     sha1, &unused);
 }
 
+int get_oid_tree(const char *name, struct object_id *oid)
+{
+	return get_sha1_tree(name, oid->hash);
+}
+
 int get_sha1_blob(const char *name, unsigned char *sha1)
 {
 	struct object_context unused;
 	return get_sha1_with_context(name, GET_SHA1_BLOB,
 				     sha1, &unused);
+}
+
+int get_oid_blob(const char *name, struct object_id *oid)
+{
+	return get_sha1_blob(name, oid->hash);
 }
 
 /* Must be called only when object_name:filename doesn't exist. */
