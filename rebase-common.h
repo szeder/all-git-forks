@@ -52,4 +52,10 @@ int rebase_options_load(struct rebase_options *, const char *dir);
 
 void rebase_options_save(const struct rebase_options *, const char *dir);
 
+void rebase_common_setup(struct rebase_options *, const char *dir);
+
+void rebase_common_destroy(struct rebase_options *, const char *dir);
+
+void rebase_common_finish(struct rebase_options *, const char *dir);
+
 #endif /* REBASE_COMMON_H */
