@@ -60,6 +60,10 @@ static void free_one_config(struct submodule_entry *entry)
 	free((void *) entry->config->path);
 	free((void *) entry->config->name);
 	free((void *) entry->config->update_strategy.command);
+	if (entry->config->labels) {
+		string_list_clear(entry->config->labels, 0);
+		free(entry->config->labels);
+	}
 	free(entry->config);
 }
 
@@ -199,6 +203,7 @@ static struct submodule *lookup_or_create_by_name(struct submodule_cache *cache,
 	submodule->update_strategy.command = NULL;
 	submodule->fetch_recurse = RECURSE_SUBMODULES_NONE;
 	submodule->ignore = NULL;
+	submodule->labels = NULL;
 
 	hashcpy(submodule->gitmodules_sha1, gitmodules_sha1);
 
@@ -353,6 +358,17 @@ static int parse_config(const char *var, const char *value, void *data)
 		else if (parse_submodule_update_strategy(value,
 			 &submodule->update_strategy) < 0)
 				die(_("invalid value for %s"), var);
+	} else if (!strcmp(item.buf, "label")) {
+		if (!value)
+			ret = config_error_nonbool(var);
+		else {
+			if (!submodule->labels) {
+				submodule->labels =
+					xmalloc(sizeof(*submodule->labels));
+				string_list_init(submodule->labels, 1);
+			}
+			string_list_insert(submodule->labels, value);
+		}
 	}
 
 	strbuf_release(&name);
