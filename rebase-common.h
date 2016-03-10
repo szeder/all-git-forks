@@ -11,6 +11,11 @@ void refresh_and_write_cache(unsigned int);
  */
 int cache_has_unstaged_changes(void);
 
+/**
+ * Returns 1 if there are uncommitted changes, 0 otherwise.
+ */
+int cache_has_uncommitted_changes(void);
+
 /* common rebase backend options */
 struct rebase_options {
 	struct object_id onto;
