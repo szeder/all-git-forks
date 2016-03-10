@@ -48,4 +48,8 @@ void rebase_options_release(struct rebase_options *);
 
 void rebase_options_swap(struct rebase_options *dst, struct rebase_options *src);
 
+int rebase_options_load(struct rebase_options *, const char *dir);
+
+void rebase_options_save(const struct rebase_options *, const char *dir);
+
 #endif /* REBASE_COMMON_H */
