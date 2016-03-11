@@ -30,6 +30,13 @@ T = $(sort $(wildcard t[0-9][0-9][0-9][0-9]-*.sh))
 TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
 THELPERS = $(sort $(filter-out $(T),$(wildcard *.sh)))
 
+# GNU make supports exporting all variables by "export" without parameters.
+# However, the environment gets quite big, and some programs have problems
+# with that.
+
+export NO_SVN_TESTS
+export TEST_NO_MALLOC_CHECK
+
 all: $(DEFAULT_TEST_TARGET)
 
 test: pre-clean $(TEST_LINT)

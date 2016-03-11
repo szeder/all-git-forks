@@ -2210,13 +2210,6 @@ bin-wrappers/%: wrap-for-bin.sh
 	     -e 's|@@PROG@@|$(@F)|' < $< > $@ && \
 	chmod +x $@
 
-# GNU make supports exporting all variables by "export" without parameters.
-# However, the environment gets quite big, and some programs have problems
-# with that.
-
-export NO_SVN_TESTS
-export TEST_NO_MALLOC_CHECK
-
 ### Testing rules
 
 test: all
