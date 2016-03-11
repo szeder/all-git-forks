@@ -141,8 +141,6 @@ struct apply_state {
 	enum ws_ignore ws_ignore_action;
 };
 
-static int newfd = -1;
-
 static const char * const apply_usage[] = {
 	N_("git apply [<options>] [<patch>...]"),
 	NULL
@@ -4570,9 +4568,9 @@ static int apply_patch(struct apply_state *state,
 		state->apply = 0;
 
 	state->update_index = state->check_index && state->apply;
-	if (state->update_index && newfd < 0) {
+	if (state->update_index && state->lock_file == NULL) {
 		state->lock_file = xcalloc(1, sizeof(struct lock_file));
-		newfd = hold_locked_index(state->lock_file, 1);
+		hold_locked_index(state->lock_file, 1);
 	}
 
 	if (state->check_index) {
