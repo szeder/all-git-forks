@@ -36,6 +36,9 @@ THELPERS = $(sort $(filter-out $(T),$(wildcard *.sh)))
 
 export NO_SVN_TESTS
 export TEST_NO_MALLOC_CHECK
+export SVNSERVE_PORT
+export LIB_HTTPD_PORT
+export SVN_HTTPD_PORT
 
 all: $(DEFAULT_TEST_TARGET)
 
