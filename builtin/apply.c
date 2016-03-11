@@ -4670,10 +4670,10 @@ static int option_parse_directory(const struct option *opt,
 	return 0;
 }
 
-static void init_apply_state(struct apply_state *state, const char *prefix_)
+static void init_apply_state(struct apply_state *state, const char *prefix)
 {
 	memset(state, 0, sizeof(*state));
-	state->prefix = prefix_;
+	state->prefix = prefix;
 	state->prefix_length = state->prefix ? strlen(state->prefix) : 0;
 	state->apply = 1;
 	state->line_termination = '\n';
@@ -4789,7 +4789,7 @@ static int apply_all_patches(struct apply_state *state,
 	return !!errs;
 }
 
-int cmd_apply(int argc, const char **argv, const char *prefix_)
+int cmd_apply(int argc, const char **argv, const char *prefix)
 {
 	int force_apply = 0;
 	int options = 0;
@@ -4864,7 +4864,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		OPT_END()
 	};
 
-	init_apply_state(&state, prefix_);
+	init_apply_state(&state, prefix);
 
 	argc = parse_options(argc, argv, state.prefix, builtin_apply_options,
 			apply_usage, 0);
