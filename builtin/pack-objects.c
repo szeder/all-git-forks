@@ -23,6 +23,7 @@
 #include "reachable.h"
 #include "sha1-array.h"
 #include "argv-array.h"
+#include "hashmap.h"
 
 static const char *pack_usage[] = {
 	N_("git pack-objects --stdout [<options>...] [< <ref-list> | < <object-list>]"),
@@ -87,6 +88,20 @@ static uint32_t reused, reused_delta;
 static struct commit **indexed_commits;
 static unsigned int indexed_commits_nr;
 static unsigned int indexed_commits_alloc;
+
+/*
+ * pack preindexing
+ */
+static int preindex_packs;
+struct hashmap sha1_to_pack;
+struct sha1_to_pack_entry {
+	struct hashmap_entry entry;
+	unsigned char sha1[20];
+	struct packed_git *pack;
+	off_t off;
+	unsigned any_nonlocal:1;
+	unsigned any_local_and_keep:1;
+};
 
 static void index_commit_for_bitmap(struct commit *commit)
 {
@@ -937,6 +952,55 @@ static int have_duplicate_entry(const unsigned char *sha1,
 	return 1;
 }
 
+static int sha1_to_pack_cmp (const void *entry, const void *entry_or_key,
+		      const void *keydata)
+{
+	const struct sha1_to_pack_entry *existing = entry;
+	const struct sha1_to_pack_entry *incoming = entry_or_key;
+	return hashcmp(existing->sha1, incoming->sha1);
+}
+
+static void prepare_pack_object_index(void)
+{
+
+	int i;
+	struct packed_git *p;
+
+	if (sha1_to_pack.table)
+		return;
+
+	hashmap_init(&sha1_to_pack, sha1_to_pack_cmp, 1000000);
+
+	for (p = packed_git; p; p = p->next) {
+		if (!p->index_data) {
+			if (open_pack_index(p))
+				continue;
+		}
+
+		for (i = 0; i < p->num_objects; i++) {
+			const unsigned char *sha1 = nth_packed_object_sha1(p, i);
+			struct sha1_to_pack_entry *entry = xmalloc(sizeof(*entry));
+			struct sha1_to_pack_entry *old;
+
+			hashcpy(entry->sha1, sha1);
+			entry->any_local_and_keep = p->pack_local && p->pack_keep;
+			entry->any_nonlocal = !p->pack_local;
+
+			hashmap_entry_init(entry, sha1hash(sha1));
+			old = hashmap_get(&sha1_to_pack, entry, NULL);
+			if (old) {
+				old->any_local_and_keep |= entry->any_local_and_keep;
+				old->any_nonlocal |= entry->any_nonlocal;
+			} else {
+				entry->pack = p;
+				entry->off = nth_packed_object_offset(p, i);
+
+				hashmap_put(&sha1_to_pack, entry);
+			}
+		}
+	}
+}
+
 /*
  * Check whether we want the object in the pack (e.g., we do not want
  * objects found in non-local stores if the "--local" option was used).
@@ -957,6 +1021,27 @@ static int want_object_in_pack(const unsigned char *sha1,
 
 	*found_pack = NULL;
 	*found_offset = 0;
+
+	if (preindex_packs) {
+		prepare_pack_object_index();
+		struct sha1_to_pack_entry search_key;
+		hashcpy(search_key.sha1, sha1);
+		hashmap_entry_init(&search_key, sha1hash(sha1));
+		struct sha1_to_pack_entry *e = hashmap_get(&sha1_to_pack, &search_key, NULL);
+		if (!e)
+			return 1;
+		*found_pack = e->pack;
+		*found_offset = e->off;
+		if (exclude)
+			return 1;
+		if (incremental)
+			return 0;
+		if (local && e->any_nonlocal)
+			return 0;
+		if (ignore_packed_keep && e->any_local_and_keep)
+			return 0;
+		return 1;
+	}
 
 	for (p = packed_git; p; p = p->next) {
 		off_t offset = find_pack_entry_one(sha1, p);
@@ -2606,6 +2691,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			 N_("ignore borrowed objects from alternate object store")),
 		OPT_BOOL(0, "incremental", &incremental,
 			 N_("ignore packed objects")),
+		OPT_BOOL(0, "preindex-packs", &preindex_packs,
+			 N_("optimization for case of many packs and many objects.  Incompatible with honor-pack-keep")),
 		OPT_INTEGER(0, "window", &window,
 			    N_("limit pack window by objects")),
 		OPT_MAGNITUDE(0, "window-memory", &window_memory_limit,

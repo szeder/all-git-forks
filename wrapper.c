@@ -713,3 +713,22 @@ void sleep_millisec(int millisec)
 {
 	poll(NULL, 0, millisec);
 }
+
+static int xfsync_os(int fd) {
+#ifdef DARWIN
+	return fcntl(fd, F_FULLSYNC, 0);
+#else
+	return fsync(fd);
+#endif
+}
+
+int xfsync(int fd) {
+	int syncr;
+	do {
+		syncr = xfsync_os(fd) < 0;
+	} while (syncr < 0 && errno == EINTR);
+	if (syncr < 0 && errno != EINTR)
+		warning("fsync (fd %d) failed: %s",
+			fd, strerror(errno));
+	return syncr;
+}

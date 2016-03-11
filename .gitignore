@@ -16,6 +16,7 @@
 /git-apply
 /git-archimport
 /git-archive
+/git-backfill-journal-connectivity
 /git-bisect
 /git-bisect--helper
 /git-blame
@@ -33,6 +34,7 @@
 /git-clean
 /git-clone
 /git-column
+/git-combine-pack
 /git-commit
 /git-commit-tree
 /git-config
@@ -77,6 +79,13 @@
 /git-init-db
 /git-interpret-trailers
 /git-instaweb
+/git-journal-append
+/git-journal-control
+/git-journal-dump
+/git-journal-extents-dump
+/git-journal-fetch
+/git-journal-identity
+/git-journal-verify
 /git-log
 /git-ls-files
 /git-ls-remote

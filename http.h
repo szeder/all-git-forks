@@ -135,10 +135,18 @@ extern void append_remote_object_url(struct strbuf *buf, const char *url,
 extern char *get_remote_object_url(const char *url, const char *hex,
 				   int only_two_digit_prefix);
 
+struct http_range  {
+	unsigned unbounded_upwards:1;
+
+	off_t lower;
+	off_t upper;
+};
+
 /* Options for http_get_*() */
 struct http_get_options {
 	unsigned no_cache:1,
-		 keep_error:1;
+		 keep_error:1,
+		 display_progress : 1;
 
 	/* If non-NULL, returns the content-type of the response. */
 	struct strbuf *content_type;
@@ -163,6 +171,8 @@ struct http_get_options {
 	 * for details.
 	 */
 	struct strbuf *base_url;
+
+	struct http_range *range;
 };
 
 /* Return values for http_get_*() */
@@ -172,6 +182,7 @@ struct http_get_options {
 #define HTTP_START_FAILED	3
 #define HTTP_REAUTH	4
 #define HTTP_NOAUTH	5
+#define HTTP_RANGE_NOT_SATISFIABLE 6
 
 /*
  * Requests a URL and stores the result in a strbuf.
@@ -181,6 +192,11 @@ struct http_get_options {
 int http_get_strbuf(const char *url, struct strbuf *result, struct http_get_options *options);
 
 extern int http_fetch_ref(const char *base, struct ref *ref);
+
+/*
+ * Resumes a file download.
+ */
+int http_resume_file(const char *url, const char *filename, struct http_get_options *options, off_t discard);
 
 /* Helpers for fetching packs */
 extern int http_get_info_packs(const char *base_url,

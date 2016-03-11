@@ -83,6 +83,7 @@ static int read_tree_1(struct tree *tree, struct strbuf *base,
 		case READ_TREE_RECURSIVE:
 			break;
 		default:
+			free_tree_buffer(tree);
 			return -1;
 		}
 
@@ -114,9 +115,12 @@ static int read_tree_1(struct tree *tree, struct strbuf *base,
 				     base, stage, pathspec,
 				     fn, context);
 		strbuf_setlen(base, oldlen);
-		if (retval)
+		if (retval) {
+			free_tree_buffer(tree);
 			return -1;
+		}
 	}
+	free_tree_buffer(tree);
 	return 0;
 }
 

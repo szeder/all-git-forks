@@ -1,0 +1,72 @@
+git-journal-fetch(1)
+===================
+
+NAME
+----
+git-journal-fetch - Download from another repository using journals
+
+
+SYNOPSIS
+--------
+[verse]
+'git journal-fetch' [--no-extract] [--journal-mirror] [--remote=<name>]
+		    [--progress | --no-progress] [--disable-fetch-head]
+		    [--quiet] [--verbose] [--no-detach]
+
+DESCRIPTION
+-----------
+
+Usually you don't want to use this command directly. Instead, 'git
+fetch' will run it for you if the remote is configured for
+journal-based replication.
+
+Fetch refs and objects from another repository using journal-based
+replication. Remote-tracking branches are updated.
+
+include::journal.txt[]
+
+Under the hood, this downloads and replays a journal, installing a
+potentially large number of usually-small packs into the object
+database.  Once it's done, it runs git combine-pack in the background
+to combine all of the small packs (under combinepack.size-limit,
+default 128 MiB).
+
+
+OPTIONS
+-------
+--journal-mirror::
+	Update metadata.bin and connectivity data. Don't delete
+	replayed journals.
+
+--remote<name>::
+	Fetch from the remote named <name>
+
+--progress::
+	Display progress (default: only on interactive sessions).
+
+--no-progress::
+	Inhibit display of progress.
+
+--disable-fetch-head:
+	Disable writing of FETCH_HEAD for extracted tips
+
+--no-extract::
+	Don't extract packs and refs from the journal.  Useful for
+	debugging journal problems.
+
+--no-detach::
+	Run combine-pack in the foreground instead of in the background.
+
+--quiet::
+	Minimal output.
+
+--verbose::
+	Increase diagnostic output.
+
+SEE ALSO
+--------
+linkgit:git-fetch[1]
+
+GIT
+---
+Part of the linkgit:git[1] suite

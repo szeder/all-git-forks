@@ -1,0 +1,48 @@
+git-combine-pack(1)
+===================
+
+NAME
+----
+git-combine-pack - Combine multiple packs stupidly
+
+
+SYNOPSIS
+--------
+[verse]
+'git combine-pack' [--size-lower-bound=<bytes>] [--size-upper-bound=<bytes>]
+
+DESCRIPTION
+-----------
+Usually you don't want to use this command directly. Instead, try
+'git gc'.
+
+Combines all packs meeting the size criteria (default: all packs) into
+one pack.  When there are many pack files, many git operations become
+slow.  The 'combine-pack' command solves this problem by combining all
+packs into one big pack.  This computation is not smart like gc -- it
+doesn't compute deltas.  It just creates the new pack file with the
+contents of several old ones.  However, it does eliminate duplicate
+objects.  This command is much faster than 'git gc', since it need not
+compute deltas.
+
+Combining packs uses additional space roughly proportional to the
+size of the packs less any savings from the removal of duplicate objects.
+
+OPTIONS
+-------
+--size-lower-bound::
+	Only combine packs smaller than the given size. This saves on
+	working space, since the objects in large packs won't be
+	copied, but produces a less-optimal result.
+
+--size-upper-bound::
+	Only combine packs larger than the given size.
+
+SEE ALSO
+--------
+linkgit:git-gc[1]
+linkgit:git-repack[1]
+
+GIT
+---
+Part of the linkgit:git[1] suite

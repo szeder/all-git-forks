@@ -402,6 +402,17 @@ test_expect_success 'tolerate packsizelimit smaller than biggest object' '
 	test 5 = $(ls test-11-*.pack | wc -l)
 '
 
+#it's just faster with many packs
+test_expect_success 'preindex-packs does not change anything' '
+	git config pack.packSizeLimit 1 &&
+	packname_12=$(git pack-objects --preindex-packs test-12 <obj-list) &&
+	for i in test-11-*.pack;
+	do
+		cmp=$(echo "$i" |sed s/^test-11/test-12/) &&
+		test_cmp $i $cmp
+	done
+'
+
 test_expect_success 'verify resulting packs' '
 	git verify-pack test-11-*.pack
 '

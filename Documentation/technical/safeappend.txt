@@ -1,0 +1,17 @@
+Safeappend files
+================
+
+POSIX provides no guarantees about the order that data will be written
+to disk, except that after a successful fsync() all data will have
+been written.  This means that it is possible to append some data to a
+file, then crash, leaving garbage in the place of the appended data
+(see
+https://www.usenix.org/system/files/conference/osdi14/osdi14-paper-pillai.pdf
+for more information).  To solve this, "safeappend" files have an
+associated size file, containing an 8-byte (network byte order)
+safely-written (fsynced) size for the main file.  Appends can go
+directly to the main file.  On commit, the main file is fsync'ed, then
+the size file is written using the standard [write-to-tempfile, fsync,
+rename] strategy.  If a size file is absent, it is assumed to contain
+zero.  When a safeappend file is opened, it is truncated to the size
+stored in its size file to eliminate any potential garbage data.

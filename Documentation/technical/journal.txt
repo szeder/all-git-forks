@@ -1,0 +1,226 @@
+Journal-based replication
+=========================
+
+In order to optimize git fetches on large repositories, a
+journal-based replication scheme can be used.  The advantage of this scheme
+is that there is no need for the client and server to negotiate, nor for
+the server to construct custom packs for each client.  Instead, the client
+is simply given all data that the server has received.
+
+The disadvantage is that selective fetches are not possible.  The server
+sends all refs and objects that it knows about to the client.
+
+Object connectivity
+===================
+
+When git receives a push, it wants to write the received pack to the
+journal.  A pack refers to some set of objects that are not contained
+in the pack itself but that the server is believed to already have.
+That belief is based on the set of refs that the server tells the
+pushing client about.  But there's a race condition: what if a ref is
+changed on the server before the push is received?  To solve this, we
+refcount all objects in the git database.  The roots are the live
+refs.  When a ref is changed, the objects it refers to have their
+counts adjusted.  When a pack is added to the journal, we check its
+counts, and refuse to add it if any objects have no references
+(counting refs that are to be added with this pack).
+
+On the client side, we don't mark a pack as replayed until a following
+ref has been replayed.  This means that if the client happens to grab
+the journal at a time when the pack has been replicated but the ref
+has not, and then the client runs git gc, the client will not lose
+data.
+
+On a fetch, a client ref update might fail (for instance, due to a d/f
+conflict caused by a case-insensitive filesystem).  We solve this
+problem by writing the values of a failed ref update to a ref named
+refs/failed-updates/<remote>/failed-<sha>.  This will ensure that
+objects referenced by the refs that we skipped will remain live.
+Unfortunately, it will keep them live even past the date when they are
+needed.  If you know you won't need a particular one, you could
+manually remove it.
+
+Also on fetch, we do updates in the order (delete, then
+create/update).  This is the opposite of the order that git's ref
+update infrastructure normally does things.  The ref update
+infrastructure is trying to prevent objects from being left
+temporarily unreferenced in the event of a delete/create pair being
+interrupted in the middle.  Journal-fetch solves this problem in a
+different way: before deleting refs, it backs them up to
+refs/to-be-deleted/<remote>/<n>, where n is an autoincrementing
+integer. If there are any existing refs there (from a previous
+failure), it skips those numbers.  At the end of each a successful
+journal-fetch, all refs in refs/to-be-deleted/<remote> are deleted.
+This ensures that all objects remain live until all ref updates from
+the journal have been fully replayed.
+
+Journal mirroring
+=================
+
+Git journal-fetch supports a mirroring mode.  This is intended to
+allow secondary git servers to replicate the journal and then serve
+reads.
+
+Reads should only happen from mirrors -- not from the primary server.
+This breaks read-your-writes and can allow acknowledged writes to be
+lost.  But the alternative is that some data might be read from master
+that is not yet mirrored.  In the event of a crash, this may leave
+client' journals in a state inconsistent from the new primary's
+journal.
+
+If the primary server goes down, the new primary must be the one that
+has the longest journal.  If that server, too, has gone down, you are
+in a bad state: some client might have replicated state from the
+now-deceased longest journal.  Your only hope is to find those clients
+and compare their repo state to a client whose repo has only replayed
+fully-replicated data.  Then recreate the packs (or equivalent packs) to
+restore the lost data to the new primary.
+
+Server journal structure
+========================
+
+All journal data is stored in network byte order.
+
+== Liveness data
+The server's object liveness data is stored in a lmdb database in
+$GIT_DIR/connectivity-lmdb.
+
+Each key in the data store is a 20-byte sha1.  Values begin with a
+4-byte type.
+
+The available types are:
+
+Packs:
+     - type = 1: a pack.  This contains no data after the type; the
+       only thing that is recored is that the pack is present in the
+       journal.
+
+ODB objects, after their type, start with a 4-byte ref count. The ODB
+object types are:
+     - type = 1000: a commit.  After the type and refcount, this contains a
+       4-byte count of originated objects, and n * 20 sha1s of those
+       objects.
+
+     - type = 1001: a non-commit object.  This contains nothing after
+       the reference count.
+
+The ref count is the number of originating references
+to the object.  For example, consider the following commit history:
+
+		     A---B---C topic
+		    /         \
+	       C---D---E---F---G---H master
+
+Commits A and E might both add a new file with contents "example".
+Because that blob doesn't exist in "D" or in any other commit, both A
+and E are said to originate it.  So that blob has a ref count of 2
+(from A and E's trees).  If commits B and F remove that blob, and H
+re-adds it, H is usually not considered to have originated it.  It is
+permitted to count H as an originator if it simplifies implementation,
+but at present ref-counting is exact.
+
+A ref is counted as originating the commit that it references.  An
+annotated tag object also originates the commit it references (and is
+itself referenced from a lightweight tag).
+
+== Journaled data
+
+On the server, the journal data is stored into a sequence of journal
+files, each identified by a hexadecimal serial number, e.g. 0.bin,
+1.bin, etc.  When a journal would exceed the size limit, subsequent
+updates will go to the next journal file.
+
+== A journal file consists of a sequence of operation records.  Each
+record starts with a header, consisting of:
+
+     - 1-byte opcode
+     - 20-byte sha1
+     - 4-byte record length
+
+== The currently-defined opcodes are:
+   - 'i': index
+
+      Index records consist of a header, followed by a pack index.
+      See pack-format.txt for the format of a pack index.  The header's
+      sha1 is the sha1 of the pack.
+
+   - 'p': pack
+
+      Pack records consist of a header, followed by a pack file.
+      See pack-format.txt for the format of a pack file.  The header's
+      sha1 is the sha1 of the pack.
+
+   - 'r': ref
+
+      Ref records consist of a header, followed by the ref name that is to
+      be updated.  The header's sha1 is the new value for the ref.
+
+   - 'V': upgrade
+
+      Upgrade records consist of a header, with (presently) zero
+      length. The sha1 field of the header does not store a sha1.
+      Instead, the first 2 bytes stores the new version of the journal
+      wire format; the rest is undefined.  The current version of
+      the format is 1.  This allows old clients to correctly fail
+      when the journal formats are upgraded.
+
+A file called extents.bin holds a list of record metadata for the
+journal file.  This is a safeappend file - see safeappend.txt for
+details.
+
+== The format of each record in extents.bin is:
+
+   - 4-byte journal serial number
+
+   - 4-byte offset number
+
+   - 4-byte record length number
+
+The extents.bin file can be used to more efficiently seek to
+a particular record in a journal.  It also tracks the state of the
+journal across journal files.
+
+== metadata.bin stores the current journal's serial number.  The
+   format is:
+
+   - 2-byte magic number 'TG'
+   - 2-byte field reserved for future expansion
+   - 4-byte journal serial number
+
+Configuration
+=============
+
+journal.maxPackSize::
+	journal-append will refuse to add packs larger
+	than this to the journal.
+
+journal.size-limit::
+	Each journal file's size is capped at a size
+	controlled by the journal.size-limit config variable.  The
+	default is 3g.
+
+
+It's important that the following config variables be set:
+receive.unpackLimit=1
+transfer.unpackLimit=1
+
+This prevents the server from ever unpacking packs sent by the client.
+If the server were to unpack these packs, they could not be added to
+the journal, and clients could never receive them.
+
+Client journal structure
+========================
+The client's journal state is maintained in several files, all in
+$GIT_DIR/objects/journals/[remote]/:
+
+== state.bin holds a 4-byte unsigned integer, recording the client's offset
+   in extents.bin
+
+== extents.bin is downloaded directly from the server using HTTP range
+   requests. The client simply appends to the file.  This is a
+   safeappend file.
+
+== %x.bin, where %x is the serial number of a recent journal.
+   There might be a few of these files, if there are multiple recent
+   journals.  These store the not-yet-processed portion of the
+   journal.  These are safeappend files.

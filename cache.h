@@ -1851,4 +1851,11 @@ void sleep_millisec(int millisec);
  */
 void safe_create_dir(const char *dir, int share);
 
+/*
+ * Ensure that data written to a file descriptor has been written to
+ * disk. Calls the operating system-specific call that does this (it's
+ * not always fsync!) and retries on interrupts.
+ */
+int xfsync(int fd);
+
 #endif /* CACHE_H */

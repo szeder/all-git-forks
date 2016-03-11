@@ -393,6 +393,7 @@ static struct cmd_struct commands[] = {
 	{ "clean", cmd_clean, RUN_SETUP | NEED_WORK_TREE },
 	{ "clone", cmd_clone },
 	{ "column", cmd_column, RUN_SETUP_GENTLY },
+	{ "combine-pack", cmd_combine_pack, RUN_SETUP },
 	{ "commit", cmd_commit, RUN_SETUP | NEED_WORK_TREE },
 	{ "commit-tree", cmd_commit_tree, RUN_SETUP },
 	{ "config", cmd_config, RUN_SETUP_GENTLY },
