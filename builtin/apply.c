@@ -4778,7 +4778,7 @@ static int apply_all_patches(struct apply_state *state,
 	return !!errs;
 }
 
-int cmd_apply(int argc, const char **argv, const char *prefix_)
+int cmd_apply(int argc, const char **argv, const char *prefix)
 {
 	int force_apply = 0;
 	int options = 0;
@@ -4853,7 +4853,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 		OPT_END()
 	};
 
-	init_apply_state(&state, prefix_);
+	init_apply_state(&state, prefix);
 
 	argc = parse_options(argc, argv, state.prefix, builtin_apply_options,
 			apply_usage, 0);
