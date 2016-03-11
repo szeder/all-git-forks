@@ -57,7 +57,6 @@ struct apply_state {
 	 * lock_file structures, it isn't safe to free(lock_file).
 	 */
 	struct lock_file *lock_file;
-	int newfd;
 
 	int apply;
 	int allow_overlap;
@@ -4569,9 +4568,9 @@ static int apply_patch(struct apply_state *state,
 		state->apply = 0;
 
 	state->update_index = state->check_index && state->apply;
-	if (state->update_index && state->newfd < 0) {
+	if (state->update_index && state->lock_file == NULL) {
 		state->lock_file = xcalloc(1, sizeof(struct lock_file));
-		state->newfd = hold_locked_index(state->lock_file, 1);
+		hold_locked_index(state->lock_file, 1);
 	}
 
 	if (state->check_index) {
@@ -4679,7 +4678,6 @@ static void init_apply_state(struct apply_state *state, const char *prefix)
 	state->prefix = prefix;
 	state->prefix_length = state->prefix ? strlen(state->prefix) : 0;
 	state->apply = 1;
-	state->newfd = -1;
 	state->line_termination = '\n';
 	state->p_value = 1;
 	state->p_context = UINT_MAX;
