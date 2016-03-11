@@ -4668,10 +4668,10 @@ static int option_parse_directory(const struct option *opt,
 	return 0;
 }
 
-static void init_apply_state(struct apply_state *state, const char *prefix_)
+static void init_apply_state(struct apply_state *state, const char *prefix)
 {
 	memset(state, 0, sizeof(*state));
-	state->prefix = prefix_;
+	state->prefix = prefix;
 	state->prefix_length = state->prefix ? strlen(state->prefix) : 0;
 	state->apply = 1;
 	state->line_termination = '\n';
