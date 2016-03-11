@@ -52,6 +52,12 @@ struct apply_state {
 	const char *prefix;
 	int prefix_length;
 
+	/*
+	 * Since lockfile.c keeps a linked list of all created
+	 * lock_file structures, it isn't safe to free(lock_file).
+	 */
+	struct lock_file *lock_file;
+
 	int apply;
 	int allow_overlap;
 	int apply_in_reverse;
@@ -4517,8 +4523,6 @@ static int write_out_results(struct apply_state *state, struct patch *list)
 	return errs;
 }
 
-static struct lock_file lock_file;
-
 #define INACCURATE_EOF	(1<<0)
 #define RECOUNT		(1<<1)
 
@@ -4566,8 +4570,10 @@ static int apply_patch(struct apply_state *state,
 		state->apply = 0;
 
 	state->update_index = state->check_index && state->apply;
-	if (state->update_index && newfd < 0)
-		newfd = hold_locked_index(&lock_file, 1);
+	if (state->update_index && newfd < 0) {
+		state->lock_file = xcalloc(1, sizeof(struct lock_file));
+		newfd = hold_locked_index(state->lock_file, 1);
+	}
 
 	if (state->check_index) {
 		if (read_cache() < 0)
@@ -4780,7 +4786,7 @@ static int apply_all_patches(struct apply_state *state,
 	}
 
 	if (state->update_index) {
-		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
+		if (write_locked_index(&the_index, state->lock_file, COMMIT_LOCK))
 			die(_("Unable to write new index file"));
 	}
 
