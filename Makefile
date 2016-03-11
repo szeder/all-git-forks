@@ -782,6 +782,7 @@ LIB_OBJS += read-cache.o
 LIB_OBJS += rebase-am.o
 LIB_OBJS += rebase-common.o
 LIB_OBJS += rebase-merge.o
+LIB_OBJS += rebase-todo.o
 LIB_OBJS += reflog-walk.o
 LIB_OBJS += refs.o
 LIB_OBJS += refs/files-backend.o
