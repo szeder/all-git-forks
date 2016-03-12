@@ -233,6 +233,13 @@ Performance, Internal Implementation, Development Support etc.
  * There is a new DEVELOPER knob that enables many compiler warning
    options in the Makefile.
 
+ * The way the test scripts configure the Apache web server has been
+   updated to work also for Apache 2.4 running on RedHat derived
+   distros.
+
+ * Out of maintenance gcc on OSX 10.6 fails to compile the code in
+   'master'; work it around by using clang by default on the platform.
+
 
 Also contains various documentation updates and code clean-ups.
 
@@ -273,6 +280,11 @@ notes for details).
  * The ignore mechanism saw a few regressions around untracked file
    listing and sparse checkout selection areas in 2.7.0; the change
    that is responsible for the regression has been reverted.
+
+ * Another try to improve the ignore mechanism that lets you say "this
+   is excluded" and then later say "oh, no, this part (that is a
+   subset of the previous part) is not excluded".  This has still a
+   known limitation, though.
 
  * Some codepaths used fopen(3) when opening a fixed path in $GIT_DIR
    (e.g. COMMIT_EDITMSG) that is meant to be left after the command is
@@ -365,10 +377,6 @@ notes for details).
    misbehaved when run from a subdirectory.
    (merge 17f1365 nd/git-common-dir-fix later to maint).
 
- * Another try to add support to the ignore mechanism that lets you
-   say "this is excluded" and then later say "oh, no, this part (that
-   is a subset of the previous part) is not excluded".
-
  * "git worktree add -B <branchname>" did not work.
 
  * The "v(iew)" subcommand of the interactive "git am -i" command was
@@ -409,6 +417,11 @@ notes for details).
    configuration file failed when it was run outside any repository,
    but didn't say the reason correctly.
    (merge 638fa62 js/config-set-in-non-repository later to maint).
+
+ * The code to read the pack data using the offsets stored in the pack
+   idx file has been made more carefully check the validity of the
+   data in the idx.
+   (merge 7465feb jk/pack-idx-corruption-safety later to maint).
 
  * Other minor clean-ups and documentation updates
    (merge f459823 ak/extract-argv0-last-dir-sep later to maint).
