@@ -454,10 +454,10 @@ static void say_patch_name(FILE *output, const char *fmt, struct patch *patch)
 
 #define SLOP (16)
 
-static void read_patch_file(struct strbuf *sb, int fd)
+static int read_patch_file(struct strbuf *sb, int fd)
 {
 	if (strbuf_read(sb, fd, 0) < 0)
-		die_errno("git apply: failed to read");
+		return error("git apply: failed to read: %s", strerror(errno));
 
 	/*
 	 * Make sure that we have some slop in the buffer
@@ -466,6 +466,7 @@ static void read_patch_file(struct strbuf *sb, int fd)
 	 */
 	strbuf_grow(sb, SLOP);
 	memset(sb->buf + sb->len, 0, SLOP);
+	return 0;
 }
 
 static unsigned long linelen(const char *buffer, unsigned long size)
@@ -4550,7 +4551,8 @@ static int apply_patch(struct apply_state *state,
 	int skipped_patch = 0;
 
 	state->patch_input_file = filename;
-	read_patch_file(&buf, fd);
+	if (read_patch_file(&buf, fd))
+		return -1;
 	offset = 0;
 	while (offset < buf.len) {
 		struct patch *patch;
