@@ -146,34 +146,34 @@ static const char * const apply_usage[] = {
 	NULL
 };
 
-static void parse_whitespace_option(struct apply_state *state, const char *option)
+static int parse_whitespace_option(struct apply_state *state, const char *option)
 {
 	if (!option) {
 		state->ws_error_action = warn_on_ws_error;
-		return;
+		return 0;
 	}
 	if (!strcmp(option, "warn")) {
 		state->ws_error_action = warn_on_ws_error;
-		return;
+		return 0;
 	}
 	if (!strcmp(option, "nowarn")) {
 		state->ws_error_action = nowarn_ws_error;
-		return;
+		return 0;
 	}
 	if (!strcmp(option, "error")) {
 		state->ws_error_action = die_on_ws_error;
-		return;
+		return 0;
 	}
 	if (!strcmp(option, "error-all")) {
 		state->ws_error_action = die_on_ws_error;
 		state->squelch_whitespace_errors = 0;
-		return;
+		return 0;
 	}
 	if (!strcmp(option, "strip") || !strcmp(option, "fix")) {
 		state->ws_error_action = correct_ws_error;
-		return;
+		return 0;
 	}
-	die(_("unrecognized whitespace option '%s'"), option);
+	return 1;
 }
 
 static void parse_ignorewhitespace_option(struct apply_state *state,
@@ -4656,9 +4656,14 @@ static int option_parse_space_change(const struct option *opt,
 static int option_parse_whitespace(const struct option *opt,
 				   const char *arg, int unset)
 {
+	int res = 0;
 	struct apply_state *state = opt->value;
+
 	state->whitespace_option = arg;
-	parse_whitespace_option(state, arg);
+	res = parse_whitespace_option(state, arg);
+	if (!res)
+		die(_("unrecognized whitespace option '%s'"), arg);
+
 	return 0;
 }
 
