@@ -2776,9 +2776,18 @@ class P4Sync(Command, P4UserMap):
         self.gitStream.write("committer %s\n" % committer)
 
         self.gitStream.write("data <<EOT\n")
-        self.gitStream.write(details["desc"])
+
+        commitMessage = details['desc']
+        subRegex = re.compile(r'^/(.+)/(.*)/$', re.VERBOSE)
+        for subConfig in gitConfigList('git-p4.commitMessageSubstitution'):
+            sub = subRegex.findall(subConfig)
+            if sub and len(sub[0]) == 2:
+                commitMessage = re.sub(sub[0][0], sub[0][1], commitMessage)
+        self.gitStream.write(commitMessage)
+
         if len(jobs) > 0:
             self.gitStream.write("\nJobs: %s" % (' '.join(jobs)))
+
         self.gitStream.write("\n[git-p4: depot-paths = \"%s\": change = %s" %
                              (','.join(self.branchPrefixes), details["change"]))
         if len(details['options']) > 0:
