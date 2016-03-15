@@ -272,13 +272,12 @@ static void describe(const char *arg, int last_one)
 		fprintf(stderr, _("searching to describe %s\n"), arg);
 
 	if (!have_util) {
-		struct hashmap_iter iter;
 		struct commit *c;
-		struct commit_name *n = hashmap_iter_first(&names, &iter);
-		for (; n; n = hashmap_iter_next(&iter)) {
-			c = lookup_commit_reference_gently(n->peeled, 1);
+
+		for_each_hashmap_entry(&names, commit_name) {
+			c = lookup_commit_reference_gently(entry->peeled, 1);
 			if (c)
-				c->util = n;
+				c->util = entry;
 		}
 		have_util = 1;
 	}

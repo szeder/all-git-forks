@@ -95,4 +95,11 @@ static inline const char *strintern(const char *string)
 	return memintern(string, strlen(string));
 }
 
+#define for_each_hashmap_entry(map, type)		\
+	struct type *entry;				\
+	struct hashmap_iter iter;			\
+							\
+	hashmap_iter_init(map, &iter);			\
+	while ((entry = hashmap_iter_next(&iter)))
+
 #endif

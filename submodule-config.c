@@ -65,16 +65,12 @@ static void free_one_config(struct submodule_entry *entry)
 
 static void cache_free(struct submodule_cache *cache)
 {
-	struct hashmap_iter iter;
-	struct submodule_entry *entry;
-
 	/*
 	 * We iterate over the name hash here to be symmetric with the
 	 * allocation of struct submodule entries. Each is allocated by
 	 * their .gitmodule blob sha1 and submodule name.
 	 */
-	hashmap_iter_init(&cache->for_name, &iter);
-	while ((entry = hashmap_iter_next(&iter)))
+	for_each_hashmap_entry(&cache->for_name, submodule_entry)
 		free_one_config(entry);
 
 	hashmap_free(&cache->for_path, 1);

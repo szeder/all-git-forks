@@ -193,6 +193,11 @@ more entries.
 `hashmap_iter_first` is a combination of both (i.e. initializes the iterator
 and returns the first entry, if any).
 
+`for_each_hashmap_entry`::
+
+	Allows iterate over entries of the given map with the given entry
+	type.
+
 `const char *strintern(const char *string)`::
 `const void *memintern(const void *data, size_t len)`::
 
