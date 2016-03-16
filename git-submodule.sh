@@ -653,6 +653,12 @@ cmd_update()
 		--jobs=*)
 			jobs=$1
 			;;
+		--local)
+			option_local="--local"
+			;;
+		--no-local)
+			option_local="--no-local"
+			;;
 		--)
 			shift
 			break
@@ -680,6 +686,7 @@ cmd_update()
 		${reference:+--reference "$reference"} \
 		${depth:+--depth "$depth"} \
 		${jobs:+$jobs} \
+		${option_local:+$option_local} \
 		"$@" || echo "#unmatched"
 	} | {
 	err=

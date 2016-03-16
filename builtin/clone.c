@@ -734,6 +734,20 @@ static int checkout(void)
 		    || (option_shallow_submodules == -1 && option_depth))
 			argv_array_push(&args, "--depth=1");
 
+		switch (option_local) {
+		case 1:
+			argv_array_push(&args, "--local");
+			break;
+		case 0:
+			argv_array_push(&args, "--no-local");
+			break;
+		case -1:
+			/* pass nothing */
+			break;
+		default:
+			die("BUG: option_local out of range");
+		}
+
 		if (max_jobs != -1)
 			argv_array_pushf(&args, "--jobs=%d", max_jobs);
 
