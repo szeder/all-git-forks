@@ -507,6 +507,19 @@ static inline int ends_with(const char *str, const char *suffix)
 	return strip_suffix(str, suffix, &len);
 }
 
+#ifdef STRIP_EXTENSION
+static inline const char *strip_extension(const char *str)
+{
+	size_t len;
+
+	if (strip_suffix(str, STRIP_EXTENSION, &len))
+		return xmemdupz(str, len);
+	return str;
+}
+#else
+#define strip_extension(cmd) cmd
+#endif
+
 #if defined(NO_MMAP) || defined(USE_WIN32_MMAP)
 
 #ifndef PROT_READ
