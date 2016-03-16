@@ -4583,6 +4583,8 @@ static int apply_patch(struct apply_state *state,
 		nr = parse_chunk(state, buf.buf + offset, buf.len - offset, patch);
 		if (nr < 0) {
 			free_patch(patch);
+			if (nr < -1)
+				return -1;
 			break;
 		}
 		if (state->apply_in_reverse)
