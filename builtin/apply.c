@@ -4552,8 +4552,10 @@ static int apply_patch(struct apply_state *state,
 		patch->inaccurate_eof = !!(options & INACCURATE_EOF);
 		patch->recount =  !!(options & RECOUNT);
 		nr = parse_chunk(state, buf.buf + offset, buf.len - offset, patch);
-		if (nr < 0)
+		if (nr < 0) {
+			free_patch(patch);
 			break;
+		}
 		if (state->apply_in_reverse)
 			reverse_patches(patch);
 		if (use_patch(state, patch)) {
