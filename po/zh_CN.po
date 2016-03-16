@@ -1253,12 +1253,12 @@ msgstr "未能识别的格式：%%(%s)"
 #: ref-filter.c:77
 #, fuzzy, c-format
 msgid "%%(body) does not take arguments"
-msgstr "--name-only 无意义"
+msgstr "%%(body) 不接受参数"
 
 #: ref-filter.c:84
 #, fuzzy, c-format
 msgid "%%(subject) does not take arguments"
-msgstr "--check 无意义"
+msgstr "%%(subject) 不接受参数"
 
 #: ref-filter.c:101
 #, c-format
@@ -1318,31 +1318,31 @@ msgstr "格式：使用了 %%(end) 元素却没有它的对应元素"
 #: ref-filter.c:424
 #, fuzzy, c-format
 msgid "malformed format string %s"
-msgstr "非法的对象于 '%s'"
+msgstr "错误的格式化字符串 %s"
 
 #: ref-filter.c:878
 msgid ":strip= requires a positive integer argument"
-msgstr ""
+msgstr ":strip= 要求提供一个正整数作为参数"
 
 #: ref-filter.c:883
 #, fuzzy, c-format
 msgid "ref '%s' does not have %ld components to :strip"
-msgstr "路径 '%s' 没有全部必须的版本"
+msgstr "引用 '%s' 没有 %ld 个组件给 :strip"
 
 #: ref-filter.c:1046
 #, fuzzy, c-format
 msgid "unknown %.*s format %s"
-msgstr "未知提交 %s"
+msgstr "未知的 %.*s 格式 %s"
 
 #: ref-filter.c:1066 ref-filter.c:1097
 #, fuzzy, c-format
 msgid "missing object %s for %s"
-msgstr "允许丢失的对象"
+msgstr "缺失对象 %s 对于 %s"
 
 #: ref-filter.c:1069 ref-filter.c:1100
 #, c-format
 msgid "parse_object_buffer failed on %s for %s"
-msgstr ""
+msgstr "parse_object_buffer 在 %s 处出错对于 %s"
 
 #: ref-filter.c:1311
 #, c-format
@@ -1352,12 +1352,12 @@ msgstr "非法的对象于 '%s'"
 #: ref-filter.c:1373
 #, fuzzy, c-format
 msgid "ignoring ref with broken name %s"
-msgstr "忽略模版 %s"
+msgstr "忽略引用因其名字 %s 出错"
 
 #: ref-filter.c:1378
 #, fuzzy, c-format
 msgid "ignoring broken ref %s"
-msgstr "忽略模版 %s"
+msgstr "忽略错误引用 %s"
 
 #: ref-filter.c:1651
 #, c-format
@@ -1769,17 +1769,17 @@ msgstr "无法读取 %s"
 
 #: sha1_file.c:1080
 msgid "offset before end of packfile (broken .idx?)"
-msgstr ""
+msgstr "偏移量位于包文件结尾之前（损坏的 .idx？）"
 
 #: sha1_file.c:2459
 #, c-format
 msgid "offset before start of pack index for %s (corrupt index?)"
-msgstr ""
+msgstr "偏移量位于 %s 的包索引开始之前（corrupt 索引？）"
 
 #: sha1_file.c:2463
 #, c-format
 msgid "offset beyond end of pack index for %s (truncated index?)"
-msgstr ""
+msgstr "偏移量位于 %s 的包索引结尾之后（被截断的 index？）"
 
 #: sha1_name.c:462
 msgid ""
@@ -1828,7 +1828,7 @@ msgstr "将更新后 .gitmodules 添加暂存区失败"
 #: trailer.c:237
 #, fuzzy, c-format
 msgid "running trailer command '%s' failed"
-msgstr "无法合并树 %s 和 %s"
+msgstr "执行trailer命令 '%s' 失败"
 
 #: trailer.c:492 trailer.c:496 trailer.c:500 trailer.c:554 trailer.c:558
 #: trailer.c:562
@@ -4317,7 +4317,7 @@ msgstr "HEAD 目前位于"
 #: builtin/checkout.c:665 builtin/clone.c:659
 #, fuzzy
 msgid "unable to update HEAD"
-msgstr "不能解析 HEAD"
+msgstr "无法更新 HEAD"
 
 #: builtin/checkout.c:669
 #, c-format
@@ -4847,6 +4847,8 @@ msgid ""
 "No directory name could be guessed.\n"
 "Please specify a directory on the command line"
 msgstr ""
+"无法猜测目录名称。\n"
+"请在命令行指定一个目录"
 
 #: builtin/clone.c:305
 #, c-format
@@ -4925,7 +4927,7 @@ msgstr "远程没有发送所有必须的对象"
 #: builtin/clone.c:647
 #, fuzzy, c-format
 msgid "unable to update %s"
-msgstr "不能打开 %s"
+msgstr "不能更新 %s"
 
 #: builtin/clone.c:696
 msgid "remote HEAD refers to nonexistent ref, unable to checkout.\n"
@@ -4938,7 +4940,7 @@ msgstr "不能检出工作区"
 #: builtin/clone.c:753
 #, fuzzy
 msgid "unable to write parameters to config file"
-msgstr "无法写标签文件"
+msgstr "无法将参数写入配置文件"
 
 #: builtin/clone.c:816
 msgid "cannot repack to clean up"
@@ -7329,8 +7331,8 @@ msgid ""
 "git interpret-trailers [--in-place] [--trim-empty] [(--trailer "
 "<token>[(=|:)<value>])...] [<file>...]"
 msgstr ""
-"git interpret-trailers [--in-place] [--trim-empty] [(--trailer <键>[(=|:)<值"
-">])...] [<文件>...]"
+"git interpret-trailers [--in-place] [--trim-empty] [(--trailer "
+"<键>[(=|:)<值>])...] [<文件>...]"
 
 #: builtin/interpret-trailers.c:26
 msgid "edit files in place"
@@ -11381,7 +11383,7 @@ msgstr "更新远程引用和相关的对象"
 
 #: common-cmds.h:32
 msgid "Reapply commits on top of another base tip"
-msgstr ""
+msgstr "在另一个分支上重新应用这些提交"
 
 #: common-cmds.h:33
 msgid "Reset current HEAD to the specified state"
