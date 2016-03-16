@@ -153,8 +153,7 @@ static void list_commands_in_dir(struct cmdnames *cmds,
 			continue;
 
 		entlen = strlen(ent);
-		strip_suffix(ent, ".exe", &entlen);
-
+		ent = strip_extension(ent);
 		add_cmdname(cmds, ent, entlen);
 	}
 	closedir(dir);
