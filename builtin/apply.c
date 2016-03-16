@@ -1987,6 +1987,11 @@ static struct fragment *parse_binary_hunk(struct apply_state *state,
 	return NULL;
 }
 
+/*
+ * Returns:
+ *   -1 in case of error,
+ *   the length of the parsed binary patch otherwise
+ */
 static int parse_binary(struct apply_state *state,
 			char *buffer,
 			unsigned long size,
@@ -2137,6 +2142,8 @@ static int parse_chunk(struct apply_state *state, char *buffer, unsigned long si
 			state->linenr++;
 			used = parse_binary(state, buffer + hd + llen,
 					    size - hd - llen, patch);
+			if (used < 0)
+				exit(1);
 			if (used)
 				patchsize = used + llen;
 			else
