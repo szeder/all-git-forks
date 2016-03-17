@@ -89,6 +89,7 @@ static void setup_commit_formats(void)
 	struct cmt_fmt_map builtin_formats[] = {
 		{ "raw",	CMIT_FMT_RAW,		0 },
 		{ "medium",	CMIT_FMT_MEDIUM,	0 },
+		{ "noexpand",	CMIT_FMT_NOEXPAND,	0 },
 		{ "short",	CMIT_FMT_SHORT,		0 },
 		{ "email",	CMIT_FMT_EMAIL,		0 },
 		{ "fuller",	CMIT_FMT_FULLER,	0 },
@@ -1685,11 +1686,16 @@ static void strbuf_add_tabexpand(struct strbuf *sb,
  * the whole line (without the final newline), after
  * de-tabifying.
  */
-static void pp_handle_indent(struct strbuf *sb, int indent,
+static void pp_handle_indent(struct pretty_print_context *pp,
+			     struct strbuf *sb,
+			     int indent,
 			     const char *line, int linelen)
 {
 	strbuf_addchars(sb, ' ', indent);
-	strbuf_add_tabexpand(sb, line, linelen);
+	if (pp->fmt == CMIT_FMT_MEDIUM)
+		strbuf_add_tabexpand(sb, line, linelen);
+	else
+		strbuf_add(sb, line, linelen);
 }
 
 void pp_remainder(struct pretty_print_context *pp,
@@ -1716,7 +1722,7 @@ void pp_remainder(struct pretty_print_context *pp,
 
 		strbuf_grow(sb, linelen + indent + 20);
 		if (indent)
-			pp_handle_indent(sb, indent, line, linelen);
+			pp_handle_indent(pp, sb, indent, line, linelen);
 		else
 			strbuf_add(sb, line, linelen);
 		strbuf_addch(sb, '\n');
