@@ -1643,17 +1643,11 @@ static int pp_utf8_width(const char *start, const char *end)
 	return width;
 }
 
-/*
- * pp_handle_indent() prints out the intendation, and
- * the whole line (without the final newline), after
- * de-tabifying.
- */
-static void pp_handle_indent(struct strbuf *sb, int indent,
-			     const char *line, int linelen)
+
+static void strbuf_add_tabexpand(struct strbuf *sb,
+				 const char *line, int linelen)
 {
 	const char *tab;
-
-	strbuf_addchars(sb, ' ', indent);
 
 	while ((tab = memchr(line, '\t', linelen)) != NULL) {
 		int width = pp_utf8_width(line, tab);
@@ -1684,6 +1678,18 @@ static void pp_handle_indent(struct strbuf *sb, int indent,
 	 * align.
 	 */
 	strbuf_add(sb, line, linelen);
+}
+
+/*
+ * pp_handle_indent() prints out the intendation, and
+ * the whole line (without the final newline), after
+ * de-tabifying.
+ */
+static void pp_handle_indent(struct strbuf *sb, int indent,
+			     const char *line, int linelen)
+{
+	strbuf_addchars(sb, ' ', indent);
+	strbuf_add_tabexpand(sb, line, linelen);
 }
 
 void pp_remainder(struct pretty_print_context *pp,
