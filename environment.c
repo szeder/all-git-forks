@@ -95,6 +95,11 @@ int core_preload_index = 1;
 int ignore_untracked_cache_config;
 
 int core_watchman_sync_timeout = 300;
+#ifdef USE_WATCHMAN
+int wait_for_index_helper = 1;
+#else
+int wait_for_index_helper = 0;
+#endif
 
 
 /* This is set by setup_git_dir_gently() and/or git_default_config() */
