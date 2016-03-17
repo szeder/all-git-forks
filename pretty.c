@@ -1645,26 +1645,17 @@ static int pp_utf8_width(const char *start, const char *end)
 
 /*
  * pp_handle_indent() prints out the intendation, and
- * perhaps the whole line (without the final newline)
- *
- * Why "perhaps"? If there are tabs in the indented line
- * it will print it out in order to de-tabify the line.
- *
- * But if there are no tabs, we just fall back on the
- * normal "print the whole line".
+ * the whole line (without the final newline), after
+ * de-tabifying.
  */
-static int pp_handle_indent(struct strbuf *sb, int indent,
+static void pp_handle_indent(struct strbuf *sb, int indent,
 			     const char *line, int linelen)
 {
 	const char *tab;
 
 	strbuf_addchars(sb, ' ', indent);
 
-	tab = memchr(line, '\t', linelen);
-	if (!tab)
-		return 0;
-
-	do {
+	while ((tab = memchr(line, '\t', linelen)) != NULL) {
 		int width = pp_utf8_width(line, tab);
 
 		/*
@@ -1685,10 +1676,7 @@ static int pp_handle_indent(struct strbuf *sb, int indent,
 		/* Skip over the printed part .. */
 		linelen -= 1+tab-line;
 		line = tab + 1;
-
-		/* .. and look for the next tab */
-		tab = memchr(line, '\t', linelen);
-	} while (tab);
+	}
 
 	/*
 	 * Print out everything after the last tab without
@@ -1696,7 +1684,6 @@ static int pp_handle_indent(struct strbuf *sb, int indent,
 	 * align.
 	 */
 	strbuf_add(sb, line, linelen);
-	return 1;
 }
 
 void pp_remainder(struct pretty_print_context *pp,
@@ -1722,11 +1709,10 @@ void pp_remainder(struct pretty_print_context *pp,
 		first = 0;
 
 		strbuf_grow(sb, linelen + indent + 20);
-		if (indent) {
-			if (pp_handle_indent(sb, indent, line, linelen))
-				linelen = 0;
-		}
-		strbuf_add(sb, line, linelen);
+		if (indent)
+			pp_handle_indent(sb, indent, line, linelen);
+		else
+			strbuf_add(sb, line, linelen);
 		strbuf_addch(sb, '\n');
 	}
 }
