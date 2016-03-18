@@ -4,6 +4,7 @@
 #include "run-command.h"
 #include "strbuf.h"
 #include "string-list.h"
+#include "dir.h"
 
 #ifndef HOST_NAME_MAX
 #define HOST_NAME_MAX 256

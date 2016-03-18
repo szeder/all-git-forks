@@ -2242,6 +2242,17 @@ int file_exists(const char *f)
 	return lstat(f, &sb) == 0;
 }
 
+/*
+ * Do not use this for inspecting *tracked* content.  When path is a
+ * symlink to a directory, we do not want to say it is a directory when
+ * dealing with tracked content in the working tree.
+ */
+int is_directory(const char *path)
+{
+	struct stat st;
+	return (!stat(path, &st) && S_ISDIR(st.st_mode));
+}
+
 static int cmp_icase(char a, char b)
 {
 	if (a == b)

@@ -250,6 +250,7 @@ extern void add_exclude(const char *string, const char *base,
 extern void clear_exclude_list(struct exclude_list *el);
 extern void clear_directory(struct dir_struct *dir);
 extern int file_exists(const char *);
+extern int is_directory(const char *);
 
 extern int is_inside_dir(const char *dir);
 extern int dir_inside_of(const char *subdir, const char *dir);
