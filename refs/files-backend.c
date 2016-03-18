@@ -1,9 +1,9 @@
-#include "../cache.h"
-#include "../refs.h"
+#include "cache.h"
+#include "refs.h"
 #include "refs-internal.h"
-#include "../lockfile.h"
-#include "../object.h"
-#include "../dir.h"
+#include "lockfile.h"
+#include "object.h"
+#include "dir.h"
 
 struct ref_lock {
 	char *ref_name;
