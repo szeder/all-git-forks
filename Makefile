@@ -725,7 +725,6 @@ LIB_OBJS += ewah/ewah_rlw.o
 LIB_OBJS += exec_cmd.o
 LIB_OBJS += fetch-pack.o
 LIB_OBJS += fsck.o
-LIB_OBJS += gettext.o
 LIB_OBJS += graph.o
 LIB_OBJS += grep.o
 LIB_OBJS += help.o
@@ -740,6 +739,7 @@ LIB_OBJS += lib/ctype.o
 LIB_OBJS += lib/date.o
 LIB_OBJS += lib/diff-delta.o
 LIB_OBJS += lib/editor.o
+LIB_OBJS += lib/gettext.o
 LIB_OBJS += lib/gpg-interface.o
 LIB_OBJS += lib/hashmap.o
 LIB_OBJS += lib/hex.o
@@ -1981,8 +1981,8 @@ attr.sp attr.s attr.o: GIT-PREFIX
 attr.sp attr.s attr.o: EXTRA_CPPFLAGS = \
 	-DETC_GITATTRIBUTES='"$(ETC_GITATTRIBUTES_SQ)"'
 
-gettext.sp gettext.s gettext.o: GIT-PREFIX
-gettext.sp gettext.s gettext.o: EXTRA_CPPFLAGS = \
+lib/gettext.sp lib/gettext.s lib/gettext.o: GIT-PREFIX
+lib/gettext.sp lib/gettext.s lib/gettext.o: EXTRA_CPPFLAGS = \
 	-DGIT_LOCALE_PATH='"$(localedir_SQ)"'
 
 http-push.sp http.sp http-walker.sp remote-curl.sp imap-send.sp: SPARSE_FLAGS += \
