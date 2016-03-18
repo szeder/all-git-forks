@@ -176,6 +176,8 @@ extern NORETURN void usage_msg_opt(const char *msg,
 				   const char * const *usagestr,
 				   const struct option *options);
 
+extern const char *prefix_filename(const char *prefix, int len, const char *path);
+
 extern int optbug(const struct option *opt, const char *reason);
 extern int opterror(const struct option *opt, const char *reason, int flags);
 #if defined(__GNUC__)
