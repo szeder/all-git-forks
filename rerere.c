@@ -515,103 +515,6 @@ static int handle_file(const char *path, unsigned char *sha1, const char *output
 }
 
 /*
- * Subclass of rerere_io that reads from an in-core buffer that is a
- * strbuf
- */
-struct rerere_io_mem {
-	struct rerere_io io;
-	struct strbuf input;
-};
-
-/*
- * ... and its getline() method implementation
- */
-static int rerere_mem_getline(struct strbuf *sb, struct rerere_io *io_)
-{
-	struct rerere_io_mem *io = (struct rerere_io_mem *)io_;
-	char *ep;
-	size_t len;
-
-	strbuf_release(sb);
-	if (!io->input.len)
-		return -1;
-	ep = memchr(io->input.buf, '\n', io->input.len);
-	if (!ep)
-		ep = io->input.buf + io->input.len;
-	else if (*ep == '\n')
-		ep++;
-	len = ep - io->input.buf;
-	strbuf_add(sb, io->input.buf, len);
-	strbuf_remove(&io->input, 0, len);
-	return 0;
-}
-
-static int handle_cache(const char *path, unsigned char *sha1, const char *output)
-{
-	mmfile_t mmfile[3] = {{NULL}};
-	mmbuffer_t result = {NULL, 0};
-	const struct cache_entry *ce;
-	int pos, len, i, hunk_no;
-	struct rerere_io_mem io;
-	int marker_size = ll_merge_marker_size(path);
-
-	/*
-	 * Reproduce the conflicted merge in-core
-	 */
-	len = strlen(path);
-	pos = cache_name_pos(path, len);
-	if (0 <= pos)
-		return -1;
-	pos = -pos - 1;
-
-	while (pos < active_nr) {
-		enum object_type type;
-		unsigned long size;
-
-		ce = active_cache[pos++];
-		if (ce_namelen(ce) != len || memcmp(ce->name, path, len))
-			break;
-		i = ce_stage(ce) - 1;
-		if (!mmfile[i].ptr) {
-			mmfile[i].ptr = read_sha1_file(ce->sha1, &type, &size);
-			mmfile[i].size = size;
-		}
-	}
-	for (i = 0; i < 3; i++)
-		if (!mmfile[i].ptr && !mmfile[i].size)
-			mmfile[i].ptr = xstrdup("");
-
-	/*
-	 * NEEDSWORK: handle conflicts from merges with
-	 * merge.renormalize set, too
-	 */
-	ll_merge(&result, path, &mmfile[0], NULL,
-		 &mmfile[1], "ours",
-		 &mmfile[2], "theirs", NULL);
-	for (i = 0; i < 3; i++)
-		free(mmfile[i].ptr);
-
-	memset(&io, 0, sizeof(io));
-	io.io.getline = rerere_mem_getline;
-	if (output)
-		io.io.output = fopen(output, "w");
-	else
-		io.io.output = NULL;
-	strbuf_init(&io.input, 0);
-	strbuf_attach(&io.input, result.ptr, result.size, result.size);
-
-	/*
-	 * Grab the conflict ID and optionally write the original
-	 * contents with conflict markers out.
-	 */
-	hunk_no = handle_path(sha1, (struct rerere_io *)&io, marker_size);
-	strbuf_release(&io.input);
-	if (io.io.output)
-		fclose(io.io.output);
-	return hunk_no;
-}
-
-/*
  * Look at a cache entry at "i" and see if it is not conflicting,
  * conflicting and we are willing to handle, or conflicting and
  * we are unable to handle, and return the determination in *type.
@@ -719,6 +622,33 @@ int rerere_remaining(struct string_list *merge_rr)
 }
 
 /*
+ * Try using the given conflict resolution "ID" to see
+ * if that recorded conflict resolves cleanly what we
+ * got in the "cur".
+ */
+static int try_merge(const struct rerere_id *id, const char *path,
+		     mmfile_t *cur, mmbuffer_t *result)
+{
+	int ret;
+	mmfile_t base = {NULL, 0}, other = {NULL, 0};
+
+	if (read_mmfile(&base, rerere_path(id, "preimage")) ||
+	    read_mmfile(&other, rerere_path(id, "postimage")))
+		ret = 1;
+	else
+		/*
+		 * A three-way merge. Note that this honors user-customizable
+		 * low-level merge driver settings.
+		 */
+		ret = ll_merge(result, path, &base, NULL, cur, "", &other, "", NULL);
+
+	free(base.ptr);
+	free(other.ptr);
+
+	return ret;
+}
+
+/*
  * Find the conflict identified by "id"; the change between its
  * "preimage" (i.e. a previous contents with conflict markers) and its
  * "postimage" (i.e. the corresponding contents with conflicts
@@ -732,30 +662,20 @@ static int merge(const struct rerere_id *id, const char *path)
 {
 	FILE *f;
 	int ret;
-	mmfile_t cur = {NULL, 0}, base = {NULL, 0}, other = {NULL, 0};
+	mmfile_t cur = {NULL, 0};
 	mmbuffer_t result = {NULL, 0};
 
 	/*
 	 * Normalize the conflicts in path and write it out to
 	 * "thisimage" temporary file.
 	 */
-	if (handle_file(path, NULL, rerere_path(id, "thisimage")) < 0) {
+	if ((handle_file(path, NULL, rerere_path(id, "thisimage")) < 0) ||
+	    read_mmfile(&cur, rerere_path(id, "thisimage"))) {
 		ret = 1;
 		goto out;
 	}
 
-	if (read_mmfile(&cur, rerere_path(id, "thisimage")) ||
-	    read_mmfile(&base, rerere_path(id, "preimage")) ||
-	    read_mmfile(&other, rerere_path(id, "postimage"))) {
-		ret = 1;
-		goto out;
-	}
-
-	/*
-	 * A three-way merge. Note that this honors user-customizable
-	 * low-level merge driver settings.
-	 */
-	ret = ll_merge(&result, path, &base, NULL, &cur, "", &other, "", NULL);
+	ret = try_merge(id, path, &cur, &result);
 	if (ret)
 		goto out;
 
@@ -781,8 +701,6 @@ static int merge(const struct rerere_id *id, const char *path)
 
 out:
 	free(cur.ptr);
-	free(base.ptr);
-	free(other.ptr);
 	free(result.ptr);
 
 	return ret;
@@ -1005,6 +923,103 @@ int rerere(int flags)
 	status = do_plain_rerere(&merge_rr, fd);
 	free_rerere_dirs();
 	return status;
+}
+
+/*
+ * Subclass of rerere_io that reads from an in-core buffer that is a
+ * strbuf
+ */
+struct rerere_io_mem {
+	struct rerere_io io;
+	struct strbuf input;
+};
+
+/*
+ * ... and its getline() method implementation
+ */
+static int rerere_mem_getline(struct strbuf *sb, struct rerere_io *io_)
+{
+	struct rerere_io_mem *io = (struct rerere_io_mem *)io_;
+	char *ep;
+	size_t len;
+
+	strbuf_release(sb);
+	if (!io->input.len)
+		return -1;
+	ep = memchr(io->input.buf, '\n', io->input.len);
+	if (!ep)
+		ep = io->input.buf + io->input.len;
+	else if (*ep == '\n')
+		ep++;
+	len = ep - io->input.buf;
+	strbuf_add(sb, io->input.buf, len);
+	strbuf_remove(&io->input, 0, len);
+	return 0;
+}
+
+static int handle_cache(const char *path, unsigned char *sha1, const char *output)
+{
+	mmfile_t mmfile[3] = {{NULL}};
+	mmbuffer_t result = {NULL, 0};
+	const struct cache_entry *ce;
+	int pos, len, i, hunk_no;
+	struct rerere_io_mem io;
+	int marker_size = ll_merge_marker_size(path);
+
+	/*
+	 * Reproduce the conflicted merge in-core
+	 */
+	len = strlen(path);
+	pos = cache_name_pos(path, len);
+	if (0 <= pos)
+		return -1;
+	pos = -pos - 1;
+
+	while (pos < active_nr) {
+		enum object_type type;
+		unsigned long size;
+
+		ce = active_cache[pos++];
+		if (ce_namelen(ce) != len || memcmp(ce->name, path, len))
+			break;
+		i = ce_stage(ce) - 1;
+		if (!mmfile[i].ptr) {
+			mmfile[i].ptr = read_sha1_file(ce->sha1, &type, &size);
+			mmfile[i].size = size;
+		}
+	}
+	for (i = 0; i < 3; i++)
+		if (!mmfile[i].ptr && !mmfile[i].size)
+			mmfile[i].ptr = xstrdup("");
+
+	/*
+	 * NEEDSWORK: handle conflicts from merges with
+	 * merge.renormalize set, too?
+	 */
+	ll_merge(&result, path, &mmfile[0], NULL,
+		 &mmfile[1], "ours",
+		 &mmfile[2], "theirs", NULL);
+	for (i = 0; i < 3; i++)
+		free(mmfile[i].ptr);
+
+	memset(&io, 0, sizeof(io));
+	io.io.getline = rerere_mem_getline;
+	if (output)
+		io.io.output = fopen(output, "w");
+	else
+		io.io.output = NULL;
+	strbuf_init(&io.input, 0);
+	strbuf_attach(&io.input, result.ptr, result.size, result.size);
+
+	/*
+	 * Grab the conflict ID and optionally write the original
+	 * contents with conflict markers out.
+	 */
+	hunk_no = handle_path(sha1, (struct rerere_io *)&io, marker_size);
+	strbuf_release(&io.input);
+	if (io.io.output)
+		fclose(io.io.output);
+	return hunk_no;
 }
 
 static int rerere_forget_one_path(const char *path, struct string_list *rr)
