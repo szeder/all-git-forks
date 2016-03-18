@@ -19,6 +19,7 @@
 #include "string-list.h"
 #include "argv-array.h"
 #include "parse-options.h"
+#include "base85.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
