@@ -2231,15 +2231,15 @@ perf: all
 
 .PHONY: test perf
 
-t/helper/test-ctype$X: ctype.o
+t/helper/test-ctype$X: lib/ctype.o
 
-t/helper/test-date$X: date.o ctype.o
+t/helper/test-date$X: lib/date.o lib/ctype.o
 
-t/helper/test-delta$X: diff-delta.o patch-delta.o
+t/helper/test-delta$X: lib/diff-delta.o lib/patch-delta.o
 
 t/helper/test-line-buffer$X: vcs-svn/lib.a
 
-t/helper/test-parse-options$X: parse-options.o parse-options-cb.o
+t/helper/test-parse-options$X: lib/parse-options.o lib/parse-options-cb.o
 
 t/helper/test-svn-fe$X: vcs-svn/lib.a
 
