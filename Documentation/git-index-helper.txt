@@ -52,6 +52,12 @@ command. The following commands are used to control the daemon:
 	Let the daemon know the index is to be read. It keeps the
 	daemon alive longer, unless `--exit-after=0` is used.
 
+"poke <path>":
+	Like "poke", but replies with "OK".  If watchman is
+	configured, index-helper queries watchman, then prepares a
+	shared memory object with the watchman index extension before
+	replying.
+
 All commands and replies are terminated by a 0 byte.
 
 GIT
