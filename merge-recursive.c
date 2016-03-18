@@ -22,6 +22,7 @@
 #include "merge-recursive.h"
 #include "dir.h"
 #include "submodule.h"
+#include "alloc.h"
 
 static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 				      const char *subtree_shift)

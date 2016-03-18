@@ -4,6 +4,7 @@
 #include "tree.h"
 #include "commit.h"
 #include "tag.h"
+#include "alloc.h"
 
 static struct object **obj_hash;
 static int nr_objs, obj_hash_size;

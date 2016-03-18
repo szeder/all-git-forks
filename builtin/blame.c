@@ -29,6 +29,7 @@
 #include "line-log.h"
 #include "dir.h"
 #include "progress.h"
+#include "alloc.h"
 
 static char blame_usage[] = N_("git blame [<options>] [<rev-opts>] [<rev>] [--] <file>");
 

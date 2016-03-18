@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "blob.h"
+#include "alloc.h"
 
 const char *blob_type = "blob";
 

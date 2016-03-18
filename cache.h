@@ -1700,15 +1700,6 @@ extern const char *editor_program;
 extern const char *askpass_program;
 extern const char *excludes_file;
 
-/* alloc.c */
-extern void *alloc_blob_node(void);
-extern void *alloc_tree_node(void);
-extern void *alloc_commit_node(void);
-extern void *alloc_tag_node(void);
-extern void *alloc_object_node(void);
-extern void alloc_report(void);
-extern unsigned int alloc_commit_index(void);
-
 /* pkt-line.c */
 void packet_trace_identity(const char *prog);
 

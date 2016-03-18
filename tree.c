@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "cache-tree.h"
 #include "tree.h"
+#include "alloc.h"
 #include "blob.h"
 #include "commit.h"
 #include "tag.h"
