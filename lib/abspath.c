@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "abspath.h"
 #include "dir.h"
 
 /* We allow "recursive" symbolic links. Only within reason, though. */
