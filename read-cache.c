@@ -1821,7 +1821,10 @@ static int poke_daemon(struct index_state *istate,
 	if (refresh_cache) {
 		ret = write_in_full(fd, "refresh", 8) == 8;
 	} else {
-		ret = poke_and_wait_for_reply(fd);
+		if (wait_for_index_helper)
+			ret = poke_and_wait_for_reply(fd);
+		else
+			ret = write_in_full(fd, "poke", 5) == 5;
 	}
 
 	close(fd);
