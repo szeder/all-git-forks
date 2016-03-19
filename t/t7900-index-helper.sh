@@ -41,4 +41,20 @@ test_expect_success 'index-helper is quiet with --autorun' '
 	git index-helper --autorun
 '
 
+test_expect_success 'index-helper autorun works' '
+	rm -f .git/index-helper.pipe &&
+	git status &&
+	test_path_is_missing .git/index-helper.pipe &&
+	test_config indexhelper.autorun true &&
+	git status &&
+	test -p .git/index-helper.pipe &&
+	git status 2>err &&
+	test -p .git/index-helper.pipe &&
+	! grep -q . err &&
+	git index-helper --kill &&
+	test_config indexhelper.autorun false &&
+	git status &&
+	test_path_is_missing .git/index-helper.pipe
+'
+
 test_done
