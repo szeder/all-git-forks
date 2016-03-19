@@ -400,6 +400,13 @@ int main(int argc, char **argv)
 		return 0;
 	}
 
+	/* check that no other copy is running */
+	fd = open(pipe_path.buf, O_RDONLY | O_NONBLOCK);
+	if (fd > 0)
+		die(_("Already running"));
+	if (errno != ENXIO && errno != ENOENT)
+		die_errno(_("Unexpected error checking pipe"));
+
 	atexit(cleanup);
 	sigchain_push_common(cleanup_on_signal);
 
