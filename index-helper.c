@@ -286,6 +286,8 @@ static void loop(int fd, int idle_in_seconds)
 						 * alive, nothing to do.
 						 */
 						;
+				} else if (!strcmp(command.buf, "die")) {
+					break;
 				} else {
 					warning("BUG: Bogus command %s", command.buf);
 				}
@@ -338,10 +340,35 @@ static const char * const usage_text[] = {
 	NULL
 };
 
+static void request_kill(const char *pipe_path)
+{
+	int fd;
+
+	fd = open(pipe_path, O_WRONLY | O_NONBLOCK);
+	if (fd < 0) {
+		warning("No existing pipe; can't send kill message to old process");
+		goto done;
+	}
+
+	write_in_full(fd, "die", 4);
+	close(fd);
+
+done:
+	/*
+	 * The child will try to do this anyway, but we want to be
+	 * ready to launch a new daemon immediately after this command
+	 * returns.
+	 */
+
+	unlink(pipe_path);
+	return;
+}
+
+
 int main(int argc, char **argv)
 {
 	const char *prefix;
-	int idle_in_seconds = 600, detach = 0;
+	int idle_in_seconds = 600, detach = 0, kill = 0;
 	int fd;
 	struct strbuf pipe_path = STRBUF_INIT;
 	struct option options[] = {
@@ -350,6 +377,7 @@ int main(int argc, char **argv)
 		OPT_BOOL(0, "strict", &to_verify,
 			 "verify shared memory after creating"),
 		OPT_BOOL(0, "detach", &detach, "detach the process"),
+		OPT_BOOL(0, "kill", &kill, "request that existing index helper processes exit"),
 		OPT_END()
 	};
 
@@ -364,10 +392,17 @@ int main(int argc, char **argv)
 			  options, usage_text, 0))
 		die(_("too many arguments"));
 
+	strbuf_git_path(&pipe_path, "index-helper.pipe");
+	if (kill) {
+		if (detach)
+			die(_("--kill doesn't want any other options"));
+		request_kill(pipe_path.buf);
+		return 0;
+	}
+
 	atexit(cleanup);
 	sigchain_push_common(cleanup_on_signal);
 
-	strbuf_git_path(&pipe_path, "index-helper.pipe");
 	fd = setup_pipe(pipe_path.buf);
 	if (fd < 0)
 		die_errno("Could not set up index-helper.pipe");
