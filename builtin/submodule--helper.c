@@ -17,9 +17,8 @@ static char *get_default_remote(void)
 {
 	char *dest = NULL, *ret;
 	unsigned char sha1[20];
-	int flag = 0;
 	struct strbuf sb = STRBUF_INIT;
-	const char *refname = resolve_ref_unsafe("HEAD", 0, sha1, &flag);
+	const char *refname = resolve_ref_unsafe("HEAD", 0, sha1, NULL);
 
 	if (!refname)
 		die("No such ref: HEAD");
