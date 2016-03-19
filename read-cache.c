@@ -1233,7 +1233,7 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 		if (!new) {
 			const char *fmt;
 
-			if (really && cache_errno == EINVAL) {
+			if (really || cache_errno == EINVAL) {
 				/* If we are doing --really-refresh that
 				 * means the index is not valid anymore.
 				 */
@@ -1722,11 +1722,94 @@ static void post_read_index_from(struct index_state *istate)
 	tweak_untracked_cache(istate);
 }
 
+static int poke_and_wait_for_reply(int fd)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct strbuf reply = STRBUF_INIT;
+	int pid = getpid();
+	int read_fd = -1;
+	int ret = -1;
+	fd_set fds;
+	struct timeval timeout;
+	char *my_pipe_path;
+
+	timeout.tv_usec = 0;
+	timeout.tv_sec = 1;
+
+	/*
+	 * Create a fifo so that index-helper can reply (we don't want
+	 * it to reply on its own fifo because then we maybe have a
+	 * fifo with multiple readers, which causes doom).
+	 */
+	my_pipe_path = xstrdup(real_path(git_path("%d.pipe", pid)));
+
+	/*
+	 * It's important that the command fit in one PIPE_BUF
+	 * so that it doesn't interleave with other messages.
+	 *
+	 * POSIX specifies a 512 byte minimum for PIPE_BUF, so
+	 * this should rarely be a problem.
+	 */
+	if (strlen(my_pipe_path) + 6 /* "poke \0" */ > PIPE_BUF) {
+		const char *tmp = getenv("TMPDIR");
+
+		if (!tmp)
+			tmp = "/tmp";
+
+		free(my_pipe_path);
+		strbuf_addf(&buf, "%s/git-%d.pipe", tmp, pid);
+		my_pipe_path = strbuf_detach(&buf, NULL);
+		if (buf.len + 6 > PIPE_BUF)
+			goto no_fifo;
+	}
+	if (mkfifo(my_pipe_path, 0600)) {
+		if (errno != EEXIST)
+			goto no_fifo;
+
+		unlink(my_pipe_path);
+		if (mkfifo(my_pipe_path, 0600))
+			goto no_fifo;
+	}
+	read_fd = open(my_pipe_path, O_RDONLY | O_NONBLOCK);
+	if (read_fd < 0)
+		goto done_poke;
+
+	strbuf_addstr(&buf, "poke ");
+	strbuf_addstr(&buf, my_pipe_path);
+	if (write_in_full(fd, buf.buf, buf.len + 1) != buf.len + 1)
+		goto done_poke;
+
+	/* Now wait for a reply */
+	FD_ZERO(&fds);
+	FD_SET(read_fd, &fds);
+	if (select(read_fd + 1, &fds, NULL, NULL, &timeout) == 0)
+		/* No reply, giving up */
+		goto done_poke;
+
+	if (strbuf_getwholeline_fd(&reply, read_fd, 0))
+		goto done_poke;
+
+	if (!starts_with(reply.buf, "OK"))
+		goto done_poke;
+
+	ret = 0;
+done_poke:
+	unlink(my_pipe_path);
+no_fifo:
+	free(my_pipe_path);
+	if (read_fd != -1)
+		close(read_fd);
+	strbuf_release(&buf);
+	strbuf_release(&reply);
+
+	return ret;
+}
+
 static int poke_daemon(struct index_state *istate,
 		       const struct stat *st, int refresh_cache)
 {
 	int fd;
-	int ret = 0;
+	int ret = -1;
 
 	/* if this is from index-helper, do not poke itself (recursively) */
 	if (istate->to_shm)
@@ -1738,7 +1821,7 @@ static int poke_daemon(struct index_state *istate,
 	if (refresh_cache) {
 		ret = write_in_full(fd, "refresh", 8) == 8;
 	} else {
-		ret = write_in_full(fd, "poke", 5) == 5;
+		ret = poke_and_wait_for_reply(fd);
 	}
 
 	close(fd);
@@ -1788,6 +1871,50 @@ static int try_shm(struct index_state *istate)
 	istate->mmap_size = new_size;
 	istate->from_shm = 1;
 	return 0;
+}
+
+static void refresh_by_watchman(struct index_state *istate)
+{
+	void *shm = NULL;
+	int length;
+	int i;
+
+	length = git_shm_map(O_RDONLY, 0700, -1, &shm,
+			     PROT_READ, MAP_SHARED,
+			     "git-watchman-%s-%" PRIuMAX,
+			     sha1_to_hex(istate->sha1),
+			     (uintmax_t)getpid());
+
+	if (length <= 20 ||
+	    hashcmp(istate->sha1, (unsigned char *)shm + length - 20) ||
+	    /*
+	     * No need to clear CE_WATCHMAN_DIRTY set by 'WAMA' on
+	     * disk. Watchman can only set more, not clear any, so
+	     * this is OR mask.
+	     */
+	    read_watchman_ext(istate, shm, length - 20))
+		goto done;
+
+	/*
+	 * Now that we've marked the invalid entries in the
+	 * untracked-cache itself, we can erase them from the list of
+	 * entries to be processed and mark the untracked cache for
+	 * watchman usage.
+	 */
+	if (istate->untracked) {
+		string_list_clear(&istate->untracked->invalid_untracked, 0);
+		istate->untracked->use_watchman = 1;
+	}
+
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+		if (ce_stage(ce) || (ce->ce_flags & CE_WATCHMAN_DIRTY))
+			continue;
+		ce_mark_uptodate(ce);
+	}
+done:
+	if (shm)
+		munmap(shm, length);
 }
 
 /* remember to discard_cache() before reading a different cache! */
@@ -1909,7 +2036,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	split_index = istate->split_index;
 	if (!split_index || is_null_sha1(split_index->base_sha1)) {
 		post_read_index_from(istate);
-		return ret;
+		goto done;
 	}
 
 	if (split_index->base)
@@ -1930,6 +2057,10 @@ int read_index_from(struct index_state *istate, const char *path)
 		    sha1_to_hex(split_index->base->sha1));
 	merge_base_index(istate);
 	post_read_index_from(istate);
+
+done:
+	if (ret > 0 && istate->from_shm && istate->last_update)
+		refresh_by_watchman(istate);
 	return ret;
 }
 
@@ -2231,7 +2362,7 @@ out:
 	return 0;
 }
 
-static int verify_index(const struct index_state *istate)
+int verify_index(const struct index_state *istate)
 {
 	return verify_index_from(istate, get_index_file());
 }

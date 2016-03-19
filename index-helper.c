@@ -6,15 +6,18 @@
 #include "split-index.h"
 #include "shm.h"
 #include "lockfile.h"
+#include "watchman-support.h"
 
 struct shm {
 	unsigned char sha1[20];
 	void *shm;
 	size_t size;
+	pid_t pid;
 };
 
 static struct shm shm_index;
 static struct shm shm_base_index;
+static struct shm shm_watchman;
 static int daemonized, to_verify = 1;
 
 static void release_index_shm(struct shm *is)
@@ -26,10 +29,21 @@ static void release_index_shm(struct shm *is)
 	is->shm = NULL;
 }
 
+static void release_watchman_shm(struct shm *is)
+{
+	if (!is->shm)
+		return;
+	munmap(is->shm, is->size);
+	git_shm_unlink("git-watchman-%s-%" PRIuMAX,
+		       sha1_to_hex(is->sha1), (uintmax_t)is->pid);
+	is->shm = NULL;
+}
+
 static void cleanup_shm(void)
 {
 	release_index_shm(&shm_index);
 	release_index_shm(&shm_base_index);
+	release_watchman_shm(&shm_watchman);
 }
 
 static void cleanup(void)
@@ -124,13 +138,62 @@ static void share_the_index(void)
 	if (the_index.split_index && the_index.split_index->base)
 		share_index(the_index.split_index->base, &shm_base_index);
 	share_index(&the_index, &shm_index);
-	if (to_verify && !verify_shm())
+	if (to_verify && !verify_shm()) {
 		cleanup_shm();
-	discard_index(&the_index);
+		discard_index(&the_index);
+	}
 }
 
-static void refresh(void)
+#ifdef HAVE_SHM
+
+#ifdef USE_WATCHMAN
+static void share_watchman(struct index_state *istate,
+			   struct shm *is, pid_t pid)
 {
+	struct strbuf sb = STRBUF_INIT;
+	void *shm;
+
+	write_watchman_ext(&sb, istate);
+	if (git_shm_map(O_CREAT | O_EXCL | O_RDWR, 0700, sb.len + 20,
+			&shm, PROT_READ | PROT_WRITE, MAP_SHARED,
+			"git-watchman-%s-%" PRIuMAX,
+			sha1_to_hex(istate->sha1), (uintmax_t)pid) == sb.len + 20) {
+		is->size = sb.len + 20;
+		is->shm = shm;
+		is->pid = pid;
+		hashcpy(is->sha1, istate->sha1);
+
+		memcpy(shm, sb.buf, sb.len);
+		hashcpy((unsigned char *)shm + is->size - 20, is->sha1);
+	}
+	strbuf_release(&sb);
+}
+
+
+static void prepare_with_watchman(pid_t pid)
+{
+	/*
+	 * TODO: with the help of watchman, maybe we could detect if
+	 * $GIT_DIR/index is updated.
+	 */
+	if (check_watchman(&the_index))
+		return;
+
+	share_watchman(&the_index, &shm_watchman, pid);
+}
+
+static void prepare_index(pid_t pid)
+{
+	release_watchman_shm(&shm_watchman);
+	if (the_index.last_update)
+		prepare_with_watchman(pid);
+}
+
+#endif
+
+static void refresh()
+{
+	discard_index(&the_index);
 	the_index.keep_mmap = 1;
 	the_index.to_shm    = 1;
 	if (read_cache() < 0)
@@ -138,7 +201,50 @@ static void refresh(void)
 	share_the_index();
 }
 
-#ifdef HAVE_SHM
+static int send_response(const char *client_pipe_path, const char *response)
+{
+	int fd;
+	int len;
+
+	fd = open(client_pipe_path, O_WRONLY | O_NONBLOCK);
+	if (fd < 0)
+		return -1;
+
+	len = strlen(response) + 1;
+	assert(len < PIPE_BUF);
+	if (write_in_full(fd, response, len) != len) {
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
+	return 0;
+}
+
+static uintmax_t get_trailing_digits(const char *path)
+{
+	const char *start = strrchr(path, '/');
+	if (!start)
+		return 0;
+	while (*start && !isdigit(*start)) start ++;
+	if (!*start)
+		return 0;
+	return strtoull(start, NULL, 10);
+}
+
+static void reply(const char *path)
+{
+	uintmax_t pid;
+	/*
+	 * Parse caller pid out of provided path.  It'll be some
+	 * digits on the end.
+	 */
+	pid = (pid_t)get_trailing_digits(path);
+#ifdef USE_WATCHMAN
+	prepare_index(pid);
+#endif
+	send_response(path, "OK");
+}
 
 static void loop(int fd, int idle_in_seconds)
 {
@@ -171,11 +277,15 @@ static void loop(int fd, int idle_in_seconds)
 			if (strbuf_getwholeline_fd(&command, fd, '\0') == 0) {
 				if (!strcmp(command.buf, "refresh")) {
 					refresh();
-				} else if (!strcmp(command.buf, "poke")) {
-					  /*
-					   * Just a poke to keep us
-					   * alive, nothing to do.
-					   */
+				} else if (starts_with(command.buf, "poke")) {
+					if (command.buf[4] == ' ')
+						reply(command.buf + 5);
+					else
+						/*
+						 * Just a poke to keep us
+						 * alive, nothing to do.
+						 */
+						;
 				} else {
 					warning("BUG: Bogus command %s", command.buf);
 				}
