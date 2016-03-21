@@ -344,3 +344,68 @@ void die_if_checked_out(const char *branch)
 		die(_("'%s' is already checked out at '%s'"), branch, existing);
 	}
 }
+
+static int parse_symref_direct(char *path_to_ref, struct strbuf *ref)
+{
+	/* is symlink */
+	if (!strbuf_readlink(ref, path_to_ref, 0))
+		return 0;
+
+	/* is textual symref */
+	if (strbuf_read_file(ref, path_to_ref, 0) >= 0 && starts_with(ref->buf, "ref:")) {
+		strbuf_remove(ref, 0, strlen("ref:"));
+		strbuf_trim(ref);
+		return 0;
+	}
+
+	return -1;
+}
+
+static int update_symref_direct(const char *path, const char *newref)
+{
+#ifndef NO_SYMLINK_HEAD
+	if (prefer_symlink_refs) {
+		unlink(path);
+		if (!symlink(newref, path))
+			return 0;
+	}
+#endif
+	return write_file_gently(path, "ref: %s", newref);
+}
+
+int update_worktrees_head_symref(const char *oldref, const char *newref)
+{
+	int ret = 0;
+	struct strbuf path = STRBUF_INIT;
+	struct strbuf origref = STRBUF_INIT;
+	int i;
+	struct worktree **worktrees = get_worktrees();
+
+	for (i = 0; worktrees[i]; i++) {
+		if (worktrees[i]->is_detached)
+			continue;
+
+		strbuf_reset(&path);
+		strbuf_addf(&path, "%s/HEAD", worktrees[i]->git_dir);
+
+		strbuf_reset(&origref);
+		if (parse_symref_direct(path.buf, &origref)) {
+			/* should not happen, since get_worktrees() could parse it */
+			ret = -1;
+			break;
+		}
+
+		if (!strcmp(origref.buf, oldref) && update_symref_direct(path.buf, newref)) {
+			ret = -1;
+			warning(_("HEAD of working tree %s is not updated."),
+					worktrees[i]->path);
+			/* continue */
+		}
+	}
+
+	strbuf_release(&path);
+	strbuf_release(&origref);
+	free_worktrees(worktrees);
+
+	return ret;
+}
