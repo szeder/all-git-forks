@@ -56,7 +56,7 @@ int parse_ignorewhitespace_option(struct apply_state *state,
 	return error(_("unrecognized whitespace ignore option '%s'"), option);
 }
 
-void init_apply_state(struct apply_state *state, const char *prefix)
+int init_apply_state(struct apply_state *state, const char *prefix)
 {
 	memset(state, 0, sizeof(*state));
 	state->prefix = prefix;
@@ -73,8 +73,9 @@ void init_apply_state(struct apply_state *state, const char *prefix)
 
 	git_apply_config();
 	if (apply_default_whitespace && parse_whitespace_option(state, apply_default_whitespace))
-		exit(1);
+		return -1;
 	if (apply_default_ignorewhitespace && parse_ignorewhitespace_option(state, apply_default_ignorewhitespace))
-		exit(1);
+		return -1;
+	return 0;
 }
 
