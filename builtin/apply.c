@@ -1019,7 +1019,6 @@ static void gitdiff_verify_name(struct apply_state *state,
 		/* expect "/dev/null" */
 		if (memcmp("/dev/null", line, 9) || line[9] != '\n')
 			die(_("git apply: bad git-diff - expected /dev/null on line %d"), state->linenr);
-		*res_name = NULL;
 	}
 }
 
@@ -1027,12 +1026,9 @@ static int gitdiff_oldname(struct apply_state *state,
 			   const char *line,
 			   struct patch *patch)
 {
-	char *orig = patch->old_name;
 	gitdiff_verify_name(state, line,
 			    patch->is_new, &patch->old_name,
 			    DIFF_OLD_NAME);
-	if (orig != patch->old_name)
-		free(orig);
 	return 0;
 }
 
@@ -1040,12 +1036,9 @@ static int gitdiff_newname(struct apply_state *state,
 			   const char *line,
 			   struct patch *patch)
 {
-	char *orig = patch->new_name;
 	gitdiff_verify_name(state, line,
 			    patch->is_delete, &patch->new_name,
 			    DIFF_NEW_NAME);
-	if (orig != patch->new_name)
-		free(orig);
 	return 0;
 }
 
