@@ -127,6 +127,6 @@ extern int parse_ignorewhitespace_option(struct apply_state *state,
 					 const char *option);
 
 extern int init_apply_state(struct apply_state *state, const char *prefix);
-
+extern int check_apply_state(struct apply_state *state, int force_apply);
 
 #endif
