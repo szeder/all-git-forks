@@ -632,13 +632,20 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 			}
 			free(refname);
 		}
-		else
-			create_branch(opts->new_branch, new->name,
+		else {
+			const char *start_point;
+			if (!strcmp(new->name, "HEAD") && !new->path && old->path)
+				start_point = old->path;
+			else
+				start_point = new->name;
+
+			create_branch(opts->new_branch, start_point,
 				      opts->new_branch_force ? 1 : 0,
 				      opts->new_branch_log,
 				      opts->new_branch_force ? 1 : 0,
 				      opts->quiet,
 				      opts->track);
+		}
 		new->name = opts->new_branch;
 		setup_branch_path(new);
 	}
