@@ -1000,15 +1000,13 @@ static char *gitdiff_verify_name(struct apply_state *state,
 		return find_name(state, line, NULL, state->p_value, TERM_TAB);
 
 	if (orig_name) {
-		int len;
-		const char *name;
+		int len = strlen(orig_name);
 		char *another;
-		name = orig_name;
-		len = strlen(name);
 		if (isnull)
-			die(_("git apply: bad git-diff - expected /dev/null, got %s on line %d"), name, state->linenr);
+			die(_("git apply: bad git-diff - expected /dev/null, got %s on line %d"),
+			    orig_name, state->linenr);
 		another = find_name(state, line, NULL, state->p_value, TERM_TAB);
-		if (!another || memcmp(another, name, len + 1))
+		if (!another || memcmp(another, orig_name, len + 1))
 			die((side == DIFF_NEW_NAME) ?
 			    _("git apply: bad git-diff - inconsistent new filename on line %d") :
 			    _("git apply: bad git-diff - inconsistent old filename on line %d"), state->linenr);
