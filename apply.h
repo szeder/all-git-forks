@@ -121,4 +121,12 @@ struct apply_state {
 	enum ws_ignore ws_ignore_action;
 };
 
+extern int parse_whitespace_option(struct apply_state *state,
+				   const char *option);
+extern int parse_ignorewhitespace_option(struct apply_state *state,
+					 const char *option);
+
+extern void init_apply_state(struct apply_state *state, const char *prefix);
+
+
 #endif
