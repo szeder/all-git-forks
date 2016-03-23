@@ -39,6 +39,16 @@ This is designed to be as compact as possible.
 
 	      <title line>
 
+	      <full commit message, tab-expanded>
+
+* 'noexpand'
+
+	  commit <sha1>
+	  Author: <author>
+	  Date:   <author date>
+
+	      <title line>
+
 	      <full commit message>
 
 * 'full'
