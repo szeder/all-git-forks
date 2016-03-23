@@ -1412,6 +1412,7 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 	revs->skip_count = -1;
 	revs->max_count = -1;
 	revs->max_parents = -1;
+	revs->expand_tabs_in_log = 1;
 
 	revs->commit_format = CMIT_FMT_DEFAULT;
 
