@@ -4549,7 +4549,7 @@ static int apply_all_patches(struct apply_state *state,
 		if (!strcmp(arg, "-")) {
 			res = apply_patch(state, 0, "<stdin>", options);
 			if (res < 0)
-				exit(1);
+				return -1;
 			errs |= res;
 			read_stdin = 0;
 			continue;
@@ -4560,12 +4560,12 @@ static int apply_all_patches(struct apply_state *state,
 
 		fd = open(arg, O_RDONLY);
 		if (fd < 0)
-			die_errno(_("can't open patch '%s'"), arg);
+			return error(_("can't open patch '%s': %s"), arg, strerror(errno));
 		read_stdin = 0;
 		set_default_whitespace_mode(state);
 		res = apply_patch(state, fd, arg, options);
 		if (res < 0)
-			exit(1);
+			return -1;
 		errs |= res;
 		close(fd);
 	}
@@ -4573,7 +4573,7 @@ static int apply_all_patches(struct apply_state *state,
 	if (read_stdin) {
 		res = apply_patch(state, 0, "<stdin>", options);
 		if (res < 0)
-			exit(1);
+			return -1;
 		errs |= res;
 	}
 
@@ -4588,10 +4588,10 @@ static int apply_all_patches(struct apply_state *state,
 				squelched);
 		}
 		if (state->ws_error_action == die_on_ws_error)
-			die(Q_("%d line adds whitespace errors.",
-			       "%d lines add whitespace errors.",
-			       state->whitespace_error),
-			    state->whitespace_error);
+			return error(Q_("%d line adds whitespace errors.",
+					"%d lines add whitespace errors.",
+					state->whitespace_error),
+				     state->whitespace_error);
 		if (state->applied_after_fixing_ws && state->apply)
 			warning("%d line%s applied after"
 				" fixing whitespace errors.",
@@ -4606,7 +4606,7 @@ static int apply_all_patches(struct apply_state *state,
 
 	if (state->update_index) {
 		if (write_locked_index(&the_index, state->lock_file, COMMIT_LOCK))
-			die(_("Unable to write new index file"));
+			return error(_("Unable to write new index file"));
 	}
 
 	return !!errs;
@@ -4696,5 +4696,8 @@ int cmd_apply(int argc, const char **argv, const char *prefix)
 	if (check_apply_state(&state, force_apply))
 		exit(1);
 
-	return apply_all_patches(&state, argc, argv, options);
+	if (apply_all_patches(&state, argc, argv, options))
+		exit(1);
+
+	return 0;
 }
