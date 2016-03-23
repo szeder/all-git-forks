@@ -43,6 +43,10 @@
  */
 
 /*
+ * 0x80 is REF_COMMON_DIR, TODO
+ */
+
+/*
  * Return true iff refname is minimally safe. "Safe" here means that
  * deleting a loose reference by this name will not do any damage, for
  * example by causing a file that is not a reference to be deleted.

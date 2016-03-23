@@ -25,6 +25,9 @@
  * reference will always be null_sha1 in this case, and the return
  * value is the reference that the symref refers to directly.
  *
+ * if the RESOLVE_REF_COMMON_DIR flag is passed, assumes the refname is
+ * always directly under $GIT_COMMON_DIR.
+ *
  * If flags is non-NULL, set the value that it points to the
  * combination of REF_ISPACKED (if the reference was found among the
  * packed references), REF_ISSYMREF (if the initial reference was a
@@ -47,10 +50,12 @@
  * resolved. The function returns NULL for such ref names.
  * Caps and underscores refers to the special refs, such as HEAD,
  * FETCH_HEAD and friends, that all live outside of the refs/ directory.
+ *
  */
 #define RESOLVE_REF_READING 0x01
 #define RESOLVE_REF_NO_RECURSE 0x02
 #define RESOLVE_REF_ALLOW_BAD_NAME 0x04
+#define RESOLVE_REF_COMMON_DIR 0x08
 
 extern const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 				      unsigned char *sha1, int *flags);
@@ -234,10 +239,14 @@ int pack_refs(unsigned int flags);
  * REF_NODEREF: act on the ref directly, instead of dereferencing
  *              symbolic references.
  *
+ * REF_COMMON_DIR: use $GIT_COMMON_DIR always. If not specified, $GIT_DIR or
+ *                 $GIT_COMMON_DIR is used depending on refname.
+ *
  * Other flags are reserved for internal use.
  */
 #define REF_NODEREF	0x01
 #define REF_FORCE_CREATE_REFLOG 0x40
+#define REF_COMMON_DIR 0x80
 
 /*
  * Setup reflog before using. Fill in err and return -1 on failure.
@@ -304,7 +313,10 @@ extern char *shorten_unambiguous_ref(const char *refname, int strict);
 /** rename ref, return 0 on success **/
 extern int rename_ref(const char *oldref, const char *newref, const char *logmsg);
 
+/* create or update a symref */
 extern int create_symref(const char *refname, const char *target, const char *logmsg);
+/* same as create_symref, but refname is always $GIT_COMMON_DIR/refname */
+extern int create_symref_common_dir(const char *refname, const char *target, const char *logmsg);
 
 enum action_on_err {
 	UPDATE_REFS_MSG_ON_ERR,
