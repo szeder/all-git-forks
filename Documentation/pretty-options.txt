@@ -42,6 +42,12 @@ people using 80-column terminals.
 	verbatim; this means that invalid sequences in the original
 	commit may be copied to the output.
 
+--no-expand-tabs::
+	The formats that indent the log message by 4 spaces
+	(i.e. 'medium', 'full', and 'fuller') by default show tabs
+	in the log message expanded.  This option disables the
+	expansion.
+
 ifndef::git-rev-list[]
 --notes[=<treeish>]::
 	Show the notes (see linkgit:git-notes[1]) that annotate the
