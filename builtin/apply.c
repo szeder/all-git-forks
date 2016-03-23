@@ -4082,6 +4082,7 @@ static int remove_file(struct apply_state *state, struct patch *patch, int rmdir
 			remove_path(patch->old_name);
 		}
 	}
+	return 0;
 }
 
 static int add_index_file(struct apply_state *state,
