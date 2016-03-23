@@ -1,63 +1,14 @@
 #include "cache.h"
 #include "exec_cmd.h"
 #include "quote.h"
-#include <ShlObj.h>
 #define MAX_ARGS	32
 
 static const char *argv_exec_path;
 static const char *argv0_path;
 
-static int is_cygwin_hack_active()
-{
-	HKEY hKey;
-	DWORD dwType = REG_DWORD;
-	DWORD dwValue = 0;
-	DWORD dwSize = sizeof(dwValue);
-	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\TortoiseGit", NULL, KEY_ALL_ACCESS, &hKey) == ERROR_SUCCESS)
-	{
-		RegQueryValueExW(hKey, L"CygwinHack", NULL, &dwType, &dwValue, &dwSize);
-		RegCloseKey(hKey);
-	}
-	return dwValue == 1;
-}
-
-static const char* win_common_git_config_path()
-{
-	static const char *common_path = NULL;
-	static int already_looked_up = 0;
-
-	if (!already_looked_up)
-	{
-		char pointer[MAX_PATH];
-		wchar_t wbuffer[MAX_PATH];
-
-		already_looked_up = 1;
-
-		// do not use shared windows-wide system config when cygwin hack is active
-		if (is_cygwin_hack_active())
-			return NULL;
-
-		if (SHGetFolderPathW(NULL, CSIDL_COMMON_APPDATA, NULL, SHGFP_TYPE_CURRENT, wbuffer) != S_OK || wcslen(wbuffer) >= MAX_PATH - 11) /* 11 = len("\\Git\\config") */
-			return NULL;
-
-		wcscat(wbuffer, L"\\Git\\config");
-
-		if (_waccess(wbuffer, F_OK))
-			return NULL;
-
-		xwcstoutf(pointer, wbuffer, MAX_PATH);
-
-		common_path = xstrdup(pointer);
-	}
-
-	return common_path;
-}
-
 char *system_path(const char *path)
 {
 	static const char *syspath = NULL;
-	static DWORD dwMsys2Hack = 0;
-	static DWORD dwCygwinHack = 0;
 
 	if (is_absolute_path(path))
 		return xstrdup(path);
@@ -72,6 +23,7 @@ char *system_path(const char *path)
 		{
 			if (RegQueryValueExW(hKey, L"MSysGit", NULL, &dwType, (LPBYTE)&lszValue, &dwSize) == ERROR_SUCCESS)
 			{
+				DWORD dwMsys2Hack = 0;
 				char pointer[MAX_PATH];
 				xwcstoutf(pointer, lszValue, MAX_PATH);
 				syspath = strip_path_suffix(pointer, "cmd");
@@ -107,21 +59,9 @@ char *system_path(const char *path)
 					syspath = strip_path_suffix(oldsyspath, "usr");
 					free(oldsyspath);
 				}
-				RegQueryValueExW(hKey, L"CygwinHack", NULL, &dwType, (LPBYTE)&dwCygwinHack, &dwSize);
 			}
 			RegCloseKey(hKey);
 		}
-	}
-
-	if (!strcmp(path, ETC_GITCONFIG) && !(dwMsys2Hack || dwCygwinHack))
-	{
-		const char* configpath = mkpath("%s\\%s", syspath, path);
-		//if (!access(configpath, F_OK))
-		//	return xstrdup(configpath);
-
-		// check shared %PROGRAMDATA%\Git folder last, as we don't know if we're using a portable git
-		if ((configpath = win_common_git_config_path()) != NULL)
-			return configpath; // no need to strdup as we have a sattic buffer in win_common_git_config_path()
 	}
 
 	return xstrdup(mkpath("%s\\%s", syspath, path));
