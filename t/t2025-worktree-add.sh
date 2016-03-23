@@ -213,4 +213,18 @@ test_expect_success 'local clone from linked checkout' '
 	( cd here-clone && git fsck )
 '
 
+test_expect_success '"add" worktree with --no-checkout' '
+	git worktree add --no-checkout -b swamp swamp &&
+	ls swamp >actual && test_line_count = 0 actual &&
+	(
+		cd swamp && git reset --hard &&
+		test_cmp ../init.t init.t
+	)
+'
+
+test_expect_success '"add" worktree with --checkout' '
+	git worktree add --checkout -b swmap2 swamp2 &&
+	( cd swamp2 && test_cmp ../init.t init.t )
+'
+
 test_done
