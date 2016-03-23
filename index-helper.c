@@ -191,7 +191,7 @@ static void prepare_index(pid_t pid)
 
 #endif
 
-static void refresh()
+static void refresh(void)
 {
 	discard_index(&the_index);
 	the_index.keep_mmap = 1;
@@ -221,6 +221,7 @@ static int send_response(const char *client_pipe_path, const char *response)
 	return 0;
 }
 
+#ifdef USE_WATCHMAN
 static uintmax_t get_trailing_digits(const char *path)
 {
 	const char *start = strrchr(path, '/');
@@ -231,16 +232,17 @@ static uintmax_t get_trailing_digits(const char *path)
 		return 0;
 	return strtoull(start, NULL, 10);
 }
+#endif
 
 static void reply(const char *path)
 {
+#ifdef USE_WATCHMAN
 	uintmax_t pid;
 	/*
 	 * Parse caller pid out of provided path.  It'll be some
 	 * digits on the end.
 	 */
 	pid = (pid_t)get_trailing_digits(path);
-#ifdef USE_WATCHMAN
 	prepare_index(pid);
 #endif
 	send_response(path, "OK");

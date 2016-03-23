@@ -1476,7 +1476,7 @@ static int read_watchman_ext(struct index_state *istate, const void *data,
 		int i;
 		const char *untracked;
 
-		untracked = data + len + 8 + bitmap_size;
+		untracked = (const char *)data + len + 8 + bitmap_size;
 		for (i = 0; i < untracked_nr; ++i) {
 			int len = strlen(untracked);
 			string_list_append(&istate->untracked->invalid_untracked,
