@@ -20,6 +20,7 @@ struct signature_check {
 	char result;
 	char *signer;
 	char *key;
+	int revoked;
 };
 
 extern void signature_check_clear(struct signature_check *sigc);

@@ -10,6 +10,8 @@ static const char *gpg_program = "gpg";
 #define PGP_SIGNATURE "-----BEGIN PGP SIGNATURE-----"
 #define PGP_MESSAGE "-----BEGIN PGP MESSAGE-----"
 
+#define GPG_KEYREVOKED "\n[GNUPG:] KEYREVOKED"
+
 void signature_check_clear(struct signature_check *sigc)
 {
 	free(sigc->payload);
@@ -23,6 +25,8 @@ void signature_check_clear(struct signature_check *sigc)
 	sigc->signer = NULL;
 	sigc->key = NULL;
 }
+
+
 
 static struct {
 	char result;
@@ -58,6 +62,9 @@ void parse_gpg_output(struct signature_check *sigc)
 			sigc->signer = xmemdupz(found, next - found);
 		}
 	}
+
+	if (strstr(buf, GPG_KEYREVOKED))
+		sigc->revoked = 1;
 }
 
 int check_signature(const char *payload, size_t plen, const char *signature,
