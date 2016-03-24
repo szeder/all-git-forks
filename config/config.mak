@@ -48,6 +48,7 @@ private = $(shell grep -sq Meta/private "`git rev-parse --git-dir`/continue" && 
 strict = $(or $(rebasing), $(head), $(private))
 ifeq ($(strict),)
   CFLAGS += -Wno-error
+  CFLAGS += -Wno-cpp
 endif
 ifeq ($(filter-out %maint, $(head)),)
   CFLAGS += -Wno-unused-value -Wno-strict-prototypes
