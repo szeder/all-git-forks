@@ -1484,6 +1484,15 @@ gpg.program::
 	signed, and the program is expected to send the result to its
 	standard output.
 
+gpgsm.program::
+	Use this custom program instead of "gpgsm" found on $PATH when
+	making or verifying a gpgsm signature. The program must support the
+	same command-line interface as GPG and gpgsm, namely, to verify a detached
+	signature, "gpgsm --verify $file - <$signature" is run, and the
+	program is expected to signal a good signature by exiting with
+	code 0, and the program is expected to send the result to its
+	standard output.
+
 gui.commitMsgWidth::
 	Defines how wide the commit message window is in the
 	linkgit:git-gui[1]. "75" is the default.

@@ -6,9 +6,12 @@
 
 static char *configured_signing_key;
 static const char *gpg_program = "gpg";
+static const char *gpgsm_program = "gpgsm";
 
 #define PGP_SIGNATURE "-----BEGIN PGP SIGNATURE-----"
 #define PGP_MESSAGE "-----BEGIN PGP MESSAGE-----"
+
+#define GPGSM_MESSAGE "-----BEGIN SIGNED MESSAGE-----"
 
 void signature_check_clear(struct signature_check *sigc)
 {
@@ -22,6 +25,20 @@ void signature_check_clear(struct signature_check *sigc)
 	sigc->gpg_status = NULL;
 	sigc->signer = NULL;
 	sigc->key = NULL;
+}
+
+/*
+ * Guess which program this signature was made with based on the block start.
+ * Right now we just detect a gpgsm block and fall back to gpg otherwise.
+ */
+static const char *guess_program(const char *message, size_t message_len)
+{
+	size_t gpgsm_len = strlen(GPGSM_MESSAGE);
+
+	if (message_len > gpgsm_len && !strncmp(message, GPGSM_MESSAGE, gpgsm_len))
+		return gpgsm_program;
+
+	return gpg_program;
 }
 
 static struct {
@@ -131,6 +148,11 @@ int git_gpg_config(const char *var, const char *value, void *cb)
 			return config_error_nonbool(var);
 		gpg_program = xstrdup(value);
 	}
+	if (!strcmp(var, "gpgsm.program")) {
+		if (!value)
+			return config_error_nonbool(var);
+		gpgsm_program = xstrdup(value);
+	}
 	return 0;
 }
 
@@ -216,7 +238,7 @@ int verify_signed_buffer(const char *payload, size_t payload_size,
 	struct strbuf buf = STRBUF_INIT;
 	struct strbuf *pbuf = &buf;
 
-	args_gpg[0] = gpg_program;
+	args_gpg[0] = guess_program(signature, signature_size);
 	fd = git_mkstemp(path, PATH_MAX, ".git_vtag_tmpXXXXXX");
 	if (fd < 0)
 		return error(_("could not create temporary file '%s': %s"),
