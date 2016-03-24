@@ -164,6 +164,41 @@ const char *get_signing_key(void)
 }
 
 /*
+ * Try to figure out if the given program contains given the key. Both
+ * gpg and gpgsm have keys in hex format, so we don't necessarily know
+ * which one to use.
+ */
+static int program_knows_key(const char *program, const char *signing_key)
+{
+	struct child_process gpg = CHILD_PROCESS_INIT;
+	struct strbuf output = STRBUF_INIT;
+	const char *args[4];
+	size_t len;
+
+	gpg.argv = args;
+	gpg.in = -1;
+	gpg.out = -1;
+	args[0] = program;
+	args[1] = "-K";
+	args[2] = signing_key;
+	args[3] = NULL;
+
+	if (start_command(&gpg))
+		return error(_("could not run '%s'"), program);
+
+	close(gpg.in);
+	len = strbuf_read(&output, gpg.out, 1024);
+	close(gpg.out);
+
+	/* If the command exits with an error, consider it as not found */
+	if (finish_command(&gpg))
+		return 0;
+
+	/* If the command showed the key we wanted, use it. */
+	return !!len;
+}
+
+/*
  * Create a detached signature for the contents of "buffer" and append
  * it after "signature"; "buffer" and "signature" can be the same
  * strbuf instance, which would cause the detached signature appended
@@ -176,10 +211,14 @@ int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *sig
 	ssize_t len;
 	size_t i, j, bottom;
 
+	if (program_knows_key(gpgsm_program, signing_key))
+		args[0] = gpgsm_program;
+	else
+		args[0] = gpg_program;
+
 	gpg.argv = args;
 	gpg.in = -1;
 	gpg.out = -1;
-	args[0] = gpg_program;
 	args[1] = "-bsau";
 	args[2] = signing_key;
 	args[3] = NULL;
