@@ -2078,7 +2078,7 @@ static int use_patch(struct apply_state *state, struct patch *p)
 	int i;
 
 	/* Paths outside are not touched regardless of "--include" */
-	if (0 < state->prefix_length) {
+	if (!state->apply_whole && 0 < state->prefix_length) {
 		int pathlen = strlen(pathname);
 		if (pathlen <= state->prefix_length ||
 		    memcmp(state->prefix, pathname, state->prefix_length))
@@ -4976,6 +4976,7 @@ int apply_parse_options(int argc, const char **argv,
 		OPT_BIT(0, "recount", options,
 			N_("do not trust the line counts in the hunk headers"),
 			APPLY_OPT_RECOUNT),
+		OPT_BOOL(0, "whole", &state->apply_whole, N_("apply whole patch")),
 		{ OPTION_CALLBACK, 0, "directory", state, N_("root"),
 			N_("prepend <root> to all filenames"),
 			0, apply_option_parse_directory },

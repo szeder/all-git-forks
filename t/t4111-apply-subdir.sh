@@ -153,4 +153,36 @@ test_expect_success 'apply --cached from subdir of .git dir' '
 	test_cmp expected.subdir actual.subdir
 '
 
+test_expect_success 'setup a git patch' '
+	cat >gitpatch <<-\EOF &&
+	diff --git a/file b/file
+	--- a/file
+	+++ b/file
+	@@ -1 +1,2 @@
+	 1
+	+2
+	EOF
+	gitpatch="$(pwd)/gitpatch"
+'
+
+test_expect_success 'apply a git patch from subdir of toplevel' '
+	reset_subdir other preimage &&
+	(
+		cd sub/dir &&
+		git apply "$gitpatch"
+	) &&
+	test_cmp preimage sub/dir/file &&
+	test_cmp preimage file
+'
+
+test_expect_success 'apply the whole git patch from subdir of toplevel' '
+	reset_subdir other preimage &&
+	(
+		cd sub/dir &&
+		git apply --whole "$gitpatch"
+	) &&
+	test_cmp preimage sub/dir/file &&
+	test_cmp postimage file
+'
+
 test_done

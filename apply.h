@@ -61,6 +61,7 @@ struct apply_state {
 	int threeway;
 	int unidiff_zero;
 	int unsafe_paths;
+	int apply_whole;
 
 	/* Other non boolean parameters */
 	const char *index_file;

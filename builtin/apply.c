@@ -9,7 +9,6 @@ static const char * const apply_usage[] = {
 	NULL
 };
 
-static struct lock_file lock_file;
 
 int cmd_apply(int argc, const char **argv, const char *prefix)
 {
