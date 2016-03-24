@@ -1,0 +1,26 @@
+ied_nbaclient_rep/nbaclient_proj
+mqq_mobilenetgameclient_rep/YJ2_proj
+ied_qssvr_rep/
+mqq_qqbrowser_rep/QQBrowser_iPhone_proj/trunk/src/MttBrowser_iPhone_Release1.0/mtt
+ied_mmofps_rep/ied_mmofps_code_proj/trunk/TGameClient
+IOT/iot_sdk_compile_proj
+tr_dolphin_rep/dolphin_ios_proj/trunk
+basic_iphoneqq_rep/iphoneqq_proj/
+search_search_rep/websearch_proj/release/search_quality/qqseg_new/data
+YThefei/algo_deep_proj/trunk/dataset
+mqq_qqbrowser_rep/QQBrowser_iPhone_proj/trunk/src/MttBrowser_iPhone_Release1.0/mtt
+ied_mmofps_rep/ied_mmofps_code_proj/trunk/TGameClient
+IOT/iot_sdk_compile_proj
+tr_dolphin_rep/dolphin_ios_proj/trunk
+YThefei/algo_deep_proj/trunk/dataset
+
+
+git.code.oa.com/api/v3/projects/:id/repository/tree
+
+
+args = %W(#{Gitlab.config.git.bin_path} rev-list --max-count=1 #{sha} -- #{path})
+
+
+git rev-list --max-count=1 c08b2b9a785eedcd9d5da9418695435893f23e78 -- code-build/build.xml
+
+http://git.code.oa.com/code/luci_test/merge_requests/new?utf8=%E2%9C%93&merge_request%5Bsource_project_id%5D=13198&merge_request%5Bsource_branch%5D=lucifer&merge_request%5Btarget_project_id%5D=13198&merge_request%5Btarget_branch%5D=master
