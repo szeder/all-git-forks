@@ -767,11 +767,19 @@ test_expect_success 'submodule update clone shallow submodule' '
 
 test_expect_success 'submodule update --recursive drops module name before recursing' '
 	(cd super2 &&
-	 (cd deeper/submodule/subsubmodule &&
-	  git checkout HEAD^
-	 ) &&
+	 git -C deeper/submodule/subsubmodule checkout HEAD^
 	 git submodule update --recursive deeper/submodule >actual &&
 	 test_i18ngrep "Submodule path .deeper/submodule/subsubmodule.: checked out" actual
+	)
+'
+
+test_expect_success 'submodule update --recursive works from subdirectory' '
+	(cd super2 &&
+	 git -C deeper/submodule/subsubmodule checkout HEAD^
+	 mkdir untracked &&
+	 cd untracked &&
+	 git submodule update --recursive >actual &&
+	 test_i18ngrep "Submodule path .../deeper/submodule/subsubmodule.: checked out" actual
 	)
 '
 test_done
