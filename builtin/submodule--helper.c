@@ -153,9 +153,6 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	struct strbuf sb = STRBUF_INIT;
 
 	struct option module_clone_options[] = {
-		OPT_STRING(0, "prefix", &prefix,
-			   N_("path"),
-			   N_("alternative anchor for relative paths")),
 		OPT_STRING(0, "path", &path,
 			   N_("path"),
 			   N_("where the new submodule will be cloned to")),
@@ -176,7 +173,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	};
 
 	const char *const git_submodule_helper_usage[] = {
-		N_("git submodule--helper clone [--prefix=<path>] [--quiet] "
+		N_("git submodule--helper clone [--quiet] "
 		   "[--reference <repository>] [--name <name>] [--url <url>]"
 		   "[--depth <depth>] [--] [<path>...]"),
 		NULL
