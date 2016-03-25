@@ -2910,6 +2910,45 @@ int create_symref(const char *refname, const char *target, const char *logmsg)
 	return ret;
 }
 
+int set_worktree_head_symref(const char *gitdir, const char *target)
+{
+	int ret;
+	struct strbuf err = STRBUF_INIT;
+	struct ref_lock *lock;
+	struct lock_file *lk;
+	struct strbuf head_path = STRBUF_INIT;
+	const char *head_rel;
+
+	strbuf_addf(&head_path, "%s/HEAD", absolute_path(gitdir));
+	/* head_rel will be "HEAD" for the main tree, "worktrees/wt/HEAD" for
+	   linked trees */
+	head_rel = remove_leading_path(head_path.buf,
+				       absolute_path(get_git_common_dir()));
+
+	lk = lock_ref_file(head_path.buf, LOCK_NO_DEREF, &err);
+	if (!lk)
+		goto error_out;
+
+	lock = xcalloc(1, sizeof(struct ref_lock));
+	lock->lk = lk;
+	lock->ref_name = xstrdup(head_rel);
+	lock->orig_ref_name = xstrdup(head_rel);
+
+	ret = create_symref_locked(lock, head_rel, target, NULL);
+	unlock_ref(lock);
+	goto out;
+
+ error_out:
+	if (err.len)
+		error("%s", err.buf);
+	strbuf_release(&err);
+	ret = -1;
+
+ out:
+	strbuf_release(&head_path);
+	return ret;
+}
+
 int reflog_exists(const char *refname)
 {
 	struct stat st;
