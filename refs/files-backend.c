@@ -2886,14 +2886,15 @@ static int create_symref_locked(struct ref_lock *lock, const char *refname,
 	return 0;
 }
 
-int create_symref(const char *refname, const char *target, const char *logmsg)
+static int create_symref_internal(const char *refname, const char *target,
+				  const char *logmsg, unsigned int flags)
 {
 	struct strbuf err = STRBUF_INIT;
 	struct ref_lock *lock;
 	int ret;
 
-	lock = lock_ref_sha1_basic(refname, NULL, NULL, NULL, REF_NODEREF, NULL,
-				   &err);
+	lock = lock_ref_sha1_basic(refname, NULL, NULL, NULL, REF_NODEREF | flags,
+				   NULL, &err);
 	if (!lock) {
 		error("%s", err.buf);
 		strbuf_release(&err);
@@ -2903,6 +2904,16 @@ int create_symref(const char *refname, const char *target, const char *logmsg)
 	ret = create_symref_locked(lock, refname, target, logmsg);
 	unlock_ref(lock);
 	return ret;
+}
+
+int create_symref(const char *refname, const char *target, const char *logmsg)
+{
+	return create_symref_internal(refname, target, logmsg, 0);
+}
+
+int create_symref_common_dir(const char *refname, const char *target, const char *logmsg)
+{
+	return create_symref_internal(refname, target, logmsg, REF_COMMON_DIR);
 }
 
 int reflog_exists(const char *refname)

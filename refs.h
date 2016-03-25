@@ -312,7 +312,10 @@ extern char *shorten_unambiguous_ref(const char *refname, int strict);
 /** rename ref, return 0 on success **/
 extern int rename_ref(const char *oldref, const char *newref, const char *logmsg);
 
+/* create or update a symref */
 extern int create_symref(const char *refname, const char *target, const char *logmsg);
+/* same as create_symref, but refname is always $GIT_COMMON_DIR/refname */
+extern int create_symref_common_dir(const char *refname, const char *target, const char *logmsg);
 
 enum action_on_err {
 	UPDATE_REFS_MSG_ON_ERR,
