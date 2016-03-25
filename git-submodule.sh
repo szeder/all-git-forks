@@ -284,7 +284,7 @@ Use -f if you really want to add it." >&2
 				echo "$(eval_gettext "Reactivating local git directory for submodule '\$sm_name'.")"
 			fi
 		fi
-		git submodule--helper clone ${GIT_QUIET:+--quiet} --prefix "$wt_prefix" --path "$sm_path" --name "$sm_name" --url "$realrepo" ${reference:+"$reference"} ${depth:+"$depth"} || exit
+		git submodule--helper clone ${GIT_QUIET:+--quiet} --path "$sm_path" --name "$sm_name" --url "$realrepo" ${reference:+"$reference"} ${depth:+"$depth"} || exit
 		(
 			sanitize_submodule_env
 			cd "$sm_path" &&
@@ -344,7 +344,7 @@ cmd_foreach()
 	# command in the subshell (and a recursive call to this function)
 	exec 3<&0
 
-	git submodule--helper list --prefix "$wt_prefix"|
+	git submodule--helper list |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
@@ -404,7 +404,7 @@ cmd_init()
 		shift
 	done
 
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	git -C "$wt_prefix" submodule--helper list "$@" |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
@@ -449,7 +449,7 @@ cmd_deinit()
 		die "$(eval_gettext "Use '.' if you really want to deinitialize all submodules")"
 	fi
 
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	git -C "$wt_prefix" submodule--helper list "$@" |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
@@ -720,8 +720,9 @@ cmd_update()
 		if test -n "$recursive"
 		then
 			(
-				prefix="$prefix$sm_path/"
+				prefix="$(relative_path $prefix$sm_path)/"
 				sanitize_submodule_env
+				wt_prefix=
 				cd "$sm_path" &&
 				eval cmd_update
 			)
@@ -1015,7 +1016,7 @@ cmd_status()
 		shift
 	done
 
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	git -C "$wt_prefix" submodule--helper list "$@" |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
@@ -1054,6 +1055,7 @@ cmd_status()
 			(
 				prefix="$displaypath/"
 				sanitize_submodule_env
+				wt_prefix=
 				cd "$sm_path" &&
 				eval cmd_status
 			) ||
@@ -1092,7 +1094,7 @@ cmd_sync()
 		esac
 	done
 	cd_to_toplevel
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	git -C "$wt_prefix" submodule--helper list "$@" |
 	while read mode sha1 stage sm_path
 	do
 		die_if_unmatched "$mode"
@@ -1134,7 +1136,8 @@ cmd_sync()
 
 				if test -n "$recursive"
 				then
-					prefix="$prefix$sm_path/"
+					prefix=$(relative_path "$prefix$sm_path/")
+					wt_prefix=
 					eval cmd_sync
 				fi
 			)

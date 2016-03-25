@@ -767,9 +767,7 @@ test_expect_success 'submodule update clone shallow submodule' '
 
 test_expect_success 'submodule update --recursive drops module name before recursing' '
 	(cd super2 &&
-	 (cd deeper/submodule/subsubmodule &&
-	  git checkout HEAD^
-	 ) &&
+	 git -C deeper/submodule/subsubmodule checkout HEAD^
 	 git submodule update --recursive deeper/submodule >actual &&
 	 test_i18ngrep "Submodule path .deeper/submodule/subsubmodule.: checked out" actual
 	)
@@ -799,6 +797,16 @@ test_expect_success 'git clone passes the parallel jobs config on to submodules'
 	GIT_TRACE=$(pwd)/trace.out git clone --recurse-submodules --jobs 9 . super4 &&
 	grep "9 tasks" trace.out &&
 	rm -rf super4
+'
+
+test_expect_success 'submodule update --recursive works from subdirectory' '
+	(cd super2 &&
+	 git -C deeper/submodule/subsubmodule checkout HEAD^
+	 mkdir untracked &&
+	 cd untracked &&
+	 git submodule update --recursive >actual &&
+	 test_i18ngrep "Submodule path .../deeper/submodule/subsubmodule.: checked out" actual
+	)
 '
 
 test_done
