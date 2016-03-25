@@ -238,10 +238,14 @@ int pack_refs(unsigned int flags);
  * REF_NODEREF: act on the ref directly, instead of dereferencing
  *              symbolic references.
  *
+ * REF_COMMON_DIR: use $GIT_COMMON_DIR always. If not specified, $GIT_DIR or
+ *                 $GIT_COMMON_DIR is used depending on refname.
+ *
  * Other flags are reserved for internal use.
  */
 #define REF_NODEREF	0x01
 #define REF_FORCE_CREATE_REFLOG 0x40
+#define REF_COMMON_DIR 0x80
 
 /*
  * Setup reflog before using. Fill in err and return -1 on failure.

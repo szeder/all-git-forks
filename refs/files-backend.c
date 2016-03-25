@@ -1918,6 +1918,8 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		resolve_flags |= RESOLVE_REF_NO_RECURSE;
 		lflags |= LOCK_NO_DEREF;
 	}
+	if (flags & REF_COMMON_DIR)
+		resolve_flags |= RESOLVE_REF_COMMON_DIR;
 
 	refname = resolve_ref_unsafe(refname, resolve_flags,
 				     lock->old_oid.hash, &type);
@@ -1928,7 +1930,10 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 		 * it is normal for the empty directory 'foo'
 		 * to remain.
 		 */
-		strbuf_git_path(&orig_ref_file, "%s", orig_refname);
+		if (flags & REF_COMMON_DIR)
+			strbuf_addf(&orig_ref_file, "%s/%s", get_git_common_dir(), orig_refname);
+		else
+			strbuf_git_path(&orig_ref_file, "%s", orig_refname);
 		if (remove_empty_directories(&orig_ref_file)) {
 			last_errno = errno;
 			if (!verify_refname_available_dir(orig_refname, extras, skip,
@@ -1973,7 +1978,10 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 
 	lock->ref_name = xstrdup(refname);
 	lock->orig_ref_name = xstrdup(orig_refname);
-	strbuf_git_path(&ref_file, "%s", refname);
+	if (flags & REF_COMMON_DIR)
+		strbuf_addf(&ref_file, "%s/%s", get_git_common_dir(), refname);
+	else
+		strbuf_git_path(&ref_file, "%s", refname);
 
  retry:
 	switch (safe_create_leading_directories_const(ref_file.buf)) {
