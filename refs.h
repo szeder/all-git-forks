@@ -25,6 +25,9 @@
  * reference will always be null_sha1 in this case, and the return
  * value is the reference that the symref refers to directly.
  *
+ * If the RESOLVE_REF_COMMON_DIR flag is passed, assumes the refname is
+ * always directly under $GIT_COMMON_DIR.
+ *
  * If flags is non-NULL, set the value that it points to the
  * combination of REF_ISPACKED (if the reference was found among the
  * packed references), REF_ISSYMREF (if the initial reference was a
@@ -51,6 +54,7 @@
 #define RESOLVE_REF_READING 0x01
 #define RESOLVE_REF_NO_RECURSE 0x02
 #define RESOLVE_REF_ALLOW_BAD_NAME 0x04
+#define RESOLVE_REF_COMMON_DIR 0x08
 
 extern const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 				      unsigned char *sha1, int *flags);

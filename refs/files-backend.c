@@ -1448,7 +1448,10 @@ static const char *resolve_ref_1(const char *refname,
 		}
 
 		strbuf_reset(sb_path);
-		strbuf_git_path(sb_path, "%s", refname);
+		if (resolve_flags & RESOLVE_REF_COMMON_DIR)
+			strbuf_addf(sb_path, "%s/%s", get_git_common_dir(), refname);
+		else
+			strbuf_git_path(sb_path, "%s", refname);
 		path = sb_path->buf;
 
 		/*
