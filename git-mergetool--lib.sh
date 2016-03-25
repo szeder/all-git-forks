@@ -377,10 +377,10 @@ mergetool_find_win32_cmd () {
 	executable=$1
 	folder=$2
 
-	# Use executable.com if it exists in $PATH
-	if type -p $executable >/dev/null 2>&1
+	# Use $executable if it exists in $PATH
+	if type -p "$executable" >/dev/null 2>&1
 	then
-		printf '%s' $executable
+		printf '%s' "$executable"
 		return
 	fi
 
@@ -395,5 +395,5 @@ mergetool_find_win32_cmd () {
 		fi
 	done
 
-	printf '%s' $executable
+	printf '%s' "$executable"
 }
