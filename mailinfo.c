@@ -682,7 +682,8 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 static void handle_patch(struct mailinfo *mi, const struct strbuf *line)
 {
-	fwrite(line->buf, 1, line->len, mi->patchfile);
+	if (mi->patchfile)
+		fwrite(line->buf, 1, line->len, mi->patchfile);
 	mi->patch_lines++;
 }
 
