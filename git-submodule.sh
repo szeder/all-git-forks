@@ -825,8 +825,9 @@ Maybe you want to use 'update --init'?")"
 		if test -n "$recursive"
 		then
 			(
-				prefix="$prefix$sm_path/"
+				prefix="$(relative_path $prefix$sm_path)/"
 				clear_local_git_env
+				wt_prefix=
 				cd "$sm_path" &&
 				eval cmd_update
 			)
@@ -1159,6 +1160,7 @@ cmd_status()
 			(
 				prefix="$displaypath/"
 				clear_local_git_env
+				wt_prefix=
 				cd "$sm_path" &&
 				eval cmd_status
 			) ||
@@ -1239,7 +1241,8 @@ cmd_sync()
 
 				if test -n "$recursive"
 				then
-					prefix="$prefix$sm_path/"
+					prefix=$(relative_path "$prefix$sm_path/")
+					wt_prefix=
 					eval cmd_sync
 				fi
 			)
