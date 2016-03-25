@@ -372,3 +372,28 @@ get_merge_tool () {
 	fi
 	echo "$merge_tool"
 }
+
+mergetool_find_win32_cmd () {
+	executable=$1
+	folder=$2
+
+	# Use executable.com if it exists in $PATH
+	if type -p $executable >/dev/null 2>&1
+	then
+		printf '%s' $executable
+		return
+	fi
+
+	# Look for executable in the typical locations
+	for directory in $(env | grep -Ei '^PROGRAM(FILES(\(X86\))?|W6432)=' |
+		cut -d '=' -f 2- | sort -u)
+	do
+		if test -n "$directory" && test -x "$directory/$folder/$executable"
+		then
+			printf '%s' "$directory/$folder/$executable"
+			return
+		fi
+	done
+
+	printf '%s' $executable
+}
