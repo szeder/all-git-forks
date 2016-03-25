@@ -344,3 +344,44 @@ void die_if_checked_out(const char *branch)
 		die(_("'%s' is already checked out at '%s'"), branch, existing);
 	}
 }
+
+int update_worktrees_head_symref(const char *oldref, const char *newref)
+{
+	int ret = 0;
+	struct strbuf symref = STRBUF_INIT;
+	struct worktree **worktrees = get_worktrees();
+	const char *origref;
+	int i;
+	unsigned char sha1[20];
+	int common_prefix_len = strlen(absolute_path(get_git_common_dir())) + 1;
+
+	for (i = 0; worktrees[i]; i++) {
+		if (worktrees[i]->is_detached)
+			continue;
+
+		strbuf_reset(&symref);
+		strbuf_addf(&symref, "%s/HEAD", worktrees[i]->git_dir);
+		strbuf_remove(&symref, 0, common_prefix_len);
+
+		origref = resolve_ref_unsafe(symref.buf,
+				RESOLVE_REF_NO_RECURSE | RESOLVE_REF_COMMON_DIR,
+				sha1, NULL);
+		if (!origref) {
+			/* should not happen, since get_worktrees() could parse it */
+			ret = -1;
+			break;
+		}
+
+		if (!strcmp(origref, oldref) &&
+		    create_symref_common_dir(symref.buf, newref, NULL)) {
+			ret = -1;
+			warning(_("HEAD of working tree %s is not updated"),
+				worktrees[i]->path);
+		}
+	}
+
+	strbuf_release(&symref);
+	free_worktrees(worktrees);
+
+	return ret;
+}
