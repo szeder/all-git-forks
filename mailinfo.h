@@ -6,7 +6,6 @@
 struct mailinfo {
 	FILE *input;
 	FILE *output;
-	FILE *patchfile;
 
 	struct strbuf name;
 	struct strbuf email;
@@ -27,11 +26,11 @@ struct mailinfo {
 	int patch_lines;
 	int filter_stage; /* still reading log or are we copying patch? */
 	int header_stage; /* still checking in-body headers? */
-	struct strbuf **p_hdr_data;
-	struct strbuf **s_hdr_data;
 
 	struct strbuf log_message;
 	int input_error;
+
+	void *arg;
 };
 
 extern void setup_mailinfo(struct mailinfo *);

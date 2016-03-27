@@ -3,6 +3,13 @@
 #include "strbuf.h"
 #include "mailinfo.h"
 
+struct mailinfo_state {
+	FILE *patchfile;
+
+	struct strbuf **p_hdr_data;
+	struct strbuf **s_hdr_data;
+};
+
 static void cleanup_space(struct strbuf *sb)
 {
 	size_t pos, cnt;
@@ -453,10 +460,17 @@ release_return:
 
 static int check_header(struct mailinfo *mi,
 			const struct strbuf *line,
-			struct strbuf *hdr_data[], int overwrite)
+			int primary, int overwrite)
 {
 	int i, ret = 0, len;
+	struct mailinfo_state *st = mi->arg;
+	struct strbuf **hdr_data;
 	struct strbuf sb = STRBUF_INIT;
+
+	if (primary)
+		hdr_data = st->p_hdr_data;
+	else
+		hdr_data = st->s_hdr_data;
 
 	/* search for the interesting parts */
 	for (i = 0; header[i]; i++) {
@@ -630,6 +644,8 @@ static int is_scissors_line(const struct strbuf *line)
 
 static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 {
+	struct mailinfo_state *st = mi->arg;
+
 	assert(!mi->filter_stage);
 
 	if (mi->header_stage) {
@@ -638,7 +654,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 	}
 
 	if (mi->use_inbody_headers && mi->header_stage) {
-		mi->header_stage = check_header(mi, line, mi->s_hdr_data, 0);
+		mi->header_stage = check_header(mi, line, 0, 0);
 		if (mi->header_stage)
 			return 0;
 	} else
@@ -662,9 +678,9 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 		 * them to give ourselves a clean restart.
 		 */
 		for (i = 0; header[i]; i++) {
-			if (mi->s_hdr_data[i])
-				strbuf_release(mi->s_hdr_data[i]);
-			mi->s_hdr_data[i] = NULL;
+			if (st->s_hdr_data[i])
+				strbuf_release(st->s_hdr_data[i]);
+			st->s_hdr_data[i] = NULL;
 		}
 		return 0;
 	}
@@ -682,8 +698,9 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 static void handle_patch(struct mailinfo *mi, const struct strbuf *line)
 {
-	if (mi->patchfile)
-		fwrite(line->buf, 1, line->len, mi->patchfile);
+	struct mailinfo_state *st = mi->arg;
+
+	fwrite(line->buf, 1, line->len, st->patchfile);
 	mi->patch_lines++;
 }
 
@@ -817,7 +834,7 @@ again:
 
 	/* slurp in this section's info */
 	while (read_one_header_line(line, mi->input))
-		check_header(mi, line, mi->p_hdr_data, 0);
+		check_header(mi, line, 1, 0);
 
 	strbuf_release(&newline);
 	/* replenish line */
@@ -915,15 +932,16 @@ static void output_header_lines(FILE *fout, const char *hdr, const struct strbuf
 
 static void handle_info(struct mailinfo *mi)
 {
+	struct mailinfo_state *st = mi->arg;
 	struct strbuf *hdr;
 	int i;
 
 	for (i = 0; header[i]; i++) {
 		/* only print inbody headers if we output a patch file */
-		if (mi->patch_lines && mi->s_hdr_data[i])
-			hdr = mi->s_hdr_data[i];
-		else if (mi->p_hdr_data[i])
-			hdr = mi->p_hdr_data[i];
+		if (mi->patch_lines && st->s_hdr_data[i])
+			hdr = st->s_hdr_data[i];
+		else if (st->p_hdr_data[i])
+			hdr = st->p_hdr_data[i];
 		else
 			continue;
 
@@ -946,13 +964,28 @@ static void handle_info(struct mailinfo *mi)
 	fprintf(mi->output, "\n");
 }
 
+static void setup_mailinfo_state(struct mailinfo_state *st)
+{
+	st->p_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*(st->p_hdr_data)));
+	st->s_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*(st->s_hdr_data)));
+}
+
+static void clear_mailinfo_state(struct mailinfo_state *st)
+{
+	int i;
+
+	for (i = 0; st->p_hdr_data[i]; i++)
+		strbuf_release(st->p_hdr_data[i]);
+	free(st->p_hdr_data);
+	for (i = 0; st->s_hdr_data[i]; i++)
+		strbuf_release(st->s_hdr_data[i]);
+	free(st->s_hdr_data);
+}
+
 int mailinfo_run(struct mailinfo *mi)
 {
 	int peek;
 	struct strbuf line = STRBUF_INIT;
-
-	mi->p_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*(mi->p_hdr_data)));
-	mi->s_hdr_data = xcalloc(MAX_HDR_PARSED, sizeof(*(mi->s_hdr_data)));
 
 	do {
 		peek = fgetc(mi->input);
@@ -961,7 +994,7 @@ int mailinfo_run(struct mailinfo *mi)
 
 	/* process the email header */
 	while (read_one_header_line(&line, mi->input))
-		check_header(mi, &line, mi->p_hdr_data, 1);
+		check_header(mi, &line, 1, 1);
 
 	handle_body(mi, &line);
 	strbuf_release(&line);
@@ -971,14 +1004,18 @@ int mailinfo_run(struct mailinfo *mi)
 int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 {
 	FILE *cmitmsg;
+	struct mailinfo_state st;
+
+	setup_mailinfo_state(&st);
+	mi->arg = &st;
 
 	cmitmsg = fopen(msg, "w");
 	if (!cmitmsg) {
 		perror(msg);
 		return -1;
 	}
-	mi->patchfile = fopen(patch, "w");
-	if (!mi->patchfile) {
+	st.patchfile = fopen(patch, "w");
+	if (!st.patchfile) {
 		perror(patch);
 		fclose(cmitmsg);
 		return -1;
@@ -988,9 +1025,10 @@ int mailinfo(struct mailinfo *mi, const char *msg, const char *patch)
 
 	fwrite(mi->log_message.buf, 1, mi->log_message.len, cmitmsg);
 	fclose(cmitmsg);
-	fclose(mi->patchfile);
+	fclose(st.patchfile);
 
 	handle_info(mi);
+	clear_mailinfo_state(&st);
 	return mi->input_error;
 }
 
@@ -1023,19 +1061,10 @@ void setup_mailinfo(struct mailinfo *mi)
 
 void clear_mailinfo(struct mailinfo *mi)
 {
-	int i;
-
 	strbuf_release(&mi->name);
 	strbuf_release(&mi->email);
 	strbuf_release(&mi->charset);
 	free(mi->message_id);
-
-	for (i = 0; mi->p_hdr_data[i]; i++)
-		strbuf_release(mi->p_hdr_data[i]);
-	free(mi->p_hdr_data);
-	for (i = 0; mi->s_hdr_data[i]; i++)
-		strbuf_release(mi->s_hdr_data[i]);
-	free(mi->s_hdr_data);
 
 	while (mi->content < mi->content_top) {
 		free(*(mi->content_top));

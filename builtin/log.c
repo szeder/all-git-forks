@@ -1046,10 +1046,12 @@ static void apply_reply_to_message(struct strbuf *headers,
 {
 	struct child_process store = {0};
 	struct mailinfo mi;
-	int code;
+	int code, mi_result;
 
 	setup_mailinfo(&mi);
 	mi.metainfo_charset = get_commit_output_encoding();
+	mi.use_inbody_headers = 0;
+	mi.keep_subject = 1;
 
 	store.in = 0;
 	store.out = -1;
@@ -1066,14 +1068,21 @@ static void apply_reply_to_message(struct strbuf *headers,
 		exit(code);
 
 	mi.input = xfdopen(store.out, "rb");
+	mi.output = xfopen("/dev/null", "w");
+#if 0
 	msg_options.header_cb = reply_to_msg_header;
 	msg_options.bodyline_cb = reply_to_msg_bodyline;
-	msg_options.metainfo_charset = get_commit_output_encoding();
-	rfc2822_parse(&msg_options, NULL);
+#endif
+	mi_result = mailinfo_run(&mi);
 
 	code = finish_command(&store);
 	if (code)
 		die("Error in message store");
+
+	if (mi_result)
+		die("Error parsing mail");
+
+	clear_mailinfo(&mi);
 }
 
 static void make_cover_letter(struct rev_info *rev, int use_stdout,
