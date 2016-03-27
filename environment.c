@@ -251,7 +251,7 @@ const char *get_git_work_tree(void)
 
 void reset_git_env(void)
 {
-	putenv("GIT_DIR=");
+	build_libgit_environment(); // this resets all environment variables
 	is_bare_repository_cfg = -1;
 	if (git_dir)
 	{
