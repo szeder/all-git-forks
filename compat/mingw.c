@@ -2156,44 +2156,31 @@ static char *wcstoutfdup_startup(char *buffer, const wchar_t *wcs, size_t len)
 	return memcpy(malloc_startup(len), buffer, len);
 }
 
-/*
-* Disable MSVCRT command line wildcard expansion (__getmainargs called from
-* mingw startup code, see init.c in mingw runtime).
-*/
-int _CRT_glob = 0;
-
-typedef struct {
-	int newmode;
-} _startupinfo;
-
-extern int __wgetmainargs(int *argc, wchar_t ***argv, wchar_t ***env, int glob,
-	_startupinfo *si);
-
 void build_libgit_environment()
 {
-	int i, maxlen, argc;
+	int i, maxlen;
 	char *buffer;
-	wchar_t **wenv, **wargv;
-	_startupinfo si;
+	wchar_t *wenv;
 
 	/* cleanup old environment */
 	if (libgit_environ)
 	{
-		for (i = 0; libgit_environ[i]; i++)
+		for (i = 0; libgit_environ[i]; ++i)
 			free(libgit_environ[i]);
 		free(libgit_environ);
 	}
 
-	/* get wide char arguments and environment */
-	si.newmode = 0;
-	if (__wgetmainargs(&argc, &wargv, &wenv, _CRT_glob, &si) < 0)
-		die("startup");
-
+	wenv = GetEnvironmentStringsW();
 	maxlen = 0;
+	i = 0;
 
 	/* determine size of argv and environ conversion buffer */
-	for (i = 0; wenv[i]; i++)
-		maxlen = max(maxlen, wcslen(wenv[i]));
+	for (int pos = 0; wenv && wenv[pos] && wenv[pos + 1]; ++i)
+	{
+		int len = wcslen(wenv + pos);
+		maxlen = max(maxlen, len);
+		pos += len + 1;
+	}
 
 	/*
 	* nedmalloc can't free CRT memory, allocate resizable environment
@@ -2209,10 +2196,17 @@ void build_libgit_environment()
 	buffer = malloc_startup(maxlen);
 
 	/* convert environment to UTF-8 */
-	for (i = 0; wenv[i]; i++)
-		libgit_environ[i] = wcstoutfdup_startup(buffer, wenv[i], maxlen);
+	i = 0;
+	for (int pos = 0; wenv && wenv[pos] && wenv[pos + 1]; ++i)
+	{
+		int len = wcslen(wenv + pos);
+		libgit_environ[i] = wcstoutfdup_startup(buffer, wenv + pos, maxlen);
+		pos += len + 1;
+	}
 	libgit_environ[i] = NULL;
 	free(buffer);
+
+	FreeEnvironmentStringsW(wenv);
 
 	/* sort environment for O(log n) getenv / putenv */
 	qsort(libgit_environ, i, sizeof(char*), compareenv);
