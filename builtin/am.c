@@ -28,6 +28,7 @@
 #include "rerere.h"
 #include "prompt.h"
 #include "mailinfo.h"
+#include "apply.h"
 
 /**
  * Returns 1 if the file is empty or does not exist, 0 otherwise.
@@ -1522,22 +1523,53 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
  */
 static int run_apply(const struct am_state *state, const char *index_file)
 {
+/*
 	struct child_process cp = CHILD_PROCESS_INIT;
 
 	cp.git_cmd = 1;
 
 	if (index_file)
 		argv_array_pushf(&cp.env_array, "GIT_INDEX_FILE=%s", index_file);
+*/
 
 	/*
 	 * If we are allowed to fall back on 3-way merge, don't give false
 	 * errors during the initial attempt.
 	 */
+
+/*
 	if (state->threeway && !index_file) {
-		cp.no_stdout = 1;
-		cp.no_stderr = 1;
+		dup_devnull(1);
+		dup_devnull(2);
+	}
+*/
+
+	struct argv_array apply_paths = ARGV_ARRAY_INIT;
+	struct apply_state apply_state;
+
+	if (init_apply_state(&apply_state, NULL))
+		die("init_apply_state() failed");
+
+	if (index_file) {
+		printf("run_apply: index_file: %s", index_file);
+		die("Not working now with an index");
 	}
 
+	if (index_file)
+		apply_state.cached = 1;
+	else
+		apply_state.check_index = 1;
+
+	if (check_apply_state(&apply_state, 0))
+		die("check_apply_state() failed");
+
+	argv_array_push(&apply_paths, am_path(state, "patch"));
+
+	if (apply_all_patches(&apply_state, apply_paths.argc, apply_paths.argv, 0))
+		die("apply_all_patches() failed");
+
+
+/*
 	argv_array_push(&cp.args, "apply");
 
 	argv_array_pushv(&cp.args, state->git_apply_opts.argv);
@@ -1551,6 +1583,9 @@ static int run_apply(const struct am_state *state, const char *index_file)
 
 	if (run_command(&cp))
 		return -1;
+*/
+
+	
 
 	/* Reload index as git-apply will have modified it. */
 	discard_cache();
