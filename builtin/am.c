@@ -1577,6 +1577,9 @@ static int run_apply(const struct am_state *state, const char *index_file)
 		close(save_stderr_fd);
 	}
 
+	if (index_file)
+		set_index_file(save_index_file);
+
 	argv_array_clear(&apply_paths);
 
 	if (res)
