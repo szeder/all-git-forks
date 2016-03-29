@@ -1536,6 +1536,7 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	struct apply_state apply_state;
 	int save_stdout_fd, save_stderr_fd;
 	int res;
+	char *save_index_file;
 
 	/*
 	 * If we are allowed to fall back on 3-way merge, don't give false
@@ -1549,13 +1550,13 @@ static int run_apply(const struct am_state *state, const char *index_file)
 		dup_devnull(2);
 	}
 
+	if (index_file) {
+		save_index_file = get_index_file();
+		set_index_file((char *)index_file);
+	}
+
 	if (init_apply_state(&apply_state, NULL))
 		die("init_apply_state() failed");
-
-	if (index_file) {
-		printf("run_apply: index_file: %s", index_file);
-		die("Not working now with an index");
-	}
 
 	if (index_file)
 		apply_state.cached = 1;
@@ -1577,6 +1578,9 @@ static int run_apply(const struct am_state *state, const char *index_file)
 		close(save_stderr_fd);
 	}
 
+	if (index_file)
+		set_index_file(save_index_file);
+
 	if (res)
 		return res;
 
@@ -1597,9 +1601,11 @@ static int run_apply(const struct am_state *state, const char *index_file)
 		return -1;
 */
 
-	/* Reload index as git-apply will have modified it. */
-	discard_cache();
-	read_cache_from(index_file ? index_file : get_index_file());
+	if (index_file) {
+		/* Reload index as git-apply will have modified it. */
+		discard_cache();
+		read_cache_from(index_file);
+	}
 
 	return 0;
 }
