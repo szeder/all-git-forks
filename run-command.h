@@ -200,4 +200,10 @@ int run_processes_parallel(int n,
 			   task_finished_fn,
 			   void *pp_cb);
 
+/**
+ * Misc helper functions
+ */
+
+void dup_devnull(int to);
+
 #endif
