@@ -1541,13 +1541,13 @@ static int run_apply(const struct am_state *state, const char *index_file)
 		dup_devnull(2);
 	}
 
+	if (index_file) {
+		save_index_file = get_index_file();
+		set_index_file((char *)index_file);
+	}
+
 	if (init_apply_state(&apply_state, NULL))
 		die("init_apply_state() failed");
-
-	if (index_file) {
-		printf("run_apply: index_file: %s", index_file);
-		die("Not working now with an index");
-	}
 
 	if (index_file)
 		apply_state.cached = 1;
@@ -1577,9 +1577,11 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	if (res)
 		return res;
 
-	/* Reload index as git-apply will have modified it. */
-	discard_cache();
-	read_cache_from(index_file ? index_file : get_index_file());
+	if (index_file) {
+		/* Reload index as apply_all_patches() will have modified it. */
+		discard_cache();
+		read_cache_from(index_file);
+	}
 
 	return 0;
 }
