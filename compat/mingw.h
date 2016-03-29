@@ -415,12 +415,9 @@ int mingw_offset_1st_component(const char *path);
 extern void build_libgit_environment(void);
 extern const char *program_data_config(void);
 #define git_program_data_config program_data_config
-#ifndef __MINGW64_VERSION_MAJOR
-#define PRIuMAX "I64u"
-#define PRId64 "I64d"
-#else
+//#define PRIuMAX "I64u"
+//#define PRId64 "I64d"
 #include <inttypes.h>
-#endif
 
 void mingw_open_html(const char *path);
 #define open_html mingw_open_html

@@ -45,11 +45,11 @@ typedef unsigned long long uintmax_t;
 
 typedef int64_t off64_t;
 
-#define INTMAX_MIN  _I64_MIN
-#define INTMAX_MAX  _I64_MAX
-#define UINTMAX_MAX _UI64_MAX
+//#define INTMAX_MIN  _I64_MIN
+//#define INTMAX_MAX  _I64_MAX
+//#define UINTMAX_MAX _UI64_MAX
 
-#define UINT32_MAX 0xffffffff  /* 4294967295U */
+//#define UINT32_MAX 0xffffffff  /* 4294967295U */
 
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
