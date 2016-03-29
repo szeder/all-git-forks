@@ -4750,7 +4750,7 @@ int apply_all_patches(struct apply_state *state,
 		if (!strcmp(arg, "-")) {
 			res = apply_patch(state, 0, "<stdin>", options);
 			if (res < 0)
-				return -1;
+				goto rollback_end;
 			errs |= res;
 			read_stdin = 0;
 			continue;
@@ -4760,21 +4760,23 @@ int apply_all_patches(struct apply_state *state,
 					      arg);
 
 		fd = open(arg, O_RDONLY);
-		if (fd < 0)
-			return error(_("can't open patch '%s': %s"), arg, strerror(errno));
+		if (fd < 0) {
+			error(_("can't open patch '%s': %s"), arg, strerror(errno));
+			goto rollback_end;
+		}
 		read_stdin = 0;
 		set_default_whitespace_mode(state);
 		res = apply_patch(state, fd, arg, options);
 		close(fd);
 		if (res < 0)
-			return -1;
+			goto rollback_end;
 		errs |= res;
 	}
 	set_default_whitespace_mode(state);
 	if (read_stdin) {
 		res = apply_patch(state, 0, "<stdin>", options);
 		if (res < 0)
-			return -1;
+			goto rollback_end;
 		errs |= res;
 	}
 
@@ -4788,11 +4790,13 @@ int apply_all_patches(struct apply_state *state,
 				   squelched),
 				squelched);
 		}
-		if (state->ws_error_action == die_on_ws_error)
-			return error(Q_("%d line adds whitespace errors.",
-					"%d lines add whitespace errors.",
-					state->whitespace_error),
-				     state->whitespace_error);
+		if (state->ws_error_action == die_on_ws_error) {
+			error(Q_("%d line adds whitespace errors.",
+				 "%d lines add whitespace errors.",
+				 state->whitespace_error),
+			      state->whitespace_error);
+			goto rollback_end;
+		}
 		if (state->applied_after_fixing_ws && state->apply)
 			warning("%d line%s applied after"
 				" fixing whitespace errors.",
@@ -4813,4 +4817,11 @@ int apply_all_patches(struct apply_state *state,
 	}
 
 	return !!errs;
+
+rollback_end:
+	if (state->newfd >= 0) {
+		rollback_lock_file(state->lock_file);
+		state->newfd = -1;
+	}
+	return -1;
 }
