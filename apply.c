@@ -4643,8 +4643,11 @@ int apply_all_patches(struct apply_state *state,
 
 		if (!strcmp(arg, "-")) {
 			res = apply_patch(state, 0, "<stdin>", options);
-			if (res < 0)
+			if (res < 0) {
+				if (state->lock_file)
+					rollback_lock_file(state->lock_file);
 				return -1;
+			}
 			errs |= res;
 			read_stdin = 0;
 			continue;
@@ -4659,16 +4662,22 @@ int apply_all_patches(struct apply_state *state,
 		read_stdin = 0;
 		set_default_whitespace_mode(state);
 		res = apply_patch(state, fd, arg, options);
-		if (res < 0)
+		if (res < 0) {
+			if (state->lock_file)
+				rollback_lock_file(state->lock_file);
 			return -1;
+		}
 		errs |= res;
 		close(fd);
 	}
 	set_default_whitespace_mode(state);
 	if (read_stdin) {
 		res = apply_patch(state, 0, "<stdin>", options);
-		if (res < 0)
+		if (res < 0) {
+			if (state->lock_file)
+				rollback_lock_file(state->lock_file);
 			return -1;
+		}
 		errs |= res;
 	}
 
@@ -4682,11 +4691,14 @@ int apply_all_patches(struct apply_state *state,
 				   squelched),
 				squelched);
 		}
-		if (state->ws_error_action == die_on_ws_error)
+		if (state->ws_error_action == die_on_ws_error) {
+			if (state->lock_file)
+				rollback_lock_file(state->lock_file);
 			return error(Q_("%d line adds whitespace errors.",
 					"%d lines add whitespace errors.",
 					state->whitespace_error),
 				     state->whitespace_error);
+		}
 		if (state->applied_after_fixing_ws && state->apply)
 			warning("%d line%s applied after"
 				" fixing whitespace errors.",
