@@ -292,6 +292,22 @@ int odb_pack_keep(char *name, size_t namesz, const unsigned char *sha1)
 	return open(name, O_RDWR|O_CREAT|O_EXCL, 0600);
 }
 
+/*
+ * Hack to temporarily change the index.
+ * Yeah, the libification of 'apply' took a short-circuit by adding
+ * this technical debt.
+ * Please use functions available when
+ * NO_THE_INDEX_COMPATIBILITY_MACROS is defined, instead of this
+ * function.
+ * If you really need to use this function, please save the current
+ * index file using get_index_file() before changing the index
+ * file. And when finished, reset it to the saved value.
+ */
+void set_index_file(char *index_file)
+{
+	git_index_file = index_file;
+}
+
 char *get_index_file(void)
 {
 	if (!git_index_file)
