@@ -3,8 +3,8 @@
  *
  * Copyright (C) Linus Torvalds 2006
  */
-#include "cache.h"
 #include "builtin.h"
+#include "lockfile.h"
 #include "dir.h"
 #include "cache-tree.h"
 #include "tree-walk.h"
@@ -14,7 +14,7 @@
 #include "pathspec.h"
 
 static const char * const builtin_rm_usage[] = {
-	N_("git rm [options] [--] <file>..."),
+	N_("git rm [<options>] [--] <file>..."),
 	NULL
 };
 
@@ -65,7 +65,7 @@ static void error_removing_concrete_submodules(struct string_list *files, int *e
 			  Q_("the following submodule (or one of its nested "
 			     "submodules)\n"
 			     "uses a .git directory:",
-			     "the following submodules (or one of its nested "
+			     "the following submodules (or one of their nested "
 			     "submodules)\n"
 			     "use a .git directory:", files->nr),
 			  _("\n(use 'rm -rf' if you really want to remove "
@@ -84,7 +84,6 @@ static int check_submodules_use_gitfiles(void)
 		const char *name = list.entry[i].name;
 		int pos;
 		const struct cache_entry *ce;
-		struct stat st;
 
 		pos = cache_name_pos(name, strlen(name));
 		if (pos < 0) {
@@ -95,7 +94,7 @@ static int check_submodules_use_gitfiles(void)
 		ce = active_cache[pos];
 
 		if (!S_ISGITLINK(ce->ce_mode) ||
-		    (lstat(ce->name, &st) < 0) ||
+		    !file_exists(ce->name) ||
 		    is_empty_dir(name))
 			continue;
 
@@ -212,7 +211,7 @@ static int check_local_mod(unsigned char *head, int index_only)
 		 * "intent to add" entry.
 		 */
 		if (local_changes && staged_changes) {
-			if (!index_only || !(ce->ce_flags & CE_INTENT_TO_ADD))
+			if (!index_only || !ce_intent_to_add(ce))
 				string_list_append(&files_staged, name);
 		}
 		else if (!index_only) {

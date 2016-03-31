@@ -171,6 +171,23 @@ test_expect_success 'submodule add with ./ in path' '
 	test_cmp empty untracked
 '
 
+test_expect_success 'submodule add with /././ in path' '
+	echo "refs/heads/master" >expect &&
+	>empty &&
+
+	(
+		cd addtest &&
+		git submodule add "$submodurl" dotslashdotsubmod/././frotz/./ &&
+		git submodule init
+	) &&
+
+	rm -f heads head untracked &&
+	inspect addtest/dotslashdotsubmod/frotz ../../.. &&
+	test_cmp expect heads &&
+	test_cmp expect head &&
+	test_cmp empty untracked
+'
+
 test_expect_success 'submodule add with // in path' '
 	echo "refs/heads/master" >expect &&
 	>empty &&
@@ -749,7 +766,7 @@ test_expect_success 'moving the superproject does not break submodules' '
 	(
 		cd addtest &&
 		git submodule status >expect
-	)
+	) &&
 	mv addtest addtest2 &&
 	(
 		cd addtest2 &&
@@ -830,6 +847,19 @@ test_expect_success 'submodule add with an existing name fails unless forced' '
 test_expect_success 'set up a second submodule' '
 	git submodule add ./init2 example2 &&
 	git commit -m "submodule example2 added"
+'
+
+test_expect_success 'submodule deinit works on repository without submodules' '
+	test_when_finished "rm -rf newdirectory" &&
+	mkdir newdirectory &&
+	(
+		cd newdirectory &&
+		git init &&
+		>file &&
+		git add file &&
+		git commit -m "repo should not be empty"
+		git submodule deinit .
+	)
 '
 
 test_expect_success 'submodule deinit should remove the whole submodule section from .git/config' '
@@ -970,7 +1000,7 @@ test_expect_success 'submodule with UTF-8 name' '
 
 test_expect_success 'submodule add clone shallow submodule' '
 	mkdir super &&
-	pwd=$(pwd)
+	pwd=$(pwd) &&
 	(
 		cd super &&
 		git init &&
@@ -980,6 +1010,31 @@ test_expect_success 'submodule add clone shallow submodule' '
 			test 1 = $(git log --oneline | wc -l)
 		)
 	)
+'
+
+test_expect_success 'submodule helper list is not confused by common prefixes' '
+	mkdir -p dir1/b &&
+	(
+		cd dir1/b &&
+		git init &&
+		echo hi >testfile2 &&
+		git add . &&
+		git commit -m "test1"
+	) &&
+	mkdir -p dir2/b &&
+	(
+		cd dir2/b &&
+		git init &&
+		echo hello >testfile1 &&
+		git add .  &&
+		git commit -m "test2"
+	) &&
+	git submodule add /dir1/b dir1/b &&
+	git submodule add /dir2/b dir2/b &&
+	git commit -m "first submodule commit" &&
+	git submodule--helper list dir1/b |cut -c51- >actual &&
+	echo "dir1/b" >expect &&
+	test_cmp expect actual
 '
 
 

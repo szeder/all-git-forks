@@ -13,7 +13,7 @@ produces in the caller in order to process it.
 Functions
 ---------
 
-`child_process_init`
+`child_process_init`::
 
 	Initialize a struct child_process variable.
 
@@ -45,6 +45,13 @@ Functions
 	.stdout_to_stderr, .silent_exec_failure of `struct child_process`.
 	The argument dir corresponds the member .dir. The argument env
 	corresponds to the member .env.
+
+`child_process_clear`::
+
+	Release the memory associated with the struct child_process.
+	Most users of the run-command API don't need to call this
+	function explicitly because `start_command` invokes it on
+	failure and `finish_command` calls it automatically already.
 
 The functions above do the following:
 
@@ -168,6 +175,11 @@ string pointers (NULL terminated) in .env:
 
 . If the string does not contain '=', it names an environment
   variable that will be removed from the child process's environment.
+
+If the .env member is NULL, `start_command` will point it at the
+.env_array `argv_array` (so you may use one or the other, but not both).
+The memory in .env_array will be cleaned up automatically during
+`finish_command` (or during `start_command` when it is unsuccessful).
 
 To specify a new initial working directory for the sub-process,
 specify it in the .dir member.

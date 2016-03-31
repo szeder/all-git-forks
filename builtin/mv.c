@@ -3,8 +3,8 @@
  *
  * Copyright (C) 2006 Johannes Schindelin
  */
-#include "cache.h"
 #include "builtin.h"
+#include "lockfile.h"
 #include "dir.h"
 #include "cache-tree.h"
 #include "string-list.h"
@@ -12,7 +12,7 @@
 #include "submodule.h"
 
 static const char * const builtin_mv_usage[] = {
-	N_("git mv [options] <source>... <destination>"),
+	N_("git mv [<options>] <source>... <destination>"),
 	NULL
 };
 
@@ -24,7 +24,8 @@ static const char **internal_copy_pathspec(const char *prefix,
 					   int count, unsigned flags)
 {
 	int i;
-	const char **result = xmalloc((count + 1) * sizeof(const char *));
+	const char **result;
+	ALLOC_ARRAY(result, count + 1);
 	memcpy(result, pathspec, count * sizeof(const char *));
 	result[count] = NULL;
 	for (i = 0; i < count; i++) {
@@ -47,9 +48,9 @@ static const char **internal_copy_pathspec(const char *prefix,
 
 static const char *add_slash(const char *path)
 {
-	int len = strlen(path);
+	size_t len = strlen(path);
 	if (path[len - 1] != '/') {
-		char *with_slash = xmalloc(len + 2);
+		char *with_slash = xmalloc(st_add(len, 2));
 		memcpy(with_slash, path, len);
 		with_slash[len++] = '/';
 		with_slash[len] = 0;
@@ -184,10 +185,10 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 
 				modes[i] = WORKING_DIRECTORY;
 				n = argc + last - first;
-				source = xrealloc(source, n * sizeof(char *));
-				destination = xrealloc(destination, n * sizeof(char *));
-				modes = xrealloc(modes, n * sizeof(enum update_mode));
-				submodule_gitfile = xrealloc(submodule_gitfile, n * sizeof(char *));
+				REALLOC_ARRAY(source, n);
+				REALLOC_ARRAY(destination, n);
+				REALLOC_ARRAY(modes, n);
+				REALLOC_ARRAY(submodule_gitfile, n);
 
 				dst = add_slash(dst);
 				dst_len = strlen(dst);
