@@ -1200,6 +1200,9 @@ static void prepare_bases(struct base_tree_info *bases,
 	struct rev_info revs;
 	struct diff_options diffopt;
 	struct object_id *patch_id;
+	struct branch *curr_branch;
+	struct commit_list *base_list;
+	const char *upstream;
 	unsigned char sha1[20];
 	int i;
 
@@ -1207,10 +1210,30 @@ static void prepare_bases(struct base_tree_info *bases,
 	DIFF_OPT_SET(&diffopt, RECURSIVE);
 	diff_setup_done(&diffopt);
 
-	base = lookup_commit_reference_by_name(base_commit);
-	if (!base)
-		die(_("Unknown commit %s"), base_commit);
-	oidcpy(&bases->base_commit, &base->object.oid);
+	if (!strcmp(base_commit, "auto")) {
+		curr_branch = branch_get(NULL);
+		upstream = branch_get_upstream(curr_branch, NULL);
+		if (upstream) {
+			if (get_sha1(upstream, sha1))
+				die(_("Failed to resolve '%s' as a valid ref."), upstream);
+			commit = lookup_commit_or_die(sha1, "upstream base");
+			base_list = get_merge_bases_many(commit, total, list);
+			if (!bases)
+				die(_("Could not find merge base."));
+			base = base_list->item;
+			free_commit_list(base_list);
+			oidcpy(&bases->base_commit, &base->object.oid);
+		} else {
+			die(_("Failed to get upstream, if you want to record base commit automatically,\n"
+			      "please use git branch --set-upstream-to to track a remote branch.\n"
+			      "Or you could specify base commit by --base=<base-commit-id> manually."));
+		}
+	} else {
+		base = lookup_commit_reference_by_name(base_commit);
+		if (!base)
+			die(_("Unknown commit %s"), base_commit);
+		oidcpy(&bases->base_commit, &base->object.oid);
+	}
 
 	init_revisions(&revs, NULL);
 	revs.max_parents = 1;
