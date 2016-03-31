@@ -293,6 +293,8 @@ you can use `--suffix=-patch` to get `0001-description-of-my-change-patch`.
 	If set '--base=auto' in cmdline, it will track base commit automatically,
 	the base commit will be the merge base of tip commit of the remote-tracking
 	branch and revision-range specified in cmdline.
+	If 'format.base=auto' is set in configuration file, it is equivalent
+	to set '--base=auto' in cmdline.
 
 --root::
 	Treat the revision argument as a <revision range>, even if it
