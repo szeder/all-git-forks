@@ -157,8 +157,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	const char *reference = NULL, *depth = NULL;
 	int quiet = 0;
 	FILE *submodule_dot_git;
-	char *sm_gitdir, *cwd, *p;
-	struct strbuf rel_path = STRBUF_INIT;
+	char *sm_gitdir, *p;
+	struct strbuf rel_path = STRBUF_INIT; /* for relative_path */
 	struct strbuf sb = STRBUF_INIT;
 
 	struct option module_clone_options[] = {
@@ -200,6 +200,25 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	strbuf_addf(&sb, "%s/modules/%s", get_git_dir(), name);
 	sm_gitdir = strbuf_detach(&sb, NULL);
 
+
+	if (!is_absolute_path(sm_gitdir)) {
+		char *cwd = xgetcwd();
+		strbuf_addf(&sb, "%s/%s", cwd, sm_gitdir);
+		sm_gitdir = strbuf_detach(&sb, 0);
+		free(cwd);
+	}
+
+	if (!is_absolute_path(path)) {
+		/*
+		 * TODO: add prefix here once we allow calling from non root
+		 * directory?
+		 */
+		strbuf_addf(&sb, "%s/%s",
+			    get_git_work_tree(),
+			    path);
+		path = strbuf_detach(&sb, 0);
+	}
+
 	if (!file_exists(sm_gitdir)) {
 		if (safe_create_leading_directories_const(sm_gitdir) < 0)
 			die(_("could not create directory '%s'"), sm_gitdir);
@@ -221,7 +240,6 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	submodule_dot_git = fopen(sb.buf, "w");
 	if (!submodule_dot_git)
 		die_errno(_("cannot open file '%s'"), sb.buf);
-
 	fprintf(submodule_dot_git, "gitdir: %s\n",
 		relative_path(sm_gitdir, path, &rel_path));
 	if (fclose(submodule_dot_git))
@@ -229,24 +247,16 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	strbuf_reset(&sb);
 	strbuf_reset(&rel_path);
 
-	cwd = xgetcwd();
 	/* Redirect the worktree of the submodule in the superproject's config */
-	if (!is_absolute_path(sm_gitdir)) {
-		strbuf_addf(&sb, "%s/%s", cwd, sm_gitdir);
-		free(sm_gitdir);
-		sm_gitdir = strbuf_detach(&sb, NULL);
-	}
-
-	strbuf_addf(&sb, "%s/%s", cwd, path);
 	p = git_pathdup_submodule(path, "config");
 	if (!p)
 		die(_("could not get submodule directory for '%s'"), path);
 	git_config_set_in_file(p, "core.worktree",
-			       relative_path(sb.buf, sm_gitdir, &rel_path));
+			       relative_path(path, sm_gitdir, &rel_path));
 	strbuf_release(&sb);
 	strbuf_release(&rel_path);
 	free(sm_gitdir);
-	free(cwd);
+
 	free(p);
 	return 0;
 }
