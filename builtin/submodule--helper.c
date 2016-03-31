@@ -168,7 +168,8 @@ static void prepare_submodule_repo_env(struct argv_array *out)
 }
 
 static int clone_submodule(const char *path, const char *gitdir, const char *url,
-			   const char *depth, const char *reference, int quiet)
+			   const char *depth, const char *reference, int quiet,
+			   int local)
 {
 	struct child_process cp;
 	child_process_init(&cp);
@@ -183,6 +184,10 @@ static int clone_submodule(const char *path, const char *gitdir, const char *url
 		argv_array_pushl(&cp.args, "--reference", reference, NULL);
 	if (gitdir && *gitdir)
 		argv_array_pushl(&cp.args, "--separate-git-dir", gitdir, NULL);
+	if (local == 1)
+		argv_array_push(&cp.args, "--local");
+	else if (!local)
+		argv_array_push(&cp.args, "--no-local");
 
 	argv_array_push(&cp.args, url);
 	argv_array_push(&cp.args, path);
@@ -199,6 +204,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	const char *path = NULL, *name = NULL, *url = NULL;
 	const char *reference = NULL, *depth = NULL;
 	int quiet = 0;
+	int local = -1;
 	FILE *submodule_dot_git;
 	char *sm_gitdir, *cwd, *p;
 	struct strbuf rel_path = STRBUF_INIT;
@@ -223,6 +229,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 		OPT_STRING(0, "depth", &depth,
 			   N_("string"),
 			   N_("depth for shallow clones")),
+		OPT_BOOL(0, "local", &local,
+			 N_("to clone from a local repository")),
 		OPT__QUIET(&quiet, "Suppress output for cloning a submodule"),
 		OPT_END()
 	};
@@ -247,7 +255,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	if (!file_exists(sm_gitdir)) {
 		if (safe_create_leading_directories_const(sm_gitdir) < 0)
 			die(_("could not create directory '%s'"), sm_gitdir);
-		if (clone_submodule(path, sm_gitdir, url, depth, reference, quiet))
+		if (clone_submodule(path, sm_gitdir, url, depth, reference,
+				    quiet, local))
 			die(_("clone of '%s' into submodule path '%s' failed"),
 			    url, path);
 	} else {
@@ -329,6 +338,7 @@ struct submodule_update_clone {
 
 	/* configuration parameters which are passed on to the children */
 	int quiet;
+	int local;
 	const char *reference;
 	const char *depth;
 	const char *recursive_prefix;
@@ -341,7 +351,7 @@ struct submodule_update_clone {
 	unsigned quickstop : 1;
 };
 #define SUBMODULE_UPDATE_CLONE_INIT {0, MODULE_LIST_INIT, 0, \
-	SUBMODULE_UPDATE_STRATEGY_INIT, 0, NULL, NULL, NULL, NULL, \
+	SUBMODULE_UPDATE_STRATEGY_INIT, 0, -1, NULL, NULL, NULL, NULL, \
 	STRING_LIST_INIT_DUP, 0}
 
 /**
@@ -430,6 +440,10 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 	child->err = -1;
 	argv_array_push(&child->args, "submodule--helper");
 	argv_array_push(&child->args, "clone");
+	if (suc->local == 1)
+		argv_array_push(&child->args, "--local");
+	else if (!suc->local)
+		argv_array_push(&child->args, "--no-local");
 	if (suc->quiet)
 		argv_array_push(&child->args, "--quiet");
 	if (suc->prefix)
@@ -514,6 +528,8 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 		OPT_STRING(0, "depth", &suc.depth, "<depth>",
 			   N_("Create a shallow clone truncated to the "
 			      "specified number of revisions")),
+		OPT_BOOL(0, "local", &suc.local,
+			 N_("to clone from a local repository")),
 		OPT_INTEGER('j', "jobs", &max_jobs,
 			    N_("parallel jobs")),
 		OPT__QUIET(&suc.quiet, N_("don't print cloning progress")),
