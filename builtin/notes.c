@@ -746,7 +746,7 @@ static int git_config_get_notes_strategy(const char *key,
 {
 	const char *value;
 
-	if (git_config_get_string_const(key, &value))
+	if (git_config_get_value(key, &value))
 		return 1;
 	if (parse_notes_merge_strategy(value, strategy))
 		git_die_config(key, "unknown notes merge strategy %s", value);
