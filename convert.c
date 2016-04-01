@@ -903,6 +903,16 @@ const char *get_convert_attr_ascii(const char *path)
 	return "";
 }
 
+int convert_needs_conversion(const char *path)
+{
+	struct conv_attrs ca;
+
+	convert_attrs(&ca, path);
+	if (ca.drv || ca.ident || ca.crlf_action != CRLF_BINARY)
+		return 1;
+	return 0;
+}
+
 int convert_to_git(const char *path, const char *src, size_t len,
                    struct strbuf *dst, enum safe_crlf checksafe)
 {
