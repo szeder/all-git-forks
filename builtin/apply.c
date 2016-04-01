@@ -1863,6 +1863,11 @@ static struct fragment *parse_binary_hunk(char **buf_p,
 	return NULL;
 }
 
+/*
+ * Returns:
+ *   -1 in case of error,
+ *   the length of the parsed binary patch otherwise
+ */
 static int parse_binary(char *buffer, unsigned long size, struct patch *patch)
 {
 	/*
@@ -2008,6 +2013,8 @@ static int parse_chunk(char *buffer, unsigned long size, struct patch *patch)
 			linenr++;
 			used = parse_binary(buffer + hd + llen,
 					    size - hd - llen, patch);
+			if (used < 0)
+				return -1;
 			if (used)
 				patchsize = used + llen;
 			else
@@ -4364,8 +4371,10 @@ static int apply_patch(int fd, const char *filename, int options)
 		patch->inaccurate_eof = !!(options & INACCURATE_EOF);
 		patch->recount =  !!(options & RECOUNT);
 		nr = parse_chunk(buf.buf + offset, buf.len - offset, patch);
-		if (nr < 0)
+		if (nr < 0) {
+			free_patch(patch);
 			break;
+		}
 		if (apply_in_reverse)
 			reverse_patches(patch);
 		if (use_patch(patch)) {
