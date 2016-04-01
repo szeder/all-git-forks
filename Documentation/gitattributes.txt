@@ -115,6 +115,7 @@ text file is normalized, its line endings are converted to LF in the
 repository.  To control what line ending style is used in the working
 directory, use the `eol` attribute for a single file and the
 `core.eol` configuration variable for all text files.
+Note that `core.autocrlf` overrides `core.eol`
 
 Set::
 
@@ -146,8 +147,8 @@ unspecified.
 ^^^^^
 
 This attribute sets a specific line-ending style to be used in the
-working directory.  It enables end-of-line normalization without any
-content checks, effectively setting the `text` attribute.
+working directory.  It sets the `text` attribute,
+unless `text=auto` is specified.
 
 Set to string value "crlf"::
 
@@ -187,8 +188,8 @@ regardless of their content.
 
 ------------------------
 *.txt		text
-*.vcproj	eol=crlf
-*.sh		eol=lf
+*.vcproj	text eol=crlf
+*.sh		text eol=lf
 *.jpg		-text
 ------------------------
 
@@ -198,7 +199,7 @@ normalization in Git.
 
 If you simply want to have CRLF line endings in your working directory
 regardless of the repository you are working with, you can set the
-config variable "core.autocrlf" without changing any attributes.
+config variable "core.autocrlf" without using any attributes.
 
 ------------------------
 [core]
