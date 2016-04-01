@@ -110,7 +110,7 @@ repository upon 'git add' and 'git commit'.
 `text`
 ^^^^^^
 
-This attribute enables and controls end-of-line normalization.  When a
+This attribute enables and controls end-of-line conversion.  When a
 text file is normalized, its line endings are converted to LF in the
 repository.  To control what line ending style is used in the working
 directory, use the `eol` attribute for a single file and the
@@ -120,8 +120,11 @@ Note that `core.autocrlf` overrides `core.eol`
 Set::
 
 	Setting the `text` attribute on a path enables end-of-line
-	normalization and marks the path as a text file.  End-of-line
+	conversion and marks the path as a text file.  End-of-line
 	conversion takes place without guessing the content type.
+	Files that have been commited with CRLF before the text attribute
+	is set and commited are not normalized. No end-of-line conversion
+	is done at checkout or checkin.
 
 Unset::
 
@@ -132,7 +135,8 @@ Set to string value "auto"::
 
 	When `text` is set to "auto", the path is marked for automatic
 	end-of-line normalization.  If Git decides that the content is
-	text, its line endings are normalized to LF on checkin.
+	text, and the path has no CRLF in the index,
+	its line endings are converted to LF on checkin.
 
 Unspecified::
 
@@ -147,8 +151,10 @@ unspecified.
 ^^^^^
 
 This attribute sets a specific line-ending style to be used in the
-working directory.  It sets the `text` attribute,
-unless `text=auto` is specified.
+working directory.  It sets the `text` attribute, unless `text=auto`
+is specified.
+When the file had been commited with CRLF in the index, no conversion
+is done at checkout or commit.
 
 Set to string value "crlf"::
 

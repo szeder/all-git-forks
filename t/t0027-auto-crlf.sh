@@ -71,10 +71,14 @@ check_warning () {
 	case "$1" in
 	LF_CRLF) echo "warning: LF will be replaced by CRLF" >"$2".expect ;;
 	CRLF_LF) echo "warning: CRLF will be replaced by LF" >"$2".expect ;;
+	CRLF)    echo "warning: CRLF will be present after commit and checkout" >"$2".expect ;;
+	mixed)   echo "warning: mixed eol will be present after commit and checkout" >"$2".expect ;;
 	'')	                                                 >"$2".expect ;;
 	*) echo >&2 "Illegal 1": "$1" ; return false ;;
 	esac
-	grep "will be replaced by" "$2" | sed -e "s/\(.*\) in [^ ]*$/\1/" | uniq  >"$2".actual
+	egrep "will be replaced by|will be present after commit" "$2" |
+		sed -e "s/\(.*\) in [^ ]*$/\1/" |
+		uniq  >"$2".actual
 	test_cmp "$2".expect "$2".actual
 }
 
@@ -354,7 +358,7 @@ else
 	WAMIX=CRLF_LF
 fi
 
-#                         attr   LF        CRLF      CRLFmixLF LFmixCR   CRLFNUL
+#                               attr   LF        CRLF      CRLFmixLF LFmixCR   CRLFNUL
 test_expect_success 'commit files empty attr' '
 	commit_check_warn false ""     ""        ""        ""        ""        "" &&
 	commit_check_warn true  ""     "LF_CRLF" ""        "LF_CRLF" ""        "" &&
@@ -391,30 +395,32 @@ test_expect_success 'commit files attr=crlf' '
 	commit_check_warn input "crlf" "LF_CRLF" ""        "LF_CRLF" "LF_CRLF" ""
 '
 
-#                 attr                    LF        CRLF      CRLFmixLF   LF_mix_CR   CRLFNUL
+#                 attr    aeol    ceol    LF        CRLF      CRLFmixLF   LF_mix_CR   CRLFNUL
 commit_chk_wrnNNO ""      ""      false   ""        ""        ""          ""          ""
-commit_chk_wrnNNO ""      ""      true    LF_CRLF   ""        ""          ""          ""
-commit_chk_wrnNNO ""      ""      input   ""        ""        ""          ""          ""
+commit_chk_wrnNNO ""      ""      true    LF_CRLF   ""        mixed       ""          ""
+commit_chk_wrnNNO ""      ""      input   ""        CRLF      mixed       ""          ""
 
-commit_chk_wrnNNO "auto"  ""      false   "$WILC"   ""        ""          ""          ""
-commit_chk_wrnNNO "auto"  ""      true    LF_CRLF   ""        ""          ""          ""
-commit_chk_wrnNNO "auto"  ""      input   ""        ""        ""          ""          ""
+commit_chk_wrnNNO "auto"  ""      false   "$WILC"   CRLF      mixed       ""          ""
+commit_chk_wrnNNO "auto"  ""      true    LF_CRLF   ""        mixed       ""          ""
+commit_chk_wrnNNO "auto"  ""      input   ""        CRLF      mixed       ""          ""
 for crlf in true false input;
 do
+#                    attr aeol    ceol    LF        CRLF      CRLFmixLF   LF_mix_CR   CRLFNUL
 	commit_chk_wrnNNO -text ""      $crlf   ""        ""        ""          ""          ""
 	commit_chk_wrnNNO -text lf      $crlf   ""        ""        ""          ""          ""
 	commit_chk_wrnNNO -text crlf    $crlf   ""        ""        ""          ""          ""
-	commit_chk_wrnNNO ""    lf      $crlf   ""       CRLF_LF    CRLF_LF      ""         CRLF_LF
-	commit_chk_wrnNNO ""    crlf    $crlf   LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
-	commit_chk_wrnNNO auto  lf    	$crlf   ""        ""        ""          ""          ""
-	commit_chk_wrnNNO auto  crlf  	$crlf   LF_CRLF   ""        ""          ""          ""
-	commit_chk_wrnNNO text  lf    	$crlf   ""       CRLF_LF    CRLF_LF     ""          CRLF_LF
-	commit_chk_wrnNNO text  crlf  	$crlf   LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
+	commit_chk_wrnNNO ""    lf      $crlf   ""        CRLF      mixed       ""          CRLF
+	commit_chk_wrnNNO ""    crlf    $crlf   LF_CRLF   ""        mixed       LF_CRLF     ""
+	commit_chk_wrnNNO auto  lf      $crlf   ""        CRLF      mixed       ""          ""
+	commit_chk_wrnNNO auto  crlf    $crlf   LF_CRLF   ""        mixed       ""          ""
+	commit_chk_wrnNNO text  lf      $crlf   ""        CRLF      mixed       ""          CRLF
+	commit_chk_wrnNNO text  crlf    $crlf   LF_CRLF   ""        mixed       LF_CRLF     ""
 done
 
-commit_chk_wrnNNO "text"  ""      false   "$WILC"   "$WICL"   "$WAMIX"    "$WILC"     "$WICL"
-commit_chk_wrnNNO "text"  ""      true    LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
-commit_chk_wrnNNO "text"  ""      input   ""        CRLF_LF   CRLF_LF     ""          CRLF_LF
+#                  attr   aeol    ceol    LF        CRLF      CRLFmixLF   LF_mix_CR   CRLFNUL
+commit_chk_wrnNNO "text"  ""      false   "$WILC"   CRLF      mixed       "$WILC"     CRLF
+commit_chk_wrnNNO "text"  ""      true    LF_CRLF   ""        mixed       LF_CRLF     ""
+commit_chk_wrnNNO "text"  ""      input   ""        CRLF      mixed       ""          CRLF
 
 test_expect_success 'create files cleanup' '
 	rm -f *.txt &&
@@ -455,9 +461,9 @@ do
 	check_in_repo_NNO auto  ""     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
 	check_in_repo_NNO auto  lf     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
 	check_in_repo_NNO auto  crlf   $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
-	check_in_repo_NNO text  ""     $crlf   LF  LF    LF           LF_mix_CR  LF_nul
-	check_in_repo_NNO text  lf     $crlf   LF  LF    LF           LF_mix_CR  LF_nul
-	check_in_repo_NNO text  crlf   $crlf   LF  LF    LF           LF_mix_CR  LF_nul
+	check_in_repo_NNO text  ""     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
+	check_in_repo_NNO text  lf     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
+	check_in_repo_NNO text  crlf   $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
 done
 ################################################################################
 # Check how files in the repo are changed when they are checked out
@@ -478,12 +484,10 @@ done
 
 if test_have_prereq NATIVE_CRLF
 then
-MIX_CRLF_LF=CRLF
 MIX_LF_CR=CRLF_mix_CR
 NL=CRLF
 LFNUL=CRLF_nul
 else
-MIX_CRLF_LF=CRLF_mix_LF
 MIX_LF_CR=LF_mix_CR
 NL=LF
 LFNUL=LF_nul
@@ -503,20 +507,20 @@ do
 			checkout_files "-text" "$id" "lf"   "$crlf"  "$ceol"    LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
 			checkout_files "-text" "$id" "crlf" "$crlf"  "$ceol"    LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
 			checkout_files "text"  "$id" "lf"   "$crlf"  "$ceol"    LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
-			checkout_files "text"  "$id" "crlf" "$crlf"  "$ceol"    CRLF  CRLF  CRLF         CRLF_mix_CR  CRLF_nul
+			checkout_files "text"  "$id" "crlf" "$crlf"  "$ceol"    CRLF  CRLF  CRLF_mix_LF  CRLF_mix_CR  CRLF_nul
 		done
 	done
 	# text: core.autocrlf=false uses core.eol
-	checkout_files "text"  "$id"  ""    false  crlf     CRLF  CRLF  CRLF         CRLF_mix_CR  CRLF_nul
+	checkout_files "text"  "$id"  ""    false  crlf     CRLF  CRLF  CRLF_mix_LF  CRLF_mix_CR  CRLF_nul
 	checkout_files "text"  "$id"  ""    false  lf       LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
 	# text: core.autocrlf=false and core.eol unset(or native) uses native eol
-	checkout_files "text"  "$id"  ""    false  ""       $NL   CRLF  $MIX_CRLF_LF $MIX_LF_CR   $LFNUL
-	checkout_files "text"  "$id"  ""    false  native   $NL   CRLF  $MIX_CRLF_LF $MIX_LF_CR   $LFNUL
+	checkout_files "text"  "$id"  ""    false  ""       $NL   CRLF  CRLF_mix_LF  $MIX_LF_CR   $LFNUL
+	checkout_files "text"  "$id"  ""    false  native   $NL   CRLF  CRLF_mix_LF  $MIX_LF_CR   $LFNUL
 
 	for ceol in "" lf crlf native;
 	do
 		# text: core.autocrlf = true overrides core.eol
-		checkout_files "text"  "$id"  ""    true   "$ceol"  CRLF  CRLF  CRLF         CRLF_mix_CR  CRLF_nul
+		checkout_files "text"  "$id"  ""    true   "$ceol"  CRLF  CRLF  CRLF_mix_LF  CRLF_mix_CR  CRLF_nul
 		# text: core.autocrlf = input overrides core.eol
 		checkout_files "text"  "$id"  ""    input  "$ceol"  LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
 		checkout_files "auto"  "$id"  ""    input  "$ceol"  LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
