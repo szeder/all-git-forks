@@ -9,6 +9,24 @@ modify () {
 	mv "$2.x" "$2"
 }
 
+test_rebase_autostash () {
+	git reset --hard before-rebase &&
+	echo dirty >new_file &&
+	git add new_file &&
+	git pull --rebase --autostash . copy &&
+	test_cmp_rev HEAD^ copy &&
+	test "$(cat new_file)" = dirty &&
+	test "$(cat file)" = "modified again"
+}
+
+test_rebase_no_autostash () {
+	git reset --hard before-rebase &&
+	echo dirty >new_file &&
+	git add new_file &&
+	test_must_fail git pull --rebase --no-autostash . copy 2>err &&
+	test_i18ngrep "Cannot pull with rebase: Your index contains uncommitted changes." err
+}
+
 test_expect_success setup '
 	echo file >file &&
 	git add file &&
@@ -256,75 +274,39 @@ test_expect_success 'pull --rebase succeeds with dirty working directory and reb
 	test "$(cat file)" = "modified again"
 '
 
-test_expect_success 'pull --rebase --autostash & rebase.autostash=true' '
-	test_config rebase.autostash true &&
-	git reset --hard before-rebase &&
-	echo dirty >new_file &&
-	git add new_file &&
-	git pull --rebase --autostash . copy &&
-	test_cmp_rev HEAD^ copy &&
-	test "$(cat new_file)" = dirty &&
-	test "$(cat file)" = "modified again"
+for i in true false
+do
+	test_expect_success "pull --rebase --autostash & rebase.autostash=$i" '
+		test_config rebase.autostash $i &&
+		test_rebase_autostash
+	'
+done
+
+test_expect_success 'pull --rebase: --autostash & rebase.autostash unset' '
+	test_unconfig rebase.autostash &&
+	test_rebase_autostash
 '
 
-test_expect_success 'pull --rebase --autostash & rebase.autoStash=false' '
-	test_config rebase.autostash false &&
-	git reset --hard before-rebase &&
-	echo dirty >new_file &&
-	git add new_file &&
-	git pull --rebase --autostash . copy &&
-	test_cmp_rev HEAD^ copy &&
-	test "$(cat new_file)" = dirty &&
-	test "$(cat file)" = "modified again"
-'
-
-test_expect_success 'pull --rebase: --autostash & rebase.autoStash unset' '
-	git reset --hard before-rebase &&
-	echo dirty >new_file &&
-	git add new_file &&
-	git pull --rebase --autostash . copy &&
-	test_cmp_rev HEAD^ copy &&
-	test "$(cat new_file)" = dirty &&
-	test "$(cat file)" = "modified again"
-'
-
-test_expect_success 'pull --rebase --no-autostash & rebase.autostash=true' '
-	test_config rebase.autostash true &&
-	git reset --hard before-rebase &&
-	echo dirty >new_file &&
-	git add new_file &&
-	test_must_fail git pull --rebase --no-autostash . copy 2>err &&
-	test_i18ngrep "Cannot pull with rebase: Your index contains uncommitted changes." err
-'
-
-test_expect_success 'pull --rebase --no-autostash & rebase.autostash=false' '
-	test_config rebase.autostash false &&
-	git reset --hard before-rebase &&
-	echo dirty >new_file &&
-	git add new_file &&
-	test_must_fail git pull --rebase --no-autostash . copy 2>err &&
-	test_i18ngrep "Cannot pull with rebase: Your index contains uncommitted changes." err
-'
+for i in true false
+do
+	test_expect_success "pull --rebase --no-autostash & rebase.autostash=$i" '
+		test_config rebase.autostash $i &&
+		test_rebase_no_autostash
+	'
+done
 
 test_expect_success 'pull --rebase --no-autostash & rebase.autostash unset' '
-	git reset --hard before-rebase &&
-	echo dirty >new_file &&
-	git add new_file &&
-	test_must_fail git pull --rebase --no-autostash . copy 2>err &&
-	test_i18ngrep "Cannot pull with rebase: Your index contains uncommitted changes." err
+	test_unconfig rebase.autostash &&
+	test_rebase_no_autostash
 '
 
-test_expect_success 'pull --autostash (without --rebase) should error out' '
-	test_must_fail git pull --autostash . copy 2>actual &&
-	echo "fatal: --[no-]autostash option is only valid with --rebase." >expect &&
-	test_i18ncmp actual expect
-'
-
-test_expect_success 'pull --no-autostash (without --rebase) should error out' '
-	test_must_fail git pull --no-autostash . copy 2>actual &&
-	echo "fatal: --[no-]autostash option is only valid with --rebase." >expect &&
-	test_i18ncmp actual expect
-'
+for i in --autostash --no-autostash
+do
+	test_expect_success "pull $i (without --rebase) is illegal" '
+		test_must_fail git pull $i . copy 2>actual &&
+		test_i18ngrep "only valid with --rebase" actual
+	'
+done
 
 test_expect_success 'pull.rebase' '
 	git reset --hard before-rebase &&
@@ -332,6 +314,26 @@ test_expect_success 'pull.rebase' '
 	git pull . copy &&
 	test "$(git rev-parse HEAD^)" = "$(git rev-parse copy)" &&
 	test new = "$(git show HEAD:file2)"
+'
+
+test_expect_success 'pull --autostash & pull.rebase=true' '
+	test_config pull.rebase true &&
+	git reset --hard before-rebase &&
+	echo dirty >new_file &&
+	git add new_file &&
+	git pull --autostash . copy &&
+	test_cmp_rev HEAD^ copy &&
+	test "$(cat new_file)" = dirty &&
+	test "$(cat file)" = "modified again"
+'
+
+test_expect_success 'pull --no-autostash & pull.rebase=true' '
+	test_config pull.rebase true &&
+	git reset --hard before-rebase &&
+	echo dirty >new_file &&
+	git add new_file &&
+	test_must_fail git pull --no-autostash . copy 2>err &&
+	test_i18ngrep "Cannot pull with rebase: Your index contains uncommitted changes." err
 '
 
 test_expect_success 'branch.to-rebase.rebase' '
