@@ -37,6 +37,7 @@ ifeq ($(uname_S),Linux)
 	HAVE_CLOCK_GETTIME = YesPlease
 	HAVE_CLOCK_MONOTONIC = YesPlease
 	HAVE_GETDELIM = YesPlease
+	SANE_TEXT_GREP=-a
 endif
 ifeq ($(uname_S),GNU/kFreeBSD)
 	HAVE_ALLOCA_H = YesPlease
@@ -101,9 +102,6 @@ ifeq ($(uname_S),Darwin)
 	endif
 	ifeq ($(shell expr "$(uname_R)" : '[15]\.'),2)
 		NO_STRLCPY = YesPlease
-	endif
-	ifeq ($(shell test "`expr "$(uname_R)" : '\([0-9][0-9]*\)\.'`" -eq 10 && echo 1),1)
-		CC = clang
 	endif
 	ifeq ($(shell test "`expr "$(uname_R)" : '\([0-9][0-9]*\)\.'`" -ge 11 && echo 1),1)
 		HAVE_GETDELIM = YesPlease
