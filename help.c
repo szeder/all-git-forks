@@ -419,6 +419,7 @@ int cmd_version(int argc, const char **argv, const char *prefix)
 	 * with external projects that rely on the output of "git version".
 	 */
 	printf("git version %s\n", git_version_string);
+	printf_ln("CloudWP.io amendments");
 	return 0;
 }
 
