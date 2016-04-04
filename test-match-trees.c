@@ -6,6 +6,8 @@ int main(int ac, char **av)
 	unsigned char hash1[20], hash2[20], shifted[20];
 	struct tree *one, *two;
 
+	setup_git_directory();
+
 	if (get_sha1(av[1], hash1))
 		die("cannot parse %s as an object name", av[1]);
 	if (get_sha1(av[2], hash2))
@@ -17,7 +19,7 @@ int main(int ac, char **av)
 	if (!two)
 		die("not a tree-ish %s", av[2]);
 
-	shift_tree(one->object.sha1, two->object.sha1, shifted, -1);
+	shift_tree(one->object.oid.hash, two->object.oid.hash, shifted, -1);
 	printf("shifted: %s\n", sha1_to_hex(shifted));
 
 	exit(0);

@@ -162,11 +162,10 @@ static void read_mailmap_line(struct string_list *map, char *buffer,
 			char *cp;
 
 			free(*repo_abbrev);
-			*repo_abbrev = xmalloc(len);
 
 			for (cp = buffer + abblen; isspace(*cp); cp++)
 				; /* nothing */
-			strcpy(*repo_abbrev, cp);
+			*repo_abbrev = xstrdup(cp);
 		}
 		return;
 	}
@@ -251,7 +250,8 @@ int read_mailmap(struct string_list *map, char **repo_abbrev)
 		git_mailmap_blob = "HEAD:.mailmap";
 
 	err |= read_mailmap_file(map, ".mailmap", repo_abbrev);
-	err |= read_mailmap_blob(map, git_mailmap_blob, repo_abbrev);
+	if (startup_info->have_repository)
+		err |= read_mailmap_blob(map, git_mailmap_blob, repo_abbrev);
 	err |= read_mailmap_file(map, git_mailmap_file, repo_abbrev);
 	return err;
 }
