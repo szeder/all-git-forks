@@ -18,6 +18,7 @@
 #include "varint.h"
 #include "split-index.h"
 #include "utf8.h"
+#include "shm.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
@@ -1541,6 +1542,91 @@ static void post_read_index_from(struct index_state *istate)
 	tweak_untracked_cache(istate);
 }
 
+static int poke_daemon(struct index_state *istate,
+		       const struct stat *st, int refresh_cache)
+{
+	int fd;
+	int ret = 0;
+	struct sockaddr_un address = {0};
+
+	/* if this is from index-helper, do not poke itself (recursively) */
+	if (istate->to_shm)
+		return 0;
+
+	if (readlink(git_path("index-helper.path"), address.sun_path,
+		     UNIX_PATH_MAX) < 0)
+		return -1;
+
+	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0)
+		return -1;
+
+	address.sun_family = AF_UNIX;
+	if (connect(fd, (struct sockaddr *) &address, sizeof(address))) {
+		warning("Failed to connect to socket %s", address.sun_path);
+		close(fd);
+		return -1;
+	}
+
+	if (refresh_cache) {
+		ret = write_in_full(fd, "refresh", 8) != 8;
+	} else {
+		ret = write_in_full(fd, "poke", 5) != 5;
+	}
+
+	close(fd);
+	return ret;
+}
+
+static int is_main_index(struct index_state *istate)
+{
+	return istate == &the_index ||
+		(the_index.split_index &&
+		 istate == the_index.split_index->base);
+}
+
+/*
+ * Try to open and verify a cached shm index if available. Return 0 if
+ * succeeds (istate->mmap and istate->mmap_size are updated). Return
+ * negative otherwise.
+ */
+static int try_shm(struct index_state *istate)
+{
+	void *new_mmap = NULL;
+	size_t old_size = istate->mmap_size;
+	ssize_t new_size;
+	const unsigned char *sha1;
+	struct stat st;
+
+	if (!is_main_index(istate) ||
+	    old_size <= 20 ||
+	    stat(git_path("index-helper.path"), &st))
+		return -1;
+	if (poke_daemon(istate, &st, 0))
+		return -1;
+	sha1 = (unsigned char *)istate->mmap + old_size - 20;
+	new_size = git_shm_map(O_RDONLY, 0700, -1, &new_mmap,
+				 PROT_READ, MAP_SHARED,
+				 "git-index-%s", sha1_to_hex(sha1));
+	if (new_size <= 20 ||
+	    hashcmp((unsigned char *)istate->mmap + old_size - 20,
+		    (unsigned char *)new_mmap + new_size - 20)) {
+		if (new_mmap)
+			munmap(new_mmap, new_size);
+		poke_daemon(istate, &st, 1);
+		return -1;
+	}
+
+	/* The memory barrier here matches index-helper.c:share_index. */
+	__sync_synchronize();
+
+	munmap(istate->mmap, istate->mmap_size);
+	istate->mmap = new_mmap;
+	istate->mmap_size = new_size;
+	istate->from_shm = 1;
+	return 0;
+}
+
 /* remember to discard_cache() before reading a different cache! */
 int do_read_index(struct index_state *istate, const char *path, int must_exist)
 {
@@ -1555,6 +1641,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	if (istate->initialized)
 		return istate->cache_nr;
 
+	istate->from_shm = 0;
 	istate->timestamp.sec = 0;
 	istate->timestamp.nsec = 0;
 	fd = open(path, O_RDONLY);
@@ -1574,15 +1661,17 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	mmap = xmmap(NULL, mmap_size, PROT_READ, MAP_PRIVATE, fd, 0);
 	if (mmap == MAP_FAILED)
 		die_errno("unable to map index file");
-	if (istate->keep_mmap) {
-		istate->mmap = mmap;
-		istate->mmap_size = mmap_size;
-	}
 	close(fd);
 
-	hdr = mmap;
-	if (verify_hdr(hdr, mmap_size) < 0)
+	istate->mmap = mmap;
+	istate->mmap_size = mmap_size;
+	if (try_shm(istate) &&
+	    verify_hdr(istate->mmap, istate->mmap_size) < 0)
 		goto unmap;
+	hdr = mmap = istate->mmap;
+	mmap_size = istate->mmap_size;
+	if (!istate->keep_mmap)
+		istate->mmap = NULL;
 
 	hashcpy(istate->sha1, (const unsigned char *)hdr + mmap_size - 20);
 	istate->version = ntohl(hdr->hdr_version);
@@ -1662,6 +1751,8 @@ int read_index_from(struct index_state *istate, const char *path)
 	else
 		split_index->base = xcalloc(1, sizeof(*split_index->base));
 	split_index->base->keep_mmap = istate->keep_mmap;
+	split_index->base->to_shm    = istate->to_shm;
+	split_index->base->from_shm  = istate->from_shm;
 	ret = do_read_index(split_index->base,
 			    git_path("sharedindex.%s",
 				     sha1_to_hex(split_index->base_sha1)), 1);
@@ -1712,6 +1803,8 @@ int discard_index(struct index_state *istate)
 	discard_split_index(istate);
 	free_untracked_cache(istate->untracked);
 	istate->untracked = NULL;
+	istate->from_shm = 0;
+	istate->to_shm   = 0;
 	return 0;
 }
 
@@ -2138,9 +2231,14 @@ static int do_write_locked_index(struct index_state *istate, struct lock_file *l
 		return ret;
 	assert((flags & (COMMIT_LOCK | CLOSE_LOCK)) !=
 	       (COMMIT_LOCK | CLOSE_LOCK));
-	if (flags & COMMIT_LOCK)
-		return commit_locked_index(lock);
-	else if (flags & CLOSE_LOCK)
+	if (flags & COMMIT_LOCK) {
+		struct stat st;
+		ret = commit_locked_index(lock);
+		if (!ret && is_main_index(istate) &&
+		    !stat(git_path("index-helper.path"), &st))
+			poke_daemon(istate, &st, 1);
+		return ret;
+	} else if (flags & CLOSE_LOCK)
 		return close_lock_file(lock);
 	else
 		return ret;
