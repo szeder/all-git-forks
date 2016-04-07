@@ -136,7 +136,7 @@ GITGUI_SCRIPT   := $$0
 GITGUI_RELATIVE :=
 GITGUI_MACOSXAPP :=
 
-ifeq ($(uname_O),Cygwin)
+ifeq ($(uname_O),noThanks)
 	GITGUI_SCRIPT := `cygpath --windows --absolute "$(GITGUI_SCRIPT)"`
 
 	# Is this a Cygwin Tcl/Tk binary?  If so it knows how to do
