@@ -670,6 +670,12 @@ Likewise, when the `LV` environment variable is unset, Git sets it
 to `-c`.  You can override this setting by exporting `LV` with
 another value or setting `core.pager` to `lv +c`.
 
+core.waitforindexhelper::
+	If true, git status and other commands which use the index
+	will wait for a response from the index-helper before continuing;
+	this gives time for the index-helper to communicate with watchman
+	and give information about modified files.
+
 core.whitespace::
 	A comma separated list of common whitespace problems to
 	notice.  'git diff' will use `color.diff.whitespace` to
@@ -1856,6 +1862,10 @@ imap::
 index.version::
 	Specify the version with which new index files should be
 	initialized.  This does not affect existing repositories.
+
+indexhelper.autorun::
+	Automatically run git index-helper when any builtin git
+	command is run inside a repository.
 
 init.templateDir::
 	Specify the directory from which templates will be copied.

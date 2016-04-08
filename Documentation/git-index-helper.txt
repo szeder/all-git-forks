@@ -1,0 +1,64 @@
+git-index-helper(1)
+===================
+
+NAME
+----
+git-index-helper - A simple cache daemon for speeding up index file access
+
+SYNOPSIS
+--------
+[verse]
+'git index-helper' [options]
+
+DESCRIPTION
+-----------
+Keep the index file in memory for faster access. This daemon is per
+repository.
+
+OPTIONS
+-------
+
+--exit-after=<n>::
+	Exit if the cached index is not accessed for `<n>`
+	seconds. Specify 0 to wait forever. Default is 600.
+
+--strict::
+--no-strict::
+	Strict mode makes index-helper verify the shared memory after
+	it's created. If the result does not match what's read from
+	$GIT_DIR/index, the shared memory is destroyed. This makes
+	index-helper take more than double the amount of time required
+	for reading an index, but because it will happen in the
+	background, it's not noticable. `--strict` is enabled by default.
+
+--detach::
+	Detach from the shell.
+
+NOTES
+-----
+$GIT_DIR/index-helper.path is a symlink to a Unix domain socket in
+$TMPDIR that the daemon reads commands from. At least on Linux, shared
+memory objects are available via /dev/shm with the name pattern
+"git-<something>-<SHA1>".  Normally the daemon will clean up shared
+memory objects when it exits.  But if it crashes, some objects could
+remain there and they can be safely deleted with "rm" command. The
+following commands are used to control the daemon:
+
+"refresh"::
+	Reread the index.
+
+"poke":
+	Let the daemon know the index is to be read. It keeps the
+	daemon alive longer, unless `--exit-after=0` is used.
+
+"poke <path>":
+	Like "poke", but replies with "OK".  If watchman is
+	configured, index-helper queries watchman, then prepares a
+	shared memory object with the watchman index extension before
+	replying.
+
+All commands and replies are terminated by a 0 byte.
+
+GIT
+---
+Part of the linkgit:git[1] suite
