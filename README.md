@@ -1,3 +1,4 @@
+JIGIT - Java-Intentioned Git - Git Fork for Java Programming Language.
 Git - fast, scalable, distributed revision control system
 =========================================================
 
