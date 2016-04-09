@@ -63,6 +63,10 @@ static struct used_atom {
 			unsigned int length;
 		} objectname;
 		enum { S_FULL, S_SHORT } symref;
+		struct {
+			enum { R_NORMAL, R_SHORT, R_STRIP } option;
+			unsigned int strip;
+		} refname;
 	} u;
 } *used_atom;
 static int used_atom_cnt, need_tagged, need_symref;
@@ -228,12 +232,27 @@ static void symref_atom_parser(struct used_atom *atom, const char *arg)
 		die(_("unrecognized %%(symref) argument: %s"), arg);
 }
 
+static void refname_atom_parser(struct used_atom *atom, const char *arg)
+{
+	if (!arg)
+		atom->u.refname.option = R_NORMAL;
+	else if (!strcmp(arg, "short"))
+		atom->u.refname.option = R_SHORT;
+	else if (skip_prefix(arg, "strip=", &arg)) {
+		atom->u.contents.option = R_STRIP;
+		if (strtoul_ui(arg, 10, &atom->u.refname.strip) ||
+			atom->u.refname.strip <= 0)
+			die(_("positive value expected refname:strip=%s"), arg);
+	} else
+		die(_("unrecognized %%(refname) argument: %s"), arg);
+}
+
 static struct {
 	const char *name;
 	cmp_type cmp_type;
 	void (*parser)(struct used_atom *atom, const char *arg);
 } valid_atom[] = {
-	{ "refname" },
+	{ "refname", FIELD_STR, refname_atom_parser },
 	{ "objecttype" },
 	{ "objectsize", FIELD_ULONG },
 	{ "objectname", FIELD_STR, objectname_atom_parser },
@@ -1047,21 +1066,16 @@ static inline char *copy_advance(char *dst, const char *src)
 	return dst;
 }
 
-static const char *strip_ref_components(const char *refname, const char *nr_arg)
+static const char *strip_ref_components(const char *refname, unsigned int len)
 {
-	char *end;
-	long nr = strtol(nr_arg, &end, 10);
-	long remaining = nr;
+	long remaining = len;
 	const char *start = refname;
-
-	if (nr < 1 || *end != '\0')
-		die(_(":strip= requires a positive integer argument"));
 
 	while (remaining) {
 		switch (*start++) {
 		case '\0':
-			die(_("ref '%s' does not have %ld components to :strip"),
-			    refname, nr);
+			die("ref '%s' does not have %ud components to :strip",
+			    refname, len);
 		case '/':
 			remaining--;
 			break;
@@ -1153,6 +1167,18 @@ static const char *get_symref(struct used_atom *atom, struct ref_array_item *ref
 		return ref->symref;
 }
 
+static const char *get_refname(struct used_atom *atom, struct ref_array_item *ref)
+{
+	if (ref->kind & FILTER_REFS_DETACHED_HEAD)
+		return get_head_description();
+	if (atom->u.refname.option == R_SHORT)
+		return shorten_unambiguous_ref(ref->refname, warn_ambiguous_refs);
+	else if (atom->u.refname.option == R_STRIP)
+		return strip_ref_components(ref->refname, atom->u.refname.strip);
+	else
+		return ref->refname;
+}
+
 /*
  * Parse the object referred by ref, and grab needed value.
  */
@@ -1181,7 +1207,6 @@ static void populate_value(struct ref_array_item *ref)
 		struct atom_value *v = &ref->value[i];
 		int deref = 0;
 		const char *refname;
-		const char *formatp;
 		struct branch *branch = NULL;
 
 		v->handler = append_atom;
@@ -1192,11 +1217,9 @@ static void populate_value(struct ref_array_item *ref)
 			name++;
 		}
 
-		if (starts_with(name, "refname")) {
-			refname = ref->refname;
-			if (ref->kind & FILTER_REFS_DETACHED_HEAD)
-				refname = get_head_description();
-		} else if (starts_with(name, "symref"))
+		if (starts_with(name, "refname"))
+			refname = get_refname(atom, ref);
+		else if (starts_with(name, "symref"))
 			refname = get_symref(atom, ref);
 		else if (starts_with(name, "upstream")) {
 			const char *branch_name;
@@ -1272,21 +1295,6 @@ static void populate_value(struct ref_array_item *ref)
 			continue;
 		} else
 			continue;
-
-		formatp = strchr(name, ':');
-		if (formatp) {
-			const char *arg;
-
-			formatp++;
-			if (!strcmp(formatp, "short"))
-				refname = shorten_unambiguous_ref(refname,
-						      warn_ambiguous_refs);
-			else if (skip_prefix(formatp, "strip=", &arg))
-				refname = strip_ref_components(refname, arg);
-			else
-				die(_("unknown %.*s format %s"),
-				    (int)(formatp - name), name, formatp);
-		}
 
 		if (!deref)
 			v->s = refname;
