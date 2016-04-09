@@ -89,8 +89,10 @@ option can be used to override --squash.
 
 --verify-signatures::
 --no-verify-signatures::
-	Verify that the commits being merged have good and trusted GPG signatures
+	Verify that the commits being merged have good and valid GPG signatures
 	and abort the merge in case they do not.
+	For instance, when running `git merge --verify-signature remote/branch`,
+	only the head commit on `remote/branch` needs to be signed.
 
 --summary::
 --no-summary::

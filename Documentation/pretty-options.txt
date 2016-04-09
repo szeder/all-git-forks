@@ -78,5 +78,5 @@ being displayed. Examples: "--notes=foo" will show only notes from
 endif::git-rev-list[]
 
 --show-signature::
-	Check the validity of a signed commit object by passing the signature
-	to `gpg --verify` and show the output.
+	Check the validity of a signed commit object, by passing the signature
+	to `gpg --verify`, and show the output.
