@@ -62,6 +62,7 @@ static struct used_atom {
 			enum { O_FULL, O_LENGTH, O_SHORT } option;
 			unsigned int length;
 		} objectname;
+		enum { S_FULL, S_SHORT } symref;
 	} u;
 } *used_atom;
 static int used_atom_cnt, need_tagged, need_symref;
@@ -217,6 +218,15 @@ static void if_atom_parser(struct used_atom *atom, const char *arg)
 		die(_("unrecognized %%(if) argument: %s"), arg);
 }
 
+static void symref_atom_parser(struct used_atom *atom, const char *arg)
+{
+	if (!arg)
+		atom->u.symref = S_FULL;
+	else if (!strcmp(arg, "short"))
+		atom->u.symref = S_SHORT;
+	else
+		die(_("unrecognized %%(symref) argument: %s"), arg);
+}
 
 static struct {
 	const char *name;
@@ -252,7 +262,7 @@ static struct {
 	{ "contents", FIELD_STR, contents_atom_parser },
 	{ "upstream", FIELD_STR, remote_ref_atom_parser },
 	{ "push", FIELD_STR, remote_ref_atom_parser },
-	{ "symref" },
+	{ "symref", FIELD_STR, symref_atom_parser },
 	{ "flag" },
 	{ "HEAD" },
 	{ "color", FIELD_STR, color_atom_parser },
@@ -1132,6 +1142,17 @@ char *get_head_description(void)
 	return strbuf_detach(&desc, NULL);
 }
 
+static const char *get_symref(struct used_atom *atom, struct ref_array_item *ref)
+{
+	if (!ref->symref)
+		return "";
+	else if (atom->u.symref == S_SHORT)
+		return shorten_unambiguous_ref(ref->symref,
+					       warn_ambiguous_refs);
+	else
+		return ref->symref;
+}
+
 /*
  * Parse the object referred by ref, and grab needed value.
  */
@@ -1176,7 +1197,7 @@ static void populate_value(struct ref_array_item *ref)
 			if (ref->kind & FILTER_REFS_DETACHED_HEAD)
 				refname = get_head_description();
 		} else if (starts_with(name, "symref"))
-			refname = ref->symref ? ref->symref : "";
+			refname = get_symref(atom, ref);
 		else if (starts_with(name, "upstream")) {
 			const char *branch_name;
 			/* only local branches may have an upstream */
