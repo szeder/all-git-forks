@@ -1475,4 +1475,18 @@ test_expect_success 'format-patch --base error handling' '
 	! git format-patch --base=HEAD~ -3
 '
 
+test_expect_success 'format-patch --base=auto' '
+	git checkout -b new master &&
+	git branch --set-upstream-to=master &&
+	echo "A" >>file &&
+	git add file &&
+	git commit -m "New change #A" &&
+	echo "B" >>file &&
+	git add file &&
+	git commit -m "New change #B" &&
+	git format-patch --stdout --base=auto -2 >patch &&
+	grep -e "^base-commit:" patch >actual &&
+	echo "base-commit: $(git rev-parse master)" >expected &&
+	test_cmp expected actual
+'
 test_done
