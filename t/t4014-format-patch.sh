@@ -1489,4 +1489,23 @@ test_expect_success 'format-patch --base=auto' '
 	echo "base-commit: $(git rev-parse master)" >expected &&
 	test_cmp expected actual
 '
+
+test_expect_success 'format-patch format.base option' '
+	test_when_finished "git config --unset format.base" &&
+	git config format.base auto &&
+	git format-patch --stdout -1 >patch &&
+	grep -e "^base-commit:" patch >actual &&
+	echo "base-commit: $(git rev-parse master)" >expected &&
+	test_cmp expected actual
+'
+
+test_expect_success 'format-patch --base overrides format.base' '
+	test_when_finished "git config --unset format.base" &&
+	git config format.base auto &&
+	git format-patch --stdout --base=HEAD~ -1 >patch &&
+	grep -e "^base-commit:" patch >actual &&
+	echo "base-commit: $(git rev-parse HEAD~)" >expected &&
+	test_cmp expected actual
+'
+
 test_done

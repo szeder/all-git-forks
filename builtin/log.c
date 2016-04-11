@@ -699,6 +699,7 @@ static int do_signoff;
 static const char *signature = git_version_string;
 static const char *signature_file;
 static int config_cover_letter;
+static int config_base_commit;
 static const char *config_output_directory;
 
 enum {
@@ -780,6 +781,12 @@ static int git_format_config(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp(var, "format.outputdirectory"))
 		return git_config_string(&config_output_directory, var, value);
+	if (!strcmp(var, "format.base")){
+		if (value && !strcasecmp(value, "auto")) {
+			config_base_commit = 1;
+			return 0;
+		}
+	}
 
 	return git_log_config(var, value, cb);
 }
@@ -1209,7 +1216,12 @@ static void prepare_bases(struct base_tree_info *bases,
 	DIFF_OPT_SET(&diffopt, RECURSIVE);
 	diff_setup_done(&diffopt);
 
-	if (!strcmp(base_commit, "auto")) {
+	if (base_commit && strcmp(base_commit, "auto")) {
+		base = lookup_commit_reference_by_name(base_commit);
+		if (!base)
+			die(_("Unknown commit %s"), base_commit);
+		oidcpy(&bases->base_commit, &base->object.oid);
+	} else if ((base_commit && !strcmp(base_commit, "auto")) || config_base_commit) {
 		curr_branch = branch_get(NULL);
 		upstream = branch_get_upstream(curr_branch, NULL);
 		if (upstream) {
@@ -1228,11 +1240,6 @@ static void prepare_bases(struct base_tree_info *bases,
 			      "please use git branch --set-upstream-to to track a remote branch.\n"
 			      "Or you could specify base commit by --base=<base-commit-id> manually."));
 		}
-	} else {
-		base = lookup_commit_reference_by_name(base_commit);
-		if (!base)
-			die(_("Unknown commit %s"), base_commit);
-		oidcpy(&bases->base_commit, &base->object.oid);
 	}
 
 	init_revisions(&revs, NULL);
@@ -1616,7 +1623,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	}
 
 	memset(&bases, 0, sizeof(bases));
-	if (base_commit) {
+	if (base_commit || config_base_commit) {
 		reset_revision_walk();
 		prepare_bases(&bases, base_commit, list, nr);
 	}
