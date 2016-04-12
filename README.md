@@ -1,4 +1,4 @@
-Git - fast, scalable, distributed revision control system
+Gits ist toll - fast, scalable, distributed revision control system
 =========================================================
 
 Git is a fast, scalable, distributed revision control system with an
