@@ -727,6 +727,20 @@ static int checkout(void)
 		struct argv_array args = ARGV_ARRAY_INIT;
 		argv_array_pushl(&args, "submodule", "update", "--init", "--recursive", NULL);
 
+		switch (option_local) {
+		case 1:
+			argv_array_push(&args, "--local");
+			break;
+		case 0:
+			argv_array_push(&args, "--no-local");
+			break;
+		case -1:
+			/* pass nothing */
+			break;
+		default:
+			die("BUG: option_local out of range");
+		}
+
 		if (max_jobs != -1)
 			argv_array_pushf(&args, "--jobs=%d", max_jobs);
 
