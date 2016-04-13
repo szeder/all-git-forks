@@ -367,6 +367,8 @@ all::
 # Define HAVE_BSD_SYSCTL if your platform has a BSD-compatible sysctl function.
 #
 # Define HAVE_GETDELIM if your system has the getdelim() function.
+#
+# Define HAVE_SHM if you platform support shm_* functions in librt.
 
 GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -447,6 +449,7 @@ MSGFMT = msgfmt
 CURL_CONFIG = curl-config
 PTHREAD_LIBS = -lpthread
 PTHREAD_CFLAGS =
+WATCHMAN_LIBS =
 GCOV = gcov
 
 export TCL_PATH TCLTK_PATH
@@ -801,6 +804,7 @@ LIB_OBJS += sha1-lookup.o
 LIB_OBJS += sha1_file.o
 LIB_OBJS += sha1_name.o
 LIB_OBJS += shallow.o
+LIB_OBJS += shm.o
 LIB_OBJS += sideband.o
 LIB_OBJS += sigchain.o
 LIB_OBJS += split-index.o
@@ -1409,6 +1413,13 @@ else
 	LIB_OBJS += thread-utils.o
 endif
 
+ifdef USE_WATCHMAN
+	LIB_H += watchman-support.h
+	LIB_OBJS += watchman-support.o
+	WATCHMAN_LIBS = -lwatchman
+	BASIC_CFLAGS += -DUSE_WATCHMAN
+endif
+
 ifdef HAVE_PATHS_H
 	BASIC_CFLAGS += -DHAVE_PATHS_H
 endif
@@ -1424,6 +1435,12 @@ endif
 
 ifdef HAVE_DEV_TTY
 	BASIC_CFLAGS += -DHAVE_DEV_TTY
+endif
+
+ifdef HAVE_SHM
+	BASIC_CFLAGS	+= -DHAVE_SHM
+	EXTLIBS	        += -lrt
+	PROGRAM_OBJS	+= index-helper.o
 endif
 
 ifdef DIR_HAS_BSD_GROUP_SEMANTICS
@@ -2014,6 +2031,9 @@ git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \
 	$(VCSSVN_LIB)
 
+git-index-helper$X: index-helper.o GIT-LDFLAGS $(GITLIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) $(WATCHMAN_LIBS)
+
 $(REMOTE_CURL_ALIASES): $(REMOTE_CURL_PRIMARY)
 	$(QUIET_LNCP)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
@@ -2152,6 +2172,8 @@ GIT-BUILD-OPTIONS: FORCE
 	@echo NO_PERL=\''$(subst ','\'',$(subst ','\'',$(NO_PERL)))'\' >>$@+
 	@echo NO_PYTHON=\''$(subst ','\'',$(subst ','\'',$(NO_PYTHON)))'\' >>$@+
 	@echo NO_UNIX_SOCKETS=\''$(subst ','\'',$(subst ','\'',$(NO_UNIX_SOCKETS)))'\' >>$@+
+	@echo HAVE_SHM=\''$(subst ','\'',$(subst ','\'',$(HAVE_SHM)))'\' >>$@+
+	@echo USE_WATCHMAN=\''$(subst ','\'',$(subst ','\'',$(USE_WATCHMAN)))'\' >>$@+
 ifdef TEST_OUTPUT_DIRECTORY
 	@echo TEST_OUTPUT_DIRECTORY=\''$(subst ','\'',$(subst ','\'',$(TEST_OUTPUT_DIRECTORY)))'\' >>$@+
 endif
