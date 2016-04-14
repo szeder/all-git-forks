@@ -18,6 +18,8 @@
 #include "varint.h"
 #include "split-index.h"
 #include "utf8.h"
+#include "unix-socket.h"
+#include "ewah/ewok.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
@@ -40,14 +42,17 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
 #define CACHE_EXT_LINK 0x6c696e6b	  /* "link" */
 #define CACHE_EXT_UNTRACKED 0x554E5452	  /* "UNTR" */
+#define CACHE_EXT_WATCHMAN 0x57414D41	  /* "WAMA" */
 
 /* changes that can be kept in $GIT_DIR/index (basically all extensions) */
 #define EXTMASK (RESOLVE_UNDO_CHANGED | CACHE_TREE_CHANGED | \
 		 CE_ENTRY_ADDED | CE_ENTRY_REMOVED | CE_ENTRY_CHANGED | \
-		 SPLIT_INDEX_ORDERED | UNTRACKED_CHANGED)
+		 SPLIT_INDEX_ORDERED | UNTRACKED_CHANGED | \
+		 WATCHMAN_CHANGED)
 
 struct index_state the_index;
 static const char *alternate_index_output;
+static const char *index_helper_dir;
 
 static void set_index_entry(struct index_state *istate, int nr, struct cache_entry *ce)
 {
@@ -1219,12 +1224,17 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 			continue;
 
 		new = refresh_cache_ent(istate, ce, options, &cache_errno, &changed);
-		if (new == ce)
+		if (new == ce) {
+			if (ce->ce_flags & CE_WATCHMAN_DIRTY) {
+				ce->ce_flags          &= ~CE_WATCHMAN_DIRTY;
+				istate->cache_changed |= WATCHMAN_CHANGED;
+			}
 			continue;
+		}
 		if (!new) {
 			const char *fmt;
 
-			if (really && cache_errno == EINVAL) {
+			if (really || cache_errno == EINVAL) {
 				/* If we are doing --really-refresh that
 				 * means the index is not valid anymore.
 				 */
@@ -1345,7 +1355,7 @@ struct ondisk_cache_entry_extended {
 			    ondisk_cache_entry_extended_size(ce_namelen(ce)) : \
 			    ondisk_cache_entry_size(ce_namelen(ce)))
 
-static int verify_hdr(struct cache_header *hdr, unsigned long size)
+static int verify_hdr(const struct cache_header *hdr, unsigned long size)
 {
 	git_SHA_CTX c;
 	unsigned char sha1[20];
@@ -1362,6 +1372,173 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	if (hashcmp(sha1, (unsigned char *)hdr + size - 20))
 		return error("bad index file sha1 signature");
 	return 0;
+}
+
+static struct untracked_cache_dir *find_untracked_cache_dir(
+	struct untracked_cache *uc, struct untracked_cache_dir *ucd,
+	const char *name)
+{
+	int component_len;
+	const char *end;
+	struct untracked_cache_dir *dir;
+
+	if (!*name)
+		return ucd;
+
+	end = strchr(name, '/');
+	if (end)
+		component_len = end - name;
+	else
+		component_len = strlen(name);
+
+	dir = lookup_untracked(uc, ucd, name, component_len);
+	if (dir)
+		return find_untracked_cache_dir(uc, dir, name + component_len + 1);
+
+	return NULL;
+}
+
+static void mark_no_watchman(size_t pos, void *data)
+{
+	struct index_state *istate = data;
+	struct cache_entry *ce = istate->cache[pos];
+	struct strbuf sb = STRBUF_INIT;
+	char *c;
+	struct untracked_cache_dir *dir;
+
+	assert(pos < istate->cache_nr);
+	ce->ce_flags |= CE_WATCHMAN_DIRTY;
+
+	if (!istate->untracked || !istate->untracked->root)
+		return;
+
+	strbuf_add(&sb, ce->name, ce_namelen(ce));
+
+	for (c = sb.buf + sb.len - 1; c > sb.buf; c--) {
+		if (*c == '/') {
+			strbuf_setlen(&sb, c - sb.buf);
+			break;
+		}
+	}
+
+	if (c == sb.buf) {
+		strbuf_setlen(&sb, 0);
+	}
+
+	dir = find_untracked_cache_dir(istate->untracked,
+				       istate->untracked->root, sb.buf);
+	if (dir)
+		dir->valid = 0;
+
+	strbuf_release(&sb);
+}
+
+static int mark_untracked_invalid(struct string_list_item *item, void *uc)
+{
+	struct untracked_cache *untracked = uc;
+	struct untracked_cache_dir *dir;
+
+	dir = find_untracked_cache_dir(untracked, untracked->root,
+				       item->string);
+	if (dir)
+		dir->valid = 0;
+
+	return 0;
+}
+
+static int read_watchman_ext(struct index_state *istate, const void *data,
+			     unsigned long sz)
+{
+	struct ewah_bitmap *bitmap;
+	int ret, len;
+	uint32_t bitmap_size;
+	uint32_t untracked_nr;
+
+	if (memchr(data, 0, sz) == NULL)
+		return error("invalid extension");
+
+	len = strlen(data) + 1;
+	memcpy(&bitmap_size, (const char *)data + len, 4);
+	memcpy(&untracked_nr, (const char *)data + len + 4, 4);
+	untracked_nr = ntohl(untracked_nr);
+	bitmap_size = ntohl(bitmap_size);
+
+	bitmap = ewah_new();
+	ret = ewah_read_mmap(bitmap, (const char *)data + len + 8, bitmap_size);
+	if (ret != bitmap_size) {
+		ewah_free(bitmap);
+		return error("failed to parse ewah bitmap reading watchman index extension");
+	}
+	istate->last_update = xstrdup(data);
+	ewah_each_bit(bitmap, mark_no_watchman, istate);
+	ewah_free(bitmap);
+
+	if (istate->untracked && istate->untracked->root) {
+		int i;
+		const char *untracked;
+
+		untracked = (const char *)data + len + 8 + bitmap_size;
+		for (i = 0; i < untracked_nr; ++i) {
+			int len = strlen(untracked);
+			string_list_append(&istate->untracked->invalid_untracked,
+					   untracked);
+			untracked += len + 1;
+		}
+
+		for_each_string_list(&istate->untracked->invalid_untracked,
+			 mark_untracked_invalid, istate->untracked);
+
+		if (untracked_nr)
+			istate->cache_changed |= WATCHMAN_CHANGED;
+	}
+	return 0;
+}
+
+static int untracked_entry_append(struct string_list_item *item, void *sbvoid)
+{
+	struct strbuf *sb = sbvoid;
+
+	strbuf_addstr(sb, item->string);
+	strbuf_addch(sb, 0);
+	return 0;
+}
+
+void write_watchman_ext(struct strbuf *sb, struct index_state* istate)
+{
+	struct ewah_bitmap *bitmap;
+	int i;
+	int ewah_start;
+	int ewah_size = 0;
+	int fixup = 0;
+
+	strbuf_add(sb, istate->last_update, strlen(istate->last_update) + 1);
+	fixup = sb->len;
+	strbuf_add(sb, &ewah_size, 4); /* we'll fix this up later */
+	if (istate->untracked) {
+		uint32_t nr = istate->untracked->invalid_untracked.nr;
+		nr = htonl(nr);
+		strbuf_add(sb, &nr, 4);
+	} else {
+		/* zero */
+		strbuf_add(sb, &ewah_size, 4);
+	}
+
+	ewah_start = sb->len;
+	bitmap = ewah_new();
+	for (i = 0; i < istate->cache_nr; i++)
+		if (istate->cache[i]->ce_flags & CE_WATCHMAN_DIRTY)
+			ewah_set(bitmap, i);
+	ewah_serialize_strbuf(bitmap, sb);
+	ewah_free(bitmap);
+
+	/* fix up size field */
+	ewah_size = sb->len - ewah_start;
+	ewah_size = htonl(ewah_size);
+	memcpy(sb->buf + fixup, &ewah_size, 4);
+
+	if (istate->untracked)
+		for_each_string_list(&istate->untracked->invalid_untracked,
+				     untracked_entry_append, sb);
 }
 
 static int read_index_extension(struct index_state *istate,
@@ -1381,6 +1558,11 @@ static int read_index_extension(struct index_state *istate,
 	case CACHE_EXT_UNTRACKED:
 		istate->untracked = read_untracked_extension(data, sz);
 		break;
+
+	case CACHE_EXT_WATCHMAN:
+		read_watchman_ext(istate, data, sz);
+		break;
+
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
 			return error("index uses %.4s extension, which we do not understand",
@@ -1541,6 +1723,268 @@ static void post_read_index_from(struct index_state *istate)
 	tweak_untracked_cache(istate);
 }
 
+static int read_link(const char *path, char *buf, size_t bufsize)
+{
+	int len;
+
+	len = readlink(path, buf, bufsize);
+	if (len < 0 || len >= bufsize)
+		return -1;
+	buf[len] = '\0';
+	return 0;
+}
+
+static const char *get_index_helper_dir(void)
+{
+	char helper_path[PATH_MAX];
+
+	if (index_helper_dir)
+		return index_helper_dir;
+
+	if (read_link(git_path("index-helper.path"), helper_path,
+		      sizeof(helper_path) - 1) < 0) {
+		/*
+		 * If we can't readlink it, let's avoid confusing
+		 * users in the future and zap the bad link
+		 */
+		unlink(git_path("index-helper.path"));
+		return NULL;
+	}
+
+	index_helper_dir = xstrdup(helper_path);
+	return index_helper_dir;
+}
+
+static const char *index_helper_path(const char *format, ...)
+{
+	static struct strbuf sb = STRBUF_INIT;
+	va_list params;
+	const char *dir;
+
+	dir = get_index_helper_dir();
+	if (!dir)
+		return NULL;
+
+	strbuf_reset(&sb);
+	strbuf_addstr(&sb, dir);
+	strbuf_addch(&sb, '/');
+
+	va_start(params, format);
+	strbuf_vaddf(&sb, format, params);
+	va_end(params);
+
+	return sb.buf;
+}
+
+int connect_to_index_helper(void)
+{
+	const char *socket_path;
+	socket_path = index_helper_path("s");
+	if (!socket_path)
+		return -1;
+
+	return unix_stream_connect(socket_path);
+}
+
+static int poke_and_wait_for_reply(int fd)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct strbuf reply = STRBUF_INIT;
+	int ret = -1;
+	fd_set fds;
+	struct timeval timeout;
+
+	timeout.tv_usec = 0;
+	timeout.tv_sec = 1;
+
+	if (fd < 0)
+		return -1;
+
+	strbuf_addf(&buf, "poke %d", getpid());
+	if (write_in_full(fd, buf.buf, buf.len + 1) != buf.len + 1)
+		goto done_poke;
+
+	/* Now wait for a reply */
+	FD_ZERO(&fds);
+	FD_SET(fd, &fds);
+	if (select(fd + 1, &fds, NULL, NULL, &timeout) == 0)
+		/* No reply, giving up */
+		goto done_poke;
+
+	if (strbuf_getwholeline_fd(&reply, fd, 0))
+		goto done_poke;
+
+	if (!starts_with(reply.buf, "OK"))
+		goto done_poke;
+
+	ret = 0;
+done_poke:
+	close(fd);
+	strbuf_release(&buf);
+	strbuf_release(&reply);
+
+	return ret;
+}
+
+static int poke_daemon(struct index_state *istate,
+		       const struct stat *st, int refresh_cache)
+{
+	int fd;
+	int ret = -1;
+
+	/* if this is from index-helper, do not poke itself (recursively) */
+	if (istate->to_shm)
+		return 0;
+
+	fd = connect_to_index_helper();
+	if (fd < 0) {
+		warning("Failed to connect to index-helper socket");
+		unlink(git_path("index-helper.path"));
+		return -1;
+	}
+
+	if (refresh_cache) {
+		ret = write_in_full(fd, "refresh", 8) != 8;
+	} else {
+		if (wait_for_index_helper)
+			ret = poke_and_wait_for_reply(fd);
+		else
+			ret = write_in_full(fd, "poke", 5) != 5;
+	}
+
+	close(fd);
+	return ret;
+}
+
+static int is_main_index(struct index_state *istate)
+{
+	return istate == &the_index ||
+		(the_index.split_index &&
+		 istate == the_index.split_index->base);
+}
+
+/*
+ * Try to open and verify a cached shm index if available. Return 0 if
+ * succeeds (istate->mmap and istate->mmap_size are updated). Return
+ * negative otherwise.
+ */
+static int try_shm(struct index_state *istate)
+{
+	void *new_mmap = NULL;
+	size_t old_size = istate->mmap_size;
+	ssize_t new_size;
+	const unsigned char *sha1;
+	struct stat st;
+	int fd;
+
+	if (!is_main_index(istate) ||
+	    old_size <= 20 ||
+	    stat(git_path("index-helper.path"), &st))
+		return -1;
+	if (poke_daemon(istate, &st, 0))
+		return -1;
+	sha1 = (unsigned char *)istate->mmap + old_size - 20;
+
+	fd = open(index_helper_path("git-index-%s", sha1_to_hex(sha1)),
+		  O_RDONLY);
+	if (fd < 0)
+		goto fail;
+
+	if (fstat(fd, &st))
+		goto fail;
+
+	new_size = st.st_size;
+	new_mmap = mmap(NULL, new_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (new_size <= 20 ||
+	    hashcmp((unsigned char *)istate->mmap + old_size - 20,
+		    (unsigned char *)new_mmap + new_size - 20)) {
+		if (new_mmap)
+			munmap(new_mmap, new_size);
+		goto fail;
+	}
+
+	/* The memory barrier here matches index-helper.c:share_index. */
+	__sync_synchronize();
+
+	munmap(istate->mmap, istate->mmap_size);
+	istate->mmap = new_mmap;
+	istate->mmap_size = new_size;
+	istate->from_shm = 1;
+	return 0;
+
+fail:
+	poke_daemon(istate, &st, 1);
+	return -1;
+}
+
+static void refresh_by_watchman(struct index_state *istate)
+{
+	void *shm = NULL;
+	int length;
+	int i;
+	struct stat st;
+	int fd = -1;
+	const char *path = index_helper_path("git-watchman-%s-%"PRIuMAX,
+					     sha1_to_hex(istate->sha1),
+					     (uintmax_t)getpid());
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return;
+
+	/*
+	 * This watchman data is just for us -- no need to keep it
+	 * around once we've got it open.
+	 */
+	unlink(path);
+
+	if (fstat(fd, &st) < 0)
+		goto done;
+
+	length = st.st_size;
+	shm = mmap(NULL, length, PROT_READ, MAP_SHARED, fd, 0);
+
+	if (shm == MAP_FAILED)
+		goto done;
+
+	close(fd);
+	fd = -1;
+
+	if (length <= 20 ||
+	    hashcmp(istate->sha1, (unsigned char *)shm + length - 20) ||
+	    /*
+	     * No need to clear CE_WATCHMAN_DIRTY set by 'WAMA' on
+	     * disk. Watchman can only set more, not clear any, so
+	     * this is OR mask.
+	     */
+	    read_watchman_ext(istate, shm, length - 20))
+		goto done;
+
+	/*
+	 * Now that we've marked the invalid entries in the
+	 * untracked-cache itself, we can erase them from the list of
+	 * entries to be processed and mark the untracked cache for
+	 * watchman usage.
+	 */
+	if (istate->untracked) {
+		string_list_clear(&istate->untracked->invalid_untracked, 0);
+		istate->untracked->use_watchman = 1;
+	}
+
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+		if (ce_stage(ce) || (ce->ce_flags & CE_WATCHMAN_DIRTY))
+			continue;
+		ce_mark_uptodate(ce);
+	}
+done:
+	if (shm)
+		munmap(shm, length);
+
+	if (fd > 0)
+		close(fd);
+}
+
 /* remember to discard_cache() before reading a different cache! */
 int do_read_index(struct index_state *istate, const char *path, int must_exist)
 {
@@ -1555,6 +1999,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	if (istate->initialized)
 		return istate->cache_nr;
 
+	istate->from_shm = 0;
 	istate->timestamp.sec = 0;
 	istate->timestamp.nsec = 0;
 	fd = open(path, O_RDONLY);
@@ -1576,9 +2021,18 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		die_errno("unable to map index file");
 	close(fd);
 
-	hdr = mmap;
-	if (verify_hdr(hdr, mmap_size) < 0)
-		goto unmap;
+	istate->mmap = mmap;
+	istate->mmap_size = mmap_size;
+	if (try_shm(istate)) {
+		if (verify_hdr(istate->mmap, istate->mmap_size) < 0)
+			goto unmap;
+	} else if (istate->always_verify_trailing_sha1 &&
+		   verify_hdr(istate->mmap, istate->mmap_size) < 0)
+			goto unmap;
+	hdr = mmap = istate->mmap;
+	mmap_size = istate->mmap_size;
+	if (!istate->keep_mmap)
+		istate->mmap = NULL;
 
 	hashcpy(istate->sha1, (const unsigned char *)hdr + mmap_size - 20);
 	istate->version = ntohl(hdr->hdr_version);
@@ -1626,10 +2080,12 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		src_offset += 8;
 		src_offset += extsize;
 	}
-	munmap(mmap, mmap_size);
+	if (!istate->keep_mmap)
+		munmap(mmap, mmap_size);
 	return istate->cache_nr;
 
 unmap:
+	istate->mmap = NULL;
 	munmap(mmap, mmap_size);
 	die("index file corrupt");
 }
@@ -1648,13 +2104,16 @@ int read_index_from(struct index_state *istate, const char *path)
 	split_index = istate->split_index;
 	if (!split_index || is_null_sha1(split_index->base_sha1)) {
 		post_read_index_from(istate);
-		return ret;
+		goto done;
 	}
 
 	if (split_index->base)
 		discard_index(split_index->base);
 	else
 		split_index->base = xcalloc(1, sizeof(*split_index->base));
+	split_index->base->keep_mmap = istate->keep_mmap;
+	split_index->base->to_shm    = istate->to_shm;
+	split_index->base->from_shm  = istate->from_shm;
 	ret = do_read_index(split_index->base,
 			    git_path("sharedindex.%s",
 				     sha1_to_hex(split_index->base_sha1)), 1);
@@ -1666,6 +2125,10 @@ int read_index_from(struct index_state *istate, const char *path)
 		    sha1_to_hex(split_index->base->sha1));
 	merge_base_index(istate);
 	post_read_index_from(istate);
+
+done:
+	if (ret > 0 && istate->from_shm && istate->last_update)
+		refresh_by_watchman(istate);
 	return ret;
 }
 
@@ -1698,9 +2161,17 @@ int discard_index(struct index_state *istate)
 	free(istate->cache);
 	istate->cache = NULL;
 	istate->cache_alloc = 0;
+	if (istate->keep_mmap && istate->mmap) {
+		munmap(istate->mmap, istate->mmap_size);
+		istate->mmap = NULL;
+	}
 	discard_split_index(istate);
 	free_untracked_cache(istate->untracked);
 	istate->untracked = NULL;
+	istate->from_shm = 0;
+	istate->to_shm   = 0;
+	free(istate->last_update);
+	istate->last_update = NULL;
 	return 0;
 }
 
@@ -1959,7 +2430,7 @@ out:
 	return 0;
 }
 
-static int verify_index(const struct index_state *istate)
+int verify_index(const struct index_state *istate)
 {
 	return verify_index_from(istate, get_index_file());
 }
@@ -2098,6 +2569,16 @@ static int do_write_index(struct index_state *istate, int newfd,
 		if (err)
 			return -1;
 	}
+	if (!strip_extensions && istate->last_update) {
+		struct strbuf sb = STRBUF_INIT;
+
+		write_watchman_ext(&sb, istate);
+		err = write_index_ext_header(&c, newfd, CACHE_EXT_WATCHMAN, sb.len) < 0
+			|| ce_write(&c, newfd, sb.buf, sb.len) < 0;
+		strbuf_release(&sb);
+		if (err)
+			return -1;
+	}
 
 	if (ce_flush(&c, newfd, istate->sha1) || fstat(newfd, &st))
 		return -1;
@@ -2127,9 +2608,14 @@ static int do_write_locked_index(struct index_state *istate, struct lock_file *l
 		return ret;
 	assert((flags & (COMMIT_LOCK | CLOSE_LOCK)) !=
 	       (COMMIT_LOCK | CLOSE_LOCK));
-	if (flags & COMMIT_LOCK)
-		return commit_locked_index(lock);
-	else if (flags & CLOSE_LOCK)
+	if (flags & COMMIT_LOCK) {
+		struct stat st;
+		ret = commit_locked_index(lock);
+		if (!ret && is_main_index(istate) &&
+		    !stat(git_path("index-helper.path"), &st))
+			poke_daemon(istate, &st, 1);
+		return ret;
+	} else if (flags & CLOSE_LOCK)
 		return close_lock_file(lock);
 	else
 		return ret;
@@ -2323,4 +2809,12 @@ void stat_validity_update(struct stat_validity *sv, int fd)
 			sv->sd = xcalloc(1, sizeof(struct stat_data));
 		fill_stat_data(sv->sd, &st);
 	}
+}
+
+void move_index_extensions(struct index_state *dst, struct index_state *src)
+{
+	dst->untracked = src->untracked;
+	src->untracked = NULL;
+	dst->last_update = src->last_update;
+	src->last_update = NULL;
 }
