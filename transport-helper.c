@@ -99,7 +99,7 @@ static void do_take_over(struct transport *transport)
 
 static void standard_options(struct transport *t);
 
-static struct child_process *get_helper(struct transport *transport)
+static struct child_process *get_helper(struct transport *transport, const struct string_list *req_refs)
 {
 	struct helper_data *data = transport->data;
 	struct strbuf buf = STRBUF_INIT;
@@ -267,7 +267,7 @@ static int set_helper_option(struct transport *transport,
 	struct strbuf buf = STRBUF_INIT;
 	int i, ret, is_bool = 0;
 
-	get_helper(transport);
+	get_helper(transport, NULL);
 
 	if (!data->option)
 		return 1;
@@ -395,7 +395,7 @@ static int fetch_with_fetch(struct transport *transport,
 
 static int get_importer(struct transport *transport, struct child_process *fastimport)
 {
-	struct child_process *helper = get_helper(transport);
+	struct child_process *helper = get_helper(transport, NULL);
 	struct helper_data *data = transport->data;
 	int cat_blob_fd, code;
 	child_process_init(fastimport);
@@ -418,7 +418,7 @@ static int get_exporter(struct transport *transport,
 			struct string_list *revlist_args)
 {
 	struct helper_data *data = transport->data;
-	struct child_process *helper = get_helper(transport);
+	struct child_process *helper = get_helper(transport, NULL);
 	int i;
 
 	child_process_init(fastexport);
@@ -451,7 +451,7 @@ static int fetch_with_import(struct transport *transport,
 	struct ref *posn;
 	struct strbuf buf = STRBUF_INIT;
 
-	get_helper(transport);
+	get_helper(transport, NULL);
 
 	if (get_importer(transport, &fastimport))
 		die("Couldn't run fast-import");
@@ -523,7 +523,7 @@ static int process_connect_service(struct transport *transport,
 	int r, duped, ret = 0;
 	FILE *input;
 
-	helper = get_helper(transport);
+	helper = get_helper(transport, NULL);
 
 	/*
 	 * Yes, dup the pipe another time, as we need unbuffered version
@@ -599,7 +599,7 @@ static int connect_helper(struct transport *transport, const char *name,
 	struct helper_data *data = transport->data;
 
 	/* Get_helper so connect is inited. */
-	get_helper(transport);
+	get_helper(transport, NULL);
 	if (!data->connect)
 		die("Operation not supported by protocol.");
 
@@ -805,7 +805,7 @@ static int push_refs_with_push(struct transport *transport,
 	struct string_list cas_options = STRING_LIST_INIT_DUP;
 	struct string_list_item *cas_option;
 
-	get_helper(transport);
+	get_helper(transport, NULL);
 	if (!data->push)
 		return 1;
 
@@ -888,7 +888,7 @@ static int push_refs_with_export(struct transport *transport,
 			warning("helper %s does not support 'force'", data->name);
 	}
 
-	helper = get_helper(transport);
+	helper = get_helper(transport, NULL);
 
 	write_constant(helper->in, "export\n");
 
@@ -992,7 +992,7 @@ static int has_attribute(const char *attrs, const char *attr) {
 	}
 }
 
-static struct ref *get_refs_list(struct transport *transport, int for_push)
+static struct ref *get_refs_list(struct transport *transport, const struct string_list *req_refs, int for_push)
 {
 	struct helper_data *data = transport->data;
 	struct child_process *helper;
@@ -1001,11 +1001,11 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	struct ref *posn;
 	struct strbuf buf = STRBUF_INIT;
 
-	helper = get_helper(transport);
+	helper = get_helper(transport, req_refs);
 
 	if (process_connect(transport, for_push)) {
 		do_take_over(transport);
-		return transport->get_refs_list(transport, for_push);
+		return transport->get_refs_list(transport, req_refs, for_push);
 	}
 
 	if (data->push && for_push)

@@ -70,7 +70,9 @@ struct bundle_transport_data {
 	struct bundle_header header;
 };
 
-static struct ref *get_refs_from_bundle(struct transport *transport, int for_push)
+static struct ref *get_refs_from_bundle(struct transport *transport,
+					const struct string_list *req_refs,
+					int for_push)
 {
 	struct bundle_transport_data *data = transport->data;
 	struct ref *result = NULL;
@@ -177,7 +179,7 @@ static int connect_setup(struct transport *transport, int for_push)
 	return 0;
 }
 
-static struct ref *get_refs_via_connect(struct transport *transport, int for_push)
+static struct ref *get_refs_via_connect(struct transport *transport, const struct string_list *req_refs, int for_push)
 {
 	struct git_transport_data *data = transport->data;
 	struct ref *refs;
@@ -870,7 +872,7 @@ int transport_push(struct transport *transport,
 		if (check_push_refs(local_refs, refspec_nr, refspec) < 0)
 			return -1;
 
-		remote_refs = transport->get_refs_list(transport, 1);
+		remote_refs = transport->get_refs_list(transport, NULL, 1);
 
 		if (flags & TRANSPORT_PUSH_ALL)
 			match_flags |= MATCH_REFS_ALL;
@@ -949,10 +951,11 @@ int transport_push(struct transport *transport,
 	return 1;
 }
 
-const struct ref *transport_get_remote_refs(struct transport *transport)
+const struct ref *transport_get_remote_refs(struct transport *transport, const struct string_list *req_refs)
 {
 	if (!transport->got_remote_refs) {
-		transport->remote_refs = transport->get_refs_list(transport, 0);
+		transport->remote_refs = transport->get_refs_list(transport,
+								  req_refs, 0);
 		transport->got_remote_refs = 1;
 	}
 
@@ -1099,7 +1102,7 @@ static int refs_from_alternate_cb(struct alternate_object_database *e,
 	other[len - 8] = '\0';
 	remote = remote_get(other);
 	transport = transport_get(remote, other);
-	for (extra = transport_get_remote_refs(transport);
+	for (extra = transport_get_remote_refs(transport, NULL);
 	     extra;
 	     extra = extra->next)
 		cb->fn(extra, cb->data);

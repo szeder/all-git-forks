@@ -4,6 +4,7 @@
 #include "cache.h"
 #include "run-command.h"
 #include "remote.h"
+#include "string-list.h"
 
 struct git_transport_options {
 	unsigned thin : 1;
@@ -65,7 +66,7 @@ struct transport {
 	 * the ref without a huge amount of effort, it should store it
 	 * in the ref's old_sha1 field; otherwise it should be all 0.
 	 **/
-	struct ref *(*get_refs_list)(struct transport *transport, int for_push);
+	struct ref *(*get_refs_list)(struct transport *transport, const struct string_list *req_refs, int for_push);
 
 	/**
 	 * Fetch the objects for the given refs. Note that this gets
@@ -207,7 +208,7 @@ int transport_push(struct transport *connection,
 		   int refspec_nr, const char **refspec, int flags,
 		   unsigned int * reject_reasons);
 
-const struct ref *transport_get_remote_refs(struct transport *transport);
+const struct ref *transport_get_remote_refs(struct transport *transport, const struct string_list *req_refs);
 
 int transport_fetch_refs(struct transport *transport, struct ref *refs);
 void transport_unlock_pack(struct transport *transport);
