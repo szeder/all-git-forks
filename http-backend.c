@@ -450,9 +450,7 @@ static void get_info_refs(char *arg)
 	hdr_nocache();
 
 	if (service_name) {
-		const char *argv[] = {NULL /* service name */,
-			"--stateless-rpc", "--advertise-refs",
-			".", NULL};
+		struct argv_array argv = ARGV_ARRAY_INIT;
 		struct rpc_service *svc = select_service(service_name);
 
 		strbuf_addf(&buf, "application/x-git-%s-advertisement",
@@ -463,9 +461,12 @@ static void get_info_refs(char *arg)
 		packet_write(1, "# service=git-%s\n", svc->name);
 		packet_flush(1);
 
-		argv[0] = svc->name;
-		run_service(argv, 0);
+		argv_array_pushl(&argv, svc->name, "--stateless-rpc",
+				 "--advertise-refs", NULL);
 
+		argv_array_push(&argv, ".");
+		run_service(argv.argv, 0);
+		argv_array_clear(&argv);
 	} else {
 		select_getanyfile();
 		for_each_namespaced_ref(show_text_ref, &buf);
