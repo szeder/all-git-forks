@@ -52,6 +52,7 @@ static int keepalive = 5;
 static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
+static struct string_list interesting_refspecs = STRING_LIST_INIT_DUP;
 
 static void reset_timeout(void)
 {
@@ -687,15 +688,60 @@ static void receive_needs(void)
 	free(shallows.objects);
 }
 
-/* return non-zero if the ref is hidden, otherwise 0 */
+struct refspec_data {
+	int has_star;
+	size_t prefixlen;
+	size_t suffixlen;
+};
+
+static int matches_refspec(const char *refspec, struct refspec_data *data,
+		    const char *ref)
+{
+	size_t len;
+
+	if (!data->has_star)
+		return !strcmp(refspec, ref);
+
+	if (strncmp(refspec, ref, data->prefixlen))
+		return -1;
+
+	len = strlen(refspec);
+	if (len < data->prefixlen + data->suffixlen)
+		return -1;
+
+	return strcmp(ref + (len - data->suffixlen),
+		      refspec + data->prefixlen + 1);
+}
+
+/*
+ * return non-zero if the ref is hidden or outside the provided
+ * refspecs, otherwise 0
+*/
 static int mark_our_ref(const char *refname, const char *refname_full,
 			const struct object_id *oid)
 {
 	struct object *o = lookup_unknown_object(oid->hash);
+	struct string_list_item *item;
 
 	if (ref_is_hidden(refname, refname_full)) {
 		o->flags |= HIDDEN_REF;
 		return 1;
+	}
+
+	if (interesting_refspecs.nr) {
+		int found = 0;
+		/*
+		 * TODO: this could be faster for large numbers of
+		 * refspecs by using tries or a DFA.
+		 */
+		for_each_string_list_item(item, &interesting_refspecs)
+			if (matches_refspec(item->string, item->util, refname)) {
+				found = 1;
+				break;
+			}
+		if (!found)
+			return 1;
+
 	}
 	o->flags |= OUR_REF;
 	return 0;
@@ -725,7 +771,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
+		" include-tag multi_ack_detailed interesting-refs";
 	const char *refname_nons = strip_namespace(refname);
 	struct object_id peeled;
 
@@ -820,6 +866,24 @@ static int upload_pack_config(const char *var, const char *value, void *unused)
 	return parse_hide_refs_config(var, value, "uploadpack");
 }
 
+static struct refspec_data *make_refspec_data(const char *refspec)
+{
+	struct refspec_data *data;
+	const char *star;
+
+	data = xmalloc(sizeof(struct refspec_data));
+	star = strchr(refspec, '*');
+	if (star) {
+		data->has_star = 1;
+		data->prefixlen = star - refspec;
+		data->suffixlen = strlen(refspec) - (data->prefixlen + 1);
+	} else {
+		data->has_star = 0;
+	}
+
+	return data;
+}
+
 int main(int argc, char **argv)
 {
 	char *dir;
@@ -839,6 +903,19 @@ int main(int argc, char **argv)
 			break;
 		if (!strcmp(arg, "--advertise-refs")) {
 			advertise_refs = 1;
+			continue;
+		}
+		if (starts_with(arg, "--interesting-refs=")) {
+			struct string_list_item *item;
+
+			string_list_split(&interesting_refspecs, arg + 19,
+					  ' ', -1);
+			for_each_string_list_item(item, &interesting_refspecs) {
+				if (check_refname_format(item->string,
+							 REFNAME_REFSPEC_PATTERN))
+					die("invalid refspec %s", item->string);
+				item->util = make_refspec_data(item->string);
+			}
 			continue;
 		}
 		if (!strcmp(arg, "--stateless-rpc")) {
