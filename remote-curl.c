@@ -20,6 +20,7 @@ static struct strbuf url = STRBUF_INIT;
 struct options {
 	int verbosity;
 	unsigned long depth;
+	char *refspec;
 	unsigned progress : 1,
 		check_self_contained_and_connected : 1,
 		cloning : 1,
@@ -41,6 +42,10 @@ static int set_option(const char *name, const char *value)
 		if (value == end || *end)
 			return -1;
 		remote_curl_options.verbosity = v;
+		return 0;
+	}
+	else if (!strcmp(name, "interesting-refs")) {
+		remote_curl_options.refspec = xstrdup(value);
 		return 0;
 	}
 	else if (!strcmp(name, "progress")) {
@@ -269,6 +274,9 @@ static struct discovery *discover_refs(const char *service, int for_push)
 		else
 			strbuf_addch(&refs_url, '&');
 		strbuf_addf(&refs_url, "service=%s", service);
+		if (remote_curl_options.refspec)
+			strbuf_addf(&refs_url, "&interesting-refs=%s",
+				    remote_curl_options.refspec);
 	}
 
 	memset(&options, 0, sizeof(options));

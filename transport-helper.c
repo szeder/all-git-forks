@@ -40,6 +40,9 @@ struct helper_data {
 	struct git_transport_options transport_options;
 };
 
+static int set_helper_option(struct transport *transport,
+			     const char *name, const char *value);
+
 static void sendline(struct helper_data *helper, struct strbuf *buffer)
 {
 	if (debug)
@@ -109,6 +112,7 @@ static struct child_process *get_helper(struct transport *transport, const struc
 	int refspec_alloc = 0;
 	int duped;
 	int code;
+	struct string_list_item *item;
 
 	if (data->helper)
 		return data->helper;
@@ -214,6 +218,11 @@ static struct child_process *get_helper(struct transport *transport, const struc
 	strbuf_release(&buf);
 	if (debug)
 		fprintf(stderr, "Debug: Capabilities complete.\n");
+
+	if (req_refs) {
+		for_each_string_list_item(item, req_refs)
+			set_helper_option(transport, "interesting-refs", item->string);
+	}
 	standard_options(transport);
 	return data->helper;
 }

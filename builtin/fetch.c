@@ -15,6 +15,7 @@
 #include "submodule.h"
 #include "connected.h"
 #include "argv-array.h"
+#include "string-list.h"
 
 static const char * const builtin_fetch_usage[] = {
 	N_("git fetch [<options>] [<repository> [<refspec>...]]"),
@@ -302,9 +303,23 @@ static struct ref *get_ref_map(struct transport *transport,
 
 	/* opportunistically-updated references: */
 	struct ref *orefs = NULL, **oref_tail = &orefs;
+	struct string_list qualified_refs = STRING_LIST_INIT_NODUP;
 	const struct ref *remote_refs;
 
-	remote_refs = transport_get_remote_refs(transport, NULL);
+	for (i = 0; i < refspec_count; i++) {
+		if (starts_with(refspecs[i].src, "refs/")) {
+			string_list_append(&qualified_refs,
+					   xstrdup(refspecs[i].src));
+		} else {
+			const char *qualified = xstrfmt("refs/heads/%s",
+							refspecs[i].src);
+			string_list_append(&qualified_refs, qualified);
+		}
+	}
+
+	remote_refs = transport_get_remote_refs(transport, &qualified_refs);
+
+	string_list_clear(&qualified_refs, 0);
 
 	if (refspec_count) {
 		struct refspec *fetch_refspec;
