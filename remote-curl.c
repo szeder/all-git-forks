@@ -30,7 +30,7 @@ struct options {
 		/* One of the SEND_PACK_PUSH_CERT_* constants. */
 		push_cert : 2;
 };
-static struct options options;
+static struct options remote_curl_options;
 static struct string_list cas_options = STRING_LIST_INIT_DUP;
 
 static int set_option(const char *name, const char *value)
@@ -40,14 +40,14 @@ static int set_option(const char *name, const char *value)
 		int v = strtol(value, &end, 10);
 		if (value == end || *end)
 			return -1;
-		options.verbosity = v;
+		remote_curl_options.verbosity = v;
 		return 0;
 	}
 	else if (!strcmp(name, "progress")) {
 		if (!strcmp(value, "true"))
-			options.progress = 1;
+			remote_curl_options.progress = 1;
 		else if (!strcmp(value, "false"))
-			options.progress = 0;
+			remote_curl_options.progress = 0;
 		else
 			return -1;
 		return 0;
@@ -57,32 +57,32 @@ static int set_option(const char *name, const char *value)
 		unsigned long v = strtoul(value, &end, 10);
 		if (value == end || *end)
 			return -1;
-		options.depth = v;
+		remote_curl_options.depth = v;
 		return 0;
 	}
 	else if (!strcmp(name, "followtags")) {
 		if (!strcmp(value, "true"))
-			options.followtags = 1;
+			remote_curl_options.followtags = 1;
 		else if (!strcmp(value, "false"))
-			options.followtags = 0;
+			remote_curl_options.followtags = 0;
 		else
 			return -1;
 		return 0;
 	}
 	else if (!strcmp(name, "dry-run")) {
 		if (!strcmp(value, "true"))
-			options.dry_run = 1;
+			remote_curl_options.dry_run = 1;
 		else if (!strcmp(value, "false"))
-			options.dry_run = 0;
+			remote_curl_options.dry_run = 0;
 		else
 			return -1;
 		return 0;
 	}
 	else if (!strcmp(name, "check-connectivity")) {
 		if (!strcmp(value, "true"))
-			options.check_self_contained_and_connected = 1;
+			remote_curl_options.check_self_contained_and_connected = 1;
 		else if (!strcmp(value, "false"))
-			options.check_self_contained_and_connected = 0;
+			remote_curl_options.check_self_contained_and_connected = 0;
 		else
 			return -1;
 		return 0;
@@ -95,27 +95,27 @@ static int set_option(const char *name, const char *value)
 		return 0;
 	} else if (!strcmp(name, "cloning")) {
 		if (!strcmp(value, "true"))
-			options.cloning = 1;
+			remote_curl_options.cloning = 1;
 		else if (!strcmp(value, "false"))
-			options.cloning = 0;
+			remote_curl_options.cloning = 0;
 		else
 			return -1;
 		return 0;
 	} else if (!strcmp(name, "update-shallow")) {
 		if (!strcmp(value, "true"))
-			options.update_shallow = 1;
+			remote_curl_options.update_shallow = 1;
 		else if (!strcmp(value, "false"))
-			options.update_shallow = 0;
+			remote_curl_options.update_shallow = 0;
 		else
 			return -1;
 		return 0;
 	} else if (!strcmp(name, "pushcert")) {
 		if (!strcmp(value, "true"))
-			options.push_cert = SEND_PACK_PUSH_CERT_ALWAYS;
+			remote_curl_options.push_cert = SEND_PACK_PUSH_CERT_ALWAYS;
 		else if (!strcmp(value, "false"))
-			options.push_cert = SEND_PACK_PUSH_CERT_NEVER;
+			remote_curl_options.push_cert = SEND_PACK_PUSH_CERT_NEVER;
 		else if (!strcmp(value, "if-asked"))
-			options.push_cert = SEND_PACK_PUSH_CERT_IF_ASKED;
+			remote_curl_options.push_cert = SEND_PACK_PUSH_CERT_IF_ASKED;
 		else
 			return -1;
 		return 0;
@@ -571,7 +571,7 @@ retry:
 		curl_easy_setopt(slot->curl, CURLOPT_IOCTLFUNCTION, rpc_ioctl);
 		curl_easy_setopt(slot->curl, CURLOPT_IOCTLDATA, rpc);
 #endif
-		if (options.verbosity > 1) {
+		if (remote_curl_options.verbosity > 1) {
 			fprintf(stderr, "POST %s (chunked)\n", rpc->service_name);
 			fflush(stderr);
 		}
@@ -616,7 +616,7 @@ retry:
 		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDS, gzip_body);
 		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDSIZE, gzip_size);
 
-		if (options.verbosity > 1) {
+		if (remote_curl_options.verbosity > 1) {
 			fprintf(stderr, "POST %s (gzip %lu to %lu bytes)\n",
 				rpc->service_name,
 				(unsigned long)rpc->len, (unsigned long)gzip_size);
@@ -628,7 +628,7 @@ retry:
 		 */
 		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDS, rpc->buf);
 		curl_easy_setopt(slot->curl, CURLOPT_POSTFIELDSIZE, rpc->len);
-		if (options.verbosity > 1) {
+		if (remote_curl_options.verbosity > 1) {
 			fprintf(stderr, "POST %s (%lu bytes)\n",
 				rpc->service_name, (unsigned long)rpc->len);
 			fflush(stderr);
@@ -725,7 +725,7 @@ static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 	int ret, i;
 
 	ALLOC_ARRAY(targets, nr_heads);
-	if (options.depth)
+	if (remote_curl_options.depth)
 		die("dumb http transport does not support --depth");
 	for (i = 0; i < nr_heads; i++)
 		targets[i] = xstrdup(oid_to_hex(&to_fetch[i]->old_oid));
@@ -734,7 +734,7 @@ static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 	walker->get_all = 1;
 	walker->get_tree = 1;
 	walker->get_history = 1;
-	walker->get_verbosely = options.verbosity >= 3;
+	walker->get_verbosely = remote_curl_options.verbosity >= 3;
 	walker->get_recover = 0;
 	ret = walker_fetch(walker, nr_heads, targets, NULL, NULL);
 	walker_free(walker);
@@ -756,24 +756,24 @@ static int fetch_git(struct discovery *heads,
 
 	argv_array_pushl(&argv, "fetch-pack", "--stateless-rpc", "--stdin",
 			 "--lock-pack", NULL);
-	if (options.followtags)
+	if (remote_curl_options.followtags)
 		argv_array_push(&argv, "--include-tag");
-	if (options.thin)
+	if (remote_curl_options.thin)
 		argv_array_push(&argv, "--thin");
-	if (options.verbosity >= 3) {
+	if (remote_curl_options.verbosity >= 3) {
 		argv_array_push(&argv, "-v");
 		argv_array_push(&argv, "-v");
 	}
-	if (options.check_self_contained_and_connected)
+	if (remote_curl_options.check_self_contained_and_connected)
 		argv_array_push(&argv, "--check-self-contained-and-connected");
-	if (options.cloning)
+	if (remote_curl_options.cloning)
 		argv_array_push(&argv, "--cloning");
-	if (options.update_shallow)
+	if (remote_curl_options.update_shallow)
 		argv_array_push(&argv, "--update-shallow");
-	if (!options.progress)
+	if (!remote_curl_options.progress)
 		argv_array_push(&argv, "--no-progress");
-	if (options.depth)
-		argv_array_pushf(&argv, "--depth=%lu", options.depth);
+	if (remote_curl_options.depth)
+		argv_array_pushf(&argv, "--depth=%lu", remote_curl_options.depth);
 	argv_array_push(&argv, url.buf);
 
 	for (i = 0; i < nr_heads; i++) {
@@ -869,9 +869,9 @@ static int push_dav(int nr_spec, char **specs)
 	child.git_cmd = 1;
 	argv_array_push(&child.args, "http-push");
 	argv_array_push(&child.args, "--helper-status");
-	if (options.dry_run)
+	if (remote_curl_options.dry_run)
 		argv_array_push(&child.args, "--dry-run");
-	if (options.verbosity > 1)
+	if (remote_curl_options.verbosity > 1)
 		argv_array_push(&child.args, "--verbose");
 	argv_array_push(&child.args, url.buf);
 	for (i = 0; i < nr_spec; i++)
@@ -894,19 +894,19 @@ static int push_git(struct discovery *heads, int nr_spec, char **specs)
 	argv_array_pushl(&args, "send-pack", "--stateless-rpc", "--helper-status",
 			 NULL);
 
-	if (options.thin)
+	if (remote_curl_options.thin)
 		argv_array_push(&args, "--thin");
-	if (options.dry_run)
+	if (remote_curl_options.dry_run)
 		argv_array_push(&args, "--dry-run");
-	if (options.push_cert == SEND_PACK_PUSH_CERT_ALWAYS)
+	if (remote_curl_options.push_cert == SEND_PACK_PUSH_CERT_ALWAYS)
 		argv_array_push(&args, "--signed=yes");
-	else if (options.push_cert == SEND_PACK_PUSH_CERT_IF_ASKED)
+	else if (remote_curl_options.push_cert == SEND_PACK_PUSH_CERT_IF_ASKED)
 		argv_array_push(&args, "--signed=if-asked");
-	if (options.verbosity == 0)
+	if (remote_curl_options.verbosity == 0)
 		argv_array_push(&args, "--quiet");
-	else if (options.verbosity > 1)
+	else if (remote_curl_options.verbosity > 1)
 		argv_array_push(&args, "--verbose");
-	argv_array_push(&args, options.progress ? "--progress" : "--no-progress");
+	argv_array_push(&args, remote_curl_options.progress ? "--progress" : "--no-progress");
 	for_each_string_list_item(cas_option, &cas_options)
 		argv_array_push(&args, cas_option->string);
 	argv_array_push(&args, url.buf);
@@ -990,9 +990,9 @@ int main(int argc, const char **argv)
 		return 1;
 	}
 
-	options.verbosity = 1;
-	options.progress = !!isatty(2);
-	options.thin = 1;
+	remote_curl_options.verbosity = 1;
+	remote_curl_options.progress = !!isatty(2);
+	remote_curl_options.thin = 1;
 
 	remote = remote_get(argv[1]);
 
