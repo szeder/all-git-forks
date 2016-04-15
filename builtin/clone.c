@@ -1010,7 +1010,21 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (transport->smart_options && !option_depth)
 		transport->smart_options->check_self_contained_and_connected = 1;
 
-	refs = transport_get_remote_refs(transport, NULL);
+	if (option_single_branch && option_branch) {
+		struct string_list branch_ref = STRING_LIST_INIT_DUP;
+
+		if (starts_with(option_branch, "refs/")) {
+			string_list_append(&branch_ref, option_branch);
+		} else {
+			string_list_append_nodup(&branch_ref,
+						 xstrfmt("refs/heads/%s",
+							 option_branch));
+		}
+		refs = transport_get_remote_refs(transport, &branch_ref);
+		string_list_clear(&branch_ref, 0);
+	} else {
+		refs = transport_get_remote_refs(transport, NULL);
+	}
 
 	if (refs) {
 		mapped_refs = wanted_peer_refs(refs, refspec);

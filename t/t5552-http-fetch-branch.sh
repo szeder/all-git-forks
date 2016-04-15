@@ -35,5 +35,10 @@ test_expect_success 'fetch with refspec only fetches requested branch' '
 	! grep "refs/heads/master" trace
 '
 
+test_expect_success 'single-branch clone only fetches requested branch' '
+	GIT_TRACE_PACKET="$TRASH_DIRECTORY/trace" git clone --single-branch -b master $HTTPD_URL/smart/repo.git sbc &&
+	! grep "refs/heads/another_branch" trace
+'
+
 stop_httpd
 test_done
