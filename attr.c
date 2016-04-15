@@ -93,9 +93,7 @@ static struct git_attr *git_attr_internal(const char *name, int len)
 	if (invalid_attr_name(name, len))
 		return NULL;
 
-	a = xmalloc(sizeof(*a) + len + 1);
-	memcpy(a->name, name, len);
-	a->name[len] = 0;
+	FLEX_ALLOC_MEM(a, name, name, len);
 	a->h = hval;
 	a->next = git_attr_hash[pos];
 	a->attr_nr = attr_nr++;
@@ -124,7 +122,7 @@ struct pattern {
 	const char *pattern;
 	int patternlen;
 	int nowildcardlen;
-	int flags;		/* EXC_FLAG_* */
+	unsigned flags;		/* EXC_FLAG_* */
 };
 
 /*
@@ -490,6 +488,8 @@ static int git_attr_system(void)
 	return !git_env_bool("GIT_ATTR_NOSYSTEM", 0);
 }
 
+static GIT_PATH_FUNC(git_path_info_attributes, INFOATTRIBUTES_FILE)
+
 static void bootstrap_attr_stack(void)
 {
 	struct attr_stack *elem;
@@ -531,7 +531,7 @@ static void bootstrap_attr_stack(void)
 		debug_push(elem);
 	}
 
-	elem = read_attr_from_file(git_path(INFOATTRIBUTES_FILE), 1);
+	elem = read_attr_from_file(git_path_info_attributes(), 1);
 	if (!elem)
 		elem = xcalloc(1, sizeof(*elem));
 	elem->origin = NULL;
@@ -797,7 +797,7 @@ int git_all_attrs(const char *path, int *num, struct git_attr_check **check)
 			++count;
 	}
 	*num = count;
-	*check = xmalloc(sizeof(**check) * count);
+	ALLOC_ARRAY(*check, count);
 	j = 0;
 	for (i = 0; i < attr_nr; i++) {
 		const char *value = check_all_attr[i].value;

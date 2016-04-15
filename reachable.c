@@ -25,9 +25,15 @@ static void update_progress(struct connectivity_progress *cp)
 static int add_one_ref(const char *path, const struct object_id *oid,
 		       int flag, void *cb_data)
 {
-	struct object *object = parse_object_or_die(oid->hash, path);
 	struct rev_info *revs = (struct rev_info *)cb_data;
+	struct object *object;
 
+	if ((flag & REF_ISSYMREF) && (flag & REF_ISBROKEN)) {
+		warning("symbolic ref is dangling: %s", path);
+		return 0;
+	}
+
+	object = parse_object_or_die(oid->hash, path);
 	add_pending_object(revs, object, "");
 
 	return 0;
@@ -37,15 +43,14 @@ static int add_one_ref(const char *path, const struct object_id *oid,
  * The traversal will have already marked us as SEEN, so we
  * only need to handle any progress reporting here.
  */
-static void mark_object(struct object *obj, const struct name_path *path,
-			const char *name, void *data)
+static void mark_object(struct object *obj, const char *name, void *data)
 {
 	update_progress(data);
 }
 
 static void mark_commit(struct commit *c, void *data)
 {
-	mark_object(&c->object, NULL, NULL, data);
+	mark_object(&c->object, NULL, data);
 }
 
 struct recent_data {

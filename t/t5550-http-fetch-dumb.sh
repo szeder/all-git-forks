@@ -91,6 +91,23 @@ test_expect_success 'configured username does not override URL' '
 	expect_askpass pass user@host
 '
 
+test_expect_success 'cmdline credential config passes into submodules' '
+	git init super &&
+	set_askpass user@host pass@host &&
+	(
+		cd super &&
+		git submodule add "$HTTPD_URL/auth/dumb/repo.git" sub &&
+		git commit -m "add submodule"
+	) &&
+	set_askpass wrong pass@host &&
+	test_must_fail git clone --recursive super super-clone &&
+	rm -rf super-clone &&
+	set_askpass wrong pass@host &&
+	git -c "credential.$HTTP_URL.username=user@host" \
+		clone --recursive super super-clone &&
+	expect_askpass pass user@host
+'
+
 test_expect_success 'fetch changes via http' '
 	echo content >>file &&
 	git commit -a -m two &&
@@ -132,7 +149,7 @@ test_expect_success 'fetch packed objects' '
 test_expect_success 'fetch notices corrupt pack' '
 	cp -R "$HTTPD_DOCUMENT_ROOT_PATH"/repo_pack.git "$HTTPD_DOCUMENT_ROOT_PATH"/repo_bad1.git &&
 	(cd "$HTTPD_DOCUMENT_ROOT_PATH"/repo_bad1.git &&
-	 p=`ls objects/pack/pack-*.pack` &&
+	 p=$(ls objects/pack/pack-*.pack) &&
 	 chmod u+w $p &&
 	 printf %0256d 0 | dd of=$p bs=256 count=1 seek=1 conv=notrunc
 	) &&
@@ -140,14 +157,14 @@ test_expect_success 'fetch notices corrupt pack' '
 	(cd repo_bad1.git &&
 	 git --bare init &&
 	 test_must_fail git --bare fetch $HTTPD_URL/dumb/repo_bad1.git &&
-	 test 0 = `ls objects/pack/pack-*.pack | wc -l`
+	 test 0 = $(ls objects/pack/pack-*.pack | wc -l)
 	)
 '
 
 test_expect_success 'fetch notices corrupt idx' '
 	cp -R "$HTTPD_DOCUMENT_ROOT_PATH"/repo_pack.git "$HTTPD_DOCUMENT_ROOT_PATH"/repo_bad2.git &&
 	(cd "$HTTPD_DOCUMENT_ROOT_PATH"/repo_bad2.git &&
-	 p=`ls objects/pack/pack-*.idx` &&
+	 p=$(ls objects/pack/pack-*.idx) &&
 	 chmod u+w $p &&
 	 printf %0256d 0 | dd of=$p bs=256 count=1 seek=1 conv=notrunc
 	) &&
@@ -155,7 +172,7 @@ test_expect_success 'fetch notices corrupt idx' '
 	(cd repo_bad2.git &&
 	 git --bare init &&
 	 test_must_fail git --bare fetch $HTTPD_URL/dumb/repo_bad2.git &&
-	 test 0 = `ls objects/pack | wc -l`
+	 test 0 = $(ls objects/pack | wc -l)
 	)
 '
 

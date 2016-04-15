@@ -549,7 +549,7 @@ test_expect_success 'cover-letter inherits diff options' '
 
 	git mv file foo &&
 	git commit -m foo &&
-	git format-patch --cover-letter -1 &&
+	git format-patch --no-renames --cover-letter -1 &&
 	check_patch 0000-cover-letter.patch &&
 	! grep "file => foo .* 0 *\$" 0000-cover-letter.patch &&
 	git format-patch --cover-letter -1 -M &&
@@ -703,7 +703,7 @@ test_expect_success 'options no longer allowed for format-patch' '
 
 test_expect_success 'format-patch --numstat should produce a patch' '
 	git format-patch --numstat --stdout master..side > output &&
-	test 6 = $(grep "^diff --git a/" output | wc -l)'
+	test 5 = $(grep "^diff --git a/" output | wc -l)'
 
 test_expect_success 'format-patch -- <path>' '
 	git format-patch master..side -- file 2>error &&
@@ -1429,6 +1429,35 @@ test_expect_success 'cover letter auto user override' '
 	test_line_count = 1 list &&
 	git format-patch -o tmp --no-cover-letter -2 >list &&
 	test_line_count = 2 list
+'
+
+test_expect_success 'format-patch --zero-commit' '
+	git format-patch --zero-commit --stdout v2..v1 >patch2 &&
+	grep "^From " patch2 | sort | uniq >actual &&
+	echo "From $_z40 Mon Sep 17 00:00:00 2001" >expect &&
+	test_cmp expect actual
+'
+
+test_expect_success 'From line has expected format' '
+	git format-patch --stdout v2..v1 >patch2 &&
+	grep "^From " patch2 >from &&
+	grep "^From $_x40 Mon Sep 17 00:00:00 2001$" patch2 >filtered &&
+	test_cmp from filtered
+'
+
+test_expect_success 'format-patch format.outputDirectory option' '
+	test_config format.outputDirectory patches &&
+	rm -fr patches &&
+	git format-patch master..side &&
+	test $(git rev-list master..side | wc -l) -eq $(ls patches | wc -l)
+'
+
+test_expect_success 'format-patch -o overrides format.outputDirectory' '
+	test_config format.outputDirectory patches &&
+	rm -fr patches patchset &&
+	git format-patch master..side -o patchset &&
+	test_path_is_missing patches &&
+	test_path_is_dir patchset
 '
 
 test_done

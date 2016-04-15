@@ -75,6 +75,7 @@ static int nr_threads;
 static int from_stdin;
 static int strict;
 static int do_fsck_object;
+static struct fsck_options fsck_options = FSCK_OPTIONS_STRICT;
 static int verbose;
 static int show_stat;
 static int check_self_contained_and_connected;
@@ -192,13 +193,13 @@ static void cleanup_thread(void)
 #endif
 
 
-static int mark_link(struct object *obj, int type, void *data)
+static int mark_link(struct object *obj, int type, void *data, struct fsck_options *options)
 {
 	if (!obj)
 		return -1;
 
 	if (type != OBJ_ANY && obj->type != type)
-		die(_("object type mismatch at %s"), sha1_to_hex(obj->sha1));
+		die(_("object type mismatch at %s"), oid_to_hex(&obj->oid));
 
 	obj->flags |= FLAG_LINK;
 	return 0;
@@ -216,13 +217,13 @@ static unsigned check_object(struct object *obj)
 
 	if (!(obj->flags & FLAG_CHECKED)) {
 		unsigned long size;
-		int type = sha1_object_info(obj->sha1, &size);
+		int type = sha1_object_info(obj->oid.hash, &size);
 		if (type <= 0)
 			die(_("did not receive expected object %s"),
-			      sha1_to_hex(obj->sha1));
+			      oid_to_hex(&obj->oid));
 		if (type != obj->type)
 			die(_("object %s: expected type %s, found %s"),
-			    sha1_to_hex(obj->sha1),
+			    oid_to_hex(&obj->oid),
 			    typename(obj->type), typename(type));
 		obj->flags |= FLAG_CHECKED;
 		return 1;
@@ -440,7 +441,7 @@ static void *unpack_entry_data(unsigned long offset, unsigned long size,
 	int hdrlen;
 
 	if (!is_delta_type(type)) {
-		hdrlen = sprintf(hdr, "%s %lu", typename(type), size) + 1;
+		hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(type), size) + 1;
 		git_SHA1_Init(&c);
 		git_SHA1_Update(&c, hdr, hdrlen);
 	} else
@@ -838,11 +839,10 @@ static void sha1_object(const void *data, struct object_entry *obj_entry,
 			if (!obj)
 				die(_("invalid %s"), typename(type));
 			if (do_fsck_object &&
-			    fsck_object(obj, buf, size, 1,
-				    fsck_error_function))
+			    fsck_object(obj, buf, size, &fsck_options))
 				die(_("Error in object"));
-			if (fsck_walk(obj, mark_link, NULL))
-				die(_("Not all child objects of %s are reachable"), sha1_to_hex(obj->sha1));
+			if (fsck_walk(obj, NULL, &fsck_options))
+				die(_("Not all child objects of %s are reachable"), oid_to_hex(&obj->oid));
 
 			if (obj->type == OBJ_TREE) {
 				struct tree *item = (struct tree *) obj;
@@ -1346,7 +1346,7 @@ static void fix_unresolved_deltas(struct sha1file *f)
 	 * before deltas depending on them, a good heuristic is to start
 	 * resolving deltas in the same order as their position in the pack.
 	 */
-	sorted_by_pos = xmalloc(nr_ref_deltas * sizeof(*sorted_by_pos));
+	ALLOC_ARRAY(sorted_by_pos, nr_ref_deltas);
 	for (i = 0; i < nr_ref_deltas; i++)
 		sorted_by_pos[i] = &ref_deltas[i];
 	qsort(sorted_by_pos, nr_ref_deltas, sizeof(*sorted_by_pos), delta_pos_compare);
@@ -1421,7 +1421,7 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 				 get_object_directory(), sha1_to_hex(sha1));
 			final_pack_name = name;
 		}
-		if (move_temp_to_file(curr_pack_name, final_pack_name))
+		if (finalize_object_file(curr_pack_name, final_pack_name))
 			die(_("cannot store pack file"));
 	} else if (from_stdin)
 		chmod(final_pack_name, 0444);
@@ -1432,7 +1432,7 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 				 get_object_directory(), sha1_to_hex(sha1));
 			final_index_name = name;
 		}
-		if (move_temp_to_file(curr_index_name, final_index_name))
+		if (finalize_object_file(curr_index_name, final_index_name))
 			die(_("cannot store index file"));
 	} else
 		chmod(final_index_name, 0444);
@@ -1514,6 +1514,7 @@ static void read_v2_anomalous_offsets(struct packed_git *p,
 		if (!(off & 0x80000000))
 			continue;
 		off = off & 0x7fffffff;
+		check_pack_index_ptr(p, &idx2[off * 2]);
 		if (idx2[off * 2])
 			continue;
 		/*
@@ -1598,6 +1599,18 @@ static void show_pack_info(int stat_only)
 	}
 }
 
+static const char *derive_filename(const char *pack_name, const char *suffix,
+				   struct strbuf *buf)
+{
+	size_t len;
+	if (!strip_suffix(pack_name, ".pack", &len))
+		die(_("packfile name '%s' does not end with '.pack'"),
+		    pack_name);
+	strbuf_add(buf, pack_name, len);
+	strbuf_addstr(buf, suffix);
+	return buf->buf;
+}
+
 int cmd_index_pack(int argc, const char **argv, const char *prefix)
 {
 	int i, fix_thin_pack = 0, verify = 0, stat_only = 0;
@@ -1615,6 +1628,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 		usage(index_pack_usage);
 
 	check_replace_refs = 0;
+	fsck_options.walk = mark_link;
 
 	reset_pack_idx_option(&opts);
 	git_config(git_index_pack_config, &opts);
@@ -1632,6 +1646,10 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 			} else if (!strcmp(arg, "--strict")) {
 				strict = 1;
 				do_fsck_object = 1;
+			} else if (skip_prefix(arg, "--strict=", &arg)) {
+				strict = 1;
+				do_fsck_object = 1;
+				fsck_set_msg_types(&fsck_options, arg);
 			} else if (!strcmp(arg, "--check-self-contained-and-connected")) {
 				strict = 1;
 				check_self_contained_and_connected = 1;
@@ -1701,24 +1719,11 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 		usage(index_pack_usage);
 	if (fix_thin_pack && !from_stdin)
 		die(_("--fix-thin cannot be used without --stdin"));
-	if (!index_name && pack_name) {
-		size_t len;
-		if (!strip_suffix(pack_name, ".pack", &len))
-			die(_("packfile name '%s' does not end with '.pack'"),
-			    pack_name);
-		strbuf_add(&index_name_buf, pack_name, len);
-		strbuf_addstr(&index_name_buf, ".idx");
-		index_name = index_name_buf.buf;
-	}
-	if (keep_msg && !keep_name && pack_name) {
-		size_t len;
-		if (!strip_suffix(pack_name, ".pack", &len))
-			die(_("packfile name '%s' does not end with '.pack'"),
-			    pack_name);
-		strbuf_add(&keep_name_buf, pack_name, len);
-		strbuf_addstr(&keep_name_buf, ".idx");
-		keep_name = keep_name_buf.buf;
-	}
+	if (!index_name && pack_name)
+		index_name = derive_filename(pack_name, ".idx", &index_name_buf);
+	if (keep_msg && !keep_name && pack_name)
+		keep_name = derive_filename(pack_name, ".keep", &keep_name_buf);
+
 	if (verify) {
 		if (!index_name)
 			die(_("--verify with no packfile name given"));
@@ -1739,9 +1744,9 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 
 	curr_pack = open_pack_file(pack_name);
 	parse_pack_header();
-	objects = xcalloc(nr_objects + 1, sizeof(struct object_entry));
+	objects = xcalloc(st_add(nr_objects, 1), sizeof(struct object_entry));
 	if (show_stat)
-		obj_stat = xcalloc(nr_objects + 1, sizeof(struct object_stat));
+		obj_stat = xcalloc(st_add(nr_objects, 1), sizeof(struct object_stat));
 	ofs_deltas = xcalloc(nr_objects, sizeof(struct ofs_delta_entry));
 	parse_pack_objects(pack_sha1);
 	resolve_deltas();
@@ -1754,7 +1759,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	if (show_stat)
 		show_pack_info(stat_only);
 
-	idx_objects = xmalloc((nr_objects) * sizeof(struct pack_idx_entry *));
+	ALLOC_ARRAY(idx_objects, nr_objects);
 	for (i = 0; i < nr_objects; i++)
 		idx_objects[i] = &objects[i].idx;
 	curr_index = write_idx_file(index_name, idx_objects, nr_objects, &opts, pack_sha1);

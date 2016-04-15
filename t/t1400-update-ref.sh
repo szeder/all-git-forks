@@ -23,6 +23,7 @@ test_expect_success setup '
 m=refs/heads/master
 n_dir=refs/heads/gu
 n=$n_dir/fixes
+outside=foo
 
 test_expect_success \
 	"create $m" \
@@ -73,6 +74,24 @@ test_expect_success "delete $m (by HEAD)" '
 	! test -f .git/$m
 '
 rm -f .git/$m
+
+test_expect_success 'update-ref does not create reflogs by default' '
+	test_when_finished "git update-ref -d $outside" &&
+	git update-ref $outside $A &&
+	git rev-parse $A >expect &&
+	git rev-parse $outside >actual &&
+	test_cmp expect actual &&
+	test_must_fail git reflog exists $outside
+'
+
+test_expect_success 'update-ref creates reflogs with --create-reflog' '
+	test_when_finished "git update-ref -d $outside" &&
+	git update-ref --create-reflog $outside $A &&
+	git rev-parse $A >expect &&
+	git rev-parse $outside >actual &&
+	test_cmp expect actual &&
+	git reflog exists $outside
+'
 
 test_expect_success \
 	"create $m (by HEAD)" \
@@ -155,12 +174,11 @@ test_expect_success "(not) changed .git/$m" "
 '
 rm -f .git/$m
 
-: a repository with working tree always has reflog these days...
-: >.git/logs/refs/heads/master
+rm -f .git/logs/refs/heads/master
 test_expect_success \
 	"create $m (logged by touch)" \
 	'GIT_COMMITTER_DATE="2005-05-26 23:30" \
-	 git update-ref HEAD '"$A"' -m "Initial Creation" &&
+	 git update-ref --create-reflog HEAD '"$A"' -m "Initial Creation" &&
 	 test '"$A"' = $(cat .git/'"$m"')'
 test_expect_success \
 	"update $m (logged by touch)" \
@@ -470,6 +488,25 @@ test_expect_success 'stdin create ref works' '
 	git rev-parse $m >expect &&
 	git rev-parse $a >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'stdin does not create reflogs by default' '
+	test_when_finished "git update-ref -d $outside" &&
+	echo "create $outside $m" >stdin &&
+	git update-ref --stdin <stdin &&
+	git rev-parse $m >expect &&
+	git rev-parse $outside >actual &&
+	test_cmp expect actual &&
+	test_must_fail git reflog exists $outside
+'
+
+test_expect_success 'stdin creates reflogs with --create-reflog' '
+	echo "create $outside $m" >stdin &&
+	git update-ref --create-reflog --stdin <stdin &&
+	git rev-parse $m >expect &&
+	git rev-parse $outside >actual &&
+	test_cmp expect actual &&
+	git reflog exists $outside
 '
 
 test_expect_success 'stdin succeeds with quoted argument' '
@@ -1091,6 +1128,25 @@ test_expect_success ULIMIT_FILE_DESCRIPTORS 'large transaction deleting branches
 	run_with_limited_open_files git update-ref --stdin <large_input &&
 	test_must_fail git rev-parse --verify -q refs/heads/33
 )
+'
+
+test_expect_success 'handle per-worktree refs in refs/bisect' '
+	git commit --allow-empty -m "initial commit" &&
+	git worktree add -b branch worktree &&
+	(
+		cd worktree &&
+		git commit --allow-empty -m "test commit"  &&
+		git for-each-ref >for-each-ref.out &&
+		! grep refs/bisect for-each-ref.out &&
+		git update-ref refs/bisect/something HEAD &&
+		git rev-parse refs/bisect/something >../worktree-head &&
+		git for-each-ref | grep refs/bisect/something
+	) &&
+	test_path_is_missing .git/refs/bisect &&
+	test_must_fail git rev-parse refs/bisect/something &&
+	git update-ref refs/bisect/something HEAD &&
+	git rev-parse refs/bisect/something >main-head &&
+	! test_cmp main-head worktree-head
 '
 
 test_done
