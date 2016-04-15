@@ -2677,6 +2677,7 @@ proc makewindow {} {
 	{mc "External diff" command {external_diff}}
 	{mc "Blame parent commit" command {external_blame 1}}
 	{mc "Copy path" command {clipboard clear; clipboard append $flist_menu_file}}
+	{mc "Show file at this commit" command {exec git show $diffids:$flist_menu_file | gvim -}}
     }
     $flist_menu configure -tearoff 0
 
