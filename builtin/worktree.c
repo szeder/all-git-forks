@@ -291,14 +291,16 @@ static int add_worktree(const char *path, const char *refname,
 		argv_array_pushl(&cp.args, "reset", "--hard", NULL);
 		cp.env = child_env.argv;
 		ret = run_command(&cp);
+		if (ret)
+			goto done;
 	}
-	if (!ret) {
-		is_junk = 0;
-		free(junk_work_tree);
-		free(junk_git_dir);
-		junk_work_tree = NULL;
-		junk_git_dir = NULL;
-	}
+
+	is_junk = 0;
+	free(junk_work_tree);
+	free(junk_git_dir);
+	junk_work_tree = NULL;
+	junk_git_dir = NULL;
+
 done:
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s/locked", sb_repo.buf);

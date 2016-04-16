@@ -462,7 +462,7 @@ test_expect_success 'update --init' '
 	git config --remove-section submodule.example &&
 	test_must_fail git config submodule.example.url &&
 
-	git submodule update init > update.out &&
+	git submodule update init 2> update.out &&
 	cat update.out &&
 	test_i18ngrep "not initialized" update.out &&
 	test_must_fail git rev-parse --resolve-git-dir init/.git &&
@@ -480,7 +480,7 @@ test_expect_success 'update --init from subdirectory' '
 	mkdir -p sub &&
 	(
 		cd sub &&
-		git submodule update ../init >update.out &&
+		git submodule update ../init 2>update.out &&
 		cat update.out &&
 		test_i18ngrep "not initialized" update.out &&
 		test_must_fail git rev-parse --resolve-git-dir ../init/.git &&
@@ -847,6 +847,19 @@ test_expect_success 'submodule add with an existing name fails unless forced' '
 test_expect_success 'set up a second submodule' '
 	git submodule add ./init2 example2 &&
 	git commit -m "submodule example2 added"
+'
+
+test_expect_success 'submodule deinit works on repository without submodules' '
+	test_when_finished "rm -rf newdirectory" &&
+	mkdir newdirectory &&
+	(
+		cd newdirectory &&
+		git init &&
+		>file &&
+		git add file &&
+		git commit -m "repo should not be empty"
+		git submodule deinit .
+	)
 '
 
 test_expect_success 'submodule deinit should remove the whole submodule section from .git/config' '
