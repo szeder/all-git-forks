@@ -176,7 +176,8 @@ void strbuf_splice(struct strbuf *sb, size_t pos, size_t len,
 	memmove(sb->buf + pos + dlen,
 			sb->buf + pos + len,
 			sb->len - pos - len);
-	memcpy(sb->buf + pos, data, dlen);
+	if (dlen)
+		memcpy(sb->buf + pos, data, dlen);
 	strbuf_setlen(sb, sb->len + dlen - len);
 }
 
@@ -192,6 +193,9 @@ void strbuf_remove(struct strbuf *sb, size_t pos, size_t len)
 
 void strbuf_add(struct strbuf *sb, const void *data, size_t len)
 {
+	if (!len)
+		return;
+
 	strbuf_grow(sb, len);
 	memcpy(sb->buf + sb->len, data, len);
 	strbuf_setlen(sb, sb->len + len);
