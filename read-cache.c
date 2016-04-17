@@ -1186,6 +1186,7 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	const char *typechange_fmt;
 	const char *added_fmt;
 	const char *unmerged_fmt;
+	uint64_t start = getnanotime();
 
 	modified_fmt = (in_porcelain ? "M\t%s\n" : "%s: needs update\n");
 	deleted_fmt = (in_porcelain ? "D\t%s\n" : "%s: needs update\n");
@@ -1260,6 +1261,7 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 
 		replace_index_entry(istate, i, new);
 	}
+	trace_performance_since(start, "refresh index");
 	return has_errors;
 }
 
@@ -1765,6 +1767,7 @@ done_poke:
 static int poke_daemon(struct index_state *istate,
 		       const struct stat *st, int refresh_cache)
 {
+	uint64_t start = getnanotime();
 	int fd;
 	int ret = -1;
 
@@ -1784,6 +1787,8 @@ static int poke_daemon(struct index_state *istate,
 	} else {
 		ret = poke_and_wait_for_reply(fd);
 	}
+	trace_performance_since(start, "poke index-helper %s",
+				refresh_cache ? "(refresh)" : "");
 
 	close(fd);
 	return ret;
@@ -2026,12 +2031,15 @@ int read_index_from(struct index_state *istate, const char *path)
 {
 	struct split_index *split_index;
 	int ret;
+	uint64_t start;
 
 	/* istate->initialized covers both .git/index and .git/sharedindex.xxx */
 	if (istate->initialized)
 		return istate->cache_nr;
 
+	start = getnanotime();
 	ret = do_read_index(istate, path, 0);
+	trace_performance_since(start, "read cache %s", path);
 
 	split_index = istate->split_index;
 	if (!split_index || is_null_sha1(split_index->base_sha1)) {
@@ -2046,6 +2054,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	split_index->base->keep_mmap = istate->keep_mmap;
 	split_index->base->to_shm    = istate->to_shm;
 	split_index->base->from_shm  = istate->from_shm;
+	start = getnanotime();
 	ret = do_read_index(split_index->base,
 			    git_path("sharedindex.%s",
 				     sha1_to_hex(split_index->base_sha1)), 1);
@@ -2057,6 +2066,9 @@ int read_index_from(struct index_state *istate, const char *path)
 		    sha1_to_hex(split_index->base->sha1));
 	merge_base_index(istate);
 	post_read_index_from(istate);
+	trace_performance_since(start, "read cache %s",
+				git_path("sharedindex.%s",
+					 sha1_to_hex(split_index->base_sha1)));
 
 done:
 	if (ret > 0 && istate->from_shm && istate->last_update)
@@ -2401,6 +2413,7 @@ static int do_write_index(struct index_state *istate, int newfd,
 	int entries = istate->cache_nr;
 	struct stat st;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+	uint64_t start = getnanotime();
 
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
@@ -2516,6 +2529,7 @@ static int do_write_index(struct index_state *istate, int newfd,
 		return -1;
 	istate->timestamp.sec = (unsigned int)st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
+	trace_performance_since(start, "write index, changed mask = %x", istate->cache_changed);
 	return 0;
 }
 
