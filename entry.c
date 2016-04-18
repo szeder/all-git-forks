@@ -3,15 +3,29 @@
 #include "dir.h"
 #include "streaming.h"
 #include "entry.h"
+#include "run-command.h"
+#include "argv-array.h"
+#include "pkt-line.h"
 
 struct checkout_item {
 	struct cache_entry *ce;
+	struct checkout_item *next;
+};
+
+struct checkout_worker {
+	struct worker_process wp;
+
+	struct checkout_item *to_complete;
+	struct checkout_item *to_send;
 };
 
 struct parallel_checkout {
+	struct process_pool pp;
 	struct checkout state;
 	struct checkout_item *items;
 	int nr_items, alloc_items;
+	int nr_workers;
+	int errs;
 };
 
 static struct parallel_checkout *parallel_checkout;
@@ -346,6 +360,235 @@ static int queue_checkout(struct parallel_checkout *pc,
 	return 0;
 }
 
+static int item_cmp(const void *a_, const void *b_)
+{
+	const struct checkout_item *a = a_;
+	const struct checkout_item *b = b_;
+	return strcmp(a->ce->name, b->ce->name);
+}
+
+static int send_to_worker(struct worker_process *wp, int revents, void *data);
+static int receive_from_worker(struct worker_process *wp, int revents, void *data);
+static int setup_workers(struct parallel_checkout *pc)
+{
+	int i, from, nr_per_worker;
+
+	qsort(pc->items, pc->nr_items, sizeof(*pc->items), item_cmp);
+	nr_per_worker = pc->nr_items / pc->nr_workers + 1;
+	from = 0;
+
+	for (i = 0; i < pc->nr_workers; i++) {
+		struct checkout_worker *worker;
+		struct child_process *cp;
+		struct checkout_item *item;
+		int to;
+
+		worker = xmalloc(sizeof(*worker));
+		memset(worker, 0, sizeof(*worker));
+		cp = &worker->wp.cp;
+
+		to = from + nr_per_worker;
+		if (i == pc->nr_workers - 1)
+			to = pc->nr_items;
+		item = NULL;
+		while (from < to) {
+			pc->items[from].next = item;
+			item = pc->items + from;
+			from++;
+		}
+		worker->to_send = item;
+		worker->to_complete = item;
+
+		cp->git_cmd = 1;
+		cp->in = -1;
+		cp->out = -1;
+		argv_array_push(&cp->args, "checkout-index");
+		argv_array_push(&cp->args, "--worker");
+		if (start_command(cp))
+			die(_("failed to run checkout worker"));
+
+		/*
+		 * state.quiet and state.not_new are not used by
+		 * write_entry(). state.refresh_cache() is handled in
+		 * main process. No need to send them.
+		 */
+		if (pc->state.force)
+			packet_write(cp->in, "option force");
+
+		poll_worker_output(&pc->pp, &worker->wp,
+				   receive_from_worker, pc);
+		poll_worker_input(&pc->pp, &worker->wp,
+				  send_to_worker, pc);
+	}
+	return 0;
+}
+
+static void close_and_clear(int *fd)
+{
+	if (*fd != -1) {
+		close(*fd);
+		*fd = -1;
+	}
+}
+
+static int finish_worker(struct parallel_checkout *pc,
+			 struct checkout_worker *worker)
+{
+	remove_process_from_pool(&pc->pp, &worker->wp);
+	close_and_clear(&worker->wp.cp.in);
+	close_and_clear(&worker->wp.cp.out);
+	if (finish_command(&worker->wp.cp))
+		die(_("checkout worker fails"));
+	free(worker);
+	pc->nr_workers--;
+	return 0;
+}
+
+static int send_to_worker(struct worker_process *wp, int revents, void *data)
+{
+	struct checkout_worker *worker = (struct checkout_worker *)wp;
+	struct parallel_checkout *pc = data;
+	int fd = worker->wp.cp.in;
+
+	if (revents & (POLLHUP | POLLERR | POLLNVAL)) {
+		pc->errs++;
+		return 0;
+	}
+
+	if (!worker->to_send) {
+		packet_flush(fd);
+		close_and_clear(&worker->wp.cp.in);
+		return 0;
+	}
+
+	packet_write(fd, "%s %s",
+		     sha1_to_hex(worker->to_send->ce->sha1),
+		     worker->to_send->ce->name);
+	worker->to_send = worker->to_send->next;
+	return POLLOUT;
+}
+
+/*
+ * Protocol between main checkout process and the worker is quite
+ * simple. All messages are packaged in pkt-line format. PKT-FLUSH
+ * marks the end of input (from both sides). The main process issues
+ * remote write_entry() with a line
+ *
+ *    <SHA-1> <SPC> <PATH>
+ *
+ * The worker reponds with "OK <n>", which is the number of
+ * write_entry() has been completed since the last response. On error,
+ * the worker can send "ERR" or "RET" line back and terminate itself.
+ *
+ * The main process can send "option" lines at the beginning to
+ * initialize parameters in struct checkout.
+ */
+int parallel_checkout_worker(void)
+{
+	struct checkout state;
+	struct cache_entry *ce = NULL;
+
+	memset(&state, 0, sizeof(state));
+	for (;;) {
+		int len, ret;
+		unsigned char sha1[20];
+		const char *line = packet_read_line(0, &len);
+
+		if (!line) {
+			packet_flush(1);
+			return 0;
+		}
+
+		if (skip_prefix(line, "option ", &line)) {
+			if (!strcmp(line, "force"))
+				state.force = 1;
+			else
+				die(_("checkout worker: unrecognized option %s"), line);
+			continue;
+		}
+
+		if (len < 41)
+			die(_("checkout worker: invalid format %s"), line);
+		if (get_sha1_hex(line, sha1))
+			die(_("checkout worker: invalid SHA-1 %s"), line);
+		if (line[40] != ' ')
+			die(_("checkout worker: whitespace missing %s"), line);
+		line += 41;
+		len -= 41;
+		if (!ce || ce_namelen(ce) < len) {
+			free(ce);
+			ce = xcalloc(1, cache_entry_size(len));
+			ce->ce_mode = S_IFREG | ce_permissions(0644);
+		}
+		ce->ce_namelen = len;
+		hashcpy(ce->sha1, sha1);
+		memcpy(ce->name, line, len + 1);
+
+		ret = write_entry(ce, ce->name, &state, 0);
+		if (ret) {
+			packet_write(1, "RET %d", ret);
+			continue;
+		}
+		packet_write(1, "OK 1");
+	}
+}
+
+static int receive_from_worker(struct worker_process *wp, int revents, void *data)
+{
+	struct checkout_worker *worker = (struct checkout_worker *)wp;
+	struct parallel_checkout *pc = data;
+	int fd = worker->wp.cp.out;
+	int len, val;
+	const char *line;
+
+	if (revents & (POLLERR | POLLNVAL)) {
+		pc->errs++;
+		return 0;
+	}
+
+	line = packet_read_line(fd, &len);
+	if (!line) {
+		assert(worker->to_send == NULL);
+		assert(worker->to_complete == NULL);
+		close_and_clear(&worker->wp.cp.out);
+		finish_worker(pc, worker);
+		return 0;
+	}
+
+	if (skip_prefix(line, "RET ", &line)) {
+		val = atoi(line);
+		if (val >= 0)
+			die(_("invalid value %s from checkout worker"), line);
+		worker->to_complete = worker->to_complete->next;
+		pc->errs++;
+	} else if (skip_prefix(line, "OK ", &line)) {
+		val = atoi(line);
+		if (val <= 0)
+			die(_("invalid value %s from checkout worker"), line);
+
+		while (val && worker->to_complete &&
+		       worker->to_complete != worker->to_send) {
+			if (pc->state.refresh_cache) {
+				struct stat st;
+				struct cache_entry *ce = worker->to_complete->ce;
+
+				lstat(ce->name, &st);
+				fill_stat_cache_info(ce, &st);
+				ce->ce_flags |= CE_UPDATE_IN_BASE;
+				pc->state.istate->cache_changed |= CE_ENTRY_CHANGED;
+			}
+			worker->to_complete = worker->to_complete->next;
+			val--;
+		}
+		if (val)
+			die(_("checkout worker reports %d more "
+			      "than actual items to complete"), val);
+	} else
+		die(_("unrecognized response %s from checkout worker"), line);
+
+	return POLLIN;
+}
+
 static int write_entries(struct parallel_checkout *pc)
 {
 	int i, ret = 0;
@@ -358,9 +601,10 @@ static int write_entries(struct parallel_checkout *pc)
 	return ret;
 }
 
-int run_parallel_checkout(void)
+int run_parallel_checkout(int nr_workers, int min_limit)
 {
 	struct parallel_checkout *pc = parallel_checkout;
+	struct worker_process *wp;
 	int ret;
 
 	if (!pc || !pc->nr_items) {
@@ -369,7 +613,28 @@ int run_parallel_checkout(void)
 		return 0;
 	}
 
-	ret = write_entries(pc);
+	if (pc->nr_items < min_limit) {
+		ret = write_entries(pc);
+		goto done;
+	}
+
+	pc->nr_workers = nr_workers;
+	ret = setup_workers(pc);
+	if (ret)
+		goto done;
+
+	ret = poll_process_pool(&pc->pp);
+
+	if (!ret && pc->errs)
+		ret = -1;
+
+done:
+	wp = pc->pp.worker;
+	while (wp) {
+		struct worker_process *next = wp->next;
+		finish_worker(pc, (struct checkout_worker *)wp);
+		wp = next;
+	}
 
 	free(pc->items);
 	free(pc);

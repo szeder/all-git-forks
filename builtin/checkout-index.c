@@ -183,7 +183,12 @@ int cmd_checkout_index(int argc, const char **argv, const char *prefix)
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(builtin_checkout_index_usage,
 				   builtin_checkout_index_options);
+
 	git_config(git_default_config, NULL);
+
+	if (argc == 2 && !strcmp(argv[1], "--worker"))
+		return parallel_checkout_worker();
+
 	prefix_length = prefix ? strlen(prefix) : 0;
 
 	if (read_cache() < 0) {

@@ -18,6 +18,6 @@ extern int checkout_entry(struct cache_entry *ce,
 
 int start_parallel_checkout(const struct checkout *state);
 int parallel_checkout_worker(void);
-int run_parallel_checkout(void);
+int run_parallel_checkout(int nr_workers, int min_limit);
 
 #endif
