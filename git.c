@@ -520,6 +520,37 @@ static void strip_extension(const char **argv)
 #define strip_extension(cmd)
 #endif
 
+static int want_auto_index_helper(void)
+{
+	int want = -1;
+	const char *value = NULL;
+	const char *key = "indexhelper.autorun";
+
+	if (git_config_key_is_valid(key) &&
+	    !git_config_get_value(key, &value)) {
+		int b = git_config_maybe_bool(key, value);
+		want = b >= 0 ? b : 0;
+	}
+	return want;
+}
+
+static void maybe_run_index_helper(struct cmd_struct *cmd)
+{
+	const char *argv[] = {"git-index-helper", "--detach", "--autorun", NULL};
+
+	if (!(cmd->option & NEED_WORK_TREE))
+		return;
+
+	if (want_auto_index_helper() <= 0)
+		return;
+
+	trace_argv_printf(argv, "trace: auto index-helper:");
+
+	if (run_command_v_opt(argv,
+			      RUN_SILENT_EXEC_FAILURE | RUN_CLEAN_ON_EXIT))
+		warning(_("You specified indexhelper.autorun, but running git-index-helper failed."));
+}
+
 static void handle_builtin(int argc, const char **argv)
 {
 	const char *cmd;
@@ -535,8 +566,10 @@ static void handle_builtin(int argc, const char **argv)
 	}
 
 	builtin = get_builtin(cmd);
-	if (builtin)
+	if (builtin) {
+		maybe_run_index_helper(builtin);
 		exit(run_builtin(builtin, argc, argv));
+	}
 }
 
 static void execv_dashed_external(const char **argv)
