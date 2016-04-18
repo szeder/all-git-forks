@@ -20,6 +20,7 @@
 #include "xdiff-interface.h"
 #include "ll-merge.h"
 #include "rerere.h"
+#include "entry.h"
 
 /*
  *  --check turns on checking that the working tree matches the
