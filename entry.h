@@ -16,4 +16,8 @@ extern int checkout_entry(struct cache_entry *ce,
 			  const struct checkout *state,
 			  char *topath);
 
+int start_parallel_checkout(const struct checkout *state);
+int parallel_checkout_worker(void);
+int run_parallel_checkout(void);
+
 #endif

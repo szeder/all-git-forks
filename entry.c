@@ -4,6 +4,22 @@
 #include "streaming.h"
 #include "entry.h"
 
+struct checkout_item {
+	struct cache_entry *ce;
+};
+
+struct parallel_checkout {
+	struct checkout state;
+	struct checkout_item *items;
+	int nr_items, alloc_items;
+};
+
+static struct parallel_checkout *parallel_checkout;
+
+static int queue_checkout(struct parallel_checkout *,
+			  const struct checkout *,
+			  struct cache_entry *);
+
 static void create_directories(const char *path, int path_len,
 			       const struct checkout *state)
 {
@@ -291,5 +307,72 @@ int checkout_entry(struct cache_entry *ce,
 		return 0;
 
 	create_directories(path.buf, path.len, state);
+
+	if (!queue_checkout(parallel_checkout, state, ce))
+		/*
+		 * write_entry() will be done by parallel_checkout_worker() in
+		 * a separate process
+		 */
+		return 0;
+
 	return write_entry(ce, path.buf, state, 0);
+}
+
+int start_parallel_checkout(const struct checkout *state)
+{
+	if (parallel_checkout)
+		die("BUG: parallel checkout already initiated");
+	parallel_checkout = xmalloc(sizeof(*parallel_checkout));
+	memset(parallel_checkout, 0, sizeof(*parallel_checkout));
+	memcpy(&parallel_checkout->state, state, sizeof(*state));
+
+	return 0;
+}
+
+static int queue_checkout(struct parallel_checkout *pc,
+			  const struct checkout *state,
+			  struct cache_entry *ce)
+{
+	struct checkout_item *ci;
+
+	if (!pc ||
+	    !S_ISREG(ce->ce_mode) ||
+	    memcmp(&pc->state, state, sizeof(*state)))
+		return -1;
+
+	ALLOC_GROW(pc->items, pc->nr_items + 1, pc->alloc_items);
+	ci = pc->items + pc->nr_items++;
+	ci->ce = ce;
+	return 0;
+}
+
+static int write_entries(struct parallel_checkout *pc)
+{
+	int i, ret = 0;
+
+	for (i = 0; i < pc->nr_items; i++)
+		ret += write_entry(pc->items[i].ce,
+				   pc->items[i].ce->name,
+				   &pc->state, 0);
+
+	return ret;
+}
+
+int run_parallel_checkout(void)
+{
+	struct parallel_checkout *pc = parallel_checkout;
+	int ret;
+
+	if (!pc || !pc->nr_items) {
+		free(pc);
+		parallel_checkout = NULL;
+		return 0;
+	}
+
+	ret = write_entries(pc);
+
+	free(pc->items);
+	free(pc);
+	parallel_checkout = NULL;
+	return ret;
 }
