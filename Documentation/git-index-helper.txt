@@ -15,6 +15,9 @@ DESCRIPTION
 Keep the index file in memory for faster access. This daemon is per
 repository.
 
+If you want the index-helper to accelerate untracked file checking,
+run git update-index --watchman before using it.
+
 OPTIONS
 -------
 
