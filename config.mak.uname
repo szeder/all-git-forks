@@ -165,21 +165,6 @@ ifeq ($(uname_S),SunOS)
 	BASIC_CFLAGS += -D__EXTENSIONS__ -D__sun__
 endif
 ifeq ($(uname_O),Cygwin)
-	ifeq ($(shell expr "$(uname_R)" : '1\.[1-6]\.'),4)
-		NO_D_TYPE_IN_DIRENT = YesPlease
-		NO_STRCASESTR = YesPlease
-		NO_MEMMEM = YesPlease
-		NO_MKSTEMPS = YesPlease
-		NO_SYMLINK_HEAD = YesPlease
-		NO_IPV6 = YesPlease
-		OLD_ICONV = UnfortunatelyYes
-		# There are conflicting reports about this.
-		# On some boxes NO_MMAP is needed, and not so elsewhere.
-		# Try commenting this out if you suspect MMAP is more efficient
-		NO_MMAP = YesPlease
-	else
-		NO_REGEX = UnfortunatelyYes
-	endif
 	HAVE_ALLOCA_H = YesPlease
 	NEEDS_LIBICONV = YesPlease
 	NO_FAST_WORKING_DIRECTORY = UnfortunatelyYes
