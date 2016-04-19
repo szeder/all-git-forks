@@ -66,26 +66,6 @@ static int apply_option_parse_space_change(const struct option *opt,
 	return 0;
 }
 
-static int apply_option_parse_whitespace(const struct option *opt,
-					 const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	state->whitespace_option = arg;
-	if (parse_whitespace_option(state, arg))
-		exit(1);
-	return 0;
-}
-
-static int apply_option_parse_directory(const struct option *opt,
-					const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	strbuf_reset(&state->root);
-	strbuf_addstr(&state->root, arg);
-	strbuf_complete(&state->root, '/');
-	return 0;
-}
-
 int cmd_apply(int argc, const char **argv, const char *prefix)
 {
 	int force_apply = 0;
