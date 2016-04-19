@@ -18,43 +18,6 @@ static const char * const apply_usage[] = {
 	NULL
 };
 
-static void add_name_limit(struct apply_state *state,
-			   const char *name,
-			   int exclude)
-{
-	struct string_list_item *it;
-
-	it = string_list_append(&state->limit_by_name, name);
-	it->util = exclude ? NULL : (void *) 1;
-}
-
-static int apply_option_parse_exclude(const struct option *opt,
-				      const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	add_name_limit(state, arg, 1);
-	return 0;
-}
-
-static int apply_option_parse_include(const struct option *opt,
-				      const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	add_name_limit(state, arg, 0);
-	state->has_include = 1;
-	return 0;
-}
-
-static int apply_option_parse_p(const struct option *opt,
-				const char *arg,
-				int unset)
-{
-	struct apply_state *state = opt->value;
-	state->p_value = atoi(arg);
-	state->p_value_known = 1;
-	return 0;
-}
-
 int cmd_apply(int argc, const char **argv, const char *prefix)
 {
 	int force_apply = 0;
