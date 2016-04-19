@@ -1523,15 +1523,6 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
  */
 static int run_apply(const struct am_state *state, const char *index_file)
 {
-/*
-	struct child_process cp = CHILD_PROCESS_INIT;
-
-	cp.git_cmd = 1;
-
-	if (index_file)
-		argv_array_pushf(&cp.env_array, "GIT_INDEX_FILE=%s", index_file);
-*/
-
 	struct argv_array apply_paths = ARGV_ARRAY_INIT;
 	struct apply_state apply_state;
 	int save_stdout_fd, save_stderr_fd;
