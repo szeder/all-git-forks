@@ -6,6 +6,7 @@
 #include "xdiff-interface.h"
 #include "ll-merge.h"
 #include "lockfile.h"
+#include "parse-options.h"
 #include "quote.h"
 #include "rerere.h"
 #include "apply.h"
@@ -63,6 +64,26 @@ int parse_ignorewhitespace_option(struct apply_state *state,
 		return 0;
 	}
 	return error(_("unrecognized whitespace ignore option '%s'"), option);
+}
+
+int apply_option_parse_whitespace(const struct option *opt,
+				  const char *arg, int unset)
+{
+	struct apply_state *state = opt->value;
+	state->whitespace_option = arg;
+	if (parse_whitespace_option(state, arg))
+		exit(1);
+	return 0;
+}
+
+int apply_option_parse_directory(const struct option *opt,
+				 const char *arg, int unset)
+{
+	struct apply_state *state = opt->value;
+	strbuf_reset(&state->root);
+	strbuf_addstr(&state->root, arg);
+	strbuf_complete(&state->root, '/');
+	return 0;
 }
 
 int init_apply_state(struct apply_state *state, const char *prefix)
