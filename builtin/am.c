@@ -1524,6 +1524,7 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
 static int run_apply(const struct am_state *state, const char *index_file)
 {
 	struct argv_array apply_paths = ARGV_ARRAY_INIT;
+	struct argv_array apply_opts = ARGV_ARRAY_INIT;
 	struct apply_state apply_state;
 	int save_stdout_fd, save_stderr_fd;
 	int res, opts_left;
@@ -1578,12 +1579,11 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	if (init_apply_state(&apply_state, NULL))
 		die("init_apply_state() failed");
 
-	opts_left = parse_options(state->git_apply_opts.argc,
-				  state->git_apply_opts.argv,
-				  NULL,
-				  am_apply_options,
-				  NULL,
-				  0);
+	argv_array_push(&apply_opts, "apply");
+	argv_array_pushv(&apply_opts, state->git_apply_opts.argv);
+
+	opts_left = parse_options(apply_opts.argc, apply_opts.argv,
+				  NULL, am_apply_options, NULL, 0);
 
 	if (opts_left != 0)
 		die("unknown option passed thru to git apply");
@@ -1610,6 +1610,8 @@ static int run_apply(const struct am_state *state, const char *index_file)
 
 	if (index_file)
 		set_index_file(save_index_file);
+
+	argv_array_clear(&apply_opts);
 
 	if (res)
 		return res;
