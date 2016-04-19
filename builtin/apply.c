@@ -66,26 +66,6 @@ static int option_parse_space_change(const struct option *opt,
 	return 0;
 }
 
-static int option_parse_whitespace(const struct option *opt,
-				   const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	state->whitespace_option = arg;
-	if (parse_whitespace_option(state, arg))
-		exit(1);
-	return 0;
-}
-
-static int option_parse_directory(const struct option *opt,
-				  const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	strbuf_reset(&state->root);
-	strbuf_addstr(&state->root, arg);
-	strbuf_complete(&state->root, '/');
-	return 0;
-}
-
 int cmd_apply(int argc, const char **argv, const char *prefix)
 {
 	int force_apply = 0;
@@ -133,7 +113,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix)
 				N_("ensure at least <n> lines of context match")),
 		{ OPTION_CALLBACK, 0, "whitespace", &state, N_("action"),
 			N_("detect new or modified lines that have whitespace errors"),
-			0, option_parse_whitespace },
+			0, apply_option_parse_whitespace },
 		{ OPTION_CALLBACK, 0, "ignore-space-change", &state, NULL,
 			N_("ignore changes in whitespace when finding context"),
 			PARSE_OPT_NOARG, option_parse_space_change },
@@ -157,7 +137,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix)
 			APPLY_OPT_RECOUNT),
 		{ OPTION_CALLBACK, 0, "directory", &state, N_("root"),
 			N_("prepend <root> to all filenames"),
-			0, option_parse_directory },
+			0, apply_option_parse_directory },
 		OPT_END()
 	};
 

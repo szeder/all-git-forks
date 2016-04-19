@@ -1532,7 +1532,7 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	struct option am_apply_options[] = {
 		{ OPTION_CALLBACK, 0, "whitespace", &apply_state, N_("action"),
 			N_("detect new or modified lines that have whitespace errors"),
-			0, option_parse_whitespace },
+			0, apply_option_parse_whitespace },
 		{ OPTION_CALLBACK, 0, "ignore-space-change", &apply_state, NULL,
 			N_("ignore changes in whitespace when finding context"),
 			PARSE_OPT_NOARG, option_parse_space_change },
@@ -1541,7 +1541,7 @@ static int run_apply(const struct am_state *state, const char *index_file)
 			PARSE_OPT_NOARG, option_parse_space_change },
 		{ OPTION_CALLBACK, 0, "directory", &apply_state, N_("root"),
 			N_("prepend <root> to all filenames"),
-			0, option_parse_directory },
+			0, apply_option_parse_directory },
 		{ OPTION_CALLBACK, 0, "exclude", &apply_state, N_("path"),
 			N_("don't apply changes matching the given path"),
 			0, option_parse_exclude },
