@@ -11,8 +11,6 @@
 #include "rerere.h"
 #include "apply.h"
 
-
-
 static void git_apply_config(void)
 {
 	git_config_get_string_const("apply.whitespace", &apply_default_whitespace);
@@ -83,6 +81,17 @@ int apply_option_parse_directory(const struct option *opt,
 	strbuf_reset(&state->root);
 	strbuf_addstr(&state->root, arg);
 	strbuf_complete(&state->root, '/');
+	return 0;
+}
+
+int apply_option_parse_space_change(const struct option *opt,
+				    const char *arg, int unset)
+{
+	struct apply_state *state = opt->value;
+	if (unset)
+		state->ws_ignore_action = ignore_ws_none;
+	else
+		state->ws_ignore_action = ignore_ws_change;
 	return 0;
 }
 
