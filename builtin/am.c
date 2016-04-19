@@ -1523,15 +1523,6 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
  */
 static int run_apply(const struct am_state *state, const char *index_file)
 {
-/*
-	struct child_process cp = CHILD_PROCESS_INIT;
-
-	cp.git_cmd = 1;
-
-	if (index_file)
-		argv_array_pushf(&cp.env_array, "GIT_INDEX_FILE=%s", index_file);
-*/
-
 	struct argv_array apply_paths = ARGV_ARRAY_INIT;
 	struct apply_state apply_state;
 	int save_stdout_fd, save_stderr_fd;
@@ -1558,6 +1549,12 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	if (init_apply_state(&apply_state, NULL))
 		die("init_apply_state() failed");
 
+
+/*
+	argv_array_pushv(&cp.args, state->git_apply_opts.argv);
+*/
+
+
 	if (index_file)
 		apply_state.cached = 1;
 	else
@@ -1583,23 +1580,6 @@ static int run_apply(const struct am_state *state, const char *index_file)
 
 	if (res)
 		return res;
-
-
-/*
-	argv_array_push(&cp.args, "apply");
-
-	argv_array_pushv(&cp.args, state->git_apply_opts.argv);
-
-	if (index_file)
-		argv_array_push(&cp.args, "--cached");
-	else
-		argv_array_push(&cp.args, "--index");
-
-	argv_array_push(&cp.args, am_path(state, "patch"));
-
-	if (run_command(&cp))
-		return -1;
-*/
 
 	if (index_file) {
 		/* Reload index as git-apply will have modified it. */
