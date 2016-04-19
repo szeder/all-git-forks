@@ -130,6 +130,8 @@ extern int apply_option_parse_whitespace(const struct option *opt,
 					 const char *arg, int unset);
 extern int apply_option_parse_directory(const struct option *opt,
 					const char *arg, int unset);
+extern int apply_option_parse_space_change(const struct option *opt,
+					   const char *arg, int unset);
 
 extern int init_apply_state(struct apply_state *state, const char *prefix);
 extern int check_apply_state(struct apply_state *state, int force_apply);
