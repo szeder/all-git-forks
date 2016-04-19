@@ -18,43 +18,6 @@ static const char * const apply_usage[] = {
 	NULL
 };
 
-static void add_name_limit(struct apply_state *state,
-			   const char *name,
-			   int exclude)
-{
-	struct string_list_item *it;
-
-	it = string_list_append(&state->limit_by_name, name);
-	it->util = exclude ? NULL : (void *) 1;
-}
-
-static int option_parse_exclude(const struct option *opt,
-				const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	add_name_limit(state, arg, 1);
-	return 0;
-}
-
-static int option_parse_include(const struct option *opt,
-				const char *arg, int unset)
-{
-	struct apply_state *state = opt->value;
-	add_name_limit(state, arg, 0);
-	state->has_include = 1;
-	return 0;
-}
-
-static int option_parse_p(const struct option *opt,
-			  const char *arg,
-			  int unset)
-{
-	struct apply_state *state = opt->value;
-	state->p_value = atoi(arg);
-	state->p_value_known = 1;
-	return 0;
-}
-
 int cmd_apply(int argc, const char **argv, const char *prefix)
 {
 	int force_apply = 0;
@@ -64,13 +27,13 @@ int cmd_apply(int argc, const char **argv, const char *prefix)
 	struct option builtin_apply_options[] = {
 		{ OPTION_CALLBACK, 0, "exclude", &state, N_("path"),
 			N_("don't apply changes matching the given path"),
-			0, option_parse_exclude },
+			0, apply_option_parse_exclude },
 		{ OPTION_CALLBACK, 0, "include", &state, N_("path"),
 			N_("apply changes matching the given path"),
-			0, option_parse_include },
+			0, apply_option_parse_include },
 		{ OPTION_CALLBACK, 'p', NULL, &state, N_("num"),
 			N_("remove <num> leading slashes from traditional diff paths"),
-			0, option_parse_p },
+			0, apply_option_parse_p },
 		OPT_BOOL(0, "no-add", &state.no_add,
 			N_("ignore additions made by the patch")),
 		OPT_BOOL(0, "stat", &state.diffstat,
