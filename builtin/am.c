@@ -1526,8 +1526,37 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	struct argv_array apply_paths = ARGV_ARRAY_INIT;
 	struct apply_state apply_state;
 	int save_stdout_fd, save_stderr_fd;
-	int res;
+	int res, opts_left;
 	char *save_index_file;
+
+	struct option am_apply_options[] = {
+		{ OPTION_CALLBACK, 0, "whitespace", &apply_state, N_("action"),
+			N_("detect new or modified lines that have whitespace errors"),
+			0, option_parse_whitespace },
+		{ OPTION_CALLBACK, 0, "ignore-space-change", &apply_state, NULL,
+			N_("ignore changes in whitespace when finding context"),
+			PARSE_OPT_NOARG, option_parse_space_change },
+		{ OPTION_CALLBACK, 0, "ignore-whitespace", &apply_state, NULL,
+			N_("ignore changes in whitespace when finding context"),
+			PARSE_OPT_NOARG, option_parse_space_change },
+		{ OPTION_CALLBACK, 0, "directory", &apply_state, N_("root"),
+			N_("prepend <root> to all filenames"),
+			0, option_parse_directory },
+		{ OPTION_CALLBACK, 0, "exclude", &apply_state, N_("path"),
+			N_("don't apply changes matching the given path"),
+			0, option_parse_exclude },
+		{ OPTION_CALLBACK, 0, "include", &apply_state, N_("path"),
+			N_("apply changes matching the given path"),
+			0, option_parse_include },
+		OPT_INTEGER('C', NULL, &apply_state.p_context,
+				N_("ensure at least <n> lines of context match")),
+		{ OPTION_CALLBACK, 'p', NULL, &apply_state, N_("num"),
+			N_("remove <num> leading slashes from traditional diff paths"),
+			0, option_parse_p },
+		OPT_BOOL(0, "reject", &apply_state.apply_with_reject,
+			N_("leave the rejected hunks in corresponding *.rej files")),
+		OPT_END()
+	};
 
 	/*
 	 * If we are allowed to fall back on 3-way merge, don't give false
@@ -1548,6 +1577,16 @@ static int run_apply(const struct am_state *state, const char *index_file)
 
 	if (init_apply_state(&apply_state, NULL))
 		die("init_apply_state() failed");
+
+	opts_left = parse_options(state->git_apply_opts.argc,
+				  state->git_apply_opts.argv,
+				  NULL,
+				  am_apply_options,
+				  NULL,
+				  0);
+
+	if (opts_left != 0)
+		die("unknown option passed thru to git apply");
 
 	if (index_file)
 		apply_state.cached = 1;
