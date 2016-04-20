@@ -224,4 +224,10 @@ extern int finish_http_object_request(struct http_object_request *freq);
 extern void abort_http_object_request(struct http_object_request *freq);
 extern void release_http_object_request(struct http_object_request *freq);
 
+/* Debug callback and helper routine for curl_easy_setopt CURLOPT_DEBUGFUNCTION */
+int curl_trace_want(void);
+int curl_trace(CURL *handle, curl_infotype type, char *data, size_t size, void *userp);
+void curl_dump(const char *text, unsigned char *ptr, size_t size, char nohex);
+
+
 #endif /* HTTP_H */
