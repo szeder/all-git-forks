@@ -336,12 +336,13 @@ void remove_branch_state(void)
 
 void die_if_checked_out(const char *branch)
 {
-	char *existing;
+	const struct worktree *wt;
 
-	existing = find_shared_symref("HEAD", branch);
-	if (existing) {
+	wt = find_shared_symref("HEAD", branch);
+	if (wt) {
 		skip_prefix(branch, "refs/heads/", &branch);
-		die(_("'%s' is already checked out at '%s'"), branch, existing);
+		die(_("'%s' is already checked out at '%s'"),
+		    branch, wt->path);
 	}
 }
 
