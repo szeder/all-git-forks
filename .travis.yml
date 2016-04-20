@@ -12,6 +12,8 @@ addons:
   apt:
     packages:
     - language-pack-is
+    - asciidoc
+    - xmlto
 
 env:
   global:
@@ -70,7 +72,16 @@ before_install:
 
 before_script: make --jobs=2
 
-script: make --quiet test
+script:
+  - >
+      make --quiet test &&
+      if [[ "$TRAVIS_OS_NAME" = linux ]] && [[ "$CC" = gcc ]];
+          then
+          echo ""
+          echo "------------------------------------------------------------------------" &&
+          echo "$(tput setaf 2)Building documentation...$(tput sgr0)" &&
+          make --quiet doc
+      fi;
 
 after_failure:
   - >
