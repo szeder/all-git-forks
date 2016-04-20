@@ -43,4 +43,15 @@ extern void free_worktrees(struct worktree **);
 extern const struct worktree *find_shared_symref(const char *symref,
 						 const char *target);
 
+/*
+ * Similar to git_path() and git_pathdup() but can produce paths for a
+ * specified worktree instead of current one
+ */
+extern const char *worktree_git_path(const struct worktree *wt,
+				     const char *fmt, ...)
+	__attribute__((format (printf, 2, 3)));
+extern char *worktree_git_pathdup(const struct worktree *wt,
+				  const char *fmt, ...)
+	__attribute__((format (printf, 2, 3)));
+
 #endif
