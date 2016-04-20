@@ -44,6 +44,9 @@ extern const struct worktree *find_shared_symref(const char *symref,
 						 const char *target,
 						 int ignore_current_worktree);
 
+int is_worktree_being_rebased(const struct worktree *wt, const char *target);
+int is_worktree_being_bisected(const struct worktree *wt, const char *target);
+
 /*
  * Similar to git_path() and git_pathdup() but can produce paths for a
  * specified worktree instead of current one
