@@ -852,7 +852,7 @@ static int merge(int argc, const char **argv, const char *prefix)
 		update_ref(msg.buf, "NOTES_MERGE_PARTIAL", result_sha1, NULL,
 			   0, UPDATE_REFS_DIE_ON_ERR);
 		/* Store ref-to-be-updated into .git/NOTES_MERGE_REF */
-		wt = find_shared_symref("NOTES_MERGE_REF", default_notes_ref());
+		wt = find_shared_symref("NOTES_MERGE_REF", default_notes_ref(), 0);
 		if (wt)
 			die(_("A notes merge into %s is already in-progress at %s"),
 			    default_notes_ref(), wt->path);

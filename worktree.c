@@ -3,6 +3,7 @@
 #include "strbuf.h"
 #include "worktree.h"
 #include "dir.h"
+#include "wt-status.h"
 
 void free_worktrees(struct worktree **worktrees)
 {
@@ -207,8 +208,27 @@ const char *get_worktree_git_dir(const struct worktree *wt)
 		return git_common_path("worktrees/%s", wt->id);
 }
 
+static int is_worktree_being_rebased(const struct worktree *wt,
+				     const char *target)
+{
+	struct wt_status_state state;
+	int found_rebase;
+
+	memset(&state, 0, sizeof(state));
+	found_rebase = wt_status_check_rebase(wt, &state) &&
+		((state.rebase_in_progress ||
+		  state.rebase_interactive_in_progress) &&
+		 state.branch &&
+		 starts_with(target, "refs/heads/") &&
+		 !strcmp(state.branch, target + strlen("refs/heads/")));
+	free(state.branch);
+	free(state.onto);
+	return found_rebase;
+}
+
 const struct worktree *find_shared_symref(const char *symref,
-					  const char *target)
+					  const char *target,
+					  int ignore_current_worktree)
 {
 	const struct worktree *existing = NULL;
 	struct strbuf path = STRBUF_INIT;
@@ -222,6 +242,16 @@ const struct worktree *find_shared_symref(const char *symref,
 
 	for (i = 0; worktrees[i]; i++) {
 		struct worktree *wt = worktrees[i];
+
+		if (ignore_current_worktree && wt->is_current)
+			continue;
+
+		if (wt->is_detached && !strcmp(symref, "HEAD")) {
+			if (is_worktree_being_rebased(wt, target)) {
+				existing = wt;
+				break;
+			}
+		}
 
 		strbuf_reset(&path);
 		strbuf_reset(&sb);

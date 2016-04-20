@@ -41,7 +41,8 @@ extern void free_worktrees(struct worktree **);
  * may be destroyed by the next call.
  */
 extern const struct worktree *find_shared_symref(const char *symref,
-						 const char *target);
+						 const char *target,
+						 int ignore_current_worktree);
 
 /*
  * Similar to git_path() and git_pathdup() but can produce paths for a

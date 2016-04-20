@@ -221,7 +221,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 
 		if (kinds == FILTER_REFS_BRANCHES) {
 			const struct worktree *wt =
-				find_shared_symref("HEAD", name);
+				find_shared_symref("HEAD", name, 0);
 			if (wt) {
 				error(_("Cannot delete branch '%s' "
 					"checked out at '%s'"),
