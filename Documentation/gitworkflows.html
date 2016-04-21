@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
-<meta name="generator" content="AsciiDoc 8.6.8" />
+<meta name="generator" content="AsciiDoc 8.6.9" />
 <title>gitworkflows(7)</title>
 <script src="../ga.js"></script>
 <style type="text/css">
@@ -95,7 +95,9 @@ ul > li > * { color: black; }
   padding: 0;
   margin: 0;
 }
-
+pre {
+  white-space: pre-wrap;
+}
 
 #author {
   color: #527bbd;
@@ -224,7 +226,7 @@ div.exampleblock > div.content {
 }
 
 div.imageblock div.content { padding-left: 0; }
-span.image img { border-style: none; }
+span.image img { border-style: none; vertical-align: text-bottom; }
 a.image:visited { color: white; }
 
 dl {
@@ -783,7 +785,7 @@ gitworkflows(7) Manual Page
 作業を続けるにあたって、小さすぎる、または不完全なステップを
 作成することを恐れてはいけません。
 変更をpushするまえに、 <code>git rebase --interactive</code> を使って
-後からいつでもそのコミットに戻って編集しすることができます。
+後からいつでもそのコミットに戻って編集することができます。
 他のコミットしていない変更の影響を受けずにテスト一式を走らせるのに、
 <code>git stash save --keep-index</code> を使うこともできます。 <a href="git-stash.html">git-stash(1)</a>
 の EXAMPLES セクションを参照してください。</p></div>
@@ -806,8 +808,8 @@ gitworkflows(7) Manual Page
 これは同様にこのワークフローがより多くの貢献者
 (および彼らの貢献)に対してスケールするということです。
 merge は理解するのも、より簡単です。
-なぜならmergeコミットは、親のコミットの全ての変更は
-このコミットに全て含んでいる、という "約束" だからです。</p></div>
+なぜならmergeコミットは、全ての親の全ての変更は
+このコミットに含まれている、という "約束" だからです。</p></div>
 <div class="paragraph"><p>もちろんトレードオフが存在します:
 mergeはより注意深いブランチ管理を必要とします。
 続くセクションではその要点について議論します。</p></div>
@@ -1001,7 +1003,7 @@ rebaseされるべきではありません。 <a href="git-rebase.html">git-reba
 </div></div>
 <div class="paragraph"><p>このコマンドではコミットはひとつもリストされるべきではありません。
 もしリストされたら <em>master</em> をcheckoutし、 <em>maint</em> をそこにmergeします。</p></div>
-<div class="paragraph"><p>これで機能リリースを作成作業を実行できるようになりました。
+<div class="paragraph"><p>これで機能リリースの作成作業を実行できるようになりました。
 <em>master</em> の先端にリリースバージョンであることを示すタグをつけます:</p></div>
 <div class="exampleblock">
 <div class="title">レシピ: リリースタグの作成</div>
@@ -1171,9 +1173,8 @@ mergeワークフローを使っており、他の人たちは皆patchを送っ�
 <div class="paragraph"><p><code>git push &lt;remote&gt; &lt;branch&gt;</code> を実行し、皆にfetchできる場所を知らせます。</p></div>
 </div></div>
 <div class="paragraph"><p>メールのような異なる方法で他の人に知らせる必要があるでしょう。
-(Gitでは事前にフォーマットされたプルリクエストを
- 上流のメンテナに送る作業を簡素化するため、
- <a href="git-request-pull.html">git-request-pull(1)</a> を提供しています)</p></div>
+(Gitは、この作業を簡素化するために、事前にフォーマットされたプルリクエストを
+ 上流のメンテナに送る <a href="git-request-pull.html">git-request-pull(1)</a> を提供しています)</p></div>
 <div class="paragraph"><p>もし単に統合ブランチの最新のコピーを取得したいだけであれば、
 新しい状態に保つことも簡単です:</p></div>
 <div class="exampleblock">
@@ -1289,7 +1290,7 @@ mergeコンフリクトが発生するかもしれません。
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2014-12-28 21:05:36 JST
+Last updated 2016-04-21 15:22:29 JST
 </div>
 </div>
 </body>
