@@ -1460,4 +1460,52 @@ test_expect_success 'format-patch -o overrides format.outputDirectory' '
 	test_path_is_dir patchset
 '
 
+test_expect_success 'format-patch --base' '
+	git checkout side &&
+	git format-patch --stdout --base=HEAD~~~ -1 >patch &&
+	grep -e "^base-commit:" -A3 patch >actual &&
+	echo "base-commit: $(git rev-parse HEAD~~~)" >expected &&
+	echo "prerequisite-patch-id: $(git show --patch HEAD~~ | git patch-id --stable | awk "{print \$1}")" >>expected &&
+	echo "prerequisite-patch-id: $(git show --patch HEAD~ | git patch-id --stable | awk "{print \$1}")" >>expected &&
+	test_cmp expected actual
+'
+
+test_expect_success 'format-patch --base error handling' '
+	! git format-patch --base=HEAD~ -2 &&
+	! git format-patch --base=HEAD~ -3
+'
+
+test_expect_success 'format-patch --base=auto' '
+	git checkout -b new master &&
+	git branch --set-upstream-to=master &&
+	echo "A" >>file &&
+	git add file &&
+	git commit -m "New change #A" &&
+	echo "B" >>file &&
+	git add file &&
+	git commit -m "New change #B" &&
+	git format-patch --stdout --base=auto -2 >patch &&
+	grep -e "^base-commit:" patch >actual &&
+	echo "base-commit: $(git rev-parse master)" >expected &&
+	test_cmp expected actual
+'
+
+test_expect_success 'format-patch format.base option' '
+	test_when_finished "git config --unset format.base" &&
+	git config format.base auto &&
+	git format-patch --stdout -1 >patch &&
+	grep -e "^base-commit:" patch >actual &&
+	echo "base-commit: $(git rev-parse master)" >expected &&
+	test_cmp expected actual
+'
+
+test_expect_success 'format-patch --base overrides format.base' '
+	test_when_finished "git config --unset format.base" &&
+	git config format.base auto &&
+	git format-patch --stdout --base=HEAD~ -1 >patch &&
+	grep -e "^base-commit:" patch >actual &&
+	echo "base-commit: $(git rev-parse HEAD~)" >expected &&
+	test_cmp expected actual
+'
+
 test_done
