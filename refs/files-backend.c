@@ -3043,7 +3043,6 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 			   struct strbuf *err)
 {
 	int ret = 0, i;
-	int n = transaction->nr;
 	struct ref_update **updates = transaction->updates;
 	struct string_list refs_to_delete = STRING_LIST_INIT_NODUP;
 	struct string_list_item *ref_to_delete;
@@ -3054,13 +3053,13 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 	if (transaction->state != REF_TRANSACTION_OPEN)
 		die("BUG: commit called for transaction that is not open");
 
-	if (!n) {
+	if (!transaction->nr) {
 		transaction->state = REF_TRANSACTION_CLOSED;
 		return 0;
 	}
 
 	/* Fail if a refname appears more than once in the transaction: */
-	for (i = 0; i < n; i++)
+	for (i = 0; i < transaction->nr; i++)
 		string_list_append(&affected_refnames, updates[i]->refname);
 	string_list_sort(&affected_refnames);
 	if (ref_update_reject_duplicates(&affected_refnames, err)) {
@@ -3074,7 +3073,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 	 * lockfiles, ready to be activated. Only keep one lockfile
 	 * open at a time to avoid running out of file descriptors.
 	 */
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < transaction->nr; i++) {
 		struct ref_update *update = updates[i];
 
 		if ((update->flags & REF_HAVE_NEW) &&
@@ -3145,7 +3144,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 	}
 
 	/* Perform updates first so live commits remain referenced */
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < transaction->nr; i++) {
 		struct ref_update *update = updates[i];
 
 		if (update->flags & REF_NEEDS_COMMIT) {
@@ -3164,7 +3163,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 	}
 
 	/* Perform deletes now that updates are safely completed */
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < transaction->nr; i++) {
 		struct ref_update *update = updates[i];
 
 		if (update->flags & REF_DELETING) {
@@ -3190,7 +3189,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 cleanup:
 	transaction->state = REF_TRANSACTION_CLOSED;
 
-	for (i = 0; i < n; i++)
+	for (i = 0; i < transaction->nr; i++)
 		if (updates[i]->lock)
 			unlock_ref(updates[i]->lock);
 	string_list_clear(&refs_to_delete, 0);
@@ -3210,7 +3209,6 @@ int initial_ref_transaction_commit(struct ref_transaction *transaction,
 				   struct strbuf *err)
 {
 	int ret = 0, i;
-	int n = transaction->nr;
 	struct ref_update **updates = transaction->updates;
 	struct string_list affected_refnames = STRING_LIST_INIT_NODUP;
 
@@ -3220,7 +3218,7 @@ int initial_ref_transaction_commit(struct ref_transaction *transaction,
 		die("BUG: commit called for transaction that is not open");
 
 	/* Fail if a refname appears more than once in the transaction: */
-	for (i = 0; i < n; i++)
+	for (i = 0; i < transaction->nr; i++)
 		string_list_append(&affected_refnames, updates[i]->refname);
 	string_list_sort(&affected_refnames);
 	if (ref_update_reject_duplicates(&affected_refnames, err)) {
@@ -3243,7 +3241,7 @@ int initial_ref_transaction_commit(struct ref_transaction *transaction,
 	if (for_each_rawref(ref_present, &affected_refnames))
 		die("BUG: initial ref transaction called with existing refs");
 
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < transaction->nr; i++) {
 		struct ref_update *update = updates[i];
 
 		if ((update->flags & REF_HAVE_OLD) &&
@@ -3264,7 +3262,7 @@ int initial_ref_transaction_commit(struct ref_transaction *transaction,
 		goto cleanup;
 	}
 
-	for (i = 0; i < n; i++) {
+	for (i = 0; i < transaction->nr; i++) {
 		struct ref_update *update = updates[i];
 
 		if ((update->flags & REF_HAVE_NEW) &&
