@@ -814,6 +814,46 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 	return 0;
 }
 
+int in_group(int argc, const char **argv, const char *prefix)
+{
+	const struct string_list *list;
+	struct string_list actual_list = STRING_LIST_INIT_DUP;
+	const struct submodule *sub;
+	const char *group = NULL;
+
+	struct option default_group_options[] = {
+		OPT_STRING('g', "group", &group, N_("group"),
+				N_("group specifier for submodules")),
+		OPT_END()
+	};
+
+	const char *const git_submodule_helper_usage[] = {
+		N_("git submodule--helper in-group <path>"),
+		NULL
+	};
+
+	argc = parse_options(argc, argv, prefix, default_group_options,
+			     git_submodule_helper_usage, 0);
+
+	/* Overlay the parsed .gitmodules file with .git/config */
+	gitmodules_config();
+	git_config(submodule_config, NULL);
+
+	if (argc != 1)
+		usage(git_submodule_helper_usage[0]);
+
+	sub = submodule_from_path(null_sha1, argv[0]);
+
+	if (!group)
+		list = git_config_get_value_multi("submodule.defaultGroup");
+	else {
+		string_list_split(&actual_list, group, ',', -1);
+		list = &actual_list;
+	}
+
+	return !submodule_in_group(list, sub);
+}
+
 struct cmd_struct {
 	const char *cmd;
 	int (*fn)(int, const char **, const char *);
@@ -826,7 +866,8 @@ static struct cmd_struct commands[] = {
 	{"update-clone", update_clone},
 	{"resolve-relative-url", resolve_relative_url},
 	{"resolve-relative-url-test", resolve_relative_url_test},
-	{"init", module_init}
+	{"init", module_init},
+	{"in-group", in_group}
 };
 
 int cmd_submodule__helper(int argc, const char **argv, const char *prefix)

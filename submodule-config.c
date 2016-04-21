@@ -522,3 +522,53 @@ void submodule_free(void)
 	cache_free(&cache);
 	is_cache_init = 0;
 }
+
+int submodule_in_group(const struct string_list *group,
+		       const struct submodule *sub)
+{
+	int matched = 0;
+	struct strbuf sb = STRBUF_INIT;
+
+	if (!group)
+		/*
+		 * If no group is specified all, all submodules match to
+		 * keep traditional behavior
+		 */
+		return 1;
+
+	if (sub->labels) {
+		struct string_list_item *item;
+		for_each_string_list_item(item, sub->labels) {
+			strbuf_reset(&sb);
+			strbuf_addf(&sb, "*%s", item->string);
+			if (string_list_has_string(group, sb.buf)) {
+				matched = 1;
+				break;
+			}
+		}
+	}
+	if (sub->path) {
+		/*
+		 * NEEDSWORK: This currently works only for
+		 * exact paths, but we want to enable
+		 * inexact matches such wildcards.
+		 */
+		strbuf_reset(&sb);
+		strbuf_addf(&sb, "./%s", sub->path);
+		if (string_list_has_string(group, sb.buf))
+			matched = 1;
+	}
+	if (sub->name) {
+		/*
+		 * NEEDSWORK: Same as with path. Do we want to
+		 * support wildcards or such?
+		 */
+		strbuf_reset(&sb);
+		strbuf_addf(&sb, ":%s", sub->name);
+		if (string_list_has_string(group, sb.buf))
+			matched = 1;
+	}
+	strbuf_release(&sb);
+
+	return matched;
+}
