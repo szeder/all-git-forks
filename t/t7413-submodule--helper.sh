@@ -226,4 +226,30 @@ test_expect_success 'git submodule update respects groups' '
 	test_cmp expect actual
 '
 
+range_back="$(echo $submodule_sha1|cut -c1-7)...$(echo $sub_priorsha1|cut -c1-7)"
+cat >expect <<-EOF
+* sub0 $range_back (1):
+  < test2
+
+* sub1 $range_back (1):
+  < test2
+
+* sub3 $range_back (1):
+  < test2
+
+EOF
+
+test_expect_success 'git submodule summary respects groups' '
+	(
+		cd super_clone &&
+		git submodule update --init &&
+		git submodule foreach "git checkout HEAD^" &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule summary >../actual &&
+		git config --unset-all submodule.defaultGroup
+	) &&
+	test_cmp expect actual
+'
+
 test_done

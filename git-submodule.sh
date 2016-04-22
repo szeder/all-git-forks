@@ -833,6 +833,11 @@ cmd_summary() {
 		sane_egrep '^:([0-7]* )?160000' |
 		while read mod_src mod_dst sha1_src sha1_dst status sm_path
 		do
+			# ignore modules not in group
+			if ! git submodule--helper in-group $sm_path
+			then
+				continue
+			fi
 			# Always show modules deleted or type-changed (blob<->module)
 			if test "$status" = D || test "$status" = T
 			then
