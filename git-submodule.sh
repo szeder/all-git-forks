@@ -440,11 +440,6 @@ cmd_deinit()
 		shift
 	done
 
-	if test $# = 0
-	then
-		die "$(eval_gettext "Use '.' if you really want to deinitialize all submodules")"
-	fi
-
 	git submodule--helper list --prefix "$wt_prefix" "$@" |
 	while read mode sha1 stage sm_path
 	do
