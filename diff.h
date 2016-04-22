@@ -178,6 +178,7 @@ struct diff_options {
 	void *output_prefix_data;
 
 	int diff_path_counter;
+	struct string_list *submodule_groups;
 };
 
 enum color_diff {
