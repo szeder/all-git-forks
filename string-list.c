@@ -7,6 +7,24 @@ void string_list_init(struct string_list *list, int strdup_strings)
 	list->strdup_strings = strdup_strings;
 }
 
+struct string_list *string_list_duplicate(const struct string_list *src,
+					  int strdup_strings)
+{
+	struct string_list *list;
+	struct string_list_item *item;
+
+	if (!src)
+		return NULL;
+
+	list = xmalloc(sizeof(*list));
+	string_list_init(list, strdup_strings);
+	for_each_string_list_item(item, src)
+		string_list_append(list, item->string);
+
+	return list;
+}
+
+
 /* if there is no exact match, point to the index where the entry could be
  * inserted */
 static int get_entry_index(const struct string_list *list, const char *string,

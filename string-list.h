@@ -19,6 +19,8 @@ struct string_list {
 #define STRING_LIST_INIT_DUP   { NULL, 0, 0, 1, NULL }
 
 void string_list_init(struct string_list *list, int strdup_strings);
+struct string_list *string_list_duplicate(const struct string_list *src,
+					  int strdup_strings);
 
 void print_string_list(const struct string_list *p, const char *text);
 void string_list_clear(struct string_list *list, int free_util);
