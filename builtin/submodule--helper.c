@@ -271,6 +271,7 @@ static int module_list(int argc, const char **argv, const char *prefix)
 	int i;
 	struct pathspec pathspec;
 	struct module_list list = MODULE_LIST_INIT;
+	const struct string_list *group = NULL;
 
 	struct option module_list_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
@@ -292,8 +293,20 @@ static int module_list(int argc, const char **argv, const char *prefix)
 		return 1;
 	}
 
+	if (!pathspec.nr)
+		group = git_config_get_value_multi("submodule.defaultGroup");
+	if (group)
+		gitmodules_config();
+
 	for (i = 0; i < list.nr; i++) {
 		const struct cache_entry *ce = list.entries[i];
+
+		if (group) {
+			const struct submodule *sub =
+				submodule_from_path(null_sha1, ce->name);
+			if (!submodule_in_group(group, sub))
+				continue;
+		}
 
 		if (ce_stage(ce))
 			printf("%06o %s U\t", ce->ce_mode, sha1_to_hex(null_sha1));

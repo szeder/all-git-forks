@@ -78,4 +78,101 @@ test_expect_success 'in-group' '
 	)
 '
 
+submodule_sha1=$(git -C sub rev-parse HEAD)
+
+cat >expect <<-EOF
+160000 $submodule_sha1 0	sub0
+160000 $submodule_sha1 0	sub1
+160000 $submodule_sha1 0	sub3
+EOF
+
+test_expect_success 'submodule--helper list respects groups' '
+	(
+		cd super &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule--helper list >../actual
+	) &&
+	test_cmp expect actual
+'
+
+cat >expect <<-EOF
+Entering 'sub0'
+$submodule_sha1 sub0
+Entering 'sub1'
+$submodule_sha1 sub1
+Entering 'sub3'
+$submodule_sha1 sub3
+EOF
+
+test_expect_success 'submodule foreach respects groups' '
+	(
+		cd super &&
+		git submodule foreach "echo \$sha1 \$name" >../actual
+	) &&
+	test_cmp expect actual
+'
+
+sub_priorsha1=$(git -C sub rev-parse HEAD^)
+
+cat >expect <<-EOF
++$sub_priorsha1 sub0 (test)
++$sub_priorsha1 sub1 (test)
++$sub_priorsha1 sub3 (test)
+EOF
+
+test_expect_success 'submodule status respects groups' '
+	git clone --recurse-submodules super super_clone &&
+	(
+		cd super_clone &&
+		git -C sub0 checkout HEAD^ &&
+		git -C sub1 checkout HEAD^ &&
+		git -C sub2 checkout HEAD^ &&
+		git -C sub3 checkout HEAD^ &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule status >../actual &&
+		git config --unset-all submodule.defaultGroup &&
+		git submodule update
+	) &&
+	test_cmp expect actual
+'
+
+test_expect_success 'submodule deinit respects groups' '
+	suburl=$(pwd)/sub &&
+	(
+		cd super_clone &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule deinit &&
+		test_must_fail git config submodule.sub0.url &&
+		test_must_fail git config submodule.sub1.url &&
+		test "$(git config submodule.sub2.url)" = "$suburl" &&
+		test_must_fail git config submodule.sub3.url &&
+		git config --unset-all submodule.defaultGroup &&
+		git submodule init
+	)
+'
+
+test_expect_success 'submodule sync respects groups' '
+	suburl=$(pwd)/sub &&
+	(
+		cd super_clone &&
+		git config submodule.sub0.url nonsense &&
+		git config submodule.sub1.url nonsense &&
+		git config submodule.sub2.url nonsense &&
+		git config submodule.sub3.url nonsense &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule sync &&
+		git config --unset-all submodule.defaultGroup &&
+		test "$(git config submodule.sub0.url)" = "$suburl" &&
+		test "$(git config submodule.sub1.url)" = "$suburl" &&
+		test "$(git config submodule.sub2.url)" = "nonsense" &&
+		test "$(git config submodule.sub3.url)" = "$suburl" &&
+		git submodule sync sub2 &&
+		test "$(git config submodule.sub2.url)" = "$suburl"
+	)
+'
+
 test_done
