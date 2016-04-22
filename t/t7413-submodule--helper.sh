@@ -190,4 +190,40 @@ test_expect_success 'submodule--helper init respects groups' '
 	)
 '
 
+cat >expect <<-EOF
+160000 $submodule_sha1 0 1	sub0
+160000 $submodule_sha1 0 1	sub1
+160000 $submodule_sha1 0 1	sub3
+EOF
+
+test_expect_success 'submodule--helper update-clone respects groups' '
+	(
+		cd super_clone &&
+		git submodule init &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule--helper update-clone >../actual &&
+		git config --unset-all submodule.defaultGroup
+	) &&
+	test_cmp expect actual
+'
+
+cat >expect <<-EOF
+Submodule path 'sub0': checked out '$submodule_sha1'
+Submodule path 'sub1': checked out '$submodule_sha1'
+Submodule path 'sub3': checked out '$submodule_sha1'
+EOF
+
+test_expect_success 'git submodule update respects groups' '
+	(
+		cd super_clone &&
+		git submodule deinit -f . &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule update --init >../actual &&
+		git config --unset-all submodule.defaultGroup
+	) &&
+	test_cmp expect actual
+'
+
 test_done

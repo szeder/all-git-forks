@@ -610,6 +610,8 @@ struct submodule_update_clone {
 
 	/* Machine-readable status lines to be consumed by git-submodule.sh */
 	struct string_list projectlines;
+	/* The group specification we'll be processing. */
+	struct string_list *group;
 
 	/* If we want to stop as fast as possible and return an error */
 	unsigned quickstop : 1;
@@ -645,6 +647,9 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 	}
 
 	sub = submodule_from_path(null_sha1, ce->name);
+
+	if (!submodule_in_group(suc->group, sub))
+		goto cleanup;
 
 	if (suc->recursive_prefix)
 		displaypath = relative_path(suc->recursive_prefix,
@@ -771,6 +776,7 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 	struct string_list_item *item;
 	struct pathspec pathspec;
 	struct submodule_update_clone suc = SUBMODULE_UPDATE_CLONE_INIT;
+	struct string_list actual_group = STRING_LIST_INIT_DUP;
 
 	struct option module_update_clone_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
@@ -809,6 +815,16 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 
 	if (module_list_compute(argc, argv, prefix, &pathspec, &suc.list) < 0)
 		return 1;
+
+	if (!pathspec.nr) {
+		const struct string_list *group =
+			group = git_config_get_value_multi("submodule.defaultGroup");
+		if (group) {
+			for_each_string_list_item(item, group)
+				string_list_append(&actual_group, item->string);
+			suc.group = &actual_group;
+		}
+	}
 
 	if (pathspec.nr)
 		suc.warn_if_uninitialized = 1;
