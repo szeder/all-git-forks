@@ -12,7 +12,7 @@ SYNOPSIS
 	[<upstream> [<branch>]]
 'git rebase' [-i | --interactive] [options] [--exec <cmd>] [--onto <newbase>]
 	--root [<branch>]
-'git rebase' --continue | --skip | --abort | --edit-todo
+'git rebase' --continue | --skip | --abort | --forget | --edit-todo
 
 DESCRIPTION
 -----------
@@ -251,6 +251,9 @@ leave out at most one of A and B, in which case it defaults to HEAD.
 	started, then HEAD will be reset to <branch>. Otherwise HEAD
 	will be reset to where it was when the rebase operation was
 	started.
+
+--forget::
+	Abort the rebase operation but leave HEAD where it is.
 
 --keep-empty::
 	Keep the commits that do not change anything from its
