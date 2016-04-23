@@ -239,7 +239,7 @@ do
 	--verify)
 		ok_to_skip_pre_rebase=
 		;;
-	--continue|--skip|--abort|--edit-todo)
+	--continue|--skip|--abort|--edit-todo|--destroy)
 		test $total_argc -eq 2 || usage
 		action=${1##--}
 		;;
@@ -395,6 +395,10 @@ abort)
 	esac
 	output git reset --hard $orig_head
 	finish_rebase
+	exit
+	;;
+destroy)
+	rm -rf "$state_dir"
 	exit
 	;;
 edit-todo)

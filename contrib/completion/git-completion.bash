@@ -1671,10 +1671,10 @@ _git_rebase ()
 {
 	local dir="$(__gitdir)"
 	if [ -f "$dir"/rebase-merge/interactive ]; then
-		__gitcomp "--continue --skip --abort --edit-todo"
+		__gitcomp "--continue --skip --abort --destroy --edit-todo"
 		return
 	elif [ -d "$dir"/rebase-apply ] || [ -d "$dir"/rebase-merge ]; then
-		__gitcomp "--continue --skip --abort"
+		__gitcomp "--continue --skip --abort --destroy"
 		return
 	fi
 	__git_complete_strategy && return
