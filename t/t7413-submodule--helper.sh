@@ -267,4 +267,19 @@ test_expect_success 'git status respects groups' '
 	test_i18ngrep "modified:   sub3" actual
 '
 
+test_expect_success 'git diff respects groups' '
+	# use setup from previous test
+	(
+		cd super_clone &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git diff >../actual
+		git config --unset-all submodule.defaultGroup
+	) &&
+	test_i18ngrep "diff --git a/sub0 b/sub0" actual &&
+	test_i18ngrep "diff --git a/sub1 b/sub1" actual &&
+	test_i18ngrep ! "diff --git a/sub2 b/sub2" actual &&
+	test_i18ngrep "diff --git a/sub3 b/sub3" actual
+'
+
 test_done

@@ -366,6 +366,8 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 
 	setup_diff_pager(&rev.diffopt);
 
+	rev.diffopt.submodule_groups = string_list_duplicate(
+		git_config_get_value_multi("submodule.defaultGroup"), 1);
 	/*
 	 * Do we have --cached and not have a pending object, then
 	 * default to HEAD by hand.  Eek.
