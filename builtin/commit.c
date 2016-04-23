@@ -1369,6 +1369,9 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	s.ignore_submodule_arg = ignore_submodule_arg;
+	s.submodule_groups = string_list_duplicate(
+		git_config_get_value_multi("submodule.defaultGroup"), 1);
+
 	wt_status_collect(&s);
 
 	if (0 <= fd)

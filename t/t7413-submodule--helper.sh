@@ -252,4 +252,19 @@ test_expect_success 'git submodule summary respects groups' '
 	test_cmp expect actual
 '
 
+test_expect_success 'git status respects groups' '
+	# use setup from previous test
+	(
+		cd super_clone &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git status >../actual
+		git config --unset-all submodule.defaultGroup
+	) &&
+	test_i18ngrep "modified:   sub0" actual &&
+	test_i18ngrep "modified:   sub1" actual &&
+	test_i18ngrep ! "modified:   sub2" actual &&
+	test_i18ngrep "modified:   sub3" actual
+'
+
 test_done

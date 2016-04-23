@@ -73,6 +73,7 @@ struct wt_status {
 	struct string_list change;
 	struct string_list untracked;
 	struct string_list ignored;
+	struct string_list *submodule_groups;
 	uint32_t untracked_in_ms;
 };
 
