@@ -1733,7 +1733,7 @@ _git_rebase ()
 {
 	local dir="$(__gitdir)"
 	if [ -f "$dir"/rebase-merge/interactive ]; then
-		__gitcomp "--continue --skip --abort --forget --edit-todo"
+		__gitcomp "--continue --skip --abort --forget --edit-todo --show-patch"
 		return
 	elif [ -d "$dir"/rebase-apply ] || [ -d "$dir"/rebase-merge ]; then
 		__gitcomp "--continue --skip --abort --forget"

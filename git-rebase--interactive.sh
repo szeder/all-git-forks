@@ -1139,6 +1139,10 @@ To continue rebase after editing, run:
 
 	exit
 	;;
+show-patch)
+	git_pager "$state_dir/patch"
+	exit
+	;;
 esac
 
 comment_for_reflog start
