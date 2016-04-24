@@ -239,7 +239,7 @@ do
 	--verify)
 		ok_to_skip_pre_rebase=
 		;;
-	--continue|--skip|--abort|--edit-todo|--destroy)
+	--continue|--skip|--abort|--edit-todo|--destroy|--show-patch)
 		test $total_argc -eq 2 || usage
 		action=${1##--}
 		;;
@@ -403,6 +403,10 @@ destroy)
 	;;
 edit-todo)
 	run_specific_rebase
+	;;
+show-patch)
+	run_specific_rebase
+	die "BUG: run_specific_rebase is not supposed to return here"
 	;;
 esac
 

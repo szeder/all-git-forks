@@ -135,6 +135,10 @@ skip)
 	finish_rb_merge
 	return
 	;;
+show-patch)
+	cmt="$(cat "$state_dir/current")"
+	exec git diff "$cmt^" "$cmt"
+	;;
 esac
 
 mkdir -p "$state_dir"

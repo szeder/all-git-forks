@@ -1125,6 +1125,10 @@ EOF
 
 	exit
 	;;
+show-patch)
+	git_pager "$state_dir/patch"
+	exit
+	;;
 esac
 
 git var GIT_COMMITTER_IDENT >/dev/null ||
