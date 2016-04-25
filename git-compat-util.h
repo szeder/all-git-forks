@@ -510,6 +510,7 @@ static inline int ends_with(const char *str, const char *suffix)
 #define PROT_READ 1
 #define PROT_WRITE 2
 #define MAP_PRIVATE 1
+#define MAP_SHARED 2
 #endif
 
 #define mmap git_mmap
@@ -1040,6 +1041,23 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #define flockfile(fh)
 #define funlockfile(fh)
 #define getc_unlocked(fh) getc(fh)
+#endif
+
+#ifdef __linux__
+#define UNIX_PATH_MAX 108
+#elif defined(__APPLE__) || defined(BSD)
+#define UNIX_PATH_MAX 104
+#else
+/*
+ * Quoth POSIX: The size of sun_path has intentionally been left
+ * undefined. This is because different implementations use different
+ * sizes. For example, 4.3 BSD uses a size of 108, and 4.4 BSD uses a
+ * size of 104. Since most implementations originate from BSD
+ * versions, the size is typically in the range 92 to 108.
+ *
+ * Thanks, POSIX!  Super-helpful!  Hope we don't overflow any buffers!
+ */
+#define UNIX_PATH_MAX 92
 #endif
 
 #endif
