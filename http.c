@@ -11,6 +11,7 @@
 #include "gettext.h"
 #include "transport.h"
 
+static struct trace_key trace_curl = TRACE_KEY_INIT(CURL);
 #if LIBCURL_VERSION_NUM >= 0x070a08
 long int git_curl_ipresolve = CURL_IPRESOLVE_WHATEVER;
 #else
@@ -464,6 +465,100 @@ static void set_curl_keepalive(CURL *c)
 }
 #endif
 
+
+void curl_dump(const char *text, unsigned char *ptr, size_t size, char nohex)
+{
+	size_t i;
+	size_t w;
+	struct strbuf out = STRBUF_INIT;
+
+	unsigned int width = 0x10;
+
+	if (nohex)
+		/* without the hex output, we can fit more on screen */
+		width = 0x40;
+
+	strbuf_addf(&out, "%s, %10.10ld bytes (0x%8.8lx)\n",
+		text, (long)size, (long)size);
+
+	for (i = 0; i < size; i += width) {
+
+		strbuf_addf(&out, "%4.4lx: ", (long)i);
+
+		if (!nohex) {
+			/* hex not disabled, show it */
+			for (w = 0; w < width; w++)
+				if (i + w < size)
+					strbuf_addf(&out, "%02x ", ptr[i + w]);
+				else
+					strbuf_addf(&out,"   ");
+		}
+
+		for (w = 0; (w < width) && (i + w < size); w++) {
+			/* check for 0D0A; if found, skip past and start a new line of output */
+			if (nohex && (i + w + 1 < size) && ptr[i + w] == '\r'
+			    && ptr[i + w + 1] == '\n') {
+				i += (w + 2 - width);
+				break;
+			}
+			strbuf_addch(&out, (ptr[i + w] >= 0x20)
+				&& (ptr[i + w] < 0x80) ? ptr[i + w] : '.');
+			/* check again for 0D0A, to avoid an extra \n if it's at width */
+			if (nohex && (i + w + 2 < size)
+			    && ptr[i + w + 1] == '\r'
+			    && ptr[i + w + 2] == '\n') {
+				i += (w + 3 - width);
+				break;
+			}
+		}
+		strbuf_addch(&out, '\n');
+		trace_strbuf(&trace_curl, &out);
+		strbuf_release(&out);
+	}
+}
+
+int curl_trace_want(void)
+{
+	return trace_want(&trace_curl);
+}
+
+int curl_trace(CURL *handle, curl_infotype type,
+	     char *data, size_t size, void *userp)
+{
+	const char *text;
+	(void)handle;		/* prevent compiler warning */
+
+	switch (type) {
+	case CURLINFO_TEXT:
+		trace_printf_key(&trace_curl, "== Info: %s", data);
+	default:		/* in case a new one is introduced to shock us */
+		return 0;
+
+	case CURLINFO_HEADER_OUT:
+		text = "=> Send header";
+		break;
+	case CURLINFO_DATA_OUT:
+		text = "=> Send data";
+		break;
+	case CURLINFO_SSL_DATA_OUT:
+		text = "=> Send SSL data";
+		break;
+	case CURLINFO_HEADER_IN:
+		text = "<= Recv header";
+		break;
+	case CURLINFO_DATA_IN:
+		text = "<= Recv data";
+		break;
+	case CURLINFO_SSL_DATA_IN:
+		text = "<= Recv SSL data";
+		break;
+	}
+
+	curl_dump(text, (unsigned char *)data, size, 1);
+	return 0;
+}
+
+
 static CURL *get_curl_handle(void)
 {
 	CURL *result = curl_easy_init();
@@ -563,7 +658,11 @@ static CURL *get_curl_handle(void)
 			"your curl version is too old (>= 7.19.4)");
 #endif
 
-	if (getenv("GIT_CURL_VERBOSE"))
+	if (curl_trace_want()) {
+		curl_easy_setopt(result, CURLOPT_VERBOSE, 1L);
+		curl_easy_setopt(result, CURLOPT_DEBUGFUNCTION, curl_trace);
+		curl_easy_setopt(result, CURLOPT_DEBUGDATA, NULL);
+	} else if (getenv("GIT_CURL_VERBOSE"))
 		curl_easy_setopt(result, CURLOPT_VERBOSE, 1);
 
 	curl_easy_setopt(result, CURLOPT_USERAGENT,
