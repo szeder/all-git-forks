@@ -168,6 +168,7 @@ static struct remote *make_remote(const char *name, int len)
 	ALLOC_GROW(remotes, remotes_nr + 1, remotes_alloc);
 	remotes[remotes_nr++] = ret;
 	ret->name = xstrndup(name, len);
+	ret->fetch_prio = 50;
 
 	hashmap_entry_init(ret, lookup_entry.hash);
 	replaced = hashmap_put(&remotes_hash, ret);
@@ -375,6 +376,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 		remote->mirror = git_config_bool(key, value);
 	else if (!strcmp(subkey, "skipdefaultupdate"))
 		remote->skip_default_update = git_config_bool(key, value);
+	else if (!strcmp(subkey, "fetchprio"))
+		remote->fetch_prio = git_config_int(key, value);
 	else if (!strcmp(subkey, "skipfetchall"))
 		remote->skip_default_update = git_config_bool(key, value);
 	else if (!strcmp(subkey, "prune"))
@@ -719,12 +722,12 @@ int remote_is_configured(struct remote *remote)
 	return remote && remote->origin;
 }
 
-int for_each_remote(each_remote_fn fn, void *priv)
+static int for_each_remote_do(struct remote **rlist, int len,
+			      each_remote_fn fn, void *priv)
 {
 	int i, result = 0;
-	read_config();
-	for (i = 0; i < remotes_nr && !result; i++) {
-		struct remote *r = remotes[i];
+	for (i = 0; i < len && !result; i++) {
+		struct remote *r = rlist[i];
 		if (!r)
 			continue;
 		if (!r->fetch)
@@ -736,6 +739,38 @@ int for_each_remote(each_remote_fn fn, void *priv)
 		result = fn(r, priv);
 	}
 	return result;
+}
+
+int for_each_remote(each_remote_fn fn, void *priv)
+{
+	read_config();
+	return for_each_remote_do(remotes, remotes_nr, fn, priv);
+}
+
+int compare_fetch_prio(const void *p, const void *q)
+{
+	const struct remote *pp = *(struct remote**)p;
+	const struct remote *qq = *(struct remote**)q;
+
+	return pp->fetch_prio - qq->fetch_prio;
+}
+
+int for_each_sorted_remote(each_remote_fn fn, void *priv)
+{
+	struct remote **sr;
+	int i, rc;
+
+	read_config();
+
+	sr = xmalloc(sizeof (struct remote*) * remotes_nr);
+	for (i = 0; i < remotes_nr; i++)
+		sr[i] = remotes[i];
+
+	qsort(sr, remotes_nr, sizeof (struct remote*), compare_fetch_prio);
+
+	rc = for_each_remote_do(sr, remotes_nr, fn, priv);
+	free(sr);
+	return rc;
 }
 
 static void handle_duplicate(struct ref *ref1, struct ref *ref2)

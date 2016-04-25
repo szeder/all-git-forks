@@ -47,6 +47,7 @@ struct remote {
 	int skip_default_update;
 	int mirror;
 	int prune;
+	int fetch_prio;
 
 	const char *receivepack;
 	const char *uploadpack;
@@ -64,6 +65,7 @@ int remote_is_configured(struct remote *remote);
 
 typedef int each_remote_fn(struct remote *remote, void *priv);
 int for_each_remote(each_remote_fn fn, void *priv);
+int for_each_sorted_remote(each_remote_fn fn, void *priv);
 
 int remote_has_url(struct remote *remote, const char *url);
 

@@ -2489,6 +2489,11 @@ remote.<name>.fetch::
 	The default set of "refspec" for linkgit:git-fetch[1]. See
 	linkgit:git-fetch[1].
 
+remote.<name>.fetchprio::
+	Set a priority for fetching this remote, to allow you to set
+	a custom order when doing "git fetch --all" (thus also when
+	running "git remote update"). Default value is 50.
+
 remote.<name>.push::
 	The default set of "refspec" for linkgit:git-push[1]. See
 	linkgit:git-push[1].
