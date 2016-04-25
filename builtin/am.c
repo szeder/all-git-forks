@@ -1888,8 +1888,7 @@ static void am_run(struct am_state *state, int resume)
 			git_config_get_bool("advice.amworkdir", &advice_amworkdir);
 
 			if (advice_amworkdir)
-				printf_ln(_("The copy of the patch that failed is found in: %s"),
-						am_path(state, "patch"));
+				printf_ln(_("Use 'git am --show-patch' to see the failed patch"));
 
 			die_user_resolve(state);
 		}
@@ -2178,6 +2177,17 @@ static void am_abort(struct am_state *state)
 	am_destroy(state);
 }
 
+static void show_patch(struct am_state *state)
+{
+	struct strbuf sb = STRBUF_INIT;
+
+	if (strbuf_read_file(&sb, am_path(state, "patch"), 0) >= 0) {
+		setup_pager();
+		write_in_full(1, sb.buf, sb.len);
+	}
+	strbuf_release(&sb);
+}
+
 /**
  * parse_options() callback that validates and sets opt->value to the
  * PATCH_FORMAT_* enum value corresponding to `arg`.
@@ -2206,7 +2216,8 @@ enum resume_mode {
 	RESUME_APPLY,
 	RESUME_RESOLVED,
 	RESUME_SKIP,
-	RESUME_ABORT
+	RESUME_ABORT,
+	RESUME_SHOW_PATCH
 };
 
 static int git_am_config(const char *k, const char *v, void *cb)
@@ -2306,6 +2317,9 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		OPT_CMDMODE(0, "abort", &resume,
 			N_("restore the original branch and abort the patching operation."),
 			RESUME_ABORT),
+		OPT_CMDMODE(0, "show-patch", &resume,
+			N_("show the patch being applied."),
+			RESUME_SHOW_PATCH),
 		OPT_BOOL(0, "committer-date-is-author-date",
 			&state.committer_date_is_author_date,
 			N_("lie about committer date")),
@@ -2412,6 +2426,9 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		break;
 	case RESUME_ABORT:
 		am_abort(&state);
+		break;
+	case RESUME_SHOW_PATCH:
+		show_patch(&state);
 		break;
 	default:
 		die("BUG: invalid resume value");

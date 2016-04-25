@@ -902,7 +902,7 @@ _git_am ()
 {
 	local dir="$(__gitdir)"
 	if [ -d "$dir"/rebase-apply ]; then
-		__gitcomp "--skip --continue --resolved --abort"
+		__gitcomp "--skip --continue --resolved --abort --show-patch"
 		return
 	fi
 	case "$cur" in

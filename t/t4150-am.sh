@@ -619,6 +619,12 @@ test_expect_success 'am pauses on conflict' '
 	test -d .git/rebase-apply
 '
 
+test_expect_success 'am --show-patch' '
+	git am --show-patch >actual.patch &&
+	test_cmp lorem-move.patch actual.patch &&
+	test -d .git/rebase-apply
+'
+
 test_expect_success 'am --skip works' '
 	echo goodbye >expected &&
 	git am --skip &&
