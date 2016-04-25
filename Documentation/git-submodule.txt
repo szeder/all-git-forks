@@ -37,6 +37,14 @@ these will not be checked out by default; the 'init' and 'update'
 subcommands will maintain submodules checked out and at
 appropriate revision in your working tree.
 
+When operating on submodules you can either give paths to specify the
+desired submodules or give no paths at all to apply the command to the
+default group of submodules. By default all submodules are included in
+the default group. You can change the default group by configuring
+submodule.defaultGroup. Once the default group is configured any
+submodule operation without a specified set of submodules will use
+the default group as the set to operate on.
+
 Submodules are composed from a so-called `gitlink` tree entry
 in the main repository that refers to a particular commit object
 within the inner repository that is completely separate.
