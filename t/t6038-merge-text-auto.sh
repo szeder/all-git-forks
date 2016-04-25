@@ -108,9 +108,9 @@ test_expect_success 'Merge addition of text=auto' '
 
 test_expect_success 'Detect CRLF/LF conflict after setting text=auto' '
 	echo "<<<<<<<" >expected &&
-	echo first line | append_cr >>expected &&
-	echo same line | append_cr >>expected &&
-	echo ======= | append_cr >>expected &&
+	echo first line >>expected &&
+	echo same line >>expected &&
+	echo ======= >>expected &&
 	echo first line | append_cr >>expected &&
 	echo same line | append_cr >>expected &&
 	echo ">>>>>>>" >>expected &&
@@ -121,14 +121,13 @@ test_expect_success 'Detect CRLF/LF conflict after setting text=auto' '
 	fuzz_conflict file >file.fuzzy &&
 	compare_files expected file.fuzzy
 '
-
 test_expect_success 'Detect LF/CRLF conflict from addition of text=auto' '
 	echo "<<<<<<<" >expected &&
 	echo first line | append_cr >>expected &&
 	echo same line | append_cr >>expected &&
-	echo ======= | append_cr >>expected &&
-	echo first line | append_cr >>expected &&
-	echo same line | append_cr >>expected &&
+	echo =======  >>expected &&
+	echo first line >>expected &&
+	echo same line  >>expected &&
 	echo ">>>>>>>" >>expected &&
 	git config merge.renormalize false &&
 	rm -f .gitattributes &&
@@ -137,6 +136,7 @@ test_expect_success 'Detect LF/CRLF conflict from addition of text=auto' '
 	fuzz_conflict file >file.fuzzy &&
 	compare_files expected file.fuzzy
 '
+
 
 test_expect_failure 'checkout -m after setting text=auto' '
 	cat <<-\EOF >expected &&
