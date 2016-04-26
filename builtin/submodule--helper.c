@@ -405,6 +405,7 @@ static int module_init(int argc, const char **argv, const char *prefix)
 {
 	struct pathspec pathspec;
 	struct module_list list = MODULE_LIST_INIT;
+	struct string_list *group = NULL;
 	int quiet = 0;
 	int i;
 
@@ -427,8 +428,22 @@ static int module_init(int argc, const char **argv, const char *prefix)
 	if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0)
 		return 1;
 
-	for (i = 0; i < list.nr; i++)
-		init_submodule(list.entries[i]->name, prefix, quiet);
+	if (!pathspec.nr)
+		group = string_list_duplicate(
+			git_config_get_value_multi("submodule.defaultGroup"), 1);
+	if (group) {
+		gitmodules_config();
+		for (i = 0; i < list.nr; i++) {
+			const struct submodule *sub =
+				submodule_from_path(null_sha1,
+						    list.entries[i]->name);
+			if (submodule_in_group(group, sub))
+				init_submodule(list.entries[i]->name, prefix, quiet);
+		}
+		string_list_clear(group, 1);
+	} else
+		for (i = 0; i < list.nr; i++)
+			init_submodule(list.entries[i]->name, prefix, quiet);
 
 	return 0;
 }

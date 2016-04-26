@@ -175,4 +175,19 @@ test_expect_success 'submodule sync respects groups' '
 	)
 '
 
+test_expect_success 'submodule--helper init respects groups' '
+	(
+		cd super_clone &&
+		git submodule deinit . &&
+		git config --add submodule.defaultGroup *bit1 &&
+		git config --add submodule.defaultGroup ./sub0 &&
+		git submodule init &&
+		git config --unset-all submodule.defaultGroup &&
+		test "$(git config submodule.sub0.url)" = "$suburl" &&
+		test "$(git config submodule.sub1.url)" = "$suburl" &&
+		test_must_fail git config submodule.sub2.url &&
+		test "$(git config submodule.sub3.url)" = "$suburl"
+	)
+'
+
 test_done
