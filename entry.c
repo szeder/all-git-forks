@@ -539,8 +539,17 @@ static int send_to_worker(struct worker_process *wp, int revents, void *data)
 		worker->nr_sending++;
 		to_send = to_send->next;
 	}
+	packet_buf_write(&worker->sending, "report");
 
 	return POLLOUT;
+}
+
+static void report_pending_ok(int *pending_ok)
+{
+	if (*pending_ok) {
+		packet_write(1, "OK %d", *pending_ok);
+		*pending_ok = 0;
+	}
 }
 
 /*
@@ -562,6 +571,7 @@ int parallel_checkout_worker(void)
 {
 	struct checkout state;
 	struct cache_entry *ce = NULL;
+	int pending_ok = 0;
 
 	memset(&state, 0, sizeof(state));
 	for (;;) {
@@ -570,6 +580,7 @@ int parallel_checkout_worker(void)
 		const char *line = packet_read_line(0, &len);
 
 		if (!line) {
+			report_pending_ok(&pending_ok);
 			packet_flush(1);
 			return 0;
 		}
@@ -579,6 +590,10 @@ int parallel_checkout_worker(void)
 				state.force = 1;
 			else
 				die(_("checkout worker: unrecognized option %s"), line);
+			continue;
+		}
+		if (!strcmp(line, "report")) {
+			report_pending_ok(&pending_ok);
 			continue;
 		}
 
@@ -601,10 +616,11 @@ int parallel_checkout_worker(void)
 
 		ret = write_entry(ce, ce->name, &state, 0);
 		if (ret) {
+			report_pending_ok(&pending_ok);
 			packet_write(1, "RET %d", ret);
 			continue;
 		}
-		packet_write(1, "OK 1");
+		pending_ok++;
 	}
 }
 
