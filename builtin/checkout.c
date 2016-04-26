@@ -237,6 +237,7 @@ static int checkout_merged(int pos, struct checkout *state)
 	return status;
 }
 
+extern uint64_t tr_write_entry, tr_create_dirs, tr_check_path, tr_refresh_cache;
 static int checkout_paths(const struct checkout_opts *opts,
 			  const char *revision)
 {
@@ -247,6 +248,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	struct commit *head;
 	int errs = 0;
 	struct lock_file *lock_file;
+	uint64_t start = getnanotime();
 
 	if (opts->track != BRANCH_TRACK_UNSPECIFIED)
 		die(_("'%s' cannot be used with updating paths"), "--track");
@@ -280,6 +282,8 @@ static int checkout_paths(const struct checkout_opts *opts,
 	if (read_cache_preload(&opts->pathspec) < 0)
 		return error(_("corrupt index file"));
 
+	trace_performance_since(start, "read index");
+	start = getnanotime();
 	if (opts->source_tree)
 		read_tree_some(opts->source_tree, &opts->pathspec);
 
@@ -331,6 +335,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	if (opts->merge)
 		unmerge_marked_index(&the_index);
 
+	trace_performance_since(start, "stuff");
 	/* Any unmerged paths? */
 	for (pos = 0; pos < active_nr; pos++) {
 		const struct cache_entry *ce = active_cache[pos];
@@ -381,6 +386,10 @@ static int checkout_paths(const struct checkout_opts *opts,
 	}
 
 	errs |= run_parallel_checkout(opts->num_threads, 0, 0, NULL);
+	trace_performance(tr_write_entry, "write-entry");
+	trace_performance(tr_create_dirs, "create-dirs");
+	trace_performance(tr_refresh_cache, "refresh-cache");
+	trace_performance(tr_check_path, "check-path");
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write new index file"));

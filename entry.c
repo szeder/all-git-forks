@@ -173,6 +173,8 @@ static int streaming_write_entry(const struct cache_entry *ce, char *path,
 	return result;
 }
 
+uint64_t tr_write_entry, tr_create_dirs, tr_check_path, tr_refresh_cache;
+
 static int write_entry(struct cache_entry *ce,
 		       char *path, const struct checkout *state, int to_tempfile)
 {
@@ -183,6 +185,7 @@ static int write_entry(struct cache_entry *ce,
 	unsigned long size;
 	size_t wrote, newsize = 0;
 	struct stat st;
+	uint64_t start = getnanotime();
 
 	if (ce_mode_s_ifmt == S_IFREG) {
 		struct stream_filter *filter = get_stream_filter(ce->name, ce->sha1);
@@ -246,13 +249,16 @@ static int write_entry(struct cache_entry *ce,
 	}
 
 finish:
+	tr_write_entry += getnanotime() - start;
 	if (state->refresh_cache) {
+		start = getnanotime();
 		assert(state->istate);
 		if (!fstat_done)
 			lstat(ce->name, &st);
 		fill_stat_cache_info(ce, &st);
 		ce->ce_flags |= CE_UPDATE_IN_BASE;
 		state->istate->cache_changed |= CE_ENTRY_CHANGED;
+		tr_refresh_cache += getnanotime() - start;
 	}
 	return 0;
 }
@@ -287,6 +293,7 @@ int checkout_entry(struct cache_entry *ce,
 {
 	static struct strbuf path = STRBUF_INIT;
 	struct stat st;
+	uint64_t start = getnanotime();
 
 	if (topath)
 		return write_entry(ce, topath, state, 1);
@@ -325,8 +332,11 @@ int checkout_entry(struct cache_entry *ce,
 				     path.buf, strerror(errno));
 	} else if (state->not_new)
 		return 0;
+	tr_check_path += getnanotime() - start;
 
+	start = getnanotime();
 	create_directories(path.buf, path.len, state);
+	tr_create_dirs += getnanotime() - start;
 
 	if (!queue_checkout(parallel_checkout, state, ce))
 		/*
@@ -388,6 +398,7 @@ static int setup_workers(struct parallel_checkout *pc)
 	nr_per_worker = pc->nr_items / pc->nr_workers + 1;
 	from = 0;
 
+	unsetenv("GIT_TRACE_PERFORMANCE");
 	for (i = 0; i < pc->nr_workers; i++) {
 		struct checkout_worker *worker;
 		struct child_process *cp;
@@ -677,11 +688,13 @@ static int receive_from_worker(struct worker_process *wp, int revents, void *dat
 			if (pc->state.refresh_cache) {
 				struct stat st;
 				struct cache_entry *ce = worker->to_complete->ce;
+				uint64_t start = getnanotime();
 
 				lstat(ce->name, &st);
 				fill_stat_cache_info(ce, &st);
 				ce->ce_flags |= CE_UPDATE_IN_BASE;
 				pc->state.istate->cache_changed |= CE_ENTRY_CHANGED;
+				tr_refresh_cache += getnanotime() - start;
 			}
 			worker->to_complete = worker->to_complete->next;
 			progress_one(pc);
