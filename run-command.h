@@ -200,4 +200,62 @@ int run_processes_parallel(int n,
 			   task_finished_fn,
 			   void *pp_cb);
 
+struct poll_data;
+struct process_pool;
+struct worker_process;
+/*
+ * poll_fn return value is used to update pollfd->events. Returning 0
+ * means removing this file descriptor from the poll loop. Returning
+ * POLLHUP will abort the poll loop immediately. POLLHUP is always
+ * polled and poll_fn is supposed to handle it correctly.
+ */
+typedef int (*poll_fn)(struct worker_process *worker, int revents, void *data);
+
+struct worker_process {
+	struct child_process cp;
+
+	struct process_pool *pool;
+	struct worker_process *next;
+	struct worker_process *prev;
+};
+
+struct process_pool {
+	struct worker_process *worker;
+
+	int nfds, alloc;
+	struct pollfd *fds;
+	struct poll_data *poll_data;
+	int fds_needs_update;
+};
+
+/*
+ * Add worker stdin to the poll list. Add the worker to the pool if
+ * not in already.
+ */
+void poll_worker_input(struct process_pool *pool,
+		       struct worker_process *worker,
+		       poll_fn handler, void *data);
+/*
+ * Add worker stdout to the poll list. Add the worker to the pool if
+ * not in already.
+ */
+void poll_worker_output(struct process_pool *pool,
+			struct worker_process *worker,
+			poll_fn handler, void *data);
+/*
+ * Run poll() loop until no more poll list is empty, or poll() returns
+ * an error, or a poll handler decides to abort.
+ */
+int poll_process_pool(struct process_pool *pool);
+
+/*
+ * Add a process in the pool.
+ */
+void add_process_to_pool(struct process_pool *, struct worker_process *);
+/*
+ * Remove a worker and all associated poll descriptors from the pool.
+ */
+void remove_process_from_pool(struct process_pool *pool,
+			      struct worker_process *worker);
+
 #endif

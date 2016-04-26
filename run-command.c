@@ -1182,3 +1182,165 @@ int run_processes_parallel(int n,
 	pp_cleanup(&pp);
 	return 0;
 }
+
+struct poll_data {
+	struct worker_process *worker;
+	void *data;
+	poll_fn handler;
+	int deleted;
+};
+
+static int poll_fd_in_pool(struct process_pool *pool,
+			   struct worker_process *worker,
+			   poll_fn handler, void *data,
+			   int fd, int events)
+{
+	struct pollfd *pfd;
+	struct poll_data *poll_data;
+
+	add_process_to_pool(pool, worker);
+
+	/*
+	 * ALLOC_GROW() not used because we need to grow both fds[]
+	 * and poll_data[] in parallel
+	 */
+	if (pool->nfds + 1 > pool->alloc) {
+		if (alloc_nr(pool->alloc) < pool->nfds + 1)
+			pool->alloc = pool->nfds + 1;
+		else
+			pool->alloc = alloc_nr(pool->alloc);
+		REALLOC_ARRAY(pool->fds, pool->alloc);
+		REALLOC_ARRAY(pool->poll_data, pool->alloc);
+	}
+
+	pfd = pool->fds + pool->nfds;
+	poll_data = pool->poll_data + pool->nfds;
+	pool->nfds++;
+
+	memset(pfd, 0, sizeof(*pfd));
+	pfd->fd = fd;
+	pfd->events = events;
+	memset(poll_data, 0, sizeof(*poll_data));
+	poll_data->worker = worker;
+	poll_data->data = data;
+	poll_data->handler = handler;
+	return 0;
+}
+
+static void remove_pfd_from_pool(struct process_pool *pool, int i)
+{
+	int remaining = pool->nfds - (i + 1);
+	memmove(pool->fds + i, pool->fds + i + 1,
+		sizeof(*pool->fds) * remaining);
+	memmove(pool->poll_data + i, pool->poll_data + i + 1,
+		sizeof(*pool->poll_data) * remaining);
+	pool->nfds--;
+}
+
+void add_process_to_pool(struct process_pool *pool,
+			 struct worker_process *worker)
+{
+	if (worker->pool) {
+		if (worker->pool != pool)
+			die("BUG: worker belongs to another pool?");
+		return;
+	}
+
+	worker->next = pool->worker;
+	if (pool->worker)
+		pool->worker->prev = worker;
+	pool->worker = worker;
+	worker->pool = pool;
+}
+
+void remove_process_from_pool(struct process_pool *pool,
+			      struct worker_process *worker)
+{
+	int i;
+
+	if (pool->worker == worker)
+		pool->worker = worker->next;
+	if (worker->prev)
+		worker->prev->next = worker->next;
+	if (worker->next)
+		worker->next->prev = worker->prev;
+	worker->next = NULL;
+	worker->prev = NULL;
+
+	/*
+	 * We need to delay shrinking in poll_data[] and fds[] because
+	 * this function could be called inside a poll handler and the
+	 * main poll loop requires that nothing is deleted (adding and
+	 * reallocation are ok)
+	 */
+	for (i = 0; i < pool->nfds; i++) {
+		if (pool->poll_data[i].worker == worker) {
+			pool->poll_data[i].deleted = 1;
+			pool->fds_needs_update = 1;
+		}
+	}
+}
+
+void poll_worker_input(struct process_pool *pool,
+		       struct worker_process *worker,
+		       poll_fn handler, void *data)
+{
+	poll_fd_in_pool(pool, worker, handler, data,
+			worker->cp.in, POLLOUT);
+}
+
+void poll_worker_output(struct process_pool *pool,
+			struct worker_process *worker,
+			poll_fn handler, void *data)
+{
+	poll_fd_in_pool(pool, worker, handler, data,
+			worker->cp.out, POLLIN);
+}
+
+int poll_process_pool(struct process_pool *pool)
+{
+	int nr, events;
+
+	while (pool->nfds) {
+		int i = 0;
+		nr = poll(pool->fds, pool->nfds, -1);
+		if (nr == -1 && (errno == EINTR || errno == EAGAIN))
+			continue;
+		if (nr < 0)
+			return nr;
+
+		while (i < pool->nfds) {
+			struct pollfd   *pfd = pool->fds       + i;
+			struct poll_data *pd = pool->poll_data + i;
+
+			if (pd->deleted || !pfd->revents) {
+				i++;
+				continue;
+			}
+			events = pd->handler(pd->worker, pfd->revents, pd->data);
+			if (events & POLLHUP)
+				return -1;
+			if (!events) {
+				remove_pfd_from_pool(pool, i);
+				continue;
+			}
+			/*
+			 * get new pfd because fds[] could have been
+			 * realloc'd by pd->handler()
+			 */
+			pfd = pool->fds + i;
+			pfd->events = events;
+			i++;
+		}
+
+		if (pool->fds_needs_update) {
+			i = 0;
+			while (i < pool->nfds)
+				if (pool->poll_data[i].deleted)
+					remove_pfd_from_pool(pool, i);
+				else
+					i++;
+		}
+	}
+	return 0;
+}
