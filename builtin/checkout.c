@@ -1279,8 +1279,12 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		strbuf_release(&buf);
 	}
 
-	if (opts.patch_mode || opts.pathspec.nr)
-		return checkout_paths(&opts, new.name);
+	if (opts.patch_mode || opts.pathspec.nr) {
+		uint64_t start = getnanotime();
+		int ret = checkout_paths(&opts, new.name);
+		trace_performance_since(start, "checkout_paths");
+		return ret;
+	}
 	else
 		return checkout_branch(&opts, &new);
 }
