@@ -1657,8 +1657,8 @@ http.emptyAuth::
 http.extraHeader::
 	Pass an additional HTTP header when communicating with a server.  If
 	more than one such entry exists, all of them are added as extra headers.
-	This feature is useful e.g. to increase security, or to allow
-	time-limited access based on expiring tokens.
+	An entry with an empty value clears the http.extraHeader
+	variables seen so far.
 
 http.cookieFile::
 	File containing previously stored cookie lines which should be used

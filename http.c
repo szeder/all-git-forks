@@ -325,8 +325,15 @@ static int http_options(const char *var, const char *value, void *cb)
 	}
 
 	if (!strcmp("http.extraheader", var)) {
-		extra_http_headers =
-			curl_slist_append(extra_http_headers, value);
+		if (!value) {
+			return config_error_nonbool(var);
+		} else if (!*value) {
+			curl_slist_free_all(extra_http_headers);
+			extra_http_headers = NULL;
+		} else {
+			extra_http_headers =
+				curl_slist_append(extra_http_headers, value);
+		}
 		return 0;
 	}
 
@@ -1172,7 +1179,7 @@ int run_one_slot(struct active_request_slot *slot,
 	return handle_curl_result(results);
 }
 
-struct curl_slist *http_copy_default_headers()
+struct curl_slist *http_copy_default_headers(void)
 {
 	struct curl_slist *headers = NULL, *h;
 
