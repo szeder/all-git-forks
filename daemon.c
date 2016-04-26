@@ -60,6 +60,7 @@ struct hostinfo {
 	struct strbuf tcp_port;
 	unsigned int hostname_lookup_done:1;
 	unsigned int saw_extended_args:1;
+	const char *args;
 };
 
 static void lookup_hostname(struct hostinfo *hi);
@@ -269,7 +270,7 @@ static const char *path_ok(const char *directory, struct hostinfo *hi)
 	return NULL;		/* Fallthrough. Deny by default */
 }
 
-typedef int (*daemon_service_fn)(void);
+typedef int (*daemon_service_fn)(const char *);
 struct daemon_service {
 	const char *name;
 	const char *config_name;
@@ -409,7 +410,7 @@ static int run_service(const char *dir, struct daemon_service *service,
 	 */
 	signal(SIGTERM, SIG_IGN);
 
-	return service->fn();
+	return service->fn(hi->args);
 }
 
 static void copy_to_log(int fd)
@@ -451,27 +452,31 @@ static int run_service_command(const char **argv)
 	return finish_command(&cld);
 }
 
-static int upload_pack(void)
+static int upload_pack(const char *args)
 {
 	/* Timeout as string */
 	char timeout_buf[64];
-	const char *argv[] = { "upload-pack", "--strict", NULL, ".", NULL };
+	const char *argv[] = { "upload-pack", "--strict", NULL, ".", NULL, NULL };
 
 	argv[2] = timeout_buf;
+	argv[4] = args;
 
 	snprintf(timeout_buf, sizeof timeout_buf, "--timeout=%u", timeout);
 	return run_service_command(argv);
 }
 
-static int upload_archive(void)
+static int upload_archive(const char *args)
 {
 	static const char *argv[] = { "upload-archive", ".", NULL };
+	if (args)
+		die("invalid request");
 	return run_service_command(argv);
 }
 
-static int receive_pack(void)
+static int receive_pack(const char *args)
 {
-	static const char *argv[] = { "receive-pack", ".", NULL };
+	static const char *argv[] = { "receive-pack", ".", NULL, NULL };
+	argv[2] = args;
 	return run_service_command(argv);
 }
 
@@ -590,8 +595,13 @@ static void parse_host_arg(struct hostinfo *hi, char *extra_args, int buflen)
 			/* On to the next one */
 			extra_args = val + vallen;
 		}
-		if (extra_args < end && *extra_args)
-			die("Invalid request");
+	}
+
+	if (extra_args) {
+		for (val = extra_args; val < end; val++)
+			if (!*val)
+				*val = ' ';
+		hi->args = extra_args;
 	}
 }
 
@@ -659,6 +669,7 @@ static void hostinfo_init(struct hostinfo *hi)
 	strbuf_init(&hi->canon_hostname, 0);
 	strbuf_init(&hi->ip_address, 0);
 	strbuf_init(&hi->tcp_port, 0);
+	hi->args = NULL;
 }
 
 static void hostinfo_clear(struct hostinfo *hi)
