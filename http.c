@@ -114,6 +114,7 @@ static unsigned long http_auth_methods = CURLAUTH_ANY;
 
 static struct curl_slist *pragma_header;
 static struct curl_slist *no_pragma_header;
+static struct curl_slist *extra_http_headers;
 
 static struct active_request_slot *active_queue_head;
 
@@ -321,6 +322,12 @@ static int http_options(const char *var, const char *value, void *cb)
 		warning(_("Public key pinning not supported with cURL < 7.44.0"));
 		return 0;
 #endif
+	}
+
+	if (!strcmp("http.extraheader", var)) {
+		extra_http_headers =
+			curl_slist_append(extra_http_headers, value);
+		return 0;
 	}
 
 	/* Fall back on the default ones */
@@ -678,8 +685,10 @@ void http_init(struct remote *remote, const char *url, int proactive_auth)
 	if (remote)
 		var_override(&http_proxy_authmethod, remote->http_proxy_authmethod);
 
-	pragma_header = curl_slist_append(pragma_header, "Pragma: no-cache");
-	no_pragma_header = curl_slist_append(no_pragma_header, "Pragma:");
+	pragma_header = curl_slist_append(http_copy_default_headers(),
+		"Pragma: no-cache");
+	no_pragma_header = curl_slist_append(http_copy_default_headers(),
+		"Pragma:");
 
 #ifdef USE_CURL_MULTI
 	{
@@ -764,6 +773,9 @@ void http_cleanup(void)
 	curl_multi_cleanup(curlm);
 #endif
 	curl_global_cleanup();
+
+	curl_slist_free_all(extra_http_headers);
+	extra_http_headers = NULL;
 
 	curl_slist_free_all(pragma_header);
 	pragma_header = NULL;
@@ -1163,6 +1175,16 @@ int run_one_slot(struct active_request_slot *slot,
 	return handle_curl_result(results);
 }
 
+struct curl_slist *http_copy_default_headers()
+{
+	struct curl_slist *headers = NULL, *h;
+
+	for (h = extra_http_headers; h; h = h->next)
+		headers = curl_slist_append(headers, h->data);
+
+	return headers;
+}
+
 static CURLcode curlinfo_strbuf(CURL *curl, CURLINFO info, struct strbuf *buf)
 {
 	char *ptr;
@@ -1380,7 +1402,7 @@ static int http_request(const char *url,
 {
 	struct active_request_slot *slot;
 	struct slot_results results;
-	struct curl_slist *headers = NULL;
+	struct curl_slist *headers = http_copy_default_headers();
 	struct strbuf buf = STRBUF_INIT;
 	const char *accept_language;
 	int ret;
