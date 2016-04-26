@@ -18,6 +18,8 @@ struct checkout_worker {
 	struct checkout_item *to_complete;
 	struct checkout_item *to_send;
 	int nr_to_send;
+	struct strbuf sending;
+	int nr_sending, bytes_sent;
 };
 
 struct parallel_checkout {
@@ -386,6 +388,7 @@ static int setup_workers(struct parallel_checkout *pc)
 
 		worker = xmalloc(sizeof(*worker));
 		memset(worker, 0, sizeof(*worker));
+		strbuf_init(&worker->sending, 0);
 		cp = &worker->wp.cp;
 
 		to = from + nr_per_worker;
@@ -463,10 +466,11 @@ static int steal_from_other_workers(struct parallel_checkout *pc,
 			laziest = wp;
 		wp = (struct checkout_worker *)wp->wp.next;
 	}
-	if (laziest->nr_to_send < 4)
+	if (laziest->nr_to_send - laziest->nr_sending < 4)
 		return 0;
 
-	nr1 = laziest->nr_to_send / 2;
+	nr1 = (laziest->nr_to_send - laziest->nr_sending) / 2;
+	nr1 += laziest->nr_sending;
 	nr2 = laziest->nr_to_send - nr1;
 	item = laziest->to_send;
 	for (i = 0; i < nr1 - 1; i++)
@@ -490,12 +494,36 @@ static int send_to_worker(struct worker_process *wp, int revents, void *data)
 {
 	struct checkout_worker *worker = (struct checkout_worker *)wp;
 	struct parallel_checkout *pc = data;
-	int fd = worker->wp.cp.in;
+	int fd = worker->wp.cp.in, i;
+	struct checkout_item *to_send;
 
 	if (revents & (POLLHUP | POLLERR | POLLNVAL)) {
 		pc->errs++;
 		return 0;
 	}
+
+	if (worker->bytes_sent < worker->sending.len) {
+		const char *p = worker->sending.buf + worker->bytes_sent;
+		int sz = worker->sending.len - worker->bytes_sent;
+		int ret = xwrite(fd, p, sz);
+		if (ret <= 0) {
+			error("failed to write: %s", strerror(errno));
+			pc->errs++;
+			return 0;
+		}
+		worker->bytes_sent += ret;
+	}
+
+	if (worker->bytes_sent < worker->sending.len)
+		return POLLOUT;
+
+	while (worker->nr_sending) {
+		worker->to_send = worker->to_send->next;
+		worker->nr_to_send--;
+		worker->nr_sending--;
+	}
+	strbuf_reset(&worker->sending);
+	worker->bytes_sent = 0;
 
 	if (!worker->to_send && !steal_from_other_workers(pc, worker)) {
 		packet_flush(fd);
@@ -503,11 +531,15 @@ static int send_to_worker(struct worker_process *wp, int revents, void *data)
 		return 0;
 	}
 
-	packet_write(fd, "%s %s",
-		     sha1_to_hex(worker->to_send->ce->sha1),
-		     worker->to_send->ce->name);
-	worker->to_send = worker->to_send->next;
-	worker->nr_to_send--;
+	to_send = worker->to_send;
+	for (i = 0; to_send && i < 16; i++) {
+		packet_buf_write(&worker->sending, "%s %s",
+				 sha1_to_hex(to_send->ce->sha1),
+				 to_send->ce->name);
+		worker->nr_sending++;
+		to_send = to_send->next;
+	}
+
 	return POLLOUT;
 }
 
