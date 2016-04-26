@@ -17,6 +17,7 @@ struct checkout_worker {
 
 	struct checkout_item *to_complete;
 	struct checkout_item *to_send;
+	int nr_to_send;
 };
 
 struct parallel_checkout {
@@ -395,6 +396,7 @@ static int setup_workers(struct parallel_checkout *pc)
 			pc->items[from].next = item;
 			item = pc->items + from;
 			from++;
+			worker->nr_to_send++;
 		}
 		worker->to_send = item;
 		worker->to_complete = item;
@@ -444,6 +446,46 @@ static int finish_worker(struct parallel_checkout *pc,
 	return 0;
 }
 
+static int steal_from_other_workers(struct parallel_checkout *pc,
+				    struct checkout_worker *worker)
+{
+	struct checkout_worker *laziest, *wp;
+	struct checkout_item *item;
+	int i, nr1, nr2;
+
+	if (worker->to_send)
+		return 1;
+
+	assert(worker->nr_to_send == 0);
+	laziest = wp = (struct checkout_worker *)pc->pp.worker;
+	while (wp) {
+		if (wp->nr_to_send > laziest->nr_to_send)
+			laziest = wp;
+		wp = (struct checkout_worker *)wp->wp.next;
+	}
+	if (laziest->nr_to_send < 4)
+		return 0;
+
+	nr1 = laziest->nr_to_send / 2;
+	nr2 = laziest->nr_to_send - nr1;
+	item = laziest->to_send;
+	for (i = 0; i < nr1 - 1; i++)
+		item = item->next;
+	worker->to_send = item->next;
+	worker->nr_to_send = nr2;
+	if (worker->to_complete) {
+		struct checkout_item *tail = worker->to_complete;
+		while (tail->next)
+			tail = tail->next;
+		tail->next = worker->to_send;
+	} else
+		worker->to_complete = worker->to_send;
+	item->next = NULL;
+	laziest->nr_to_send = nr1;
+
+	return worker->to_send != NULL;
+}
+
 static int send_to_worker(struct worker_process *wp, int revents, void *data)
 {
 	struct checkout_worker *worker = (struct checkout_worker *)wp;
@@ -455,7 +497,7 @@ static int send_to_worker(struct worker_process *wp, int revents, void *data)
 		return 0;
 	}
 
-	if (!worker->to_send) {
+	if (!worker->to_send && !steal_from_other_workers(pc, worker)) {
 		packet_flush(fd);
 		close_and_clear(&worker->wp.cp.in);
 		return 0;
@@ -465,6 +507,7 @@ static int send_to_worker(struct worker_process *wp, int revents, void *data)
 		     sha1_to_hex(worker->to_send->ce->sha1),
 		     worker->to_send->ce->name);
 	worker->to_send = worker->to_send->next;
+	worker->nr_to_send--;
 	return POLLOUT;
 }
 
