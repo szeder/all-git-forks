@@ -1,6 +1,8 @@
 #ifndef __ENTRY_H__
 #define __ENTRY_H__
 
+struct progress;
+
 struct checkout {
 	struct index_state *istate;
 	const char *base_dir;
@@ -18,6 +20,7 @@ extern int checkout_entry(struct cache_entry *ce,
 
 int start_parallel_checkout(const struct checkout *state);
 int parallel_checkout_worker(void);
-int run_parallel_checkout(int nr_workers, int min_limit);
+int run_parallel_checkout(int nr_workers, int min_limit,
+			  int progress_count, struct progress *progress);
 
 #endif

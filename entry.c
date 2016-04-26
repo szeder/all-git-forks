@@ -6,6 +6,7 @@
 #include "run-command.h"
 #include "argv-array.h"
 #include "pkt-line.h"
+#include "progress.h"
 
 struct checkout_item {
 	struct cache_entry *ce;
@@ -29,6 +30,8 @@ struct parallel_checkout {
 	int nr_items, alloc_items;
 	int nr_workers;
 	int errs;
+	struct progress *progress;
+	int progress_count;
 };
 
 static struct parallel_checkout *parallel_checkout;
@@ -428,6 +431,13 @@ static int setup_workers(struct parallel_checkout *pc)
 	return 0;
 }
 
+static void progress_one(struct parallel_checkout *pc)
+{
+	if (!pc->progress)
+		return;
+	display_progress(pc->progress, ++pc->progress_count);
+}
+
 static void close_and_clear(int *fd)
 {
 	if (*fd != -1) {
@@ -669,6 +679,7 @@ static int receive_from_worker(struct worker_process *wp, int revents, void *dat
 				pc->state.istate->cache_changed |= CE_ENTRY_CHANGED;
 			}
 			worker->to_complete = worker->to_complete->next;
+			progress_one(pc);
 			val--;
 		}
 		if (val)
@@ -684,15 +695,18 @@ static int write_entries(struct parallel_checkout *pc)
 {
 	int i, ret = 0;
 
-	for (i = 0; i < pc->nr_items; i++)
+	for (i = 0; i < pc->nr_items; i++) {
 		ret += write_entry(pc->items[i].ce,
 				   pc->items[i].ce->name,
 				   &pc->state, 0);
+		progress_one(pc);
+	}
 
 	return ret;
 }
 
-int run_parallel_checkout(int nr_workers, int min_limit)
+int run_parallel_checkout(int nr_workers, int min_limit,
+			  int progress_count, struct progress *progress)
 {
 	struct parallel_checkout *pc = parallel_checkout;
 	struct worker_process *wp;
@@ -703,6 +717,9 @@ int run_parallel_checkout(int nr_workers, int min_limit)
 		parallel_checkout = NULL;
 		return 0;
 	}
+
+	pc->progress_count = progress_count;
+	pc->progress = progress;
 
 	if (pc->nr_items < min_limit) {
 		ret = write_entries(pc);
