@@ -22,5 +22,6 @@ int start_parallel_checkout(const struct checkout *state);
 int parallel_checkout_worker(void);
 int run_parallel_checkout(int nr_workers, int min_limit,
 			  int progress_count, struct progress *progress);
+int nr_checkouts_queued(void);
 
 #endif

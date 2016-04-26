@@ -366,6 +366,11 @@ static int queue_checkout(struct parallel_checkout *pc,
 	return 0;
 }
 
+int nr_checkouts_queued(void)
+{
+	return parallel_checkout ? parallel_checkout->nr_items : 0;
+}
+
 static int item_cmp(const void *a_, const void *b_)
 {
 	const struct checkout_item *a = a_;

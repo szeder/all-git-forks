@@ -221,20 +221,26 @@ static int check_updates(struct unpack_trees_options *o)
 	remove_marked_cache_entries(&o->result);
 	remove_scheduled_dirs();
 
+	if (o->update && !o->dry_run && o->num_threads)
+		start_parallel_checkout(&state);
+
 	for (i = 0; i < index->cache_nr; i++) {
 		struct cache_entry *ce = index->cache[i];
 
 		if (ce->ce_flags & CE_UPDATE) {
+			int nr_queued = nr_checkouts_queued();
 			if (ce->ce_flags & CE_WT_REMOVE)
 				die("BUG: both update and delete flags are set on %s",
 				    ce->name);
-			display_progress(progress, ++cnt);
 			ce->ce_flags &= ~CE_UPDATE;
 			if (o->update && !o->dry_run) {
 				errs |= checkout_entry(ce, &state, NULL);
 			}
+			if (nr_checkouts_queued() == nr_queued)
+				display_progress(progress, ++cnt);
 		}
 	}
+	errs |= run_parallel_checkout(o->num_threads, 0, cnt, progress);
 	stop_progress(&progress);
 	if (o->update)
 		git_attr_set_direction(GIT_ATTR_CHECKIN, NULL);
