@@ -370,6 +370,11 @@ static int checkout_paths(const struct checkout_opts *opts,
 			if (opts->writeout_stage)
 				errs |= checkout_stage(opts->writeout_stage, ce, pos, &state);
 			else if (opts->merge)
+				/*
+				 * XXX: in parallel mode, we may want
+				 * to let worker perform the merging
+				 * instead and send SHA-1 result back
+				 */
 				errs |= checkout_merged(pos, &state);
 			pos = skip_same_name(ce, pos) - 1;
 		}
