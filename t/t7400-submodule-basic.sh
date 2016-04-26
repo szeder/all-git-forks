@@ -1110,4 +1110,100 @@ test_expect_success 'submodule add records multiple labels' '
 	test_cmp expected actual
 '
 
+cat <<EOF > expected
+submodule
+EOF
+
+test_expect_success 'clone --init-submodule works' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label labelA file://"$pwd"/example2 submodule &&
+		git submodule add file://"$pwd"/example2 submodule1 &&
+		git commit -a -m "create repository with 2 submodules, one is in a group"
+	) &&
+	git clone --recurse-submodules --init-submodule \*labelA super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp actual expected
+'
+
+cat <<EOF > expect
+submoduleA
+submoduleC
+submoduleE
+EOF
+
+test_expect_success 'clone with multiple --init-submodule options' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label groupA file://"$pwd"/example2 submoduleA &&
+		git submodule add --label groupB file://"$pwd"/example2 submoduleB &&
+		git submodule add --label groupC file://"$pwd"/example2 submoduleC &&
+		git submodule add --label groupD --name submoduleE file://"$pwd"/example2 submoduleD &&
+		git submodule add --label groupE --name submoduleD file://"$pwd"/example2 submoduleE &&
+		git submodule add file://"$pwd"/example2 submodule1 &&
+		git commit -a -m "create repository with submodules groups"
+	) &&
+	git clone --recurse-submodules --init-submodule=\*groupA --init-submodule ./submoduleC --init-submodule :submoduleD super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp expect actual
+'
+
+cat <<EOF > expect
+submoduleA
+EOF
+
+cat <<EOF > expect2
+submoduleA
+submoduleC
+EOF
+
+test_expect_success 'clone and subsequent updates correctly auto-initialize submodules' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label LA file://"$pwd"/example2 submoduleA &&
+		git submodule add file://"$pwd"/example2 submoduleB &&
+		git commit -a -m "create repository with submodules groups"
+	) &&
+	git clone --recurse-submodules --init-submodule=\*LA super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp expect actual &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label LA file://"$pwd"/example2 submoduleC &&
+		git commit -a -m "add another labled submodule"
+	) &&
+	(
+		cd super_clone &&
+		# obtain the new superproject
+		git pull &&
+		# submoduleC should just appear as it has the label LA
+		# which was configured in git clone
+		git submodule update --init &&
+		git submodule status |cut -c1,42-52 | tr -d " " >../actual
+	) &&
+	test_cmp expect2 actual
+'
+
 test_done
