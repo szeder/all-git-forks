@@ -52,6 +52,7 @@ static struct string_list option_config;
 static struct string_list option_reference;
 static int option_dissociate;
 static int max_jobs = -1;
+static int num_threads;
 
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
@@ -100,6 +101,8 @@ static struct option builtin_clone_options[] = {
 			TRANSPORT_FAMILY_IPV4),
 	OPT_SET_INT('6', "ipv6", &family, N_("use IPv6 addresses only"),
 			TRANSPORT_FAMILY_IPV6),
+	OPT_INTEGER(0, "threads", &num_threads,
+		    N_("use <n> worker threads")),
 	OPT_END()
 };
 
@@ -718,6 +721,7 @@ static int checkout(void)
 	opts.verbose_update = (option_verbosity >= 0);
 	opts.src_index = &the_index;
 	opts.dst_index = &the_index;
+	opts.num_threads = num_threads;
 
 	tree = parse_tree_indirect(sha1);
 	parse_tree(tree);
