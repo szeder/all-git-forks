@@ -19,6 +19,29 @@ static struct shm shm_index;
 static struct shm shm_base_index;
 static int to_verify = 1;
 
+static void log_warning(const char *warning, ...)
+{
+	va_list ap;
+	FILE *fp;
+
+	fp = fopen(git_path("index-helper.log"), "a");
+	if (!fp)
+		/*
+		 * Probably nobody will see this, but it's the best
+		 * we can do.
+		 */
+		die("Failed to open log for warnings");
+
+	fprintf(fp, "%"PRIuMAX"\t", (uintmax_t)time(NULL));
+
+	va_start(ap, warning);
+	vfprintf(fp, warning, ap);
+	va_end(ap);
+
+	fputc('\n', fp);
+	fclose(fp);
+}
+
 static void release_index_shm(struct shm *is)
 {
 	if (!is->shm)
@@ -132,7 +155,7 @@ static int verify_shm(void)
 		ce = istate.cache[i];
 		if (ce->ce_namelen != base->ce_namelen ||
 		    strcmp(ce->name, base->name)) {
-			warning("mismatch at entry %d", i);
+			log_warning("mismatch at entry %d", i);
 			break;
 		}
 		ce_flags = ce->ce_flags;
@@ -146,7 +169,7 @@ static int verify_shm(void)
 		ce->ce_flags = ce_flags;
 		base->ce_flags = base_flags;
 		if (ret) {
-			warning("mismatch at entry %d", i);
+			log_warning("mismatch at entry %d", i);
 			break;
 		}
 	}
@@ -263,7 +286,7 @@ static void loop(int fd, int idle_in_seconds)
 				 * alive, nothing to do.
 				 */
 			} else {
-				warning("BUG: Bogus command %s", buf);
+				log_warning("BUG: Bogus command %s", buf);
 			}
 		} else {
 			/*
