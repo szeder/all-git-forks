@@ -888,6 +888,9 @@ void process_trailers(const char *file, int in_place, int trim_empty, struct str
 	git_config(git_trailer_default_config, NULL);
 	git_config(git_trailer_config, NULL);
 
+	/* for core.commentChar */
+	git_config(git_default_config, NULL);
+
 	lines = read_input_file(file);
 
 	if (in_place)
