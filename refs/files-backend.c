@@ -3144,6 +3144,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 			if (close_ref(update->lock)) {
 				strbuf_addf(err, "couldn't close '%s.lock'",
 					    update->refname);
+				ret = TRANSACTION_GENERIC_ERROR;
 				goto cleanup;
 			}
 		}
