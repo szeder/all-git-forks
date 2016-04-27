@@ -1070,7 +1070,7 @@ class GitLFS(LargeFileSystem):
         # earlier versions.
         # c.f. https://github.com/github/git-lfs/commit/da2935d9a739592bc775c98d8ef4df9c72ea3b43
         if pointerFile.startswith('Git LFS pointer for'):
-            re.sub(r'Git LFS pointer for.*\n\n', '', pointerFile)
+            pointerFile = re.sub(r'Git LFS pointer for.*\n\n', '', pointerFile)
 
         oid = re.search(r'^oid \w+:(\w+)', pointerFile, re.MULTILINE).group(1)
         localLargeFile = os.path.join(
