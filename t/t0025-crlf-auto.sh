@@ -39,7 +39,7 @@ test_expect_success 'default settings cause no changes' '
 	test -z "$LFonlydiff" -a -z "$CRLFonlydiff" -a -z "$LFwithNULdiff"
 '
 
-test_expect_success 'crlf=true causes a CRLF file to be normalized' '
+test_expect_success 'crlf=true causes a CRLF file not to be normalized' '
 
 	# Backwards compatibility check
 	rm -f .gitattributes tmp LFonly CRLFonly LFwithNUL &&
@@ -49,10 +49,10 @@ test_expect_success 'crlf=true causes a CRLF file to be normalized' '
 	# Note, "normalized" means that git will normalize it if added
 	has_cr CRLFonly &&
 	CRLFonlydiff=$(git diff CRLFonly) &&
-	test -n "$CRLFonlydiff"
+	test -z "$CRLFonlydiff"
 '
 
-test_expect_success 'text=true causes a CRLF file to be normalized' '
+test_expect_success 'text=true causes a CRLF file not to be normalized' '
 
 	rm -f .gitattributes tmp LFonly CRLFonly LFwithNUL &&
 	echo "CRLFonly text" > .gitattributes &&
@@ -61,7 +61,7 @@ test_expect_success 'text=true causes a CRLF file to be normalized' '
 	# Note, "normalized" means that git will normalize it if added
 	has_cr CRLFonly &&
 	CRLFonlydiff=$(git diff CRLFonly) &&
-	test -n "$CRLFonlydiff"
+	test -z "$CRLFonlydiff"
 '
 
 test_expect_success 'eol=crlf gives a normalized file CRLFs with autocrlf=false' '
@@ -114,7 +114,7 @@ test_expect_success 'autocrlf=true does not normalize CRLF files' '
 	test -z "$LFonlydiff" -a -z "$CRLFonlydiff" -a -z "$LFwithNULdiff"
 '
 
-test_expect_success 'text=auto, autocrlf=true _does_ normalize CRLF files' '
+test_expect_success 'text=auto, autocrlf=true does not normalize CRLF files' '
 
 	rm -f .gitattributes tmp LFonly CRLFonly LFwithNUL &&
 	git config core.autocrlf true &&
@@ -126,7 +126,7 @@ test_expect_success 'text=auto, autocrlf=true _does_ normalize CRLF files' '
 	LFonlydiff=$(git diff LFonly) &&
 	CRLFonlydiff=$(git diff CRLFonly) &&
 	LFwithNULdiff=$(git diff LFwithNUL) &&
-	test -z "$LFonlydiff" -a -n "$CRLFonlydiff" -a -z "$LFwithNULdiff"
+	test -z "$LFonlydiff" -a -z "$CRLFonlydiff" -a -z "$LFwithNULdiff"
 '
 
 test_expect_success 'text=auto, autocrlf=true does not normalize binary files' '
