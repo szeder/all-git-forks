@@ -592,7 +592,7 @@ static char *get_port(char *host)
  * The caller must free() the returned strings.
  */
 static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
-				       char **ret_path)
+				       char **ret_path, int relative_ssh)
 {
 	char *url;
 	char *host, *path;
@@ -642,7 +642,10 @@ static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
 	end = path; /* Need to \0 terminate host here */
 	if (separator == ':')
 		path++; /* path starts after ':' */
-	if (protocol == PROTO_GIT || protocol == PROTO_SSH) {
+	if (protocol == PROTO_SSH && relative_ssh) {
+		if (path[0] == separator)
+			path++;
+	} else if (protocol == PROTO_GIT || protocol == PROTO_SSH) {
 		if (path[1] == '~')
 			path++;
 	}
@@ -712,7 +715,8 @@ struct child_process *git_connect(int fd[2], const char *url,
 	 */
 	signal(SIGCHLD, SIG_DFL);
 
-	protocol = parse_connect_url(url, &hostandport, &path);
+	protocol = parse_connect_url(url, &hostandport, &path,
+	                             flags & CONNECT_RELATIVE_SSH);
 	if ((flags & CONNECT_DIAG_URL) && (protocol != PROTO_SSH)) {
 		printf("Diag: url=%s\n", url ? url : "NULL");
 		printf("Diag: protocol=%s\n", prot_name(protocol));
