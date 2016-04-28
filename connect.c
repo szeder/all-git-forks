@@ -658,6 +658,25 @@ static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
 
 static struct child_process no_fork = CHILD_PROCESS_INIT;
 
+static void prepare_connect_command(struct strbuf *cmd, const char *prog,
+                                    const char *path, int quote)
+{
+	const char *found = strstr(prog, "%s");
+	if (found)
+		strbuf_add(cmd, prog, found - prog);
+	else {
+		strbuf_addstr(cmd, prog);
+		strbuf_addch(cmd, ' ');
+	}
+	if (quote)
+		sq_quote_buf(cmd, path);
+	else
+		strbuf_addstr(cmd, path);
+
+	if (found)
+		strbuf_addstr(cmd, found + 2);
+}
+
 /*
  * This returns a dummy child_process if the transport protocol does not
  * need fork(2), or a struct child_process object if it does.  Once done,
@@ -717,18 +736,18 @@ struct child_process *git_connect(int fd[2], const char *url,
 		 * Note: Do not add any other headers here!  Doing so
 		 * will cause older git-daemon servers to crash.
 		 */
+		prepare_connect_command(&cmd, prog, path, 0);
 		packet_write(fd[1],
-			     "%s %s%chost=%s%c",
-			     prog, path, 0,
+			     "%s%chost=%s%c",
+			     cmd.buf, 0,
 			     target_host, 0);
+		strbuf_release(&cmd);
 		free(target_host);
 	} else {
 		conn = xmalloc(sizeof(*conn));
 		child_process_init(conn);
 
-		strbuf_addstr(&cmd, prog);
-		strbuf_addch(&cmd, ' ');
-		sq_quote_buf(&cmd, path);
+		prepare_connect_command(&cmd, prog, path, 1);
 
 		/* remove repo-local variables from the environment */
 		conn->env = local_repo_env;
