@@ -15,9 +15,11 @@
 
 /*
  * Used as a flag in ref_update::flags when a loose ref is being
- * pruned.
+ * pruned.  As this must always be done with REF_NODEREF, we make
+ * the public version REF_ISPRUNING to contain REF_NODEREF.
  */
-#define REF_ISPRUNING	0x04
+#define REF_ISPRUNING_	0x04
+#define REF_ISPRUNING	(REF_ISPRUNING_ | REF_NODEREF)
 
 /*
  * Used as a flag in ref_update::flags when the reference should be

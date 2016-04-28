@@ -2324,7 +2324,7 @@ static void prune_ref(struct ref_to_prune *r)
 	transaction = ref_transaction_begin(&err);
 	if (!transaction ||
 	    ref_transaction_delete(transaction, r->name, r->sha1,
-				   REF_ISPRUNING | REF_NODEREF, NULL, &err) ||
+				   REF_ISPRUNING, NULL, &err) ||
 	    ref_transaction_commit(transaction, &err)) {
 		ref_transaction_free(transaction);
 		error("%s", err.buf);
@@ -3677,7 +3677,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 				goto cleanup;
 			}
 
-			if (!(update->flags & REF_ISPRUNING))
+			if (!(update->flags & REF_ISPRUNING_))
 				string_list_append(&refs_to_delete,
 						   update->lock->ref_name);
 		}
