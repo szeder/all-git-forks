@@ -809,6 +809,8 @@ static int run_rebase(const unsigned char *curr_head,
 		argv_array_push(&args, "--no-autostash");
 	else if (opt_autostash == 1)
 		argv_array_push(&args, "--autostash");
+	if (opt_verify_signatures && strcmp(opt_verify_signatures, "--verify-signatures") == 0)
+		die(_("The --verify-signatures option does not work for --rebase."));
 
 	argv_array_push(&args, "--onto");
 	argv_array_push(&args, sha1_to_hex(merge_head));
