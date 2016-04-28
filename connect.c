@@ -764,6 +764,8 @@ struct child_process *git_connect(int fd[2], const char *url,
 		conn->env = local_repo_env;
 		conn->use_shell = 1;
 		conn->in = conn->out = -1;
+		if (flags & CONNECT_WANT_STDERR)
+			conn->err = -1;
 		if (protocol == PROTO_SSH) {
 			const char *ssh;
 			int putty = 0, tortoiseplink = 0;
