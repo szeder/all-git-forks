@@ -668,6 +668,17 @@ static void prepare_connect_command(struct strbuf *cmd, const char *prog,
 		strbuf_addstr(cmd, prog);
 		strbuf_addch(cmd, ' ');
 	}
+	if (quote) {
+		const char *p;
+		for (p = path; *p; p++) {
+			if (!isalnum(*p) && *p != '@' && *p != '%' &&
+			    *p != '_' && *p != '+' && *p != '=' && *p != ':' &&
+			    *p != ',' && *p != '.' && *p != '/' && *p != '-')
+				break;
+		}
+		if (!*p)
+			quote = 0;
+	}
 	if (quote)
 		sq_quote_buf(cmd, path);
 	else
