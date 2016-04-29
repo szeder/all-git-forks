@@ -168,6 +168,16 @@ static int set_git_option(struct git_transport_options *opts,
 				die("transport: invalid depth option '%s'", value);
 		}
 		return 0;
+	} else if (!strcmp(name, TRANS_OPT_TRANSPORTVERSION)) {
+		if (!value)
+			opts->transport_version = DEFAULT_TRANSPORT_VERSION;
+		else {
+			char *end;
+			opts->transport_version = strtol(value, &end, 0);
+			if (*end)
+				die("transport: invalid transport version option '%s'", value);
+		}
+		return 0;
 	}
 	return 1;
 }
@@ -220,6 +230,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 
 	memset(&args, 0, sizeof(args));
 	args.uploadpack = data->options.uploadpack;
+	args.transport_version = data->options.transport_version;
 	args.keep_pack = data->options.keep;
 	args.lock_pack = 1;
 	args.use_thin_pack = data->options.thin;
@@ -711,6 +722,8 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->connect = connect_git;
 		ret->disconnect = disconnect_git;
 		ret->smart_options = &(data->options);
+		ret->smart_options->transport_version =
+			DEFAULT_TRANSPORT_VERSION;
 
 		data->conn = NULL;
 		data->got_remote_heads = 0;
@@ -723,12 +736,15 @@ struct transport *transport_get(struct remote *remote, const char *url)
 
 	if (ret->smart_options) {
 		ret->smart_options->thin = 1;
-		ret->smart_options->uploadpack = "git-upload-pack";
+		ret->smart_options->uploadpack = DEFAULT_TRANSPORT_UPLOAD_PACK;
 		if (remote->uploadpack)
 			ret->smart_options->uploadpack = remote->uploadpack;
-		ret->smart_options->receivepack = "git-receive-pack";
+		ret->smart_options->receivepack = DEFAULT_TRANSPORT_RECEIVE_PACK;
 		if (remote->receivepack)
 			ret->smart_options->receivepack = remote->receivepack;
+		if (remote->transport_version)
+			ret->smart_options->transport_version =
+				remote->transport_version;
 	}
 
 	return ret;
