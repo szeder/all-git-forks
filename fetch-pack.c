@@ -889,6 +889,20 @@ static void get_selected_capabilities_list(struct string_list *list,
 	}
 }
 
+void negotiate_capabilities(int fd[2], struct fetch_pack_args *args)
+{
+	struct string_list list = STRING_LIST_INIT_NODUP;
+
+	get_remote_capabilities(fd[0], NULL, 0);
+
+	select_capabilities(args);
+	get_selected_capabilities_list(&list, args);
+
+	request_capabilities(fd[1], &list);
+
+	string_list_clear(&list, 1);
+}
+
 static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 				 int fd[2],
 				 const struct ref *orig_ref,
