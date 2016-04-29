@@ -16,6 +16,23 @@
 #include "string-list.h"
 #include "sha1-array.h"
 #include "sigchain.h"
+#include "transport.h"
+
+const char *all_capabilities[] = {
+	"multi_ack",
+	"thin-pack",
+	"side-band",
+	"side-band-64k",
+	"ofs-delta",
+	"shallow",
+	"no-progress",
+	"include-tag",
+	"multi_ack_detailed",
+	"allow-tip-sha1-in-want",
+	"allow-reachable-sha1-in-want",
+	"no-done",
+	NULL
+};
 
 static void set_upstreams(struct transport *transport, struct ref *refs,
 	int pretend)

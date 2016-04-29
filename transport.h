@@ -235,4 +235,7 @@ void transport_print_push_status(const char *dest, struct ref *refs,
 
 typedef void alternate_ref_fn(const struct ref *, void *);
 extern void for_each_alternate_ref(alternate_ref_fn, void *);
+
+extern const char *all_capabilities[];
+
 #endif
