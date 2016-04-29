@@ -517,6 +517,7 @@ test_expect_success 'test --all, --depth, and explicit tag' '
 '
 
 test_expect_success 'shallow fetch with tags does not break the repository' '
+	test_when_finished "rm -rf repo1" &&
 	mkdir repo1 &&
 	(
 		cd repo1 &&
@@ -543,6 +544,26 @@ test_expect_success 'fetch-pack can fetch a raw sha1' '
 		git config uploadpack.allowtipsha1inwant true
 	) &&
 	git fetch-pack hidden $(git -C hidden rev-parse refs/hidden/one)
+'
+
+test_expect_success 'fetch-pack with protocol version 2' '
+	test_when_finished "rm -rf repo1" &&
+	mkdir repo1 &&
+	(
+		cd repo1 &&
+		git init &&
+		test_commit 1 &&
+		test_commit 2 &&
+		test_commit 3 &&
+		echo "$(git rev-parse master) refs/heads/master" >expected &&
+		mkdir repo2 &&
+		(
+			cd repo2 &&
+			git init &&
+			git fetch-pack --transport-version=2 --upload-pack=git-upload-pack-2 ../.git refs/heads/master >../actual
+		) &&
+		test_cmp expected actual
+	)
 '
 
 check_prot_path () {
