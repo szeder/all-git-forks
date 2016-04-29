@@ -916,7 +916,16 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	sort_ref_list(&ref, ref_compare_name);
 	qsort(sought, nr_sought, sizeof(*sought), cmp_ref_by_name);
 
-	select_capabilities(args);
+	switch (args->transport_version) {
+	case 2:
+		/* capability selection already happend */
+		break;
+	case 1:
+		select_capabilities(args);
+		break;
+	default:
+		die ("transport version %d not supported", args->transport_version);
+	}
 
 	if (everything_local(args, &ref, sought, nr_sought)) {
 		packet_flush(fd[1]);
