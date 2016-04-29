@@ -4,6 +4,7 @@
 #include "remote.h"
 #include "connect.h"
 #include "sha1-array.h"
+#include "transport.h"
 
 static const char fetch_pack_usage[] =
 "git fetch-pack [--all] [--stdin] [--quiet | -q] [--keep | -k] [--thin] "
@@ -56,6 +57,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 
 	memset(&args, 0, sizeof(args));
 	args.uploadpack = "git-upload-pack";
+	args.transport_version = DEFAULT_TRANSPORT_VERSION;
 
 	for (i = 1; i < argc && *argv[i] == '-'; i++) {
 		const char *arg = argv[i];
@@ -130,6 +132,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.update_shallow = 1;
 			continue;
 		}
+		if (starts_with(arg, "--transport-version=")) {
+			args.transport_version = strtol(arg + 20, NULL, 0);
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
 
@@ -178,7 +184,19 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		if (!conn)
 			return args.diag_url ? 0 : 1;
 	}
-	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
+
+	switch (args.transport_version) {
+	case 2: /* first talk about capabilities, then get the refs */
+		negotiate_capabilities(fd, &args);
+		/* fall through */
+	case 1:
+		get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
+		break;
+	default:
+		die("BUG: Transport version %d not supported",
+			args.transport_version);
+		break;
+	}
 
 	ref = fetch_pack(&args, fd, conn, ref, dest, sought, nr_sought,
 			 &shallow, pack_lockfile_ptr);
