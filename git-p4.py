@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 #
 # git-p4.py -- A tool for bidirectional operation between a Perforce depot and git.
 #
@@ -1956,6 +1956,9 @@ class P4Submit(Command, P4UserMap):
             if new_client_dir:
                 # old one was destroyed, and maybe nobody told p4
                 p4_sync("...", "-f")
+
+                # sometimes p4 will unlink the directory and recreate it
+                chdir(self.clientPath, is_client_path=True)
             else:
                 p4_sync("...")
         self.check()
