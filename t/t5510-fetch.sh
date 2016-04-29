@@ -687,4 +687,9 @@ test_expect_success 'fetching with auto-gc does not lock up' '
 	)
 '
 
+test_expect_success 'fetching with transport protocol 2 works' '
+	test_pause
+	git fetch --transport-protocol=2
+'
+
 test_done
