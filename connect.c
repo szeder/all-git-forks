@@ -231,13 +231,6 @@ int server_supports(const char *feature)
 	return !!server_feature_value(feature, NULL);
 }
 
-enum protocol {
-	PROTO_LOCAL = 1,
-	PROTO_FILE,
-	PROTO_SSH,
-	PROTO_GIT
-};
-
 int url_is_local_not_ssh(const char *url)
 {
 	const char *colon = strchr(url, ':');
@@ -591,8 +584,8 @@ static char *get_port(char *host)
  * Extract protocol and relevant parts from the specified connection URL.
  * The caller must free() the returned strings.
  */
-static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
-				       char **ret_path)
+enum protocol parse_connect_url(const char *url_orig, char **ret_host,
+				char **ret_path)
 {
 	char *url;
 	char *host, *path;

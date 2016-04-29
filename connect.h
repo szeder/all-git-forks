@@ -1,6 +1,15 @@
 #ifndef CONNECT_H
 #define CONNECT_H
 
+enum protocol {
+	PROTO_LOCAL = 1,
+	PROTO_FILE,
+	PROTO_SSH,
+	PROTO_GIT
+};
+enum protocol parse_connect_url(const char *url_orig, char **ret_host,
+				char **ret_path);
+
 #define CONNECT_VERBOSE       (1u << 0)
 #define CONNECT_DIAG_URL      (1u << 1)
 #define CONNECT_IPV4          (1u << 2)
