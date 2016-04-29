@@ -539,4 +539,10 @@ test_expect_success 'git pull --rebase against local branch' '
 	test file = "$(cat file2)"
 '
 
+test_expect_success 'git pull with protocol version 2' '
+	test_pause &&
+	git pull --transport-version=2
+
+'
+
 test_done
