@@ -2546,21 +2546,27 @@ class P4Sync(Command, P4UserMap):
                 )
 
         if err:
-            f = None
+            err_message = 'Error from p4 print: {}'.format(err)
             if self.stream_have_file_info:
-                if "depotFile" in self.stream_file:
-                    f = self.stream_file["depotFile"]
-            # force a failure in fast-import, else an empty
-            # commit will be made
-            self.gitStream.write("\n")
-            self.gitStream.write("die-now\n")
-            self.gitStream.close()
-            # ignore errors, but make sure it exits first
-            self.importProcess.wait()
-            if f:
-                die("Error from p4 print for %s: %s" % (f, err))
+                if 'depotFile' in self.stream_file:
+                    err_message = 'Error from p4 print for {}: {}'.format(
+                        self.stream_file['depotFile'], err
+                    )
+
+            if (gitConfigBool('git-p4.ignoreMissingFiles') and
+                re.match('^RCS checkout .+ failed!\nRCS no revision after .+!$', err)
+            ):
+                sys.stdout.write(err_message)
+                sys.stdout.flush()
             else:
-                die("Error from p4 print: %s" % err)
+                # force a failure in fast-import, else an empty
+                # commit will be made
+                self.gitStream.write("\n")
+                self.gitStream.write("die-now\n")
+                self.gitStream.close()
+                # ignore errors, but make sure it exits first
+                self.importProcess.wait()
+                die(err_message)
 
         if marshalled.has_key('depotFile') and self.stream_have_file_info:
             # start of a new file - output the old one first
