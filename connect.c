@@ -10,6 +10,7 @@
 #include "string-list.h"
 #include "sha1-array.h"
 #include "transport.h"
+#include "version.h"
 
 struct string_list server_capabilities = STRING_LIST_INIT_DUP;
 static const char *parse_feature_value(struct string_list *, const char *, int *);
@@ -104,6 +105,64 @@ static void annotate_refs_with_symref_info(struct ref *ref)
 		ref->symref = xstrdup((char *)item->util);
 	}
 	string_list_clear(&symref, 0);
+}
+
+const char *known_capabilities[] = {
+	"multi_ack",
+	"thin-pack",
+	"side-band",
+	"side-band-64k",
+	"ofs-delta",
+	"shallow",
+	"no-progress",
+	"include-tag",
+	"multi_ack_detailed",
+	"allow-tip-sha1-in-want",
+	"allow-reachable-sha1-in-want",
+	"no-done",
+};
+
+static int keep_capability(char *line)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(known_capabilities); i++)
+		if (starts_with(line, known_capabilities[i]))
+			return 1;
+	return 0;
+}
+
+void get_remote_capabilities(int in, char *src_buf, size_t src_len)
+{
+	for (;;) {
+		int len;
+		char *line = packet_buffer;
+
+		len = packet_read(in, &src_buf, &src_len,
+				  packet_buffer, sizeof(packet_buffer),
+				  PACKET_READ_GENTLE_ON_EOF |
+				  PACKET_READ_CHOMP_NEWLINE);
+		if (len < 0)
+			die_initial_contact(0);
+
+		if (!len)
+			break;
+
+		/*
+		 * We need to ignore and drop unknown capabilities as they
+		 * may be huge.
+		 */
+		if (keep_capability(line))
+			string_list_append(&server_capabilities, line);
+	}
+}
+
+
+void request_capabilities(int out, struct string_list *list)
+{
+	struct string_list_item *item;
+	for_each_string_list_item(item, list)
+		packet_write(out, "%s\n", item->string);
+	packet_flush(out);
 }
 
 /*
