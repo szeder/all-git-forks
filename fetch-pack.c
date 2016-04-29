@@ -257,6 +257,9 @@ static int next_flush(struct fetch_pack_args *args, int count)
 	return count;
 }
 
+static void get_selected_capabilities_list(struct string_list *list,
+					   struct fetch_pack_args *args);
+
 static int find_common(struct fetch_pack_args *args,
 		       int fd[2], unsigned char *result_sha1,
 		       struct ref *refs)
@@ -302,18 +305,16 @@ static int find_common(struct fetch_pack_args *args,
 
 		remote_hex = sha1_to_hex(remote);
 		if (!fetching) {
+			struct string_list list = STRING_LIST_INIT_DUP;
 			struct strbuf c = STRBUF_INIT;
-			if (multi_ack == 2)     strbuf_addstr(&c, " multi_ack_detailed");
-			if (multi_ack == 1)     strbuf_addstr(&c, " multi_ack");
-			if (no_done)            strbuf_addstr(&c, " no-done");
-			if (use_sideband == 2)  strbuf_addstr(&c, " side-band-64k");
-			if (use_sideband == 1)  strbuf_addstr(&c, " side-band");
-			if (args->use_thin_pack) strbuf_addstr(&c, " thin-pack");
-			if (args->no_progress)   strbuf_addstr(&c, " no-progress");
-			if (args->include_tag)   strbuf_addstr(&c, " include-tag");
-			if (prefer_ofs_delta)   strbuf_addstr(&c, " ofs-delta");
-			if (agent_supported)    strbuf_addf(&c, " agent=%s",
-							    git_user_agent_sanitized());
+			struct string_list_item *item;
+			get_selected_capabilities_list(&list, args);
+			for_each_string_list_item(item, &list) {
+				strbuf_addstr(&c, " ");
+				strbuf_addstr(&c, item->string);
+			}
+			string_list_clear(&list, 0);
+
 			packet_buf_write(&req_buf, "want %s%s\n", remote_hex, c.buf);
 			strbuf_release(&c);
 		} else
@@ -856,6 +857,35 @@ static void select_capabilities(struct fetch_pack_args *args)
 		if (args->verbose && agent_len)
 			fprintf(stderr, "Server version is %.*s\n",
 				agent_len, agent_feature);
+	}
+}
+
+static void get_selected_capabilities_list(struct string_list *list,
+					   struct fetch_pack_args *args)
+{
+	if (multi_ack == 2)
+		string_list_append(list, "multi_ack_detailed");
+	if (multi_ack == 1)
+		string_list_append(list, "multi_ack");
+	if (no_done)
+		string_list_append(list, "no-done");
+	if (use_sideband == 2)
+		string_list_append(list, "side-band-64k");
+	if (use_sideband == 1)
+		string_list_append(list, "side-band");
+	if (args->use_thin_pack)
+		string_list_append(list, "thin-pack");
+	if (args->no_progress)
+		string_list_append(list, "no-progress");
+	if (args->include_tag)
+		string_list_append(list, "include-tag");
+	if (prefer_ofs_delta)
+		string_list_append(list, "ofs-delta");
+	if (agent_supported) {
+		struct strbuf buf = STRBUF_INIT;
+		strbuf_addf(&buf, "agent=%s", git_user_agent_sanitized());
+		string_list_append(list, buf.buf);
+		strbuf_release(&buf);
 	}
 }
 
