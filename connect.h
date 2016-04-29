@@ -10,6 +10,8 @@ enum protocol {
 enum protocol parse_connect_url(const char *url_orig, char **ret_host,
 				char **ret_path);
 
+int prepare_ssh_command(struct argv_array *cmd, char *hostandport, int flags);
+
 #define CONNECT_VERBOSE       (1u << 0)
 #define CONNECT_DIAG_URL      (1u << 1)
 #define CONNECT_IPV4          (1u << 2)
