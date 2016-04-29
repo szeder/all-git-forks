@@ -2513,7 +2513,7 @@ class P4Sync(Command, P4UserMap):
             if self.verbose:
                 print 'Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, relPath)
 
-        if self.largeFileSystem:
+        if self.largeFileSystem and sum(len(d) for d in contents) > 0:
             (git_mode, contents) = self.largeFileSystem.processContent(git_mode, relPath, contents)
 
         self.writeToGitStream(git_mode, relPath, contents)
