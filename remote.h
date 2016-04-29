@@ -153,6 +153,9 @@ extern struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 				     struct sha1_array *extra_have,
 				     struct sha1_array *shallow);
 
+extern void get_remote_capabilities(int in_fd, char *src_buf, size_t src_len);
+extern void request_capabilities(int out_fd, struct string_list*);
+
 int resolve_remote_symref(struct ref *ref, struct ref *list);
 int ref_newer(const struct object_id *new_oid, const struct object_id *old_oid);
 
