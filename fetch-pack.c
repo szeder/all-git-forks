@@ -796,20 +796,10 @@ static int cmp_ref_by_name(const void *a_, const void *b_)
 	return strcmp(a->name, b->name);
 }
 
-static struct ref *do_fetch_pack(struct fetch_pack_args *args,
-				 int fd[2],
-				 const struct ref *orig_ref,
-				 struct ref **sought, int nr_sought,
-				 struct shallow_info *si,
-				 char **pack_lockfile)
+static void select_capabilities(struct fetch_pack_args *args)
 {
-	struct ref *ref = copy_ref_list(orig_ref);
-	unsigned char sha1[20];
 	const char *agent_feature;
 	int agent_len;
-
-	sort_ref_list(&ref, ref_compare_name);
-	qsort(sought, nr_sought, sizeof(*sought), cmp_ref_by_name);
 
 	if ((args->depth > 0 || is_repository_shallow()) && !server_supports("shallow"))
 		die("Server does not support shallow clients");
@@ -867,6 +857,22 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 			fprintf(stderr, "Server version is %.*s\n",
 				agent_len, agent_feature);
 	}
+}
+
+static struct ref *do_fetch_pack(struct fetch_pack_args *args,
+				 int fd[2],
+				 const struct ref *orig_ref,
+				 struct ref **sought, int nr_sought,
+				 struct shallow_info *si,
+				 char **pack_lockfile)
+{
+	struct ref *ref = copy_ref_list(orig_ref);
+	unsigned char sha1[20];
+
+	sort_ref_list(&ref, ref_compare_name);
+	qsort(sought, nr_sought, sizeof(*sought), cmp_ref_by_name);
+
+	select_capabilities(args);
 
 	if (everything_local(args, &ref, sought, nr_sought)) {
 		packet_flush(fd[1]);
