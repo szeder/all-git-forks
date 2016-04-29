@@ -1660,6 +1660,9 @@ http.cookieFile::
 	in the Git http session, if they match the server. The file format
 	of the file to read cookies from should be plain HTTP headers or
 	the Netscape/Mozilla cookie file format (see linkgit:curl[1]).
+	The value of `http.cookieFile` is subject to tilde expansion: `~/` is
+	expanded to the value of `$HOME`, and `~user/` to the specified user's
+	home directory.
 	NOTE that the file specified with http.cookieFile is used only as
 	input unless http.saveCookies is set.
 
