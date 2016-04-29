@@ -13,6 +13,7 @@ struct git_transport_options {
 	unsigned self_contained_and_connected : 1;
 	unsigned update_shallow : 1;
 	int depth;
+	int transport_version;
 	const char *uploadpack;
 	const char *receivepack;
 	struct push_cas_option *cas;
@@ -187,6 +188,13 @@ int transport_restrict_protocols(void);
 
 /* Send push certificates */
 #define TRANS_OPT_PUSH_CERT "pushcert"
+
+/* Use a new version of the git protocol */
+#define TRANS_OPT_TRANSPORTVERSION "transportversion"
+
+#define DEFAULT_TRANSPORT_VERSION 1
+#define DEFAULT_TRANSPORT_UPLOAD_PACK "git-upload-pack"
+#define DEFAULT_TRANSPORT_RECEIVE_PACK "git-receive-pack"
 
 /**
  * Returns 0 if the option was used, non-zero otherwise. Prints a
