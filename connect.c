@@ -676,10 +676,20 @@ struct child_process *git_connect(int fd[2], const char *url,
 	signal(SIGCHLD, SIG_DFL);
 
 	protocol = parse_connect_url(url, &hostandport, &path);
-	if ((flags & CONNECT_DIAG_URL) && (protocol != PROTO_SSH)) {
+	if (flags & CONNECT_DIAG_URL) {
 		printf("Diag: url=%s\n", url ? url : "NULL");
 		printf("Diag: protocol=%s\n", prot_name(protocol));
-		printf("Diag: hostandport=%s\n", hostandport ? hostandport : "NULL");
+		if (protocol == PROTO_SSH) {
+			char *ssh_host = hostandport;
+			const char *port = NULL;
+			get_host_and_port(&ssh_host, &port);
+			if (!port)
+				port = get_port(ssh_host);
+			printf("Diag: userandhost=%s\n", ssh_host ? ssh_host : "NULL");
+			printf("Diag: port=%s\n", port ? port : "NONE");
+		} else {
+			printf("Diag: hostandport=%s\n", hostandport ? hostandport : "NULL");
+		}
 		printf("Diag: path=%s\n", path ? path : "NULL");
 		conn = NULL;
 	} else if (protocol == PROTO_GIT) {
@@ -737,19 +747,6 @@ struct child_process *git_connect(int fd[2], const char *url,
 
 			if (!port)
 				port = get_port(ssh_host);
-
-			if (flags & CONNECT_DIAG_URL) {
-				printf("Diag: url=%s\n", url ? url : "NULL");
-				printf("Diag: protocol=%s\n", prot_name(protocol));
-				printf("Diag: userandhost=%s\n", ssh_host ? ssh_host : "NULL");
-				printf("Diag: port=%s\n", port ? port : "NONE");
-				printf("Diag: path=%s\n", path ? path : "NULL");
-
-				free(hostandport);
-				free(path);
-				free(conn);
-				return NULL;
-			}
 
 			ssh = getenv("GIT_SSH_COMMAND");
 			if (!ssh) {
