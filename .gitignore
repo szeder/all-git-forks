@@ -179,6 +179,7 @@
 /git-update-server-info
 /git-upload-archive
 /git-upload-pack
+/git-upload-pack-2
 /git-upload-stats
 /git-var
 /git-verify-commit

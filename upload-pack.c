@@ -53,6 +53,7 @@ static int keepalive = 5;
 static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
+static int transport_version = 1;
 
 static void reset_timeout(void)
 {
@@ -807,6 +808,43 @@ static void upload_pack(void)
 	}
 }
 
+static void send_capabilities_version_2(void)
+{
+	int i;
+	for (i = 0; all_capabilities[i]; i++) {
+		const char *cap = all_capabilities[i];
+		if (!strcmp(cap, "allow-tip-sha1-in-want")
+		    && !(allow_unadvertised_object_request & ALLOW_TIP_SHA1))
+			continue;
+		if (!strcmp(cap, "no-done") && !stateless_rpc)
+			continue;
+		packet_write(1, "%s\n", cap);
+	}
+
+	packet_write(1, "agent=%s\n", git_user_agent_sanitized());
+	packet_flush(1);
+}
+
+static void receive_capabilities_version_2(void)
+{
+	char *line = packet_read_line(0, NULL);
+	while (line) {
+		parse_features(line);
+		line = packet_read_line(0, NULL);
+	}
+}
+
+static void upload_pack_version_2(void)
+{
+	send_capabilities_version_2();
+	receive_capabilities_version_2();
+
+	/* The rest of the protocol stays the same, capabilities advertising
+	   is disabled though. */
+	advertise_capabilities = 0;
+	upload_pack();
+}
+
 static int upload_pack_config(const char *var, const char *value, void *unused)
 {
 	if (!strcmp("uploadpack.allowtipsha1inwant", var)) {
@@ -835,7 +873,6 @@ int main(int argc, char **argv)
 
 	git_setup_gettext();
 
-	packet_trace_identity("upload-pack");
 	git_extract_argv0_path(argv[0]);
 	check_replace_refs = 0;
 
@@ -861,6 +898,10 @@ int main(int argc, char **argv)
 			daemon_mode = 1;
 			continue;
 		}
+		if (starts_with(arg, "--transport-version=")) {
+			transport_version = atoi(arg+20);
+			continue;
+		}
 		if (!strcmp(arg, "--")) {
 			i++;
 			break;
@@ -870,6 +911,11 @@ int main(int argc, char **argv)
 	if (i != argc-1)
 		usage(upload_pack_usage);
 
+	if (transport_version == 2)
+		packet_trace_identity("upload-pack-2");
+	else
+		packet_trace_identity("upload-pack");
+
 	setup_path();
 
 	dir = argv[i];
@@ -878,6 +924,11 @@ int main(int argc, char **argv)
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(upload_pack_config, NULL);
-	upload_pack();
+
+	if (transport_version == 2)
+		upload_pack_version_2();
+	else
+		upload_pack();
+
 	return 0;
 }
