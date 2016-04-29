@@ -1498,16 +1498,21 @@ static struct command *read_head_info(struct sha1_array *shallow)
 
 		linelen = strlen(line);
 		if (linelen < len) {
-			const char *feature_list = line + linelen + 1;
-			if (parse_feature_request(feature_list, "report-status"))
+			struct string_list feature_list = STRING_LIST_INIT_DUP;
+			string_list_split(&feature_list,
+					  line + linelen + 1,
+					  ' ', -1);
+			if (parse_feature_request(&feature_list, "report-status"))
 				report_status = 1;
-			if (parse_feature_request(feature_list, "side-band-64k"))
+			if (parse_feature_request(&feature_list, "side-band-64k"))
 				use_sideband = LARGE_PACKET_MAX;
-			if (parse_feature_request(feature_list, "quiet"))
+			if (parse_feature_request(&feature_list, "quiet"))
 				quiet = 1;
 			if (advertise_atomic_push
-			    && parse_feature_request(feature_list, "atomic"))
+			    && parse_feature_request(&feature_list, "atomic"))
 				use_atomic = 1;
+
+			string_list_clear(&feature_list, 1);
 		}
 
 		if (!strcmp(line, "push-cert")) {

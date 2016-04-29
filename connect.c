@@ -11,8 +11,8 @@
 #include "sha1-array.h"
 #include "transport.h"
 
-static char *server_capabilities;
-static const char *parse_feature_value(const char *, const char *, int *);
+struct string_list server_capabilities = STRING_LIST_INIT_DUP;
+static const char *parse_feature_value(struct string_list *, const char *, int *);
 
 static int check_ref(const char *name, unsigned int flags)
 {
@@ -81,18 +81,15 @@ reject:
 
 static void annotate_refs_with_symref_info(struct ref *ref)
 {
+	struct string_list_item *item;
 	struct string_list symref = STRING_LIST_INIT_DUP;
-	const char *feature_list = server_capabilities;
 
-	while (feature_list) {
-		int len;
+	for_each_string_list_item(item, &server_capabilities) {
 		const char *val;
 
-		val = parse_feature_value(feature_list, "symref", &len);
-		if (!val)
-			break;
-		parse_one_symref_info(&symref, val, len);
-		feature_list = val + 1;
+		if (skip_prefix(item->string, "symref=", &val)) {
+			parse_one_symref_info(&symref, val, strlen(val));
+		}
 	}
 	string_list_sort(&symref);
 
@@ -155,9 +152,12 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 		name = buffer + GIT_SHA1_HEXSZ + 1;
 
 		name_len = strlen(name);
+
 		if (len != name_len + GIT_SHA1_HEXSZ + 1) {
-			free(server_capabilities);
-			server_capabilities = xstrdup(name + name_len + 1);
+			string_list_clear(&server_capabilities, 1);
+			string_list_split(&server_capabilities,
+					  name + name_len + 1,
+					  ' ', -1);
 		}
 
 		if (extra_have && !strcmp(name, ".have")) {
@@ -179,51 +179,40 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 	return list;
 }
 
-static const char *parse_feature_value(const char *feature_list, const char *feature, int *lenp)
+static const char *parse_feature_value(struct string_list *feature_list, const char *feature, int *lenp)
 {
-	int len;
+	const char *value;
+	struct string_list_item *item;
 
-	if (!feature_list)
-		return NULL;
+	for_each_string_list_item(item, feature_list) {
+		if (!skip_prefix(item->string, feature, &value))
+			continue;
 
-	len = strlen(feature);
-	while (*feature_list) {
-		const char *found = strstr(feature_list, feature);
-		if (!found)
-			return NULL;
-		if (feature_list == found || isspace(found[-1])) {
-			const char *value = found + len;
-			/* feature with no value (e.g., "thin-pack") */
-			if (!*value || isspace(*value)) {
-				if (lenp)
-					*lenp = 0;
-				return value;
-			}
-			/* feature with a value (e.g., "agent=git/1.2.3") */
-			else if (*value == '=') {
-				value++;
-				if (lenp)
-					*lenp = strcspn(value, " \t\n");
-				return value;
-			}
-			/*
-			 * otherwise we matched a substring of another feature;
-			 * keep looking
-			 */
+		/* feature with no value (e.g., "thin-pack") */
+		if (!*value) {
+			if (lenp)
+				*lenp = 0;
+			return value;
 		}
-		feature_list = found + 1;
+		/* feature with a value (e.g., "agent=git/1.2.3") */
+		else if (*value == '=') {
+			value++;
+			if (lenp)
+				*lenp = strlen(value);
+			return value;
+		}
 	}
 	return NULL;
 }
 
-int parse_feature_request(const char *feature_list, const char *feature)
+int parse_feature_request(struct string_list *feature_list, const char *feature)
 {
 	return !!parse_feature_value(feature_list, feature, NULL);
 }
 
 const char *server_feature_value(const char *feature, int *len)
 {
-	return parse_feature_value(server_capabilities, feature, len);
+	return parse_feature_value(&server_capabilities, feature, len);
 }
 
 int server_supports(const char *feature)
