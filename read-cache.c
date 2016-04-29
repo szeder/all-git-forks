@@ -156,16 +156,77 @@ void fill_stat_cache_info(struct cache_entry *ce, struct stat *st)
 		ce_mark_uptodate(ce);
 }
 
+/*
+ * Compare the data in buf with the data in the file pointed by fd and
+ * return 0 if they are identical, and non-zero if they differ.
+ */
+static int compare_with_fd(const char *input, ssize_t len, int fd)
+{
+	for (;;) {
+		char buf[1024 * 16];
+		ssize_t chunk_len, read_len;
+
+		chunk_len = sizeof(buf) < len ? sizeof(buf) : len;
+		read_len = xread(fd, buf, chunk_len ? chunk_len : 1);
+
+		if (!read_len)
+			/* EOF on the working tree file */
+			return !len ? 0 : -1;
+
+		if (!len)
+			/* we expected there is nothing left */
+			return -1;
+
+		if (memcmp(buf, input, read_len))
+			return -1;
+		input += read_len;
+		len -= read_len;
+	}
+}
+
 static int ce_compare_data(const struct cache_entry *ce, struct stat *st)
 {
 	int match = -1;
 	int fd = open(ce->name, O_RDONLY);
 
+	/*
+	 * Would another "git add" on the path change what is in the
+	 * index for the path?
+	 */
 	if (fd >= 0) {
 		unsigned char sha1[20];
 		if (!index_fd(sha1, fd, st, OBJ_BLOB, ce->name, 0))
 			match = hashcmp(sha1, ce->sha1);
 		/* index_fd() closed the file descriptor already */
+	}
+	if (!match)
+		return match;
+
+	/*
+	 * Would another "git checkout -f" out of the index change
+	 * what is in the working tree file?
+	 */
+	fd = open(ce->name, O_RDONLY);
+	if (fd >= 0) {
+		enum object_type type;
+		unsigned long size_long;
+		void *data = read_sha1_file(ce->sha1, &type, &size_long);
+
+		if (type == OBJ_BLOB) {
+			struct strbuf worktree = STRBUF_INIT;
+			if (convert_to_working_tree(ce->name, data,
+						    size_long,
+						    &worktree)) {
+				size_t size;
+				free(data);
+				data = strbuf_detach(&worktree, &size);
+				size_long = size;
+			}
+			if (!compare_with_fd(data, size_long, fd))
+				match = 0;
+		}
+		free(data);
+		close(fd);
 	}
 	return match;
 }
