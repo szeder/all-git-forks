@@ -18,6 +18,7 @@ addons:
   apt:
     packages:
     - language-pack-is
+    - apache2
     - git-svn
 
 env:
