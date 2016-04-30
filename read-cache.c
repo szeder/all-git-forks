@@ -2468,7 +2468,7 @@ static int do_write_index(struct index_state *istate, int newfd,
 	int entries = istate->cache_nr;
 	struct stat st;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
-	int watchman = 0;
+	int watchman = 0, untracked = 0;
 	uint64_t start = getnanotime();
 
 	for (i = removed = extended = 0; i < entries; i++) {
@@ -2497,6 +2497,11 @@ static int do_write_index(struct index_state *istate, int newfd,
 	    watchman &&
 	    !the_index.last_update)
 		the_index.last_update = xstrdup("");
+
+	if (!git_config_get_bool("index.adduntrackedcache", &untracked) &&
+	    untracked &&
+	    !istate->untracked)
+	    add_untracked_cache(&the_index);
 
 	hdr_version = istate->version;
 
