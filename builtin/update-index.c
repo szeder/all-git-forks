@@ -251,11 +251,11 @@ static int remove_one_path(const char *path)
  *    succeeds.
  *  - permission error. That's never ok.
  */
-static int process_lstat_error(const char *path, int err)
+static int process_lstat_error(const char *path)
 {
-	if (err == ENOENT || err == ENOTDIR)
+	if (errno == ENOENT || errno == ENOTDIR)
 		return remove_one_path(path);
-	return error("lstat(\"%s\"): %s", path, strerror(errno));
+	return error_errno("lstat(\"%s\")", path);
 }
 
 static int add_one_path(const struct cache_entry *old, const char *path, int len, struct stat *st)
@@ -382,7 +382,7 @@ static int process_path(const char *path)
 	 * what to do about the pathname!
 	 */
 	if (lstat(path, &st) < 0)
-		return process_lstat_error(path, errno);
+		return process_lstat_error(path);
 
 	if (S_ISDIR(st.st_mode))
 		return process_directory(path, len, &st);
