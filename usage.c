@@ -148,6 +148,16 @@ void NORETURN die_errno(const char *fmt, ...)
 	va_end(params);
 }
 
+int error_errno(const char *fmt, ...)
+{
+	va_list params;
+
+	va_start(params, fmt);
+	error_routine(fmt_with_err(fmt), params);
+	va_end(params);
+	return -1;
+}
+
 #undef error
 int error(const char *err, ...)
 {
@@ -157,6 +167,15 @@ int error(const char *err, ...)
 	error_routine(err, params);
 	va_end(params);
 	return -1;
+}
+
+void warning_errno(const char *warn, ...)
+{
+	va_list params;
+
+	va_start(params, warn);
+	warn_routine(fmt_with_err(warn), params);
+	va_end(params);
 }
 
 void warning(const char *warn, ...)
