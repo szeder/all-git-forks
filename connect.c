@@ -343,18 +343,16 @@ static const char *ai_name(const struct addrinfo *ai)
 /*
  * Returns a connected socket() fd, or else die()s.
  */
-static int git_tcp_connect_sock(char *host, int flags)
+static int git_tcp_connect_sock(const char *host, const char *port, int flags)
 {
 	struct strbuf error_message = STRBUF_INIT;
 	int sockfd = -1;
-	const char *port = STR(DEFAULT_GIT_PORT);
 	struct addrinfo hints, *ai0, *ai;
 	int gai;
 	int cnt = 0;
 
-	get_host_and_port(&host, &port);
-	if (!*port)
-		port = "<none>";
+	if (!port)
+		port = STR(DEFAULT_GIT_PORT);
 
 	memset(&hints, 0, sizeof(hints));
 	if (flags & CONNECT_IPV4)
@@ -411,11 +409,10 @@ static int git_tcp_connect_sock(char *host, int flags)
 /*
  * Returns a connected socket() fd, or else die()s.
  */
-static int git_tcp_connect_sock(char *host, int flags)
+static int git_tcp_connect_sock(const char *host, const char *port, int flags)
 {
 	struct strbuf error_message = STRBUF_INIT;
 	int sockfd = -1;
-	const char *port = STR(DEFAULT_GIT_PORT);
 	char *ep;
 	struct hostent *he;
 	struct sockaddr_in sa;
@@ -423,7 +420,8 @@ static int git_tcp_connect_sock(char *host, int flags)
 	unsigned int nport;
 	int cnt;
 
-	get_host_and_port(&host, &port);
+	if (!port)
+		port = STR(DEFAULT_GIT_PORT);
 
 	if (flags & CONNECT_VERBOSE)
 		fprintf(stderr, "Looking up %s ... ", host);
@@ -482,9 +480,10 @@ static int git_tcp_connect_sock(char *host, int flags)
 #endif /* NO_IPV6 */
 
 
-static void git_tcp_connect(int fd[2], char *host, int flags)
+static void git_tcp_connect(int fd[2], const char *host, const char *port,
+			    int flags)
 {
-	int sockfd = git_tcp_connect_sock(host, flags);
+	int sockfd = git_tcp_connect_sock(host, port, flags);
 
 	fd[0] = sockfd;
 	fd[1] = dup(sockfd);
@@ -550,18 +549,16 @@ static int git_use_proxy(const char *host)
 	return (git_proxy_command && *git_proxy_command);
 }
 
-static struct child_process *git_proxy_connect(int fd[2], char *host)
+static struct child_process *git_proxy_connect(int fd[2], const char *host,
+					       const char *port)
 {
-	const char *port = STR(DEFAULT_GIT_PORT);
 	struct child_process *proxy;
-
-	get_host_and_port(&host, &port);
 
 	proxy = xmalloc(sizeof(*proxy));
 	child_process_init(proxy);
 	argv_array_push(&proxy->args, git_proxy_command);
 	argv_array_push(&proxy->args, host);
-	argv_array_push(&proxy->args, port);
+	argv_array_push(&proxy->args, port ? port : STR(DEFAULT_GIT_PORT));
 	proxy->in = -1;
 	proxy->out = -1;
 	if (start_command(proxy))
@@ -696,9 +693,9 @@ struct child_process *git_connect(int fd[2], const char *url,
 		 * cannot connect.
 		 */
 		if (git_use_proxy(host))
-			conn = git_proxy_connect(fd, hostandport);
+			conn = git_proxy_connect(fd, host, port);
 		else
-			git_tcp_connect(fd, hostandport, flags);
+			git_tcp_connect(fd, host, port, flags);
 		/*
 		 * Separate original protocol components prog and path
 		 * from extended host header with a NUL byte.
