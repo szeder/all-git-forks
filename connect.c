@@ -683,9 +683,9 @@ struct child_process *git_connect(int fd[2], const char *url,
 		 */
 		char *target_host = getenv("GIT_OVERRIDE_VIRTUAL_HOST");
 		if (target_host)
-			target_host = xstrdup(target_host);
+			target_host = target_host;
 		else
-			target_host = xstrdup(hostandport);
+			target_host = hostandport;
 
 		transport_check_allowed("git");
 
@@ -707,7 +707,6 @@ struct child_process *git_connect(int fd[2], const char *url,
 			     "%s %s%chost=%s%c",
 			     prog, path, 0,
 			     target_host, 0);
-		free(target_host);
 	} else {
 		conn = xmalloc(sizeof(*conn));
 		child_process_init(conn);
