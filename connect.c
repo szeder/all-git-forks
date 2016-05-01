@@ -571,22 +571,6 @@ static struct child_process *git_proxy_connect(int fd[2], char *host)
 	return proxy;
 }
 
-static char *get_port(char *host)
-{
-	char *end;
-	char *p = strchr(host, ':');
-
-	if (p) {
-		long port = strtol(p + 1, &end, 10);
-		if (end != p + 1 && *end == '\0' && 0 <= port && port < 65536) {
-			*p = '\0';
-			return p+1;
-		}
-	}
-
-	return NULL;
-}
-
 /*
  * Extract protocol and relevant parts from the specified connection URL.
  * The caller must free() the returned strings.
@@ -741,9 +725,6 @@ struct child_process *git_connect(int fd[2], const char *url,
 			const char *port = NULL;
 			transport_check_allowed("ssh");
 			get_host_and_port(&ssh_host, &port);
-
-			if (!port)
-				port = get_port(ssh_host);
 
 			if (flags & CONNECT_DIAG_URL) {
 				printf("Diag: url=%s\n", url ? url : "NULL");
