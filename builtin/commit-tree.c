@@ -10,9 +10,10 @@
 #include "utf8.h"
 #include "gpg-interface.h"
 
-static const char commit_tree_usage[] = "git commit-tree [(-p <sha1>)...] [-S[<keyid>]] [-m <message>] [-F <file>] <sha1>";
+static const char commit_tree_usage[] = "git commit-tree [(-p <sha1>)...] [-S[<keyid>]] [--use-commit-gpgsign-config] [-m <message>] [-F <file>] <sha1>";
 
 static const char *sign_commit;
+static const char *config_sign_commit;
 
 static void new_parent(struct commit *parent, struct commit_list **parents_p)
 {
@@ -34,7 +35,7 @@ static int commit_tree_config(const char *var, const char *value, void *cb)
 	if (status)
 		return status;
 	if (!strcmp(var, "commit.gpgsign")) {
-		sign_commit = git_config_bool(var, value) ? "" : NULL;
+		config_sign_commit = git_config_bool(var, value) ? "" : NULL;
 		return 0;
 	}
 	return git_default_config(var, value, cb);
@@ -42,7 +43,7 @@ static int commit_tree_config(const char *var, const char *value, void *cb)
 
 int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 {
-	int i, got_tree = 0;
+	int i, got_tree = 0, use_commit_gpgsign_config = 0;
 	struct commit_list *parents = NULL;
 	unsigned char tree_sha1[20];
 	unsigned char commit_sha1[20];
@@ -84,6 +85,11 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 			continue;
 		}
 
+		if (!strcmp(arg, "--use-commit-gpgsign-config")) {
+			use_commit_gpgsign_config = 1;
+			continue;
+		}
+
 		if (!strcmp(arg, "-F")) {
 			int fd;
 
@@ -120,6 +126,9 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 		if (strbuf_read(&buffer, 0, 0) < 0)
 			die_errno("git commit-tree: failed to read");
 	}
+
+	if (!sign_commit && use_commit_gpgsign_config)
+		sign_commit = config_sign_commit;
 
 	if (commit_tree(buffer.buf, buffer.len, tree_sha1, parents,
 			commit_sha1, NULL, sign_commit)) {
