@@ -11,6 +11,7 @@
 #include "gettext.h"
 #include "transport.h"
 
+static struct trace_key trace_curl = TRACE_KEY_INIT(CURL);
 #if LIBCURL_VERSION_NUM >= 0x070a08
 long int git_curl_ipresolve = CURL_IPRESOLVE_WHATEVER;
 #else
@@ -464,6 +465,116 @@ static void set_curl_keepalive(CURL *c)
 }
 #endif
 
+static void curl_dump(const char *text, unsigned char *ptr, size_t size, int nopriv)
+{
+	size_t i;
+	struct strbuf out = STRBUF_INIT;
+	unsigned int width = 80;
+
+	strbuf_addf(&out, "%s, %10.10ld bytes (0x%8.8lx)\n",
+		text, (long)size, (long)size);
+	trace_strbuf(&trace_curl, &out);
+
+	for (i = 0; i < size; i += width) {
+		size_t w;
+		size_t prefix_len;
+		const char *header;
+
+		strbuf_reset(&out);
+		strbuf_addf(&out, "%s: ", text);
+		prefix_len = out.len;
+		for (w = 0; (w < width) && (i + w < size); w++) {
+			if ((i + w + 1 < size) && ptr[i + w] == '\r'
+			    && ptr[i + w + 1] == '\n') {
+				i += (w + 2 - width);
+				break;
+			}
+			strbuf_addch(&out, (ptr[i + w] >= 0x20)
+				&& (ptr[i + w] < 0x80) ? ptr[i + w] : '.');
+			if ((i + w + 2 < size)
+			    && ptr[i + w + 1] == '\r'
+			    && ptr[i + w + 2] == '\n') {
+				i += (w + 3 - width);
+				break;
+			}
+		}
+
+		/*
+		 * if we are called with nopriv substitute a dummy value
+		 * in the Authorization or Proxy-Authorization http header if
+		 * present.
+		 */
+		if (nopriv &&
+			(skip_prefix(out.buf + prefix_len, "Authorization:", &header)
+			|| skip_prefix(out.buf + prefix_len, "Proxy-Authorization:", &header))) {
+			/* The first token is the type, which is OK to log */
+			while (isspace(*header))
+				header++;
+			/* Everything else is opaque and possibly sensitive */
+			strbuf_setlen(&out, header - out.buf);
+			strbuf_addstr(&out, " <redacted>");
+		}
+		strbuf_addch(&out, '\n');
+		trace_strbuf(&trace_curl, &out);
+	}
+	strbuf_release(&out);
+}
+
+void setup_curl_trace(CURL *handle)
+{
+	if (!trace_want(&trace_curl)) return;
+	curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(handle, CURLOPT_DEBUGFUNCTION, curl_trace);
+	curl_easy_setopt(handle, CURLOPT_DEBUGDATA, NULL);
+}
+
+int curl_trace(CURL *handle, curl_infotype type, char *data, size_t size, void *userp)
+{
+	const char *text;
+	(void)handle;		/* prevent compiler unused parameter warning if checked */
+	(void)userp;		/* prevent compiler unused parameter warning if checked */
+	int nopriv = 0;		/*
+				 * default: there are no sensitive data
+				 * in the trace to be skipped
+				 */
+
+	switch (type) {
+	case CURLINFO_TEXT:
+		trace_printf_key(&trace_curl, "== Info: %s", data);
+	default:		/* we ignore unknown types by default */
+		return 0;
+
+	case CURLINFO_HEADER_OUT:
+		text = "=> Send header";
+		nopriv = 1;
+		break;
+	case CURLINFO_DATA_OUT:
+		text = "=> Send data";
+		nopriv = 0;
+		break;
+	case CURLINFO_SSL_DATA_OUT:
+		text = "=> Send SSL data";
+		nopriv = 0;
+		break;
+	case CURLINFO_HEADER_IN:
+		text = "<= Recv header";
+		nopriv = 0;
+		break;
+	case CURLINFO_DATA_IN:
+		text = "<= Recv data";
+		nopriv = 0;
+		break;
+	case CURLINFO_SSL_DATA_IN:
+		text = "<= Recv SSL data";
+		nopriv = 0;
+		break;
+	}
+
+	curl_dump(text, (unsigned char *)data, size, nopriv);
+	return 0;
+}
+
+
 static CURL *get_curl_handle(void)
 {
 	CURL *result = curl_easy_init();
@@ -562,9 +673,9 @@ static CURL *get_curl_handle(void)
 		warning("protocol restrictions not applied to curl redirects because\n"
 			"your curl version is too old (>= 7.19.4)");
 #endif
-
 	if (getenv("GIT_CURL_VERBOSE"))
-		curl_easy_setopt(result, CURLOPT_VERBOSE, 1);
+		curl_easy_setopt(result, CURLOPT_VERBOSE, 1L);
+	setup_curl_trace(result);
 
 	curl_easy_setopt(result, CURLOPT_USERAGENT,
 		user_agent ? user_agent : git_user_agent());
