@@ -522,7 +522,7 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		 * As we already shifted the group forward as far as possible
 		 * in the earlier loop, we need to shift it back only if at all.
 		 */
-		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
+		if (blank_lines) {
 			while (ixs > 0 &&
 			       !is_blank_line(recs, ix - 1, flags) &&
 			       recs_match(recs, ixs - 1, ix - 1, flags)) {
