@@ -2554,7 +2554,12 @@ class P4Sync(Command, P4UserMap):
                     )
 
             if (gitConfigBool('git-p4.ignoreMissingFiles') and
-                re.match('^RCS checkout .+ failed!\nRCS no revision after .+!$', err)
+                re.search(
+                    r'^Librarian checkout .+ failed\.\n' +
+                     'RCS checkout .+ failed!\n' +
+                     'RCS no revision after .+!$',
+                    err, re.MULTILINE
+                )
             ):
                 sys.stdout.write(err_message)
                 sys.stdout.flush()
