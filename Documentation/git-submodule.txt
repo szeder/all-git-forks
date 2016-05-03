@@ -59,6 +59,22 @@ instead of treating the other project as a submodule. Directories
 that come from both projects can be cloned and checked out as a whole
 if you choose to go that route.
 
+Submodule operations can be configured using the following mechanisms
+(from highest to lowest precedence):
+
+ * the command line for those commands that support taking submodule specs.
+
+ * the configuration file `$GIT_DIR/config`.
+
+ * the configuration file `config` found in the `refs/submodule/config` branch.
+   This can be used to overwrite the upstream configuration in the `.gitmodules`
+   file without changing the history of the project.
+   Useful options here are overwriting the base, where relative URLs apply to,
+   when mirroring only parts of the larger collection of submodules.
+
+ * the `.gitmodules` file inside the repository. A project usually includes this
+   file to suggest defaults for the upstream collection of repositories.
+
 COMMANDS
 --------
 add::
