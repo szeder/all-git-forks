@@ -531,6 +531,7 @@ cmd_init()
 cmd_deinit()
 {
 	# parse $args after "submodule ... deinit".
+	deinit_all=
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -539,6 +540,9 @@ cmd_deinit()
 			;;
 		-q|--quiet)
 			GIT_QUIET=1
+			;;
+		-a|--all)
+			deinit_all=t
 			;;
 		--)
 			shift
@@ -554,9 +558,13 @@ cmd_deinit()
 		shift
 	done
 
-	if test $# = 0
+	if test -n "$deinit_all" && test "$#" -ne 0
 	then
-		die "$(eval_gettext "Use '.' if you really want to deinitialize all submodules")"
+		die "$(eval_gettext "'--all' is incompatible with pathspec arguments")"
+	fi
+	if test $# = 0 && test -z "$deinit_all"
+	then
+		die "$(eval_gettext "Use '--all' if you really want to deinitialize all submodules")"
 	fi
 
 	git submodule--helper list --prefix "$wt_prefix" "$@" |
