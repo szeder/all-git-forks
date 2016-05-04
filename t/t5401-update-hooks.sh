@@ -147,10 +147,7 @@ test_expect_success 'send-pack stderr contains hook messages' '
 '
 
 test_expect_success 'receive-pack fails if ref is locked' '
-	(
-		cd victim.git &&
-		test_config receive.retryreflocktimeout 1
-	) &&
+	test_config -C victim.git receive.retryreflocktimeout 1 &&
 	test_commit x &&
 	touch victim.git/update-lock-972c6d2dc6dd5efdad1377c0d224e03eb8f276f7.lock &&
 	test_must_fail git send-pack --force ./victim.git \
