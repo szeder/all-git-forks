@@ -7,12 +7,14 @@
 static const char * const git_bisect_helper_usage[] = {
 	N_("git bisect--helper --next-all [--no-checkout]"),
 	N_("git bisect--helper --check-term-format <term> <orig_term>"),
+	N_("git bisect--helper --bisect-log"),
 	NULL
 };
 
 enum subcommand {
 	NEXT_ALL = 1,
-	CHECK_TERM_FMT
+	CHECK_TERM_FMT,
+	BISECT_LOG
 };
 
 /*
@@ -61,6 +63,19 @@ static int check_term_format(const char *term, const char *orig_term)
 	return 0;
 }
 
+int bisect_log(void)
+{
+	struct strbuf buf = STRBUF_INIT;
+
+	if (strbuf_read_file(&buf, ".git/BISECT_LOG", 256) < 0)
+		return error(_("We are not bisecting."));
+
+	printf("%s", buf.buf);
+	strbuf_release(&buf);
+
+	return 0;
+}
+
 int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 {
 	int subcommand = 0;
@@ -70,6 +85,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 			 N_("perform 'git bisect next'"), NEXT_ALL),
 		OPT_CMDMODE(0, "check-term-format", &subcommand,
 			 N_("check format of the term"), CHECK_TERM_FMT),
+		OPT_CMDMODE(0, "bisect-log", &subcommand,
+			 N_("output contents of .git/BISECT_LOG"), BISECT_LOG),
 		OPT_BOOL(0, "no-checkout", &no_checkout,
 			 N_("update BISECT_HEAD instead of checking out the current commit")),
 		OPT_END()
@@ -88,6 +105,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 		if (argc != 2)
 			die(_("--check-term-format requires two arguments"));
 		return check_term_format(argv[0], argv[1]);
+	case BISECT_LOG:
+		return bisect_log();
 	default:
 		die("BUG: unknown subcommand '%d'", subcommand);
 	}
