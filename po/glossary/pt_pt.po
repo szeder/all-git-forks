@@ -1,0 +1,177 @@
+# Portuguese translations for git-gui glossary.
+# Copyright (C) 2016 Shawn Pearce, et al.
+# This file is distributed under the same license as the git package.
+# Vasco Almeida <vascomalmeida@sapo.pt>, 2016.
+msgid ""
+msgstr ""
+"Project-Id-Version: git-gui glossary\n"
+"POT-Creation-Date: 2008-01-07 21:20+0100\n"
+"PO-Revision-Date: 2016-05-04 18:44+0000\n"
+"Last-Translator: Vasco Almeida <vascomalmeida@sapo.pt>\n"
+"Language-Team: Portuguese\n"
+"Language: pt\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Virtaal 0.7.1\n"
+
+#. "English Definition (Dear translator: This file will never be visible to the user! It should only serve as a tool for you, the translator. Nothing more.)"
+msgid ""
+"English Term (Dear translator: This file will never be visible to the user!)"
+msgstr ""
+"Outro SCM em português:\n"
+"http://svn.code.sf.net/p/tortoisesvn/code/trunk/Languages/pt/TortoiseUI.po e "
+"\n"
+"http://svn.code.sf.net/p/tortoisesvn/code/trunk/Languages/pt/TortoiseDoc.po\n"
+" em html: https://tortoisesvn.net/docs/release/TortoiseSVN_pt/index.html\n"
+"\n"
+"https://translations.launchpad.net/tortoisehg (medíocre)"
+
+#. ""
+msgid "amend"
+msgstr "emendar"
+
+#. ""
+msgid "annotate"
+msgstr "anotar"
+
+#. "A 'branch' is an active line of development."
+msgid "branch [noun]"
+msgstr "ramo"
+
+#. ""
+msgid "branch [verb]"
+msgstr "criar ramo"
+
+#. ""
+msgid "checkout [noun]"
+msgstr "extração"
+
+#. "The action of updating the working tree to a revision which was stored in the object database."
+msgid "checkout [verb]"
+msgstr "extrair"
+
+#. ""
+msgid "clone [verb]"
+msgstr "clonar"
+
+#. "A single point in the git history."
+msgid "commit [noun]"
+msgstr "commit"
+
+#. "The action of storing a new snapshot of the project's state in the git history."
+msgid "commit [verb]"
+msgstr "fazer commit"
+
+#. ""
+msgid "diff [noun]"
+msgstr "diferenças"
+
+#. ""
+msgid "diff [verb]"
+msgstr "mostrar diferenças"
+
+#. "A fast-forward is a special type of merge where you have a revision and you are merging another branch's changes that happen to be a descendant of what you have."
+msgid "fast forward merge"
+msgstr "integração por avanço rápido"
+
+#. "Fetching a branch means to get the branch's head from a remote repository, to find out which objects are missing from the local object database, and to get them, too."
+msgid "fetch"
+msgstr "obter"
+
+#. "One context of consecutive lines in a whole patch, which consists of many such hunks"
+msgid "hunk"
+msgstr "excerto"
+
+#. "A collection of files. The index is a stored version of your working tree."
+msgid "index (in git-gui: staging area)"
+msgstr "índice"
+
+#. "A successful merge results in the creation of a new commit representing the result of the merge."
+msgid "merge [noun]"
+msgstr "integração"
+
+#. "To bring the contents of another branch into the current branch."
+msgid "merge [verb]"
+msgstr "integrar"
+
+#. ""
+msgid "message"
+msgstr "mensagem"
+
+#. "Deletes all stale tracking branches under <name>. These stale branches have already been removed from the remote repository referenced by <name>, but are still locally available in 'remotes/<name>'."
+msgid "prune"
+msgstr "podar"
+
+#. "Pulling a branch means to fetch it and merge it."
+msgid "pull"
+msgstr "puxar"
+
+#. "Pushing a branch means to get the branch's head ref from a remote repository, and ... (well, can someone please explain it for mere mortals?)"
+msgid "push"
+msgstr "publicar"
+
+#. ""
+msgid "redo"
+msgstr "refazer"
+
+#. "An other repository ('remote'). One might have a set of remotes whose branches one tracks."
+msgid "remote"
+msgstr "remoto"
+
+#. "A collection of refs (?) together with an object database containing all objects which are reachable from the refs... (oops, you've lost me here. Again, please an explanation for mere mortals?)"
+msgid "repository"
+msgstr "repositório"
+
+#. ""
+msgid "reset"
+msgstr "repor"
+
+#. ""
+msgid "revert"
+msgstr "reverter"
+
+#. "A particular state of files and directories which was stored in the object database."
+msgid "revision"
+msgstr "revisão"
+
+#. ""
+msgid "sign off"
+msgstr "assinar por baixo"
+
+#. ""
+msgid "staging area"
+msgstr "área de estágio"
+
+#. ""
+msgid "status"
+msgstr "estado"
+
+#. "A ref pointing to a tag or commit object"
+msgid "tag [noun]"
+msgstr "tag"
+
+#. ""
+msgid "tag [verb]"
+msgstr "criar tag"
+
+#. "A regular git branch that is used to follow changes from another repository."
+msgid "tracking branch"
+msgstr "ramo de monitorização"
+
+#. ""
+msgid "undo"
+msgstr "desfazer"
+
+#. ""
+msgid "update"
+msgstr "atualizar"
+
+#. ""
+msgid "verify"
+msgstr "verificar"
+
+#. "The tree of actual checked out files."
+msgid "working copy, working tree"
+msgstr "cópia de trabalho, árvore de trabalho"
