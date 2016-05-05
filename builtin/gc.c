@@ -368,6 +368,7 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		 */
 		if (!need_to_gc())
 			return 0;
+		detach_auto &= can_daemonize();
 		if (!quiet) {
 			if (detach_auto)
 				fprintf(stderr, _("Auto packing the repository in background for optimum performance.\n"));
