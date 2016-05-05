@@ -63,6 +63,11 @@ say () {
 	fi
 }
 
+error_with_usage () {
+	printf >&2 'error: %s\n' "$*"
+	usage
+}
+
 if test -n "$OPTIONS_SPEC"; then
 	usage() {
 		"$0" -h
