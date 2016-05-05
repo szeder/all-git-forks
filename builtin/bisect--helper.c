@@ -6,14 +6,14 @@
 
 static const char * const git_bisect_helper_usage[] = {
 	N_("git bisect--helper --next-all [--no-checkout]"),
-	N_("git bisect--helper --check-term-format <term> <orig_term>"),
+	N_("git bisect--helper --write-terms <bad_term> <good_term>"),
 	N_("git bisect--helper --bisect-log"),
 	NULL
 };
 
 enum subcommand {
 	NEXT_ALL = 1,
-	CHECK_TERM_FMT,
+	WRITE_TERMS,
 	BISECT_LOG
 };
 
@@ -63,6 +63,29 @@ static int check_term_format(const char *term, const char *orig_term)
 	return 0;
 }
 
+int write_terms(const char *bad, const char *good)
+{
+	struct strbuf content = STRBUF_INIT;
+	FILE *fp;
+
+	if (!strcmp(bad, good))
+		return error(_("please use two different terms"));
+
+	if (check_term_format(bad, "bad") || check_term_format(good, "good"))
+		return error(_("invalid term"));
+
+	strbuf_addf(&content, "%s\n%s\n", bad, good);
+
+	fp = fopen(".git/BISECT_TERMS", "w");
+	if (fp == NULL)
+		die(_("could not open the file to read terms"));
+	if (strbuf_write(&content, fp) < 0)
+		return error(_("could not write the terms to the file"));
+	fclose(fp);
+
+	return 0;
+}
+
 int bisect_log(void)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -83,8 +106,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 	struct option options[] = {
 		OPT_CMDMODE(0, "next-all", &subcommand,
 			 N_("perform 'git bisect next'"), NEXT_ALL),
-		OPT_CMDMODE(0, "check-term-format", &subcommand,
-			 N_("check format of the term"), CHECK_TERM_FMT),
+		OPT_CMDMODE(0, "write-terms", &subcommand,
+			 N_("write the terms to .git/BISECT_TERMS"), WRITE_TERMS),
 		OPT_CMDMODE(0, "bisect-log", &subcommand,
 			 N_("output contents of .git/BISECT_LOG"), BISECT_LOG),
 		OPT_BOOL(0, "no-checkout", &no_checkout,
@@ -101,10 +124,10 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 	switch (subcommand) {
 	case NEXT_ALL:
 		return bisect_next_all(prefix, no_checkout);
-	case CHECK_TERM_FMT:
+	case WRITE_TERMS:
 		if (argc != 2)
-			die(_("--check-term-format requires two arguments"));
-		return check_term_format(argv[0], argv[1]);
+			die(_("--write-terms requires two arguments"));
+		return write_terms(argv[0], argv[1]);
 	case BISECT_LOG:
 		return bisect_log();
 	default:
