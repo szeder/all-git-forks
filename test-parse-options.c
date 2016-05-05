@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "parse-options.h"
 #include "string-list.h"
+#include "strbuf.h"
 
 static int boolean = 0;
 static int integer = 0;
@@ -89,31 +90,34 @@ int main(int argc, char **argv)
 		OPT_END(),
 	};
 	int i;
+	struct strbuf output = STRBUF_INIT;
 
 	argc = parse_options(argc, (const char **)argv, prefix, options, usage, 0);
 
 	if (length_cb.called) {
 		const char *arg = length_cb.arg;
 		int unset = length_cb.unset;
-		printf("Callback: \"%s\", %d\n",
+		strbuf_addf(&output, "Callback: \"%s\", %d\n",
 		       (arg ? arg : "not set"), unset);
 	}
-	printf("boolean: %d\n", boolean);
-	printf("integer: %d\n", integer);
-	printf("magnitude: %lu\n", magnitude);
-	printf("timestamp: %lu\n", timestamp);
-	printf("string: %s\n", string ? string : "(not set)");
-	printf("abbrev: %d\n", abbrev);
-	printf("verbose: %d\n", verbose);
-	printf("quiet: %d\n", quiet);
-	printf("dry run: %s\n", dry_run ? "yes" : "no");
-	printf("file: %s\n", file ? file : "(not set)");
+	strbuf_addf(&output, "boolean: %d\n", boolean);
+	strbuf_addf(&output, "integer: %d\n", integer);
+	strbuf_addf(&output, "magnitude: %lu\n", magnitude);
+	strbuf_addf(&output, "timestamp: %lu\n", timestamp);
+	strbuf_addf(&output, "string: %s\n", string ? string : "(not set)");
+	strbuf_addf(&output, "abbrev: %d\n", abbrev);
+	strbuf_addf(&output, "verbose: %d\n", verbose);
+	strbuf_addf(&output, "quiet: %d\n", quiet);
+	strbuf_addf(&output, "dry run: %s\n", dry_run ? "yes" : "no");
+	strbuf_addf(&output, "file: %s\n", file ? file : "(not set)");
 
 	for (i = 0; i < list.nr; i++)
-		printf("list: %s\n", list.items[i].string);
+		strbuf_addf(&output, "list: %s\n", list.items[i].string);
 
 	for (i = 0; i < argc; i++)
-		printf("arg %02d: %s\n", i, argv[i]);
+		strbuf_addf(&output, "arg %02d: %s\n", i, argv[i]);
+
+	printf("%s", output.buf);
 
 	return 0;
 }
