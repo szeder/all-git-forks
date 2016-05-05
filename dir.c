@@ -387,14 +387,13 @@ int match_pathspec(const struct pathspec *ps,
 	return negative ? 0 : positive;
 }
 
-int report_path_error(const char *ps_matched,
-		      const struct pathspec *pathspec,
-		      const char *prefix)
+void unmatched_pathspec_items(const char *ps_matched,
+			     const struct pathspec *pathspec,
+			     const char *prefix,
+			     unmatched_pathspec_items_fn fn,
+			     void *data_cb)
 {
-	/*
-	 * Make sure all pathspec matched; otherwise it is an error.
-	 */
-	int num, errors = 0;
+	int num;
 	for (num = 0; num < pathspec->nr; num++) {
 		int other, found_dup;
 
@@ -421,10 +420,27 @@ int report_path_error(const char *ps_matched,
 		if (found_dup)
 			continue;
 
-		error("pathspec '%s' did not match any file(s) known to git.",
-		      pathspec->items[num].original);
-		errors++;
+		fn(pathspec, num, data_cb);
 	}
+}
+
+void report_path_error_fn(const struct pathspec *pathspec,
+			  int pathspec_index,
+			  void *data_cb)
+{
+	int *errors = data_cb;
+	error("pathspec '%s' did not match any file(s) known to git.",
+	      pathspec->items[pathspec_index].original);
+	(*errors)++;
+}
+
+int report_path_error(const char *ps_matched,
+		      const struct pathspec *pathspec,
+		      const char *prefix)
+{
+	int errors = 0;
+	unmatched_pathspec_items(ps_matched, pathspec, prefix,
+				report_path_error_fn, &errors);
 	return errors;
 }
 

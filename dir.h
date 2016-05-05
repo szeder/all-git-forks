@@ -211,6 +211,14 @@ extern char *common_prefix(const struct pathspec *pathspec);
 extern int match_pathspec(const struct pathspec *pathspec,
 			  const char *name, int namelen,
 			  int prefix, char *seen, int is_dir);
+typedef void (*unmatched_pathspec_items_fn)(const struct pathspec *pathspec,
+					    int pathspec_index,
+					    void *data_cb);
+void unmatched_pathspec_items(const char *ps_matched,
+			     const struct pathspec *pathspec,
+			     const char *prefix,
+			     unmatched_pathspec_items_fn fn,
+			     void *data_cb);
 extern int report_path_error(const char *ps_matched, const struct pathspec *pathspec, const char *prefix);
 extern int within_depth(const char *name, int namelen, int depth, int max_depth);
 
