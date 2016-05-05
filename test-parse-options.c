@@ -14,6 +14,7 @@ static char *string = NULL;
 static char *file = NULL;
 static int ambiguous;
 static struct string_list list;
+static struct string_list expect;
 
 static struct {
 	int called;
@@ -38,6 +39,62 @@ static int number_callback(const struct option *opt, const char *arg, int unset)
 {
 	*(int *)opt->value = strtol(arg, NULL, 10);
 	return 0;
+}
+
+/*
+ * See if expect->string ("label: value") has a line in output that
+ * begins with "label:", and if the line in output matches it.
+ */
+static int match_line(struct string_list_item *expect, struct strbuf *output)
+{
+	const char *label = expect->string;
+	const char *colon = strchr(label, ':');
+	const char *scan = output->buf;
+	size_t label_len, expect_len;
+
+	if (!colon)
+		die("Malformed --expect value: %s", label);
+	label_len = colon - label;
+
+	while (scan < output->buf + output->len) {
+		const char *next;
+		scan = memmem(scan, output->buf + output->len - scan,
+			      label, label_len);
+		if (!scan)
+			return 0;
+		if (scan == output->buf || scan[-1] == '\n')
+			break;
+		next = strchr(scan + label_len, '\n');
+		if (!next)
+			return 0;
+		scan = next + 1;
+	}
+
+	/*
+	 * scan points at a line that begins with the label we are
+	 * looking for.  Does it match?
+	 */
+	expect_len = strlen(expect->string);
+
+	if (output->buf + output->len <= scan + expect_len)
+		return 0; /* value not long enough */
+	if (memcmp(scan, expect->string, expect_len))
+		return 0; /* does not match */
+
+	return (scan + expect_len < output->buf + output->len &&
+		scan[expect_len] == '\n');
+}
+
+static int show_expected(struct string_list *list, struct strbuf *output)
+{
+	struct string_list_item *expect;
+	int found_mismatch = 0;
+
+	for_each_string_list_item(expect, list) {
+		if (!match_line(expect, output))
+			found_mismatch = 1;
+	}
+	return found_mismatch;
 }
 
 int main(int argc, char **argv)
@@ -87,6 +144,8 @@ int main(int argc, char **argv)
 		OPT__VERBOSE(&verbose, "be verbose"),
 		OPT__DRY_RUN(&dry_run, "dry run"),
 		OPT__QUIET(&quiet, "be quiet"),
+		OPT_STRING_LIST(0, "expect", &expect, "string",
+				"expected output in the variable dump"),
 		OPT_END(),
 	};
 	int i;
@@ -117,7 +176,10 @@ int main(int argc, char **argv)
 	for (i = 0; i < argc; i++)
 		strbuf_addf(&output, "arg %02d: %s\n", i, argv[i]);
 
-	printf("%s", output.buf);
-
-	return 0;
+	if (expect.nr)
+		return show_expected(&expect, &output);
+	else {
+		printf("%s", output.buf);
+		return 0;
+	}
 }
