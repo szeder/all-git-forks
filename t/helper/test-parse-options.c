@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "parse-options.h"
 #include "string-list.h"
+#include "strbuf.h"
 
 static int boolean = 0;
 static int integer = 0;
@@ -13,11 +14,20 @@ static char *string = NULL;
 static char *file = NULL;
 static int ambiguous;
 static struct string_list list;
+static struct string_list expect;
+
+static struct {
+	int called;
+	const char *arg;
+	int unset;
+} length_cb;
 
 static int length_callback(const struct option *opt, const char *arg, int unset)
 {
-	printf("Callback: \"%s\", %d\n",
-		(arg ? arg : "not set"), unset);
+	length_cb.called = 1;
+	length_cb.arg = arg;
+	length_cb.unset = unset;
+
 	if (unset)
 		return 1; /* do not support unset */
 
@@ -29,6 +39,62 @@ static int number_callback(const struct option *opt, const char *arg, int unset)
 {
 	*(int *)opt->value = strtol(arg, NULL, 10);
 	return 0;
+}
+
+/*
+ * See if expect->string ("label: value") has a line in output that
+ * begins with "label:", and if the line in output matches it.
+ */
+static int match_line(struct string_list_item *expect, struct strbuf *output)
+{
+	const char *label = expect->string;
+	const char *colon = strchr(label, ':');
+	const char *scan = output->buf;
+	size_t label_len, expect_len;
+
+	if (!colon)
+		die("Malformed --expect value: %s", label);
+	label_len = colon - label;
+
+	while (scan < output->buf + output->len) {
+		const char *next;
+		scan = memmem(scan, output->buf + output->len - scan,
+			      label, label_len);
+		if (!scan)
+			return 0;
+		if (scan == output->buf || scan[-1] == '\n')
+			break;
+		next = strchr(scan + label_len, '\n');
+		if (!next)
+			return 0;
+		scan = next + 1;
+	}
+
+	/*
+	 * scan points at a line that begins with the label we are
+	 * looking for.  Does it match?
+	 */
+	expect_len = strlen(expect->string);
+
+	if (output->buf + output->len <= scan + expect_len)
+		return 0; /* value not long enough */
+	if (memcmp(scan, expect->string, expect_len))
+		return 0; /* does not match */
+
+	return (scan + expect_len < output->buf + output->len &&
+		scan[expect_len] == '\n');
+}
+
+static int show_expected(struct string_list *list, struct strbuf *output)
+{
+	struct string_list_item *expect;
+	int found_mismatch = 0;
+
+	for_each_string_list_item(expect, list) {
+		if (!match_line(expect, output))
+			found_mismatch = 1;
+	}
+	return found_mismatch;
 }
 
 int main(int argc, char **argv)
@@ -78,28 +144,42 @@ int main(int argc, char **argv)
 		OPT__VERBOSE(&verbose, "be verbose"),
 		OPT__DRY_RUN(&dry_run, "dry run"),
 		OPT__QUIET(&quiet, "be quiet"),
+		OPT_STRING_LIST(0, "expect", &expect, "string",
+				"expected output in the variable dump"),
 		OPT_END(),
 	};
 	int i;
+	struct strbuf output = STRBUF_INIT;
 
 	argc = parse_options(argc, (const char **)argv, prefix, options, usage, 0);
 
-	printf("boolean: %d\n", boolean);
-	printf("integer: %d\n", integer);
-	printf("magnitude: %lu\n", magnitude);
-	printf("timestamp: %lu\n", timestamp);
-	printf("string: %s\n", string ? string : "(not set)");
-	printf("abbrev: %d\n", abbrev);
-	printf("verbose: %d\n", verbose);
-	printf("quiet: %d\n", quiet);
-	printf("dry run: %s\n", dry_run ? "yes" : "no");
-	printf("file: %s\n", file ? file : "(not set)");
+	if (length_cb.called) {
+		const char *arg = length_cb.arg;
+		int unset = length_cb.unset;
+		strbuf_addf(&output, "Callback: \"%s\", %d\n",
+		       (arg ? arg : "not set"), unset);
+	}
+	strbuf_addf(&output, "boolean: %d\n", boolean);
+	strbuf_addf(&output, "integer: %d\n", integer);
+	strbuf_addf(&output, "magnitude: %lu\n", magnitude);
+	strbuf_addf(&output, "timestamp: %lu\n", timestamp);
+	strbuf_addf(&output, "string: %s\n", string ? string : "(not set)");
+	strbuf_addf(&output, "abbrev: %d\n", abbrev);
+	strbuf_addf(&output, "verbose: %d\n", verbose);
+	strbuf_addf(&output, "quiet: %d\n", quiet);
+	strbuf_addf(&output, "dry run: %s\n", dry_run ? "yes" : "no");
+	strbuf_addf(&output, "file: %s\n", file ? file : "(not set)");
 
 	for (i = 0; i < list.nr; i++)
-		printf("list: %s\n", list.items[i].string);
+		strbuf_addf(&output, "list: %s\n", list.items[i].string);
 
 	for (i = 0; i < argc; i++)
-		printf("arg %02d: %s\n", i, argv[i]);
+		strbuf_addf(&output, "arg %02d: %s\n", i, argv[i]);
 
-	return 0;
+	if (expect.nr)
+		return show_expected(&expect, &output);
+	else {
+		printf("%s", output.buf);
+		return 0;
+	}
 }
