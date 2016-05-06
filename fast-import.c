@@ -2935,7 +2935,7 @@ static void cat_blob(struct object_entry *oe, unsigned char sha1[20])
 
 static void parse_get_mark(const char *p)
 {
-	struct object_entry *oe = oe;
+	struct object_entry *oe = NULL;
 	char output[42];
 
 	/* get-mark SP <object> LF */
@@ -2952,7 +2952,7 @@ static void parse_get_mark(const char *p)
 
 static void parse_cat_blob(const char *p)
 {
-	struct object_entry *oe = oe;
+	struct object_entry *oe = NULL;
 	unsigned char sha1[20];
 
 	/* cat-blob SP <object> LF */
