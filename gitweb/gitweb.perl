@@ -1423,7 +1423,12 @@ sub href {
 			delete $params{'hash'};
 			delete $params{'hash_base'};
 		} elsif (defined $params{'hash'}) {
-			$href .= esc_path_info($params{'hash'});
+			if (defined $params{'hash_parent'}) {
+				$href .= esc_path_info($params{'hash_parent'});
+				delete $params{'hash_parent'};
+			} else {
+				$href .= esc_path_info($params{'hash'});
+			}
 			delete $params{'hash'};
 		}
 
