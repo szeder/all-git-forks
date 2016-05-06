@@ -16,8 +16,16 @@ test_description='CRLF merge conflict across text=auto change
 
 test_have_prereq SED_STRIPS_CR && SED_OPTIONS=-b
 
+compare_files () {
+	tr '\015\000' QN <"$1" >"$1".expect &&
+	tr '\015\000' QN <"$2" >"$2".actual &&
+	test_cmp "$1".expect "$2".actual &&
+	rm "$1".expect "$2".actual
+}
+
 test_expect_success setup '
 	git config core.autocrlf false &&
+	git config core.eol crlf &&
 
 	echo first line | append_cr >file &&
 	echo first line >control_file &&
@@ -30,7 +38,7 @@ test_expect_success setup '
 	git branch side &&
 
 	echo "* text=auto" >.gitattributes &&
-	touch file &&
+	echo first line >file &&
 	git add .gitattributes file &&
 	test_tick &&
 	git commit -m "normalize file" &&
@@ -72,16 +80,14 @@ test_expect_success 'Merge after setting text=auto' '
 	same line
 	EOF
 
-	if test_have_prereq NATIVE_CRLF; then
-		append_cr <expected >expected.temp &&
-		mv expected.temp expected
-	fi &&
+	append_cr <expected >expected.temp &&
+	mv expected.temp expected &&
 	git config merge.renormalize true &&
 	git rm -fr . &&
 	rm -f .gitattributes &&
 	git reset --hard a &&
 	git merge b &&
-	test_cmp expected file
+	compare_files expected file
 '
 
 test_expect_success 'Merge addition of text=auto' '
@@ -90,29 +96,21 @@ test_expect_success 'Merge addition of text=auto' '
 	same line
 	EOF
 
-	if test_have_prereq NATIVE_CRLF; then
-		append_cr <expected >expected.temp &&
-		mv expected.temp expected
-	fi &&
+	append_cr <expected >expected.temp &&
+	mv expected.temp expected &&
 	git config merge.renormalize true &&
 	git rm -fr . &&
 	rm -f .gitattributes &&
 	git reset --hard b &&
 	git merge a &&
-	test_cmp expected file
+	compare_files  expected file
 '
 
 test_expect_success 'Detect CRLF/LF conflict after setting text=auto' '
 	echo "<<<<<<<" >expected &&
-	if test_have_prereq NATIVE_CRLF; then
-		echo first line | append_cr >>expected &&
-		echo same line | append_cr >>expected &&
-		echo ======= | append_cr >>expected
-	else
-		echo first line >>expected &&
-		echo same line >>expected &&
-		echo ======= >>expected
-	fi &&
+	echo first line >>expected &&
+	echo same line >>expected &&
+	echo ======= >>expected &&
 	echo first line | append_cr >>expected &&
 	echo same line | append_cr >>expected &&
 	echo ">>>>>>>" >>expected &&
@@ -121,30 +119,24 @@ test_expect_success 'Detect CRLF/LF conflict after setting text=auto' '
 	git reset --hard a &&
 	test_must_fail git merge b &&
 	fuzz_conflict file >file.fuzzy &&
-	test_cmp expected file.fuzzy
+	compare_files expected file.fuzzy
 '
-
 test_expect_success 'Detect LF/CRLF conflict from addition of text=auto' '
 	echo "<<<<<<<" >expected &&
 	echo first line | append_cr >>expected &&
 	echo same line | append_cr >>expected &&
-	if test_have_prereq NATIVE_CRLF; then
-		echo ======= | append_cr >>expected &&
-		echo first line | append_cr >>expected &&
-		echo same line | append_cr >>expected
-	else
-		echo ======= >>expected &&
-		echo first line >>expected &&
-		echo same line >>expected
-	fi &&
+	echo =======  >>expected &&
+	echo first line >>expected &&
+	echo same line  >>expected &&
 	echo ">>>>>>>" >>expected &&
 	git config merge.renormalize false &&
 	rm -f .gitattributes &&
 	git reset --hard b &&
 	test_must_fail git merge a &&
 	fuzz_conflict file >file.fuzzy &&
-	test_cmp expected file.fuzzy
+	compare_files expected file.fuzzy
 '
+
 
 test_expect_failure 'checkout -m after setting text=auto' '
 	cat <<-\EOF >expected &&
@@ -158,7 +150,7 @@ test_expect_failure 'checkout -m after setting text=auto' '
 	git reset --hard initial &&
 	git checkout a -- . &&
 	git checkout -m b &&
-	test_cmp expected file
+	compare_files expected file
 '
 
 test_expect_failure 'checkout -m addition of text=auto' '
@@ -173,7 +165,7 @@ test_expect_failure 'checkout -m addition of text=auto' '
 	git reset --hard initial &&
 	git checkout b -- . &&
 	git checkout -m a &&
-	test_cmp expected file
+	compare_files expected file
 '
 
 test_expect_failure 'cherry-pick patch from after text=auto was added' '
@@ -187,7 +179,7 @@ test_expect_failure 'cherry-pick patch from after text=auto was added' '
 	git reset --hard b &&
 	test_must_fail git cherry-pick a >err 2>&1 &&
 	grep "[Nn]othing added" err &&
-	test_cmp expected file
+	compare_files expected file
 '
 
 test_expect_success 'Test delete/normalize conflict' '
