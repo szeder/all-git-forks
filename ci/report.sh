@@ -10,10 +10,11 @@ then
         next)   STABLE_BRANCH="master";;
         *)      STABLE_BRANCH="next";;
     esac
-    git fetch --quiet --unshallow
+    git remote add upstream https://github.com/git/git.git
+    git fetch upstream
     git branch -a
     git remote -v
-    GOOD_REV=$(git merge-base "$BRANCH" "origin/$STABLE_BRANCH")
+    GOOD_REV=$(git merge-base "$BRANCH" "upstream/$STABLE_BRANCH")
 fi
 
 for TEST_EXIT in t/test-results/*.exit
