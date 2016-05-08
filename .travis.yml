@@ -83,10 +83,7 @@ before_script: make --jobs=2
 
 script: make --quiet test
 
-after_failure:
-  - >
-    : '<-- Click here to see detailed test output!                                                        ';
-    ./ci/report.sh;
+after_failure: ./ci/report.sh $TRAVIS_REPO_SLUG $TRAVIS_BRANCH
 
 notifications:
   email: false
