@@ -11,7 +11,7 @@ then
         *)      STABLE_BRANCH="next";;
     esac
     git fetch --quiet --unshallow
-    GOOD_REV=$(git merge-base "$BRANCH" "$STABLE_BRANCH")
+    GOOD_REV=$(git merge-base "$BRANCH" "origin/$STABLE_BRANCH")
 fi
 
 for TEST_EXIT in t/test-results/*.exit
