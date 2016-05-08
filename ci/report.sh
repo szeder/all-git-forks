@@ -11,6 +11,8 @@ then
         *)      STABLE_BRANCH="next";;
     esac
     git fetch --quiet --unshallow
+    git branch -a
+    git remote -v
     GOOD_REV=$(git merge-base "$BRANCH" "origin/$STABLE_BRANCH")
 fi
 
