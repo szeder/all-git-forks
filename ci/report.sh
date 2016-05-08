@@ -14,7 +14,10 @@ then
     git fetch upstream
     git branch -a
     git remote -v
+    git rev-parse "$BRANCH"
+    git rev-parse "upstream/$STABLE_BRANCH"
     GOOD_REV=$(git merge-base "$BRANCH" "upstream/$STABLE_BRANCH")
+    echo "$GOOD_REV"
 fi
 
 for TEST_EXIT in t/test-results/*.exit
