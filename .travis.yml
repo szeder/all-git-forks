@@ -16,7 +16,10 @@ compiler:
 
 addons:
   apt:
+    sources:
+    - git-core
     packages:
+    - git
     - language-pack-is
 
 env:
@@ -81,10 +84,11 @@ before_install:
       brew tap homebrew/binary --quiet
       brew_force_set_latest_binary_hash perforce
       brew_force_set_latest_binary_hash perforce-server
-      brew install git-lfs perforce-server perforce gettext
+      brew install git git-lfs perforce-server perforce gettext
       brew link --force gettext
       ;;
     esac;
+    git --version;
     echo "$(tput setaf 6)Perforce Server Version$(tput sgr0)";
     p4d -V | grep Rev.;
     echo "$(tput setaf 6)Perforce Client Version$(tput sgr0)";
@@ -98,20 +102,7 @@ before_script: make --jobs=2
 
 script: make --quiet test
 
-after_failure:
-  - >
-    : '<-- Click here to see detailed test output!                                                        ';
-    for TEST_EXIT in t/test-results/*.exit;
-    do
-      if [ "$(cat "$TEST_EXIT")" != "0" ];
-      then
-        TEST_OUT="${TEST_EXIT%exit}out";
-        echo "------------------------------------------------------------------------";
-        echo "$(tput setaf 1)${TEST_OUT}...$(tput sgr0)";
-        echo "------------------------------------------------------------------------";
-        cat "${TEST_OUT}";
-      fi;
-    done;
+after_failure: ./ci/report.sh $TRAVIS_REPO_SLUG $TRAVIS_BRANCH
 
 notifications:
   email: false
