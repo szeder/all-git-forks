@@ -1,16 +1,17 @@
 #!/bin/sh
+set -x
 REPO_SLUG=$1
 BRANCH=$2
 
 if test "$REPO_SLUG" = "larsxschneider/git"
 then
     case "$BRANCH" in
-        master) GOOD_REV="maint";;
-        next)   GOOD_REV="master";;
-        *)      GOOD_REV="next";;
+        master) STABLE_BRANCH="maint";;
+        next)   STABLE_BRANCH="master";;
+        *)      STABLE_BRANCH="next";;
     esac
     git fetch --quiet --unshallow
-    GOOD_REV="$(git merge-base $BRANCH $GOOD_REV)"
+    GOOD_REV=$(git merge-base "$BRANCH" "$STABLE_BRANCH")
 fi
 
 for TEST_EXIT in t/test-results/*.exit
@@ -27,7 +28,7 @@ do
     then
         git bisect start "$BRANCH" "$GOOD_REV"
         git bisect run sh -c "\
-            if NO_OPENSSL=YesPlease NO_GETTEXT=YesPlease DEVELOPER=1 make --jobs=8 >/dev/null 2>&1;
+            if make --jobs=2 >/dev/null 2>&1;
             then cd t && ./$TEST_SCRIPT.sh --immediate >/dev/null 2>&1;
             else exit 125;
             fi"
