@@ -17,6 +17,7 @@ struct userdiff_driver;
 struct sha1_array;
 struct commit;
 struct combine_diff_path;
+struct notes_tree;
 
 typedef int (*pathchange_fn_t)(struct diff_options *options,
 		 struct combine_diff_path *path);
@@ -178,6 +179,11 @@ struct diff_options {
 	diff_prefix_fn_t output_prefix;
 	int output_prefix_length;
 	void *output_prefix_data;
+	const char *manual_renames;
+	const unsigned char *old_root;
+	const unsigned char *new_root;
+	struct commit *current_commit;
+	struct notes_tree *rename_notes;
 
 	int diff_path_counter;
 };

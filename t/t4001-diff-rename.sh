@@ -230,4 +230,108 @@ test_expect_success 'rename pretty print common prefix and suffix overlap' '
 	test_i18ngrep " d/f/{ => f}/e " output
 '
 
+test_expect_success 'manual rename correction' '
+	test_create_repo correct-rename &&
+	(
+		cd correct-rename &&
+		echo one > old-one &&
+		echo two > old-two &&
+		git add old-one old-two &&
+		git commit -m old &&
+		git rm old-one old-two &&
+		echo one > new-one &&
+		echo two > new-two &&
+		git add new-one new-two &&
+		git commit -m new &&
+		git diff -M --summary HEAD^ | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-one (100%)
+		 rename old-two => new-two (100%)
+		EOF
+		test_cmp expected actual &&
+
+		cat >correction <<-\EOF &&
+		old-one => new-two
+		old-two => new-one
+		EOF
+		git diff -M --rename-file=correction --summary HEAD^ | sort | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-two (100%)
+		 rename old-two => new-one (100%)
+		EOF
+		test_cmp expected actual
+	)
+'
+
+test_expect_success 'manual rename correction with blobs' '
+	(
+		cd correct-rename &&
+		git diff -M --summary HEAD^ | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-one (100%)
+		 rename old-two => new-two (100%)
+		EOF
+		test_cmp expected actual &&
+
+		ONE=`echo one | git hash-object --stdin` &&
+		TWO=`echo two | git hash-object --stdin` &&
+		cat >correction <<-EOF &&
+		.blob $ONE => $TWO
+		.blob $TWO => $ONE
+		EOF
+		git diff -M --rename-file=correction --summary HEAD^ | sort | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-two (100%)
+		 rename old-two => new-one (100%)
+		EOF
+		test_cmp expected actual
+	)
+'
+
+test_expect_success 'rename correction from notes' '
+	(
+		cd correct-rename &&
+		git show --summary -M HEAD | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-one => new-one (100%)
+		 rename old-two => new-two (100%)
+		EOF
+		test_cmp expected actual &&
+
+		cat >correction <<-\EOF &&
+		old-one => new-two
+		old-two => new-one
+		EOF
+		git notes --ref=rename add -F correction HEAD &&
+		git show --summary -M --rename-notes=rename HEAD | grep rename >actual &&
+		cat >expected <<-\EOF &&
+		 rename old-two => new-one (100%)
+		 rename old-one => new-two (100%)
+		EOF
+		test_cmp expected actual
+	)
+'
+
+test_expect_success 'merge rename notes, free src/tgt' '
+	(
+		cd correct-rename &&
+		test-merge-rename-notes refs/notes/rename refs/notes/rename-cache &&
+		git notes --ref=rename-cache show refs/notes/rename >actual &&
+		: >expected &&
+		test_cmp expected actual &&
+		ONE=`echo one | git hash-object --stdin` &&
+		TWO=`echo two | git hash-object --stdin` &&
+		git notes --ref=rename-cache show $TWO >actual &&
+		cat <<-EOF | sort >expected &&
+		.blob $ONE => $TWO
+		EOF
+		test_cmp expected actual &&
+		git notes --ref=rename-cache show $ONE >actual &&
+		cat <<-EOF | sort >expected &&
+		.blob $TWO => $ONE
+		EOF
+		test_cmp expected actual
+	)
+'
+
 test_done

@@ -14,6 +14,7 @@
 /test-line-buffer
 /test-match-trees
 /test-mergesort
+/test-merge-rename-notes
 /test-mktemp
 /test-parse-options
 /test-path-utils
