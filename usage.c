@@ -109,18 +109,11 @@ void NORETURN die(const char *err, ...)
 	va_end(params);
 }
 
-void NORETURN die_errno(const char *fmt, ...)
+static const char *fmt_with_err(const char *fmt)
 {
-	va_list params;
-	char fmt_with_err[1024];
+	static char fmt_with_err[1024];
 	char str_error[256], *err;
 	int i, j;
-
-	if (die_is_recursing()) {
-		fputs("fatal: recursion detected in die_errno handler\n",
-			stderr);
-		exit(128);
-	}
 
 	err = strerror(errno);
 	for (i = j = 0; err[i] && j < sizeof(str_error) - 1; ) {
@@ -137,10 +130,32 @@ void NORETURN die_errno(const char *fmt, ...)
 	}
 	str_error[j] = 0;
 	snprintf(fmt_with_err, sizeof(fmt_with_err), "%s: %s", fmt, str_error);
+	return fmt_with_err;
+}
+
+void NORETURN die_errno(const char *fmt, ...)
+{
+	va_list params;
+
+	if (die_is_recursing()) {
+		fputs("fatal: recursion detected in die_errno handler\n",
+			stderr);
+		exit(128);
+	}
 
 	va_start(params, fmt);
-	die_routine(fmt_with_err, params);
+	die_routine(fmt_with_err(fmt), params);
 	va_end(params);
+}
+
+int sys_error(const char *fmt, ...)
+{
+	va_list params;
+
+	va_start(params, fmt);
+	error_routine(fmt_with_err(fmt), params);
+	va_end(params);
+	return -1;
 }
 
 #undef error

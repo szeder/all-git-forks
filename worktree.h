@@ -3,7 +3,7 @@
 
 struct worktree {
 	char *path;
-	char *git_dir;
+	char *id;
 	char *head_ref;
 	unsigned char head_sha1[20];
 	int is_detached;
@@ -21,6 +21,44 @@ struct worktree {
  * worktree(s).
  */
 extern struct worktree **get_worktrees(void);
+
+/*
+ * Return git dir of the worktree. Note that the path may be relative.
+ */
+extern const char *get_worktree_git_dir(const struct worktree *wt);
+
+/*
+ * Search a worktree by its path. Paths are normalized internally.
+ */
+extern struct worktree *find_worktree_by_path(struct worktree **list,
+					      const char *path_);
+
+/*
+ * Return true if the given worktree is the main one.
+ */
+extern int is_main_worktree(const struct worktree *wt);
+
+/*
+ * Return the reason string if the given worktree is locked. Return
+ * NULL otherwise.
+ */
+extern const char *is_worktree_locked(const struct worktree *wt);
+
+/*
+ * Return zero if the worktree is in good condition.
+ */
+extern int validate_worktree(const struct worktree *wt, int quiet);
+
+/*
+ * Update worktrees/xxx/gitdir with the new path.
+ */
+extern int update_worktree_location(struct worktree *wt,
+				    const char *path_);
+
+/*
+ * Free up the memory for worktree
+ */
+extern void clear_worktree(struct worktree *);
 
 /*
  * Free up the memory for worktree(s)
