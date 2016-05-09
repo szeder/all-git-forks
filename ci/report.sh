@@ -1,7 +1,7 @@
 #!/bin/sh
 set -x
 REPO_SLUG=$1
-BRANCH=$2
+BRANCH="remotes/origin/$2"
 
 if test "$REPO_SLUG" = "larsxschneider/git"
 then
@@ -18,9 +18,9 @@ then
     git branch -a
     git remote -v
     git --version
-    git rev-parse "remotes/origin/$BRANCH"
+    git rev-parse "$BRANCH"
     git rev-parse "remotes/upstream/$STABLE_BRANCH"
-    GOOD_REV=$(git merge-base "remotes/origin/$BRANCH" "remotes/upstream/$STABLE_BRANCH")
+    GOOD_REV=$(git merge-base "$BRANCH" "remotes/upstream/$STABLE_BRANCH")
     echo "$GOOD_REV"
 fi
 
