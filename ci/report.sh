@@ -10,6 +10,9 @@ then
         next)   STABLE_BRANCH="master";;
         *)      STABLE_BRANCH="next";;
     esac
+    cd ..
+    git clone https://github.com/larsxschneider/git.git full
+    cd full
     git remote add upstream https://github.com/git/git.git
     git fetch upstream
     git branch -a
