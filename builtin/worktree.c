@@ -295,6 +295,10 @@ static int add_worktree(const char *path, const char *refname,
 			goto done;
 	}
 
+	if (chdir(path))
+		die_errno(_("could not chdir to %s"), path);
+	ret = run_hook_le(child_env.argv, "post-worktree-add", NULL);
+
 	is_junk = 0;
 	free(junk_work_tree);
 	free(junk_git_dir);
