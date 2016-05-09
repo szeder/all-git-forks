@@ -18,9 +18,9 @@ then
     git branch -a
     git remote -v
     git --version
-    git rev-parse "$BRANCH"
-    git rev-parse "upstream/$STABLE_BRANCH"
-    GOOD_REV=$(git merge-base "$BRANCH" "upstream/$STABLE_BRANCH")
+    git rev-parse "remotes/origin/$BRANCH"
+    git rev-parse "remotes/upstream/$STABLE_BRANCH"
+    GOOD_REV=$(git merge-base "remotes/origin/$BRANCH" "remotes/upstream/$STABLE_BRANCH")
     echo "$GOOD_REV"
 fi
 
