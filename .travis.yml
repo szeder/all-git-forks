@@ -84,7 +84,7 @@ before_install:
 
 before_script: make --jobs=2
 
-script: make --quiet test
+script: cd t && ./t5551-http-fetch-smart.sh -v
 
 after_failure:
   - >
