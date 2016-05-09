@@ -859,11 +859,10 @@ test_expect_success 'bisect cannot mix terms' '
 test_expect_success 'bisect terms rejects invalid terms' '
 	git bisect reset &&
 	test_must_fail git bisect start --term-good invalid..term &&
-	test_must_fail git bisect terms --term-bad invalid..term &&
-	test_must_fail git bisect terms --term-good bad &&
-	test_must_fail git bisect terms --term-good old &&
-	test_must_fail git bisect terms --term-good skip &&
-	test_must_fail git bisect terms --term-good reset &&
+	test_must_fail git bisect start --term-bad invalid..term &&
+	test_must_fail git bisect start --term-good bad &&
+	test_must_fail git bisect start --term-good skip &&
+	test_must_fail git bisect start --term-good reset &&
 	test_path_is_missing .git/BISECT_TERMS
 '
 
