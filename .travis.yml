@@ -16,6 +16,8 @@ compiler:
 
 addons:
   apt:
+    sources:
+    - git-core
     packages:
     - git
     - language-pack-is
