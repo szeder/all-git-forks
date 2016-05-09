@@ -18,11 +18,19 @@ GITPERLLIB='@@BUILD_DIR@@/perl/blib/lib'"${GITPERLLIB:+:$GITPERLLIB}"
 GIT_TEXTDOMAINDIR='@@BUILD_DIR@@/po/build/locale'
 PATH='@@BUILD_DIR@@/bin-wrappers:'"$PATH"
 export GIT_EXEC_PATH GITPERLLIB PATH GIT_TEXTDOMAINDIR
+case "@@PROG@@" in
+test-*)
+	PROG="${GIT_EXEC_PATH}/t/helper/@@PROG@@"
+	;;
+*)
+	PROG="${GIT_EXEC_PATH}/@@PROG@@"
+	;;
+esac
 
 if test -n "$GIT_TEST_GDB"
 then
 	unset GIT_TEST_GDB
-	exec gdb --args "${GIT_EXEC_PATH}/@@PROG@@" "$@"
+	exec gdb --args "$PROG" "$@"
 else
-	exec "${GIT_EXEC_PATH}/@@PROG@@" "$@"
+	exec "$PROG" "$@"
 fi
