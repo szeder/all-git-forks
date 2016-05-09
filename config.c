@@ -42,6 +42,10 @@ static struct config_source *cf;
 
 static int zlib_compression_seen;
 
+static const char *builtin_config =
+	"[alias]\n"
+	"	ls = list-files\n";
+
 /*
  * Default config_set that contains key-value pairs from the usual set of config
  * config files (i.e repo specific .git/config, user wide ~/.gitconfig, XDG
@@ -1194,6 +1198,11 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 	char *xdg_config = xdg_config_home("config");
 	char *user_config = expand_user_path("~/.gitconfig");
 	char *repo_config = git_pathdup("config");
+
+	if (git_config_system())
+		git_config_from_mem(fn, "<builtin>", "",
+				    builtin_config, strlen(builtin_config),
+				    data);
 
 	if (git_config_system() && !access_or_die(git_etc_gitconfig(), R_OK, 0)) {
 		ret += git_config_from_file(fn, git_etc_gitconfig(),
