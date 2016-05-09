@@ -861,8 +861,17 @@ test_expect_success 'bisect terms rejects invalid terms' '
 	test_must_fail git bisect start --term-good invalid..term &&
 	test_must_fail git bisect start --term-bad invalid..term &&
 	test_must_fail git bisect start --term-good bad &&
+	test_must_fail git bisect start --term-bad good &&
+	test_must_fail git bisect start --term-good help &&
+	test_must_fail git bisect start --term-good start &&
+	test_must_fail git bisect start --term-good terms &&
 	test_must_fail git bisect start --term-good skip &&
+	test_must_fail git bisect start --term-good next &&
 	test_must_fail git bisect start --term-good reset &&
+	test_must_fail git bisect start --term-good visualize &&
+	test_must_fail git bisect start --term-good replay &&
+	test_must_fail git bisect start --term-good log &&
+	test_must_fail git bisect start --term-good run &&
 	test_path_is_missing .git/BISECT_TERMS
 '
 
