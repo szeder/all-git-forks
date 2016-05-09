@@ -19,8 +19,8 @@ test_expect_success 'mode-only change show as a 0-line change' '
 	echo a >a &&
 	echo c >c &&
 	cat >expect <<-\EOF &&
-	 a | 1 +
-	 b | 0
+	 a           | 1 +
+	 b (mode +x) | 0
 	 ...
 	 4 files changed, 2 insertions(+)
 	EOF

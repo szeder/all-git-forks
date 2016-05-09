@@ -114,8 +114,8 @@ test_expect_success 'diff --no-index with binary creation' '
 '
 
 cat >expect <<EOF
- binfile  |   Bin 0 -> 1026 bytes
- textfile | 10000 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ binfile (new)  |   Bin 0 -> 1026 bytes
+ textfile (new) | 10000 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
 EOF
 
 test_expect_success 'diff --stat with binary files and big change count' '
