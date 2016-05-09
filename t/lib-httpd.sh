@@ -49,7 +49,7 @@ then
 	test_done
 fi
 
-if ! test_have_prereq NOT_ROOT && $CI -ne "true"; then
+if ! test_have_prereq NOT_ROOT && test $CONTINUOUS_INTEGRATION != "true"; then
 	test_skip_or_die $GIT_TEST_HTTPD \
 		"Cannot run httpd tests as root"
 fi
