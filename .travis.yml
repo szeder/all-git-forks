@@ -71,6 +71,7 @@ before_install:
       brew link --force gettext
       ;;
     esac;
+    git --version;
     echo "$(tput setaf 6)Perforce Server Version$(tput sgr0)";
     p4d -V | grep Rev.;
     echo "$(tput setaf 6)Perforce Client Version$(tput sgr0)";

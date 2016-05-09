@@ -14,6 +14,7 @@ then
     git fetch upstream
     git branch -a
     git remote -v
+    git --version
     git rev-parse "$BRANCH"
     git rev-parse "upstream/$STABLE_BRANCH"
     GOOD_REV=$(git merge-base "$BRANCH" "upstream/$STABLE_BRANCH")
