@@ -238,7 +238,8 @@ test_expect_success 'print errors when failed to update worktree' '
 	echo sub >.git/info/sparse-checkout &&
 	git checkout -f init &&
 	mkdir sub &&
-	touch sub/added sub/addedtoo &&
+	echo modified >sub/added &&
+	echo modified >sub/addedtoo &&
 	test_must_fail git checkout top 2>actual &&
 	cat >expected <<\EOF &&
 error: The following untracked working tree files would be overwritten by checkout:
