@@ -109,6 +109,11 @@ void clear_apply_state(struct apply_state *state)
 	/* &state->fn_table is cleared at the end of apply_patch() */
 }
 
+static void mute_routine(const char *bla, va_list params)
+{
+	/* do nothing */
+}
+
 int check_apply_state(struct apply_state *state, int force_apply)
 {
 	int is_not_gitdir = !startup_info->have_repository;
@@ -142,6 +147,13 @@ int check_apply_state(struct apply_state *state, int force_apply)
 		return error(_("incompatible internal 'be_silent' and 'apply_verbosely' flags"));
 	if (!state->lock_file)
 		return error("BUG: state->lock_file should not be NULL");
+
+	if (state->be_silent) {
+		state->saved_error_routine = get_error_routine();
+		state->saved_warn_routine = get_warn_routine();
+		set_error_routine(mute_routine);
+		set_warn_routine(mute_routine);
+	}
 
 	return 0;
 }
@@ -4762,6 +4774,8 @@ int apply_all_patches(struct apply_state *state,
 	int res;
 	int errs = 0;
 	int read_stdin = 1;
+	/* Return -128 by default, as modulo 256 it gives a 128 exit code, the same as die() */
+	int retval = -128;
 
 	for (i = 0; i < argc; i++) {
 		const char *arg = argv[i];
@@ -4838,13 +4852,18 @@ int apply_all_patches(struct apply_state *state,
 		state->newfd = -1;
 	}
 
-	return !!errs;
+	retval = !!errs;
 
 rollback_end:
 	if (state->newfd >= 0) {
 		rollback_lock_file(state->lock_file);
 		state->newfd = -1;
 	}
-	/* Return -128, as modulo 256 it gives a 128 exit code, the same as die() */
-	return -128;
+
+	if (state->be_silent) {
+		set_error_routine(state->saved_error_routine);
+		set_warn_routine(state->saved_warn_routine);
+	}
+
+	return retval;
 }
