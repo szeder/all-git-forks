@@ -30,6 +30,11 @@ extern struct worktree **get_worktrees(void);
 extern const char *get_worktree_git_dir(const struct worktree *wt);
 
 /*
+ * Free up the memory for worktree
+ */
+extern void clear_worktree(struct worktree *);
+
+/*
  * Free up the memory for worktree(s)
  */
 extern void free_worktrees(struct worktree **);
