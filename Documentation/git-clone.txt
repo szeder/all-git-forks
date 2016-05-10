@@ -205,12 +205,23 @@ objects from the source repository into a pack in the cloned repository.
 
 --recursive::
 --recurse-submodules::
-	After the clone is created, initialize all submodules within,
-	using their default settings. This is equivalent to running
-	`git submodule update --init --recursive` immediately after
-	the clone is finished. This option is ignored if the cloned
-	repository does not have a worktree/checkout (i.e. if any of
-	`--no-checkout`/`-n`, `--bare`, or `--mirror` is given)
+	After the clone is created, initialize and clone all submodules
+	within, using their default settings. This is equivalent to
+	running `git submodule update --init[-group=<spec>] --recursive`
+	immediately after the clone is finished. This option is ignored
+	if the cloned repository does not have a worktree/checkout (i.e.
+	if any of `--no-checkout`/`-n`, `--bare`, or `--mirror` is given)
+
+--init-submodule::
+	After the clone is cloned, initialize and clone specified
+	submodules within, using their default settings. It is possible
+	to give multiple specifications by giving this argument multiple
+	times or by giving a comma separated list. This is equivalent to
+	running `git submodule update --init-group=<spec>` immediately
+	after the clone is finished. To specify submodules you can use
+	their path, name or labels, see linkgit:git-submodules[1]. This
+	option will be recorded in the repository config as
+	`submodule.updateGroup`.
 
 --separate-git-dir=<git dir>::
 	Instead of placing the cloned repository where it is supposed
