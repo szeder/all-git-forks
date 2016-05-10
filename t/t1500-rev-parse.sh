@@ -7,11 +7,13 @@ test_description='test git rev-parse'
 test_rev_parse () {
 	dir=
 	bare=
+	env=
 	while :
 	do
 		case "$1" in
 		-C) dir="-C $2"; shift; shift ;;
 		-b) bare="$2"; shift; shift ;;
+		-g) env="GIT_DIR=$2; export GIT_DIR"; shift; shift ;;
 		-*) error "test_rev_parse: unrecognized option '$1'" ;;
 		*) break ;;
 		esac
@@ -36,6 +38,8 @@ test_rev_parse () {
 	do
 		expect="$1"
 		test_expect_success "$name: $o" '
+			test_when_finished "sane_unset GIT_DIR" &&
+			eval $env &&
 			$bare &&
 			echo "$expect" >expect &&
 			git $dir rev-parse --$o >actual &&
@@ -61,22 +65,19 @@ test_rev_parse -b t 'core.bare = true' true false false
 test_rev_parse -b u 'core.bare undefined' false false true
 
 test_expect_success 'setup non-local database ../.git' 'mkdir work'
-GIT_DIR=../.git
-export GIT_DIR
 
-test_rev_parse -C work -b f 'GIT_DIR=../.git, core.bare = false' false false true ''
+test_rev_parse -C work -g ../.git -b f 'GIT_DIR=../.git, core.bare = false' false false true ''
 
-test_rev_parse -C work -b t 'GIT_DIR=../.git, core.bare = true' true false false ''
+test_rev_parse -C work -g ../.git -b t 'GIT_DIR=../.git, core.bare = true' true false false ''
 
-test_rev_parse -C work -b u 'GIT_DIR=../.git, core.bare undefined' false false true ''
+test_rev_parse -C work -g ../.git -b u 'GIT_DIR=../.git, core.bare undefined' false false true ''
 
 test_expect_success 'setup non-local database ../repo.git' 'mv .git repo.git'
-GIT_DIR=../repo.git
 
-test_rev_parse -C work -b f 'GIT_DIR=../repo.git, core.bare = false' false false true ''
+test_rev_parse -C work -g ../repo.git -b f 'GIT_DIR=../repo.git, core.bare = false' false false true ''
 
-test_rev_parse -C work -b t 'GIT_DIR=../repo.git, core.bare = true' true false false ''
+test_rev_parse -C work -g ../repo.git -b t 'GIT_DIR=../repo.git, core.bare = true' true false false ''
 
-test_rev_parse -C work -b u 'GIT_DIR=../repo.git, core.bare undefined' false false true ''
+test_rev_parse -C work -g ../repo.git -b u 'GIT_DIR=../repo.git, core.bare undefined' false false true ''
 
 test_done
