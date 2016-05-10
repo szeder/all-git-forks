@@ -831,6 +831,32 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 	return 0;
 }
 
+static int valid_label_name(int argc, const char **argv, const char *prefix)
+{
+	const char *label = argv[1];
+
+	if (argc != 2)
+		goto err;
+
+	if (!label || !strlen(label))
+		goto err;
+
+	if (!isalnum(*label))
+		goto err;
+
+	while (*label) {
+		if (!(isalnum(*label) ||
+			*label == '-'))
+			goto err;
+		label++;
+	}
+
+	return 0;
+err:
+	die(_("submodule label must start with an alphanumeric character"
+	      "and must contain alphanumeric characters or dashes only."));
+}
+
 struct cmd_struct {
 	const char *cmd;
 	int (*fn)(int, const char **, const char *);
@@ -843,7 +869,8 @@ static struct cmd_struct commands[] = {
 	{"update-clone", update_clone},
 	{"resolve-relative-url", resolve_relative_url},
 	{"resolve-relative-url-test", resolve_relative_url_test},
-	{"init", module_init}
+	{"init", module_init},
+	{"valid-label-name", valid_label_name}
 };
 
 int cmd_submodule__helper(int argc, const char **argv, const char *prefix)
