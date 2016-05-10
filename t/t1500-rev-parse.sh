@@ -51,6 +51,7 @@ test_rev_parse () {
 }
 
 ROOT=$(pwd)
+test_expect_success 'setup non-local database ../repo.git' 'cp -R .git repo.git'
 
 test_rev_parse toplevel false false true '' .git
 
@@ -71,8 +72,6 @@ test_rev_parse -C work -g ../.git -b f 'GIT_DIR=../.git, core.bare = false' fals
 test_rev_parse -C work -g ../.git -b t 'GIT_DIR=../.git, core.bare = true' true false false ''
 
 test_rev_parse -C work -g ../.git -b u 'GIT_DIR=../.git, core.bare undefined' false false true ''
-
-test_expect_success 'setup non-local database ../repo.git' 'cp -R .git repo.git'
 
 test_rev_parse -C work -g ../repo.git -b f 'GIT_DIR=../repo.git, core.bare = false' false false true ''
 
