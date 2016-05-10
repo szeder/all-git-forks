@@ -522,7 +522,12 @@ cmd_update()
 			GIT_QUIET=1
 			;;
 		-i|--init)
-			init=1
+			test -z $init || test $init = by_args || die "$(gettext "Only one of --init or --init-default-group may be used.")"
+			init=by_args
+			;;
+		--init-default-group)
+			test -z $init || test $init = by_config || die "$(gettext "Only one of --init or --init-default-group may be used.")"
+			init=by_config
 			;;
 		--remote)
 			remote=1
@@ -585,7 +590,12 @@ cmd_update()
 
 	if test -n "$init"
 	then
-		cmd_init "--" "$@" || return
+		additional_init=
+		if test "$init" = "by_config"
+		then
+			additional_init=$(git config --get-all submodule.updateGroup)
+		fi
+		cmd_init "--" "$@" ${additional_init:+$additional_init} || return
 	fi
 
 	{

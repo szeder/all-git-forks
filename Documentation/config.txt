@@ -2735,6 +2735,11 @@ submodule.fetchJobs::
 	in parallel. A value of 0 will give some reasonable default.
 	If unset, it defaults to 1.
 
+submodule.updateGroup::
+	Specifies the group of submodules when `git submodule --init-group`
+	is called with no arguments. This setting is recorded in the initial
+	clone when `--init-submodule` was given.
+
 tag.sort::
 	This variable controls the sort ordering of tags when displayed by
 	linkgit:git-tag[1]. Without the "--sort=<value>" option provided, the
