@@ -46,6 +46,9 @@ struct apply_state {
 	int apply_verbosely;
 	int be_silent;
 
+	void (*saved_error_routine)(const char *err, va_list params);
+	void (*saved_warn_routine)(const char *warn, va_list params);
+
 	/* --cached updates only the cache without ever touching the working tree. */
 	int cached;
 
