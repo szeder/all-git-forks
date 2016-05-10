@@ -37,6 +37,20 @@ these will not be checked out by default; the 'init' and 'update'
 subcommands will maintain submodules checked out and at
 appropriate revision in your working tree.
 
+When cloning or updating submodules you can specify the desired submodule
+group or give no specification at all to apply the command to the
+default group of submodules, which includes all submodules.
+To group submodules you can make use of
+ . a pathspec,
+ . their name,
+ . labels.
+It is undefined behavior to specify a string that is ambigious for a name,
+pathspec or label. To make the specification unambigous, you can prefix
+ . paths with './',
+ . names with ':',
+ . labels with '*'.
+Labels must consist of alphanumeric characters or the dash character.
+
 Submodules are composed from a so-called `gitlink` tree entry
 in the main repository that refers to a particular commit object
 within the inner repository that is completely separate.
