@@ -166,7 +166,7 @@ int xdl_emit_diff(xdfenv_t *xe, xdchange_t *xscr, xdemitcb_t *ecb,
 		if (xecfg->flags & XDL_EMIT_FUNCCONTEXT) {
 			long fs1 = get_func_line(xe, xecfg, NULL, xch->i1, -1);
 			if (fs1 < 0)
-				fs1 = 0;
+				fs1 = xch->i1;
 			if (fs1 < s1) {
 				s2 -= s1 - fs1;
 				s1 = fs1;
