@@ -6,14 +6,24 @@ test_description='test git rev-parse'
 # usage: [options] label is-bare is-inside-git is-inside-work prefix git-dir
 test_rev_parse () {
 	dir=
+	bare=
 	while :
 	do
 		case "$1" in
 		-C) dir="-C $2"; shift; shift ;;
+		-b) bare="$2"; shift; shift ;;
 		-*) error "test_rev_parse: unrecognized option '$1'" ;;
 		*) break ;;
 		esac
 	done
+
+	case "$bare" in
+	'') ;;
+	t*) bare="test_config $dir core.bare true" ;;
+	f*) bare="test_config $dir core.bare false" ;;
+	u*) bare="test_unconfig $dir core.bare" ;;
+	*) error "test_rev_parse: unrecognized core.bare value '$bare'"
+	esac
 
 	name=$1
 	shift
@@ -26,6 +36,7 @@ test_rev_parse () {
 	do
 		expect="$1"
 		test_expect_success "$name: $o" '
+			$bare &&
 			echo "$expect" >expect &&
 			git $dir rev-parse --$o >actual &&
 			test_cmp expect actual
@@ -45,37 +56,27 @@ test_rev_parse -C .git/objects .git/objects/ false true false '' "$ROOT/.git"
 test_expect_success 'setup untracked sub/dir' 'mkdir -p sub/dir'
 test_rev_parse -C sub/dir subdirectory false false true sub/dir/ "$ROOT/.git"
 
-git config core.bare true
-test_rev_parse 'core.bare = true' true false false
+test_rev_parse -b t 'core.bare = true' true false false
 
-git config --unset core.bare
-test_rev_parse 'core.bare undefined' false false true
+test_rev_parse -b u 'core.bare undefined' false false true
 
 test_expect_success 'setup non-local database ../.git' 'mkdir work'
 GIT_DIR=../.git
-GIT_CONFIG="$ROOT/work/../.git/config"
-export GIT_DIR GIT_CONFIG
+export GIT_DIR
 
-git config core.bare false
-test_rev_parse -C work 'GIT_DIR=../.git, core.bare = false' false false true ''
+test_rev_parse -C work -b f 'GIT_DIR=../.git, core.bare = false' false false true ''
 
-git config core.bare true
-test_rev_parse -C work 'GIT_DIR=../.git, core.bare = true' true false false ''
+test_rev_parse -C work -b t 'GIT_DIR=../.git, core.bare = true' true false false ''
 
-git config --unset core.bare
-test_rev_parse -C work 'GIT_DIR=../.git, core.bare undefined' false false true ''
+test_rev_parse -C work -b u 'GIT_DIR=../.git, core.bare undefined' false false true ''
 
 test_expect_success 'setup non-local database ../repo.git' 'mv .git repo.git'
 GIT_DIR=../repo.git
-GIT_CONFIG="$ROOT/work/../repo.git/config"
 
-git config core.bare false
-test_rev_parse -C work 'GIT_DIR=../repo.git, core.bare = false' false false true ''
+test_rev_parse -C work -b f 'GIT_DIR=../repo.git, core.bare = false' false false true ''
 
-git config core.bare true
-test_rev_parse -C work 'GIT_DIR=../repo.git, core.bare = true' true false false ''
+test_rev_parse -C work -b t 'GIT_DIR=../repo.git, core.bare = true' true false false ''
 
-git config --unset core.bare
-test_rev_parse -C work 'GIT_DIR=../repo.git, core.bare undefined' false false true ''
+test_rev_parse -C work -b u 'GIT_DIR=../repo.git, core.bare undefined' false false true ''
 
 test_done
