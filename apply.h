@@ -52,6 +52,7 @@ struct apply_state {
 	int apply_in_reverse;
 	int apply_with_reject;
 	int apply_verbosely;
+	int be_silent;
 	int no_add;
 	int threeway;
 	int unidiff_zero;
