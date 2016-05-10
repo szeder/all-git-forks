@@ -31,4 +31,7 @@ const struct submodule *submodule_from_path(const unsigned char *commit_sha1,
 		const char *path);
 void submodule_free(void);
 
+int submodule_in_group(const struct string_list *group,
+		       const struct submodule *sub);
+
 #endif /* SUBMODULE_CONFIG_H */
