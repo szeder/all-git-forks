@@ -44,6 +44,7 @@ struct apply_state {
 	int apply_in_reverse;
 	int apply_with_reject;
 	int apply_verbosely;
+	int be_silent;
 
 	/* --cached updates only the cache without ever touching the working tree. */
 	int cached;
