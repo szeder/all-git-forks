@@ -49,7 +49,7 @@ test_rev_parse 'core.bare undefined' false false true
 mkdir work || exit 1
 cd work || exit 1
 GIT_DIR=../.git
-GIT_CONFIG="$(pwd)"/../.git/config
+GIT_CONFIG="$ROOT/work/../.git/config"
 export GIT_DIR GIT_CONFIG
 
 git config core.bare false
@@ -63,7 +63,7 @@ test_rev_parse 'GIT_DIR=../.git, core.bare undefined' false false true ''
 
 mv ../.git ../repo.git || exit 1
 GIT_DIR=../repo.git
-GIT_CONFIG="$(pwd)"/../repo.git/config
+GIT_CONFIG="$ROOT/work/../repo.git/config"
 
 git config core.bare false
 test_rev_parse 'GIT_DIR=../repo.git, core.bare = false' false false true ''
