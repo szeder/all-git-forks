@@ -321,6 +321,7 @@ then
 else
 	exec 4>/dev/null 3>/dev/null
 fi
+BASH_XTRACEFD=4
 
 test_failure=0
 test_count=0
