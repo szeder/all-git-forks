@@ -122,8 +122,11 @@ int check_apply_state(struct apply_state *state, int force_apply)
 			return error(_("--3way outside a repository"));
 		state->check_index = 1;
 	}
-	if (state->apply_with_reject)
-		state->apply = state->apply_verbosely = 1;
+	if (state->apply_with_reject) {
+		state->apply = 1;
+		if (!state->be_silent)
+			state->apply_verbosely = 1;
+	}
 	if (!force_apply && (state->diffstat || state->numstat || state->summary || state->check || state->fake_ancestor))
 		state->apply = 0;
 	if (state->check_index && is_not_gitdir)
@@ -135,6 +138,8 @@ int check_apply_state(struct apply_state *state, int force_apply)
 	}
 	if (state->check_index)
 		state->unsafe_paths = 0;
+	if (state->be_silent && state->apply_verbosely)
+		return error(_("incompatible internal 'be_silent' and 'apply_verbosely' flags"));
 	if (!state->lock_file)
 		return error("BUG: state->lock_file should not be NULL");
 
