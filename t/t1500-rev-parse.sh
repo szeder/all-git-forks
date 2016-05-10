@@ -72,7 +72,7 @@ test_rev_parse -C work -g ../.git -b t 'GIT_DIR=../.git, core.bare = true' true 
 
 test_rev_parse -C work -g ../.git -b u 'GIT_DIR=../.git, core.bare undefined' false false true ''
 
-test_expect_success 'setup non-local database ../repo.git' 'mv .git repo.git'
+test_expect_success 'setup non-local database ../repo.git' 'cp -R .git repo.git'
 
 test_rev_parse -C work -g ../repo.git -b f 'GIT_DIR=../repo.git, core.bare = false' false false true ''
 
