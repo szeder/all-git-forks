@@ -1525,7 +1525,6 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	struct argv_array apply_paths = ARGV_ARRAY_INIT;
 	struct argv_array apply_opts = ARGV_ARRAY_INIT;
 	struct apply_state apply_state;
-	int save_stdout_fd, save_stderr_fd;
 	int res, opts_left;
 	char *save_index_file;
 	static struct lock_file lock_file;
@@ -1559,18 +1558,6 @@ static int run_apply(const struct am_state *state, const char *index_file)
 		OPT_END()
 	};
 
-	/*
-	 * If we are allowed to fall back on 3-way merge, don't give false
-	 * errors during the initial attempt.
-	 */
-
-	if (state->threeway && !index_file) {
-		save_stdout_fd = dup(1);
-		dup_devnull(1);
-		save_stderr_fd = dup(2);
-		dup_devnull(2);
-	}
-
 	if (index_file) {
 		save_index_file = get_index_file();
 		set_index_file((char *)index_file);
@@ -1593,20 +1580,20 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	else
 		apply_state.check_index = 1;
 
+	/*
+	 * If we are allowed to fall back on 3-way merge, don't give false
+	 * errors during the initial attempt.
+	 */
+
+	if (state->threeway && !index_file)
+		apply_state.be_silent = 1;
+
 	if (check_apply_state(&apply_state, 0))
 		die("check_apply_state() failed");
 
 	argv_array_push(&apply_paths, am_path(state, "patch"));
 
 	res = apply_all_patches(&apply_state, apply_paths.argc, apply_paths.argv, 0);
-
-	/* Restore stdout and stderr */
-	if (state->threeway && !index_file) {
-		dup2(save_stdout_fd, 1);
-		close(save_stdout_fd);
-		dup2(save_stderr_fd, 2);
-		close(save_stderr_fd);
-	}
 
 	if (index_file)
 		set_index_file(save_index_file);
