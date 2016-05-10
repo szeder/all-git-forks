@@ -4698,13 +4698,13 @@ static int apply_patch(struct apply_state *state,
 		goto end;
 	}
 
-	if (state->diffstat)
+	if (state->diffstat && !state->be_silent)
 		stat_patch_list(state, list);
 
-	if (state->numstat)
+	if (state->numstat && !state->be_silent)
 		numstat_patch_list(state, list);
 
-	if (state->summary)
+	if (state->summary && !state->be_silent)
 		summary_patch_list(list);
 
 end:
