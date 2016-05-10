@@ -104,4 +104,30 @@ test_expect_success 'in-group' '
 	)
 '
 
+test_expect_success 'submodule init respects label' '
+	test_when_finished "rm -rf super_clone" &&
+	suburl=$(pwd)/sub &&
+	git clone super super_clone &&
+	(
+		cd super_clone &&
+		git submodule init \*bit1 &&
+		test_must_fail git config submodule.sub0.url &&
+		test        "$(git config submodule.sub1.url)" = "$suburl" &&
+		test_must_fail git config submodule.sub2.url &&
+		test        "$(git config submodule.sub3.url)" = "$suburl"
+	)
+'
+
+test_expect_success 'submodule init respects label' '
+	test_when_finished "rm -rf super_clone" &&
+	suburl=$(pwd)/sub &&
+	git clone super super_clone &&
+	(
+		cd super_clone &&
+		git submodule init :sub_name &&
+		test_must_fail git config submodule.sub0.url &&
+		test "$(git config submodule.sub_name.url)" = "$suburl"
+	)
+'
+
 test_done

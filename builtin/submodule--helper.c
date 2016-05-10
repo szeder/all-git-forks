@@ -12,6 +12,7 @@
 #include "remote.h"
 #include "refs.h"
 #include "connect.h"
+#include "argv-array.h"
 
 static char *get_default_remote(void)
 {
@@ -215,6 +216,36 @@ static int resolve_relative_url_test(int argc, const char **argv, const char *pr
 	return 0;
 }
 
+static void split_argv_pathspec_groups(int argc, const char **argv,
+				       const char ***pathspec_argv,
+				       struct string_list *group)
+{
+	int i;
+	struct argv_array ps = ARGV_ARRAY_INIT;
+	for (i = 0; i < argc; i++) {
+		if (starts_with(argv[i], "*")
+		    || starts_with(argv[i], ":")) {
+			string_list_insert(group, argv[i]);
+		} else if (starts_with(argv[i], "./")) {
+			argv_array_push(&ps, argv[i]);
+		} else {
+			/*
+			* NEEDSWORK:
+			* Improve autodetection of items with no prefixes,
+			* roughly like
+			* if (label_or_name_exists(argv[i]))
+			*	string_list_insert(group, argv[i]);
+			* else
+			*	argv_array_push(&ps, argv[i]);
+			*/
+			argv_array_push(&ps, argv[i]);
+		}
+	}
+
+	*pathspec_argv = argv_array_detach(&ps);
+	argv_array_clear(&ps);
+}
+
 struct module_list {
 	const struct cache_entry **entries;
 	int alloc, nr;
@@ -228,10 +259,15 @@ static int module_list_compute(int argc, const char **argv,
 {
 	int i, result = 0;
 	char *ps_matched = NULL;
+	const char **pathspec_argv;
+	struct string_list group = STRING_LIST_INIT_DUP;
+
+	split_argv_pathspec_groups(argc, argv, &pathspec_argv, &group);
+
 	parse_pathspec(pathspec, 0,
 		       PATHSPEC_PREFER_FULL |
 		       PATHSPEC_STRIP_SUBMODULE_SLASH_CHEAP,
-		       prefix, argv);
+		       prefix, pathspec_argv);
 
 	if (pathspec->nr)
 		ps_matched = xcalloc(pathspec->nr, 1);
@@ -242,10 +278,27 @@ static int module_list_compute(int argc, const char **argv,
 	for (i = 0; i < active_nr; i++) {
 		const struct cache_entry *ce = active_cache[i];
 
-		if (!match_pathspec(pathspec, ce->name, ce_namelen(ce),
-				    0, ps_matched, 1) ||
-		    !S_ISGITLINK(ce->ce_mode))
-			continue;
+		if (!group.nr) {
+			if (!match_pathspec(pathspec, ce->name, ce_namelen(ce),
+					    0, ps_matched, 1) ||
+			    !S_ISGITLINK(ce->ce_mode))
+				continue;
+		} else {
+			const struct submodule *sub;
+			int ps = 0, gr = 0;
+			if (!S_ISGITLINK(ce->ce_mode))
+				continue;
+			sub = submodule_from_path(null_sha1, ce->name);
+
+			ps = match_pathspec(pathspec, ce->name, ce_namelen(ce),
+					    0, ps_matched, 1);
+			gr = submodule_in_group(&group, sub);
+
+			if (!pathspec->nr && !gr)
+				continue;
+			if (!ps && !gr)
+				continue;
+		}
 
 		ALLOC_GROW(list->entries, list->nr + 1, list->alloc);
 		list->entries[list->nr++] = ce;
@@ -286,6 +339,9 @@ static int module_list(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, prefix, module_list_options,
 			     git_submodule_helper_usage, 0);
+
+	gitmodules_config();
+	git_config(submodule_config, NULL);
 
 	if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0) {
 		printf("#unmatched\n");
@@ -414,6 +470,9 @@ static int module_init(int argc, const char **argv, const char *prefix)
 
 	argc = parse_options(argc, argv, prefix, module_init_options,
 			     git_submodule_helper_usage, 0);
+
+	gitmodules_config();
+	git_config(submodule_config, NULL);
 
 	if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0)
 		return 1;
@@ -795,15 +854,14 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 		if (parse_submodule_update_strategy(update, &suc.update) < 0)
 			die(_("bad value for update parameter"));
 
+	gitmodules_config();
+	git_config(submodule_config, NULL);
+
 	if (module_list_compute(argc, argv, prefix, &pathspec, &suc.list) < 0)
 		return 1;
 
 	if (pathspec.nr)
 		suc.warn_if_uninitialized = 1;
-
-	/* Overlay the parsed .gitmodules file with .git/config */
-	gitmodules_config();
-	git_config(submodule_config, NULL);
 
 	if (max_jobs < 0)
 		max_jobs = parallel_submodules();
