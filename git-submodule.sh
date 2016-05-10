@@ -5,7 +5,7 @@
 # Copyright (c) 2007 Lars Hjemli
 
 dashless=$(basename "$0" | sed -e 's/-/ /')
-USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--] <repository> [<path>]
+USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [-l|--label <label>][--] <repository> [<path>]
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] [--] <path>...
@@ -130,6 +130,7 @@ cmd_add()
 {
 	# parse $args after "submodule ... add".
 	reference_path=
+	labels=
 	while test $# -ne 0
 	do
 		case "$1" in
@@ -164,6 +165,15 @@ cmd_add()
 			;;
 		--depth=*)
 			depth=$1
+			;;
+		-l|--label)
+			git submodule--helper valid-label-name "$2" || exit
+			labels="${labels} $2"
+			shift
+			;;
+		--label=*)
+			git submodule--helper valid-label-name "${1#--label=}" || exit
+			labels="${labels} ${1#--label=}"
 			;;
 		--)
 			shift
@@ -292,6 +302,10 @@ Use -f if you really want to add it." >&2
 
 	git config -f .gitmodules submodule."$sm_name".path "$sm_path" &&
 	git config -f .gitmodules submodule."$sm_name".url "$repo" &&
+	for label in $labels
+	do
+		git config --add -f .gitmodules submodule."$sm_name".label "$label"
+	done &&
 	if test -n "$branch"
 	then
 		git config -f .gitmodules submodule."$sm_name".branch "$branch"
