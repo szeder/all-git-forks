@@ -97,6 +97,10 @@ test_perf_create_repo_from () {
 		done &&
 		cd .. &&
 		git init -q &&
+		git init -q && {
+			test_have_prereq SYMLINKS ||
+			git config core.symlinks false
+		} &&
 		mv .git/hooks .git/hooks-disabled 2>/dev/null
 	) || error "failed to copy repository '$source' to '$repo'"
 }
