@@ -414,7 +414,7 @@ static void write_crash_report(const char *err)
 	struct recent_command *rc;
 
 	if (!rpt) {
-		error("can't write crash report %s: %s", loc, strerror(errno));
+		error_errno("can't write crash report %s", loc);
 		free(loc);
 		return;
 	}
@@ -1512,7 +1512,7 @@ static int tree_content_set(
 	t = root->tree;
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
-		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
+		if (e->name->str_len == n && !fspathncmp(p, e->name->str_dat, n)) {
 			if (!*slash1) {
 				if (!S_ISDIR(mode)
 						&& e->versions[1].mode == mode
@@ -1602,7 +1602,7 @@ static int tree_content_remove(
 	t = root->tree;
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
-		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
+		if (e->name->str_len == n && !fspathncmp(p, e->name->str_dat, n)) {
 			if (*slash1 && !S_ISDIR(e->versions[1].mode))
 				/*
 				 * If p names a file in some subdirectory, and a
@@ -1669,7 +1669,7 @@ static int tree_content_get(
 	t = root->tree;
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
-		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
+		if (e->name->str_len == n && !fspathncmp(p, e->name->str_dat, n)) {
 			if (!*slash1)
 				goto found_entry;
 			if (!S_ISDIR(e->versions[1].mode))
@@ -1806,8 +1806,8 @@ static void dump_marks(void)
 		return;
 
 	if (hold_lock_file_for_update(&mark_lock, export_marks_file, 0) < 0) {
-		failure |= error("Unable to write marks file %s: %s",
-			export_marks_file, strerror(errno));
+		failure |= error_errno("Unable to write marks file %s",
+				       export_marks_file);
 		return;
 	}
 
@@ -1822,8 +1822,8 @@ static void dump_marks(void)
 
 	dump_marks_helper(f, 0, marks);
 	if (commit_lock_file(&mark_lock)) {
-		failure |= error("Unable to write file %s: %s",
-			export_marks_file, strerror(errno));
+		failure |= error_errno("Unable to write file %s",
+				       export_marks_file);
 		return;
 	}
 }
