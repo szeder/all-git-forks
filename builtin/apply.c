@@ -73,6 +73,8 @@ int cmd_apply(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "allow-overlap", &state.allow_overlap,
 			N_("allow overlapping hunks")),
 		OPT__VERBOSE(&state.apply_verbosely, N_("be verbose")),
+		OPT_BOOL(0, "silent", &state.be_silent,
+			N_("do not print any output")),
 		OPT_BIT(0, "inaccurate-eof", &options,
 			N_("tolerate incorrectly detected missing new-line at the end of file"),
 			APPLY_OPT_INACCURATE_EOF),
