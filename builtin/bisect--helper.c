@@ -79,11 +79,22 @@ int write_terms(const char *bad, const char *good)
 	strbuf_release(&content);
 	return (res < 0) ? -1 : 0;
 }
+
+int bisect_voc(const char *term){
+	if (!strcmp(term, "bad"))
+		printf("bad|new\n");
+	else if(!strcmp(term, "good"))
+		printf("good|old\n");
+
+	return 0;
+}
+
 int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 {
 	enum {
 		NEXT_ALL = 1,
-		WRITE_TERMS
+		WRITE_TERMS,
+		BISECT_VOC
 	} cmdmode = 0;
 	int no_checkout = 0;
 	struct option options[] = {
@@ -91,6 +102,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 			 N_("perform 'git bisect next'"), NEXT_ALL),
 		OPT_CMDMODE(0, "write-terms", &cmdmode,
 			 N_("write the terms to .git/BISECT_TERMS"), WRITE_TERMS),
+		OPT_CMDMODE(0, "bisect-voc", &cmdmode,
+			 N_("print the corresponding bisect state"), BISECT_VOC),
 		OPT_BOOL(0, "no-checkout", &no_checkout,
 			 N_("update BISECT_HEAD instead of checking out the current commit")),
 		OPT_END()
@@ -109,6 +122,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 		if (argc != 2)
 			die(_("--write-terms requires two arguments"));
 		return write_terms(argv[0], argv[1]);
+	case BISECT_VOC:
+		return bisect_voc(argv[0]);
 	default:
 		die("BUG: unknown subcommand '%d'", cmdmode);
 	}

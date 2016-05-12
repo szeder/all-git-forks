@@ -332,8 +332,8 @@ bisect_next_check() {
 		: bisect without $TERM_GOOD...
 		;;
 	*)
-		bad_syn=$(bisect_voc bad)
-		good_syn=$(bisect_voc good)
+		bad_syn=$(git bisect--helper --bisect-voc bad)
+		good_syn=$(git bisect--helper --bisect-voc good)
 		if test -s "$GIT_DIR/BISECT_START"
 		then
 
@@ -584,13 +584,6 @@ check_and_set_terms () {
 			fi
 			;;
 		esac ;;
-	esac
-}
-
-bisect_voc () {
-	case "$1" in
-	bad) echo "bad|new" ;;
-	good) echo "good|old" ;;
 	esac
 }
 
