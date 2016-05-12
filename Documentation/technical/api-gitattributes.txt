@@ -74,7 +74,7 @@ static void setup_check(void)
 	if (check[0].attr)
 		return; /* already done */
 	check[0].attr = git_attr("crlf");
-	check[1].attr = git_attr("ident");
+	check[1].attr = git_attr("indent");
 }
 ------------
 
