@@ -451,6 +451,7 @@ bisect_clean_state() {
 	git update-ref -d --no-deref BISECT_HEAD &&
 	# clean up BISECT_START last
 	rm -f "$GIT_DIR/BISECT_START"
+	rm -rf "$GIT_DIR/refs/bisect"
 }
 
 bisect_replay () {
