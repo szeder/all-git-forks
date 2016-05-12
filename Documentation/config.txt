@@ -279,6 +279,12 @@ See linkgit:git-update-index[1].
 +
 The default is true (when core.filemode is not specified in the config file).
 
+core.hideDotFiles::
+	(Windows-only) If true, mark newly-created directories and files whose
+	name starts with a dot as hidden.  If 'dotGitOnly', only the `.git/`
+	directory is hidden, but no other files starting with a dot.  The
+	default mode is 'dotGitOnly'.
+
 core.ignoreCase::
 	If true, this option enables various workarounds to enable
 	Git to work better on filesystems that are not case sensitive,
@@ -1182,6 +1188,15 @@ difftool.<tool>.cmd::
 
 difftool.prompt::
 	Prompt before each invocation of the diff tool.
+
+fastimport.unpackLimit::
+	If the number of objects imported by linkgit:git-fast-import[1]
+	is below this limit, then the objects will be unpacked into
+	loose object files.  However if the number of imported objects
+	equals or exceeds this limit then the pack will be stored as a
+	pack.  Storing the pack from a fast-import can make the import
+	operation complete faster, especially on slow filesystems.  If
+	not set, the value of `transfer.unpackLimit` is used instead.
 
 fetch.recurseSubmodules::
 	This option can be either set to a boolean value or to 'on-demand'.
