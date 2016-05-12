@@ -61,7 +61,7 @@ Querying Specific Attributes
 Example
 -------
 
-To see how attributes "crlf" and "indent" are set for different paths.
+To see how attributes "crlf" and "ident" are set for different paths.
 
 . Prepare an array of `struct git_attr_check` with two elements (because
   we are checking two attributes).  Initialize their `attr` member with
