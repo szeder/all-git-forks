@@ -894,4 +894,21 @@ test_expect_success 'bisect start takes options and revs in any order' '
 	test_cmp expected actual
 '
 
+test_expect_success 'git bisect reset cleans its state properly' '
+	git bisect reset &&
+	git bisect start &&
+	git bisect good $HASH1 &&
+	git bisect bad $HASH4 &&
+	! test -d ".git/refs/bisect" &&
+	! test -s ".git/BISECT_EXPECTED_REV" &&
+	! test -s ".git/BISECT_ANCESTORS_OK" &&
+	! test -s ".git/BISECT_LOG" &&
+	! test -s ".git/BISECT_NAMES" &&
+	! test -s ".git/BISECT_RUN" &&
+	! test -s ".git/BISECT_TERMS" &&
+	! test -s ".git/head-name" &&
+	! test -s ".git/BISECT_HEAD" &&
+	! test -s ".git/BISECT_START"
+'
+
 test_done
