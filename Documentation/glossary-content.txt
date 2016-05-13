@@ -362,6 +362,11 @@ glob;;
 	For example, "Documentation/{asterisk}.html" matches
 	"Documentation/git.html" but not "Documentation/ppc/ppc.html"
 	or "tools/perf/Documentation/perf.html".
+
+label:<white space separated list>;;
+	Labels can be assigned to pathspecs in the .gitattributes file.
+	By specifying a list of labels the pattern will match only
+	files which have all of the listed labels.
 +
 Two consecutive asterisks ("`**`") in patterns matched against
 full pathname may have special meaning:

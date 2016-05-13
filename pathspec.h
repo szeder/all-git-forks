@@ -32,6 +32,7 @@ struct pathspec {
 		int len, prefix;
 		int nowildcard_len;
 		int flags;
+		struct string_list *group;
 	} *items;
 };
 

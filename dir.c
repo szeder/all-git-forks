@@ -9,6 +9,7 @@
  */
 #include "cache.h"
 #include "dir.h"
+#include "attr.h"
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
@@ -207,6 +208,27 @@ int within_depth(const char *name, int namelen,
 	return 1;
 }
 
+void load_labels(const char *name, int namelen, struct string_list *list)
+{
+	static struct git_attr *attr;
+	struct git_attr_check check;
+	char *path = xmemdupz(name, namelen);
+
+	if (!attr)
+		attr = git_attr("label");
+	check.attr = attr;
+
+	if (git_check_attr(path, 1, &check))
+		die("git_check_attr died");
+
+	if (ATTR_CUSTOM(check.value)) {
+		string_list_split(list, check.value, ',', -1);
+		string_list_sort(list);
+	}
+
+	free(path);
+}
+
 #define DO_MATCH_EXCLUDE   1
 #define DO_MATCH_DIRECTORY 2
 
@@ -261,6 +283,15 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
 	if (item->prefix && (item->magic & PATHSPEC_ICASE) &&
 	    strncmp(item->match, name - prefix, item->prefix))
 		return 0;
+
+	if (item->group) {
+		struct string_list has_labels = STRING_LIST_INIT_DUP;
+		struct string_list_item *si;
+		load_labels(name, namelen, &has_labels);
+		for_each_string_list_item(si, item->group)
+			if (!string_list_has_string(&has_labels, si->string))
+				return 0;
+	}
 
 	/* If the match was just the prefix, we matched */
 	if (!*match)
