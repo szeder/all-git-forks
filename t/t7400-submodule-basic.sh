@@ -1138,5 +1138,76 @@ cat <<EOF > expected
  sub3 (test2)
 EOF
 
+test_expect_success 'clone --init-submodule works' '
+	test_when_finished "rm -rf super super_clone" &&
+	git clone --recurse-submodules --init-submodule \*bit1 labeledsuper super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c 1,43- >../actual
+	) &&
+	test_cmp actual expected
+'
+
+cat <<EOF > expect
+ sub0 (test2)
+ sub1 (test2)
+-sub2
+ sub3 (test2)
+EOF
+test_expect_success 'clone with multiple --init-submodule options' '
+	test_when_finished "rm -rf super super_clone" &&
+	git clone --recurse-submodules --init-submodule=\*bit1 --init-submodule ./sub0 labeledsuper super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,43- >../actual
+	) &&
+	test_cmp expect actual
+'
+
+cat <<EOF > expect
+ submoduleA (test2)
+-submoduleB
+EOF
+
+cat <<EOF > expect2
+ submoduleA (test2)
+-submoduleB
+ submoduleC (test2)
+EOF
+
+test_expect_success 'clone and subsequent updates correctly auto-initialize submodules' '
+	test_when_finished "rm -rf super super_clone" &&
+	mkdir super &&
+	pwd=$(pwd) &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label LA file://"$pwd"/sub1 submoduleA &&
+		git submodule add file://"$pwd"/sub1 submoduleB &&
+		git commit -a -m "create repository with submodules groups"
+	) &&
+	git clone --recurse-submodules --init-submodule=\*LA super super_clone &&
+	(
+		cd super_clone &&
+		git submodule status |cut -c1,43- >../actual
+	) &&
+	test_cmp expect actual &&
+	(
+		cd super &&
+		git init &&
+		git submodule add --label LA file://"$pwd"/sub1 submoduleC &&
+		git commit -a -m "add another labled submodule"
+	) &&
+	(
+		cd super_clone &&
+		# obtain the new superproject
+		git pull &&
+		# submoduleC should just appear as it has the label LA
+		# which was configured in git clone
+		git submodule update --init-default-group &&
+		git submodule status |cut -c1,43- >../actual
+	) &&
+	test_cmp expect2 actual
+'
 
 test_done
