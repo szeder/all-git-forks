@@ -43,9 +43,19 @@ const char *git_extract_argv0_path(const char *argv0)
 	const char *slash;
 
 	if (!argv0 || !*argv0)
-		return NULL;
+		argv0 = get_executable_path(); /* This lets valgrind run */
 
 	slash = find_last_dir_sep(argv0);
+
+#ifdef RUNTIME_PREFIX
+	if (slash == NULL || !is_dir_sep(*argv0)) {
+		argv0 = get_executable_path();
+		slash = git_find_last_dir_sep(argv0);
+
+		assert(is_dir_sep(*argv0));
+		assert(slash != NULL);
+	}
+#endif /* def RUNTIME_PREFIX */
 
 	if (slash) {
 		argv0_path = xstrndup(argv0, slash - argv0);
