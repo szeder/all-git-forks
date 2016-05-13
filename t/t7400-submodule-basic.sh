@@ -1078,5 +1078,65 @@ test_expect_success 'submodule helper list is not confused by common prefixes' '
 	test_cmp expect actual
 '
 
+test_expect_success 'setup superproject with labeled submodules' '
+	mkdir sub1 &&
+	(
+		cd sub1 &&
+		git init &&
+		test_commit test
+		test_commit test2
+	) &&
+	mkdir labeledsuper &&
+	(
+		cd labeledsuper &&
+		git init &&
+		git submodule add ../sub1 sub0 &&
+		git submodule add -l bit1 ../sub1 sub1 &&
+		git submodule add -l bit2 ../sub1 sub2 &&
+		git submodule add -l bit2 -l bit1 ../sub1 sub3 &&
+		git commit -m "add labeled submodules"
+	)
+'
+
+cat >expect <<-EOF
+-sub0
+ sub1 (test2)
+ sub2 (test2)
+ sub3 (test2)
+EOF
+
+test_expect_success 'submodule update --init with a group' '
+	test_when_finished "rm -rf labeledsuper_clone" &&
+	pwd=$(pwd) &&
+	git clone file://"$pwd"/labeledsuper labeledsuper_clone &&
+	(
+		cd labeledsuper_clone &&
+		git submodule update --init \*bit1 ./sub2 &&
+		git submodule status |cut -c 1,43- >../actual
+	) &&
+	test_cmp expect actual
+'
+
+test_expect_success 'submodule update --init-default-group' '
+	test_when_finished "rm -rf labeledsuper_clone" &&
+	pwd=$(pwd) &&
+	git clone file://"$pwd"/labeledsuper labeledsuper_clone &&
+	(
+		cd labeledsuper_clone &&
+		git config submodule.updateGroup \*bit1 &&
+		git config --add submodule.updateGroup ./sub2 &&
+		git submodule update --init-default-group &&
+		git submodule status |cut -c 1,43- >../actual
+	) &&
+	test_cmp expect actual
+'
+
+cat <<EOF > expected
+-sub0
+ sub1 (test2)
+-sub2
+ sub3 (test2)
+EOF
+
 
 test_done

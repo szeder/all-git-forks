@@ -2754,6 +2754,10 @@ submodule.fetchJobs::
 	in parallel. A value of 0 will give some reasonable default.
 	If unset, it defaults to 1.
 
+submodule.updateGroup::
+	Specifies the group of submodules when `git submodule --init-group`
+	is called with no arguments. This setting is recorded in the initial
+	clone when `--init-submodule` was given.
 tag.forceSignAnnotated::
 	A boolean to specify whether annotated tags created should be GPG signed.
 	If `--annotate` is specified on the command line, it takes
