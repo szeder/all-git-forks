@@ -185,7 +185,7 @@ store_stash () {
 
 	git update-ref --create-reflog -m "$stash_msg" $ref_stash $w_commit
 	ret=$?
-	test $ret != 0 && test -z $quiet &&
+	test $ret != 0 && test -z "$quiet" &&
 	die "$(eval_gettext "Cannot update \$ref_stash with \$w_commit")"
 	return $ret
 }
