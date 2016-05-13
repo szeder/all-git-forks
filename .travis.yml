@@ -100,9 +100,9 @@ before_install:
 
 before_script: make --jobs=2
 
-script: make --quiet test
+script: cd t; ./t9803-git-p4-shell-metachars.sh;
 
-after_failure: ./ci/report.sh $TRAVIS_REPO_SLUG $TRAVIS_BRANCH
+after_failure: cd ..; ./ci/report.sh $TRAVIS_REPO_SLUG $TRAVIS_BRANCH
 
 notifications:
   email: false

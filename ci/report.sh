@@ -10,17 +10,15 @@ then
         next)   STABLE_BRANCH="master";;
         *)      STABLE_BRANCH="next";;
     esac
-    cd ..
-    git clone https://github.com/larsxschneider/git.git full
-    cd full
-    git remote add upstream https://github.com/git/git.git
-    git fetch upstream
+
+    git config remote.origin.fetch "+refs/heads/$STABLE_BRANCH:refs/remotes/origin/$STABLE_BRANCH"
+    git fetch --unshallow
     git branch -a
     git remote -v
     git --version
     git rev-parse "$BRANCH"
-    git rev-parse "remotes/upstream/$STABLE_BRANCH"
-    GOOD_REV=$(git merge-base "$BRANCH" "remotes/upstream/$STABLE_BRANCH")
+    git rev-parse "remotes/origin/$STABLE_BRANCH"
+    GOOD_REV=$(git merge-base "$BRANCH" "remotes/origin/$STABLE_BRANCH")
     echo "$GOOD_REV"
 fi
 
