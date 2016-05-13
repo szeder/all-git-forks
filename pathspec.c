@@ -88,12 +88,40 @@ static void prefix_short_magic(struct strbuf *sb, int prefixlen,
 	strbuf_addf(sb, ",prefix:%d)", prefixlen);
 }
 
+static int check_valid_label_name(const char *label)
+{
+	if (!label || !strlen(label))
+		return -1;
+
+	if (!isalpha(*label))
+		return -1;
+
+	while (*label) {
+		if (!(isalnum(*label) ||
+			*label == '-' ||
+			*label == '_'))
+			return -1;
+		label++;
+	}
+
+	return 0;
+}
+
+static void validate_label_name(const char *label)
+{
+	if (check_valid_label_name(label))
+		warning(_("Label '%s' discouraged. Recommended label names start "
+			"with an alphabetic character and use only alphanumeric "
+			"characters, dashes and underscores."), label);
+}
+
 static void eat_long_magic(struct pathspec_item *item, const char *elt,
 		unsigned *magic, int *pathspec_prefix,
 		const char **copyfrom_, const char **long_magic_end)
 {
 	int i;
 	const char *copyfrom = *copyfrom_;
+	const char *body;
 	/* longhand */
 	const char *nextat;
 	for (copyfrom = elt + 2;
@@ -108,12 +136,27 @@ static void eat_long_magic(struct pathspec_item *item, const char *elt,
 		if (!len)
 			continue;
 
-		if (starts_with(copyfrom, "prefix:")) {
+		if (skip_prefix(copyfrom, "prefix:", &body)) {
 			char *endptr;
-			*pathspec_prefix = strtol(copyfrom + 7,
-						  &endptr, 10);
+			*pathspec_prefix = strtol(body, &endptr, 10);
 			if (endptr - copyfrom != len)
 				die(_("invalid parameter for pathspec magic 'prefix'"));
+			continue;
+		}
+
+		/* The label token may have no argument, so no trailing ':' */
+		if (skip_prefix(copyfrom, "label", &body)) {
+			struct strbuf sb = STRBUF_INIT;
+			skip_prefix(body, ":", &body);
+			strbuf_add(&sb, body, nextat - body);
+			if (!item->labels) {
+				item->labels = xmalloc(sizeof(*item->labels));
+				string_list_init(item->labels, 1);
+			} else
+				die(_("multiple labels not supported in pathspec magic"));
+			string_list_split(item->labels, sb.buf, ' ', -1);
+			string_list_remove_empty_items(item->labels, 0);
+			strbuf_release(&sb);
 			continue;
 		}
 
@@ -425,7 +468,7 @@ void parse_pathspec(struct pathspec *pathspec,
 	for (i = 0; i < n; i++) {
 		unsigned short_magic;
 		entry = argv[i];
-
+		item[i].labels = NULL;
 		item[i].magic = prefix_pathspec(item + i, &short_magic,
 						argv + i, flags,
 						prefix, prefixlen, entry);
@@ -447,6 +490,12 @@ void parse_pathspec(struct pathspec *pathspec,
 		if (item[i].nowildcard_len < item[i].len)
 			pathspec->has_wildcard = 1;
 		pathspec->magic |= item[i].magic;
+
+		if (item[i].labels) {
+			struct string_list_item *si;
+			for_each_string_list_item(si, item[i].labels)
+				validate_label_name(si->string);
+		}
 	}
 
 	if (nr_exclude == n)
@@ -502,6 +551,13 @@ void copy_pathspec(struct pathspec *dst, const struct pathspec *src)
 
 void free_pathspec(struct pathspec *pathspec)
 {
+	int i;
+	for (i = 0; i < pathspec->nr; i++) {
+		if (pathspec->items[i].labels)
+			string_list_clear(pathspec->items[i].labels, 1);
+		free(pathspec->items[i].labels);
+	}
+
 	free(pathspec->items);
 	pathspec->items = NULL;
 }

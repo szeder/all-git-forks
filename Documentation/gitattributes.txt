@@ -906,6 +906,18 @@ If this attribute is not set or has an invalid value, the value of the
 (See linkgit:git-config[1]).
 
 
+
+Attaching labels to path
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+`label`
+^^^^^^^^^^
+By the value of this attribute you can specify a list of arbitrary strings
+to be attached to a path as labels. These labels can be used for
+easier paths matching using pathspecs (linkgit:gitglossary[1]).
+It is recommended to use only alphanumeric characters, dashes and
+underscores for the labels.
+
 USING MACRO ATTRIBUTES
 ----------------------
 

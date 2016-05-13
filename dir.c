@@ -9,6 +9,7 @@
  */
 #include "cache.h"
 #include "dir.h"
+#include "attr.h"
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
@@ -208,6 +209,52 @@ int within_depth(const char *name, int namelen,
 	return 1;
 }
 
+static int has_all_labels(const char *name, int namelen,
+			   const struct string_list *required_labels)
+{
+	static struct git_attr *attr;
+
+	struct git_attr_check check;
+	char *path;
+	int ret;
+
+	if (!attr)
+		attr = git_attr("label");
+	check.attr = attr;
+
+	path = xmemdupz(name, namelen);
+	if (git_check_attr(path, 1, &check))
+		die("internal bug: git_check_attr died.");
+	free(path);
+
+	if (ATTR_TRUE(check.value))
+		ret = 1; /* has all the labels */
+	else if (ATTR_FALSE(check.value))
+		ret = 0; /* has no labels */
+	else if (ATTR_UNSET(check.value))
+		/*
+		 * If no label was specified this matches, otherwise
+		 * there is a missing label.
+		 */
+		ret = (required_labels->nr > 0) ? 0 : 1;
+	else {
+		struct string_list_item *si;
+		struct string_list attr_labels = STRING_LIST_INIT_DUP;
+		string_list_split(&attr_labels, check.value, ',', -1);
+		string_list_sort(&attr_labels);
+		ret = 1;
+		for_each_string_list_item(si, required_labels) {
+			if (!string_list_has_string(&attr_labels, si->string)) {
+				ret = 0;
+				break;
+			}
+		}
+		string_list_clear(&attr_labels, 0);
+	}
+
+	return ret;
+}
+
 #define DO_MATCH_EXCLUDE   1
 #define DO_MATCH_DIRECTORY 2
 
@@ -261,6 +308,9 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
 	 */
 	if (item->prefix && (item->magic & PATHSPEC_ICASE) &&
 	    strncmp(item->match, name - prefix, item->prefix))
+		return 0;
+
+	if (item->labels && !has_all_labels(name, namelen, item->labels))
 		return 0;
 
 	/* If the match was just the prefix, we matched */

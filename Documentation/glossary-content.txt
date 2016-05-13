@@ -384,6 +384,10 @@ full pathname may have special meaning:
 +
 Glob magic is incompatible with literal magic.
 
+label:<white space separated list>;;
+	Additionally to matching the pathspec, the path must habe a 'label'
+	attribute having set all labels listed here.
+
 exclude;;
 	After a path matches any non-exclude pathspec, it will be run
 	through all exclude pathspec (magic signature: `!`). If it
