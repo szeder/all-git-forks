@@ -18,6 +18,7 @@ extern const char git_attr__false[];
 #define ATTR_TRUE(v) ((v) == git_attr__true)
 #define ATTR_FALSE(v) ((v) == git_attr__false)
 #define ATTR_UNSET(v) ((v) == NULL)
+#define ATTR_CUSTOM(v) (!(ATTR_UNSET(v) || ATTR_FALSE(v) || ATTR_TRUE(v)))
 
 /*
  * Send one or more git_attr_check to git_check_attr(), and
