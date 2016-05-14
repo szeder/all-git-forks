@@ -371,7 +371,7 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 	static const char * const flag_chars = "*=?!";
 
 	struct strbuf sb = STRBUF_INIT, parsed = STRBUF_INIT;
-	const char **usage = NULL;
+	const char **usage = NULL, **curr_usage;
 	struct option *opts = NULL;
 	int onb = 0, osz = 0, unb = 0, usz = 0;
 
@@ -472,6 +472,16 @@ static int cmd_parseopt(int argc, const char **argv, const char *prefix)
 	strbuf_addf(&parsed, " --");
 	sq_quote_argv(&parsed, argv, 0);
 	puts(parsed.buf);
+
+#ifdef FREE_ALL_MEMORY
+	curr_usage = usage;
+	while (curr_usage) {
+		free(*curr_usage);
+		curr_usage++;
+	}
+	free(usage);
+#endif
+
 	return 0;
 }
 
