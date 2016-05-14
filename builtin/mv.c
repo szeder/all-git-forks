@@ -54,7 +54,7 @@ static const char *add_slash(const char *path)
 		memcpy(with_slash, path, len);
 		with_slash[len++] = '/';
 		with_slash[len] = 0;
-		free(path);
+		// free(path);
 		return with_slash;
 	}
 	return path;
