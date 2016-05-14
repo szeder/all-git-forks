@@ -389,7 +389,8 @@ CFLAGS += -Werror \
 	-Wpointer-arith \
 	-Wstrict-prototypes \
 	-Wunused \
-	-Wvla
+	-Wvla \
+	-DFREE_ALL_MEMORY
 endif
 
 # Create as necessary, replace existing, make ranlib unneeded.
@@ -1477,6 +1478,10 @@ endif
 
 ifdef HAVE_GETDELIM
 	BASIC_CFLAGS += -DHAVE_GETDELIM
+endif
+
+ifdef FREE_ALL_MEMORY
+	BASIC_CFLAGS += -DFREE_ALL_MEMORY
 endif
 
 ifeq ($(TCLTK_PATH),)
