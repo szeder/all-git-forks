@@ -223,6 +223,18 @@ static inline size_t pack_list_size(struct pack_list *pl)
 	return ret;
 }
 
+static inline void pack_list_free(struct pack_list *pl)
+{
+	struct pack_list *cur_pl;
+	while (pl) {
+		llist_free(pl->unique_objects);
+		llist_free(pl->all_objects);
+		cur_pl = pl;
+		pl = pl->next;
+		free(cur_pl);
+	}
+}
+
 static struct pack_list * pack_list_difference(const struct pack_list *A,
 					       const struct pack_list *B)
 {
@@ -690,6 +702,11 @@ int cmd_pack_redundant(int argc, const char **argv, const char *prefix)
 	if (verbose)
 		fprintf(stderr, "%luMB of redundant packs in total.\n",
 			(unsigned long)pack_set_bytecount(red)/(1024*1024));
+
+#ifdef FREE_ALL_MEMORY
+	pack_list_free(red);
+	llist_free(ignore);
+#endif
 
 	return 0;
 }
