@@ -35,28 +35,32 @@ write_output () {
     fi
 }
 
-add_ignore () {
-    # get the absolute path of the file
-    file="$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
-    write_output "file=$file"
+get_git_ignore () {
+    directory=$1
 
-    directory="$(dirname "$file")/"
-    write_output "directory=$directory"
-    repo_root=${repo_root_nix}
+    # if we don't yet have the repo root directory, get it
+    if test -z $repo_root
+    then
+        #First, determine the root of the repository
+        repo_root="$(git rev-parse --show-toplevel)/"
+        write_output "repo_root=$repo_root"
+    fi
+
+    # get the path relative to the repo root
     rel_directory="${directory#$repo_root}"
+    # if the relative path is the same as it was, try converting it to aa *nix
+    # style path
     if test "$rel_directory" = "$directory"
     then
         # repo root 2 (cygwin-ified path) didn't work
         # try the other one
-        rel_directory="${directory#$repo_root_raw}"
+        write_output "changing repo_root from $repo_root"
+        #On windows, this turns to C:\... instead of /c/... from some other commands
+        repo_root=$(echo -n $repo_root | awk -F":" '/^.*:/ { print "/" tolower($1) $2 }')
+        write_output "to $repo_root"
+        rel_directory="${directory#$repo_root}"
     fi
     write_output "rel_directory=$rel_directory"
-    filename=$(basename "$file")
-    write_output "filename=$filename"
-    line="${rel_directory}${filename}"
-    write_output "line=$line"
-    extension="${filename##*.}"
-    write_output "extension=$extension"
     gitignore="${repo_root}.gitignore"
     write_output "gitignore=$gitignore"
 
@@ -75,18 +79,39 @@ add_ignore () {
         done
         root_len=$(echo -n ${repo_root} | wc -m)
         parent_len=$(echo -n ${parent} | wc -m)
-        write_output "root_len=${root_len}"
-        write_output "parent_len=${parent_len}"
         if test $root_len -ge $parent_len
         then
+            write_output "root_len(${root_len}) >= parent_len(${parent_len})...
+            uh-oh"
             gettextln "WARNING: Parent directory is outside of the repository"
             parent="${repo_root}"
+        else
+            write_output "root_len(${root_len}) < parent_len(${parent_len})...
+            good"
         fi
         rel_directory="${directory#$parent}"
         write_output "rel_directory=${rel_directory}"
         gitignore="${parent}.gitignore"
         write_output "gitignore=${gitignore}"
     fi
+
+}
+
+add_ignore () {
+    # get the absolute path of the file
+    file="$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
+    write_output "file=$file"
+
+    directory="$(dirname "$file")/"
+    write_output "directory=$directory"
+    get_git_ignore $directory
+
+    filename=$(basename "$file")
+    write_output "filename=$filename"
+    extension="${filename##*.}"
+    write_output "extension=$extension"
+    # defaault line
+    line="${rel_directory}${filename}"
 
     # ------------------------------------------------
     # Determine the correct line to add to the gitignore
@@ -128,13 +153,6 @@ _ext_anywhere=0
 _parent_level=-1
 _edit=0
 _dry_run=0
-
-#First, determine the root of the repository
-repo_root_raw="$(git rev-parse --show-toplevel)/"
-write_output "repo_root_raw=$repo_root_raw"
-#On windows, this turns to C:\... instead of /c/... from some other commands
-repo_root_nix=$(echo -n $repo_root_raw | awk -F":" '/^.*:/ { print "/" tolower($1) $2 }')
-write_output "repo_root_nix=$repo_root_nix"
 
 while test $# != 0
 do
