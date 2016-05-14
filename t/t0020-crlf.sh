@@ -74,7 +74,7 @@ test_expect_success 'safecrlf: autocrlf=true mixed LF/CRLF' '
 	test_must_fail git add mixed
 '
 
-test_expect_success 'safecrlf: print warning only once' '
+test_expect_success 'safecrlf: print warning only once on add' '
 
 	git config core.autocrlf input &&
 	git config core.safecrlf warn &&
@@ -84,6 +84,20 @@ test_expect_success 'safecrlf: print warning only once' '
 	git commit -m "nowarn" &&
 	for w in Oh here is CRLFQ in text; do echo $w; done | q_to_cr >doublewarn &&
 	test $(git add doublewarn 2>&1 | grep "CRLF will be replaced by LF" | wc -l) = 1
+'
+
+
+test_expect_failure 'safecrlf: print warning only once on commit' '
+
+	git config core.autocrlf input &&
+	git config core.safecrlf warn &&
+
+	for w in I am all LF; do echo $w; done >doublewarn2 &&
+	git add doublewarn2 &&
+	git commit -m "nowarn" &&
+	for w in Oh here is CRLFQ in text; do echo $w; done | q_to_cr >doublewarn2 &&
+	git add doublewarn2 2>&1 &&
+	test $(git commit -m Message | grep "CRLF will be replaced by LF" | wc -l) = 1
 '
 
 
