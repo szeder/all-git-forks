@@ -15,6 +15,8 @@ OPTIONS_STUCKLONG=t
 OPTIONS_SPEC="git ignore [options] [file|glob ...]
 --
  Miscelleneous
+edit           open the pertinent gitignore with your default text editor
+               (Requires \$EDITOR to be set)
 v,verbose        show verbose output
 n,dry-run        do not actually edit any .gitignore files
  Determine what files to add to the gitignore(s):
@@ -60,9 +62,8 @@ get_git_ignore () {
         write_output "to $repo_root"
         rel_directory="${directory#$repo_root}"
     fi
-    write_output "rel_directory=$rel_directory"
+    # default gitignore
     gitignore="${repo_root}.gitignore"
-    write_output "gitignore=$gitignore"
 
     # ------------------------------------------------
     # Determine the correct git ignore and the path of
@@ -90,10 +91,11 @@ get_git_ignore () {
             good"
         fi
         rel_directory="${directory#$parent}"
-        write_output "rel_directory=${rel_directory}"
         gitignore="${parent}.gitignore"
-        write_output "gitignore=${gitignore}"
     fi
+
+    write_output "rel_directory=${rel_directory}"
+    write_output "gitignore=${gitignore}"
 
 }
 
@@ -180,6 +182,14 @@ do
     --dry-run)
         _dry_run=1
         ;;
+    --edit)
+        if test -z $EDITOR
+        then
+            gettextln "ERROR: Shell variable \$EDITOR must be set"
+            usage
+        fi
+        _edit=1
+        ;;
     --verbose)
         _verbose=1
         ;;
@@ -195,5 +205,11 @@ do
     esac
     shift
 done
+if test $_edit -eq 1
+then
+    get_git_ignore "$(pwd)/"
+    $EDITOR $gitignore
+fi
 exit 0
+
 
