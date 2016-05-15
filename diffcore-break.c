@@ -47,6 +47,7 @@ static int should_break(struct diff_filespec *src,
 	 */
 	unsigned long delta_size, max_size;
 	unsigned long src_copied, literal_added, src_removed;
+	unsigned flags2 = 0;
 
 	*merge_score_p = 0; /* assume no deletion --- "do not break"
 			     * is the default.
@@ -61,9 +62,10 @@ static int should_break(struct diff_filespec *src,
 	    !hashcmp(src->sha1, dst->sha1))
 		return 0; /* they are the same */
 
-	if (diff_populate_filespec(src, 0) || diff_populate_filespec(dst, 0))
+	if (!strcmp(src->path, dst->path))
+		flags2 = CHECK_IGNORE_CRLF_WARNING;
+	if (diff_populate_filespec(src, 0) || diff_populate_filespec(dst, flags2))
 		return 0; /* error but caught downstream */
-
 	max_size = ((src->size > dst->size) ? src->size : dst->size);
 	if (max_size < MINIMUM_BREAK_SIZE)
 		return 0; /* we do not break too small filepair */

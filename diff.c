@@ -2749,6 +2749,8 @@ int diff_populate_filespec(struct diff_filespec *s, unsigned int flags)
 	enum safe_crlf crlf_warn = (safe_crlf == SAFE_CRLF_FAIL
 				    ? SAFE_CRLF_WARN
 				    : safe_crlf);
+	if (flags & CHECK_IGNORE_CRLF_WARNING)
+		crlf_warn = SAFE_CRLF_FALSE;
 
 	if (!DIFF_FILE_VALID(s))
 		die("internal error: asking to populate invalid file.");
