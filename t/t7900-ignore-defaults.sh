@@ -27,13 +27,13 @@ test_expect_success 'ignore at root' '
 
 test_expect_success 'ignore in subdir' '
     rm .gitignore &&
-    mkdir -p sub/dir &&
-    echo a >sub/dir/ignoreme.txt &&
+    mkdir -p "sub/dir with space" &&
+    echo a >"sub/dir with space/ignoreme.txt" &&
     (
-        cd sub/dir &&
+        cd "sub/dir with space" &&
         git ignore ignoreme.txt
     ) &&
-	echo "sub/dir/ignoreme.txt"  >expect &&
+	echo "sub/dir with space/ignoreme.txt"  >expect &&
 	cat .gitignore >actual &&
 	test_cmp expect actual
 '
@@ -49,23 +49,23 @@ test_expect_success 'ignore extentions at root' '
 
 test_expect_success 'ignore extentions in subdir' '
     rm .gitignore &&
-    mkdir -p sub/dir &&
-    echo a >sub/dir/ignoreme.txt &&
+    mkdir -p "sub/dir with space" &&
+    echo a >"sub/dir with space/ignoreme.txt" &&
     (
-      cd sub/dir &&
+      cd "sub/dir with space" &&
       git ignore -e ignoreme.txt
     ) &&
-    echo "sub/dir/*.txt" >expect &&
+    echo "sub/dir with space/*.txt" >expect &&
     cat .gitignore >actual &&
     test_cmp expect actual
 '
 
 test_expect_success 'ignore extentions anywhere' '
     rm .gitignore &&
-    mkdir -p sub/dir &&
-    echo a >sub/dir/ignoreme.txt &&
+    mkdir -p "sub/dir with space" &&
+    echo a >"sub/dir with space/ignoreme.txt" &&
     (
-      cd sub/dir &&
+      cd "sub/dir with space" &&
       git ignore -E ignoreme.txt
     ) &&
     echo "**/*.txt" >expect &&
@@ -75,23 +75,23 @@ test_expect_success 'ignore extentions anywhere' '
 
 test_expect_success 'ignore directory' '
     rm .gitignore &&
-    mkdir -p sub/dir &&
-    echo a >sub/dir/ignoreme.txt &&
+    mkdir -p "sub/dir with space" &&
+    echo a >"sub/dir with space/ignoreme.txt" &&
     (
-      cd sub/dir &&
+      cd "sub/dir with space" &&
       git ignore -d ignoreme.txt
     ) &&
-    echo "sub/dir/*" >expect &&
+    echo "sub/dir with space/*" >expect &&
     cat .gitignore >actual &&
     test_cmp expect actual
 '
 
 test_expect_success 'ignore filename anywhere' '
     rm .gitignore &&
-    mkdir -p sub/dir &&
-    echo a >sub/dir/ignoreme.txt &&
+    mkdir -p "sub/dir with space" &&
+    echo a >"sub/dir with space/ignoreme.txt" &&
     (
-      cd sub/dir &&
+      cd "sub/dir with space" &&
       git ignore -a ignoreme.txt
     ) &&
     echo "**/ignoreme.txt" >expect &&
@@ -102,48 +102,46 @@ test_expect_success 'ignore filename anywhere' '
 test_expect_success 'dry run does not write anything' '
     rm .gitignore &&
     echo a >ignoreme.txt &&
-    $(git ignore -n ignoreme.txt) >output &&
-    grep "^DRY RUN!" <output &&
+    git ignore -n ignoreme.txt >output &&
+    grep "^DRY-RUN!" <output &&
     test_path_is_missing .gitignore
 '
 
-#####################################
-# t7901-ignore-with-parent-level
-test_expect_success 'test with gitignore in current dir' '
-    mkdir -p sub/dir &&
-    echo a >sub/dir/ignoreme.txt &&
+test_expect_success 'parent-level set to current dir' '
+    mkdir -p "sub/dir with space" &&
+    echo a >"sub/dir with space/ignoreme.txt" &&
     (
-      cd sub/dir &&
+      cd "sub/dir with space" &&
       git ignore -p 0 ignoreme.txt
     ) &&
     echo "ignoreme.txt" >expect &&
-    cat sub/dir/.gitignore >actual &&
+    cat "sub/dir with space/.gitignore" >actual &&
     test_cmp expect actual
 '
 
-test_expect_success 'test with gitignore outside of the root' '
-    mkdir -p sub/dir &&
-    echo a >sub/dir/ignoreme.txt &&
+test_expect_success 'parent-level set to dir outside of repo top-level' '
+    mkdir -p "sub/dir with space" &&
+    echo a >"sub/dir with space/ignoreme.txt" &&
     (
-      cd sub/dir &&
-      $(git ignore -p 2 ignoreme.txt) >output
+      cd "sub/dir with space" &&
+      git ignore -p 2 ignoreme.txt >output
     ) &&
-    grep "WARNING" <output
-    echo "sub/dir/ignoreme.txt" >expect &&
+    grep "^WARNING" <"sub/dir with space/output" &&
+    echo "sub/dir with space/ignoreme.txt" >expect &&
     cat .gitignore >actual &&
     test_cmp expect actual
 '
 
-test_expect_success 'test with different gitignores with multiple files' '
-    mkdir -p sub/dir1/test &&
-    echo a >sub/dir1/test/ignoreme.txt &&
-    mkdir -p sub/dir2/test &&
-    echo a >sub/dir2/test/ignoreme.txt &&
-    git ignore -p 1 sub/dir1/test/ignoreme.txt sub/dir2/test/ignoreme.txt &&
+test_expect_success 'parent-level set to mutliple gitignores' '
+    mkdir -p "sub/dir1 with space/test" &&
+    echo a >"sub/dir1 with space/test/ignoreme.txt" &&
+    mkdir -p "sub/dir2 with space/test" &&
+    echo a >"sub/dir2 with space/test/ignoreme.txt" &&
+    git ignore -p 1 "sub/dir1 with space/test/ignoreme.txt" "sub/dir2 with space/test/ignoreme.txt" &&
     echo "test/ignoreme.txt" >expect &&
-    cat sub/dir1/.gitignore >actual &&
+    cat "sub/dir1 with space/.gitignore" >actual &&
     test_cmp expect actual &&
-    cat sub/dir2/.gitignore >actual &&
+    cat "sub/dir2 with space/.gitignore" >actual &&
     test_cmp expect actual
 '
 

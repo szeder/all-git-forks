@@ -1,6 +1,8 @@
 #!/bin/sh
 #
 # Copyright (c) 2016, Thurston Stone
+#
+# unit test: t7900
 
 _verbose=0
 
@@ -41,7 +43,7 @@ get_git_ignore () {
     directory=$1
 
     # if we don't yet have the repo root directory, get it
-    if test -z $repo_root
+    if test -z "$repo_root"
     then
         #First, determine the root of the repository
         repo_root="$(git rev-parse --show-toplevel)/"
@@ -57,9 +59,9 @@ get_git_ignore () {
         # repo root 2 (cygwin-ified path) didn't work
         # try the other one
         write_output "changing repo_root from $repo_root"
-        #On windows, this turns to C:\... instead of /c/... depending on the shell (cmd or msys)
-        repo_root=$(echo -n "$repo_root" | awk -F":" '/^.*:/ { print "/" tolower($1) $@ }')
-        write_output "to $repo_root"
+        #On windows, this turns to C:\... instead of /c/... from some other commands
+        repo_root=$(echo -n "$repo_root" | awk -F":" '{ if ($2) print "/" tolower($1) $2; else print $1 }')
+        write_output "  to $repo_root"
         rel_directory="${directory#$repo_root}"
     fi
     # default gitignore
@@ -78,7 +80,7 @@ get_git_ignore () {
           parent="$(dirname "$parent")/"
           write_output "parent=${parent}"
         done
-        root_len=$(echo -n ${repo_root} | wc -m)
+        root_len=$(echo -n "${repo_root}" | wc -m)
         parent_len=$(echo -n ${parent} | wc -m)
         if test $root_len -ge $parent_len
         then
@@ -106,7 +108,7 @@ add_ignore () {
 
     directory="$(dirname "$file")/"
     write_output "directory=$directory"
-    get_git_ignore $directory
+    get_git_ignore "$directory"
 
     filename=$(basename "$file")
     write_output "filename=$filename"
@@ -139,12 +141,12 @@ add_ignore () {
     dryrun=""
     if test $_dry_run -eq 1
     then
-        dryrun="$(eval_gettext "DRY-RUN!")"
+        dryrun="$(gettext "DRY-RUN!")"
     fi
     say "$dryrun $(eval_gettext "Adding \$line to \$gitignore")"
     if test $_dry_run -eq 0
     then
-        echo $line >> $gitignore
+        echo "$line" >>$gitignore
     fi
 }
 
@@ -199,7 +201,7 @@ do
     *)
         if test $only_files_left -eq 1
         then
-            add_ignore $1
+            add_ignore "$1"
         fi
         ;;
     esac
