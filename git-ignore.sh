@@ -57,8 +57,8 @@ get_git_ignore () {
         # repo root 2 (cygwin-ified path) didn't work
         # try the other one
         write_output "changing repo_root from $repo_root"
-        #On windows, this turns to C:\... instead of /c/... from some other commands
-        repo_root=$(echo -n $repo_root | awk -F":" '/^.*:/ { print "/" tolower($1) $2 }')
+        #On windows, this turns to C:\... instead of /c/... depending on the shell (cmd or msys)
+        repo_root=$(echo -n "$repo_root" | awk -F":" '/^.*:/ { print "/" tolower($1) $@ }')
         write_output "to $repo_root"
         rel_directory="${directory#$repo_root}"
     fi
