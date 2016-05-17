@@ -282,5 +282,12 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 	    write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
 		die(_("Unable to write new index file"));
 
+#ifdef FREE_ALL_MEMORY
+	free(destination);
+	free(source);
+	free(submodule_gitfile);
+	free(modes);
+#endif
+
 	return 0;
 }
