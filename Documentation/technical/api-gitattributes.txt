@@ -55,7 +55,11 @@ Querying Specific Attributes
 
 * Prepare `struct git_attr_check` using git_attr_check_initl()
   function, enumerating the names of attributes whose values you are
-  interested in, terminated with a NULL pointer.
+  interested in, terminated with a NULL pointer.  Alternatively, an
+  empty `struct git_attr_check` can be prepared by calling
+  `git_attr_check_alloc()` function and then attributes you want to
+  ask about can be added to it with `git_attr_check_append()`
+  function.
 
 * Call `git_check_attr()` to check the attributes for the path.
 
@@ -110,6 +114,22 @@ static void setup_check(void)
 	} else if (... other check using value as string ...) {
 		...
 	}
+------------
+
+To see how attributes in argv[] are set for different paths, only
+the first step in the above would be different.
+
+------------
+static struct git_attr_check *check;
+static void setup_check(const char **argv)
+{
+	check = git_attr_check_alloc();
+	while (*argv) {
+		struct git_attr *attr = git_attr(*argv);
+		git_attr_check_append(check, attr);
+		argv++;
+	}
+}
 ------------
 
 
