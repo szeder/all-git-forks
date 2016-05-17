@@ -73,8 +73,8 @@ be in a separate packet, and the list must end with a flush packet.
 	Installations of sshd ignores the user's environment
 	setup scripts for login shells (e.g. .bash_profile) and
 	your privately installed git may not be found on the system
-	default $PATH.  Another workaround suggested is to set
-	up your $PATH in ".bashrc", but this flag is for people
+	default `$PATH`.  Another workaround suggested is to set
+	up your `$PATH` in `.bashrc`, but this flag is for people
 	who do not want to pay the overhead for non-interactive
 	shells by having a lean .bashrc file (they set most of
 	the things up in .bash_profile).
@@ -102,7 +102,7 @@ be in a separate packet, and the list must end with a flush packet.
 
 <refs>...::
 	The remote heads to update from. This is relative to
-	$GIT_DIR (e.g. "HEAD", "refs/heads/master").  When
+	`$GIT_DIR` (e.g. "HEAD", "refs/heads/master").  When
 	unspecified, update from all heads the remote side has.
 +
 If the remote has enabled the options `uploadpack.allowTipSHA1InWant` or

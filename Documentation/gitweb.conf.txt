@@ -121,7 +121,7 @@ $projectroot::
 	`$GITWEB_PROJECTROOT` during installation.  This variable has to be
 	set correctly for gitweb to find repositories.
 +
-For example, if `$projectroot` is set to "/srv/git" by putting the following
+For example, if `$projectroot` is set to `/srv/git` by putting the following
 in gitweb config file:
 +
 ----------------------------------------------------------------------------
@@ -140,7 +140,7 @@ and its path_info based equivalent
 http://git.example.com/gitweb.cgi/foo/bar.git
 ------------------------------------------------
 +
-will map to the path '/srv/git/foo/bar.git' on the filesystem.
+will map to the path `/srv/git/foo/bar.git` on the filesystem.
 
 $projects_list::
 	Name of a plain text file listing projects, or a name of directory
@@ -176,7 +176,7 @@ $export_ok::
 	Show repository only if this file exists (in repository).  Only
 	effective if this variable evaluates to true.  Can be set when
 	building gitweb by setting `GITWEB_EXPORT_OK`.  This path is
-	relative to `GIT_DIR`.  git-daemon[1] uses 'git-daemon-export-ok',
+	relative to `$GIT_DIR`.  git-daemon[1] uses 'git-daemon-export-ok',
 	unless started with `--export-all`.  By default this variable is
 	not set, which means that this feature is turned off.
 
@@ -223,7 +223,7 @@ The values of these variables are paths on the filesystem.
 $GIT::
 	Core git executable to use.  By default set to `$GIT_BINDIR/git`, which
 	in turn is by default set to `$(bindir)/git`.  If you use Git installed
-	from a binary package, you should usually set this to "/usr/bin/git".
+	from a binary package, you should usually set this to `/usr/bin/git`.
 	This can just be "git" if your web server has a sensible PATH; from
 	security point of view it is better to use absolute path to git binary.
 	If you have multiple Git versions installed it can be used to choose
@@ -232,9 +232,9 @@ $GIT::
 
 $mimetypes_file::
 	File to use for (filename extension based) guessing of MIME types before
-	trying '/etc/mime.types'.  *NOTE* that this path, if relative, is taken
+	trying `/etc/mime.types`.  *NOTE* that this path, if relative, is taken
 	as relative to the current Git repository, not to CGI script.  If unset,
-	only '/etc/mime.types' is used (if present on filesystem).  If no mimetypes
+	only `/etc/mime.types` is used (if present on filesystem).  If no mimetypes
 	file is found, mimetype guessing based on extension of file is disabled.
 	Unset by default.
 
@@ -434,7 +434,7 @@ $default_blob_plain_mimetype::
 	doesn't result in some other type; by default "text/plain".
 	Gitweb guesses mimetype of a file to display based on extension
 	of its filename, using `$mimetypes_file` (if set and file exists)
-	and '/etc/mime.types' files (see *mime.types*(5) manpage; only
+	and `/etc/mime.types` files (see *mime.types*(5) manpage; only
 	filename extension rules are supported by gitweb).
 
 $default_text_plain_charset::
@@ -476,7 +476,7 @@ affects how "summary" pages look like, or load limiting).
 	(for example one for `git://` protocol, and one for `http://`
 	protocol).
 +
-Note that per repository configuration can be set in '$GIT_DIR/cloneurl'
+Note that per repository configuration can be set in `$GIT_DIR/cloneurl`
 file, or as values of multi-value `gitweb.url` configuration variable in
 project config.  Per-repository configuration takes precedence over value
 composed from `@git_base_url_list` elements and project name.
@@ -510,7 +510,7 @@ $maxload::
 	If the server load exceeds this value then gitweb will return
 	"503 Service Unavailable" error.  The server load is taken to be 0
 	if gitweb cannot determine its value.  Currently it works only on Linux,
-	where it uses '/proc/loadavg'; the load there is the number of active
+	where it uses `/proc/loadavg`; the load there is the number of active
 	tasks on the system -- processes that are actually running -- averaged
 	over the last minute.
 +

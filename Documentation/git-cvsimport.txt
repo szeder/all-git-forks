@@ -153,8 +153,8 @@ This option can be used several times to provide several detection regexes.
 ---------
 +
 'git cvsimport' will make it appear as those authors had
-their GIT_AUTHOR_NAME and GIT_AUTHOR_EMAIL set properly
-all along.  If a time zone is specified, GIT_AUTHOR_DATE will
+their `$GIT_AUTHOR_NAME` and `$GIT_AUTHOR_EMAIL` set properly
+all along.  If a time zone is specified, `$GIT_AUTHOR_DATE` will
 have the corresponding offset applied.
 +
 For convenience, this data is saved to `$GIT_DIR/cvs-authors`

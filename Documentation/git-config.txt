@@ -175,7 +175,7 @@ See also <<FILES>>.
 
 --path::
 	'git-config' will expand leading '{tilde}' to the value of
-	'$HOME', and '{tilde}user' to the home directory for the
+	`$HOME`, and '{tilde}user' to the home directory for the
 	specified user.  This option has no effect when setting the
 	value (but you can use 'git config bla {tilde}/' from the
 	command line to let your shell do the expansion).
@@ -239,7 +239,7 @@ $(prefix)/etc/gitconfig::
 	System-wide configuration file.
 
 $XDG_CONFIG_HOME/git/config::
-	Second user-specific configuration file. If $XDG_CONFIG_HOME is not set
+	Second user-specific configuration file. If `$XDG_CONFIG_HOME` is not set
 	or empty, `$HOME/.config/git/config` will be used. Any single-valued
 	variable set in this file will be overwritten by whatever is in
 	`~/.gitconfig`.  It is a good idea not to create this file if
@@ -269,7 +269,7 @@ and '--unset'. *'git config' will only ever change one file at a time*.
 
 You can override these rules either by command-line options or by environment
 variables. The '--global' and the '--system' options will limit the file used
-to the global or system-wide file respectively. The GIT_CONFIG environment
+to the global or system-wide file respectively. The `$GIT_CONFIG` environment
 variable has a similar effect, but you can specify any filename you want.
 
 
@@ -278,7 +278,7 @@ ENVIRONMENT
 
 GIT_CONFIG::
 	Take the configuration from the given file instead of .git/config.
-	Using the "--global" option forces this to ~/.gitconfig. Using the
+	Using the "--global" option forces this to `~/.gitconfig`. Using the
 	"--system" option forces this to $(prefix)/etc/gitconfig.
 
 GIT_CONFIG_NOSYSTEM::

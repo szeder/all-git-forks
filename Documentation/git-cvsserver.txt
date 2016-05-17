@@ -192,8 +192,8 @@ allowing access over SSH.
 --
 4. For SSH clients that will make commits, make sure their server-side
    .ssh/environment files (or .bashrc, etc., according to their specific shell)
-   export appropriate values for GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL,
-   GIT_COMMITTER_NAME, and GIT_COMMITTER_EMAIL.  For SSH clients whose login
+   export appropriate values for `$GIT_AUTHOR_NAME`, `$GIT_AUTHOR_EMAIL`,
+   `$GIT_COMMITTER_NAME`, and `$GIT_COMMITTER_EMAIL`.  For SSH clients whose login
    shell is bash, .bashrc may be a reasonable alternative.
 
 5. Clients should now be able to check out the project. Use the CVS 'module'
@@ -312,9 +312,9 @@ ENVIRONMENT
 These variables obviate the need for command-line options in some
 circumstances, allowing easier restricted usage through git-shell.
 
-GIT_CVSSERVER_BASE_PATH takes the place of the argument to --base-path.
+`$GIT_CVSSERVER_BASE_PATH` takes the place of the argument to --base-path.
 
-GIT_CVSSERVER_ROOT specifies a single-directory whitelist. The
+`$GIT_CVSSERVER_ROOT` specifies a single-directory whitelist. The
 repository must still be configured to allow access through
 git-cvsserver, as described above.
 

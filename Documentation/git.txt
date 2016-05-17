@@ -542,7 +542,7 @@ foo.bar= ...`) sets `foo.bar` to the empty string.
 
 --exec-path[=<path>]::
 	Path to wherever your core Git programs are installed.
-	This can also be controlled by setting the GIT_EXEC_PATH
+	This can also be controlled by setting the `$GIT_EXEC_PATH`
 	environment variable. If no path is given, 'git' will print
 	the current setting and then exit.
 
@@ -570,24 +570,24 @@ foo.bar= ...`) sets `foo.bar` to the empty string.
 
 --git-dir=<path>::
 	Set the path to the repository. This can also be controlled by
-	setting the GIT_DIR environment variable. It can be an absolute
+	setting the `$GIT_DIR` environment variable. It can be an absolute
 	path or relative path to current working directory.
 
 --work-tree=<path>::
 	Set the path to the working tree. It can be an absolute path
 	or a path relative to the current working directory.
-	This can also be controlled by setting the GIT_WORK_TREE
+	This can also be controlled by setting the `$GIT_WORK_TREE`
 	environment variable and the core.worktree configuration
 	variable (see core.worktree in linkgit:git-config[1] for a
 	more detailed discussion).
 
 --namespace=<path>::
 	Set the Git namespace.  See linkgit:gitnamespaces[7] for more
-	details.  Equivalent to setting the `GIT_NAMESPACE` environment
+	details.  Equivalent to setting the `$GIT_NAMESPACE` environment
 	variable.
 
 --bare::
-	Treat the repository as a bare repository.  If GIT_DIR
+	Treat the repository as a bare repository.  If `$GIT_DIR`
 	environment is not set, it is set to the current working
 	directory.
 
@@ -597,24 +597,24 @@ foo.bar= ...`) sets `foo.bar` to the empty string.
 
 --literal-pathspecs::
 	Treat pathspecs literally (i.e. no globbing, no pathspec magic).
-	This is equivalent to setting the `GIT_LITERAL_PATHSPECS` environment
+	This is equivalent to setting the `$GIT_LITERAL_PATHSPECS` environment
 	variable to `1`.
 
 --glob-pathspecs::
 	Add "glob" magic to all pathspec. This is equivalent to setting
-	the `GIT_GLOB_PATHSPECS` environment variable to `1`. Disabling
+	the `$GIT_GLOB_PATHSPECS` environment variable to `1`. Disabling
 	globbing on individual pathspecs can be done using pathspec
 	magic ":(literal)"
 
 --noglob-pathspecs::
 	Add "literal" magic to all pathspec. This is equivalent to setting
-	the `GIT_NOGLOB_PATHSPECS` environment variable to `1`. Enabling
+	the `$GIT_NOGLOB_PATHSPECS` environment variable to `1`. Enabling
 	globbing on individual pathspecs can be done using pathspec
 	magic ":(glob)"
 
 --icase-pathspecs::
 	Add "icase" magic to all pathspec. This is equivalent to setting
-	the `GIT_ICASE_PATHSPECS` environment variable to `1`.
+	the `$GIT_ICASE_PATHSPECS` environment variable to `1`.
 
 GIT COMMANDS
 ------------
@@ -772,7 +772,7 @@ Identifier Terminology
 
 <file>::
 	Indicates a filename - almost always relative to the
-	root of the tree structure `GIT_INDEX_FILE` describes.
+	root of the tree structure `$GIT_INDEX_FILE` describes.
 
 Symbolic Identifiers
 --------------------
@@ -845,7 +845,7 @@ Git so take care if using a foreign front-end.
 	objects. New objects will not be written to these directories.
 
 'GIT_DIR'::
-	If the 'GIT_DIR' environment variable is set then it
+	If the `$GIT_DIR` environment variable is set then it
 	specifies a path to use instead of the default `.git`
 	for the base of the repository.
 	The '--git-dir' command-line option also sets this value.
@@ -864,7 +864,7 @@ Git so take care if using a foreign front-end.
 	set, it is a list of directories that Git should not chdir up
 	into while looking for a repository directory (useful for
 	excluding slow-loading network directories).  It will not
-	exclude the current working directory or a GIT_DIR set on the
+	exclude the current working directory or a `$GIT_DIR` set on the
 	command line or in the environment.  Normally, Git has to read
 	the entries in this list and resolve any symlink that
 	might be present in order to compare them with the current
@@ -872,7 +872,7 @@ Git so take care if using a foreign front-end.
 	can add an empty entry to the list to tell Git that the
 	subsequent entries are not symlinks and needn't be resolved;
 	e.g.,
-	'GIT_CEILING_DIRECTORIES=/maybe/symlink::/very/slow/non/symlink'.
+	`$GIT_CEILING_DIRECTORIES`=/maybe/symlink::/very/slow/non/symlink.
 
 'GIT_DISCOVERY_ACROSS_FILESYSTEM'::
 	When run in a directory that does not have ".git" repository
@@ -880,18 +880,18 @@ Git so take care if using a foreign front-end.
 	directories to find the top of the working tree, but by default it
 	does not cross filesystem boundaries.  This environment variable
 	can be set to true to tell Git not to stop at filesystem
-	boundaries.  Like 'GIT_CEILING_DIRECTORIES', this will not affect
-	an explicit repository directory set via 'GIT_DIR' or on the
+	boundaries.  Like `$GIT_CEILING_DIRECTORIES`, this will not affect
+	an explicit repository directory set via `$GIT_DIR` or on the
 	command line.
 
 'GIT_COMMON_DIR'::
 	If this variable is set to a path, non-worktree files that are
-	normally in $GIT_DIR will be taken from this path
+	normally in `$GIT_DIR` will be taken from this path
 	instead. Worktree-specific files such as HEAD or index are
-	taken from $GIT_DIR. See linkgit:gitrepository-layout[5] and
+	taken from `$GIT_DIR`. See linkgit:gitrepository-layout[5] and
 	linkgit:git-worktree[1] for
 	details. This variable has lower precedence than other path
-	variables such as GIT_INDEX_FILE, GIT_OBJECT_DIRECTORY...
+	variables such as `$GIT_INDEX_FILE`, `$GIT_OBJECT_DIRECTORY`...
 
 Git Commits
 ~~~~~~~~~~~
@@ -913,16 +913,16 @@ Git Diffs
 	value passed on the Git diff command line.
 
 'GIT_EXTERNAL_DIFF'::
-	When the environment variable 'GIT_EXTERNAL_DIFF' is set, the
+	When the environment variable `$GIT_EXTERNAL_DIFF` is set, the
 	program named by it is called, instead of the diff invocation
 	described above.  For a path that is added, removed, or modified,
-        'GIT_EXTERNAL_DIFF' is called with 7 parameters:
+        `$GIT_EXTERNAL_DIFF` is called with 7 parameters:
 
 	path old-file old-hex old-mode new-file new-hex new-mode
 +
 where:
 
-	<old|new>-file:: are files GIT_EXTERNAL_DIFF can use to read the
+	<old|new>-file:: are files `$GIT_EXTERNAL_DIFF` can use to read the
                          contents of <old|new>,
 	<old|new>-hex:: are the 40-hexdigit SHA-1 hashes,
 	<old|new>-mode:: are the octal representation of the file modes.
@@ -930,14 +930,14 @@ where:
 The file parameters can point at the user's working file
 (e.g. `new-file` in "git-diff-files"), `/dev/null` (e.g. `old-file`
 when a new file is added), or a temporary file (e.g. `old-file` in the
-index).  'GIT_EXTERNAL_DIFF' should not worry about unlinking the
-temporary file --- it is removed when 'GIT_EXTERNAL_DIFF' exits.
+index).  `$GIT_EXTERNAL_DIFF` should not worry about unlinking the
+temporary file --- it is removed when `$GIT_EXTERNAL_DIFF` exits.
 +
-For a path that is unmerged, 'GIT_EXTERNAL_DIFF' is called with 1
+For a path that is unmerged, `$GIT_EXTERNAL_DIFF` is called with 1
 parameter, <path>.
 +
-For each path 'GIT_EXTERNAL_DIFF' is called, two environment variables,
-'GIT_DIFF_PATH_COUNTER' and 'GIT_DIFF_PATH_TOTAL' are set.
+For each path `$GIT_EXTERNAL_DIFF` is called, two environment variables,
+`$GIT_DIFF_PATH_COUNTER` and `$GIT_DIFF_PATH_TOTAL` are set.
 
 'GIT_DIFF_PATH_COUNTER'::
 	A 1-based counter incremented by one for every path.
@@ -1041,21 +1041,21 @@ Unsetting the variable, or setting it to empty, "0" or
 	access, the pack file name and an offset in the pack is
 	recorded. This may be helpful for troubleshooting some
 	pack-related performance problems.
-	See 'GIT_TRACE' for available trace output options.
+	See `$GIT_TRACE` for available trace output options.
 
 'GIT_TRACE_PACKET'::
 	Enables trace messages for all packets coming in or out of a
 	given program. This can help with debugging object negotiation
 	or other protocol issues. Tracing is turned off at a packet
-	starting with "PACK" (but see 'GIT_TRACE_PACKFILE' below).
-	See 'GIT_TRACE' for available trace output options.
+	starting with "PACK" (but see `$GIT_TRACE_PACKFILE` below).
+	See `$GIT_TRACE` for available trace output options.
 
 'GIT_TRACE_PACKFILE'::
 	Enables tracing of packfiles sent or received by a
 	given program. Unlike other trace output, this trace is
 	verbatim: no headers, and no quoting of binary data. You almost
 	certainly want to direct into a file (e.g.,
-	`GIT_TRACE_PACKFILE=/tmp/my.pack`) rather than displaying it on
+	`$GIT_TRACE_PACKFILE=/tmp/my.pack`) rather than displaying it on
 	the terminal or mixing it with other trace output.
 +
 Note that this is currently only implemented for the client side
@@ -1064,22 +1064,22 @@ of clones and fetches.
 'GIT_TRACE_PERFORMANCE'::
 	Enables performance related trace messages, e.g. total execution
 	time of each Git command.
-	See 'GIT_TRACE' for available trace output options.
+	See `$GIT_TRACE` for available trace output options.
 
 'GIT_TRACE_SETUP'::
 	Enables trace messages printing the .git, working tree and current
 	working directory after Git has completed its setup phase.
-	See 'GIT_TRACE' for available trace output options.
+	See `$GIT_TRACE` for available trace output options.
 
 'GIT_TRACE_SHALLOW'::
 	Enables trace messages that can help debugging fetching /
 	cloning of shallow repositories.
-	See 'GIT_TRACE' for available trace output options.
+	See `$GIT_TRACE` for available trace output options.
 
 'GIT_LITERAL_PATHSPECS'::
 	Setting this variable to `1` will cause Git to treat all
 	pathspecs literally, rather than as glob patterns. For example,
-	running `GIT_LITERAL_PATHSPECS=1 git log -- '*.c'` will search
+	running `$GIT_LITERAL_PATHSPECS=1 git log -- '*.c'` will search
 	for commits that touch the path `*.c`, not any paths that the
 	glob `*.c` matches. You might want this if you are feeding
 	literal paths to Git (e.g., paths previously given to you by

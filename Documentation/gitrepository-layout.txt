@@ -47,8 +47,8 @@ use with dumb transports but otherwise is OK as long as
 `objects/info/alternates` points at the object stores it
 borrows from.
 +
-This directory is ignored if $GIT_COMMON_DIR is set and
-"$GIT_COMMON_DIR/objects" will be used instead.
+This directory is ignored if `$GIT_COMMON_DIR` is set and
+`$GIT_COMMON_DIR/objects` will be used instead.
 
 objects/[0-9a-f][0-9a-f]::
 	A newly created object is stored in its own file.
@@ -95,8 +95,8 @@ refs::
 	References are stored in subdirectories of this
 	directory.  The 'git prune' command knows to preserve
 	objects reachable from refs found in this directory and
-	its subdirectories. This directory is ignored if $GIT_COMMON_DIR
-	is set and "$GIT_COMMON_DIR/refs" will be used instead.
+	its subdirectories. This directory is ignored if `$GIT_COMMON_DIR`
+	is set and `$GIT_COMMON_DIR/refs` will be used instead.
 
 refs/heads/`name`::
 	records tip-of-the-tree commit objects of branch `name`
@@ -118,8 +118,8 @@ refs/replace/`<obj-sha1>`::
 packed-refs::
 	records the same information as refs/heads/, refs/tags/,
 	and friends record in a more efficient way.  See
-	linkgit:git-pack-refs[1]. This file is ignored if $GIT_COMMON_DIR
-	is set and "$GIT_COMMON_DIR/packed-refs" will be used instead.
+	linkgit:git-pack-refs[1]. This file is ignored if `$GIT_COMMON_DIR`
+	is set and `$GIT_COMMON_DIR/packed-refs` will be used instead.
 
 HEAD::
 	A symref (see glossary) to the `refs/heads/` namespace
@@ -140,7 +140,7 @@ for details.
 
 config::
 	Repository specific configuration file. This file is ignored
-	if $GIT_COMMON_DIR is set and "$GIT_COMMON_DIR/config" will be
+	if `$GIT_COMMON_DIR` is set and `$GIT_COMMON_DIR/config` will be
 	used instead.
 
 branches::
@@ -151,8 +151,8 @@ branches::
 	'repository' argument.  See the REMOTES section in
 	linkgit:git-fetch[1] for details.  This mechanism is legacy
 	and not likely to be found in modern repositories. This
-	directory is ignored if $GIT_COMMON_DIR is set and
-	"$GIT_COMMON_DIR/branches" will be used instead.
+	directory is ignored if `$GIT_COMMON_DIR` is set and
+	`$GIT_COMMON_DIR/branches` will be used instead.
 
 
 hooks::
@@ -162,8 +162,8 @@ hooks::
 	default.  To enable, the `.sample` suffix has to be
 	removed from the filename by renaming.
 	Read linkgit:githooks[5] for more details about
-	each hook. This directory is ignored if $GIT_COMMON_DIR is set
-	and "$GIT_COMMON_DIR/hooks" will be used instead.
+	each hook. This directory is ignored if `$GIT_COMMON_DIR` is set
+	and `$GIT_COMMON_DIR/hooks` will be used instead.
 
 
 index::
@@ -171,13 +171,13 @@ index::
 	usually not found in a bare repository.
 
 sharedindex.<SHA-1>::
-	The shared index part, to be referenced by $GIT_DIR/index and
+	The shared index part, to be referenced by `$GIT_DIR/index` and
 	other temporary index files. Only valid in split index mode.
 
 info::
 	Additional information about the repository is recorded
-	in this directory. This directory is ignored if $GIT_COMMON_DIR
-	is set and "$GIT_COMMON_DIR/index" will be used instead.
+	in this directory. This directory is ignored if `$GIT_COMMON_DIR`
+	is set and `$GIT_COMMON_DIR/index` will be used instead.
 
 info/refs::
 	This file helps dumb transports discover what refs are
@@ -218,14 +218,14 @@ remotes::
 	'git pull' and 'git push' commands.  See the REMOTES section
 	in linkgit:git-fetch[1] for details.  This mechanism is legacy
 	and not likely to be found in modern repositories. This
-	directory is ignored if $GIT_COMMON_DIR is set and
-	"$GIT_COMMON_DIR/remotes" will be used instead.
+	directory is ignored if `$GIT_COMMON_DIR` is set and
+	`$GIT_COMMON_DIR/remotes` will be used instead.
 
 logs::
 	Records of changes made to refs are stored in this directory.
 	See linkgit:git-update-ref[1] for more information. This
-	directory is ignored if $GIT_COMMON_DIR is set and
-	"$GIT_COMMON_DIR/logs" will be used instead.
+	directory is ignored if `$GIT_COMMON_DIR` is set and
+	`$GIT_COMMON_DIR/logs` will be used instead.
 
 logs/refs/heads/`name`::
 	Records all changes made to the branch tip named `name`.
@@ -237,14 +237,14 @@ shallow::
 	This is similar to `info/grafts` but is internally used
 	and maintained by shallow clone mechanism.  See `--depth`
 	option to linkgit:git-clone[1] and linkgit:git-fetch[1]. This
-	file is ignored if $GIT_COMMON_DIR is set and
-	"$GIT_COMMON_DIR/shallow" will be used instead.
+	file is ignored if `$GIT_COMMON_DIR` is set and
+	`$GIT_COMMON_DIR/shallow` will be used instead.
 
 commondir::
-	If this file exists, $GIT_COMMON_DIR (see linkgit:git[1]) will
+	If this file exists, `$GIT_COMMON_DIR` (see linkgit:git[1]) will
 	be set to the path specified in this file if it is not
 	explicitly set. If the specified path is relative, it is
-	relative to $GIT_DIR. The repository with commondir is
+	relative to `$GIT_DIR`. The repository with commondir is
 	incomplete without the repository pointed by "commondir".
 
 modules::
@@ -254,8 +254,8 @@ worktrees::
 	Contains administrative data for linked
 	working trees. Each subdirectory contains the working tree-related
 	part of a linked working tree. This directory is ignored if
-	$GIT_COMMON_DIR is set, in which case
-	"$GIT_COMMON_DIR/worktrees" will be used instead.
+	`$GIT_COMMON_DIR` is set, in which case
+	`$GIT_COMMON_DIR/worktrees` will be used instead.
 
 worktrees/<id>/gitdir::
 	A text file containing the absolute path back to the .git file

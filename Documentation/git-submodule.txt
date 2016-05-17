@@ -70,7 +70,7 @@ This requires at least one argument: <repository>. The optional
 argument <path> is the relative location for the cloned submodule
 to exist in the superproject. If <path> is not given, the
 "humanish" part of the source repository is used ("repo" for
-"/path/to/repo.git" and "foo" for "host.xz:foo/.git").
+`/path/to/repo.git` and "foo" for `host.xz:foo/.git`).
 The <path> is also used as the submodule's logical name in its
 configuration entries unless `--name` is used to specify a logical name.
 +

@@ -92,7 +92,7 @@ OPTIONS
 	expressions of the form tree-ish:path-in-tree.  Instead of
 	providing output about the link itself, provide output about
 	the linked-to object.  If a symlink points outside the
-	tree-ish (e.g. a link to /foo or a root-level link to ../foo),
+	tree-ish (e.g. a link to `/foo` or a root-level link to `../foo`),
 	the portion of the link which is outside the tree will be
 	printed.
 +

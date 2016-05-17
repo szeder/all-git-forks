@@ -26,7 +26,7 @@ linkgit:gitglossary[7] should be sufficient.
 Developing against a shared repository
 --------------------------------------
 
-Suppose a shared repository is set up in /pub/repo.git on the host
+Suppose a shared repository is set up in `/pub/repo.git` on the host
 foo.com.  Then as an individual committer you can clone the shared
 repository over ssh with:
 
@@ -86,7 +86,7 @@ possibly created from scratch or from a tarball (see
 linkgit:gittutorial[7]), or imported from an already existing CVS
 repository (see the next section).
 
-Assume your existing repo is at /home/alice/myproject.  Create a new "bare"
+Assume your existing repo is at `/home/alice/myproject`.  Create a new "bare"
 repository (a repository without a working tree) and fetch your project into
 it:
 

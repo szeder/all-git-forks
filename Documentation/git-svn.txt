@@ -118,11 +118,11 @@ your Perl's Getopt::Long is < v2.37).
 'fetch'::
 	Fetch unfetched revisions from the Subversion remote we are
 	tracking.  The name of the [svn-remote "..."] section in the
-	$GIT_DIR/config file may be specified as an optional
+	`$GIT_DIR/config` file may be specified as an optional
 	command-line argument.
 +
 This automatically updates the rev_map if needed (see
-'$GIT_DIR/svn/\*\*/.rev_map.*' in the FILES section below for details).
+`$GIT_DIR/svn/\*\*/.rev_map.*` in the FILES section below for details).
 
 --localtime;;
 	Store Git commit times in the local time zone instead of UTC.  This
@@ -223,7 +223,7 @@ Like 'git rebase'; this requires that the working tree be clean
 and have no uncommitted changes.
 +
 This automatically updates the rev_map if needed (see
-'$GIT_DIR/svn/\*\*/.rev_map.*' in the FILES section below for details).
+`$GIT_DIR/svn/\*\*/.rev_map.*` in the FILES section below for details).
 
 -l;;
 --local;;
@@ -423,11 +423,11 @@ Any other arguments are passed directly to 'git log'
 'show-ignore'::
 	Recursively finds and lists the svn:ignore property on
 	directories.  The output is suitable for appending to
-	the $GIT_DIR/info/exclude file.
+	the `$GIT_DIR/info/exclude` file.
 
 'mkdirs'::
 	Attempts to recreate empty directories that core Git cannot track
-	based on information in $GIT_DIR/svn/<refname>/unhandled.log files.
+	based on information in `$GIT_DIR/svn/<refname>/unhandled.log` files.
 	Empty directories are automatically recreated when using
 	"git svn clone" and "git svn rebase", so "mkdirs" is intended
 	for use after commands like "git checkout" or "git reset".
@@ -464,8 +464,8 @@ Any other arguments are passed directly to 'git log'
 	specific revision.
 
 'gc'::
-	Compress $GIT_DIR/svn/<refname>/unhandled.log files and remove
-	$GIT_DIR/svn/<refname>/index files.
+	Compress `$GIT_DIR/svn/<refname>/unhandled.log` files and remove
+	`$GIT_DIR/svn/<refname>/index` files.
 
 'reset'::
 	Undoes the effects of 'fetch' back to the specified revision.
@@ -479,7 +479,7 @@ Any other arguments are passed directly to 'git log'
 	way to repair the repo is to use 'reset'.
 +
 Only the rev_map and refs/remotes/git-svn are changed (see
-'$GIT_DIR/svn/\*\*/.rev_map.*' in the FILES section below for details).
+`$GIT_DIR/svn/\*\*/.rev_map.*` in the FILES section below for details).
 Follow 'reset' with a 'fetch' and then 'git reset' or 'git rebase' to
 move local branches onto the new tree.
 
@@ -660,7 +660,7 @@ ADVANCED OPTIONS
 
 -i<GIT_SVN_ID>::
 --id <GIT_SVN_ID>::
-	This sets GIT_SVN_ID (instead of using the environment).  This
+	This sets `$GIT_SVN_ID` (instead of using the environment).  This
 	allows the user to override the default refname to fetch from
 	when tracking a single URL.  The 'log' and 'dcommit' commands
 	no longer require this switch as an argument.
@@ -699,7 +699,7 @@ svn-remote.<name>.noMetadata::
 +
 This option can only be used for one-shot imports as 'git svn'
 will not be able to fetch again without metadata. Additionally,
-if you lose your '$GIT_DIR/svn/\*\*/.rev_map.*' files, 'git svn' will not
+if you lose your `$GIT_DIR/svn/\*\*/.rev_map.*` files, 'git svn' will not
 be able to rebuild them.
 +
 The 'git svn log' command will not work on repositories using
@@ -993,7 +993,7 @@ When using multiple --branches or --tags, 'git svn' does not automatically
 handle name collisions (for example, if two branches from different paths have
 the same name, or if a branch and a tag have the same name).  In these cases,
 use 'init' to set up your Git repository then, before your first 'fetch', edit
-the $GIT_DIR/config file so that the branches and tags are associated
+the `$GIT_DIR/config` file so that the branches and tags are associated
 with different name spaces.  For example:
 
 	branches = stable/*:refs/remotes/svn/stable/*
@@ -1003,7 +1003,7 @@ BUGS
 ----
 
 We ignore all SVN properties except svn:executable.  Any unhandled
-properties are logged to $GIT_DIR/svn/<refname>/unhandled.log
+properties are logged to `$GIT_DIR/svn/<refname>/unhandled.log`
 
 Renamed and copied directories are not detected by Git and hence not
 tracked when committing to SVN.  I do not plan on adding support for
@@ -1022,7 +1022,7 @@ CONFIGURATION
 -------------
 
 'git svn' stores [svn-remote] configuration information in the
-repository $GIT_DIR/config file.  It is similar the core Git
+repository `$GIT_DIR/config` file.  It is similar the core Git
 [remote] sections except 'fetch' keys do not accept glob
 arguments; but they are instead handled by the 'branches'
 and 'tags' keys.  Since some SVN repositories are oddly
@@ -1088,7 +1088,7 @@ $ git svn branch -d branches/server release-2-3-0
 
 Note that git-svn keeps track of the highest revision in which a branch
 or tag has appeared. If the subset of branches or tags is changed after
-fetching, then $GIT_DIR/svn/.metadata must be manually edited to remove
+fetching, then `$GIT_DIR/svn/.metadata` must be manually edited to remove
 (or reset) branches-maxRev and/or tags-maxRev as appropriate.
 
 FILES

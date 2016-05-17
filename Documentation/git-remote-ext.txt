@@ -81,23 +81,23 @@ you use commands such as "git fetch <URL>", "git clone <URL>",
 begins with `ext::`.  Examples:
 
 "ext::ssh -i /home/foo/.ssh/somekey user&#64;host.example %S 'foo/repo'"::
-	Like host.example:foo/repo, but use /home/foo/.ssh/somekey as
+	Like host.example:foo/repo, but use `/home/foo/.ssh/somekey` as
 	keypair and user as user on remote side. This avoids needing to
 	edit .ssh/config.
 
 "ext::socat -t3600 - ABSTRACT-CONNECT:/git-server %G/somerepo"::
-	Represents repository with path /somerepo accessible over
+	Represents repository with path `/somerepo` accessible over
 	git protocol at abstract namespace address /git-server.
 
 "ext::git-server-alias foo %G/repo"::
-	Represents a repository with path /repo accessed using the
+	Represents a repository with path `/repo` accessed using the
 	helper program "git-server-alias foo".  The path to the
 	repository and type of request are not passed on the command
 	line but as part of the protocol stream, as usual with git://
 	protocol.
 
 "ext::git-server-alias foo %G/repo %Vfoo"::
-	Represents a repository with path /repo accessed using the
+	Represents a repository with path `/repo` accessed using the
 	helper program "git-server-alias foo".  The hostname for the
 	remote server passed in the protocol stream will be "foo"
 	(this allows multiple virtual Git servers to share a

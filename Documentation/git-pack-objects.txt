@@ -33,8 +33,8 @@ each object that a delta depends upon must be present within the pack.
 
 A pack index file (.idx) is generated for fast, random access to the
 objects in the pack. Placing both the index file (.idx) and the packed
-archive (.pack) in the pack/ subdirectory of $GIT_OBJECT_DIRECTORY (or
-any of the directories on $GIT_ALTERNATE_OBJECT_DIRECTORIES)
+archive (.pack) in the pack/ subdirectory of `$GIT_OBJECT_DIRECTORY` (or
+any of the directories on `$GIT_ALTERNATE_OBJECT_DIRECTORIES`)
 enables Git to read from the pack archive.
 
 The 'git unpack-objects' command can read the packed archive and

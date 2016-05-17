@@ -23,7 +23,7 @@ linkgit:git-config[1]).
 
 Before Git invokes a hook, it changes its working directory to either
 the root of the working tree in a non-bare repository, or to the
-$GIT_DIR in a bare repository.
+`$GIT_DIR` in a bare repository.
 
 Hooks can get their arguments via the environment, command-line
 arguments, and stdin. See the documentation for each hook below for
@@ -94,7 +94,7 @@ of lines with trailing whitespaces and aborts the commit when
 such a line is found.
 
 All the 'git commit' hooks are invoked with the environment
-variable `GIT_EDITOR=:` if the command will not bring up an editor
+variable `$GIT_EDITOR=:` if the command will not bring up an editor
 to modify the commit message.
 
 prepare-commit-msg

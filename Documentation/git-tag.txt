@@ -323,7 +323,7 @@ the tag object affects, for example, the ordering of tags in the
 gitweb interface.
 
 To set the date used in future tag objects, set the environment
-variable GIT_COMMITTER_DATE (see the later discussion of possible
+variable `$GIT_COMMITTER_DATE` (see the later discussion of possible
 values; the most common form is "YYYY-MM-DD HH:MM").
 
 For example:

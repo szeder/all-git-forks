@@ -94,7 +94,7 @@ TAB and LF, (used to separate fields in a record).
 
 * Currently recognized fields are:
 <repository path>::
-	path to repository GIT_DIR, relative to `$projectroot`
+	path to repository `$GIT_DIR`, relative to `$projectroot`
 <repository owner>::
 	displayed as repository owner, preferably full name, or email,
 	or both
@@ -206,8 +206,8 @@ $export_auth_hook = sub {
 Per-repository gitweb configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 You can configure individual repositories shown in gitweb by creating file
-in the 'GIT_DIR' of Git repository, or by setting some repo configuration
-variable (in 'GIT_DIR/config', see linkgit:git-config[1]).
+in the `$GIT_DIR` of Git repository, or by setting some repo configuration
+variable (in `$GIT_DIR/config`, see linkgit:git-config[1]).
 
 You can use the following files in repository:
 

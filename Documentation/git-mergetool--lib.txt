@@ -39,7 +39,7 @@ get_merge_tool_path::
 run_merge_tool::
 	launches a merge tool given the tool name and a true/false
 	flag to indicate whether a merge base is present.
-	'$MERGED', '$LOCAL', '$REMOTE', and '$BASE' must be defined
+	`$MERGED`, `$LOCAL`, `$REMOTE`, and `$BASE` must be defined
 	for use by the merge tool.
 
 GIT

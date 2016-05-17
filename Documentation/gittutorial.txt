@@ -303,7 +303,7 @@ bob$ git commit -a
 ------------------------------------------------
 
 When he's ready, he tells Alice to pull changes from the repository
-at /home/bob/myrepo.  She does this with:
+at `/home/bob/myrepo`.  She does this with:
 
 ------------------------------------------------
 alice$ cd /home/alice/project

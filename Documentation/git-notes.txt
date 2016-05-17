@@ -161,7 +161,7 @@ OPTIONS
 
 --ref <ref>::
 	Manipulate the notes tree in <ref>.  This overrides
-	'GIT_NOTES_REF' and the "core.notesRef" configuration.  The ref
+	`$GIT_NOTES_REF` and the "core.notesRef" configuration.  The ref
 	specifies the full refname when it begins with `refs/notes/`; when it
 	begins with `notes/`, `refs/` and otherwise `refs/notes/` is prefixed
 	to form a full name of the ref.
@@ -333,10 +333,10 @@ notes.<name>.mergeStrategy::
 notes.displayRef::
 	Which ref (or refs, if a glob or specified more than once), in
 	addition to the default set by `core.notesRef` or
-	'GIT_NOTES_REF', to read notes from when showing commit
+	`$GIT_NOTES_REF`, to read notes from when showing commit
 	messages with the 'git log' family of commands.
 	This setting can be overridden on the command line or by the
-	'GIT_NOTES_DISPLAY_REF' environment variable.
+	`$GIT_NOTES_DISPLAY_REF` environment variable.
 	See linkgit:git-log[1].
 
 notes.rewrite.<command>::
@@ -345,7 +345,7 @@ notes.rewrite.<command>::
 	notes from the original to the rewritten commit.  Defaults to
 	`true`.  See also "`notes.rewriteRef`" below.
 +
-This setting can be overridden by the 'GIT_NOTES_REWRITE_REF'
+This setting can be overridden by the `$GIT_NOTES_REWRITE_REF`
 environment variable.
 
 notes.rewriteMode::
@@ -354,7 +354,7 @@ notes.rewriteMode::
 	`concatenate`, `cat_sort_uniq`, or `ignore`.  Defaults to
 	`concatenate`.
 +
-This setting can be overridden with the `GIT_NOTES_REWRITE_MODE`
+This setting can be overridden with the `$GIT_NOTES_REWRITE_MODE`
 environment variable.
 
 notes.rewriteRef::
@@ -366,7 +366,7 @@ notes.rewriteRef::
 Does not have a default value; you must configure this variable to
 enable note rewriting.
 +
-Can be overridden with the 'GIT_NOTES_REWRITE_REF' environment variable.
+Can be overridden with the `$GIT_NOTES_REWRITE_REF` environment variable.
 
 
 ENVIRONMENT
@@ -379,7 +379,7 @@ ENVIRONMENT
 'GIT_NOTES_DISPLAY_REF'::
 	Colon-delimited list of refs or globs indicating which refs,
 	in addition to the default from `core.notesRef` or
-	'GIT_NOTES_REF', to read notes from when showing commit
+	`$GIT_NOTES_REF`, to read notes from when showing commit
 	messages.
 	This overrides the `notes.displayRef` setting.
 +

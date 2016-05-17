@@ -63,7 +63,7 @@ This option may be specified multiple times.
 This option may be specified multiple times.
 
 --compose::
-	Invoke a text editor (see GIT_EDITOR in linkgit:git-var[1])
+	Invoke a text editor (see `$GIT_EDITOR` in linkgit:git-var[1])
 	to edit an introductory message for the patch series.
 +
 When '--compose' is used, git send-email will use the From, Subject, and
@@ -81,7 +81,7 @@ See the CONFIGURATION section for 'sendemail.multiEdit'.
 	the value of the 'sendemail.from' configuration option is used.  If
 	neither the command-line option nor 'sendemail.from' are set, then the
 	user will be prompted for the value.  The default for the prompt will be
-	the value of GIT_AUTHOR_IDENT, or GIT_COMMITTER_IDENT if that is not
+	the value of `$GIT_AUTHOR_IDENT`, or `$GIT_COMMITTER_IDENT` if that is not
 	set, as returned by "git var -l".
 
 --in-reply-to=<identifier>::
@@ -442,7 +442,7 @@ EXAMPLE
 Use gmail as the smtp server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 To use 'git send-email' to send your patches through the GMail SMTP server,
-edit ~/.gitconfig to specify your account settings:
+edit `~/.gitconfig` to specify your account settings:
 
 	[sendemail]
 		smtpEncryption = tls

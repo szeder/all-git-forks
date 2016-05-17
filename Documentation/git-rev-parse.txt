@@ -203,7 +203,7 @@ Options for Files
 
 --local-env-vars::
 	List the GIT_* environment variables that are local to the
-	repository (e.g. GIT_DIR or GIT_WORK_TREE, but not GIT_EDITOR).
+	repository (e.g. `$GIT_DIR` or `$GIT_WORK_TREE`, but not `$GIT_EDITOR`).
 	Only the names of the variables are listed, not their value,
 	even if they are set.
 
@@ -237,7 +237,7 @@ print a message to stderr and exit with nonzero status.
 	to the real repository is printed.
 
 --git-path <path>::
-	Resolve "$GIT_DIR/<path>" and takes other path relocation
+	Resolve `$GIT_DIR/<path>` and takes other path relocation
 	variables such as $GIT_OBJECT_DIRECTORY,
 	$GIT_INDEX_FILE... into account. For example, if
 	$GIT_OBJECT_DIRECTORY is set to /foo/bar then "git rev-parse
@@ -421,13 +421,13 @@ EXAMPLES
 $ git rev-parse --verify HEAD
 ------------
 
-* Print the commit object name from the revision in the $REV shell variable:
+* Print the commit object name from the revision in the `$REV`shell variable:
 +
 ------------
 $ git rev-parse --verify $REV^{commit}
 ------------
 +
-This will error out if $REV is empty or not a valid revision.
+This will error out if `$REV` is empty or not a valid revision.
 
 * Similar to above:
 +
@@ -435,7 +435,7 @@ This will error out if $REV is empty or not a valid revision.
 $ git rev-parse --default master --verify $REV
 ------------
 +
-but if $REV is empty, the commit object name from master will be printed.
+but if `$REV` is empty, the commit object name from master will be printed.
 
 GIT
 ---

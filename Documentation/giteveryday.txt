@@ -411,10 +411,10 @@ $ grep git /etc/shells <2>
 /usr/bin/git-shell
 ------------
 +
-<1> log-in shell is set to /usr/bin/git-shell, which does not
+<1> log-in shell is set to `/usr/bin/git-shell`, which does not
 allow anything but `git push` and `git pull`.  The users require
 ssh access to the machine.
-<2> in many distributions /etc/shells needs to list what is used
+<2> in many distributions `/etc/shells` needs to list what is used
 as the login shell.
 
 CVS-style shared repository.::
