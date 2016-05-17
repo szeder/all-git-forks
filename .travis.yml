@@ -5,20 +5,21 @@ cache:
   - ccache
 
 install:
+  - test -z "$HG_VERSION" && HG_VERSION=3.0 || true
   - if [ "$HG_VERSION" != "dev" ];
     then pip install -q Mercurial${HG_VERSION+==$HG_VERSION};
     else pip install -q http://selenic.com/repo/hg/archive/tip.tar.gz;
     fi
   - pip install -q --allow-external bzr --allow-unverified bzr bzr${BZR_VERSION+==$BZR_VERSION} || true
-  - pip install -q dulwich hg-git || true
+  - pip install -q dulwich hg-git==0.6.1 || true
 
 before_script:
   - hg --version || true
   - bzr --version || true
   - pip show hg-git dulwich
   - export PYTHON_PATH="$(which python)"
-  - test "$BZR_VERSION" && TEST='t5820-remote-bzr.sh' || true
-  - test "$HG_VERSION" && TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh' || true
+  - test -z "$TEST" -a "$BZR_VERSION" && TEST='t5820-remote-bzr.sh' || true
+  - test -z "$TEST" -a "$HG_VERSION" && TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh' || true
 
 script:
   - make
@@ -34,7 +35,6 @@ matrix:
     - env: HG_VERSION=2.8.2
     - env: HG_VERSION=2.7.2
     - env: HG_VERSION=3.0
-    - env: HG_VERSION=dev
     - python: 2.7
       env: TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh t5820-remote-bzr.sh'
     - python: 2.6
