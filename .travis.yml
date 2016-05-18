@@ -1,6 +1,7 @@
 language: python
 
 install:
+  - test -n HG_VERSION && HG_VERSION=3.0 || true
   - if [ "$HG_VERSION" != "dev" ];
     then pip install -q Mercurial${HG_VERSION+==$HG_VERSION};
     else pip install -q http://selenic.com/repo/hg/archive/tip.tar.gz;
