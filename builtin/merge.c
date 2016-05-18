@@ -67,6 +67,7 @@ static int abort_current_merge;
 static int show_progress = -1;
 static int default_to_upstream = 1;
 static const char *sign_commit;
+static int reverse_parents;
 
 static struct strategy all_strategy[] = {
 	{ "recursive",  DEFAULT_TWOHEAD | NO_TRIVIAL },
@@ -225,6 +226,8 @@ static struct option builtin_merge_options[] = {
 	{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key-id"),
 	  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
 	OPT_BOOL(0, "overwrite-ignore", &overwrite_ignore, N_("update ignored files (default)")),
+	OPT_BOOL(0, "reverse-parents", &reverse_parents,
+		N_("reverse the order of parents")),
 	OPT_END()
 };
 
@@ -824,6 +827,8 @@ static int merge_trivial(struct commit *head, struct commit_list *remoteheads)
 	pptr = commit_list_append(head, pptr);
 	pptr = commit_list_append(remoteheads->item, pptr);
 	prepare_to_commit(remoteheads);
+	if (reverse_parents)
+		parents = reverse_heads(parents);
 	if (commit_tree(merge_msg.buf, merge_msg.len, result_tree, parents,
 			result_commit, NULL, sign_commit))
 		die(_("failed to write commit object"));
@@ -847,6 +852,8 @@ static int finish_automerge(struct commit *head,
 	parents = remoteheads;
 	if (!head_subsumed || fast_forward == FF_NO)
 		commit_list_insert(head, &parents);
+	if (reverse_parents)
+		parents = reverse_heads(parents);
 	strbuf_addch(&merge_msg, '\n');
 	prepare_to_commit(remoteheads);
 	if (commit_tree(merge_msg.buf, merge_msg.len, result_tree, parents,
@@ -983,7 +990,9 @@ static void write_merge_state(struct commit_list *remoteheads)
 		die_errno(_("Could not open '%s' for writing"), filename);
 	strbuf_reset(&buf);
 	if (fast_forward == FF_NO)
-		strbuf_addf(&buf, "no-ff");
+		strbuf_addf(&buf, "no-ff ");
+	if (reverse_parents)
+		strbuf_addf(&buf, "reverse ");
 	if (write_in_full(fd, buf.buf, buf.len) != buf.len)
 		die_errno(_("Could not write to '%s'"), filename);
 	close(fd);

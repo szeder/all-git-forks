@@ -306,6 +306,7 @@ static inline int single_parent(struct commit *commit)
 }
 
 struct commit_list *reduce_heads(struct commit_list *heads);
+struct commit_list *reverse_heads(struct commit_list *heads);
 
 struct commit_extra_header {
 	struct commit_extra_header *next;
