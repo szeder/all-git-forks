@@ -31,6 +31,9 @@ TSVN = $(sort $(wildcard t91[0-9][0-9]-*.sh))
 TGITWEB = $(sort $(wildcard t95[0-9][0-9]-*.sh))
 THELPERS = $(sort $(filter-out $(T),$(wildcard *.sh)))
 
+THG = $(sort $(wildcard t582[0-9]-*.sh))
+TBZR = $(sort $(wildcard t583[0-9]-*.sh))
+
 all: $(DEFAULT_TEST_TARGET)
 
 test: pre-clean $(TEST_LINT)
@@ -84,6 +87,12 @@ full-svn-test:
 
 gitweb-test:
 	$(MAKE) $(TGITWEB)
+
+hg-test:
+	$(MAKE) $(THG)
+
+bzr-test:
+	$(MAKE) $(TBZR)
 
 valgrind:
 	$(MAKE) GIT_TEST_OPTS="$(GIT_TEST_OPTS) --valgrind"
