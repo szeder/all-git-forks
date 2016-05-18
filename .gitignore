@@ -169,6 +169,7 @@
 /git-upload-archive
 /git-upload-pack
 /git-var
+/git-verify-commit
 /git-verify-pack
 /git-verify-tag
 /git-web--browse
@@ -184,6 +185,7 @@
 /test-date
 /test-delta
 /test-dump-cache-tree
+/test-dump-split-index
 /test-scrap-cache-tree
 /test-genrandom
 /test-hashmap
@@ -230,6 +232,7 @@
 /config.mak.autogen
 /config.mak.append
 /configure
+/unicode
 /tags
 /TAGS
 /cscope*
