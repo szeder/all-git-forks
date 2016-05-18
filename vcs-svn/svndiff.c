@@ -64,14 +64,17 @@ static int write_strbuf(struct strbuf *sb, FILE *out)
 {
 	if (fwrite(sb->buf, 1, sb->len, out) == sb->len)	/* Success. */
 		return 0;
-	return error("cannot write delta postimage: %s", strerror(errno));
+	error("cannot write delta postimage: %s", strerror(errno));
+	return -1;
 }
 
 static int error_short_read(struct line_buffer *input)
 {
 	if (buffer_ferror(input))
-		return error("error reading delta: %s", strerror(errno));
-	return error("invalid delta: unexpected end of file");
+		error("error reading delta: %s", strerror(errno));
+	else
+		error("invalid delta: unexpected end of file");
+	return -1;
 }
 
 static int read_chunk(struct line_buffer *delta, off_t *delta_len,
@@ -97,7 +100,8 @@ static int read_magic(struct line_buffer *in, off_t *len)
 	}
 	if (memcmp(sb.buf, magic, sizeof(magic))) {
 		strbuf_release(&sb);
-		return error("invalid delta: unrecognized file type");
+		error("invalid delta: unrecognized file type");
+		return -1;
 	}
 	strbuf_release(&sb);
 	return 0;
@@ -140,7 +144,8 @@ static int parse_int(const char **buf, size_t *result, const char *end)
 		*buf = pos + 1;
 		return 0;
 	}
-	return error("invalid delta: unexpected end of instructions section");
+	error("invalid delta: unexpected end of instructions section");
+	return -1;
 }
 
 static int read_offset(struct line_buffer *in, off_t *result, off_t *len)
