@@ -5,9 +5,7 @@ cache:
   - ccache
 
 install:
-  - if [ -n HG_VERSION ];
-    then HG_VERSION=3.0 TEST=${TEST-all};
-    fi
+  - test -z "$HG_VERSION" && HG_VERSION=3.0 || true
   - if [ "$HG_VERSION" != "dev" ];
     then pip install -q Mercurial${HG_VERSION+==$HG_VERSION};
     else pip install -q http://selenic.com/repo/hg/archive/tip.tar.gz;
@@ -20,8 +18,8 @@ before_script:
   - bzr --version || true
   - pip show hg-git dulwich
   - export PYTHON_PATH="$(which python)"
-  - test "$BZR_VERSION" && TEST='t5820-remote-bzr.sh' || true
-  - test "$HG_VERSION" && TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh' || true
+  - test -z "$TEST" -a "$BZR_VERSION" && TEST='t5820-remote-bzr.sh' || true
+  - test -z "$TEST" -a "$HG_VERSION" && TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh' || true
 
 script:
   - make
