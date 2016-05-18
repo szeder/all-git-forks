@@ -470,8 +470,8 @@ rm -rf hgrepo
 test_expect_success 'fetch special filenames' '
 	test_when_finished "rm -rf hgrepo gitrepo && LC_ALL=C" &&
 
-	LC_ALL=en_US.UTF-8
-	export LC_ALL
+	LC_ALL=en_US.UTF-8 &&
+	export LC_ALL &&
 
 	(
 	hg init hgrepo &&
@@ -503,8 +503,8 @@ test_expect_success 'push special filenames' '
 
 	mkdir -p tmp && cd tmp &&
 
-	LC_ALL=en_US.UTF-8
-	export LC_ALL
+	LC_ALL=en_US.UTF-8 &&
+	export LC_ALL &&
 
 	(
 	hg init hgrepo &&
@@ -601,7 +601,7 @@ setup_big_push () {
 test_expect_success 'remote big push' '
 	test_when_finished "rm -rf hgrepo gitrepo*" &&
 
-	setup_big_push
+	setup_big_push &&
 
 	(
 	cd gitrepo &&
@@ -695,7 +695,7 @@ test_expect_success 'remote big push fetch first' '
 test_expect_failure 'remote big push force' '
 	test_when_finished "rm -rf hgrepo gitrepo*" &&
 
-	setup_big_push
+	setup_big_push &&
 
 	(
 	cd gitrepo &&
@@ -725,7 +725,7 @@ test_expect_failure 'remote big push force' '
 test_expect_failure 'remote big push dry-run' '
 	test_when_finished "rm -rf hgrepo gitrepo*" &&
 
-	setup_big_push
+	setup_big_push &&
 
 	(
 	cd gitrepo &&
@@ -898,7 +898,7 @@ test_expect_success 'push merged named branch' '
 	git push
 	) &&
 
-	cat > expected <<-EOF
+	cat > expected <<-EOF &&
 	Merge
 	three
 	two
