@@ -18,8 +18,9 @@ before_script:
   - bzr --version || true
   - pip show hg-git dulwich
   - export PYTHON_PATH="$(which python)"
-  - test -z "$TEST" -a "$BZR_VERSION" && TEST='t5820-remote-bzr.sh' || true
-  - test -z "$TEST" -a "$HG_VERSION" && TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh' || true
+  - test -z "$TEST" -a -n "$BZR_VERSION" && TEST='bzr-test' || true
+  - test -z "$TEST" -a -n "$HG_VERSION" && TEST='hg-test' || true
+  - test -z "$TEST" -a -z "$HG_VERSION" -a -z "$BZR_VERSION" -a && TEST='hg-test bzr-test' || true
 
 script:
   - make
@@ -39,6 +40,4 @@ matrix:
     - env: HG_VERSION=3.6.3
     - env: HG_VERSION=3.7
     - python: 2.7
-      env: TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh t5820-remote-bzr.sh'
     - python: 2.6
-      env: TEST='t5810-remote-hg.sh t5811-remote-hg-bidi.sh t5812-remote-hg-hg-git.sh t5820-remote-bzr.sh'
