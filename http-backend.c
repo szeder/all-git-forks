@@ -27,6 +27,7 @@ struct rpc_service {
 static struct rpc_service rpc_service[] = {
 	{ "upload-pack", "uploadpack", 1, 1 },
 	{ "receive-pack", "receivepack", 0, -1 },
+	{ "prime-clone", "primeclone", 0, -1 },
 };
 
 static struct string_list *get_parameters(void)
@@ -629,7 +630,8 @@ static struct service_cmd {
 	{"GET", "/objects/pack/pack-[0-9a-f]{40}\\.idx$", get_idx_file},
 
 	{"POST", "/git-upload-pack$", service_rpc},
-	{"POST", "/git-receive-pack$", service_rpc}
+	{"POST", "/git-receive-pack$", service_rpc},
+	{"POST", "/git-prime-clone$", service_rpc}
 };
 
 int main(int argc, char **argv)

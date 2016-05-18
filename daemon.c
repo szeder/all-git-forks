@@ -475,10 +475,17 @@ static int receive_pack(void)
 	return run_service_command(argv);
 }
 
+static int prime_clone(void)
+{
+	static const char *argv[] = { "prime-clone", ".", NULL };
+	return run_service_command(argv);
+}
+
 static struct daemon_service daemon_service[] = {
 	{ "upload-archive", "uploadarch", upload_archive, 0, 1 },
 	{ "upload-pack", "uploadpack", upload_pack, 1, 1 },
 	{ "receive-pack", "receivepack", receive_pack, 0, 1 },
+	{ "prime-clone", "primeclone", prime_clone, 0, 1 },
 };
 
 static void enable_service(const char *name, int ena)
