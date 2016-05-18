@@ -335,7 +335,6 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	if (!show_only && ignore_missing)
 		die(_("Option --ignore-missing can only be used together with --dry-run"));
-
 	if ((0 < addremove_explicit || take_worktree_changes) && !argc) {
 		static const char *whole[2] = { ":/", NULL };
 		argc = 1;

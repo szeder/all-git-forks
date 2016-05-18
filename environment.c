@@ -74,6 +74,7 @@ int protect_hfs = PROTECT_HFS_DEFAULT;
 #define PROTECT_NTFS_DEFAULT 0
 #endif
 int protect_ntfs = PROTECT_NTFS_DEFAULT;
+enum git_mode git_mode = MODE_CURRENT;
 
 /*
  * The character that begins a commented line in user-editable file
