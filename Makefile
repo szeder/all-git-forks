@@ -446,6 +446,7 @@ BASIC_LDFLAGS =
 # Guard against environment variables
 BUILTIN_OBJS =
 BUILT_INS =
+RUBY_PROGRAMS =
 COMPAT_CFLAGS =
 COMPAT_OBJS =
 XDIFF_OBJS =
@@ -505,6 +506,10 @@ SCRIPT_PYTHON += git-p4.py
 SCRIPT_PYTHON += git-remote-hg.py
 SCRIPT_PYTHON += git-remote-bzr.py
 
+SCRIPT_RUBY += git-rb-setup.rb
+
+PROGRAMS += $(RUBY_PROGRAMS)
+
 NO_INSTALL += git-remote-testgit
 
 # Generated files for scripts
@@ -515,6 +520,9 @@ SCRIPT_PYTHON_GEN = $(patsubst %.py,%,$(SCRIPT_PYTHON))
 SCRIPT_SH_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_SH_GEN))
 SCRIPT_PERL_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_PERL_GEN))
 SCRIPT_PYTHON_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_PYTHON_GEN))
+SCRIPT_RUBY_INS = $(filter-out $(NO_INSTALL),$(SCRIPT_RUBY))
+
+NO_GEN += $(SCRIPT_RUBY_INS)
 
 # Individual rules to allow e.g.
 # "make -C ../.. SCRIPT_PERL=contrib/foo/bar.perl build-perl-script"
@@ -524,12 +532,14 @@ build-perl-script: $(SCRIPT_PERL_GEN)
 build-sh-script: $(SCRIPT_SH_GEN)
 build-python-script: $(SCRIPT_PYTHON_GEN)
 
-.PHONY: install-perl-script install-sh-script install-python-script
+.PHONY: install-perl-script install-sh-script install-python-script install-ruby-script
 install-sh-script: $(SCRIPT_SH_INS)
 	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 install-perl-script: $(SCRIPT_PERL_INS)
 	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 install-python-script: $(SCRIPT_PYTHON_INS)
+	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
+install-ruby-script: $(SCRIPT_RUBY_INS)
 	$(INSTALL) $^ '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
 
 .PHONY: clean-perl-script clean-sh-script clean-python-script
@@ -543,6 +553,7 @@ clean-python-script:
 SCRIPTS = $(SCRIPT_SH_INS) \
 	  $(SCRIPT_PERL_INS) \
 	  $(SCRIPT_PYTHON_INS) \
+	  $(SCRIPT_RUBY_INS) \
 	  git-instaweb
 
 ETAGS_TARGET = TAGS
@@ -780,6 +791,7 @@ LIB_OBJS += sha1-lookup.o
 LIB_OBJS += sha1_file.o
 LIB_OBJS += sha1_name.o
 LIB_OBJS += shallow.o
+LIB_OBJS += shortlog.o
 LIB_OBJS += sideband.o
 LIB_OBJS += sigchain.o
 LIB_OBJS += split-index.o
@@ -1453,6 +1465,14 @@ ifdef HAVE_GETDELIM
 	BASIC_CFLAGS += -DHAVE_GETDELIM
 endif
 
+NO_RUBY = NoThanks
+
+ifndef NO_RUBY
+	RUBY_LIBS = $(shell pkg-config --libs ruby-2.0)
+	RUBY_CFLAGS = $(shell pkg-config --cflags ruby-2.0)
+	PROGRAM_OBJS += ruby.o
+endif
+
 ifeq ($(TCLTK_PATH),)
 NO_TCLTK = NoThanks
 endif
@@ -1698,6 +1718,12 @@ version.sp version.s version.o: EXTRA_CPPFLAGS = \
 	'-DGIT_USER_AGENT=$(GIT_USER_AGENT_CQ_SQ)'
 
 $(BUILT_INS): git$X
+	$(QUIET_BUILT_IN)$(RM) $@ && \
+	ln $< $@ 2>/dev/null || \
+	ln -s $< $@ 2>/dev/null || \
+	cp $< $@
+
+$(RUBY_PROGRAMS): git-ruby$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
 	ln -s $< $@ 2>/dev/null || \
@@ -1983,6 +2009,11 @@ git-http-push$X: http.o http-push.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
 		$(LIBS) $(CURL_LIBCURL) $(EXPAT_LIBEXPAT)
 
+git-ruby$X: BASIC_CFLAGS += $(RUBY_CFLAGS)
+git-ruby$X: ruby.o GIT-LDFLAGS $(GITLIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) $(RUBY_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
+		$(LIBS) $(RUBY_LIBS)
+
 git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \
 	$(VCSSVN_LIB)
@@ -2122,6 +2153,7 @@ GIT-BUILD-OPTIONS: FORCE
 	@echo USE_LIBPCRE=\''$(subst ','\'',$(subst ','\'',$(USE_LIBPCRE)))'\' >>$@+
 	@echo NO_PERL=\''$(subst ','\'',$(subst ','\'',$(NO_PERL)))'\' >>$@+
 	@echo NO_PYTHON=\''$(subst ','\'',$(subst ','\'',$(NO_PYTHON)))'\' >>$@+
+	@echo NO_RUBY=\''$(subst ','\'',$(subst ','\'',$(NO_RUBY)))'\' >>$@+
 	@echo NO_UNIX_SOCKETS=\''$(subst ','\'',$(subst ','\'',$(NO_UNIX_SOCKETS)))'\' >>$@+
 ifdef TEST_OUTPUT_DIRECTORY
 	@echo TEST_OUTPUT_DIRECTORY=\''$(subst ','\'',$(subst ','\'',$(TEST_OUTPUT_DIRECTORY)))'\' >>$@+
@@ -2419,7 +2451,7 @@ clean: profile-clean coverage-clean
 	$(RM) *.o *.res block-sha1/*.o ppc/*.o compat/*.o compat/*/*.o
 	$(RM) xdiff/*.o vcs-svn/*.o ewah/*.o builtin/*.o
 	$(RM) $(LIB_FILE) $(XDIFF_LIB) $(VCSSVN_LIB)
-	$(RM) $(ALL_PROGRAMS) $(SCRIPT_LIB) $(BUILT_INS) git$X
+	$(RM) $(filter_out $(NO_GEN),$(ALL_PROGRAMS)) $(SCRIPT_LIB) $(BUILT_INS) git$X
 	$(RM) $(TEST_PROGRAMS) $(NO_INSTALL)
 	$(RM) -r bin-wrappers $(dep_dirs)
 	$(RM) -r po/build/
