@@ -397,6 +397,13 @@ test_expect_success '__git_aliases' '
 	cat >expect <<-EOF &&
 	ci
 	co
+	rb
+	st
+	br
+	pi
+	mt
+	ci
+	co
 	EOF
 	test_config alias.ci commit &&
 	test_config alias.co checkout &&
