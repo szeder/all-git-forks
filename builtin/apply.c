@@ -3728,7 +3728,7 @@ static void build_fake_ancestor(struct patch *list, const char *filename)
 			if (!preimage_sha1_in_gitlink_patch(patch, sha1))
 				; /* ok, the textual part looks sane */
 			else
-				die("sha1 information is lacking or useless for submoule %s",
+				die("sha1 information is lacking or useless for submodule %s",
 				    name);
 		} else if (!get_sha1_blob(patch->old_sha1_prefix, sha1)) {
 			; /* ok */
@@ -4180,7 +4180,7 @@ static int write_out_results(struct patch *list)
 	if (cpath.nr) {
 		struct string_list_item *item;
 
-		sort_string_list(&cpath);
+		string_list_sort(&cpath);
 		for_each_string_list_item(item, &cpath)
 			fprintf(stderr, "U %s\n", item->string);
 		string_list_clear(&cpath, 0);

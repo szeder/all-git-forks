@@ -246,6 +246,17 @@ core.precomposeunicode::
 	When false, file names are handled fully transparent by Git,
 	which is backward compatible with older versions of Git.
 
+core.protectHFS::
+	If set to true, do not allow checkout of paths that would
+	be considered equivalent to `.git` on an HFS+ filesystem.
+	Defaults to `true` on Mac OS, and `false` elsewhere.
+
+core.protectNTFS::
+	If set to true, do not allow checkout of paths that would
+	cause problems with the NTFS filesystem, e.g. conflict with
+	8.3 "short" names.
+	Defaults to `true` on Windows, and `false` elsewhere.
+
 core.trustctime::
 	If false, the ctime differences between the index and the
 	working tree are ignored; useful when the inode change time
@@ -364,14 +375,19 @@ This is useful for excluding servers inside a firewall from
 proxy use, while defaulting to a common proxy for external domains.
 
 core.ignoreStat::
-	If true, commands which modify both the working tree and the index
-	will mark the updated paths with the "assume unchanged" bit in the
-	index. These marked files are then assumed to stay unchanged in the
-	working tree, until you mark them otherwise manually - Git will not
-	detect the file changes	by lstat() calls. This is useful on systems
-	where those are very slow, such as Microsoft Windows.
-	See linkgit:git-update-index[1].
-	False by default.
+	If true, Git will avoid using lstat() calls to detect if files have
+	changed by setting the "assume-unchanged" bit for those tracked files
+	which it has updated identically in both the index and working tree.
++
+When files are modified outside of Git, the user will need to stage
+the modified files explicitly (e.g. see 'Examples' section in
+linkgit:git-update-index[1]).
+Git will not normally detect changes to those files.
++
+This is useful on systems where lstat() calls are very slow, such as
+CIFS/Microsoft Windows.
++
+False by default.
 
 core.preferSymlinkRefs::
 	Instead of the default "symref" format for HEAD
@@ -858,7 +874,13 @@ accepted are `normal`, `black`, `red`, `green`, `yellow`, `blue`,
 `magenta`, `cyan` and `white`; the attributes are `bold`, `dim`, `ul`,
 `blink` and `reverse`.  The first color given is the foreground; the
 second is the background.  The position of the attribute, if any,
-doesn't matter.
+doesn't matter. Attributes may be turned off specifically by prefixing
+them with `no` (e.g., `noreverse`, `noul`, etc).
++
+Colors (foreground and background) may also be given as numbers between
+0 and 255; these use ANSI 256-color mode (but note that not all
+terminals may support this).  If your terminal supports it, you may also
+specify 24-bit RGB values as hex, like `#ff0ab3`.
 
 color.diff::
 	Whether to use ANSI escape sequences to add color to patches.
@@ -2171,6 +2193,13 @@ receive.denyCurrentBranch::
 	print a warning of such a push to stderr, but allow the push to
 	proceed. If set to false or "ignore", allow such pushes with no
 	message. Defaults to "refuse".
++
+Another option is "updateInstead" which will update the working
+directory (must be clean) if pushing into the current branch. This option is
+intended for synchronizing working directories when one side is not easily
+accessible via interactive ssh (e.g. a live web site, hence the requirement
+that the working directory be clean). This mode also comes in handy when
+developing inside a VM to test and fix code on different Operating Systems.
 
 receive.denyNonFastForwards::
 	If set to true, git-receive-pack will deny a ref update which is
@@ -2345,7 +2374,9 @@ sendemail.smtpserverport::
 sendemail.smtpserveroption::
 sendemail.smtpuser::
 sendemail.thread::
+sendemail.transferencoding::
 sendemail.validate::
+sendemail.xmailer::
 	See linkgit:git-send-email[1] for description.
 
 sendemail.signedoffcc::

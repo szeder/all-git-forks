@@ -64,6 +64,16 @@ int merge_log_config = -1;
 int precomposed_unicode = -1; /* see probe_utf8_pathname_composition() */
 struct startup_info *startup_info;
 unsigned long pack_size_limit_cfg;
+
+#ifndef PROTECT_HFS_DEFAULT
+#define PROTECT_HFS_DEFAULT 0
+#endif
+int protect_hfs = PROTECT_HFS_DEFAULT;
+
+#ifndef PROTECT_NTFS_DEFAULT
+#define PROTECT_NTFS_DEFAULT 0
+#endif
+int protect_ntfs = PROTECT_NTFS_DEFAULT;
 enum git_mode git_mode = MODE_CURRENT;
 
 /*

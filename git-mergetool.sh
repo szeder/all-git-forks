@@ -430,8 +430,6 @@ fi
 merge_keep_backup="$(git config --bool mergetool.keepBackup || echo true)"
 merge_keep_temporaries="$(git config --bool mergetool.keepTemporaries || echo false)"
 
-last_status=0
-rollup_status=0
 files=
 
 if test $# -eq 0
@@ -459,19 +457,15 @@ printf "%s\n" "$files"
 
 IFS='
 '
+rc=0
 for i in $files
 do
-	if test $last_status -ne 0
-	then
-		prompt_after_failed_merge || exit 1
-	fi
 	printf "\n"
-	merge_file "$i"
-	last_status=$?
-	if test $last_status -ne 0
+	if ! merge_file "$i"
 	then
-		rollup_status=1
+		rc=1
+		prompt_after_failed_merge || exit 1
 	fi
 done
 
-exit $rollup_status
+exit $rc

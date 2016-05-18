@@ -16,9 +16,9 @@
 #
 # To use these routines:
 #
-#    1) Copy this file to somewhere (e.g. ~/.git-completion.sh).
+#    1) Copy this file to somewhere (e.g. ~/.git-completion.bash).
 #    2) Add the following line to your .bashrc/.zshrc:
-#        source ~/.git-completion.sh
+#        source ~/.git-completion.bash
 #    3) Consider changing your PS1 to also show the current branch,
 #       see git-prompt.sh for details.
 #
@@ -1695,6 +1695,7 @@ _git_rebase ()
 			--committer-date-is-author-date --ignore-date
 			--ignore-whitespace --whitespace=
 			--autosquash --fork-point --no-fork-point
+			--autostash
 			"
 
 		return
@@ -1899,6 +1900,10 @@ _git_config ()
 		;;
 	sendemail.suppresscc)
 		__gitcomp "$__git_send_email_suppresscc_options"
+		return
+		;;
+	sendemail.transferencoding)
+		__gitcomp "7bit 8bit quoted-printable base64"
 		return
 		;;
 	--get|--get-all|--unset|--unset-all)
@@ -2573,6 +2578,16 @@ _git_tag ()
 		;;
 	*)
 		__gitcomp_nl "$(__git_refs)"
+		;;
+	esac
+
+	case "$cur" in
+	--*)
+		__gitcomp "
+			--list --delete --verify --annotate --message --file
+			--sign --cleanup --local-user --force --column --sort
+			--contains --points-at
+			"
 		;;
 	esac
 }

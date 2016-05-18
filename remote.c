@@ -1360,7 +1360,7 @@ static void add_missing_tags(struct ref *src, struct ref **dst, struct ref ***ds
 	}
 	clear_commit_marks_many(sent_tips.nr, sent_tips.tip, TMP_MARK);
 
-	sort_string_list(&dst_tag);
+	string_list_sort(&dst_tag);
 
 	/* Collect tags they do not have. */
 	for (ref = src; ref; ref = ref->next) {
@@ -1425,7 +1425,7 @@ static void prepare_ref_index(struct string_list *ref_index, struct ref *ref)
 	for ( ; ref; ref = ref->next)
 		string_list_append_nodup(ref_index, ref->name)->util = ref;
 
-	sort_string_list(ref_index);
+	string_list_sort(ref_index);
 }
 
 /*
@@ -1635,6 +1635,27 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
 	}
 }
 
+static void set_merge(struct branch *ret)
+{
+	char *ref;
+	unsigned char sha1[20];
+	int i;
+
+	ret->merge = xcalloc(ret->merge_nr, sizeof(*ret->merge));
+	for (i = 0; i < ret->merge_nr; i++) {
+		ret->merge[i] = xcalloc(1, sizeof(**ret->merge));
+		ret->merge[i]->src = xstrdup(ret->merge_name[i]);
+		if (!remote_find_tracking(ret->remote, ret->merge[i]) ||
+		    strcmp(ret->remote_name, "."))
+			continue;
+		if (dwim_ref(ret->merge_name[i], strlen(ret->merge_name[i]),
+			     sha1, &ref) == 1)
+			ret->merge[i]->dst = ref;
+		else
+			ret->merge[i]->dst = xstrdup(ret->merge_name[i]);
+	}
+}
+
 struct branch *branch_get(const char *name)
 {
 	struct branch *ret;
@@ -1646,17 +1667,8 @@ struct branch *branch_get(const char *name)
 		ret = make_branch(name, 0);
 	if (ret && ret->remote_name) {
 		ret->remote = remote_get(ret->remote_name);
-		if (ret->merge_nr) {
-			int i;
-			ret->merge = xcalloc(ret->merge_nr, sizeof(*ret->merge));
-			for (i = 0; i < ret->merge_nr; i++) {
-				ret->merge[i] = xcalloc(1, sizeof(**ret->merge));
-				ret->merge[i]->src = xstrdup(ret->merge_name[i]);
-				if (remote_find_tracking(ret->remote, ret->merge[i])
-				    && !strcmp(ret->remote_name, "."))
-					ret->merge[i]->dst = xstrdup(ret->merge_name[i]);
-			}
-		}
+		if (ret->merge_nr)
+			set_merge(ret);
 	}
 	if (ret && ret->pushremote_name && ret->push_name) {
 		struct remote *pushremote;
@@ -2164,7 +2176,7 @@ struct ref *get_stale_heads(struct refspec *refs, int ref_count, struct ref *fet
 	info.ref_count = ref_count;
 	for (ref = fetch_map; ref; ref = ref->next)
 		string_list_append(&ref_names, ref->name);
-	sort_string_list(&ref_names);
+	string_list_sort(&ref_names);
 	for_each_ref(get_stale_heads_cb, &info);
 	string_list_clear(&ref_names, 0);
 	return stale_refs;
