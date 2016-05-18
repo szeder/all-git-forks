@@ -11,6 +11,9 @@ test_description='Test remote-hg output compared to hg-git'
 test -n "$TEST_DIRECTORY" || TEST_DIRECTORY=$(dirname $0)/
 . "$TEST_DIRECTORY"/test-lib.sh
 
+skip_all='skipping remote-hg-hg-git tests; temporarily disabled'
+test_done
+
 if ! test_have_prereq PYTHON
 then
 	skip_all='skipping remote-hg tests; python not available'
