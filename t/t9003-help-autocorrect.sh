@@ -31,10 +31,14 @@ test_expect_success 'autocorrect showing candidates' '
 	git config help.autocorrect 0 &&
 
 	test_must_fail git lfg 2>actual &&
-	sed -e "1,/^Did you mean this/d" actual | grep lgf &&
+	sed -e "1,/^Did you mean this/d" actual |
+	sed -e "/GETTEXT POISON/d" actual |
+	grep lgf &&
 
 	test_must_fail git distimdist 2>actual &&
-	sed -e "1,/^Did you mean this/d" actual | grep distimdistim
+	sed -e "1,/^Did you mean this/d" actual |
+	sed -e "/GETTEXT POISON/d" actual |
+	grep distimdistim
 '
 
 test_expect_success 'autocorrect running commands' '
