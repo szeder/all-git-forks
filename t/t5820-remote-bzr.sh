@@ -132,10 +132,10 @@ test_expect_success 'special modes' '
 	cd bzrrepo &&
 	echo exec > executable
 	chmod +x executable &&
-	bzr add executable
+	bzr add executable &&
 	bzr commit -m exec &&
-	ln -s content link
-	bzr add link
+	ln -s content link &&
+	bzr add link &&
 	bzr commit -m link &&
 	mkdir dir &&
 	bzr add dir &&
@@ -144,7 +144,7 @@ test_expect_success 'special modes' '
 
 	(
 	cd gitrepo &&
-	git pull
+	git pull &&
 	git ls-tree HEAD > ../actual
 	) &&
 
@@ -212,8 +212,8 @@ rm -rf bzrrepo gitrepo
 test_expect_success 'fetch utf-8 filenames' '
 	test_when_finished "rm -rf bzrrepo gitrepo && LC_ALL=C" &&
 
-	LC_ALL=en_US.UTF-8
-	export LC_ALL
+	LC_ALL=en_US.UTF-8 &&
+	export LC_ALL &&
 
 	(
 	bzr init bzrrepo &&
@@ -245,8 +245,8 @@ test_expect_success 'push utf-8 filenames' '
 
 	mkdir -p tmp && cd tmp &&
 
-	LC_ALL=en_US.UTF-8
-	export LC_ALL
+	LC_ALL=en_US.UTF-8 &&
+	export LC_ALL &&
 
 	(
 	bzr init bzrrepo &&
@@ -382,13 +382,13 @@ test_expect_success 'strip' '
 '
 
 test_expect_success 'export utf-8 authors' '
-	test_when_finished "rm -rf bzrrepo gitrepo && LC_ALL=C && GIT_COMMITTER_NAME=\"C O Mitter\""
+	test_when_finished "rm -rf bzrrepo gitrepo && LC_ALL=C && GIT_COMMITTER_NAME=\"C O Mitter\"" &&
 
-	LC_ALL=en_US.UTF-8
-	export LC_ALL
+	LC_ALL=en_US.UTF-8 &&
+	export LC_ALL &&
 
-	GIT_COMMITTER_NAME="Grégoire"
-	export GIT_COMMITTER_NAME
+	GIT_COMMITTER_NAME="Grégoire" &&
+	export GIT_COMMITTER_NAME &&
 
 	bzr init bzrrepo &&
 
@@ -432,6 +432,46 @@ test_expect_success 'push different author' '
 	) &&
 
 	echo "author: John Doe <jdoe@example.com>" > expected &&
+	test_cmp expected actual
+'
+
+cat > expected <<\EOF
+100644 blob d95f3ad14dee633a758d2e331151e950dd13e4ed	content
+040000 tree bec63e37d08c454ad3a60cde90b70f3f7d077852	dir
+100755 blob 68769579c3eaadbe555379b9c3538e6628bae1eb	executable
+120000 blob 6b584e8ece562ebffc15d38808cd6b98fc3d97ea	link
+EOF
+
+test_expect_success 'mode change' '
+	(
+	bzr init bzrrepo &&
+	cd bzrrepo &&
+	echo content > content &&
+	bzr add content &&
+	echo exec > executable &&
+	bzr add executable &&
+	echo link > link &&
+	bzr add link &&
+	echo dir > dir &&
+	bzr add dir &&
+	bzr commit -m initial &&
+
+	chmod +x executable &&
+	ln -sf content link &&
+	rm dir &&
+	mkdir -p dir &&
+	echo file > dir/file &&
+	bzr add dir/file &&
+	bzr commit -m modify
+	) &&
+
+	(
+	git clone "bzr::bzrrepo" gitrepo &&
+	cd gitrepo &&
+	git pull &&
+	git ls-tree HEAD > ../actual
+	) &&
+
 	test_cmp expected actual
 '
 
