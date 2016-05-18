@@ -2,6 +2,7 @@
 #include "rewrite.h"
 #include "lockfile.h"
 #include "run-command.h"
+#include "sigchain.h"
 #include "notes-utils.h"
 
 void add_rewritten(struct rewritten *list, unsigned char *from, unsigned char *to)
@@ -98,8 +99,10 @@ int run_rewrite_hook(struct rewritten *list, const char *name)
 		struct rewritten_item *item = &list->items[i];
 		strbuf_addf(&buf, "%s %s\n", sha1_to_hex(item->from), sha1_to_hex(item->to));
 	}
+	sigchain_push(SIGPIPE, SIG_IGN);
 	write_in_full(proc.in, buf.buf, buf.len);
 	close(proc.in);
+	sigchain_pop(SIGPIPE);
 	return finish_command(&proc);
 }
 
