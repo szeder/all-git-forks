@@ -6,11 +6,11 @@
 
 dashless=$(basename "$0" | sed -e 's/-/ /')
 USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <repository>] [--] <repository> [<path>]
-   or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] status [--cached|--staged] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] [--] <path>...
    or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--reference <repository>] [--recursive] [--] [<path>...]
-   or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
+   or: $dashless [--quiet] summary [--cached|--staged|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
 OPTIONS_SPEC=
@@ -868,7 +868,7 @@ cmd_summary() {
 	while test $# -ne 0
 	do
 		case "$1" in
-		--cached)
+		--cached|--staged)
 			cached="$1"
 			;;
 		--files)
@@ -1077,7 +1077,7 @@ cmd_status()
 		-q|--quiet)
 			GIT_QUIET=1
 			;;
-		--cached)
+		--cached|--staged)
 			cached=1
 			;;
 		--recursive)
@@ -1248,7 +1248,7 @@ do
 		esac
 		branch="$2"; shift
 		;;
-	--cached)
+	--cached|--staged)
 		cached="$1"
 		;;
 	--)
