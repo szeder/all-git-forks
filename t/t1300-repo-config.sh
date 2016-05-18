@@ -1282,6 +1282,13 @@ test_expect_success 'set up --show-origin tests' '
 
 test_expect_success '--show-origin with --list' '
 	cat >expect <<-EOF &&
+		command line:	alias.ci=commit
+		command line:	alias.co=checkout
+		command line:	alias.rb=rebase
+		command line:	alias.st=status
+		command line:	alias.br=branch
+		command line:	alias.pi=cherry-pick
+		command line:	alias.mt=mergetool
 		file:$HOME/.gitconfig	user.global=true
 		file:$HOME/.gitconfig	user.override=global
 		file:$HOME/.gitconfig	include.path=$INCLUDE_DIR/absolute.include
@@ -1298,7 +1305,14 @@ test_expect_success '--show-origin with --list' '
 
 test_expect_success '--show-origin with --list --null' '
 	cat >expect <<-EOF &&
-		file:$HOME/.gitconfigQuser.global
+		command line:Qalias.ci
+		commitQcommand line:Qalias.co
+		checkoutQcommand line:Qalias.rb
+		rebaseQcommand line:Qalias.st
+		statusQcommand line:Qalias.br
+		branchQcommand line:Qalias.pi
+		cherry-pickQcommand line:Qalias.mt
+		mergetoolQfile:$HOME/.gitconfigQuser.global
 		trueQfile:$HOME/.gitconfigQuser.override
 		globalQfile:$HOME/.gitconfigQinclude.path
 		$INCLUDE_DIR/absolute.includeQfile:$INCLUDE_DIR/absolute.includeQuser.absolute
