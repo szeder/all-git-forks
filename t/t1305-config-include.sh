@@ -49,6 +49,13 @@ test_expect_success 'listing includes option and expansion' '
 	echo "[test]one = 1" >one &&
 	echo "[include]path = one" >.gitconfig &&
 	cat >expect <<-\EOF &&
+	alias.ci=commit
+	alias.co=checkout
+	alias.rb=rebase
+	alias.st=status
+	alias.br=branch
+	alias.pi=cherry-pick
+	alias.mt=mergetool
 	include.path=one
 	test.one=1
 	EOF

@@ -334,6 +334,13 @@ test_expect_success 'hierarchical section value' '
 '
 
 cat > expect << EOF
+alias.ci=commit
+alias.co=checkout
+alias.rb=rebase
+alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 beta.noindent=sillyValue
 nextsection.nonewline=wow2 for me
 123456.a123=987
@@ -345,6 +352,13 @@ test_expect_success 'working --list' '
 	test_cmp expect output
 '
 cat > expect << EOF
+alias.ci=commit
+alias.co=checkout
+alias.rb=rebase
+alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 EOF
 
 test_expect_success '--list without repo produces empty output' '
@@ -905,6 +919,13 @@ inued"
 EOF
 
 cat > expect <<\EOF
+alias.ci=commit
+alias.co=checkout
+alias.rb=rebase
+alias.st=status
+alias.br=branch
+alias.pi=cherry-pick
+alias.mt=mergetool
 section.continued=continued
 section.noncont=not continued
 section.quotecont=cont;inued
@@ -925,7 +946,14 @@ cat > .git/config <<\EOF
 EOF
 
 cat > expect <<\EOF
-section.sub=section.val1
+alias.ci
+commitQalias.co
+checkoutQalias.rb
+rebaseQalias.st
+statusQalias.br
+branchQalias.pi
+cherry-pickQalias.mt
+mergetoolQsection.sub=section.val1
 foo=barQsection.sub=section.val2
 foo
 barQsection.sub=section.val3
@@ -940,6 +968,16 @@ test_expect_success '--null --list' '
 	test_cmp expect result
 '
 
+cat > expect <<\EOF
+section.sub=section.val1
+foo=barQsection.sub=section.val2
+foo
+barQsection.sub=section.val3
+
+
+Qsection.sub=section.val4
+Qsection.sub=section.val5Q
+EOF
 test_expect_success '--null --get-regexp' '
 	git config --null --get-regexp "val[0-9]" | nul_to_q >result &&
 	echo >>result &&
