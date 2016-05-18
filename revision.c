@@ -345,14 +345,24 @@ static struct commit *handle_commit(struct rev_info *revs,
 	die("%s is unknown object", name);
 }
 
-static int everybody_uninteresting(struct commit_list *orig)
+static int everybody_uninteresting(struct commit_list *orig,
+				   struct commit **interesting_cache)
 {
 	struct commit_list *list = orig;
+
+	if (*interesting_cache) {
+		struct commit *commit = *interesting_cache;
+		if (!(commit->object.flags & UNINTERESTING))
+			return 0;
+	}
+
 	while (list) {
 		struct commit *commit = list->item;
 		list = list->next;
 		if (commit->object.flags & UNINTERESTING)
 			continue;
+
+		*interesting_cache = commit;
 		return 0;
 	}
 	return 1;
@@ -807,7 +817,7 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 			parent = parent->next;
 			if (p)
 				p->object.flags |= UNINTERESTING;
-			if (parse_commit(p) < 0)
+			if (parse_commit_gently(p, 1) < 0)
 				continue;
 			if (p->parents)
 				mark_parents_uninteresting(p);
@@ -834,7 +844,7 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 	for (parent = commit->parents; parent; parent = parent->next) {
 		struct commit *p = parent->item;
 
-		if (parse_commit(p) < 0)
+		if (parse_commit_gently(p, revs->ignore_missing_links) < 0)
 			return -1;
 		if (revs->show_source && !p->util)
 			p->util = commit->util;
@@ -940,7 +950,8 @@ static void cherry_pick_list(struct commit_list *list, struct rev_info *revs)
 /* How many extra uninteresting commits we want to see.. */
 #define SLOP 5
 
-static int still_interesting(struct commit_list *src, unsigned long date, int slop)
+static int still_interesting(struct commit_list *src, unsigned long date, int slop,
+			     struct commit **interesting_cache)
 {
 	/*
 	 * No source list at all? We're definitely done..
@@ -959,7 +970,7 @@ static int still_interesting(struct commit_list *src, unsigned long date, int sl
 	 * Does the source list still have interesting commits in
 	 * it? Definitely not done..
 	 */
-	if (!everybody_uninteresting(src))
+	if (!everybody_uninteresting(src, interesting_cache))
 		return SLOP;
 
 	/* Ok, we're closing in.. */
@@ -1078,6 +1089,7 @@ static int limit_list(struct rev_info *revs)
 	struct commit_list *newlist = NULL;
 	struct commit_list **p = &newlist;
 	struct commit_list *bottom = NULL;
+	struct commit *interesting_cache = NULL;
 
 	if (revs->ancestry_path) {
 		bottom = collect_bottom_commits(list);
@@ -1094,6 +1106,9 @@ static int limit_list(struct rev_info *revs)
 		list = list->next;
 		free(entry);
 
+		if (commit == interesting_cache)
+			interesting_cache = NULL;
+
 		if (revs->max_age != -1 && (commit->date < revs->max_age))
 			obj->flags |= UNINTERESTING;
 		if (add_parents_to_list(revs, commit, &list, NULL) < 0)
@@ -1102,7 +1117,7 @@ static int limit_list(struct rev_info *revs)
 			mark_parents_uninteresting(commit);
 			if (revs->show_all)
 				p = &commit_list_insert(commit, p)->next;
-			slop = still_interesting(list, date, slop);
+			slop = still_interesting(list, date, slop, &interesting_cache);
 			if (slop)
 				continue;
 			/* If showing all, add the whole pending list to the end */
@@ -1203,7 +1218,8 @@ int ref_excluded(struct string_list *ref_excludes, const char *path)
 	return 0;
 }
 
-static int handle_one_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int handle_one_ref(const char *path, const struct object_id *oid,
+			  int flag, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
 	struct object *object;
@@ -1211,9 +1227,9 @@ static int handle_one_ref(const char *path, const unsigned char *sha1, int flag,
 	if (ref_excluded(cb->all_revs->ref_excludes, path))
 	    return 0;
 
-	object = get_reference(cb->all_revs, path, sha1, cb->all_flags);
+	object = get_reference(cb->all_revs, path, oid->hash, cb->all_flags);
 	add_rev_cmdline(cb->all_revs, object, path, REV_CMD_REF, cb->all_flags);
-	add_pending_sha1(cb->all_revs, path, sha1, cb->all_flags);
+	add_pending_sha1(cb->all_revs, path, oid->hash, cb->all_flags);
 	return 0;
 }
 
@@ -1277,7 +1293,8 @@ static int handle_one_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
 	return 0;
 }
 
-static int handle_one_reflog(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int handle_one_reflog(const char *path, const struct object_id *oid,
+			     int flag, void *cb_data)
 {
 	struct all_refs_cb *cb = cb_data;
 	cb->warned_bad_reflog = 0;
@@ -1289,6 +1306,7 @@ static int handle_one_reflog(const char *path, const unsigned char *sha1, int fl
 void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)
 {
 	struct all_refs_cb cb;
+
 	cb.all_revs = revs;
 	cb.all_flags = flags;
 	for_each_reflog(handle_one_reflog, &cb);

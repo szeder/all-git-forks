@@ -171,7 +171,7 @@ static void determine_whence(struct wt_status *s)
 		whence = FROM_MERGE;
 	else if (file_exists(git_path("CHERRY_PICK_HEAD"))) {
 		whence = FROM_CHERRY_PICK;
-		if (file_exists(git_path("sequencer")))
+		if (file_exists(git_path(SEQ_DIR)))
 			sequencer_in_use = 1;
 	}
 	else
@@ -1367,12 +1367,13 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, &s.pathspec, NULL, NULL);
 
 	fd = hold_locked_index(&index_lock, 0);
-	if (0 <= fd)
-		update_index_if_able(&the_index, &index_lock);
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	s.ignore_submodule_arg = ignore_submodule_arg;
 	wt_status_collect(&s);
+
+	if (0 <= fd)
+		update_index_if_able(&the_index, &index_lock);
 
 	if (s.relative_paths)
 		s.prefix = prefix;
@@ -1399,12 +1400,10 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 
 static const char *implicit_ident_advice(void)
 {
-	char *user_config = NULL;
-	char *xdg_config = NULL;
-	int config_exists;
+	char *user_config = expand_user_path("~/.gitconfig");
+	char *xdg_config = xdg_config_home("config");
+	int config_exists = file_exists(user_config) || file_exists(xdg_config);
 
-	home_config_paths(&user_config, &xdg_config, "config");
-	config_exists = file_exists(user_config) || file_exists(xdg_config);
 	free(user_config);
 	free(xdg_config);
 

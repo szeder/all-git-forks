@@ -1055,4 +1055,72 @@ test_expect_success 'todo count' '
 	grep "^# Rebase ..* onto ..* ([0-9]" actual
 '
 
+test_expect_success 'rebase -i commits that overwrite untracked files (pick)' '
+	git checkout --force branch2 &&
+	git clean -f &&
+	set_fake_editor &&
+	FAKE_LINES="edit 1 2" git rebase -i A &&
+	test_cmp_rev HEAD F &&
+	test_path_is_missing file6 &&
+	>file6 &&
+	test_must_fail git rebase --continue &&
+	test_cmp_rev HEAD F &&
+	rm file6 &&
+	git rebase --continue &&
+	test_cmp_rev HEAD I
+'
+
+test_expect_success 'rebase -i commits that overwrite untracked files (squash)' '
+	git checkout --force branch2 &&
+	git clean -f &&
+	git tag original-branch2 &&
+	set_fake_editor &&
+	FAKE_LINES="edit 1 squash 2" git rebase -i A &&
+	test_cmp_rev HEAD F &&
+	test_path_is_missing file6 &&
+	>file6 &&
+	test_must_fail git rebase --continue &&
+	test_cmp_rev HEAD F &&
+	rm file6 &&
+	git rebase --continue &&
+	test $(git cat-file commit HEAD | sed -ne \$p) = I &&
+	git reset --hard original-branch2
+'
+
+test_expect_success 'rebase -i commits that overwrite untracked files (no ff)' '
+	git checkout --force branch2 &&
+	git clean -f &&
+	set_fake_editor &&
+	FAKE_LINES="edit 1 2" git rebase -i --no-ff A &&
+	test $(git cat-file commit HEAD | sed -ne \$p) = F &&
+	test_path_is_missing file6 &&
+	>file6 &&
+	test_must_fail git rebase --continue &&
+	test $(git cat-file commit HEAD | sed -ne \$p) = F &&
+	rm file6 &&
+	git rebase --continue &&
+	test $(git cat-file commit HEAD | sed -ne \$p) = I
+'
+
+test_expect_success 'rebase --continue removes CHERRY_PICK_HEAD' '
+	git checkout -b commit-to-skip &&
+	for double in X 3 1
+	do
+		test_seq 5 | sed "s/$double/&&/" >seq &&
+		git add seq &&
+		test_tick &&
+		git commit -m seq-$double
+	done &&
+	git tag seq-onto &&
+	git reset --hard HEAD~2 &&
+	git cherry-pick seq-onto &&
+	set_fake_editor &&
+	test_must_fail env FAKE_LINES= git rebase -i seq-onto &&
+	test -d .git/rebase-merge &&
+	git rebase --continue &&
+	git diff --exit-code seq-onto &&
+	test ! -d .git/rebase-merge &&
+	test ! -f .git/CHERRY_PICK_HEAD
+'
+
 test_done

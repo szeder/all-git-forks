@@ -46,7 +46,7 @@ test_expect_success 'setup' '
 	test_commit new-one &&
 	test_commit new-two &&
 	git branch -u master old-branch &&
-	git branch -u upstream-branch new-branch
+	git branch -u upstream-branch new-branch &&
 	git branch -p publish-branch new-branch
 '
 

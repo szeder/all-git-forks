@@ -6,6 +6,7 @@
 #include "tree-walk.h"
 #include "refs.h"
 #include "remote.h"
+#include "dir.h"
 
 static int get_sha1_oneline(const char *, unsigned char *, struct commit_list *);
 
@@ -415,18 +416,36 @@ static int ambiguous_path(const char *path, int len)
 	return slash;
 }
 
-static inline int tracking_mark(const char *string, int len)
+static inline int at_mark(const char *string, int len,
+			  const char **suffix, int nr)
 {
-	const char *suffix[] = { "upstream", "u", "publish", "p" };
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(suffix); i++) {
+	for (i = 0; i < nr; i++) {
 		int suffix_len = strlen(suffix[i]);
 		if (suffix_len <= len
 		    && !memcmp(string, suffix[i], suffix_len))
 			return suffix_len;
 	}
 	return 0;
+}
+
+static inline int upstream_mark(const char *string, int len)
+{
+	const char *suffix[] = { "upstream", "u" };
+	return at_mark(string, len, suffix, ARRAY_SIZE(suffix));
+}
+
+static inline int push_mark(const char *string, int len)
+{
+	const char *suffix[] = { "push" };
+	return at_mark(string, len, suffix, ARRAY_SIZE(suffix));
+}
+
+static inline int publish_mark(const char *string, int len)
+{
+	const char *suffix[] = { "publish", "p" };
+	return at_mark(string, len, suffix, ARRAY_SIZE(suffix));
 }
 
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
@@ -476,7 +495,9 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 					nth_prior = 1;
 					continue;
 				}
-				if (!tracking_mark(str + at + 2, len - at - 3)) {
+				if (!upstream_mark(str + at + 2, len - at - 3) &&
+				    !push_mark(str + at + 2, len - at - 3) &&
+				    !publish_mark(str + at + 2, len - at - 3)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
@@ -831,11 +852,11 @@ static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned l
 /* Remember to update object flag allocation in object.h */
 #define ONELINE_SEEN (1u<<20)
 
-static int handle_one_ref(const char *path,
-		const unsigned char *sha1, int flag, void *cb_data)
+static int handle_one_ref(const char *path, const struct object_id *oid,
+			  int flag, void *cb_data)
 {
 	struct commit_list **list = cb_data;
-	struct object *object = parse_object(sha1);
+	struct object *object = parse_object(oid->hash);
 	if (!object)
 		return 0;
 	if (object->type == OBJ_TAG) {
@@ -1055,62 +1076,39 @@ static void set_shortened_ref(struct strbuf *buf, const char *ref)
 	free(s);
 }
 
-static const char *get_tracking_branch(const char *name_buf, int len, char type)
-{
-	char *name = xstrndup(name_buf, len);
-	struct branch *branch = branch_get(*name ? name : NULL);
-	char *tracking = NULL;
-
-	/*
-	 * Upstream can be NULL only if branch refers to HEAD and HEAD
-	 * points to something different than a branch.
-	 */
-	if (!branch)
-		die(_("HEAD does not point to a branch"));
-	switch (type) {
-	case 'u':
-		if (!branch->merge || !branch->merge[0]->dst) {
-			if (!ref_exists(branch->refname))
-				die(_("No such branch: '%s'"), name);
-			if (!branch->merge) {
-				die(_("No upstream configured for branch '%s'"),
-					branch->name);
-			}
-			die(
-				_("Upstream branch '%s' not stored as a remote-tracking branch"),
-				branch->merge[0]->src);
-		}
-		tracking = branch->merge[0]->dst;
-		break;
-	case 'p':
-		if (!branch->push.dst) {
-			die(_("No publish configured for branch '%s'"),
-					branch->name);
-		}
-		tracking = branch->push.dst;
-		break;
-	}
-	free(name);
-
-	return tracking;
-}
-
-static int interpret_tracking_mark(const char *name, int namelen,
-				   int at, struct strbuf *buf)
+static int interpret_branch_mark(const char *name, int namelen,
+				 int at, struct strbuf *buf,
+				 int (*get_mark)(const char *, int),
+				 const char *(*get_data)(struct branch *,
+							 struct strbuf *))
 {
 	int len;
+	struct branch *branch;
+	struct strbuf err = STRBUF_INIT;
+	const char *value;
 
 	if (name[at + 1] != '{' || name[namelen - 1] != '}')
 		return -1;
 
-	len = tracking_mark(name + at + 2, namelen - at - 3);
+	len = get_mark(name + at + 2, namelen - at - 3);
 	if (!len)
 		return -1;
 
 	if (memchr(name, ':', at))
 		return -1;
 
-	set_shortened_ref(buf, get_tracking_branch(name, at, name[at + 2]));
+	if (at) {
+		char *name_str = xmemdupz(name, at);
+		branch = branch_get(name_str);
+		free(name_str);
+	} else
+		branch = branch_get(NULL);
+
+	value = get_data(branch, &err);
+	if (!value)
+		die("%s", err.buf);
+
+	set_shortened_ref(buf, value);
 	return len + at + 3;
 }
 
@@ -1161,7 +1159,18 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 		if (len > 0)
 			return reinterpret(name, namelen, len, buf);
 
-		len = interpret_tracking_mark(name, namelen, at - name, buf);
+		len = interpret_branch_mark(name, namelen, at - name, buf,
+					    upstream_mark, branch_get_upstream);
+		if (len > 0)
+			return len;
+
+		len = interpret_branch_mark(name, namelen, at - name, buf,
+					    push_mark, branch_get_push);
+		if (len > 0)
+			return len;
+
+		len = interpret_branch_mark(name, namelen, at - name, buf,
+					    publish_mark, branch_get_publish);
 		if (len > 0)
 			return len;
 	}
@@ -1253,14 +1262,13 @@ static void diagnose_invalid_sha1_path(const char *prefix,
 				       const char *object_name,
 				       int object_name_len)
 {
-	struct stat st;
 	unsigned char sha1[20];
 	unsigned mode;
 
 	if (!prefix)
 		prefix = "";
 
-	if (!lstat(filename, &st))
+	if (file_exists(filename))
 		die("Path '%s' exists on disk, but not in '%.*s'.",
 		    filename, object_name_len, object_name);
 	if (errno == ENOENT || errno == ENOTDIR) {
@@ -1287,7 +1295,6 @@ static void diagnose_invalid_index_path(int stage,
 					const char *prefix,
 					const char *filename)
 {
-	struct stat st;
 	const struct cache_entry *ce;
 	int pos;
 	unsigned namelen = strlen(filename);
@@ -1330,7 +1337,7 @@ static void diagnose_invalid_index_path(int stage,
 			    ce_stage(ce), filename);
 	}
 
-	if (!lstat(filename, &st))
+	if (file_exists(filename))
 		die("Path '%s' exists on disk, but not in the index.", filename);
 	if (errno == ENOENT || errno == ENOTDIR)
 		die("Path '%s' does not exist (neither on disk nor in the index).",
@@ -1387,6 +1394,7 @@ static int get_sha1_with_context_1(const char *name,
 		int pos;
 		if (!only_to_die && namelen > 2 && name[1] == '/') {
 			struct commit_list *list = NULL;
+
 			for_each_ref(handle_one_ref, &list);
 			commit_list_sort_by_date(&list);
 			return get_sha1_oneline(name + 2, sha1, list);
@@ -1450,11 +1458,19 @@ static int get_sha1_with_context_1(const char *name,
 			new_filename = resolve_relative_path(filename);
 			if (new_filename)
 				filename = new_filename;
-			ret = get_tree_entry(tree_sha1, filename, sha1, &oc->mode);
-			if (ret && only_to_die) {
-				diagnose_invalid_sha1_path(prefix, filename,
-							   tree_sha1,
-							   name, len);
+			if (flags & GET_SHA1_FOLLOW_SYMLINKS) {
+				ret = get_tree_entry_follow_symlinks(tree_sha1,
+					filename, sha1, &oc->symlink_path,
+					&oc->mode);
+			} else {
+				ret = get_tree_entry(tree_sha1, filename,
+						     sha1, &oc->mode);
+				if (ret && only_to_die) {
+					diagnose_invalid_sha1_path(prefix,
+								   filename,
+								   tree_sha1,
+								   name, len);
+				}
 			}
 			hashcpy(oc->tree, tree_sha1);
 			strlcpy(oc->path, filename, sizeof(oc->path));
@@ -1485,5 +1501,7 @@ void maybe_die_on_misspelt_object_name(const char *name, const char *prefix)
 
 int get_sha1_with_context(const char *str, unsigned flags, unsigned char *sha1, struct object_context *orc)
 {
+	if (flags & GET_SHA1_FOLLOW_SYMLINKS && flags & GET_SHA1_ONLY_TO_DIE)
+		die("BUG: incompatible flags for get_sha1_with_context");
 	return get_sha1_with_context_1(str, flags, NULL, sha1, orc);
 }

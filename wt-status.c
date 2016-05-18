@@ -585,6 +585,8 @@ static void wt_status_collect_untracked(struct wt_status *s)
 			DIR_SHOW_OTHER_DIRECTORIES | DIR_HIDE_EMPTY_DIRECTORIES;
 	if (s->show_ignored_files)
 		dir.flags |= DIR_SHOW_IGNORED_TOO;
+	else
+		dir.untracked = the_index.untracked;
 	setup_standard_excludes(&dir);
 
 	fill_directory(&dir, &s->pathspec);
@@ -823,10 +825,11 @@ void wt_status_truncate_message_at_cut_line(struct strbuf *buf)
 	const char *p;
 	struct strbuf pattern = STRBUF_INIT;
 
-	strbuf_addf(&pattern, "%c %s", comment_line_char, cut_line);
-	p = strstr(buf->buf, pattern.buf);
-	if (p && (p == buf->buf || p[-1] == '\n'))
-		strbuf_setlen(buf, p - buf->buf);
+	strbuf_addf(&pattern, "\n%c %s", comment_line_char, cut_line);
+	if (starts_with(buf->buf, pattern.buf + 1))
+		strbuf_setlen(buf, 0);
+	else if ((p = strstr(buf->buf, pattern.buf)))
+		strbuf_setlen(buf, p - buf->buf + 1);
 	strbuf_release(&pattern);
 }
 
@@ -1532,21 +1535,15 @@ static void wt_shortstatus_print_tracking(struct wt_status *s)
 
 	color_fprintf(s->fp, branch_color_local, "%s", branch_name);
 
-	switch (stat_tracking_info(branch, &num_ours, &num_theirs)) {
-	case 0:
-		/* no base */
-		fputc(s->null_termination ? '\0' : '\n', s->fp);
-		return;
-	case -1:
-		/* with "gone" base */
+	if (stat_tracking_info(branch, &num_ours, &num_theirs, &base) < 0) {
+		if (!base) {
+			fputc(s->null_termination ? '\0' : '\n', s->fp);
+			return;
+		}
+
 		upstream_is_gone = 1;
-		break;
-	default:
-		/* with base */
-		break;
 	}
 
-	base = branch->merge[0]->dst;
 	base = shorten_unambiguous_ref(base, 0);
 	color_fprintf(s->fp, header_color, "...");
 	color_fprintf(s->fp, branch_color_remote, "%s", base);

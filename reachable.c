@@ -22,9 +22,10 @@ static void update_progress(struct connectivity_progress *cp)
 		display_progress(cp->progress, cp->count);
 }
 
-static int add_one_ref(const char *path, const unsigned char *sha1, int flag, void *cb_data)
+static int add_one_ref(const char *path, const struct object_id *oid,
+		       int flag, void *cb_data)
 {
-	struct object *object = parse_object_or_die(sha1, path);
+	struct object *object = parse_object_or_die(oid->hash, path);
 	struct rev_info *revs = (struct rev_info *)cb_data;
 
 	add_pending_object(revs, object, "");
@@ -142,10 +143,12 @@ int add_unseen_recent_objects_to_traversal(struct rev_info *revs,
 	data.revs = revs;
 	data.timestamp = timestamp;
 
-	r = for_each_loose_object(add_recent_loose, &data);
+	r = for_each_loose_object(add_recent_loose, &data,
+				  FOR_EACH_OBJECT_LOCAL_ONLY);
 	if (r)
 		return r;
-	return for_each_packed_object(add_recent_packed, &data);
+	return for_each_packed_object(add_recent_packed, &data,
+				      FOR_EACH_OBJECT_LOCAL_ONLY);
 }
 
 void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
