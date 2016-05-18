@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "rewrite.h"
+#include "lockfile.h"
 #include "run-command.h"
 #include "notes-utils.h"
 
@@ -75,7 +76,7 @@ void load_rewritten(struct rewritten *list, const char *file)
 int run_rewrite_hook(struct rewritten *list, const char *name)
 {
 	struct strbuf buf = STRBUF_INIT;
-	struct child_process proc;
+	struct child_process proc = CHILD_PROCESS_INIT;
 	const char *argv[3];
 	int code, i;
 
@@ -86,7 +87,6 @@ int run_rewrite_hook(struct rewritten *list, const char *name)
 	argv[1] = name;
 	argv[2] = NULL;
 
-	memset(&proc, 0, sizeof(proc));
 	proc.argv = argv;
 	proc.in = -1;
 	proc.stdout_to_stderr = 1;
