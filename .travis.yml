@@ -21,9 +21,9 @@ before_script:
   - test -z "$TEST" -a -n "$BZR_VERSION" && TEST='bzr-test' || true
   - test -z "$TEST" -a -n "$HG_VERSION" && TEST='hg-test' || true
   - test -z "$TEST" -a -z "$HG_VERSION" -a -z "$BZR_VERSION" && TEST='hg-test bzr-test' || true
+  - make -j2
 
 script:
-  - make
   - make -C t ${TEST:-all}
 
 matrix:
