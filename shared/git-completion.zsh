@@ -9,7 +9,7 @@
 #
 # If your script is somewhere else, you can configure it on your ~/.zshrc:
 #
-#  zstyle ':completion:*:*:git:*' script ~/.git-completion.zsh
+#  zstyle ':completion:*:*:git:*' script ~/.git-completion.sh
 #
 # The recommended way to install this script is to copy to '~/.zsh/_git', and
 # then add the following to your ~/.zshrc file:
