@@ -367,6 +367,13 @@ test_expect_success '--list without repo produces empty output' '
 '
 
 cat > expect << EOF
+alias.ci
+alias.co
+alias.rb
+alias.st
+alias.br
+alias.pi
+alias.mt
 beta.noindent
 nextsection.nonewline
 123456.a123
