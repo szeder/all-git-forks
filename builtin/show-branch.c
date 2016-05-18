@@ -730,7 +730,6 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 
 	if (reflog) {
 		struct object_id oid;
-		char nth_desc[256];
 		char *ref;
 		int base = 0;
 		unsigned int flags = 0;
@@ -769,6 +768,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 
 		for (i = 0; i < reflog; i++) {
 			char *logmsg;
+			char *nth_desc;
 			const char *msg;
 			unsigned long timestamp;
 			int tz;
@@ -784,11 +784,14 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			else
 				msg++;
 			reflog_msg[i] = xstrfmt("(%s) %s",
-						show_date(timestamp, tz, 1),
+						show_date(timestamp, tz,
+							  DATE_MODE(RELATIVE)),
 						msg);
 			free(logmsg);
-			sprintf(nth_desc, "%s@{%d}", *av, base+i);
+
+			nth_desc = xstrfmt("%s@{%d}", *av, base+i);
 			append_ref(nth_desc, &oid, 1);
+			free(nth_desc);
 		}
 		free(ref);
 	}
