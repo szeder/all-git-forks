@@ -229,4 +229,27 @@ test_expect_success 'error on modifying repo config without repo' '
 	)
 '
 
+test_expect_success 'iteration shows correct origins' '
+	echo "[foo]bar = from-repo" >.git/config &&
+	echo "[alias]test-config = !test-config" >.gitconfig &&
+	cat >expect <<-EOF &&
+	key=alias.test-config
+	value=!test-config
+	origin=file
+	name=$(pwd)/.gitconfig
+
+	key=foo.bar
+	value=from-repo
+	origin=file
+	name=.git/config
+
+	key=foo.bar
+	value=from-cmdline
+	origin=command line
+	name=
+	EOF
+	git -c foo.bar=from-cmdline test-config iterate >actual &&
+	test_cmp expect actual
+'
+
 test_done
