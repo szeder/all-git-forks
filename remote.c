@@ -1159,7 +1159,7 @@ static int match_explicit(struct ref *src, struct ref *dst,
 			  struct refspec *rs)
 {
 	struct ref *matched_src, *matched_dst;
-	int allocated_src;
+	int allocated_src = 0;
 
 	const char *dst_value = rs->dst;
 	char *dst_guess;
