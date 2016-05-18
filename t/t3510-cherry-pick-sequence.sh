@@ -472,7 +472,7 @@ test_expect_success 'malformed instruction sheet 2' '
 
 test_expect_success 'empty commit set' '
 	pristine_detach initial &&
-	test_expect_code 128 git cherry-pick base..base
+	git cherry-pick base..base
 '
 
 test_expect_success 'malformed instruction sheet 3' '
@@ -509,6 +509,18 @@ test_expect_success 'commit descriptions in insn sheet are optional' '
 	test_path_is_missing .git/sequencer &&
 	git rev-list HEAD >commits &&
 	test_line_count = 4 commits
+'
+
+test_expect_success 'skip' '
+	pristine_detach conflicting &&
+	test_must_fail git cherry-pick initial..picked &&
+
+	git checkout HEAD -- unrelated &&
+	test_must_fail git cherry-pick --continue &&
+	git cherry-pick --skip &&
+
+	git rev-list initial..HEAD >commits &&
+	test_line_count = 3 commits
 '
 
 test_done
