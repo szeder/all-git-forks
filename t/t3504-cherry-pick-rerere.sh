@@ -44,7 +44,6 @@ test_expect_success 'cherry-pick conflict without rerere' '
 
 test_expect_success 'cherry-pick --rerere-autoupdate' '
 	test_when_finished "rm -rf rerere" &&
-	(
 	git init rerere &&
 	cd rerere &&
 	test_config rerere.enabled true &&
@@ -73,12 +72,11 @@ test_expect_success 'cherry-pick --rerere-autoupdate' '
 	test_must_fail git cherry-pick --rerere-autoupdate master..conflict &&
 	git log --oneline --all --decorate --graph &&
 	echo resolved-a > expected &&
-	test_cmp expected content-a
+	test_cmp expected content-a &&
 	test_must_fail git cherry-pick --continue &&
 	echo resolved-b > expected &&
 	test_cmp expected content-b &&
 	git cherry-pick --continue
-	)
 '
 
 test_done
