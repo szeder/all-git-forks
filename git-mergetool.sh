@@ -349,6 +349,10 @@ merge_file () {
 }
 
 prompt=$(git config --bool mergetool.prompt)
+if test "$(git config core.mode)" != "progress" && test -z "$prompt"
+then
+	prompt=true
+fi
 guessed_merge_tool=false
 
 while test $# != 0
