@@ -20,7 +20,7 @@ before_script:
   - export PYTHON_PATH="$(which python)"
   - test -z "$TEST" -a -n "$BZR_VERSION" && TEST='bzr-test' || true
   - test -z "$TEST" -a -n "$HG_VERSION" && TEST='hg-test' || true
-  - test -z "$TEST" -a -z "$HG_VERSION" -a -z "$BZR_VERSION" -a && TEST='hg-test bzr-test' || true
+  - test -z "$TEST" -a -z "$HG_VERSION" -a -z "$BZR_VERSION" && TEST='hg-test bzr-test' || true
 
 script:
   - make
