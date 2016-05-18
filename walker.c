@@ -232,7 +232,7 @@ int walker_targets_stdin(char ***target, const char ***write_ref)
 			REALLOC_ARRAY(*write_ref, targets_alloc);
 		}
 		(*target)[targets] = xstrdup(tg_one);
-		(*write_ref)[targets] = rf_one ? xstrdup(rf_one) : NULL;
+		(*write_ref)[targets] = xstrdup_or_null(rf_one);
 		targets++;
 	}
 	strbuf_release(&buf);
@@ -299,7 +299,7 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		strbuf_reset(&refname);
 		strbuf_addf(&refname, "refs/%s", write_ref[i]);
 		if (ref_transaction_update(transaction, refname.buf,
-					   &sha1[20 * i], NULL, 0, 0,
+					   &sha1[20 * i], NULL, 0,
 					   msg ? msg : "fetch (unknown)",
 					   &err)) {
 			error("%s", err.buf);

@@ -35,12 +35,12 @@
 #include "rewrite.h"
 
 static const char * const builtin_commit_usage[] = {
-	N_("git commit [options] [--] <pathspec>..."),
+	N_("git commit [<options>] [--] <pathspec>..."),
 	NULL
 };
 
 static const char * const builtin_status_usage[] = {
-	N_("git status [options] [--] <pathspec>..."),
+	N_("git status [<options>] [--] <pathspec>..."),
 	NULL
 };
 
@@ -230,7 +230,7 @@ static int commit_index_files(void)
 static int list_paths(struct string_list *list, const char *with_tree,
 		      const char *prefix, const struct pathspec *pattern)
 {
-	int i;
+	int i, ret;
 	char *m;
 
 	if (!pattern->nr)
@@ -257,7 +257,9 @@ static int list_paths(struct string_list *list, const char *with_tree,
 			item->util = item; /* better a valid pointer than a fake one */
 	}
 
-	return report_path_error(m, pattern, prefix);
+	ret = report_path_error(m, pattern, prefix);
+	free(m);
+	return ret;
 }
 
 static void add_remove_files(struct string_list *list)
@@ -560,20 +562,14 @@ static void set_ident_var(char **buf, char *val)
 	*buf = val;
 }
 
-static char *envdup(const char *var)
-{
-	const char *val = getenv(var);
-	return val ? xstrdup(val) : NULL;
-}
-
 static void determine_author_info(struct strbuf *author_ident)
 {
 	char *name, *email, *date;
 	struct ident_split author;
 
-	name = envdup("GIT_AUTHOR_NAME");
-	email = envdup("GIT_AUTHOR_EMAIL");
-	date = envdup("GIT_AUTHOR_DATE");
+	name = xstrdup_or_null(getenv("GIT_AUTHOR_NAME"));
+	email = xstrdup_or_null(getenv("GIT_AUTHOR_EMAIL"));
+	date = xstrdup_or_null(getenv("GIT_AUTHOR_DATE"));
 
 	if (author_message) {
 		struct ident_split ident;
@@ -1057,7 +1053,7 @@ static const char *find_author_by_nickname(const char *name)
 		clear_mailmap(&mailmap);
 		return strbuf_detach(&buf, NULL);
 	}
-	die(_("No existing author found with '%s'"), name);
+	die(_("--author '%s' is not 'Name <email>' and matches no existing author"), name);
 }
 
 
@@ -1747,8 +1743,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	if (!transaction ||
 	    ref_transaction_update(transaction, "HEAD", sha1,
 				   current_head
-				   ? current_head->object.sha1 : NULL,
-				   0, !!current_head, sb.buf, &err) ||
+				   ? current_head->object.sha1 : null_sha1,
+				   0, sb.buf, &err) ||
 	    ref_transaction_commit(transaction, &err)) {
 		rollback_index_files();
 		die("%s", err.buf);

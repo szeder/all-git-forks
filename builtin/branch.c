@@ -21,10 +21,10 @@
 #include "wt-status.h"
 
 static const char * const builtin_branch_usage[] = {
-	N_("git branch [options] [-r | -a] [--merged | --no-merged]"),
-	N_("git branch [options] [-l] [-f] <branchname> [<start-point>]"),
-	N_("git branch [options] [-r] (-d | -D) <branchname>..."),
-	N_("git branch [options] (-m | -M) [<oldbranch>] <newbranch>"),
+	N_("git branch [<options>] [-r | -a] [--merged | --no-merged]"),
+	N_("git branch [<options>] [-l] [-f] <branch-name> [<start-point>]"),
+	N_("git branch [<options>] [-r] (-d | -D) <branch-name>..."),
+	N_("git branch [<options>] (-m | -M) [<old-branch>] <new-branch>"),
 	NULL
 };
 
@@ -606,9 +606,16 @@ static char *get_head_description(void)
 	else if (state.bisect_in_progress)
 		strbuf_addf(&desc, _("(no branch, bisect started on %s)"),
 			    state.branch);
-	else if (state.detached_from)
-		strbuf_addf(&desc, _("(detached from %s)"),
-			    state.detached_from);
+	else if (state.detached_from) {
+		/* TRANSLATORS: make sure these match _("HEAD detached at ")
+		   and _("HEAD detached from ") in wt-status.c */
+		if (state.detached_at)
+			strbuf_addf(&desc, _("(HEAD detached at %s)"),
+				state.detached_from);
+		else
+			strbuf_addf(&desc, _("(HEAD detached from %s)"),
+				state.detached_from);
+	}
 	else
 		strbuf_addstr(&desc, _("(no branch)"));
 	free(state.branch);

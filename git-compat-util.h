@@ -127,6 +127,9 @@
 #else
 #include <poll.h>
 #endif
+#ifdef HAVE_BSD_SYSCTL
+#include <sys/sysctl.h>
+#endif
 
 #if defined(__MINGW32__)
 /* pull in Windows compatibility stuff */
@@ -164,15 +167,9 @@
 typedef long intptr_t;
 typedef unsigned long uintptr_t;
 #endif
-#if defined(__CYGWIN__)
-#undef _XOPEN_SOURCE
-#include <grp.h>
-#define _XOPEN_SOURCE 600
-#else
 #undef _ALL_SOURCE /* AIX 5.3L defines a struct list with _ALL_SOURCE. */
 #include <grp.h>
 #define _ALL_SOURCE 1
-#endif
 #endif
 
 /* used on Mac OS X */
@@ -212,12 +209,15 @@ extern char *gitbasename(char *);
 #endif
 
 #ifndef NO_OPENSSL
+#ifdef __APPLE__
 #define __AVAILABILITY_MACROS_USES_AVAILABILITY 0
-#define MAC_OS_X_VERSION_MIN_REQUIRED MAC_OS_X_VERSION_10_6
+#include <AvailabilityMacros.h>
+#undef DEPRECATED_ATTRIBUTE
+#define DEPRECATED_ATTRIBUTE
+#undef __AVAILABILITY_MACROS_USES_AVAILABILITY
+#endif
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#undef MAC_OS_X_VERSION_MIN_REQUIRED
-#undef __AVAILABILITY_MACROS_USES_AVAILABILITY
 #ifdef NO_HMAC_CTX_CLEANUP
 #define HMAC_CTX_cleanup HMAC_cleanup
 #endif
@@ -663,6 +663,11 @@ extern char *xgetcwd(void);
 
 #define REALLOC_ARRAY(x, alloc) (x) = xrealloc((x), (alloc) * sizeof(*(x)))
 
+static inline char *xstrdup_or_null(const char *str)
+{
+	return str ? xstrdup(str) : NULL;
+}
+
 static inline size_t xsize_t(off_t len)
 {
 	if (len > (size_t) len)
@@ -671,7 +676,7 @@ static inline size_t xsize_t(off_t len)
 }
 
 /* in ctype.c, for kwset users */
-extern const char tolower_trans_tbl[256];
+extern const unsigned char tolower_trans_tbl[256];
 
 /* Sane ctype - no locale, and works with signed chars */
 #undef isascii
@@ -853,6 +858,14 @@ struct tm *git_gmtime(const time_t *);
 struct tm *git_gmtime_r(const time_t *, struct tm *);
 #define gmtime git_gmtime
 #define gmtime_r git_gmtime_r
+#endif
+
+#if !defined(USE_PARENS_AROUND_GETTEXT_N) && defined(__GNUC__)
+#define USE_PARENS_AROUND_GETTEXT_N 1
+#endif
+
+#ifndef SHELL_PATH
+# define SHELL_PATH "/bin/sh"
 #endif
 
 #endif

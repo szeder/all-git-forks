@@ -37,7 +37,7 @@ then
 	test_done
 fi
 
-if ! test_have_prereq SANITY; then
+if ! test_have_prereq NOT_ROOT; then
 	test_skip_or_die $GIT_TEST_HTTPD \
 		"Cannot run httpd tests as root"
 fi
@@ -79,6 +79,7 @@ HTTPD_DOCUMENT_ROOT_PATH=$HTTPD_ROOT_PATH/www
 # hack to suppress apache PassEnv warnings
 GIT_VALGRIND=$GIT_VALGRIND; export GIT_VALGRIND
 GIT_VALGRIND_OPTIONS=$GIT_VALGRIND_OPTIONS; export GIT_VALGRIND_OPTIONS
+GIT_TRACE=$GIT_TRACE; export GIT_TRACE
 
 if ! test -x "$LIB_HTTPD_PATH"
 then
