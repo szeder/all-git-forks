@@ -123,6 +123,10 @@ Note in the example that we set up a triangular workflow, where we pull
 from one location and push to another. In a non-triangular workflow,
 '@\{push}' is the same as '@\{upstream}', and there is no need for it.
 
+'<branchname>@\{publish\}', e.g. 'master@\{publish\}', '@\{p\}'::
+  The suffix '@\{publish\}' to a branchname refers to the remote branch to
+  push to. A missing branchname defaults to the current one.
+
 '<rev>{caret}', e.g. 'HEAD{caret}, v1.5.1{caret}0'::
   A suffix '{caret}' to a revision parameter means the first parent of
   that commit object.  '{caret}<n>' means the <n>th parent (i.e.

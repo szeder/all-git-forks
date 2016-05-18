@@ -442,13 +442,19 @@ static inline int at_mark(const char *string, int len,
 
 static inline int upstream_mark(const char *string, int len)
 {
-	const char *suffix[] = { "@{upstream}", "@{u}" };
+	const char *suffix[] = { "upstream", "u" };
 	return at_mark(string, len, suffix, ARRAY_SIZE(suffix));
 }
 
 static inline int push_mark(const char *string, int len)
 {
-	const char *suffix[] = { "@{push}" };
+	const char *suffix[] = { "push" };
+	return at_mark(string, len, suffix, ARRAY_SIZE(suffix));
+}
+
+static inline int publish_mark(const char *string, int len)
+{
+	const char *suffix[] = { "publish", "p" };
 	return at_mark(string, len, suffix, ARRAY_SIZE(suffix));
 }
 
@@ -499,8 +505,9 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 					nth_prior = 1;
 					continue;
 				}
-				if (!upstream_mark(str + at, len - at) &&
-				    !push_mark(str + at, len - at)) {
+				if (!upstream_mark(str + at + 2, len - at - 3) &&
+				    !push_mark(str + at + 2, len - at - 3) &&
+				    !publish_mark(str + at + 2, len - at - 3)) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
@@ -1090,7 +1097,10 @@ static int interpret_branch_mark(const char *name, int namelen,
 	struct strbuf err = STRBUF_INIT;
 	const char *value;
 
-	len = get_mark(name + at, namelen - at);
+	if (name[at + 1] != '{' || name[namelen - 1] != '}')
+		return -1;
+
+	len = get_mark(name + at + 2, namelen - at - 3);
 	if (!len)
 		return -1;
 
@@ -1109,7 +1119,7 @@ static int interpret_branch_mark(const char *name, int namelen,
 		die("%s", err.buf);
 
 	set_shortened_ref(buf, value);
-	return len + at;
+	return len + at + 3;
 }
 
 /*
@@ -1166,6 +1176,11 @@ int interpret_branch_name(const char *name, int namelen, struct strbuf *buf)
 
 		len = interpret_branch_mark(name, namelen, at - name, buf,
 					    push_mark, branch_get_push);
+		if (len > 0)
+			return len;
+
+		len = interpret_branch_mark(name, namelen, at - name, buf,
+					    publish_mark, branch_get_publish);
 		if (len > 0)
 			return len;
 	}

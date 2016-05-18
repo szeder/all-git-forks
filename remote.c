@@ -335,7 +335,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 			if (!value)
 				return config_error_nonbool(key);
 			add_merge(branch, xstrdup(value));
-		}
+		} else if (!strcmp(subkey, ".push"))
+			return git_config_string(&branch->push_name, key, value);
 		return 0;
 	}
 	if (starts_with(key, "url.")) {
@@ -1652,6 +1653,14 @@ struct branch *branch_get(const char *name)
 	else
 		ret = make_branch(name, 0);
 	set_merge(ret);
+	if (ret && ret->pushremote_name && ret->push_name) {
+		struct remote *pushremote;
+		pushremote = pushremote_get(ret->pushremote_name);
+		ret->push.src = xstrdup(ret->push_name);
+		if (remote_find_tracking(pushremote, &ret->push)
+		    && !strcmp(ret->pushremote_name, "."))
+			ret->push.dst = xstrdup(ret->push_name);
+	}
 	return ret;
 }
 
@@ -1791,6 +1800,15 @@ const char *branch_get_push(struct branch *branch, struct strbuf *err)
 	if (!branch->push_tracking_ref)
 		branch->push_tracking_ref = branch_get_push_1(branch, err);
 	return branch->push_tracking_ref;
+}
+
+const char *branch_get_publish(struct branch *branch, struct strbuf *err)
+{
+	if (!branch)
+		return error_buf(err, _("HEAD does not point to a branch"));
+	if (!branch->push.dst)
+		return error_buf(err, _("No publish configured for branch '%s'"), branch->name);
+	return branch->push.dst;
 }
 
 static int ignore_symref_update(const char *refname)
@@ -2095,7 +2113,7 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 			   "Your branch is ahead of '%s' by %d commits.\n",
 			   ours),
 			base, ours);
-		if (advice_status_hints)
+		if (advice_status_hints && !branch->push.dst)
 			strbuf_addf(sb,
 				_("  (use \"git push\" to publish your local commits)\n"));
 	} else if (!ours) {
@@ -2122,6 +2140,23 @@ int format_tracking_info(struct branch *branch, struct strbuf *sb)
 		if (advice_status_hints)
 			strbuf_addf(sb,
 				_("  (use \"git pull\" to merge the remote branch into yours)\n"));
+	}
+	if (branch->push.dst) {
+		unsigned char local_sha1[20];
+		unsigned char remote_sha1[20];
+		const char *pub;
+
+		pub = shorten_unambiguous_ref(branch->push.dst, 0);
+
+		/* Is it published? */
+		if (!read_ref(branch->refname, local_sha1) &&
+				!read_ref(branch->push.dst, remote_sha1)) {
+			if (hashcmp(local_sha1, remote_sha1)) {
+				strbuf_addf(sb, _("Some commits haven't been published to '%s'.\n"), pub);
+				if (advice_status_hints)
+					strbuf_addf(sb, _("  (use \"git push\" to publish your local commits)\n"));
+			}
+		}
 	}
 	free(base);
 	return 1;
