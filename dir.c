@@ -64,13 +64,6 @@ int strncmp_icase(const char *a, const char *b, size_t count)
 	return ignore_case ? strncasecmp(a, b, count) : strncmp(a, b, count);
 }
 
-int fnmatch_icase(const char *pattern, const char *string, int flags)
-{
-	return wildmatch(pattern, string,
-			 flags | (ignore_case ? WM_CASEFOLD : 0),
-			 NULL);
-}
-
 int git_fnmatch(const struct pathspec_item *item,
 		const char *pattern, const char *string,
 		int prefix)
@@ -457,7 +450,7 @@ int no_wildcard(const char *string)
 
 void parse_exclude_pattern(const char **pattern,
 			   int *patternlen,
-			   int *flags,
+			   unsigned *flags,
 			   int *nowildcardlen)
 {
 	const char *p = *pattern;
@@ -498,7 +491,7 @@ void add_exclude(const char *string, const char *base,
 {
 	struct exclude *x;
 	int patternlen;
-	int flags;
+	unsigned flags;
 	int nowildcardlen;
 
 	parse_exclude_pattern(&string, &patternlen, &flags, &nowildcardlen);
@@ -798,7 +791,7 @@ void add_excludes_from_file(struct dir_struct *dir, const char *fname)
 
 int match_basename(const char *basename, int basenamelen,
 		   const char *pattern, int prefix, int patternlen,
-		   int flags)
+		   unsigned flags)
 {
 	if (prefix == patternlen) {
 		if (patternlen == basenamelen &&
@@ -823,7 +816,7 @@ int match_basename(const char *basename, int basenamelen,
 int match_pathname(const char *pathname, int pathlen,
 		   const char *base, int baselen,
 		   const char *pattern, int prefix, int patternlen,
-		   int flags)
+		   unsigned flags)
 {
 	const char *name;
 	int namelen;
