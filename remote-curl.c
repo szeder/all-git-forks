@@ -751,38 +751,30 @@ static int fetch_git(struct discovery *heads,
 {
 	struct rpc_state rpc;
 	struct strbuf preamble = STRBUF_INIT;
-	char *depth_arg = NULL;
-	int argc = 0, i, err;
-	const char *argv[17];
+	int i, err;
+	struct argv_array argv = ARGV_ARRAY_INIT;
 
-	argv[argc++] = "fetch-pack";
-	argv[argc++] = "--stateless-rpc";
-	argv[argc++] = "--stdin";
-	argv[argc++] = "--lock-pack";
+	argv_array_pushl(&argv, "fetch-pack", "--stateless-rpc", "--stdin",
+			 "--lock-pack", NULL);
 	if (options.followtags)
-		argv[argc++] = "--include-tag";
+		argv_array_push(&argv, "--include-tag");
 	if (options.thin)
-		argv[argc++] = "--thin";
+		argv_array_push(&argv, "--thin");
 	if (options.verbosity >= 3) {
-		argv[argc++] = "-v";
-		argv[argc++] = "-v";
+		argv_array_push(&argv, "-v");
+		argv_array_push(&argv, "-v");
 	}
 	if (options.check_self_contained_and_connected)
-		argv[argc++] = "--check-self-contained-and-connected";
+		argv_array_push(&argv, "--check-self-contained-and-connected");
 	if (options.cloning)
-		argv[argc++] = "--cloning";
+		argv_array_push(&argv, "--cloning");
 	if (options.update_shallow)
-		argv[argc++] = "--update-shallow";
+		argv_array_push(&argv, "--update-shallow");
 	if (!options.progress)
-		argv[argc++] = "--no-progress";
-	if (options.depth) {
-		struct strbuf buf = STRBUF_INIT;
-		strbuf_addf(&buf, "--depth=%lu", options.depth);
-		depth_arg = strbuf_detach(&buf, NULL);
-		argv[argc++] = depth_arg;
-	}
-	argv[argc++] = url.buf;
-	argv[argc++] = NULL;
+		argv_array_push(&argv, "--no-progress");
+	if (options.depth)
+		argv_array_pushf(&argv, "--depth=%lu", options.depth);
+	argv_array_push(&argv, url.buf);
 
 	for (i = 0; i < nr_heads; i++) {
 		struct ref *ref = to_fetch[i];
@@ -795,7 +787,7 @@ static int fetch_git(struct discovery *heads,
 
 	memset(&rpc, 0, sizeof(rpc));
 	rpc.service_name = "git-upload-pack",
-	rpc.argv = argv;
+	rpc.argv = argv.argv;
 	rpc.stdin_preamble = &preamble;
 	rpc.gzip_request = 1;
 
@@ -804,7 +796,7 @@ static int fetch_git(struct discovery *heads,
 		write_or_die(1, rpc.result.buf, rpc.result.len);
 	strbuf_release(&rpc.result);
 	strbuf_release(&preamble);
-	free(depth_arg);
+	argv_array_clear(&argv);
 	return err;
 }
 
