@@ -42,12 +42,6 @@ test_expect_success 'create password-protected repository' '
 
 setup_askpass_helper
 
-test_expect_success 'cloning password-protected repository can fail' '
-	set_askpass wrong &&
-	test_must_fail git clone "$HTTPD_URL/auth/dumb/repo.git" clone-auth-fail &&
-	expect_askpass both wrong
-'
-
 test_expect_success 'http auth can use user/pass in URL' '
 	set_askpass wrong &&
 	git clone "$HTTPD_URL_USER_PASS/auth/dumb/repo.git" clone-auth-none &&
@@ -58,12 +52,6 @@ test_expect_success 'http auth can use just user in URL' '
 	set_askpass wrong pass@host &&
 	git clone "$HTTPD_URL_USER/auth/dumb/repo.git" clone-auth-pass &&
 	expect_askpass pass user@host
-'
-
-test_expect_success 'http auth can request both user and pass' '
-	set_askpass user@host pass@host &&
-	git clone "$HTTPD_URL/auth/dumb/repo.git" clone-auth-both &&
-	expect_askpass both user@host
 '
 
 test_expect_success 'http auth respects credential helper config' '

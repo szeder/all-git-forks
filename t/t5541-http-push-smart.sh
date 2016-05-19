@@ -265,30 +265,6 @@ test_expect_success 'http push respects GIT_COMMITTER_* in reflog' '
 	test_cmp expect actual
 '
 
-test_expect_success 'push over smart http with auth' '
-	cd "$ROOT_PATH/test_repo_clone" &&
-	echo push-auth-test >expect &&
-	test_commit push-auth-test &&
-	set_askpass user@host pass@host &&
-	git push "$HTTPD_URL"/auth/smart/test_repo.git &&
-	git --git-dir="$HTTPD_DOCUMENT_ROOT_PATH/test_repo.git" \
-		log -1 --format=%s >actual &&
-	expect_askpass both user@host &&
-	test_cmp expect actual
-'
-
-test_expect_success 'push to auth-only-for-push repo' '
-	cd "$ROOT_PATH/test_repo_clone" &&
-	echo push-half-auth >expect &&
-	test_commit push-half-auth &&
-	set_askpass user@host pass@host &&
-	git push "$HTTPD_URL"/auth-push/smart/test_repo.git &&
-	git --git-dir="$HTTPD_DOCUMENT_ROOT_PATH/test_repo.git" \
-		log -1 --format=%s >actual &&
-	expect_askpass both user@host &&
-	test_cmp expect actual
-'
-
 test_expect_success 'create repo without http.receivepack set' '
 	cd "$ROOT_PATH" &&
 	git init half-auth &&
@@ -305,27 +281,6 @@ test_expect_success 'clone via half-auth-complete does not need password' '
 	git clone "$HTTPD_URL"/half-auth-complete/smart/half-auth.git \
 		half-auth-clone &&
 	expect_askpass none
-'
-
-test_expect_success 'push into half-auth-complete requires password' '
-	cd "$ROOT_PATH/half-auth-clone" &&
-	echo two >expect &&
-	test_commit two &&
-	set_askpass user@host pass@host &&
-	git push "$HTTPD_URL/half-auth-complete/smart/half-auth.git" &&
-	git --git-dir="$HTTPD_DOCUMENT_ROOT_PATH/half-auth.git" \
-		log -1 --format=%s >actual &&
-	expect_askpass both user@host &&
-	test_cmp expect actual
-'
-
-test_expect_success CMDLINE_LIMIT 'push 2000 tags over http' '
-	sha1=$(git rev-parse HEAD) &&
-	test_seq 2000 |
-	  sort |
-	  sed "s|.*|$sha1 refs/tags/really-long-tag-name-&|" \
-	  >.git/packed-refs &&
-	run_with_limited_cmdline git push --mirror
 '
 
 test_expect_success GPG 'push with post-receive to inspect certificate' '
