@@ -13,20 +13,24 @@ static char const * const shortlog_usage[] = {
 
 static void read_from_stdin(struct shortlog *log)
 {
-	char author[1024], oneline[1024];
+	struct strbuf author = STRBUF_INIT;
+	struct strbuf oneline = STRBUF_INIT;
 
-	while (fgets(author, sizeof(author), stdin) != NULL) {
-		if (!(author[0] == 'A' || author[0] == 'a') ||
-		    !starts_with(author + 1, "uthor: "))
+	while (strbuf_getline_lf(&author, stdin) != EOF) {
+		const char *v;
+		if (!skip_prefix(author.buf, "Author: ", &v) &&
+		    !skip_prefix(author.buf, "author ", &v))
 			continue;
-		while (fgets(oneline, sizeof(oneline), stdin) &&
-		       oneline[0] != '\n')
+		while (strbuf_getline_lf(&oneline, stdin) != EOF &&
+		       oneline.len)
 			; /* discard headers */
-		while (fgets(oneline, sizeof(oneline), stdin) &&
-		       oneline[0] == '\n')
+		while (strbuf_getline_lf(&oneline, stdin) != EOF &&
+		       !oneline.len)
 			; /* discard blanks */
-		shortlog_insert_one_record(log, author + 8, oneline);
+		shortlog_insert_one_record(log, v, oneline.buf);
 	}
+	strbuf_release(&author);
+	strbuf_release(&oneline);
 }
 
 static void get_from_rev(struct rev_info *rev, struct shortlog *log)

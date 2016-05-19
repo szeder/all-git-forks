@@ -4,6 +4,19 @@
 #include "mailmap.h"
 #include "utf8.h"
 
+/*
+ * The util field of our string_list_items will contain one of two things:
+ *
+ *   - if --summary is not in use, it will point to a string list of the
+ *     oneline subjects assigned to this author
+ *
+ *   - if --summary is in use, we don't need that list; we only need to know
+ *     its size. So we abuse the pointer slot to store our integer counter.
+ *
+ *  This macro accesses the latter.
+ */
+#define UTIL_TO_INT(x) ((intptr_t)(x)->util)
+
 void shortlog_init(struct shortlog *log)
 {
 	memset(log, 0, sizeof(*log));
@@ -20,13 +33,9 @@ void shortlog_insert_one_record(struct shortlog *log,
 		const char *author,
 		const char *oneline)
 {
-	const char *dot3 = log->common_repo_prefix;
-	char *buffer, *p;
 	struct string_list_item *item;
 	const char *mailbuf, *namebuf;
 	size_t namelen, maillen;
-	const char *eol;
-	struct strbuf subject = STRBUF_INIT;
 	struct strbuf namemailbuf = STRBUF_INIT;
 	struct ident_split ident;
 
@@ -45,37 +54,46 @@ void shortlog_insert_one_record(struct shortlog *log,
 		strbuf_addf(&namemailbuf, " <%.*s>", (int)maillen, mailbuf);
 
 	item = string_list_insert(&log->list, namemailbuf.buf);
-	if (item->util == NULL)
-		item->util = xcalloc(1, sizeof(struct string_list));
 
-	/* Skip any leading whitespace, including any blank lines. */
-	while (*oneline && isspace(*oneline))
-		oneline++;
-	eol = strchr(oneline, '\n');
-	if (!eol)
-		eol = oneline + strlen(oneline);
-	if (starts_with(oneline, "[PATCH")) {
-		char *eob = strchr(oneline, ']');
-		if (eob && (!eol || eob < eol))
-			oneline = eob + 1;
-	}
-	while (*oneline && isspace(*oneline) && *oneline != '\n')
-		oneline++;
-	format_subject(&subject, oneline, " ");
-	buffer = strbuf_detach(&subject, NULL);
+	if (log->summary)
+		item->util = (void *)(UTIL_TO_INT(item) + 1);
+	else {
+		const char *dot3 = log->common_repo_prefix;
+		char *buffer, *p;
+		struct strbuf subject = STRBUF_INIT;
+		const char *eol;
 
-	if (dot3) {
-		int dot3len = strlen(dot3);
-		if (dot3len > 5) {
-			while ((p = strstr(buffer, dot3)) != NULL) {
-				int taillen = strlen(p) - dot3len;
-				memcpy(p, "/.../", 5);
-				memmove(p + 5, p + dot3len, taillen + 1);
+		/* Skip any leading whitespace, including any blank lines. */
+		while (*oneline && isspace(*oneline))
+			oneline++;
+		eol = strchr(oneline, '\n');
+		if (!eol)
+			eol = oneline + strlen(oneline);
+		if (starts_with(oneline, "[PATCH")) {
+			char *eob = strchr(oneline, ']');
+			if (eob && (!eol || eob < eol))
+				oneline = eob + 1;
+		}
+		while (*oneline && isspace(*oneline) && *oneline != '\n')
+			oneline++;
+		format_subject(&subject, oneline, " ");
+		buffer = strbuf_detach(&subject, NULL);
+
+		if (dot3) {
+			int dot3len = strlen(dot3);
+			if (dot3len > 5) {
+				while ((p = strstr(buffer, dot3)) != NULL) {
+					int taillen = strlen(p) - dot3len;
+					memcpy(p, "/.../", 5);
+					memmove(p + 5, p + dot3len, taillen + 1);
+				}
 			}
 		}
-	}
 
-	string_list_append(item->util, buffer);
+		if (item->util == NULL)
+			item->util = xcalloc(1, sizeof(struct string_list));
+		string_list_append(item->util, buffer);
+	}
 }
 
 void shortlog_add_commit(struct shortlog *log, struct commit *commit)
@@ -121,7 +139,13 @@ void shortlog_add_commit(struct shortlog *log, struct commit *commit)
 	strbuf_release(&buf);
 }
 
-static int compare_by_number(const void *a1, const void *a2)
+static int compare_by_counter(const void *a1, const void *a2)
+{
+	const struct string_list_item *i1 = a1, *i2 = a2;
+	return UTIL_TO_INT(i2) - UTIL_TO_INT(i1);
+}
+
+static int compare_by_list(const void *a1, const void *a2)
 {
 	const struct string_list_item *i1 = a1, *i2 = a2;
 	const struct string_list *l1 = i1->util, *l2 = i2->util;
@@ -148,14 +172,14 @@ void shortlog_output(struct shortlog *log)
 
 	if (log->sort_by_number)
 		qsort(log->list.items, log->list.nr, sizeof(struct string_list_item),
-			compare_by_number);
+		      log->summary ? compare_by_counter : compare_by_list);
 	for (i = 0; i < log->list.nr; i++) {
-		struct string_list *onelines = log->list.items[i].util;
-
+		const struct string_list_item *item = &log->list.items[i];
 		if (log->summary) {
-			printf("%6d\t%s\n", onelines->nr, log->list.items[i].string);
+			printf("%6d\t%s\n", (int)UTIL_TO_INT(item), item->string);
 		} else {
-			printf("%s (%d):\n", log->list.items[i].string, onelines->nr);
+			struct string_list *onelines = item->util;
+			printf("%s (%d):\n", item->string, onelines->nr);
 			for (j = onelines->nr - 1; j >= 0; j--) {
 				const char *msg = onelines->items[j].string;
 
@@ -168,11 +192,11 @@ void shortlog_output(struct shortlog *log)
 					printf("      %s\n", msg);
 			}
 			putchar('\n');
+			onelines->strdup_strings = 1;
+			string_list_clear(onelines, 0);
+			free(onelines);
 		}
 
-		onelines->strdup_strings = 1;
-		string_list_clear(onelines, 0);
-		free(onelines);
 		log->list.items[i].util = NULL;
 	}
 
