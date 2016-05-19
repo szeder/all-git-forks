@@ -110,15 +110,6 @@ test_expect_success 'redirects re-root further requests' '
 	git clone $HTTPD_URL/smart-redir-limited/repo.git repo-redir-limited
 '
 
-test_expect_success 'clone from password-protected repository' '
-	echo two >expect &&
-	set_askpass user@host pass@host &&
-	git clone --bare "$HTTPD_URL/auth/smart/repo.git" smart-auth &&
-	expect_askpass both user@host &&
-	git --git-dir=smart-auth log -1 --format=%s >actual &&
-	test_cmp expect actual
-'
-
 test_expect_success 'clone from auth-only-for-push repository' '
 	echo two >expect &&
 	set_askpass wrong &&
@@ -126,28 +117,6 @@ test_expect_success 'clone from auth-only-for-push repository' '
 	expect_askpass none &&
 	git --git-dir=smart-noauth log -1 --format=%s >actual &&
 	test_cmp expect actual
-'
-
-test_expect_success 'clone from auth-only-for-objects repository' '
-	echo two >expect &&
-	set_askpass user@host pass@host &&
-	git clone --bare "$HTTPD_URL/auth-fetch/smart/repo.git" half-auth &&
-	expect_askpass both user@host &&
-	git --git-dir=half-auth log -1 --format=%s >actual &&
-	test_cmp expect actual
-'
-
-test_expect_success 'no-op half-auth fetch does not require a password' '
-	set_askpass wrong &&
-	git --git-dir=half-auth fetch &&
-	expect_askpass none
-'
-
-test_expect_success 'redirects send auth to new location' '
-	set_askpass user@host pass@host &&
-	git -c credential.useHttpPath=true \
-	  clone $HTTPD_URL/smart-redir-auth/repo.git repo-redir-auth &&
-	expect_askpass both user@host auth/smart/repo.git
 '
 
 test_expect_success 'disable dumb http on server' '
