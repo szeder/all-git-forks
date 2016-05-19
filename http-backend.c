@@ -27,6 +27,7 @@ struct rpc_service {
 static struct rpc_service rpc_service[] = {
 	{ "upload-pack", "uploadpack", 1, 1 },
 	{ "receive-pack", "receivepack", 0, -1 },
+	{ "prime-clone", "primeclone", 0, -1 },
 };
 
 static struct string_list *get_parameters(void)
