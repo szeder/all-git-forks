@@ -588,11 +588,11 @@ test_expect_success 'checkout -b with -l makes reflog when core.logAllRefUpdates
 '
 
 test_expect_success 'avoid ambiguous track' '
-	git config branch.autosetupmerge true &&
-	git config remote.ambi1.url lalala &&
-	git config remote.ambi1.fetch refs/heads/lalala:refs/heads/master &&
-	git config remote.ambi2.url lilili &&
-	git config remote.ambi2.fetch refs/heads/lilili:refs/heads/master &&
+	test_config branch.autosetupmerge true &&
+	test_config remote.ambi1.url lalala &&
+	test_config remote.ambi1.fetch refs/heads/lalala:refs/heads/master &&
+	test_config remote.ambi2.url lilili &&
+	test_config remote.ambi2.fetch refs/heads/lilili:refs/heads/master &&
 	test_must_fail git branch all1 master &&
 	test -z "$(git config branch.all1.merge)"
 '
