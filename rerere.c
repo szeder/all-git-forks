@@ -1072,7 +1072,7 @@ static int rerere_forget_one_path(const char *path, struct string_list *rr)
 		else
 			error_errno("cannot unlink %s", filename);
 		goto fail_exit;
-	};
+	}
 
 	/*
 	 * Update the preimage so that the user can resolve the
