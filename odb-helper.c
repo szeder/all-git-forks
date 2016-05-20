@@ -78,6 +78,9 @@ static int odb_helper_finish(struct odb_helper *o,
 static int parse_object_line(struct odb_helper_object *o, const char *line)
 {
 	char *end;
+
+	warning("parse_object_line: line: '%s'", line);
+
 	if (get_sha1_hex(line, o->sha1) < 0)
 		return -1;
 
@@ -109,8 +112,12 @@ static void odb_helper_load_have(struct odb_helper *o)
 		return;
 	o->have_valid = 1;
 
+	warning("odb_helper_load_have: starting");
+
 	if (odb_helper_start(o, &cmd, "have") < 0)
 		return;
+
+	warning("odb_helper_load_have: opening fd '%d'", cmd.child.out);
 
 	fh = xfdopen(cmd.child.out, "r");
 	while (strbuf_getline(&line, fh) != EOF) {
