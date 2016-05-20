@@ -17,6 +17,7 @@
 #include "revision.h"
 #include "tempfile.h"
 #include "lockfile.h"
+#include "branch.h"
 
 enum rebase_type {
 	REBASE_INVALID = -1,
@@ -108,6 +109,9 @@ static char *opt_depth;
 static char *opt_unshallow;
 static char *opt_update_shallow;
 static char *opt_refmap;
+
+/* Options about upstream */
+static int *opt_setupstream;
 
 static struct option pull_options[] = {
 	/* Shared options */
@@ -210,6 +214,9 @@ static struct option pull_options[] = {
 	OPT_PASSTHRU(0, "refmap", &opt_refmap, N_("refmap"),
 		N_("specify fetch refmap"),
 		PARSE_OPT_NONEG),
+
+	/* Options about upstream */
+	OPT_BOOL("u", "set-upstream", &opt_setupstream, N_("set upstream for git pull/status/push")),
 
 	OPT_END()
 };
@@ -883,6 +890,11 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 
 	if (opt_dry_run)
 		return 0;
+
+	if (opt_setupstream)
+		install_branch_config(BRANCH_CONFIG_VERBOSE,
+				localname + 11, transport->remote->name,
+				remotename);
 
 	if (get_sha1("HEAD", curr_head))
 		hashclr(curr_head);
