@@ -837,6 +837,28 @@ static int run_rebase(const unsigned char *curr_head,
 	return ret;
 }
 
+static int set_pull_upstream(const char *repo, const char **refspecs)
+{
+	unsigned char sha1[GIT_SHA1_RAWSZ];
+	const char *head_ref;
+
+	if (repo != NULL && refspecs[0] != NULL
+			&& refspecs[1] == NULL) {
+		char remote_name[strlen(repo) + strlen(refspecs[0]) + 2];
+
+		head_ref = resolve_ref_unsafe("HEAD", 0, sha1, NULL);
+		skip_prefix(head_ref, "refs/heads/", &head_ref);
+
+		sprintf(remote_name, "%s/%s", repo, refspecs[0]);
+
+		create_branch(head_ref, head_ref, remote_name, 0, 0, 0, opt_verbosity < 0, BRANCH_TRACK_OVERRIDE);
+
+		return 0;
+	}
+
+	return 1;
+}
+
 int cmd_pull(int argc, const char **argv, const char *prefix)
 {
 	const char *repo, **refspecs;
@@ -895,15 +917,8 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 	if (opt_setupstream) {
 		// Est-ce que repo peut être nul ?
 		// Est-ce que refspecs[0] peut être nul ?
-		if (repo != NULL && refspecs[0] != NULL
-				&& refspecs[1] == NULL) {
-			// TODO : à mettre dans une fonction à part ?
-			unsigned char head_sha1[20];
-			const char *head_ref = resolve_ref_unsafe("HEAD", 0, head_sha1, NULL);
-			skip_prefix(head_ref, "refs/heads/", &head_ref);
-			install_branch_config(BRANCH_CONFIG_VERBOSE,
-					head_ref, repo, refspecs[0]);
-		}
+		if (set_pull_upstream(repo, refspecs))
+			die(_("TODO"));
 	}
 
 	if (get_sha1("HEAD", curr_head))
