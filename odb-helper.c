@@ -113,7 +113,7 @@ static void odb_helper_load_have(struct odb_helper *o)
 		return;
 
 	fh = xfdopen(cmd.child.out, "r");
-	while (strbuf_getline(&line, fh, '\n') != EOF) {
+	while (strbuf_getline(&line, fh) != EOF) {
 		ALLOC_GROW(o->have, o->have_nr+1, o->have_alloc);
 		if (parse_object_line(&o->have[o->have_nr], line.buf) < 0) {
 			warning("bad 'have' input from odb helper '%s': %s",
