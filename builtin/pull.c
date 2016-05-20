@@ -17,6 +17,7 @@
 #include "revision.h"
 #include "tempfile.h"
 #include "lockfile.h"
+#include "branch.h"
 
 enum rebase_type {
 	REBASE_INVALID = -1,
@@ -108,6 +109,9 @@ static char *opt_depth;
 static char *opt_unshallow;
 static char *opt_update_shallow;
 static char *opt_refmap;
+
+/* Options about upstream */
+static int opt_setupstream;
 
 static struct option pull_options[] = {
 	/* Shared options */
@@ -210,6 +214,10 @@ static struct option pull_options[] = {
 	OPT_PASSTHRU(0, "refmap", &opt_refmap, N_("refmap"),
 		N_("specify fetch refmap"),
 		PARSE_OPT_NONEG),
+
+	/* Options about upstream */
+	OPT_GROUP(N_("Options related to upstream")),
+	OPT_BOOL('u', "set-upstream", &opt_setupstream, N_("set upstream for git pull/status")),
 
 	OPT_END()
 };
@@ -829,6 +837,28 @@ static int run_rebase(const unsigned char *curr_head,
 	return ret;
 }
 
+static int set_pull_upstream(const char *repo, const char **refspecs)
+{
+	unsigned char sha1[GIT_SHA1_RAWSZ];
+	const char *head_ref;
+
+	if (repo != NULL && refspecs[0] != NULL
+			&& refspecs[1] == NULL) {
+		char remote_name[strlen(repo) + strlen(refspecs[0]) + 2];
+
+		head_ref = resolve_ref_unsafe("HEAD", 0, sha1, NULL);
+		skip_prefix(head_ref, "refs/heads/", &head_ref);
+
+		sprintf(remote_name, "%s/%s", repo, refspecs[0]);
+
+		create_branch(head_ref, head_ref, remote_name, 0, 0, 0, opt_verbosity < 0, BRANCH_TRACK_OVERRIDE);
+
+		return 0;
+	}
+
+	return 1;
+}
+
 int cmd_pull(int argc, const char **argv, const char *prefix)
 {
 	const char *repo, **refspecs;
@@ -883,6 +913,11 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 
 	if (opt_dry_run)
 		return 0;
+
+	if (opt_setupstream) {
+		if (set_pull_upstream(repo, refspecs))
+			warning(_("Cannot set the upstream to multiple remote branches.\n"));
+	}
 
 	if (get_sha1("HEAD", curr_head))
 		hashclr(curr_head);
