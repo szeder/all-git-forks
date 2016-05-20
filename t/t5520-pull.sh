@@ -241,6 +241,21 @@ test_expect_success 'fast-forward fails with conflicting work tree' '
 	test "$(git rev-parse third)" = "$(git rev-parse second)"
 '
 
+test_expect_success 'pull with --set-upstream' '
+	(
+		git checkout -b newbranch && 
+		test_must_fail git pull --set-upstream copy master
+	)
+'
+
+test_expect_success 'pull with --set-upstream' '
+	(
+		git checkout newbranch && 
+		git pull --set-upstream copy &&
+		test "$(git rev-parse ${u})" = "$(git rev-parse origin/copy)" 
+	)
+'
+
 test_expect_success '--rebase' '
 	git branch to-rebase &&
 	echo modified again > file &&

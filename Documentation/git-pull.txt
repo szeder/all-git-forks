@@ -95,7 +95,7 @@ OPTIONS
 
 -u::
 --set-upstream::
-	For the branch that is successfully pulled, add
+	For each branch that is successfully pulled, add
 	upstream (tracking) reference, used by argument-less
 	linkgit:git-push[1] and other commands. For more information,
 	see 'branch.<name>.merge' in linkgit:git-config[1].
