@@ -111,7 +111,7 @@ static char *opt_update_shallow;
 static char *opt_refmap;
 
 /* Options about upstream */
-static int *opt_setupstream;
+static int opt_setupstream;
 
 static struct option pull_options[] = {
 	/* Shared options */
@@ -216,7 +216,8 @@ static struct option pull_options[] = {
 		PARSE_OPT_NONEG),
 
 	/* Options about upstream */
-	OPT_BOOL("u", "set-upstream", &opt_setupstream, N_("set upstream for git pull/status/push")),
+	OPT_GROUP(N_("Options related to upstream")),
+	OPT_BOOL('u', "set-upstream", &opt_setupstream, N_("set upstream for git pull/status")),
 
 	OPT_END()
 };
@@ -891,10 +892,19 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 	if (opt_dry_run)
 		return 0;
 
-	if (opt_setupstream)
-		install_branch_config(BRANCH_CONFIG_VERBOSE,
-				localname + 11, transport->remote->name,
-				remotename);
+	if (opt_setupstream) {
+		// Est-ce que repo peut être nul ?
+		// Est-ce que refspecs[0] peut être nul ?
+		if (repo != NULL && refspecs[0] != NULL
+				&& refspecs[1] == NULL) {
+			// TODO : à mettre dans une fonction à part ?
+			unsigned char head_sha1[20];
+			const char *head_ref = resolve_ref_unsafe("HEAD", 0, head_sha1, NULL);
+			skip_prefix(head_ref, "refs/heads/", &head_ref);
+			install_branch_config(BRANCH_CONFIG_VERBOSE,
+					head_ref, repo, refspecs[0]);
+		}
+	}
 
 	if (get_sha1("HEAD", curr_head))
 		hashclr(curr_head);
