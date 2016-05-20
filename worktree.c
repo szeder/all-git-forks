@@ -5,14 +5,22 @@
 #include "dir.h"
 #include "wt-status.h"
 
+void clear_worktree(struct worktree *wt)
+{
+	if (!wt)
+		return;
+	free(wt->path);
+	free(wt->id);
+	free(wt->head_ref);
+	memset(wt, 0, sizeof(*wt));
+}
+
 void free_worktrees(struct worktree **worktrees)
 {
 	int i = 0;
 
 	for (i = 0; worktrees[i]; i++) {
-		free(worktrees[i]->path);
-		free(worktrees[i]->id);
-		free(worktrees[i]->head_ref);
+		clear_worktree(worktrees[i]);
 		free(worktrees[i]);
 	}
 	free (worktrees);
@@ -153,21 +161,19 @@ done:
 
 static void mark_current_worktree(struct worktree **worktrees)
 {
-	struct strbuf git_dir = STRBUF_INIT;
-	struct strbuf path = STRBUF_INIT;
+	char *git_dir = xstrdup(absolute_path(get_git_dir()));
 	int i;
 
-	strbuf_addstr(&git_dir, absolute_path(get_git_dir()));
 	for (i = 0; worktrees[i]; i++) {
 		struct worktree *wt = worktrees[i];
-		strbuf_addstr(&path, absolute_path(get_worktree_git_dir(wt)));
-		wt->is_current = !fspathcmp(git_dir.buf, path.buf);
-		strbuf_reset(&path);
-		if (wt->is_current)
+		const char *wt_git_dir = get_worktree_git_dir(wt);
+
+		if (!fspathcmp(git_dir, absolute_path(wt_git_dir))) {
+			wt->is_current = 1;
 			break;
+		}
 	}
-	strbuf_release(&git_dir);
-	strbuf_release(&path);
+	free(git_dir);
 }
 
 struct worktree **get_worktrees(void)
@@ -189,7 +195,7 @@ struct worktree **get_worktrees(void)
 	if (dir) {
 		while ((d = readdir(dir)) != NULL) {
 			struct worktree *linked = NULL;
-			if (!strcmp(d->d_name, ".") || !strcmp(d->d_name, ".."))
+			if (is_dot_or_dotdot(d->d_name))
 				continue;
 
 			if ((linked = get_linked_worktree(d->d_name))) {
