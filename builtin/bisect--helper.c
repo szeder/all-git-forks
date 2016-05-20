@@ -32,5 +32,4 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 	default:
 		die("BUG: unknown subcommand '%d'", cmdmode);
 	}
-	return 0;
 }
