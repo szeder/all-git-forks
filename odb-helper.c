@@ -203,15 +203,16 @@ int odb_helper_fetch_object(struct odb_helper *o, const unsigned char *sha1,
 		int r;
 
 		r = xread(cmd.child.out, buf, sizeof(buf));
-		if (r <= 0) {
+		if (r < 0) {
 			error("unable to read from odb helper '%s': %s",
-			      o->name,
-			      r < 0 ? strerror(errno) : "unexpected EOF");
+			      o->name, strerror(errno));
 			close(cmd.child.out);
 			odb_helper_finish(o, &cmd);
 			git_inflate_end(&stream);
 			return -1;
 		}
+		if (r == 0)
+			break;
 
 		write_or_die(fd, buf, r);
 
@@ -239,6 +240,7 @@ int odb_helper_fetch_object(struct odb_helper *o, const unsigned char *sha1,
 		} while (stream.avail_in && zret == Z_OK);
 	}
 
+	close(cmd.child.out);
 	git_inflate_end(&stream);
 	git_SHA1_Final(real_sha1, &hash);
 	if (odb_helper_finish(o, &cmd))
