@@ -1,9 +1,10 @@
 #!/bin/sh
 
 test_description='basic tests for external object databases'
+
 . ./test-lib.sh
 
-ALT_SOURCE=$PWD/alt-repo/.git
+ALT_SOURCE="$PWD/alt-repo/.git"
 export ALT_SOURCE
 write_script odb-helper <<\EOF
 GIT_DIR=$ALT_SOURCE; export GIT_DIR
