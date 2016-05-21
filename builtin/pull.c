@@ -915,10 +915,8 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 		return 0;
 
 	if (opt_setupstream) {
-		// Est-ce que repo peut être nul ?
-		// Est-ce que refspecs[0] peut être nul ?
 		if (set_pull_upstream(repo, refspecs))
-			die(_("TODO"));
+			warning(_("Cannot set the upstream to multiple remote branches.\n"));
 	}
 
 	if (get_sha1("HEAD", curr_head))
