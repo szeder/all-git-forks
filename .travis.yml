@@ -106,17 +106,7 @@ script: make --quiet test
 after_failure:
   - >
     : '<-- Click here to see detailed test output!                                                        ';
-    for TEST_EXIT in t/test-results/*.exit;
-    do
-      if [ "$(cat "$TEST_EXIT")" != "0" ];
-      then
-        TEST_OUT="${TEST_EXIT%exit}out";
-        echo "------------------------------------------------------------------------";
-        echo "$(tput setaf 1)${TEST_OUT}...$(tput sgr0)";
-        echo "------------------------------------------------------------------------";
-        cat "${TEST_OUT}";
-      fi;
-    done;
+    ./ci/test-report.sh $TRAVIS_REPO_SLUG $TRAVIS_BRANCH;
 
 notifications:
   email: false
