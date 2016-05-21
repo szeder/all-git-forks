@@ -102,7 +102,7 @@ script: make --quiet test
 after_failure:
   - >
     : '<-- Click here to see detailed test output!                                                        ';
-    ./ci/test-report.sh
+    ./ci/test-report.sh $TRAVIS_REPO_SLUG $TRAVIS_BRANCH;
 
 notifications:
   email: false
