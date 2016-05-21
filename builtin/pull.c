@@ -841,17 +841,21 @@ static int set_pull_upstream(const char *repo, const char **refspecs)
 {
 	unsigned char sha1[GIT_SHA1_RAWSZ];
 	const char *head_ref;
+	struct strbuf remote_name;
 
 	if (repo != NULL && refspecs[0] != NULL
 			&& refspecs[1] == NULL) {
-		char remote_name[strlen(repo) + strlen(refspecs[0]) + 2];
+		strbuf_init(&remote_name, strlen(repo) + strlen(refspecs[0]) + 1);
+		strbuf_addstr(&remote_name, repo);
+		strbuf_addch(&remote_name, '/');
+		strbuf_addstr(&remote_name, refspecs[0]);
 
 		head_ref = resolve_ref_unsafe("HEAD", 0, sha1, NULL);
 		skip_prefix(head_ref, "refs/heads/", &head_ref);
 
-		sprintf(remote_name, "%s/%s", repo, refspecs[0]);
+		create_branch(head_ref, head_ref, remote_name.buf, 0, 0, 0, opt_verbosity < 0, BRANCH_TRACK_OVERRIDE);
 
-		create_branch(head_ref, head_ref, remote_name, 0, 0, 0, opt_verbosity < 0, BRANCH_TRACK_OVERRIDE);
+		strbuf_release(&remote_name);
 
 		return 0;
 	}
