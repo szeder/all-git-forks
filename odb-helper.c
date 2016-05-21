@@ -40,8 +40,14 @@ static int odb_helper_start(struct odb_helper *o,
 {
 	va_list ap;
 
+	warning("odb_helper_start: starting");
+
 	memset(cmd, 0, sizeof(*cmd));
 	argv_array_init(&cmd->argv);
+
+	const char **p = cmd->argv.argv;
+	for (; *p; p++)
+		warning("odb_helper_start: arg: '%s'", *p);
 
 	if (!o->cmd)
 		return -1;
@@ -49,6 +55,10 @@ static int odb_helper_start(struct odb_helper *o,
 	va_start(ap, fmt);
 	prepare_helper_command(&cmd->argv, o->cmd, fmt, ap);
 	va_end(ap);
+
+	p = cmd->argv.argv;
+	for (; *p; p++)
+		warning("odb_helper_start: after prepare_helper_command: arg: '%s'", *p);
 
 	cmd->child.argv = cmd->argv.argv;
 	cmd->child.use_shell = 1;
@@ -120,7 +130,11 @@ static void odb_helper_load_have(struct odb_helper *o)
 	warning("odb_helper_load_have: opening fd '%d'", cmd.child.out);
 
 	fh = xfdopen(cmd.child.out, "r");
+
+	warning("odb_helper_load_have: fd '%d' opened", cmd.child.out);
+
 	while (strbuf_getline(&line, fh) != EOF) {
+		warning("odb_helper_load_have: got line '%s'", line.buf);
 		ALLOC_GROW(o->have, o->have_nr+1, o->have_alloc);
 		if (parse_object_line(&o->have[o->have_nr], line.buf) < 0) {
 			warning("bad 'have' input from odb helper '%s': %s",
@@ -130,8 +144,13 @@ static void odb_helper_load_have(struct odb_helper *o)
 		o->have_nr++;
 	}
 
+	warning("odb_helper_load_have: releasing '%s'", line.buf);
+
 	strbuf_release(&line);
 	fclose(fh);
+
+	warning("odb_helper_load_have: finishing");
+
 	odb_helper_finish(o, &cmd);
 
 	qsort(o->have, o->have_nr, sizeof(*o->have), odb_helper_object_cmp);
