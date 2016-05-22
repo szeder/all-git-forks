@@ -822,6 +822,14 @@ static int merge_trivial(struct commit *head, struct commit_list *remoteheads)
 {
 	unsigned char result_tree[20], result_commit[20];
 	struct commit_list *parents, **pptr = &parents;
+	static struct lock_file lock;
+
+	hold_locked_index(&lock, 1);
+	refresh_cache(REFRESH_QUIET);
+	if (active_cache_changed &&
+	    write_locked_index(&the_index, &lock, COMMIT_LOCK))
+		return error(_("Unable to write index."));
+	rollback_lock_file(&lock);
 
 	write_tree_trivial(result_tree);
 	printf(_("Wonderful.\n"));
@@ -1168,7 +1176,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	struct commit *head_commit;
 	struct strbuf buf = STRBUF_INIT;
 	const char *head_arg;
-	int flag, i, ret = 0, head_subsumed;
+	int i, ret = 0, head_subsumed;
 	int best_cnt = -1, merge_was_ok = 0, automerge_was_ok = 0;
 	struct commit_list *common = NULL;
 	const char *best_strategy = NULL, *wt_strategy = NULL;
@@ -1182,7 +1190,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	 * Check if we are _not_ on a detached HEAD, i.e. if there is a
 	 * current branch.
 	 */
-	branch = branch_to_free = resolve_refdup("HEAD", 0, head_sha1, &flag);
+	branch = branch_to_free = resolve_refdup("HEAD", 0, head_sha1, NULL);
 	if (branch && starts_with(branch, "refs/heads/"))
 		branch += 11;
 	if (!branch || is_null_sha1(head_sha1))
