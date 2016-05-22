@@ -54,7 +54,7 @@ case "$CURRENT_BRANCH_NAME" in
 	pu)     STABLE_BRANCH="next";;
 esac
 
-if test "$REPO_ORG_NAME" = "git/git" && test -n $STABLE_BRANCH
+if test "$REPO_ORG_NAME" = "larsxschneider/git" && test -n $STABLE_BRANCH
 then
 	BAD_REV=$(git rev-parse HEAD)
 
