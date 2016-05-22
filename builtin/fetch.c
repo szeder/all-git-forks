@@ -469,8 +469,20 @@ static int REFCOL_WIDTH = 10;
 
 static void adjust_refcol_width(int len)
 {
+	static int reduce_width_count;
+
+	if (len < REFCOL_WIDTH - 10) {
+		reduce_width_count++;
+		if (reduce_width_count == 5) {
+			REFCOL_WIDTH -= 10;
+			reduce_width_count = 0;
+		}
+	} else
+		reduce_width_count = 0;
+
 	if (REFCOL_WIDTH < len) {
 		REFCOL_WIDTH = len;
+		reduce_width_count = 0;
 	}
 }
 
