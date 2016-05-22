@@ -110,7 +110,7 @@ int cmd_hash_object(int argc, const char **argv, const char *prefix)
 	if (flags & HASH_WRITE_OBJECT) {
 		prefix = setup_git_directory();
 		prefix_length = prefix ? strlen(prefix) : 0;
-		if (vpath && prefix)
+		if (vpath)
 			vpath = prefix_filename(prefix, prefix_length, vpath);
 	}
 

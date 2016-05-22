@@ -4615,7 +4615,7 @@ int cmd_apply(int argc, const char **argv, const char *prefix_)
 			errs |= apply_patch(0, "<stdin>", options);
 			read_stdin = 0;
 			continue;
-		} else if (0 < prefix_length)
+		} else
 			arg = prefix_filename(prefix, prefix_length, arg);
 
 		fd = open(arg, O_RDONLY);

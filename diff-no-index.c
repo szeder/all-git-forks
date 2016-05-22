@@ -268,7 +268,7 @@ void diff_no_index(struct rev_info *revs,
 			 * path that is "-", spell it as "./-".
 			 */
 			p = file_from_standard_input;
-		else if (prefixlen)
+		else
 			p = xstrdup(prefix_filename(prefix, prefixlen, p));
 		paths[i] = p;
 	}

@@ -141,10 +141,10 @@ int check_filename(const char *prefix, const char *arg)
 		if (arg[2] == '\0') /* ":/" is root dir, always exists */
 			return 1;
 		name = arg + 2;
-	} else if (prefix)
-		name = prefix_filename(prefix, strlen(prefix), arg);
-	else
-		name = arg;
+	} else {
+		int prefix_length = prefix ? strlen(prefix) : 0;
+		name = prefix_filename(prefix, prefix_length, arg);
+	}
 	if (!lstat(name, &st))
 		return 1; /* file exists */
 	if (errno == ENOENT || errno == ENOTDIR)

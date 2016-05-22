@@ -37,10 +37,13 @@ static int get_arg(struct parse_opt_ctx_t *p, const struct option *opt,
 
 static void fix_filename(const char *prefix, const char **file)
 {
-	if (!file || !*file || !prefix || is_absolute_path(*file)
-	    || !strcmp("-", *file))
+	int prefix_length;
+
+	if (!file || !*file || is_absolute_path(*file) || !strcmp("-", *file))
 		return;
-	*file = xstrdup(prefix_filename(prefix, strlen(prefix), *file));
+
+	prefix_length = prefix ? strlen(prefix) : 0;
+	*file = xstrdup(prefix_filename(prefix, prefix_length, *file));
 }
 
 static int opt_command_mode_error(const struct option *opt,
