@@ -31,7 +31,7 @@ done
 run_bisect () {
 	TEST_SCRIPT=$1
 	BAD_REV=$2
-	GOOD_RV=$3
+	GOOD_REV=$3
 	BISECT_SCRIPT="$(mktemp -d -t "ci-test-report-XXXXXX" 2>/dev/null)/run_bisect.sh"
 	cat >"$BISECT_SCRIPT" <<-EOF
 		#!/bin/sh
