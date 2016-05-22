@@ -32,8 +32,8 @@ run_bisect () {
 	TEST_SCRIPT=$1
 	BAD_REV=$2
 	GOOD_RV=$3
-	TMPDIR=$(mktemp -d -t "ci-report-bisect-XXXXXX" 2>/dev/null)
-	cat > "$TMPDIR/bisect-run.sh" <<-EOF
+	BISECT_SCRIPT="$(mktemp -d -t "ci-test-report-XXXXXX" 2>/dev/null)/run_bisect.sh"
+	cat >"$BISECT_SCRIPT" <<-EOF
 		#!/bin/sh
 		if test -e ./t/$TEST_SCRIPT.sh && make --jobs=2 >/dev/null 2>&1
 		then
@@ -42,9 +42,9 @@ run_bisect () {
 			exit 125
 		fi
 EOF
-	chmod +x "$TMPDIR/bisect-run.sh"
-	git bisect start $BAD_REV $GOOD_RV
-	git bisect run "$TMPDIR/bisect-run.sh"
+	chmod +x "$BISECT_SCRIPT"
+	git bisect start $BAD_REV $GOOD_REV
+	git bisect run "$BISECT_SCRIPT"
 	git bisect reset >/dev/null 2>&1
 }
 
