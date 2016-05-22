@@ -33,13 +33,13 @@ run_bisect () {
 	BAD_REV=$2
 	GOOD_RV=$3
 	TMPDIR=$(mktemp -d -t "ci-report-bisect-XXXXXX" 2>/dev/null)
-	cat > "$TMPDIR/bisect-run.sh" <<EOF
+	cat > "$TMPDIR/bisect-run.sh" <<-EOF
 		#!/bin/sh
 		if test -e ./t/$TEST_SCRIPT.sh && make --jobs=2 >/dev/null 2>&1
 		then
-				cd t && ./$TEST_SCRIPT.sh >/dev/null 2>&1
+			cd t && ./$TEST_SCRIPT.sh >/dev/null 2>&1
 		else
-				exit 125
+			exit 125
 		fi
 EOF
 	chmod +x "$TMPDIR/bisect-run.sh"
