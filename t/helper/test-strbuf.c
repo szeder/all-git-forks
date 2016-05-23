@@ -61,6 +61,48 @@ int main(int argc, char *argv[])
 		 */
 		strbuf_init(&sb, 1000);
 		strbuf_grow(&sb, maximum_unsigned_value_of_type((size_t)1));
+	} else if (!strcmp(argv[1], "preallocated_check_behavior")) {
+		strbuf_wrap_preallocated(&sb, (void *)str_test,
+					 strlen(str_test), sizeof(str_test));
+		return test_usual(&sb);
+	} else if (!strcmp(argv[1], "preallocated_NULL")) {
+		/*
+		 * Violation of invariant "strbuf must not be NULL": should die()
+		 */
+		strbuf_wrap_preallocated(&sb, NULL, 0, sizeof(str_test));
+	} else if (!strcmp(argv[1], "grow_fixed_overflow")) {
+		/*
+		 * Overflowing the buffer of a fixed strbuf: should die()
+		 */
+		strbuf_wrap_fixed(&sb, (void *)str_foo,
+				  strlen(str_foo), sizeof(str_foo));
+		strbuf_grow(&sb, 3);
+		strbuf_grow(&sb, 1000);
+	} else if (!strcmp(argv[1], "grow_fixed_overflow_min")) {
+		/*
+		 * Minimum strbuf_grow() for overflowing a fixed strbuf: should die()
+		 */
+		strbuf_wrap_fixed(&sb, (void *)str_foo,
+				  strlen(str_foo), sizeof(str_foo));
+		strbuf_grow(&sb, 4);
+	} else if (!strcmp(argv[1], "grow_fixed_success")) {
+		strbuf_wrap_fixed(&sb, (void *)str_foo,
+				  strlen(str_foo), sizeof(str_foo));
+		strbuf_grow(&sb, 3);
+	} else if (!strcmp(argv[1], "detach_fixed")) {
+		char *buf;
+		strbuf_wrap_fixed(&sb, (void *)str_test,
+				  strlen(str_test), sizeof(str_test));
+		buf = strbuf_detach(&sb, &size);
+		if (str_test == buf)
+			die("strbuf_detach does not copy the buffer");
+		free(buf);
+	} else if (!strcmp(argv[1], "release_fixed")) {
+		strbuf_wrap_fixed(&sb, (void *)str_test, strlen(str_test),
+				  sizeof(sb) + 1);
+		strbuf_release(&sb);
+		if (sb.buf != strbuf_slopbuf)
+			die("strbuf_release does not reinitialize the strbuf");
 	} else {
 		usage("test-strbuf mode");
 	}
