@@ -69,12 +69,15 @@ int write_terms(const char *bad, const char *good)
 		return -1;
 
 	strbuf_addf(&content, "%s\n%s\n", bad, good);
-	fp = fopen(".git/BISECT_TERMS", "w");
+	fp = fopen(git_path("BISECT_TERMS"), "w");
+	printf("Successfully opened a file.\n");
 	if (!fp){
 		strbuf_release(&content);
+		printf("fuck. couldn't open file\n");
 		die_errno(_("could not open the file to read terms"));
 	}
 	res = strbuf_write(&content, fp);
+	printf("Yes I could write to the file with code %d\n", res);
 	fclose(fp);
 	strbuf_release(&content);
 	return (res < 0) ? -1 : 0;
