@@ -11,11 +11,16 @@
  * A strbuf is NUL terminated for convenience, but no function in the
  * strbuf API actually relies on the string being free of NULs.
  *
+ * You can avoid the malloc/free overhead of `strbuf_init()`, `strbuf_add()` and
+ * `strbuf_release()` by wrapping pre-allocated memory (stack-allocated for
+ * example) using `strbuf_wrap()` or `strbuf_wrap_fixed()`.
+ *
  * strbufs have some invariants that are very important to keep in mind:
  *
  *  - The `buf` member is never NULL, so it can be used in any usual C
  *    string operations safely. strbuf's _have_ to be initialized either by
- *    `strbuf_init()` or by `= STRBUF_INIT` before the invariants, though.
+ *    `strbuf_init()`, `= STRBUF_INIT`, `strbuf_wrap()` or `strbuf_wrap_fixed()`
+ *    before the invariants, though.
  *
  *    Do *not* assume anything on what `buf` really is (e.g. if it is
  *    allocated memory or not), use `strbuf_detach()` to unwrap a memory
@@ -45,11 +50,15 @@
  *    Doing so is safe, though if it has to be done in many places, adding the
  *    missing API to the strbuf module is the way to go.
  *
+ *    NOTE: strbuf_release can always be safely called, whether the strbuf is
+ *    wrapping a preallocated buffer or not.
+ *
  *    WARNING: Do _not_ assume that the area that is yours is of size `alloc
  *    - 1` even if it's true in the current implementation. Alloc is somehow a
  *    "private" member that should not be messed with. Use `strbuf_avail()`
  *    instead.
 */
+
 
 /**
  * Data Structures
@@ -62,13 +71,23 @@
  * access to the string itself.
  */
 struct strbuf {
+	/*
+	 * The `owns_memory` flag is unset by default as strbuf_slopbuf is
+	 * shared by all buffers, thus owned by none.
+	 * The `fixed_memory` guarantees that the buffer will not be moved by
+	 * realloc().
+	 */
+	unsigned owns_memory:1, fixed_memory:1;
 	size_t alloc;
 	size_t len;
 	char *buf;
 };
 
 extern char strbuf_slopbuf[];
-#define STRBUF_INIT  { 0, 0, strbuf_slopbuf }
+#define STRBUF_INIT  { 0, 0, 0, 0, strbuf_slopbuf }
+#define STRBUF_WRAP(buf, buf_len, alloc_len) { 0, 0, alloc_len, buf_len, buf }
+#define STRBUF_WRAP_FIXED(buf, buf_len, alloc_len) \
+	{ 0, 1, alloc_len, buf_len, buf }
 
 /**
  * Life Cycle Functions
@@ -82,6 +101,25 @@ extern char strbuf_slopbuf[];
 extern void strbuf_init(struct strbuf *, size_t);
 
 /**
+ * Allow the caller to give a pre-allocated piece of memory for the strbuf
+ * to use. It is possible then to strbuf_grow() the string past the size of the
+ * pre-allocated buffer: a new buffer will then be allocated. The pre-allocated
+ * buffer will never be freed.
+ */
+void strbuf_wrap(struct strbuf *sb, char *buf,
+		 size_t buf_len, size_t alloc_len);
+
+/**
+ * Allow the caller to give a pre-allocated piece of memory for the strbuf
+ * to use and indicate that the strbuf must use exclusively this buffer,
+ * never realloc() it or allocate a new one. It means that the string can
+ * grow or shrink but cannot overflow the pre-allocated buffer. The
+ * pre-allocated buffer will never be freed.
+ */
+void strbuf_wrap_fixed(struct strbuf *sb, char *buf,
+		       size_t buf_len, size_t alloc_len);
+
+/**
  * Release a string buffer and the memory it used. You should not use the
  * string buffer after using this function, unless you initialize it again.
  */
@@ -91,6 +129,8 @@ extern void strbuf_release(struct strbuf *);
  * Detach the string from the strbuf and returns it; you now own the
  * storage the string occupies and it is your responsibility from then on
  * to release it with `free(3)` when you are done with it.
+ * Must allocate a copy of the buffer in case of a wrapped buffer.
+ * Performance-critical operations have to be aware of this.
  */
 extern char *strbuf_detach(struct strbuf *, size_t *);
 

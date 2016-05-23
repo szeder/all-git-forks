@@ -1,6 +1,9 @@
 #include "cache.h"
 #include "refs.h"
 #include "utf8.h"
+#include <sys/param.h>
+
+#define MAX_ALLOC(a, b) (((a)>(b))?(a):(b))
 
 int starts_with(const char *str, const char *prefix)
 {
@@ -20,16 +23,47 @@ char strbuf_slopbuf[1];
 
 void strbuf_init(struct strbuf *sb, size_t hint)
 {
+	sb->owns_memory = 0;
+	sb->fixed_memory = 0;
 	sb->alloc = sb->len = 0;
 	sb->buf = strbuf_slopbuf;
 	if (hint)
 		strbuf_grow(sb, hint);
 }
 
+static void strbuf_wrap_internal(struct strbuf *sb, char *buf,
+				 size_t buf_len, size_t alloc_len)
+{
+	if (!buf)
+		die("the buffer of a strbuf cannot be NULL");
+
+	strbuf_release(sb);
+	sb->len = buf_len;
+	sb->alloc = alloc_len;
+	sb->buf = buf;
+}
+
+void strbuf_wrap(struct strbuf *sb, char *buf,
+		 size_t buf_len, size_t alloc_len)
+{
+	strbuf_wrap_internal(sb, buf, buf_len, alloc_len);
+	sb->owns_memory = 0;
+	sb->fixed_memory = 0;
+}
+
+void strbuf_wrap_fixed(struct strbuf *sb, char *buf,
+		       size_t buf_len, size_t alloc_len)
+{
+	strbuf_wrap_internal(sb, buf, buf_len, alloc_len);
+	sb->owns_memory = 0;
+	sb->fixed_memory = 1;
+}
+
 void strbuf_release(struct strbuf *sb)
 {
 	if (sb->alloc) {
-		free(sb->buf);
+		if (sb->owns_memory)
+			free(sb->buf);
 		strbuf_init(sb, 0);
 	}
 }
@@ -37,8 +71,13 @@ void strbuf_release(struct strbuf *sb)
 char *strbuf_detach(struct strbuf *sb, size_t *sz)
 {
 	char *res;
+
 	strbuf_grow(sb, 0);
-	res = sb->buf;
+	if (sb->owns_memory)
+		res = sb->buf;
+	else
+		res = xmemdupz(sb->buf, sb->len);
+
 	if (sz)
 		*sz = sb->len;
 	strbuf_init(sb, 0);
@@ -47,25 +86,44 @@ char *strbuf_detach(struct strbuf *sb, size_t *sz)
 
 void strbuf_attach(struct strbuf *sb, void *buf, size_t len, size_t alloc)
 {
-	strbuf_release(sb);
-	sb->buf   = buf;
-	sb->len   = len;
-	sb->alloc = alloc;
+	strbuf_wrap_internal(sb, buf, len, alloc);
+	sb->owns_memory = 1;
+	sb->fixed_memory = 0;
 	strbuf_grow(sb, 0);
 	sb->buf[sb->len] = '\0';
 }
 
 void strbuf_grow(struct strbuf *sb, size_t extra)
 {
-	int new_buf = !sb->alloc;
 	if (unsigned_add_overflows(extra, 1) ||
 	    unsigned_add_overflows(sb->len, extra + 1))
 		die("you want to use way too much memory");
-	if (new_buf)
-		sb->buf = NULL;
-	ALLOC_GROW(sb->buf, sb->len + extra + 1, sb->alloc);
-	if (new_buf)
-		sb->buf[0] = '\0';
+	if ((sb->fixed_memory) &&
+	    sb->len + extra + 1 > sb->alloc)
+		die("you try to overflow the buffer of a fixed strbuf");
+
+	/*
+	 * ALLOC_GROW may do a realloc() if needed, so we must not use it on
+	 * a buffer the strbuf doesn't own
+	 */
+	if (sb->owns_memory) {
+		ALLOC_GROW(sb->buf, sb->len + extra + 1, sb->alloc);
+	} else {
+		/*
+		 * The strbuf doesn't own the buffer: to avoid to realloc it,
+		 * the strbuf needs to use a new buffer without freeing the old
+		 */
+		if (sb->len + extra + 1 > sb->alloc) {
+			size_t new_alloc =
+				MAX_ALLOC(sb->len + extra + 1,
+					  alloc_nr(sb->alloc));
+			char *new_buf = xmalloc(new_alloc);
+			memcpy(new_buf, sb->buf, sb->len + 1);
+			sb->buf = new_buf;
+			sb->alloc = new_alloc;
+			sb->owns_memory = 1;
+		}
+	}
 }
 
 void strbuf_trim(struct strbuf *sb)
