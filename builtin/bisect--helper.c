@@ -69,7 +69,7 @@ int write_terms(const char *bad, const char *good)
 		return -1;
 
 	strbuf_addf(&content, "%s\n%s\n", bad, good);
-	fp = fopen(git_path("BISECT_TERMS"), "w");
+	fp = fopen(".git/BISECT_TERMS", "w");
 	printf("Successfully opened a file.\n");
 	if (!fp){
 		strbuf_release(&content);
