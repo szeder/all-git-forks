@@ -15,7 +15,8 @@
  *
  *  - The `buf` member is never NULL, so it can be used in any usual C
  *    string operations safely. strbuf's _have_ to be initialized either by
- *    `strbuf_init()` or by `= STRBUF_INIT` before the invariants, though.
+ *    `strbuf_init()`, `= STRBUF_INIT`, `strbuf_wrap_preallocated()` or
+ *    `strbuf_wrap_fixed()` before the invariants, though.
  *
  *    Do *not* assume anything on what `buf` really is (e.g. if it is
  *    allocated memory or not), use `strbuf_detach()` to unwrap a memory
@@ -62,13 +63,14 @@
  * access to the string itself.
  */
 struct strbuf {
+	unsigned int flags;
 	size_t alloc;
 	size_t len;
 	char *buf;
 };
 
 extern char strbuf_slopbuf[];
-#define STRBUF_INIT  { 0, 0, strbuf_slopbuf }
+#define STRBUF_INIT  { 0, 0, 0, strbuf_slopbuf }
 
 /**
  * Life Cycle Functions
@@ -82,6 +84,25 @@ extern char strbuf_slopbuf[];
 extern void strbuf_init(struct strbuf *, size_t);
 
 /**
+ * Allow the caller to give a pre-allocated piece of memory for the strbuf
+ * to use. It is possible then to strbuf_grow() the string past the size of the
+ * pre-allocated buffer: a new buffer will be allocated. The pre-allocated
+ * buffer will never be freed.
+ */
+void strbuf_wrap_preallocated(struct strbuf *sb, char *path_buf,
+							  size_t path_buf_len, size_t alloc_len);
+
+/**
+ * Allow the caller to give a pre-allocated piece of memory for the strbuf
+ * to use and indicate that the strbuf must use exclusively this buffer,
+ * never realloc() it or allocate a new one. It means that the string cannot
+ * overflow the pre-allocated buffer. The pre-allocated buffer will never be
+ * freed.
+ */
+void strbuf_wrap_fixed(struct strbuf *sb, char *path_buf,
+					   size_t path_buf_len, size_t alloc_len);
+
+/**
  * Release a string buffer and the memory it used. You should not use the
  * string buffer after using this function, unless you initialize it again.
  */
@@ -91,6 +112,8 @@ extern void strbuf_release(struct strbuf *);
  * Detach the string from the strbuf and returns it; you now own the
  * storage the string occupies and it is your responsibility from then on
  * to release it with `free(3)` when you are done with it.
+ * Must allocate a copy of the buffer in case of a preallocated/fixed buffer.
+ * Performance-critical operations have to be aware of this.
  */
 extern char *strbuf_detach(struct strbuf *, size_t *);
 
