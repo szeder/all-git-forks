@@ -59,44 +59,44 @@ struct apply_state {
 	struct lock_file *lock_file;
 	int newfd;
 
-	int apply;
+	/* These control what gets looked at and modified */
+	int apply; /* this is not a dry-run */
+	int cached; /* apply to the index only */
+	int check; /* preimage must match working tree, don't actually apply */
+	int check_index; /* preimage must match the indexed version */
+	int update_index; /* check_index && apply */
+
+	/* These control cosmetic aspect of the output */
+	int diffstat; /* just show a diffstat, and don't actually apply */
+	int numstat; /* just show a numeric diffstat, and don't actually apply */
+	int summary; /* just report creation, deletion, etc, and don't actually apply */
+
+	/* These boolean parameters control how the apply is done */
 	int allow_overlap;
 	int apply_in_reverse;
 	int apply_with_reject;
 	int apply_verbosely;
-
-	/* --cached updates only the cache without ever touching the working tree. */
-	int cached;
-
-	/* --stat does just a diffstat, and doesn't actually apply */
-	int diffstat;
-
-	/* --numstat does numeric diffstat, and doesn't actually apply */
-	int numstat;
-
-	int summary;
-	int threeway;
 	int no_add;
+	int threeway;
+	int unidiff_zero;
+	int unsafe_paths;
+
+	/* Other non boolean parameters */
 	const char *fake_ancestor;
 	const char *patch_input_file;
+	int line_termination;
+	struct strbuf root;
+	int p_value;
+	int p_value_known;
+	unsigned int p_context;
+
+	/* Exclude and include path parameters */
 	struct string_list limit_by_name;
 	int has_include;
-	struct strbuf root;
-	struct string_list symlink_changes;
 
-	/*
-	 *  --check turns on checking that the working tree matches the
-	 *    files that are being modified, but doesn't apply the patch
-	 */
-	int check;
-
-	/* --index updates the cache as well. */
-	int check_index;
-
-	int unidiff_zero;
-	int update_index;
-	int unsafe_paths;
-	int line_termination;
+	/* Various "current state" */
+	int linenr; /* current line number */
+	struct string_list symlink_changes; /* we have to track symlinks */
 
 	/*
 	 * For "diff-stat" like behaviour, we keep track of the biggest change
@@ -107,29 +107,18 @@ struct apply_state {
 	int max_len;
 
 	/*
-	 * Various "current state", notably line numbers and what
-	 * file (and how) we're patching right now.. The "is_xxxx"
-	 * things are flags, where -1 means "don't know yet".
-	 */
-	int linenr;
-
-	/*
 	 * Records filenames that have been touched, in order to handle
 	 * the case where more than one patches touch the same file.
 	 */
 	struct string_list fn_table;
 
-	int p_value;
-	int p_value_known;
-	unsigned int p_context;
-
+	/* These control whitespace errors */
+	enum ws_error_action ws_error_action;
+	enum ws_ignore ws_ignore_action;
 	const char *whitespace_option;
 	int whitespace_error;
 	int squelch_whitespace_errors;
 	int applied_after_fixing_ws;
-
-	enum ws_error_action ws_error_action;
-	enum ws_ignore ws_ignore_action;
 };
 
 static const char * const apply_usage[] = {
