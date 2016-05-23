@@ -51,6 +51,7 @@ static int branches_nr;
 
 static struct branch *current_branch;
 static const char *pushremote_name;
+static const char *fetchremote_name;
 
 static struct rewrites rewrites;
 static struct rewrites rewrites_push;
@@ -330,6 +331,8 @@ static int handle_config(const char *key, const char *value, void *cb)
 			return git_config_string(&branch->remote_name, key, value);
 		} else if (!strcmp(subkey, "pushremote")) {
 			return git_config_string(&branch->pushremote_name, key, value);
+		} else if (!strcmp(subkey, "fetchremote")) {
+			return git_config_string(&branch->fetchremote_name, key, value);
 		} else if (!strcmp(subkey, "merge")) {
 			if (!value)
 				return config_error_nonbool(key);
@@ -360,6 +363,9 @@ static int handle_config(const char *key, const char *value, void *cb)
 	/* Handle remote.* variables */
 	if (!name && !strcmp(subkey, "pushdefault"))
 		return git_config_string(&pushremote_name, key, value);
+
+	if (!name && !strcmp(subkey, "fetchdefault"))
+		return git_config_string(&fetchremote_name, key, value);
 
 	if (!name)
 		return 0;
@@ -675,6 +681,22 @@ const char *pushremote_for_branch(struct branch *branch, int *explicit)
 	return remote_for_branch(branch, explicit);
 }
 
+const char *fetchremote_for_branch(struct branch *branch, int *explicit)
+{
+	if (branch && branch->fetchremote_name) {
+		if (explicit)
+			*explicit = 1;
+		return branch->fetchremote_name;
+	}
+
+	if (fetchremote_name) {
+		if (explicit)
+			*explicit = 1;
+		return fetchremote_name;
+	}
+	return remote_for_branch(branch, explicit);
+}
+
 static struct remote *remote_get_1(const char *name,
 				   const char *(*get_default)(struct branch *, int *))
 {
@@ -712,6 +734,10 @@ struct remote *remote_get(const char *name)
 struct remote *pushremote_get(const char *name)
 {
 	return remote_get_1(name, pushremote_for_branch);
+}
+
+struct remote *fetchremote_get(const char *name){
+	return remote_get_1(name, fetchremote_for_branch);
 }
 
 int remote_is_configured(struct remote *remote)
@@ -1616,7 +1642,7 @@ static void set_merge(struct branch *ret)
 		return;
 	}
 
-	remote = remote_get(ret->remote_name);
+	remote = fetchremote_get(ret->remote_name);
 
 	ret->merge = xcalloc(ret->merge_nr, sizeof(*ret->merge));
 	for (i = 0; i < ret->merge_nr; i++) {
@@ -1636,7 +1662,6 @@ static void set_merge(struct branch *ret)
 struct branch *branch_get(const char *name)
 {
 	struct branch *ret;
-
 	read_config();
 	if (!name || !*name || !strcmp(name, "HEAD"))
 		ret = current_branch;

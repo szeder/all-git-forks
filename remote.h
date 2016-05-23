@@ -60,6 +60,7 @@ struct remote {
 
 struct remote *remote_get(const char *name);
 struct remote *pushremote_get(const char *name);
+struct remote *fetchremote_get(const char *name);
 int remote_is_configured(struct remote *remote);
 
 typedef int each_remote_fn(struct remote *remote, void *priv);
@@ -206,6 +207,7 @@ struct branch {
 
 	const char *remote_name;
 	const char *pushremote_name;
+	const char *fetchremote_name;
 
 	const char **merge_name;
 	struct refspec **merge;
@@ -218,6 +220,7 @@ struct branch {
 struct branch *branch_get(const char *name);
 const char *remote_for_branch(struct branch *branch, int *explicit);
 const char *pushremote_for_branch(struct branch *branch, int *explicit);
+const char *fetchremote_for_branch(struct branch *branch, int *explicit);
 
 int branch_has_merge_config(struct branch *branch);
 int branch_merge_matches(struct branch *, int n, const char *);

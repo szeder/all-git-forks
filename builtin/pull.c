@@ -654,7 +654,7 @@ static const char *get_upstream_branch(const char *remote)
 	struct branch *curr_branch;
 	const char *curr_branch_remote;
 
-	rm = remote_get(remote);
+	rm = fetchremote_get(remote);
 	if (!rm)
 		return NULL;
 
@@ -877,7 +877,6 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 		if (get_rebase_fork_point(rebase_fork_point, repo, *refspecs))
 			hashclr(rebase_fork_point);
 	}
-
 	if (run_fetch(repo, refspecs))
 		return 1;
 
@@ -914,7 +913,6 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 
 	if (!merge_heads.nr)
 		die_no_merge_candidates(repo, refspecs);
-
 	if (is_null_sha1(orig_head)) {
 		if (merge_heads.nr > 1)
 			die(_("Cannot merge multiple branches into empty head."));

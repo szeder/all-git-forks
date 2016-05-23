@@ -270,6 +270,9 @@ static int config_read_branches(const char *key, const char *value, void *cb)
 		if (strip_suffix(key, ".remote", &key_len)) {
 			name = xmemdupz(key, key_len);
 			type = REMOTE;
+		}else if (strip_suffix(key, ".fetchRemote", &key_len)) {
+			name = xmemdupz(key, key_len);
+			type = REMOTE;
 		} else if (strip_suffix(key, ".merge", &key_len)) {
 			name = xmemdupz(key, key_len);
 			type = MERGE;

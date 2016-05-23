@@ -378,7 +378,7 @@ static struct ref *get_ref_map(struct transport *transport,
 			 * Note: has_merge implies non-NULL branch->remote_name
 			 */
 			if (has_merge &&
-			    !strcmp(branch->remote_name, remote->name))
+			    !strcmp(fetchremote_for_branch(branch, NULL), remote->name))
 				add_merge_config(&ref_map, remote_refs, branch, &tail);
 		} else {
 			ref_map = get_remote_ref(remote_refs, "HEAD");
@@ -1022,7 +1022,7 @@ static int add_remote_or_group(const char *name, struct string_list *list)
 
 	git_config(get_remote_group, &g);
 	if (list->nr == prev_nr) {
-		struct remote *remote = remote_get(name);
+		struct remote *remote = fetchremote_get(name);
 		if (!remote_is_configured(remote))
 			return 0;
 		string_list_append(list, remote->name);
@@ -1191,7 +1191,7 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 		result = fetch_multiple(&list);
 	} else if (argc == 0) {
 		/* No arguments -- use default remote */
-		remote = remote_get(NULL);
+		remote = fetchremote_get(NULL);
 		result = fetch_one(remote, argc, argv);
 	} else if (multiple) {
 		/* All arguments are assumed to be remotes or groups */
@@ -1209,7 +1209,7 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 			result = fetch_multiple(&list);
 		} else {
 			/* Zero or one remotes */
-			remote = remote_get(argv[0]);
+			remote = fetchremote_get(argv[0]);
 			result = fetch_one(remote, argc-1, argv+1);
 		}
 	}
