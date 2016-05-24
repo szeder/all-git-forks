@@ -688,7 +688,7 @@ if ($quote_mail) {
 			elsif (/^To:\s+(.*)$/i) {
 				foreach my $addr (parse_address_line($1)) {
 					if (!($addr eq $initial_sender)) {
-						push @initial_to, $addr;
+						push @initial_cc, $addr;
 					}
 				}
 			} elsif (/^Cc:\s+(.*)$/i) {
@@ -758,7 +758,7 @@ if ($compose) {
 	my $tpl_sender = $sender || $repoauthor || $repocommitter || '';
 	my $tpl_subject = $initial_subject || '';
 	my $tpl_reply_to = $initial_reply_to || '';
-	my $tpl_quote = $message_quoted || '';
+	my $tpl_quote = "\n".$message_quoted || '';
 
 	print $c <<EOT;
 From $tpl_sender # This line is ignored.
@@ -770,9 +770,7 @@ GIT: Clear the body content if you don't wish to send a summary.
 From: $tpl_sender
 Subject: $tpl_subject
 In-Reply-To: $tpl_reply_to
-
 $tpl_quote
-
 EOT
 	for my $f (@files) {
 		print $c get_patch_subject($f);

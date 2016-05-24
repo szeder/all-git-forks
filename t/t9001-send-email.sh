@@ -1907,11 +1907,13 @@ test_expect_success $PREREQ 'From, To, Cc, Subject with --quote-mail are correct
 		--smtp-server="$(pwd)/fake.sendmail" \
 		-1 \
 		2>errors &&
+	cp msgtxt1 /tmp/msgtxt1 &&
 	grep "From: Example <nobody@example.com>" msgtxt1 &&
 	to_adr=$(awk "/^To: /,/^Cc: /" msgtxt1) &&
+	cc_adr=$(awk "/^Cc: /,/^Date /" msgtxt1) &&
 	echo "$to_adr" | grep author@example.com &&
-	echo "$to_adr" | grep to1@example.com &&
-	grep "Cc: cc1@example.com" msgtxt1
+	echo "$cc_adr" | grep to1@example.com &&
+	echo "$cc_adr" | grep cc1@example.com
 '
 test_expect_success $PREREQ 'the message given is quoted with --quote-mail' '
 	grep "> Have you seen my previous email?" msgtxt1 &&
