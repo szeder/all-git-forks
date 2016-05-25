@@ -645,7 +645,6 @@ if ($quote_mail) {
 	$message_quoted = "";
 	my $error = validate_patch($quote_mail);
 	$error and die "fatal: $quote_mail: $error\nwarning: no patches were sent\n";
-	$compose = 1;
 	my @header = ();
 	open my $fh, "<", $quote_mail or die "can't open file $quote_mail";
 	while(<$fh>) {
@@ -660,8 +659,7 @@ if ($quote_mail) {
 			push(@header, $_);
 		}
 	}
-
-	foreach(@header) {
+	foreach (@header) {
 		my $input_format;
 		my $initial_sender = $sender || $repoauthor || $repocommitter || '';
 		if (/^From /) {
@@ -681,14 +679,12 @@ if ($quote_mail) {
 					$prefix_re = "Re: ";
 				}
 				$initial_subject = $prefix_re.$subject_re;
-			}
-			elsif (/^From:\s+(.*)$/i) {
+			} elsif (/^From:\s+(.*)$/i) {
 				push @initial_to, $1;
-			}
-			elsif (/^To:\s+(.*)$/i) {
+			} elsif (/^To:\s+(.*)$/i) {
 				foreach my $addr (parse_address_line($1)) {
 					if (!($addr eq $initial_sender)) {
-						push @initial_to, $addr;
+						push @initial_cc, $addr;
 					}
 				}
 			} elsif (/^Cc:\s+(.*)$/i) {
@@ -720,15 +716,18 @@ if ($quote_mail) {
 		}
 	}
 
-	#Message body
+	# Quote the message body
 	while (<$fh>) {
-		#for files containing crlf line endings
-		$_=~ s/\r//g;
-		my $space="";
+		# Only for files containing crlf line endings
+		$_ =~ s/\r//g;
+		my $space = "";
 		if (/^[^>]/) {
 			$space = " ";
 		}
 		$message_quoted .=  ">".$space.$_;
+	}
+	if (!$compose) {
+		$annotate = 1;
 	}
 
 }
@@ -758,7 +757,7 @@ if ($compose) {
 	my $tpl_sender = $sender || $repoauthor || $repocommitter || '';
 	my $tpl_subject = $initial_subject || '';
 	my $tpl_reply_to = $initial_reply_to || '';
-	my $tpl_quote = $message_quoted || '';
+	my $tpl_quote = $message_quoted && "\n".$message_quoted || '';
 
 	print $c <<EOT;
 From $tpl_sender # This line is ignored.
@@ -770,9 +769,7 @@ GIT: Clear the body content if you don't wish to send a summary.
 From: $tpl_sender
 Subject: $tpl_subject
 In-Reply-To: $tpl_reply_to
-
 $tpl_quote
-
 EOT
 	for my $f (@files) {
 		print $c get_patch_subject($f);
@@ -837,7 +834,38 @@ EOT
 		$compose = -1;
 	}
 } elsif ($annotate) {
-	do_edit(@files);
+	if ($quote_mail) {
+		my $quote_mail_filename = ($repo ?
+		tempfile(".gitsendemail.msg.XXXXXX", DIR => $repo->repo_path()) :
+		tempfile(".gitsendemail.msg.XXXXXX", DIR => "."))[1];
+		open my $c, "<", $files[0]
+			or die "Failed to open $files[0] : " . $!;
+
+		open my $c2, ">", $quote_mail_filename
+			or die "Failed to open $quote_mail_filename : ". $!;
+		while (<$c>) {
+			if (/^[^---]/) {
+				print $c2 $_;
+				next;
+			}
+			print $c2 $_;
+			last;
+		}
+		print $c2 $message_quoted;
+		while (<$c>) {
+			print $c2 $_;
+		}
+		close $c;
+		close $c2;
+		my $tmp_file = $files[0];
+		$files[0] = $quote_mail_filename;
+		do_edit(@files);
+		rename($quote_mail_filename, $tmp_file);
+		$files[0] = $tmp_file;
+
+	} else {
+		do_edit(@files);
+	}
 }
 
 sub ask {
