@@ -93,6 +93,13 @@ OPTIONS
 	has to be called afterwards to bring the work tree up to date with the
 	merge result.
 
+-u::
+--set-upstream::
+	For each branch that is successfully pulled, add
+	upstream (tracking) reference, used by argument-less
+	linkgit:git-push[1] and other commands. For more information,
+	see 'branch.<name>.merge' in linkgit:git-config[1].
+
 Options related to merging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

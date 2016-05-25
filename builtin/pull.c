@@ -17,6 +17,7 @@
 #include "revision.h"
 #include "tempfile.h"
 #include "lockfile.h"
+#include "branch.h"
 
 enum rebase_type {
 	REBASE_INVALID = -1,
@@ -109,12 +110,18 @@ static char *opt_unshallow;
 static char *opt_update_shallow;
 static char *opt_refmap;
 
+/* Options about upstream */
+static int opt_set_upstream;
+
 static struct option pull_options[] = {
 	/* Shared options */
 	OPT__VERBOSITY(&opt_verbosity),
 	OPT_PASSTHRU(0, "progress", &opt_progress, NULL,
 		N_("force progress reporting"),
 		PARSE_OPT_NOARG),
+
+	/* Options about upstream */
+	OPT_BOOL('u', "set-upstream", &opt_set_upstream, N_("set upstream for git pull/status")),
 
 	/* Options passed to git-merge or git-rebase */
 	OPT_GROUP(N_("Options related to merging")),
@@ -829,6 +836,57 @@ static int run_rebase(const unsigned char *curr_head,
 	return ret;
 }
 
+static int set_pull_upstream(const char *repo, const char **refspecs_name)
+{
+	unsigned char sha1[GIT_SHA1_RAWSZ];
+	const char *local_branch, *remote_branch;
+	struct strbuf remote_name;
+	struct refspec *refspecs;
+	int nr_refspec, i;
+
+	if (repo == NULL) {
+		warning(N_("no remote was specified"));
+		return 1;
+	}
+
+	for (nr_refspec = 0; refspecs_name[nr_refspec] != NULL; nr_refspec++);
+
+	if (nr_refspec == 0) {
+		warning(N_("no refspec was specified"));
+		return 1;
+	}
+
+	refspecs = parse_fetch_refspec(nr_refspec, refspecs_name);
+
+	for (i = 0; i < nr_refspec; i++) {
+		if (refspecs[i].src != NULL && strlen(refspecs[i].src) > 0) {
+			remote_branch = refspecs[i].src;
+		} else {
+			warning(N_("not yet implemented"));
+			continue;
+		}
+
+		if (refspecs[i].dst != NULL && strlen(refspecs[i].dst) > 0) {
+			local_branch = refspecs[i].dst;
+		} else {
+			// TODO : Should it be freed ?
+			local_branch = resolve_ref_unsafe("HEAD", 0, sha1, NULL);
+			skip_prefix(local_branch, "refs/heads/", &local_branch);
+		}
+
+		strbuf_init(&remote_name, strlen(repo) + strlen(remote_branch) + 1);
+		strbuf_addf(&remote_name, "%s/%s", repo, remote_branch);
+
+		create_branch(local_branch, local_branch, remote_name.buf, 0, 0, 0, opt_verbosity < 0, BRANCH_TRACK_OVERRIDE);
+
+		strbuf_release(&remote_name);
+	}
+
+	free_refspec(nr_refspec, refspecs);
+
+	return 0;
+}
+
 int cmd_pull(int argc, const char **argv, const char *prefix)
 {
 	const char *repo, **refspecs;
@@ -883,6 +941,9 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 
 	if (opt_dry_run)
 		return 0;
+
+	if (opt_set_upstream)
+		set_pull_upstream(repo, refspecs);
 
 	if (get_sha1("HEAD", curr_head))
 		hashclr(curr_head);
