@@ -1899,10 +1899,10 @@ test_expect_success $PREREQ 'setup expect' '
 	EOF
 '
 
-test_expect_success $PREREQ 'From, To, Cc, Subject with --quote-mail are correct' '
+test_expect_success $PREREQ 'From, To, Cc, Subject with --quote-email are correct' '
 	clean_fake_sendmail &&
-	git send-email \
-		--quote-mail=email \
+	git send-email --compose \
+		--quote-email=email \
 		--from="Example <nobody@example.com>" \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		-1 \
@@ -1915,14 +1915,14 @@ test_expect_success $PREREQ 'From, To, Cc, Subject with --quote-mail are correct
 	echo "$cc_adr" | grep to1@example.com &&
 	echo "$cc_adr" | grep cc1@example.com
 '
-test_expect_success $PREREQ 'the message given is quoted with --quote-mail' '
+test_expect_success $PREREQ 'correct quoted message with quote-email and compose' '
 	grep "> Have you seen my previous email?" msgtxt1 &&
 	grep ">> Previous content" msgtxt1
 '
-test_expect_success $PREREQ 'Check if Re is written, only once with --quote-mail' '
+test_expect_success $PREREQ 'Check if Re is written, only once with --quote-email' '
 	grep "Subject: Re: subject goes here" msgtxt1 &&
-	git send-email \
-		--quote-mail=msgtxt1 \
+	git send-email --compose \
+		--quote-email=msgtxt1 \
 		--from="Example <nobody@example.com>" \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		-1 \

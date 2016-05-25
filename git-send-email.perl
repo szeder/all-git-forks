@@ -55,7 +55,7 @@ git send-email --dump-aliases
     --[no-]bcc              <str>  * Email Bcc:
     --subject               <str>  * Email "Subject:"
     --in-reply-to           <str>  * Email "In-Reply-To:"
-    --quote-mail            <str>  * Email To, Cc and quote the message.
+    --quote-email           <str>  * Email To, Cc, Subject and quote the message body.
     --[no-]xmailer                 * Add "X-Mailer:" header (default).
     --[no-]annotate                * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
@@ -161,7 +161,7 @@ my $re_encoded_word = qr/=\?($re_token)\?($re_token)\?($re_encoded_text)\?=/;
 
 # Variables we fill in automatically, or via prompting:
 my (@to,$no_to,@initial_to,@cc,$no_cc,@initial_cc,@bcclist,$no_bcc,@xh,
-	$initial_reply_to,$quote_mail,$initial_subject,@files,
+	$initial_reply_to,$quote_email,$initial_subject,@files,
 	$author,$sender,$smtp_authpass,$annotate,$use_xmailer,$compose,$time);
 
 my $envelope_sender;
@@ -305,7 +305,7 @@ $rc = GetOptions(
 		    "sender|from=s" => \$sender,
                     "in-reply-to=s" => \$initial_reply_to,
 		    "subject=s" => \$initial_subject,
-		    "quote-mail=s" => \$quote_mail,
+		    "quote-email=s" => \$quote_email,
 		    "to=s" => \@initial_to,
 		    "to-cmd=s" => \$to_cmd,
 		    "no-to" => \$no_to,
@@ -641,14 +641,14 @@ if (@files) {
 	usage();
 }
 my $message_quoted;
-if ($quote_mail) {
+if ($quote_email) {
 	$message_quoted = "";
-	my $error = validate_patch($quote_mail);
-	$error and die "fatal: $quote_mail: $error\nwarning: no patches were sent\n";
+	my $error = validate_patch($quote_email);
+	$error and die "fatal: $quote_email: $error\nwarning: no patches were sent\n";
 	my @header = ();
-	open my $fh, "<", $quote_mail or die "can't open file $quote_mail";
+	open my $fh, "<", $quote_email or die "can't open file $quote_email";
 	while(<$fh>) {
-		#for files containing crlf line endings
+		# For files containing crlf line endings
 		$_=~ s/\r//g;
 		last if /^\s*$/;
 		if (/^\s+\S/ and @header) {
@@ -834,15 +834,15 @@ EOT
 		$compose = -1;
 	}
 } elsif ($annotate) {
-	if ($quote_mail) {
-		my $quote_mail_filename = ($repo ?
+	if ($quote_email) {
+		my $quote_email_filename = ($repo ?
 		tempfile(".gitsendemail.msg.XXXXXX", DIR => $repo->repo_path()) :
 		tempfile(".gitsendemail.msg.XXXXXX", DIR => "."))[1];
 		open my $c, "<", $files[0]
 			or die "Failed to open $files[0] : " . $!;
 
-		open my $c2, ">", $quote_mail_filename
-			or die "Failed to open $quote_mail_filename : ". $!;
+		open my $c2, ">", $quote_email_filename
+			or die "Failed to open $quote_email_filename : ". $!;
 		while (<$c>) {
 			if (/^[^---]/) {
 				print $c2 $_;
@@ -858,9 +858,9 @@ EOT
 		close $c;
 		close $c2;
 		my $tmp_file = $files[0];
-		$files[0] = $quote_mail_filename;
+		$files[0] = $quote_email_filename;
 		do_edit(@files);
-		rename($quote_mail_filename, $tmp_file);
+		rename($quote_email_filename, $tmp_file);
 		$files[0] = $tmp_file;
 
 	} else {
