@@ -15,8 +15,9 @@ SYNOPSIS
 'git submodule' [--quiet] init [--] [<path>...]
 'git submodule' [--quiet] deinit [-f|--force] (--all|[--] <path>...)
 'git submodule' [--quiet] update [--init] [--remote] [-N|--no-fetch]
-	      [-f|--force] [--rebase|--merge] [--reference <repository>]
-	      [--depth <depth>] [--recursive] [--jobs <n>] [--] [<path>...]
+	      [--[no-]recommended-depth] [-f|--force] [--rebase|--merge]
+	      [--reference <repository>] [--depth <depth>] [--recursive]
+	      [--jobs <n>] [--] [<path>...]
 'git submodule' [--quiet] summary [--cached|--files] [(-n|--summary-limit) <n>]
 	      [commit] [--] [<path>...]
 'git submodule' [--quiet] foreach [--recursive] <command>
@@ -383,6 +384,11 @@ for linkgit:git-clone[1]'s `--reference` and `--shared` options carefully.
 	This option is valid for add and update commands. Create a 'shallow'
 	clone with a history truncated to the specified number of revisions.
 	See linkgit:git-clone[1]
+
+--[no-]recommended-depth::
+	This option is only valid for the update command.
+	The initial clone of a submodule will use the recommended
+	`submodule.<name>.depth` as provided by the .gitmodules file.
 
 -j <n>::
 --jobs <n>::
