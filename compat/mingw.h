@@ -142,6 +142,7 @@ static inline int fcntl(int fd, int cmd, ...)
 #define sigemptyset(x) (void)0
 static inline int sigaddset(sigset_t *set, int signum)
 { return 0; }
+#define SIG_BLOCK 0
 #define SIG_UNBLOCK 0
 static inline int sigprocmask(int how, const sigset_t *set, sigset_t *oldset)
 { return 0; }
@@ -396,11 +397,17 @@ static inline char *mingw_find_last_dir_sep(const char *path)
 			ret = (char *)path;
 	return ret;
 }
+static inline void convert_slashes(char *path)
+{
+	for (; *path; path++)
+		if (*path == '\\')
+			*path = '/';
+}
 #define find_last_dir_sep mingw_find_last_dir_sep
 int mingw_offset_1st_component(const char *path);
 #define offset_1st_component mingw_offset_1st_component
 #define PATH_SEP ';'
-#ifndef __MINGW64_VERSION_MAJOR
+#if !defined(__MINGW64_VERSION_MAJOR) && (!defined(_MSC_VER) || _MSC_VER < 1800)
 #define PRIuMAX "I64u"
 #define PRId64 "I64d"
 #else
@@ -409,9 +416,6 @@ int mingw_offset_1st_component(const char *path);
 
 void mingw_open_html(const char *path);
 #define open_html mingw_open_html
-
-void mingw_mark_as_git_dir(const char *dir);
-#define mark_as_git_dir mingw_mark_as_git_dir
 
 /**
  * Converts UTF-8 encoded string to UTF-16LE.

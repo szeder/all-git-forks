@@ -759,6 +759,10 @@ static off_t write_reused_pack(struct sha1file *f)
 	return reuse_packfile_offset - sizeof(struct pack_header);
 }
 
+static const char no_split_warning[] = N_(
+"disabling bitmap writing, packs are split due to pack.packSizeLimit"
+);
+
 static void write_pack_file(void)
 {
 	uint32_t i = 0, j;
@@ -813,7 +817,10 @@ static void write_pack_file(void)
 			fixup_pack_header_footer(fd, sha1, pack_tmp_name,
 						 nr_written, sha1, offset);
 			close(fd);
-			write_bitmap_index = 0;
+			if (write_bitmap_index) {
+				warning(_(no_split_warning));
+				write_bitmap_index = 0;
+			}
 		}
 
 		if (!pack_to_stdout) {
@@ -828,8 +835,7 @@ static void write_pack_file(void)
 			 * to preserve this property.
 			 */
 			if (stat(pack_tmp_name, &st) < 0) {
-				warning("failed to stat %s: %s",
-					pack_tmp_name, strerror(errno));
+				warning_errno("failed to stat %s", pack_tmp_name);
 			} else if (!last_mtime) {
 				last_mtime = st.st_mtime;
 			} else {
@@ -837,8 +843,7 @@ static void write_pack_file(void)
 				utb.actime = st.st_atime;
 				utb.modtime = --last_mtime;
 				if (utime(pack_tmp_name, &utb) < 0)
-					warning("failed utime() on %s: %s",
-						pack_tmp_name, strerror(errno));
+					warning_errno("failed utime() on %s", pack_tmp_name);
 			}
 
 			strbuf_addf(&tmpname, "%s-", base_name);
@@ -1186,7 +1191,7 @@ static void add_pbase_object(struct tree_desc *tree,
 		if (cmp < 0)
 			return;
 		if (name[cmplen] != '/') {
-			add_object_entry(entry.sha1,
+			add_object_entry(entry.oid->hash,
 					 object_type(entry.mode),
 					 fullname, 1);
 			return;
@@ -1197,7 +1202,7 @@ static void add_pbase_object(struct tree_desc *tree,
 			const char *down = name+cmplen+1;
 			int downlen = name_cmp_len(down);
 
-			tree = pbase_tree_get(entry.sha1);
+			tree = pbase_tree_get(entry.oid->hash);
 			if (!tree)
 				return;
 			init_tree_desc(&sub, tree->tree_data, tree->tree_size);

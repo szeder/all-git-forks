@@ -73,7 +73,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
-"POT-Creation-Date: 2016-03-12 22:05+0800\n"
+"POT-Creation-Date: 2016-03-16 00:16+0800\n"
 "PO-Revision-Date: 2016-03-14 20:26+0100\n"
 "Last-Translator: Jean-Noël Avila <jn.avila@free.fr>\n"
 "Language-Team: Jean-Noël Avila <jn.avila@free.fr>\n"
@@ -1752,7 +1752,8 @@ msgstr "offset avant le début de l'index de paquet pour %s (index corrompu ?)"
 #: sha1_file.c:2463
 #, c-format
 msgid "offset beyond end of pack index for %s (truncated index?)"
-msgstr "offset au delà de la fin de l'index de paquet pour %s (index tronqué ?)"
+msgstr ""
+"offset au delà de la fin de l'index de paquet pour %s (index tronqué ?)"
 
 #: sha1_name.c:462
 msgid ""
@@ -2413,6 +2414,10 @@ msgstr "disparue"
 msgid "behind "
 msgstr "derrière "
 
+#: wt-status.c:1680 wt-status.c:1683
+msgid "ahead "
+msgstr "devant "
+
 #: compat/precompose_utf8.c:57 builtin/clone.c:413
 #, c-format
 msgid "failed to unlink '%s'"
@@ -2940,7 +2945,7 @@ msgstr "utiliser l'horodatage actuel pour la date d'auteur"
 #: builtin/am.c:2321 builtin/commit.c:1593 builtin/merge.c:225
 #: builtin/pull.c:159 builtin/revert.c:92 builtin/tag.c:355
 msgid "key-id"
-msgstr "id de clé"
+msgstr "id-clé"
 
 #: builtin/am.c:2322
 msgid "GPG-sign commits"
@@ -4540,7 +4545,7 @@ msgstr "style"
 
 #: builtin/checkout.c:1154
 msgid "conflict style (merge or diff3)"
-msgstr "style de conflit (fusion ou diff3)"
+msgstr "style de conflit (merge (fusion) ou diff3)"
 
 #: builtin/checkout.c:1157
 msgid "do not limit pathspecs to sparse entries only"
@@ -6192,7 +6197,7 @@ msgstr "convertir en un dépôt complet"
 
 #: builtin/fetch.c:122 builtin/log.c:1236
 msgid "dir"
-msgstr "dir"
+msgstr "répertoire"
 
 #: builtin/fetch.c:123
 msgid "prepend this to submodule path output"
@@ -10804,11 +10809,11 @@ msgstr "git show-ref --exclude-existing[=<motif>]"
 
 #: builtin/show-ref.c:165
 msgid "only show tags (can be combined with heads)"
-msgstr "afficher seulement les étiquettes (peut être combiné avec des têtes)"
+msgstr "afficher seulement les étiquettes (peut être combiné avec heads)"
 
 #: builtin/show-ref.c:166
 msgid "only show heads (can be combined with tags)"
-msgstr "afficher seulement les têtes (peut être combiné avec des étiquettes)"
+msgstr "afficher seulement les têtes (peut être combiné avec tags)"
 
 #: builtin/show-ref.c:167
 msgid "stricter reference checking, requires exact ref path"
@@ -12806,9 +12811,6 @@ msgstr "Synchronisation de l'URL sous-module pour '$displaypath'"
 
 #~ msgid "bug"
 #~ msgstr "bogue"
-
-#~ msgid "ahead "
-#~ msgstr "devant "
 
 #~ msgid ", behind "
 #~ msgstr ", derrière "

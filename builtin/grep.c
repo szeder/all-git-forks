@@ -438,7 +438,7 @@ static int grep_tree(struct grep_opt *opt, const struct pathspec *pathspec,
 		strbuf_add(base, entry.path, te_len);
 
 		if (S_ISREG(entry.mode)) {
-			hit |= grep_sha1(opt, entry.sha1, base->buf, tn_len,
+			hit |= grep_sha1(opt, entry.oid->hash, base->buf, tn_len,
 					 check_attr ? base->buf + tn_len : NULL);
 		}
 		else if (S_ISDIR(entry.mode)) {
@@ -447,10 +447,10 @@ static int grep_tree(struct grep_opt *opt, const struct pathspec *pathspec,
 			void *data;
 			unsigned long size;
 
-			data = lock_and_read_sha1_file(entry.sha1, &type, &size);
+			data = lock_and_read_sha1_file(entry.oid->hash, &type, &size);
 			if (!data)
 				die(_("unable to read tree (%s)"),
-				    sha1_to_hex(entry.sha1));
+				    oid_to_hex(entry.oid));
 
 			strbuf_addch(base, '/');
 			init_tree_desc(&sub, data, size);
@@ -522,12 +522,14 @@ static int grep_objects(struct grep_opt *opt, const struct pathspec *pathspec,
 }
 
 static int grep_directory(struct grep_opt *opt, const struct pathspec *pathspec,
-			  int exc_std)
+			  int exc_std, int use_index)
 {
 	struct dir_struct dir;
 	int i, hit = 0;
 
 	memset(&dir, 0, sizeof(dir));
+	if (!use_index)
+		dir.flags |= DIR_NO_GITLINKS;
 	if (exc_std)
 		setup_standard_excludes(&dir);
 
@@ -902,7 +904,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		int use_exclude = (opt_exclude < 0) ? use_index : !!opt_exclude;
 		if (list.nr)
 			die(_("--no-index or --untracked cannot be used with revs."));
-		hit = grep_directory(&opt, &pathspec, use_exclude);
+		hit = grep_directory(&opt, &pathspec, use_exclude, use_index);
 	} else if (0 <= opt_exclude) {
 		die(_("--[no-]exclude-standard cannot be used for tracked contents."));
 	} else if (!list.nr) {
