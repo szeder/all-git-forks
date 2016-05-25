@@ -1572,7 +1572,7 @@ foreach my $t (@files) {
 	@to = @{$parsed_header{"to"}};
 	@cc = @{$parsed_header{"cc"}};
 	@xh = @{$parsed_header{"xh"}};
-	my %flags = %{$parsed_header{"config"}};
+	my %flags = %{$parsed_header{"flags"}};
 
 	# Process parsed headers
 	my ($author, $author_encoding) = unquote_rfc2047($from);
@@ -1581,7 +1581,7 @@ foreach my $t (@files) {
 		($suppress_cc{'self'} and $sauthor eq $sender)) {
 		printf("(mbox) Adding cc: %s from line 'From: %s'\n",
 			$from, $from) unless $quiet;
-		unshift @cc, $from;
+		push @cc, $from;
 	}
 
 	foreach (@to) {
@@ -1845,7 +1845,7 @@ sub parse_header {
 	my $from = undef, $subject = undef;
 	my $date = undef, $message_id = undef;
 	my @to = (), @cc = (), @xh = ();
-	my %config = ();
+	my %flags = ();
 
 
 	# Internal variables
@@ -1916,6 +1916,6 @@ sub parse_header {
 		"to" => [@to],
 		"cc" => [@cc],
 		"xh" => [@xh],
-		"config" => {%config}
+		"flags" => {%flags}
 	);
 }
