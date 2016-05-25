@@ -238,10 +238,21 @@ static int ignore_add_errors, intent_to_add, ignore_missing;
 static int addremove = ADDREMOVE_DEFAULT;
 static int addremove_explicit = -1; /* unspecified */
 
+static char should_chmod = 0;
+
 static int ignore_removal_cb(const struct option *opt, const char *arg, int unset)
 {
 	/* if we are told to ignore, we are not adding removals */
 	*(int *)opt->value = !unset ? 0 : 1;
+	return 0;
+}
+
+static int chmod_cb(const struct option *opt, const char *arg, int unset)
+{
+	char *flip = opt->value;
+	if ((arg[0] != '-' && arg[0] != '+') || arg[1] != 'x' || arg[2])
+		return error("option 'chmod' expects \"+x\" or \"-x\"");
+	*flip = arg[0];
 	return 0;
 }
 
@@ -263,6 +274,9 @@ static struct option builtin_add_options[] = {
 	OPT_BOOL( 0 , "refresh", &refresh_only, N_("don't add, only refresh the index")),
 	OPT_BOOL( 0 , "ignore-errors", &ignore_add_errors, N_("just skip files which cannot be added because of errors")),
 	OPT_BOOL( 0 , "ignore-missing", &ignore_missing, N_("check if - even missing - files are ignored in dry run")),
+	{ OPTION_CALLBACK, 0, "chmod", &should_chmod, N_("(+/-)x"),
+	  N_("override the executable bit of the listed files"),
+	  PARSE_OPT_NONEG | PARSE_OPT_LITERAL_ARGHELP, chmod_cb},
 	OPT_END(),
 };
 
@@ -346,7 +360,9 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		 (intent_to_add ? ADD_CACHE_INTENT : 0) |
 		 (ignore_add_errors ? ADD_CACHE_IGNORE_ERRORS : 0) |
 		 (!(addremove || take_worktree_changes)
-		  ? ADD_CACHE_IGNORE_REMOVAL : 0));
+		  ? ADD_CACHE_IGNORE_REMOVAL : 0)) |
+		 (should_chmod == '+' ? ADD_CACHE_FORCE_EXECUTABLE : 0) |
+		 (should_chmod == '-' ? ADD_CACHE_FORCE_NOTEXECUTABLE : 0);
 
 	if (require_pathspec && argc == 0) {
 		fprintf(stderr, _("Nothing specified, nothing added.\n"));
