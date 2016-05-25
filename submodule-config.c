@@ -199,6 +199,7 @@ static struct submodule *lookup_or_create_by_name(struct submodule_cache *cache,
 	submodule->update_strategy.command = NULL;
 	submodule->fetch_recurse = RECURSE_SUBMODULES_NONE;
 	submodule->ignore = NULL;
+	submodule->recommended_depth = -1;
 
 	hashcpy(submodule->gitmodules_sha1, gitmodules_sha1);
 
@@ -353,6 +354,21 @@ static int parse_config(const char *var, const char *value, void *data)
 		else if (parse_submodule_update_strategy(value,
 			 &submodule->update_strategy) < 0)
 				die(_("invalid value for %s"), var);
+	} else if (!strcmp(item.buf, "depth")) {
+		if (!value)
+			ret = config_error_nonbool(var);
+		else if (!me->overwrite &&
+			 submodule->recommended_depth != -1)
+			warn_multiple_config(me->commit_sha1, submodule->name,
+					     "depth");
+		else {
+			int d = strtol(value, NULL, 0);
+			if (d < 0)
+				warning("Invalid parameter '%s' for config option "
+					"'submodule.%s.depth'", value, var);
+			else
+				submodule->recommended_depth = d;
+		}
 	}
 
 	strbuf_release(&name);
