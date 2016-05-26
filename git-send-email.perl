@@ -721,10 +721,10 @@ if ($quote_email) {
 			}
 		}
 	}
-	
+
 	my $tpl_date = $date && "On $date, " || '';
 	$message_quoted = $tpl_date.$recipient." wrote:\n";
-	
+
 	# Quote the message body
 	while (<$fh>) {
 		# Only for files containing crlf line endings
