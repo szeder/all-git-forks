@@ -26,6 +26,7 @@ use Text::ParseWords;
 use Term::ANSIColor;
 use File::Temp qw/ tempdir tempfile /;
 use File::Spec::Functions qw(catfile);
+use File::Copy;
 use Error qw(:try);
 use Git;
 
@@ -640,6 +641,7 @@ if (@files) {
 	print STDERR "\nNo patch files specified!\n\n";
 	usage();
 }
+
 my $message_quoted;
 if ($quote_email) {
 	$message_quoted = "";
@@ -724,7 +726,7 @@ if ($quote_email) {
 		if (/^[^>]/) {
 			$space = " ";
 		}
-		$message_quoted .=  ">".$space.$_;
+		$message_quoted .= ">".$space.$_;
 	}
 	if (!$compose) {
 		$annotate = 1;
@@ -757,7 +759,10 @@ if ($compose) {
 	my $tpl_sender = $sender || $repoauthor || $repocommitter || '';
 	my $tpl_subject = $initial_subject || '';
 	my $tpl_reply_to = $initial_reply_to || '';
-	my $tpl_quote = $message_quoted && "\n".$message_quoted || '';
+	my $tpl_quote = $message_quoted &&
+		"\nGIT: Please, trim down irrelevant sections in the quoted message\n".
+		"GIT: to keep your email concise\n".
+		$message_quoted || '';
 
 	print $c <<EOT;
 From $tpl_sender # This line is ignored.
@@ -838,17 +843,18 @@ EOT
 		my $quote_email_filename = ($repo ?
 		tempfile(".gitsendemail.msg.XXXXXX", DIR => $repo->repo_path()) :
 		tempfile(".gitsendemail.msg.XXXXXX", DIR => "."))[1];
+
+		# Copy the original patch and insert the quoted message body
 		open my $c, "<", $files[0]
 			or die "Failed to open $files[0] : " . $!;
 
 		open my $c2, ">", $quote_email_filename
 			or die "Failed to open $quote_email_filename : ". $!;
 		while (<$c>) {
+			print $c2 $_;
 			if (/^[^---]/) {
-				print $c2 $_;
 				next;
 			}
-			print $c2 $_;
 			last;
 		}
 		print $c2 $message_quoted;
@@ -857,10 +863,13 @@ EOT
 		}
 		close $c;
 		close $c2;
+
 		my $tmp_file = $files[0];
 		$files[0] = $quote_email_filename;
+
 		do_edit(@files);
-		rename($quote_email_filename, $tmp_file);
+
+		move($quote_email_filename, $tmp_file);
 		$files[0] = $tmp_file;
 
 	} else {
