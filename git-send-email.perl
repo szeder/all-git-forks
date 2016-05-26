@@ -644,12 +644,13 @@ if (@files) {
 
 my $message_quoted;
 if ($quote_email) {
-	$message_quoted = "";
 	my $error = validate_patch($quote_email);
 	$error and die "fatal: $quote_email: $error\nwarning: no patches were sent\n";
 	my @header = ();
+	my $date;
+	my $recipient;
 	open my $fh, "<", $quote_email or die "can't open file $quote_email";
-	while(<$fh>) {
+	while (<$fh>) {
 		# For files containing crlf line endings
 		$_=~ s/\r//g;
 		last if /^\s*$/;
@@ -682,7 +683,8 @@ if ($quote_email) {
 				}
 				$initial_subject = $prefix_re.$subject_re;
 			} elsif (/^From:\s+(.*)$/i) {
-				push @initial_to, $1;
+				$recipient = $1;
+				push @initial_to, $recipient;
 			} elsif (/^To:\s+(.*)$/i) {
 				foreach my $addr (parse_address_line($1)) {
 					if (!($addr eq $initial_sender)) {
@@ -702,6 +704,8 @@ if ($quote_email) {
 				}
 			} elsif (/^Message-Id: (.*)/i) {
 				$initial_reply_to = $1;
+			} elsif (/^Date: (.*)/i) {
+				$date = $1;
 			}
 		} else {
 			# In the traditional
@@ -717,7 +721,10 @@ if ($quote_email) {
 			}
 		}
 	}
-
+	
+	my $tpl_date = $date && "On $date, " || '';
+	$message_quoted = $tpl_date.$recipient." wrote:\n";
+	
 	# Quote the message body
 	while (<$fh>) {
 		# Only for files containing crlf line endings
