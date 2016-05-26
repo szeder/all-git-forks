@@ -1899,14 +1899,36 @@ test_expect_success $PREREQ 'setup expect' '
 	EOF
 '
 
-test_expect_success $PREREQ 'From, To, Cc, Subject with --quote-email are correct' '
+test_expect_success $PREREQ 'Fields with --quote-email are correct' '
 	clean_fake_sendmail &&
-	git send-email --compose \
+	git send-email \
 		--quote-email=email \
 		--from="Example <nobody@example.com>" \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		-1 \
 		2>errors &&
+	grep "From: Example <nobody@example.com>" msgtxt1 &&
+	to_adr=$(awk "/^To: /,/^Cc: /" msgtxt1) &&
+	cc_adr=$(awk "/^Cc: /,/^Date /" msgtxt1) &&
+	echo "$to_adr" | grep author@example.com &&
+	echo "$cc_adr" | grep to1@example.com &&
+	echo "$cc_adr" | grep cc1@example.com
+'
+test_expect_success $PREREQ 'correct quoted message with --quote-email' '
+	grep "> Have you seen my previous email?" msgtxt1 &&
+	grep ">> Previous content" msgtxt1
+'
+
+# With --compose set
+test_expect_success $PREREQ 'Fields with --quote-email and --compose are correct' '
+	clean_fake_sendmail &&
+	git send-email \
+		--quote-email=email \
+		--compose \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-1 \
+		2>/tmp/toto.txt &&
 	cp msgtxt1 /tmp/msgtxt1 &&
 	grep "From: Example <nobody@example.com>" msgtxt1 &&
 	to_adr=$(awk "/^To: /,/^Cc: /" msgtxt1) &&
@@ -1915,14 +1937,11 @@ test_expect_success $PREREQ 'From, To, Cc, Subject with --quote-email are correc
 	echo "$cc_adr" | grep to1@example.com &&
 	echo "$cc_adr" | grep cc1@example.com
 '
-test_expect_success $PREREQ 'correct quoted message with quote-email and compose' '
-	grep "> Have you seen my previous email?" msgtxt1 &&
-	grep ">> Previous content" msgtxt1
-'
-test_expect_success $PREREQ 'Check if Re is written, only once with --quote-email' '
+test_expect_success $PREREQ 'Re: written once with --quote-email and --compose ' '
 	grep "Subject: Re: subject goes here" msgtxt1 &&
-	git send-email --compose \
+	git send-email \
 		--quote-email=msgtxt1 \
+		--compose \
 		--from="Example <nobody@example.com>" \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		-1 \
