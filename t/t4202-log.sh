@@ -890,6 +890,25 @@ test_expect_success GPG 'log --graph --show-signature for merged tag' '
 	grep "^| | gpg: Good signature" actual
 '
 
+test_expect_success GPG 'log.showsignature=true behaves like --show-signature' '
+	git checkout -b test_sign master &&
+	echo foo >foo &&
+	git add foo &&
+	git commit -S -m signed_commit &&
+	test_config log.showsignature true &&
+	git log -1 signed >actual &&
+	test_i18ngrep "gpg: Signature made" actual &&
+	test_i18ngrep "gpg: Good signature" actual
+'
+
+test_expect_success GPG '--show-signature overrides log.showsignature=false' '
+	test_when_finished "git reset --hard && git checkout master" &&
+	git config log.showsignature false &&
+	git log -1 --show-signature signed >actual &&
+	test_i18ngrep "gpg: Signature made" actual &&
+	test_i18ngrep "gpg: Good signature" actual
+'
+
 test_expect_success 'log --graph --no-walk is forbidden' '
 	test_must_fail git log --graph --no-walk
 '
