@@ -3188,6 +3188,9 @@ int write_sha1_file(const void *buf, unsigned long len, const char *type, unsign
 	char hdr[32];
 	int hdrlen = sizeof(hdr);
 
+	if (!external_odb_write_object(buf, len, type, sha1))
+		return 0;
+
 	/* Normally if we have it in the pack then we do not bother writing
 	 * it out into .git/objects/??/?{38} file.
 	 */
