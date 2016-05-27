@@ -1750,3 +1750,108 @@ sub body_or_subject_has_nonascii {
 	}
 	return 0;
 }
+
+sub parse_email {
+	my @header = ();
+	my @body = ();
+	my $fh = shift;
+
+	# First unfold multiline header fields
+	while (<$fh>) {
+		last if /^\s*$/;
+		if (/^\s+\S/ and @header) {
+			chomp($header[$#header]);
+			s/^\s+/ /;
+			$header[$#header] .= $_;
+		} else {
+			push(@header, $_);
+		}
+	}
+
+	# Now unfold the message body
+	while (<$fh>) {
+		push @body, $_;
+	}
+
+	return (@header, @body);
+}
+
+sub parse_header {
+	# Return variables
+	my $from = undef, $subject = undef;
+	my $date = undef, $message_id = undef;
+	my @to = (), @cc = (), @xh = ();
+	my %flags = ();
+
+
+	# Internal variables
+	my $input_format = undef;
+
+	foreach(@_) {
+		if (/^From /) {
+			$input_format = 'mbox';
+			next;
+		}
+		chomp;
+		if (!defined $input_format && /^[-A-Za-z]+:\s/) {
+			$input_format = 'mbox';
+		}
+
+		if (defined $input_format && $input_format eq 'mbox') {
+			if (/^Subject:\s+(.*)$/i) {
+				$subject = $1;
+			} elsif (/^From:\s+(.*)$/i) {
+				$from = $1;
+			} elsif (/^To:\s+(.*)$/i) {
+				foreach my $addr (parse_address_line($1)) {
+					push @to, $addr;
+				}
+			} elsif (/^Cc:\s+(.*)$/i) {
+				foreach my $addr (parse_address_line($1)) {
+					push @cc, $addr;
+				}
+			} elsif (/^Content-type:/i) {
+				$flags{"has_content_type"} = 1;
+				if (/charset="?([^ "]+)/) {
+					$flags{"body_encoding"} = 1;
+				}
+				push @xh, $_;
+			} elsif (/^MIME-Version/i) {
+				$flags{"has_mime_version"} = 1;
+				push @xh, $_;
+			} elsif (/^Message-Id: (.*)/i) {
+				$message_id = $1;
+			} elsif (/^Content-Transfer-Encoding: (.*)/i) {
+				$flags{"xfer_encoding"} = $1 if not defined $flags{"xfer_encoding"};
+			} elsif (/^Date:\s(.*)$/i) {
+				$date = $1;
+			} elsif (/^[-A-Za-z]+:\s+\S/) {
+				push @xh, $_;
+			}
+
+		} else {
+			# In the traditional
+			# "send lots of email" format,
+			# line 1 = cc
+			# line 2 = subject
+			# So let's support that, too.
+			$input_format = 'lots';
+			if (@cc == 0) {
+				push @cc, $_;
+			} elsif (!defined $subject) {
+				$subject = $_;
+			}
+		}
+	}
+
+	return (
+		"from" => $from,
+		"subject" => $subject,
+		"date" => $date,
+		"message_id" => $message_id,
+		"to" => [@to],
+		"cc" => [@cc],
+		"xh" => [@xh],
+		"flags" => {%flags}
+	);
+}
