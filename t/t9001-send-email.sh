@@ -1916,6 +1916,12 @@ test_expect_success $PREREQ 'Fields with --quote-email are correct' '
 	echo "$cc_adr" | grep cc1@example.com
 '
 
+test_expect_success $PREREQ 'correct quoted message with --quote-email' '
+	grep "On Sat, 12 Jun 2010 15:53:58 +0200, author@example.com wrote:" msgtxt1 &&
+	grep "> Have you seen my previous email?" msgtxt1 &&
+	grep ">> Previous content" msgtxt1
+'
+
 test_expect_success $PREREQ 'Fields with --quote-email and --compose are correct' '
 	clean_fake_sendmail &&
 	git send-email \

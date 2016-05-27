@@ -109,7 +109,10 @@ is not set, this will be prompted for.
 --quote-email=<email_file>::
 	Reply to the given email and automatically populate the "To:", "Cc:" and
 	"In-Reply-To:" fields. If `--compose` is set, this will also fill the
-	subject field with "Re: [<email_file>'s subject]".
+	subject field with "Re: [<email_file>'s subject]" and quote the message body
+	of <email_file>. If `--compose` is not set, this will imply `--annotate`
+	option and will quote the message body of <email_file> after the triple-dash
+	in the first patch.
 
 --subject=<string>::
 	Specify the initial subject of the email thread.
