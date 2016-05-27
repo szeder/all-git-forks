@@ -166,6 +166,7 @@ Format of STDIN stream:
 #include "quote.h"
 #include "exec_cmd.h"
 #include "dir.h"
+#include "run-command.h"
 
 #define PACK_ID_BITS 16
 #define MAX_PACK_ID ((1<<PACK_ID_BITS)-1)
@@ -282,6 +283,7 @@ struct recent_command {
 /* Configured limits on output */
 static unsigned long max_depth = 10;
 static off_t max_packsize;
+static int unpack_limit = 100;
 static int force_update;
 static int pack_compression_level = Z_DEFAULT_COMPRESSION;
 static int pack_compression_seen;
@@ -594,6 +596,22 @@ static struct object_entry *insert_object(unsigned char *sha1)
 	e->idx.offset = 0;
 	object_table[h] = e;
 	return e;
+}
+
+static void clear_object_table(void)
+{
+	unsigned int h;
+	for (h = 0; h < ARRAY_SIZE(object_table); h++) {
+		/*
+		 * We can't individually free objects here
+		 * because they are allocated from a pool.
+		 */
+		object_table[h] = NULL;
+	}
+	/*
+	 * XXX maybe free object_entry_pool here,
+	 * or might something still be referencing them?
+	 */
 }
 
 static unsigned int hc_str(const char *s, size_t len)
@@ -951,6 +969,23 @@ static void unkeep_all_packs(void)
 	}
 }
 
+static int loosen_small_pack(const struct packed_git *p)
+{
+	struct child_process unpack = CHILD_PROCESS_INIT;
+
+	if (lseek(p->pack_fd, 0, SEEK_SET) < 0)
+		die_errno("Failed seeking to start of '%s'", p->pack_name);
+
+	unpack.in = p->pack_fd;
+	unpack.git_cmd = 1;
+	unpack.stdout_to_stderr = 1;
+	argv_array_push(&unpack.args, "unpack-objects");
+	if (!show_stats)
+		argv_array_push(&unpack.args, "-q");
+
+	return run_command(&unpack);
+}
+
 static void end_packfile(void)
 {
 	static int running;
@@ -973,6 +1008,12 @@ static void end_packfile(void)
 		fixup_pack_header_footer(pack_data->pack_fd, pack_data->sha1,
 				    pack_data->pack_name, object_count,
 				    cur_pack_sha1, pack_size);
+
+		if (object_count <= unpack_limit) {
+			if (!loosen_small_pack(pack_data))
+				goto discard_pack;
+		}
+
 		close(pack_data->pack_fd);
 		idx_name = keep_pack(create_index());
 
@@ -1003,12 +1044,16 @@ static void end_packfile(void)
 		pack_id++;
 	}
 	else {
+discard_pack:
 		close(pack_data->pack_fd);
 		unlink_or_warn(pack_data->pack_name);
 	}
 	free(pack_data);
 	pack_data = NULL;
 	running = 0;
+
+	/* The objects are now available via git's regular lookups. */
+	clear_object_table();
 
 	/* We can't carry a delta across packfiles. */
 	strbuf_release(&last_blob.data);
@@ -3320,6 +3365,7 @@ static void parse_option(const char *option)
 static void git_pack_config(void)
 {
 	int indexversion_value;
+	int limit;
 	unsigned long packsizelimit_value;
 
 	if (!git_config_get_ulong("pack.depth", &max_depth)) {
@@ -3343,6 +3389,11 @@ static void git_pack_config(void)
 	}
 	if (!git_config_get_ulong("pack.packsizelimit", &packsizelimit_value))
 		max_packsize = packsizelimit_value;
+
+	if (!git_config_get_int("fastimport.unpacklimit", &limit))
+		unpack_limit = limit;
+	else if (!git_config_get_int("transfer.unpacklimit", &limit))
+		unpack_limit = limit;
 
 	git_config(git_default_config, NULL);
 }
