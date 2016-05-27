@@ -56,6 +56,13 @@ int main (int argc, char *argv[])
 		/* STRBUF_OWNS_MEMORY AND ~STRBUF_FIXED_MEMORY with init */
 		strbuf_init(&sb, 0);
 		return test_not_fixed_and_owned(&sb);
+	} else if (!strcmp(argv[1], "release_free")) {
+		strbuf_init(&sb, 0);
+		strbuf_grow(&sb, 250);
+		strbuf_release(&sb); 
+	} else if (!strcmp(argv[1], "grow_overflow")) {
+		strbuf_init(&sb, 1000);
+		strbuf_grow(&sb, maximum_unsigned_value_of_type((size_t)1));
 	} else if (!strcmp(argv[1], "preallocated_multiple")) {
 		/* STRBUF_OWNS_MEMORY AND ~STRBUF_FIXED_MEMORY prealloc */
 		strbuf_wrap_preallocated(&sb, (void *)str_test,
@@ -104,13 +111,6 @@ int main (int argc, char *argv[])
 		strbuf_release(&sb);
 		if (sb.buf != strbuf_slopbuf)
 			die("strbuf_release does not free the buffer");
-	} else if (!strcmp(argv[1], "release_free")) {
-		strbuf_init(&sb, 0);
-		strbuf_grow(&sb, 250);
-		strbuf_release(&sb); 
-	} else if (!strcmp(argv[1], "grow_overflow")) {
-		strbuf_init(&sb, 1000);
-		strbuf_grow(&sb, maximum_unsigned_value_of_type((size_t)1));
 	}else {
 		usage("test-strbuf mode");
 	}

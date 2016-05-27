@@ -95,6 +95,14 @@ test_expect_success 'strbuf_init with not fixed and owned memory ' '
 	test-strbuf init_not_fixed
 '
 
+test_expect_success 'default grow and release' '
+	test-strbuf release_free
+'
+
+test_expect_success 'overflow while calling strbuf_grow' '
+	test_must_fail test-strbuf grow_overflow
+'
+
 test_expect_success 'strbuf_wrap_preallocated multiple tests' '
 	test-strbuf preallocated_multiple
 '
@@ -121,10 +129,6 @@ test_expect_success 'stbuf_detach with wrap_fixed memory' '
 
 test_expect_success 'stbuf_release with wrap_fixed memory' '
 	test-strbuf release_fixed
-'
-
-test_expect_success 'overflow while calling strbuf_grow' '
-	test_must_fail test-strbuf grow_overflow
 '
 
 test_done
