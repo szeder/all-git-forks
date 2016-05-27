@@ -99,6 +99,10 @@ test_expect_success 'strbuf_wrap_preallocated multiple tests' '
 	test-strbuf preallocated_multiple
 '
 
+test_expect_success 'strbuf_wrap_preallocated NULL initialization' '
+	test_must_fail test-strbuf preallocated_NULL
+'
+
 test_expect_success 'strbuf_grow with wrap_fixed in a basic failure case' '
 	test_must_fail test-strbuf grow_fixed_basic_failure
 '
@@ -117,6 +121,10 @@ test_expect_success 'stbuf_detach with wrap_fixed memory' '
 
 test_expect_success 'stbuf_release with wrap_fixed memory' '
 	test-strbuf release_fixed
+'
+
+test_expect_success 'overflow while calling strbuf_grow' '
+	test_must_fail test-strbuf grow_overflow
 '
 
 test_done

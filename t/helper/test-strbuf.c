@@ -1,10 +1,10 @@
 #include "git-compat-util.h"
 #include "strbuf.h"
+
 /*
  * code to test flags usage for strbuf, using
  * strbuf_wrap_preallocated and strbuf_wrap_fixed
  */
-
 int test_not_fixed_and_owned(struct strbuf *sb) 
 {
 	size_t size, old_alloc;
@@ -47,7 +47,7 @@ int main (int argc, char *argv[])
 		strbuf_init(&sb, 0);
 		strbuf_grow(&sb, 0);
 		if (sb.buf == strbuf_slopbuf)
-			die("strbuf_grow does not give a memory to the buffer");
+			die("strbuf_grow failed to alloc memory");
 
 		strbuf_release(&sb);
 		if (sb.buf != strbuf_slopbuf)
@@ -63,6 +63,10 @@ int main (int argc, char *argv[])
 								 sizeof(str_test));
 
 		return test_not_fixed_and_owned(&sb);
+	} else if (!strcmp(argv[1], "preallocated_NULL")) {
+		strbuf_wrap_preallocated(&sb, NULL,
+							     0,
+								 sizeof(str_test));
 	} else if (!strcmp(argv[1], "grow_fixed_basic_failure")) {
 		/* ~STRBUF_OWNS_MEMORY AND STRBUF_FIXED_MEMORY expect fail */
 		strbuf_wrap_fixed(&sb, (void *)str_foo,
@@ -104,7 +108,10 @@ int main (int argc, char *argv[])
 		strbuf_init(&sb, 0);
 		strbuf_grow(&sb, 250);
 		strbuf_release(&sb); 
-	} else {
+	} else if (!strcmp(argv[1], "grow_overflow")) {
+		strbuf_init(&sb, 1000);
+		strbuf_grow(&sb, maximum_unsigned_value_of_type((size_t)1));
+	}else {
 		usage("test-strbuf mode");
 	}
 	return 0;
