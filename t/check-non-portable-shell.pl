@@ -18,6 +18,7 @@ while (<>) {
 	chomp;
 	/\bsed\s+-i/ and err 'sed -i is not portable';
 	/\becho\s+-n/ and err 'echo -n is not portable (please use printf)';
+	/\breadlink\s+/ and err 'readlink is not portable (please use ls -ld | sed)';
 	/^\s*declare\s+/ and err 'arrays/declare not portable';
 	/^\s*[^#]\s*which\s/ and err 'which is not portable (please use type)';
 	/\btest\s+[^=]*==/ and err '"test a == b" is not portable (please use =)';
