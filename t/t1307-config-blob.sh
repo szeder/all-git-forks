@@ -64,7 +64,7 @@ test_expect_success 'parse errors in blobs are properly attributed' '
 
 	# just grep for our token as the exact error message is likely to
 	# change or be internationalized
-	grep "HEAD:config" err
+	test_i18ngrep "HEAD:config" err
 '
 
 test_expect_success 'can parse blob ending with CR' '
