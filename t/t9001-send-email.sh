@@ -1885,4 +1885,65 @@ test_expect_success $PREREQ 'leading and trailing whitespaces are removed' '
 	test_cmp expected-list actual-list
 '
 
+test_expect_success $PREREQ 'setup expect' '
+	cat >email <<-\EOF
+	Message-Id: <author_123456@example.com>
+	From: author@example.com
+	To: to1@example.com
+	Cc: cc1@example.com
+	Date: Sat, 12 Jun 2010 15:53:58 +0200
+	Subject: subject goes here
+
+	Have you seen my previous email?
+	> Previous content
+	EOF
+'
+
+test_expect_success $PREREQ 'Fields with --quote-email are correct' '
+	clean_fake_sendmail &&
+	git send-email \
+		--quote-email=email \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-1 \
+		2>errors &&
+	grep "From: Example <nobody@example.com>" msgtxt1 &&
+	grep "In-Reply-To: <author_123456@example.com>" msgtxt1 &&
+	to_adr=$(awk "/^To: /,/^Cc: /" msgtxt1) &&
+	cc_adr=$(awk "/^Cc: /,/^Date /" msgtxt1) &&
+	echo "$to_adr" | grep author@example.com &&
+	echo "$cc_adr" | grep to1@example.com &&
+	echo "$cc_adr" | grep cc1@example.com
+'
+
+test_expect_success $PREREQ 'Fields with --quote-email and --compose are correct' '
+	clean_fake_sendmail &&
+	git send-email \
+		--quote-email=email \
+		--compose \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-1 \
+		2>errors &&
+	grep "From: Example <nobody@example.com>" msgtxt1 &&
+	grep "In-Reply-To: <author_123456@example.com>" msgtxt1 &&
+	grep "Subject: Re: subject goes here" msgtxt1 &&
+	to_adr=$(awk "/^To: /,/^Cc: /" msgtxt1) &&
+	cc_adr=$(awk "/^Cc: /,/^Date /" msgtxt1) &&
+	echo "$to_adr" | grep author@example.com &&
+	echo "$cc_adr" | grep to1@example.com &&
+	echo "$cc_adr" | grep cc1@example.com
+'
+
+test_expect_success $PREREQ 'Re: written only once with --quote-email and --compose ' '
+	git send-email \
+		--quote-email=msgtxt1 \
+		--compose \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-1 \
+		2>errors &&
+	grep "Subject: Re: subject goes here" msgtxt3
+'
+
 test_done

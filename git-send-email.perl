@@ -55,6 +55,8 @@ git send-email --dump-aliases
     --[no-]bcc              <str>  * Email Bcc:
     --subject               <str>  * Email "Subject:"
     --in-reply-to           <str>  * Email "In-Reply-To:"
+    --quote-email           <file> * Fill the fields "To:", "Cc:", "Subject:",
+                                     "In-Reply-To" appropriately.
     --[no-]xmailer                 * Add "X-Mailer:" header (default).
     --[no-]annotate                * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
@@ -160,7 +162,7 @@ my $re_encoded_word = qr/=\?($re_token)\?($re_token)\?($re_encoded_text)\?=/;
 
 # Variables we fill in automatically, or via prompting:
 my (@to,$no_to,@initial_to,@cc,$no_cc,@initial_cc,@bcclist,$no_bcc,@xh,
-	$initial_reply_to,$initial_subject,@files,
+	$initial_reply_to,$quote_email,$initial_subject,@files,
 	$author,$sender,$smtp_authpass,$annotate,$use_xmailer,$compose,$time);
 
 my $envelope_sender;
@@ -304,6 +306,7 @@ $rc = GetOptions(
 		    "sender|from=s" => \$sender,
                     "in-reply-to=s" => \$initial_reply_to,
 		    "subject=s" => \$initial_subject,
+		    "quote-email=s" => \$quote_email,
 		    "to=s" => \@initial_to,
 		    "to-cmd=s" => \$to_cmd,
 		    "no-to" => \$no_to,
@@ -637,6 +640,88 @@ if (@files) {
 } else {
 	print STDERR "\nNo patch files specified!\n\n";
 	usage();
+}
+
+if ($quote_email) {
+	my $error = validate_patch($quote_email);
+	$error and die "fatal: $quote_email: $error\nwarning: no patches were sent\n";
+
+	my @header = ();
+
+	open my $fh, "<", $quote_email or die "can't open file $quote_email";
+
+	# Get the email header
+	while (<$fh>) {
+		# For files containing crlf line endings
+		s/\r//g;
+		last if /^\s*$/;
+		if (/^\s+\S/ and @header) {
+			chomp($header[$#header]);
+			s/^\s+/ /;
+			$header[$#header] .= $_;
+		} else {
+			push(@header, $_);
+		}
+	}
+
+	# Parse the header
+	foreach (@header) {
+		my $input_format;
+		my $initial_sender = $sender || $repoauthor || $repocommitter || '';
+
+		if (/^From /) {
+			$input_format = 'mbox';
+			next;
+		}
+		chomp;
+		if (!defined $input_format && /^[-A-Za-z]+:\s/) {
+			$input_format = 'mbox';
+		}
+
+		if (defined $input_format && $input_format eq 'mbox') {
+			if (/^Subject:\s+(.*)$/i) {
+				my $prefix_re = "";
+				my $subject_re = $1;
+				if ($1 =~ /^[^Re:]/) {
+					$prefix_re = "Re: ";
+				}
+				$initial_subject = $prefix_re . $subject_re;
+			} elsif (/^From:\s+(.*)$/i) {
+				push @initial_to, $1;
+			} elsif (/^To:\s+(.*)$/i) {
+				foreach my $addr (parse_address_line($1)) {
+					if (!($addr eq $initial_sender)) {
+						push @initial_cc, $addr;
+					}
+				}
+			} elsif (/^Cc:\s+(.*)$/i) {
+				foreach my $addr (parse_address_line($1)) {
+					my $qaddr = unquote_rfc2047($addr);
+					my $saddr = sanitize_address($qaddr);
+					if ($saddr eq $initial_sender) {
+						next if ($suppress_cc{'self'});
+					} else {
+						next if ($suppress_cc{'cc'});
+					}
+					push @initial_cc, $addr;
+				}
+			} elsif (/^Message-Id: (.*)/i) {
+				$initial_reply_to = $1;
+			}
+		} else {
+			# In the traditional
+			# "send lots of email" format,
+			# line 1 = cc
+			# line 2 = subject
+			# So let's support that, too.
+			$input_format = 'lots';
+			if (@cc == 0 && !$suppress_cc{'cc'}) {
+				push @cc, $_;
+			} elsif (!defined $initial_subject) {
+				$initial_subject = $_;
+			}
+		}
+	}
 }
 
 sub get_patch_subject {
