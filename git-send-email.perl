@@ -161,7 +161,7 @@ my $re_encoded_word = qr/=\?($re_token)\?($re_token)\?($re_encoded_text)\?=/;
 # Variables we fill in automatically, or via prompting:
 my (@to,$no_to,@initial_to,@cc,$no_cc,@initial_cc,@bcclist,$no_bcc,@xh,
 	$initial_reply_to,$initial_subject,@files,
-	$author,$sender,$smtp_authpass,$annotate,$use_xmailer,$compose,$time);
+	$sender,$smtp_authpass,$annotate,$use_xmailer,$compose,$time);
 
 my $envelope_sender;
 
@@ -1431,117 +1431,57 @@ $subject = $initial_subject;
 $message_num = 0;
 
 foreach my $t (@files) {
-	open my $fh, "<", $t or die "can't open file $t";
-
-	my $author = undef;
-	my $sauthor = undef;
-	my $author_encoding;
-	my $has_content_type;
-	my $body_encoding;
-	my $xfer_encoding;
-	my $has_mime_version;
-	@to = ();
-	@cc = ();
-	@xh = ();
-	my $input_format = undef;
-	my @header = ();
 	$message = "";
 	$message_num++;
-	# First unfold multiline header fields
-	while(<$fh>) {
-		last if /^\s*$/;
-		if (/^\s+\S/ and @header) {
-			chomp($header[$#header]);
-			s/^\s+/ /;
-			$header[$#header] .= $_;
-	    } else {
-			push(@header, $_);
-		}
+
+	# Split email into header and body
+	open my $fh, "<", $t or die "can't open file $t";
+	my (@header, @body) = parse_email($fh);
+	close $fh;
+
+	# Parse header
+	my %parsed_header = parse_header(@header);
+	my $from = $parsed_header{"from"};
+	$subject = $parsed_header{"subject"};
+	$message_id = $parsed_header{"message_id"};
+	@to = @{$parsed_header{"to"}};
+	@cc = @{$parsed_header{"cc"}};
+	@xh = @{$parsed_header{"xh"}};
+	my %flags = %{$parsed_header{"flags"}};
+
+	# Process parsed headers
+	my ($author, $author_encoding) = unquote_rfc2047($from);
+	my $sauthor = sanitize_address($author);
+	unless ($suppress_cc{'author'} or
+		($suppress_cc{'self'} and $sauthor eq $sender)) {
+		printf("(mbox) Adding cc: %s from line 'From: %s'\n",
+			$from, $from) unless $quiet;
+		push @cc, $from;
 	}
-	# Now parse the header
-	foreach(@header) {
-		if (/^From /) {
-			$input_format = 'mbox';
-			next;
-		}
-		chomp;
-		if (!defined $input_format && /^[-A-Za-z]+:\s/) {
-			$input_format = 'mbox';
-		}
 
-		if (defined $input_format && $input_format eq 'mbox') {
-			if (/^Subject:\s+(.*)$/i) {
-				$subject = $1;
-			}
-			elsif (/^From:\s+(.*)$/i) {
-				($author, $author_encoding) = unquote_rfc2047($1);
-				$sauthor = sanitize_address($author);
-				next if $suppress_cc{'author'};
-				next if $suppress_cc{'self'} and $sauthor eq $sender;
-				printf("(mbox) Adding cc: %s from line '%s'\n",
-					$1, $_) unless $quiet;
-				push @cc, $1;
-			}
-			elsif (/^To:\s+(.*)$/i) {
-				foreach my $addr (parse_address_line($1)) {
-					printf("(mbox) Adding to: %s from line '%s'\n",
-						$addr, $_) unless $quiet;
-					push @to, $addr;
-				}
-			}
-			elsif (/^Cc:\s+(.*)$/i) {
-				foreach my $addr (parse_address_line($1)) {
-					my $qaddr = unquote_rfc2047($addr);
-					my $saddr = sanitize_address($qaddr);
-					if ($saddr eq $sender) {
-						next if ($suppress_cc{'self'});
-					} else {
-						next if ($suppress_cc{'cc'});
-					}
-					printf("(mbox) Adding cc: %s from line '%s'\n",
-						$addr, $_) unless $quiet;
-					push @cc, $addr;
-				}
-			}
-			elsif (/^Content-type:/i) {
-				$has_content_type = 1;
-				if (/charset="?([^ "]+)/) {
-					$body_encoding = $1;
-				}
-				push @xh, $_;
-			}
-			elsif (/^MIME-Version/i) {
-				$has_mime_version = 1;
-				push @xh, $_;
-			}
-			elsif (/^Message-Id: (.*)/i) {
-				$message_id = $1;
-			}
-			elsif (/^Content-Transfer-Encoding: (.*)/i) {
-				$xfer_encoding = $1 if not defined $xfer_encoding;
-			}
-			elsif (!/^Date:\s/i && /^[-A-Za-z]+:\s+\S/) {
-				push @xh, $_;
-			}
+	foreach (@to) {
+		printf("(mbox) Adding to: %s from line 'To: %s'\n",
+			$_, $_) unless $quiet;
+	}
 
+	my @tmpcc = ();
+	foreach (@cc) {
+		my $qaddr = unquote_rfc2047($_);
+		my $saddr = sanitize_address($qaddr);
+		if ($saddr eq $sender) {
+			next if ($suppress_cc{'self'});
 		} else {
-			# In the traditional
-			# "send lots of email" format,
-			# line 1 = cc
-			# line 2 = subject
-			# So let's support that, too.
-			$input_format = 'lots';
-			if (@cc == 0 && !$suppress_cc{'cc'}) {
-				printf("(non-mbox) Adding cc: %s from line '%s'\n",
-					$_, $_) unless $quiet;
-				push @cc, $_;
-			} elsif (!defined $subject) {
-				$subject = $_;
-			}
+			next if ($suppress_cc{'cc'});
 		}
+		printf("(mbox) Adding cc: %s from line 'Cc: %s'\n",
+			$_, $_) unless $quiet;
+		push @tmpcc, $_;
 	}
+	@cc = @tmpcc;
+
+
 	# Now parse the message body
-	while(<$fh>) {
+	foreach (@body) {
 		$message .=  $_;
 		if (/^(Signed-off-by|Cc): (.*)$/i) {
 			chomp;
@@ -1559,18 +1499,17 @@ foreach my $t (@files) {
 				$c, $_) unless $quiet;
 		}
 	}
-	close $fh;
 
 	push @to, recipients_cmd("to-cmd", "to", $to_cmd, $t)
 		if defined $to_cmd;
 	push @cc, recipients_cmd("cc-cmd", "cc", $cc_cmd, $t)
 		if defined $cc_cmd && !$suppress_cc{'cccmd'};
 
-	if ($broken_encoding{$t} && !$has_content_type) {
-		$xfer_encoding = '8bit' if not defined $xfer_encoding;
-		$has_content_type = 1;
+	if ($broken_encoding{$t} && !$flags{"has_content_type"}) {
+		$flags{"xfer_encoding"} = '8bit' if not defined $flags{"xfer_encoding"};
+		$flags{"has_content_type"} = 1;
 		push @xh, "Content-Type: text/plain; charset=$auto_8bit_encoding";
-		$body_encoding = $auto_8bit_encoding;
+		$flags{"body_encoding"} = $auto_8bit_encoding;
 	}
 
 	if ($broken_encoding{$t} && !is_rfc2047_quoted($subject)) {
@@ -1580,8 +1519,8 @@ foreach my $t (@files) {
 	if (defined $sauthor and $sauthor ne $sender) {
 		$message = "From: $author\n\n$message";
 		if (defined $author_encoding) {
-			if ($has_content_type) {
-				if ($body_encoding eq $author_encoding) {
+			if ($flags{"has_content_type"}) {
+				if ($flags{"body_encoding"} eq $author_encoding) {
 					# ok, we already have the right encoding
 				}
 				else {
@@ -1589,24 +1528,24 @@ foreach my $t (@files) {
 				}
 			}
 			else {
-				$xfer_encoding = '8bit' if not defined $xfer_encoding;
-				$has_content_type = 1;
+				$flags{"xfer_encoding"} = '8bit' if not defined $flags{"xfer_encoding"};
+				$flags{"has_content_type"} = 1;
 				push @xh,
 				  "Content-Type: text/plain; charset=$author_encoding";
 			}
 		}
 	}
 	if (defined $target_xfer_encoding) {
-		$xfer_encoding = '8bit' if not defined $xfer_encoding;
+		$flags{"xfer_encoding"} = '8bit' if not defined $flags{"xfer_encoding"};
 		$message = apply_transfer_encoding(
-			$message, $xfer_encoding, $target_xfer_encoding);
-		$xfer_encoding = $target_xfer_encoding;
+			$message, $flags{"xfer_encoding"}, $target_xfer_encoding);
+		$flags{"xfer_encoding"} = $target_xfer_encoding;
 	}
-	if (defined $xfer_encoding) {
-		push @xh, "Content-Transfer-Encoding: $xfer_encoding";
+	if (defined $flags{"xfer_encoding"}) {
+		push @xh, "Content-Transfer-Encoding: ".$flags{"xfer_encoding"};
 	}
-	if (defined $xfer_encoding or $has_content_type) {
-		unshift @xh, 'MIME-Version: 1.0' unless $has_mime_version;
+	if (defined $flags{"xfer_encoding"} or $flags{"has_content_type"}) {
+		unshift @xh, 'MIME-Version: 1.0' unless $flags{"has_mime_version"};
 	}
 
 	$needs_confirm = (
