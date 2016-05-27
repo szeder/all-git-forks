@@ -1,0 +1,110 @@
+package com.gmail.klochko.denys;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+public class Main {
+
+    public static void main(String[] args) {
+        // write your code here
+        Document document = getDocument("Schedule.xml");
+
+        addTrain(document, "Odessa", "Donetsk", new Date(), "16:00");
+        selectTrains(document, "15:00", "19:00");
+
+    }
+
+    public static void selectTrains(Document document, String criteriaTimeFrom, String criteriaTimeTo) {
+        if (!(checkTime(criteriaTimeFrom, criteriaTimeTo))) return;
+        int[] hoursFromTo = parseFromToTime(criteriaTimeFrom, criteriaTimeTo);
+        if (hoursFromTo == null) return;
+        Element root = document.getDocumentElement();
+        NodeList nodeList = root.getChildNodes();
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node node = nodeList.item(i);
+            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                Element element = (Element) node;
+                String departureTime = element.getElementsByTagName("departure").item(0).getChildNodes().item(0).getNodeValue();
+                String[] hoursMinutes = departureTime.split(":");
+                if (hoursMinutes.length != 2) break;
+                int hours = Integer.parseInt(hoursMinutes[0]);
+                int minutes = Integer.parseInt(hoursMinutes[1]);
+                if ((hours >= hoursFromTo[0] && hours < hoursFromTo[1]) || (hours == hoursFromTo[1] && minutes == 0)) {
+                    NodeList elementChild = element.getChildNodes();
+                    for (int j = 0; j < elementChild.getLength(); j++) {
+                        String nodeName = "";
+                        System.out.print(nodeName = elementChild.item(j).getNodeName().equals("#text") ? "" : (elementChild.item(j).getTextContent() + "\n"));
+                    }
+                    System.out.println(System.lineSeparator());
+                }
+            }
+        }
+    }
+
+    private static boolean checkTime(String criteriaTimeFrom, String criteriaTimeTo) {
+        return (criteriaTimeFrom.contains(":") && criteriaTimeTo.contains(":"));
+    }
+
+    private static int[] parseFromToTime(String criteriaTimeFrom, String criteriaTimeTo) {
+        if (!checkTime(criteriaTimeFrom, criteriaTimeTo)) return null;
+        String[] criteriaTimeFromArray = criteriaTimeFrom.split(":");
+        String[] criteriaTimeToArray = criteriaTimeTo.split(":");
+        return new int[]{Integer.parseInt(criteriaTimeFromArray[0]), Integer.parseInt(criteriaTimeToArray[0])};
+
+    }
+
+    public static Document getDocument(String path) {
+        File xmlFile = new File(path);
+        DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder documentBuilder;
+        Document document = null;
+        try {
+            documentBuilder = documentBuilderFactory.newDocumentBuilder();
+            document = documentBuilder.parse(xmlFile);
+        } catch (ParserConfigurationException e) {
+            e.printStackTrace();
+        } catch (SAXException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return document;
+    }
+
+    public static void addTrain(Document document, String fromString, String toString, Date dateOfDeparture, String timeOfDeparture) {
+        Element train = document.createElement("train");
+
+        document.getDocumentElement().appendChild(train);
+
+        Element from = document.createElement("from");
+        from.setTextContent(fromString);
+        train.appendChild(from);
+
+        Element to = document.createElement("to");
+        to.setTextContent(toString);
+        train.appendChild(to);
+
+        Element date = document.createElement("date");
+        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy");
+        date.setTextContent(sdf.format(dateOfDeparture));
+        train.appendChild(date);
+
+        Element time = document.createElement("departure");
+        time.setTextContent(timeOfDeparture);
+        train.appendChild(time);
+
+
+    }
+}
