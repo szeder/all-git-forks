@@ -3,8 +3,10 @@
 #include "parse-options.h"
 #include "bisect.h"
 #include "refs.h"
+#include "dir.h"
 
 static GIT_PATH_FUNC(git_path_bisect_write_terms, "BISECT_TERMS")
+static GIT_PATH_FUNC(git_path_bisect_head, "BISECT_HEAD")
 
 static const char * const git_bisect_helper_usage[] = {
 	N_("git bisect--helper --next-all [--no-checkout]"),
@@ -76,6 +78,16 @@ static int write_terms(const char *bad, const char *good)
 	res = fprintf(fp, "%s\n%s\n", bad, good);
 	fclose(fp);
 	return (res < 0) ? -1 : 0;
+}
+
+const char *bisect_head(void)
+{
+	if (file_exists(git_path_bisect_head()))
+		return "BISECT_HEAD";
+	else
+		return "HEAD";
+
+	return NULL;
 }
 
 int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
