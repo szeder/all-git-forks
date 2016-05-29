@@ -171,16 +171,19 @@ tweak_rebase_error ()
     sed -e 's/git rebase \(--continue\|--abort\)/git splice \1/g'
 }
 
+# FIXME: duplicated in both spice and transplant
 valid_ref ()
 {
     git rev-parse --quiet --verify "$@" >/dev/null
 }
 
+# FIXME: duplicated in both spice and transplant
 valid_range ()
 {
     git rev-parse "$@" >/dev/null 2>&1
 }
 
+# FIXME: duplicated in both spice and transplant
 cherry_pick_active ()
 {
     # Ideally git rebase would have some plumbing for this, so
@@ -188,6 +191,7 @@ cherry_pick_active ()
     valid_ref CHERRY_PICK_HEAD
 }
 
+# FIXME: duplicated in both spice and transplant
 rebase_active ()
 {
     # Ideally git rebase would have some plumbing for this, so
@@ -212,8 +216,8 @@ validate_base ()
 error_and_pause ()
 {
     warn "$*"
-    warn "When you have resolved this problem, run \"git splice --continue\","
-    warn "or run \"git splice --abort\" to abandon the splice."
+    warn "When you have resolved this problem, run \"git $workflow --continue\","
+    warn "or run \"git $workflow --abort\" to abandon the splice."
     exit 1
 }
 
@@ -288,6 +292,7 @@ splice_abort ()
     fi
 }
 
+# FIXME: duplicated in both spice and transplant
 head_ref ()
 {
     git symbolic-ref --short -q HEAD
@@ -325,6 +330,7 @@ ensure_splice_not_in_progress ()
     fi
 }
 
+# FIXME: duplicated in both spice and transplant
 in_progress_error ()
 {
     cat <<EOF >&2
@@ -337,6 +343,7 @@ EOF
     exit 1
 }
 
+# FIXME: duplicated in both spice and transplant
 ensure_cherry_pick_not_in_progress ()
 {
     if cherry_pick_active; then
@@ -344,6 +351,7 @@ ensure_cherry_pick_not_in_progress ()
     fi
 }
 
+# FIXME: duplicated in both spice and transplant
 ensure_rebase_not_in_progress ()
 {
     if rebase_active; then
@@ -383,17 +391,20 @@ rebase_edit ()
     fi
 }
 
+# FIXME: duplicated in both spice and transplant
 warn ()
 {
     echo >&2 "$*"
 }
 
+# FIXME: duplicated in both spice and transplant
 die ()
 {
     echo >&2 "$*"
     exit 1
 }
 
+# FIXME: duplicated in both spice and transplant
 abort ()
 {
     die "$*; aborting."
@@ -457,6 +468,8 @@ EOF
 parse_opts ()
 {
     ORIG_ARGV=( "$@" )
+    workflow=splice
+
     while [ $# != 0 ]; do
         case "$1" in
             -h|--help)
@@ -490,6 +503,10 @@ parse_opts ()
                 rebase_edit=yes
                 rebase_todo="$2"
                 shift 2
+                ;;
+            --transplant)
+                workflow=transplant
+                shift
                 ;;
             *)
                 break
