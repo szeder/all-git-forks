@@ -262,45 +262,25 @@ int odb_helper_write_object(struct odb_helper *o,
 			    const char *type, unsigned char *sha1)
 {
 	struct odb_helper_cmd cmd;
-	struct strbuf sha1_buf = STRBUF_INIT;
 
 	if (odb_helper_start(o, &cmd, 1, "put %lu %s", len, type) < 0)
 		return -1;
 
-	if (xwrite(cmd.child.in, buf, len)) {
-		error("unable to write to odb helper '%s': %s",
-		      o->name, strerror(errno));
-		goto error_return;
-	}
-
-	for (;;) {
-		unsigned char buf[4096];
-		int r;
-
-		r = xread(cmd.child.out, buf, sizeof(buf));
-		if (r < 0) {
-			error("unable to read from odb helper '%s': %s",
+	do {
+		int w = xwrite(cmd.child.in, buf, len);
+		if (w < 0) {
+			error("unable to write to odb helper '%s': %s",
 			      o->name, strerror(errno));
-			goto error_return;
+			close(cmd.child.in);
+			close(cmd.child.out);
+			odb_helper_finish(o, &cmd);
+			return -1;
 		}
-		if (r == 0)
-			break;
-
-		strbuf_add(&sha1_buf, buf, r);
-	}
+		len -= w;
+	} while (len > 0);
 
 	close(cmd.child.in);
 	close(cmd.child.out);
 	odb_helper_finish(o, &cmd);
-
-	if (get_sha1_hex(sha1_buf.buf, sha1))
-		return error("could not convert '%s' to sha1", sha1_buf.buf);
-
 	return 0;
-
-error_return:
-	close(cmd.child.in);
-	close(cmd.child.out);
-	odb_helper_finish(o, &cmd);
-	return -1;
 }
