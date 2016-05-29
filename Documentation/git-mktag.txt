@@ -32,7 +32,7 @@ followed by some 'optional' free-form message (some tags created
 by older Git may not have `tagger` line).  The message, when
 exists, is separated by a blank line from the header.  The
 message part may contain a signature that Git itself doesn't
-care about, but that can be verified with gpg.
+care about, but that can be verified with GPG.
 
 GIT
 ---

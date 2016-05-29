@@ -12,12 +12,12 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-Validates the gpg signature created by 'git commit -S'.
+Validates the GPG signature created by 'git commit -S'.
 
 OPTIONS
 -------
 --raw::
-	Print the raw gpg status output to standard error instead of the normal
+	Print the raw GPG status output to standard error instead of the normal
 	human-readable output.
 
 -v::
