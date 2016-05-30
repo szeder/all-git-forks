@@ -5,6 +5,7 @@ struct worktree {
 	char *path;
 	char *id;
 	char *head_ref;
+	char *lock_reason;	/* NULL means not locked */
 	unsigned char head_sha1[20];
 	int is_detached;
 	int is_bare;

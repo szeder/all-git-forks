@@ -98,6 +98,7 @@ static struct worktree *get_main_worktree(void)
 	worktree->is_detached = is_detached;
 	worktree->is_current = 0;
 	add_head_info(&head_ref, worktree);
+	worktree->lock_reason = NULL;
 
 done:
 	strbuf_release(&path);
@@ -143,6 +144,17 @@ static struct worktree *get_linked_worktree(const char *id)
 	worktree->is_detached = is_detached;
 	worktree->is_current = 0;
 	add_head_info(&head_ref, worktree);
+
+	strbuf_reset(&path);
+	strbuf_addf(&path, "%s/worktrees/%s/locked", get_git_common_dir(), id);
+	if (file_exists(path.buf)) {
+		struct strbuf lock_reason = STRBUF_INIT;
+		if (strbuf_read_file(&lock_reason, path.buf, 0) < 0)
+			die_errno(_("failed to read '%s'"), path.buf);
+		strbuf_trim(&lock_reason);
+		worktree->lock_reason = strbuf_detach(&lock_reason, NULL);
+	} else
+		worktree->lock_reason = NULL;
 
 done:
 	strbuf_release(&path);
