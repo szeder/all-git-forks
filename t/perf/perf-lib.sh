@@ -84,6 +84,7 @@ test_perf_create_repo_from () {
 	objects_dir="$(git -C "$source" rev-parse --git-path objects)"
 	mkdir -p "$repo/.git"
 	(
+		cd "$source" &&
 		{ cp -Rl "$objects_dir" "$repo/.git/" 2>/dev/null ||
 			cp -R "$objects_dir" "$repo/.git/"; } &&
 		for stuff in "$source_git"/*; do
