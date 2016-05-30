@@ -111,4 +111,17 @@ test_expect_success 'mailinfo on message with quoted >From' '
 	test_cmp "$TEST_DIRECTORY"/t5100/quoted-from.expect quoted-from/msg
 '
 
+test_expect_success 'mailinfo unescapes with --mboxrd' '
+	mkdir mboxrd &&
+	git mailsplit -omboxrd --mboxrd \
+		"$TEST_DIRECTORY"/t5100/sample.mboxrd >last &&
+	test x"$(cat last)" = x2 &&
+	for i in 0001 0002
+	do
+		git mailinfo mboxrd/msg mboxrd/patch \
+		  <mboxrd/$i >mboxrd/out &&
+		test_cmp "$TEST_DIRECTORY"/t5100/${i}mboxrd mboxrd/msg
+	done
+'
+
 test_done

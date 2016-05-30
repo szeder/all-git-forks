@@ -45,6 +45,7 @@ static int is_from_line(const char *line, int len)
 
 static struct strbuf buf = STRBUF_INIT;
 static int keep_cr;
+static regex_t *gtfrom;
 
 /* Called with the first line (potentially partial)
  * already in buf[] -- normally that should begin with
@@ -76,6 +77,10 @@ static int split_one(FILE *mbox, const char *name, int allow_bare)
 			strbuf_setlen(&buf, buf.len-2);
 			strbuf_addch(&buf, '\n');
 		}
+
+		if (gtfrom && buf.len > (sizeof(">From ") - 1) &&
+				!regexec(gtfrom, buf.buf, 0, 0, 0))
+			strbuf_remove(&buf, 0, 1);
 
 		if (fwrite(buf.buf, 1, buf.len, output) != buf.len)
 			die_errno("cannot write output");
@@ -242,6 +247,22 @@ out:
 	return ret;
 }
 
+static regex_t *gtfrom_prepare(void)
+{
+	static regex_t preg;
+	const char re[] = "^>+From ";
+	int err = regcomp(&preg, re, REG_NOSUB | REG_EXTENDED);
+
+	if (err) {
+		char errbuf[1024];
+		regerror(err, &preg, errbuf, sizeof(errbuf));
+		regfree(&preg);
+		die("Cannot prepare regexp `%s': %s", re, errbuf);
+	}
+
+	return &preg;
+}
+
 int cmd_mailsplit(int argc, const char **argv, const char *prefix)
 {
 	int nr = 0, nr_prec = 4, num = 0;
@@ -271,6 +292,8 @@ int cmd_mailsplit(int argc, const char **argv, const char *prefix)
 			keep_cr = 1;
 		} else if ( arg[1] == 'o' && arg[2] ) {
 			dir = arg+2;
+		} else if (!strcmp(arg, "--mboxrd")) {
+			gtfrom = gtfrom_prepare();
 		} else if ( arg[1] == '-' && !arg[2] ) {
 			argp++;	/* -- marks end of options */
 			break;
