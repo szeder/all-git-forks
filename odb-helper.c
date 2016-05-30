@@ -73,7 +73,7 @@ static int odb_helper_finish(struct odb_helper *o,
 	int ret = finish_command(&cmd->child);
 	argv_array_clear(&cmd->argv);
 	if (ret) {
-		warning("odb helper '%s' reported failure", o->name);
+		warning("odb helper '%s' reported failure (%d)", o->name, ret);
 		return -1;
 	}
 	return 0;
