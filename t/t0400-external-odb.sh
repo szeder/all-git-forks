@@ -69,8 +69,9 @@ test_expect_success 'helper can add objects to alt repo' '
 test_expect_success 'commit adds objects to alt repo' '
 	test_config odb.magic.command "$HELPER" &&
 	test_commit three &&
-	hash3=$(git rev-parse HEAD) &&
-	( cd alt-repo && git show "$hash3" )
+	hash3=$(git ls-tree HEAD | grep three.t | cut -f1 | cut -d\  -f3) &&
+	content=$(cd alt-repo && git show "$hash3") &&
+	test "$content" = "three"
 '
 
 test_done
