@@ -11,6 +11,8 @@
 #include "submodule.h"
 #include "submodule-config.h"
 #include "send-pack.h"
+#include "urlmatch.h"
+#include "url.h"
 
 static const char * const push_usage[] = {
 	N_("git push [<options>] [<repository> [<refspec>...]]"),
@@ -353,6 +355,68 @@ static int push_with_options(struct transport *transport, int flags)
 	return 1;
 }
 
+/* 
+ * TODO: the shorter scp-like syntax for the SSH protocol isn't recognize
+ * with url_normalize
+ */
+static const char *string_url_normalize(const char *repo_name)
+{
+	if (starts_with(repo_name, "file://"))
+		return repo_name + 7;
+	if (is_url(repo_name)) {
+		struct url_info url_infos;
+		url_normalize(repo_name, &url_infos);
+		return url_infos.url + url_infos.host_off;
+	}
+	return repo_name;
+}
+
+static int longest_prefix_size(const char *repo_to_push, const struct string_list *list)
+{
+	struct string_list_item *item_curr;
+	int max_size = 0;
+	if (!list)
+		return 0;
+	for_each_string_list_item(item_curr, list) {
+		const char *repo_curr = string_url_normalize(item_curr->string);
+		if (starts_with(repo_to_push, repo_curr) &&
+		    max_size < strlen(repo_curr)){
+			max_size = strlen(repo_curr);
+			if (strlen(repo_to_push) == max_size)
+				break;
+		}
+	}
+	return max_size;
+}
+
+static void block_unauthorized_url(const char *repo)
+{
+	const char *default_policy, *deny_message;
+	const struct string_list *whitelist, *blacklist;
+	int whitelist_match_size, blacklist_match_size;
+	const char* repo_normalize = string_url_normalize(repo);
+	if (git_config_get_value("remote.pushDefaultPolicy", &default_policy))
+		default_policy = "allow";
+	if (git_config_get_value("remote.pushDenyMessage", &deny_message))
+		deny_message = "Pushing to this remote is forbidden";
+	whitelist = git_config_get_value_multi("remote.pushWhitelisted");
+	blacklist = git_config_get_value_multi("remote.pushBlacklisted");
+
+	whitelist_match_size = longest_prefix_size(repo_normalize, whitelist);
+	blacklist_match_size = longest_prefix_size(repo_normalize, blacklist);
+
+	if (whitelist_match_size < blacklist_match_size)
+		die(_("%s"), deny_message);
+	if (whitelist_match_size == blacklist_match_size) {
+		if (whitelist_match_size)
+			die(_("%s cannot be whitelisted and blacklisted at the same time"), repo);
+		if (!strcmp(default_policy, "deny"))
+			die(_("%s"), deny_message);
+		if (strcmp(default_policy, "allow"))
+			die(_("Unrecognized value for remote.pushDefaultPolicy, should be 'allow' or 'deny'"));
+	}
+}
+
 static int do_push(const char *repo, int flags)
 {
 	int i, errs;
@@ -404,15 +468,16 @@ static int do_push(const char *repo, int flags)
 	url_nr = push_url_of_remote(remote, &url);
 	if (url_nr) {
 		for (i = 0; i < url_nr; i++) {
-			struct transport *transport =
-				transport_get(remote, url[i]);
+			struct transport *transport;
+			block_unauthorized_url(url[i]);
+			transport = transport_get(remote, url[i]);
 			if (push_with_options(transport, flags))
 				errs++;
 		}
 	} else {
-		struct transport *transport =
-			transport_get(remote, NULL);
-
+		struct transport *transport;
+		block_unauthorized_url(remote->url[0]);
+		transport = transport_get(remote, NULL);
 		if (push_with_options(transport, flags))
 			errs++;
 	}
