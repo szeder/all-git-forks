@@ -21,9 +21,11 @@ get)
 	cat "$GIT_DIR"/objects/$(echo $2 | sed 's#..#&/#')
 	;;
 put)
-	size="$2"
-	kind="$3"
-	git hash-object -w -t "$kind" --stdin
+	sha1="$2"
+	size="$3"
+	kind="$4"
+	writen=$(git hash-object -w -t "$kind" --stdin)
+	test "$writen" = "$sha1" || die "bad sha1 passed '$sha1' vs writen '$writen'"
 	;;
 *)
 	die "unknown command '$1'"
@@ -59,7 +61,7 @@ test_expect_success 'helper can add objects to alt repo' '
 	hash=$(echo "Hello odb!" | git hash-object -w -t blob --stdin) &&
 	test -f .git/objects/$(echo $hash | sed "s#..#&/#") &&
 	size=$(git cat-file -s "$hash") &&
-	git cat-file blob "$hash" | ./odb-helper put "$size" blob &&
+	git cat-file blob "$hash" | ./odb-helper put "$hash" "$size" blob &&
 	alt_size=$(cd alt-repo && git cat-file -s "$hash") &&
 	test "$size" -eq "$alt_size"
 '
