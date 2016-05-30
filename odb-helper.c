@@ -263,7 +263,8 @@ int odb_helper_write_object(struct odb_helper *o,
 {
 	struct odb_helper_cmd cmd;
 
-	if (odb_helper_start(o, &cmd, 1, "put %lu %s", len, type) < 0)
+	if (odb_helper_start(o, &cmd, 1, "put %s %lu %s",
+			     sha1_to_hex(sha1), len, type) < 0)
 		return -1;
 
 	do {
