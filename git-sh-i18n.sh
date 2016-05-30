@@ -64,6 +64,10 @@ poison)
 	eval_gettext () {
 		printf "%s" "# GETTEXT POISON #"
 	}
+
+	eval_ngettext () {
+		printf "%s" "# GETTEXT POISON #"
+	}
 	;;
 *)
 	gettext () {
