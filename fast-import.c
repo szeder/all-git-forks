@@ -598,22 +598,6 @@ static struct object_entry *insert_object(unsigned char *sha1)
 	return e;
 }
 
-static void clear_object_table(void)
-{
-	unsigned int h;
-	for (h = 0; h < ARRAY_SIZE(object_table); h++) {
-		/*
-		 * We can't individually free objects here
-		 * because they are allocated from a pool.
-		 */
-		object_table[h] = NULL;
-	}
-	/*
-	 * XXX maybe free object_entry_pool here,
-	 * or might something still be referencing them?
-	 */
-}
-
 static unsigned int hc_str(const char *s, size_t len)
 {
 	unsigned int r = 0;
@@ -1051,9 +1035,6 @@ discard_pack:
 	free(pack_data);
 	pack_data = NULL;
 	running = 0;
-
-	/* The objects are now available via git's regular lookups. */
-	clear_object_table();
 
 	/* We can't carry a delta across packfiles. */
 	strbuf_release(&last_blob.data);
