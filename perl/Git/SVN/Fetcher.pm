@@ -1,7 +1,7 @@
 package Git::SVN::Fetcher;
 use vars qw/@ISA $_ignore_regex $_include_regex $_preserve_empty_dirs
             $_placeholder_filename @deleted_gpath %added_placeholder
-            $repo_id/;
+            $repo_id $_enable_filters/;
 use strict;
 use warnings;
 use SVN::Delta;
@@ -46,6 +46,10 @@ sub new {
 		$_placeholder_filename = $v;
 	}
 
+	$k = "svn-remote.$repo_id.enable-filters";
+	$v = eval { command_oneline('config', '--get', '--bool', $k) };
+	$_enable_filters = 1
+		if ($v && $v eq 'true');
 	# Load the list of placeholder files added during previous invocations.
 	$k = "svn-remote.$repo_id.added-placeholder";
 	$v = eval { command_oneline('config', '--get-all', $k) };
@@ -415,9 +419,13 @@ sub close_file {
 				Git::temp_release($tmp_fh, 1);
 			}
 		}
-
-		$hash = $::_repository->hash_and_insert_object(
-				Git::temp_path($fh));
+		if ($_enable_filters) {
+			$hash = $::_repository->hash_and_insert_object(
+					Git::temp_path($fh), $path, $_enable_filters);
+		} else {
+			$hash = $::_repository->hash_and_insert_object(
+					Git::temp_path($fh));
+		}
 		$hash =~ /^[a-f\d]{40}$/ or die "not a sha1: $hash\n";
 
 		Git::temp_release($fb->{base}, 1);
