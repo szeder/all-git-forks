@@ -45,6 +45,10 @@ test_expect_success 'git branch HEAD should fail' '
 	test_must_fail git branch HEAD
 '
 
+test_expect_success 'git checkout -b HEAD should fail' '
+	test_must_fail git checkout -b HEAD
+'
+
 cat >expect <<EOF
 $_z40 $HEAD $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> 1117150200 +0000	branch: Created from master
 EOF
@@ -294,6 +298,10 @@ test_expect_success 'git branch -m s/s s should work when s/t is deleted' '
 	git branch -d s/t &&
 	git branch -m s/s s &&
 	git reflog exists refs/heads/s
+'
+
+test_expect_success 'renaming branch to HEAD should fail' '
+	test_must_fail git branch -M abc HEAD
 '
 
 test_expect_success 'config information was renamed, too' '
