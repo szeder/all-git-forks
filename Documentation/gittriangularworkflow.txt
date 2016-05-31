@@ -1,0 +1,120 @@
+gittriangularworkflow(7)
+=======================
+
+NAME
+----
+gittriangularworkflow - A tutorial about the configuration of a
+Triangular Workflow
+
+SYNOPSIS
+--------
+[verse]
+git fetch
+git remote
+git config
+Options in git-config:
+- `remote.pushDefault`
+- `branch.<branch>.pushRemote`
+- `branch.<branch>.origin`
+
+DESCRIPTION
+-----------
+
+Triangular Workflow (or Asymmetric Workflow) is a workflow which gives
+the possibility to:
+
+- fetch (or pull) from a repository
+- push to another repository
+
+In some projects, you don't have to push directly to the project but
+have to suggest your commits to the maintainer (e.g. pull requests).
+Using Triangular Workflow is a common way for these projects.
+
+This document attempts to help you configure a Triangular Workflow.
+Here is an example of configuration:
+
+........................................
+------------               -----------
+| UPSTREAM |  maintainer   | ORIGIN  |
+|  git/git |- - - - - - - -|  me/git |
+------------       ←       -----------
+         \                   /
+          \                 /
+     fetch↓\               /↑push
+            \             /
+             \           /
+             -------------
+             |   LOCAL   |
+             -------------
+........................................
+
+CREATE YOUR REPOSITORY
+----------------------
+The first step is to create your own repository. To do that you can:
+
+- a. fork (e.g. GitHub) the main project (e.g git/git), or
+- b. create an empty repository
+
+a. Fork the project
+~~~~~~~~~~~~~~~~~~~
+Go to the repository of the project (e.g. git/git) you want
+and fork it.
+
+b. Create from scratch
+~~~~~~~~~~~~~~~~~~~~~~
+Create a repository on your prefered Git repository hosting service.
+
+Clone it
+~~~~~~~~
+Clone your repository on your machine.
+
+
+CONFIGURE BRANCHES
+------------------
+In many projects, the branch `master` have to be pulled from
+the main repository(e.g. git/git) and pushed to your repository
+(e.g. me/git).
+
+Adding the main project remote
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Add a new remote (e.g. upstream):
+
+===================================
+`git remote add upstream <main_project_url>`
+===================================
+
+Pull from upstream by default
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+===================================
+`git config branch.master.remote upstream`
+===================================
+
+
+Push to origin by default
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+===================================
+`git config branch.master.pushRemote origin`
+===================================
+
+
+GET YOUR PROJECT UP TO DATE
+---------------------------
+
+Now that `branch.master.remote` and `branch.master.pushRemote` are
+set, you can use the following commands to be up to date:
+=====================================
+ * `git pull`
+ * `git push`
+=====================================
+
+
+SEE ALSO
+--------
+linkgit:git-config[1]
+linkgit:git-remote[1]
+linkgit:git-fetch[1]
+
+
+
