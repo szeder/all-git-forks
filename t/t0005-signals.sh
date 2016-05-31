@@ -9,6 +9,16 @@ two
 one
 EOF
 
+died_with_sigpipe () {
+	case "$1" in
+	141 | 269)
+		# POSIX w/ SIGPIPE=13 gives 141
+		# ksh w/ SIGPIPE=13 gives 269
+		true ;;
+	*)	false ;;
+	esac
+}
+
 test_expect_success 'sigchain works' '
 	{ test-sigchain >actual; ret=$?; } &&
 	case "$ret" in
@@ -40,13 +50,13 @@ test_expect_success 'create blob' '
 '
 
 test_expect_success !MINGW 'a constipated git dies with SIGPIPE' '
-	OUT=$( ((large_git; echo $? 1>&3) | :) 3>&1 ) &&
-	test "$OUT" -eq 141
+	OUT=$( ( (large_git; echo $? 1>&3) | :) 3>&1 ) &&
+	died_with_sigpipe "$OUT"
 '
 
 test_expect_success !MINGW 'a constipated git dies with SIGPIPE even if parent ignores it' '
-	OUT=$( ((trap "" PIPE; large_git; echo $? 1>&3) | :) 3>&1 ) &&
-	test "$OUT" -eq 141
+	OUT=$( ( (trap "" PIPE; large_git; echo $? 1>&3) | :) 3>&1 ) &&
+	died_with_sigpipe "$OUT"
 '
 
 test_done
