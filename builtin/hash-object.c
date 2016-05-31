@@ -58,20 +58,45 @@ static void hash_object(const char *path, const char *type, const char *vpath,
 static void hash_stdin_paths(const char *type, int no_filters, unsigned flags,
 			     int literally)
 {
+	int has_path = 0;
 	struct strbuf buf = STRBUF_INIT;
+	struct strbuf path = STRBUF_INIT;
 	struct strbuf unquoted = STRBUF_INIT;
+	struct strbuf **pair;
 
 	while (strbuf_getline(&buf, stdin) != EOF) {
+		pair = strbuf_split_max(&buf, '\t', 2);
+		if (pair[0]) {
+			if (pair[0]->len && pair[0]->buf[pair[0]->len - 1] == '\t') {
+				strbuf_setlen(pair[0], pair[0]->len - 1);
+			}
+			strbuf_swap(&buf, pair[0]);
+		}
+		if (pair[1]) {
+			strbuf_swap(&path, pair[1]);
+			has_path = 1;
+		}
+		strbuf_list_free(pair);
+
 		if (buf.buf[0] == '"') {
 			strbuf_reset(&unquoted);
 			if (unquote_c_style(&unquoted, buf.buf, NULL))
 				die("line is badly quoted");
 			strbuf_swap(&buf, &unquoted);
 		}
-		hash_object(buf.buf, type, no_filters ? NULL : buf.buf, flags,
-			    literally);
+
+		if (has_path && path.buf[0] == '"') {
+			strbuf_reset(&unquoted);
+			if (unquote_c_style(&unquoted, path.buf, NULL))
+				die("line is badly quoted");
+			strbuf_swap(&path, &unquoted);
+		}
+
+		hash_object(buf.buf, type, no_filters ? NULL : (has_path ? path.buf : buf.buf),
+				  flags, literally);
 	}
 	strbuf_release(&buf);
+	strbuf_release(&path);
 	strbuf_release(&unquoted);
 }
 
