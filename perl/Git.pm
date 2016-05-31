@@ -963,11 +963,13 @@ The function returns the SHA1 hash.
 
 # TODO: Support for passing FILEHANDLE instead of FILENAME
 sub hash_and_insert_object {
-	my ($self, $filename) = @_;
+	my ($self, $filename, $path, $enable_filters) = @_;
+	carp "Bad filename \"$filename\"" if $filename =~ /[\r\n\t]/;
+	if (defined($path)) {
+		$filename = join("\t", $filename, $path);
+	}
 
-	carp "Bad filename \"$filename\"" if $filename =~ /[\r\n]/;
-
-	$self->_open_hash_and_insert_object_if_needed();
+	$self->_open_hash_and_insert_object_if_needed($enable_filters);
 	my ($in, $out) = ($self->{hash_object_in}, $self->{hash_object_out});
 
 	unless (print $out $filename, "\n") {
@@ -985,13 +987,18 @@ sub hash_and_insert_object {
 }
 
 sub _open_hash_and_insert_object_if_needed {
-	my ($self) = @_;
+	my ($self, $enable_filters) = @_;
 
 	return if defined($self->{hash_object_pid});
 
+	my @command = qw(hash-object -w --stdin-paths);
+	if (!$enable_filters) {
+		push(@command, "--no-filters");
+	}
+
 	($self->{hash_object_pid}, $self->{hash_object_in},
 	 $self->{hash_object_out}, $self->{hash_object_ctx}) =
-		$self->command_bidi_pipe(qw(hash-object -w --stdin-paths --no-filters));
+		$self->command_bidi_pipe(@command);
 }
 
 sub _close_hash_and_insert_object {
