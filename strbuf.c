@@ -1,6 +1,14 @@
 #include "cache.h"
 #include "refs.h"
 #include "utf8.h"
+#include <sys/param.h>
+
+/**
+ * Flags
+ * --------------
+ */
+#define STRBUF_OWNS_MEMORY 1
+#define STRBUF_FIXED_MEMORY (1 << 1)
 
 /**
  * Flags
@@ -37,7 +45,7 @@ void strbuf_init(struct strbuf *sb, size_t hint)
 }
 
 void strbuf_wrap_preallocated(struct strbuf *sb, char *path_buf,
-							  size_t path_buf_len, size_t alloc_len)
+			      size_t path_buf_len, size_t alloc_len)
 {
 	if (!path_buf)
 		die("you try to use a NULL buffer to initialize a strbuf");
@@ -49,7 +57,7 @@ void strbuf_wrap_preallocated(struct strbuf *sb, char *path_buf,
 }
 
 void strbuf_wrap_fixed(struct strbuf *sb, char *path_buf,
-					   size_t path_buf_len, size_t alloc_len)
+		       size_t path_buf_len, size_t alloc_len)
 {
 	strbuf_wrap_preallocated(sb, path_buf, path_buf_len, alloc_len);
 	sb->flags |= STRBUF_FIXED_MEMORY;
@@ -111,8 +119,8 @@ void strbuf_grow(struct strbuf *sb, size_t extra)
 		ALLOC_GROW(sb->buf, sb->len + extra + 1, sb->alloc);
 	} else {
 		/*
-		 * The strbuf doesn't own the buffer: to avoid to realloc it, the
-		 * strbuf needs to use a new buffer (without freeing the old)
+		 * The strbuf doesn't own the buffer: to avoid to realloc it,
+		 * the strbuf needs to use a new buffer without freeing the old
 		 */
 		if (sb->len + extra + 1 > sb->alloc) {
 			size_t new_alloc = MAX(sb->len + extra + 1, alloc_nr(sb->alloc));

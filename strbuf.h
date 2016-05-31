@@ -11,6 +11,10 @@
  * A strbuf is NUL terminated for convenience, but no function in the
  * strbuf API actually relies on the string being free of NULs.
  *
+ * You can avoid the malloc/free overhead of `strbuf_init()`, `strbuf_add()` and
+ * `strbuf_release()` by wrapping pre-allocated memory (stack-allocated for
+ * example) using `strbuf_wrap_preallocated()` or `strbuf_wrap_fixed()`.
+ *
  * strbufs have some invariants that are very important to keep in mind:
  *
  *  - The `buf` member is never NULL, so it can be used in any usual C
@@ -90,17 +94,17 @@ extern void strbuf_init(struct strbuf *, size_t);
  * buffer will never be freed.
  */
 void strbuf_wrap_preallocated(struct strbuf *sb, char *path_buf,
-							  size_t path_buf_len, size_t alloc_len);
+			      size_t path_buf_len, size_t alloc_len);
 
 /**
  * Allow the caller to give a pre-allocated piece of memory for the strbuf
  * to use and indicate that the strbuf must use exclusively this buffer,
- * never realloc() it or allocate a new one. It means that the string cannot
- * overflow the pre-allocated buffer. The pre-allocated buffer will never be
- * freed.
+ * never realloc() it or allocate a new one. It means that the string can
+ * be manipulated but cannot overflow the pre-allocated buffer. The
+ * pre-allocated buffer will never be freed.
  */
 void strbuf_wrap_fixed(struct strbuf *sb, char *path_buf,
-					   size_t path_buf_len, size_t alloc_len);
+		       size_t path_buf_len, size_t alloc_len);
 
 /**
  * Release a string buffer and the memory it used. You should not use the
