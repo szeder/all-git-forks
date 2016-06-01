@@ -590,6 +590,9 @@ parse_args ()
         echo "$insertion_point" >"$base_file"
     else
         : "$remove_range_or_insertion_base must be a removal range"
+        # FIXME: there's no guarantee that the range specifies commits
+        # in the branch.  If the base ends up being outside the branch,
+        # this could actually *introduce* commits!
         remove_range=( "${remove_range_or_insertion_base[@]}" )
         git rev-list --abbrev-commit "${remove_range[@]}" | \
             sed 's/^/pick /' >"$remove_todo"
