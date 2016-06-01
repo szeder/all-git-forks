@@ -19,6 +19,7 @@
 #include "dir.h"
 #include "cache-tree.h"
 #include "bisect.h"
+#include "worktree.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -1231,6 +1232,24 @@ static int handle_one_reflog(const char *path, const struct object_id *oid,
 	cb->name_for_errormsg = path;
 	for_each_reflog_ent(path, handle_one_reflog_ent, cb_data);
 	return 0;
+}
+
+void add_worktree_reflogs_to_pending(struct rev_info *revs, unsigned flags,
+				     struct worktree *wt)
+{
+	struct all_refs_cb cb;
+	char *path;
+
+	cb.all_revs = revs;
+	cb.all_flags = flags;
+	path = xstrdup(worktree_git_path(wt, "logs/HEAD"));
+	if (file_exists(path))
+		handle_one_reflog(path, NULL, 0, &cb);
+	free(path);
+	path = xstrdup(worktree_git_path(wt, "logs/refs/bisect"));
+	if (file_exists(path))
+		handle_one_reflog(path, NULL, 0, &cb);
+	free(path);
 }
 
 void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)

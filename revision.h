@@ -30,6 +30,7 @@ struct log_info;
 struct string_list;
 struct saved_parents;
 struct index_state;
+struct worktree;
 
 struct rev_cmdline_info {
 	unsigned int nr;
@@ -272,6 +273,8 @@ extern void add_pending_sha1(struct rev_info *revs,
 
 extern void add_head_to_pending(struct rev_info *);
 extern void add_reflogs_to_pending(struct rev_info *, unsigned int flags);
+extern void add_worktree_reflogs_to_pending(struct rev_info *, unsigned int flags,
+					    struct worktree *);
 extern void add_index_objects_to_pending(struct rev_info *, unsigned int flags,
 					 const struct index_state *);
 

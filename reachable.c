@@ -156,7 +156,7 @@ int add_unseen_recent_objects_to_traversal(struct rev_info *revs,
 				      FOR_EACH_OBJECT_LOCAL_ONLY);
 }
 
-static void add_objects_from_worktree(struct rev_info *revs)
+static void add_objects_from_worktree(struct rev_info *revs, int mark_reflog)
 {
 	struct worktree **worktrees, **p;
 
@@ -176,7 +176,8 @@ static void add_objects_from_worktree(struct rev_info *revs)
 			o = parse_object_or_die(wt->head_sha1, "HEAD");
 			add_pending_object(revs, o, "");
 		}
-
+		if (mark_reflog)
+			add_worktree_reflogs_to_pending(revs, 0, wt);
 	}
 	free_worktrees(worktrees);
 
@@ -214,7 +215,7 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	 * Add all objects from the in-core index file and detached
 	 * HEAD which is not included in the list above
 	 */
-	add_objects_from_worktree(revs);
+	add_objects_from_worktree(revs, mark_reflog);
 
 	cp.progress = progress;
 	cp.count = 0;
