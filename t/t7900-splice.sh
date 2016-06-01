@@ -49,6 +49,7 @@ reset () {
 	# First check that tests don't leave a splice in progress,
 	# as they should always do --abort or --continue if necessary
 	test_splice_not_in_progress &&
+	on_branch master &&
 	git reset --hard $latest_tag &&
 	del_tmp_branch &&
 	rm -f stdout stderr
