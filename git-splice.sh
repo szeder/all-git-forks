@@ -351,6 +351,14 @@ rebase_edit ()
 
     if [ -e "$remove_todo" ]; then
         grep -v -f "$remove_todo" "$rebase_todo" > "$rebase_todo".new
+        if [ -n "$debug" ]; then
+            echo -e "-------------------\n$rebase_todo"
+            cat "$rebase_todo"
+            echo -e "-------------------\n$remove_todo"
+            cat "$remove_todo"
+            echo -e "-------------------\n$rebase_todo.new"
+            cat "$rebase_todo.new"
+        fi
         mv "$rebase_todo".new "$rebase_todo"
     fi
 }
