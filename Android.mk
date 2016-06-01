@@ -494,6 +494,7 @@ LOCAL_CFLAGS := $(git_CFLAGS)
 LOCAL_C_INCLUDES := $(git_INCLUDES)
 LOCAL_SRC_FILES := credential-store.c
 LOCAL_STATIC_LIBRARIES := libgit_static
+LOCAL_SHARED_LIBRARIES := libz
 LOCAL_MODULE_PATH := $(TARGET_OUT)/$(gitexecdir)
 include $(BUILD_EXECUTABLE)
 
