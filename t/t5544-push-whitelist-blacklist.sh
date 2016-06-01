@@ -64,7 +64,7 @@ test_expect_success 'remote is whitelisted and blacklisted at the same time exce
 
 test_expect_success 'remote rejected default message' '
 	test_must_fail git push blisted1 HEAD 2> result &&
-	echo "fatal: Pushing to this remote is forbidden" > expected &&
+	echo "fatal: Pushing to this remote is forbidden." > expected &&
 	test_cmp result expected
 '
 
