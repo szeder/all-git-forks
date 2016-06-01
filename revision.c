@@ -19,6 +19,7 @@
 #include "dir.h"
 #include "cache-tree.h"
 #include "bisect.h"
+#include "worktree.h"
 
 volatile show_early_output_fn_t show_early_output;
 
@@ -2048,6 +2049,26 @@ static int for_each_good_bisect_ref(const char *submodule, each_ref_fn fn, void 
 	return for_each_bisect_ref(submodule, fn, cb_data, term_good);
 }
 
+static void add_indexed_objects_from_worktrees(struct rev_info *revs)
+{
+	struct worktree **worktrees, **p;
+	struct index_state istate = {0};
+
+	worktrees = get_worktrees();
+	for (p = worktrees; *p; p++) {
+		struct worktree *wt = *p;
+
+		if (wt->is_current || /* already taken care off by caller */
+		    read_index_from(&istate,
+				    worktree_git_path(wt, "index")) <= 0)
+			continue;
+
+		add_index_objects_to_pending(revs, 0, &istate);
+		discard_index(&istate);
+	}
+	free_worktrees(worktrees);
+}
+
 static int handle_revision_pseudo_opt(const char *submodule,
 				struct rev_info *revs,
 				int argc, const char **argv, int *flags)
@@ -2115,6 +2136,8 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	} else if (!strcmp(arg, "--indexed-objects")) {
 		read_cache();
 		add_index_objects_to_pending(revs, *flags, &the_index);
+		if (revs->all_worktrees)
+			add_indexed_objects_from_worktrees(revs);
 	} else if (!strcmp(arg, "--not")) {
 		*flags ^= UNINTERESTING | BOTTOM;
 	} else if (!strcmp(arg, "--no-walk")) {
