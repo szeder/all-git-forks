@@ -149,6 +149,8 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 
 	argv_array_push(&av, "program-name");
 
+	argv_array_push(&av, "--all-worktrees");
+
 	/*
 	 * Set up revision parsing, and mark us as being interested
 	 * in all object types, not just commits.
