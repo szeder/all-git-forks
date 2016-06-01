@@ -142,6 +142,7 @@ static inline int fcntl(int fd, int cmd, ...)
 #define sigemptyset(x) (void)0
 static inline int sigaddset(sigset_t *set, int signum)
 { return 0; }
+#define SIG_BLOCK 0
 #define SIG_UNBLOCK 0
 static inline int sigprocmask(int how, const sigset_t *set, sigset_t *oldset)
 { return 0; }
@@ -415,9 +416,6 @@ int mingw_offset_1st_component(const char *path);
 
 void mingw_open_html(const char *path);
 #define open_html mingw_open_html
-
-void mingw_mark_as_git_dir(const char *dir);
-#define mark_as_git_dir mingw_mark_as_git_dir
 
 /**
  * Converts UTF-8 encoded string to UTF-16LE.

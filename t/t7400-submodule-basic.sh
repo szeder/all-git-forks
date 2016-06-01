@@ -11,11 +11,31 @@ subcommands of git submodule.
 
 . ./test-lib.sh
 
+test_expect_success 'submodule deinit works on empty repository' '
+	git submodule deinit --all
+'
+
 test_expect_success 'setup - initial commit' '
 	>t &&
 	git add t &&
 	git commit -m "initial commit" &&
 	git branch initial
+'
+
+test_expect_success 'submodule init aborts on missing .gitmodules file' '
+	test_when_finished "git update-index --remove sub" &&
+	git update-index --add --cacheinfo 160000,$(git rev-parse HEAD),sub &&
+	# missing the .gitmodules file here
+	test_must_fail git submodule init 2>actual &&
+	test_i18ngrep "No url found for submodule path" actual
+'
+
+test_expect_success 'submodule update aborts on missing .gitmodules file' '
+	test_when_finished "git update-index --remove sub" &&
+	git update-index --add --cacheinfo 160000,$(git rev-parse HEAD),sub &&
+	# missing the .gitmodules file here
+	git submodule update sub 2>actual &&
+	test_i18ngrep "Submodule path .sub. not initialized" actual
 '
 
 test_expect_success 'configuration parsing' '
@@ -899,7 +919,8 @@ test_expect_success 'submodule deinit works on repository without submodules' '
 		>file &&
 		git add file &&
 		git commit -m "repo should not be empty" &&
-		git submodule deinit .
+		git submodule deinit . &&
+		git submodule deinit --all
 	)
 '
 
@@ -934,6 +955,19 @@ test_expect_success 'submodule deinit . deinits all initialized submodules' '
 	git config submodule.example2.frotz nitfol &&
 	test_must_fail git submodule deinit &&
 	git submodule deinit . >actual &&
+	test -z "$(git config --get-regexp "submodule\.example\.")" &&
+	test -z "$(git config --get-regexp "submodule\.example2\.")" &&
+	test_i18ngrep "Cleared directory .init" actual &&
+	test_i18ngrep "Cleared directory .example2" actual &&
+	rmdir init example2
+'
+
+test_expect_success 'submodule deinit --all deinits all initialized submodules' '
+	git submodule update --init &&
+	git config submodule.example.foo bar &&
+	git config submodule.example2.frotz nitfol &&
+	test_must_fail git submodule deinit &&
+	git submodule deinit --all >actual &&
 	test -z "$(git config --get-regexp "submodule\.example\.")" &&
 	test -z "$(git config --get-regexp "submodule\.example2\.")" &&
 	test_i18ngrep "Cleared directory .init" actual &&
@@ -1004,6 +1038,10 @@ test_expect_success 'submodule deinit is silent when used on an uninitialized su
 	test_i18ngrep "Submodule .example2. (.*) unregistered for path .example2" actual &&
 	test_i18ngrep "Cleared directory .init" actual &&
 	git submodule deinit . >actual &&
+	test_i18ngrep ! "Submodule .example. (.*) unregistered for path .init" actual &&
+	test_i18ngrep ! "Submodule .example2. (.*) unregistered for path .example2" actual &&
+	test_i18ngrep "Cleared directory .init" actual &&
+	git submodule deinit --all >actual &&
 	test_i18ngrep ! "Submodule .example. (.*) unregistered for path .init" actual &&
 	test_i18ngrep ! "Submodule .example2. (.*) unregistered for path .example2" actual &&
 	test_i18ngrep "Cleared directory .init" actual &&

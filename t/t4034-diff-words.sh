@@ -61,6 +61,7 @@ test_language_driver () {
 			"$TEST_DIRECTORY/t4034/'"$lang"'/post" \
 			"$TEST_DIRECTORY/t4034/'"$lang"'/expect" . &&
 		echo "* diff='"$lang"'" >.gitattributes &&
+		test_pause &&
 		word_diff --color-words
 	'
 }
