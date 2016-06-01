@@ -102,11 +102,11 @@ static int pack_objects(int fd, struct ref *refs, struct sha1_array *extra, stru
 			break;
 
 	while (refs) {
-		if (!is_null_sha1(refs->old_sha1) &&
-		    !feed_object(refs->old_sha1, po.in, 1))
+		if (!is_null_oid(&refs->old_oid) &&
+		    !feed_object(refs->old_oid.hash, po.in, 1))
 			break;
-		if (!is_null_sha1(refs->new_sha1) &&
-		    !feed_object(refs->new_sha1, po.in, 0))
+		if (!is_null_oid(&refs->new_oid) &&
+		    !feed_object(refs->new_oid.hash, po.in, 0))
 			break;
 		refs = refs->next;
 	}
@@ -284,8 +284,8 @@ static int generate_push_cert(struct strbuf *req_buf,
 			continue;
 		update_seen = 1;
 		strbuf_addf(&cert, "%s %s %s\n",
-			    sha1_to_hex(ref->old_sha1),
-			    sha1_to_hex(ref->new_sha1),
+			    oid_to_hex(&ref->old_oid),
+			    oid_to_hex(&ref->new_oid),
 			    ref->name);
 	}
 	if (!update_seen)
@@ -487,8 +487,8 @@ int send_pack(struct send_pack_args *args,
 		if (check_to_send_update(ref, args) < 0)
 			continue;
 
-		old_hex = sha1_to_hex(ref->old_sha1);
-		new_hex = sha1_to_hex(ref->new_sha1);
+		old_hex = oid_to_hex(&ref->old_oid);
+		new_hex = oid_to_hex(&ref->new_oid);
 		if (!cmds_sent) {
 			packet_buf_write(&req_buf,
 					 "%s %s %s%c%s",
@@ -518,6 +518,7 @@ int send_pack(struct send_pack_args *args,
 		demux.proc = sideband_demux;
 		demux.data = fd;
 		demux.out = -1;
+		demux.isolate_sigpipe = 1;
 		if (start_async(&demux))
 			die("send-pack: unable to fork off sideband demultiplexer");
 		in = demux.out;
@@ -531,8 +532,10 @@ int send_pack(struct send_pack_args *args,
 				close(out);
 			if (git_connection_is_socket(conn))
 				shutdown(fd[0], SHUT_WR);
-			if (use_sideband)
+			if (use_sideband) {
+				close(demux.out);
 				finish_async(&demux);
+			}
 			fd[1] = -1;
 			return -1;
 		}
@@ -551,11 +554,11 @@ int send_pack(struct send_pack_args *args,
 		packet_flush(out);
 
 	if (use_sideband && cmds_sent) {
+		close(demux.out);
 		if (finish_async(&demux)) {
 			error("error in sideband demultiplexer");
 			ret = -1;
 		}
-		close(demux.out);
 	}
 
 	if (ret < 0)

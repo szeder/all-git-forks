@@ -101,8 +101,8 @@ test_expect_success 'oneline' '
 
 test_expect_success 'diff-filter=A' '
 
-	git log --pretty="format:%s" --diff-filter=A HEAD > actual &&
-	git log --pretty="format:%s" --diff-filter A HEAD > actual-separate &&
+	git log --no-renames --pretty="format:%s" --diff-filter=A HEAD > actual &&
+	git log --no-renames --pretty="format:%s" --diff-filter A HEAD > actual-separate &&
 	printf "fifth\nfourth\nthird\ninitial" > expect &&
 	test_cmp expect actual &&
 	test_cmp expect actual-separate
@@ -119,7 +119,7 @@ test_expect_success 'diff-filter=M' '
 
 test_expect_success 'diff-filter=D' '
 
-	actual=$(git log --pretty="format:%s" --diff-filter=D HEAD) &&
+	actual=$(git log --no-renames --pretty="format:%s" --diff-filter=D HEAD) &&
 	expect=$(echo sixth ; echo third) &&
 	verbose test "$actual" = "$expect"
 
@@ -848,7 +848,7 @@ sanitize_output () {
 }
 
 test_expect_success 'log --graph with diff and stats' '
-	git log --graph --pretty=short --stat -p >actual &&
+	git log --no-renames --graph --pretty=short --stat -p >actual &&
 	sanitize_output >actual.sanitized <actual &&
 	test_i18ncmp expect actual.sanitized
 '
@@ -906,6 +906,35 @@ test_expect_success 'log diagnoses bogus HEAD' '
 	test_i18ngrep broken stderr &&
 	test_must_fail git -C empty log --default totally-bogus 2>stderr &&
 	test_i18ngrep broken stderr
+'
+
+test_expect_success 'set up --source tests' '
+	git checkout --orphan source-a &&
+	test_commit one &&
+	test_commit two &&
+	git checkout -b source-b HEAD^ &&
+	test_commit three
+'
+
+test_expect_success 'log --source paints branch names' '
+	cat >expect <<-\EOF &&
+	09e12a9	source-b three
+	8e393e1	source-a two
+	1ac6c77	source-b one
+	EOF
+	git log --oneline --source source-a source-b >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'log --source paints tag names' '
+	git tag -m tagged source-tag &&
+	cat >expect <<-\EOF &&
+	09e12a9	source-tag three
+	8e393e1	source-a two
+	1ac6c77	source-tag one
+	EOF
+	git log --oneline --source source-tag source-a >actual &&
+	test_cmp expect actual
 '
 
 test_done

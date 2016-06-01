@@ -253,8 +253,8 @@ def p4_add(f):
 def p4_delete(f):
     p4_system(["delete", wildcard_encode(f)])
 
-def p4_edit(f):
-    p4_system(["edit", wildcard_encode(f)])
+def p4_edit(f, *options):
+    p4_system(["edit"] + list(options) + [wildcard_encode(f)])
 
 def p4_revert(f):
     p4_system(["revert", wildcard_encode(f)])
@@ -822,39 +822,37 @@ def p4ChangesForPaths(depotPaths, changeRange, requestedBlockSize):
                 die("cannot use --changes-block-size with non-numeric revisions")
             block_size = None
 
-    # Accumulate change numbers in a dictionary to avoid duplicates
-    changes = {}
+    changes = []
 
-    for p in depotPaths:
-        # Retrieve changes a block at a time, to prevent running
-        # into a MaxResults/MaxScanRows error from the server.
+    # Retrieve changes a block at a time, to prevent running
+    # into a MaxResults/MaxScanRows error from the server.
 
-        while True:
-            cmd = ['changes']
+    while True:
+        cmd = ['changes']
 
-            if block_size:
-                end = min(changeEnd, changeStart + block_size)
-                revisionRange = "%d,%d" % (changeStart, end)
-            else:
-                revisionRange = "%s,%s" % (changeStart, changeEnd)
+        if block_size:
+            end = min(changeEnd, changeStart + block_size)
+            revisionRange = "%d,%d" % (changeStart, end)
+        else:
+            revisionRange = "%s,%s" % (changeStart, changeEnd)
 
+        for p in depotPaths:
             cmd += ["%s...@%s" % (p, revisionRange)]
 
-            for line in p4_read_pipe_lines(cmd):
-                changeNum = int(line.split(" ")[1])
-                changes[changeNum] = True
+        # Insert changes in chronological order
+        for line in reversed(p4_read_pipe_lines(cmd)):
+            changes.append(int(line.split(" ")[1]))
 
-            if not block_size:
-                break
+        if not block_size:
+            break
 
-            if end >= changeEnd:
-                break
+        if end >= changeEnd:
+            break
 
-            changeStart = end + 1
+        changeStart = end + 1
 
-    changelist = changes.keys()
-    changelist.sort()
-    return changelist
+    changes = sorted(changes)
+    return changes
 
 def p4PathStartsWith(path, prefix):
     # This method tries to remedy a potential mixed-case issue:
@@ -1066,8 +1064,15 @@ class GitLFS(LargeFileSystem):
         if pointerProcess.wait():
             os.remove(contentFile)
             die('git-lfs pointer command failed. Did you install the extension?')
-        pointerContents = [i+'\n' for i in pointerFile.split('\n')[2:][:-1]]
-        oid = pointerContents[1].split(' ')[1].split(':')[1][:-1]
+
+        # Git LFS removed the preamble in the output of the 'pointer' command
+        # starting from version 1.2.0. Check for the preamble here to support
+        # earlier versions.
+        # c.f. https://github.com/github/git-lfs/commit/da2935d9a739592bc775c98d8ef4df9c72ea3b43
+        if pointerFile.startswith('Git LFS pointer for'):
+            pointerFile = re.sub(r'Git LFS pointer for.*\n\n', '', pointerFile)
+
+        oid = re.search(r'^oid \w+:(\w+)', pointerFile, re.MULTILINE).group(1)
         localLargeFile = os.path.join(
             os.getcwd(),
             '.git', 'lfs', 'objects', oid[:2], oid[2:4],
@@ -1075,7 +1080,7 @@ class GitLFS(LargeFileSystem):
         )
         # LFS Spec states that pointer files should not have the executable bit set.
         gitMode = '100644'
-        return (gitMode, pointerContents, localLargeFile)
+        return (gitMode, pointerFile, localLargeFile)
 
     def pushFile(self, localLargeFile):
         uploadProcess = subprocess.Popen(
@@ -1162,6 +1167,15 @@ class P4UserMap:
             self.users[output["User"]] = output["FullName"] + " <" + output["Email"] + ">"
             self.emails[output["Email"]] = output["User"]
 
+        mapUserConfigRegex = re.compile(r"^\s*(\S+)\s*=\s*(.+)\s*<(\S+)>\s*$", re.VERBOSE)
+        for mapUserConfig in gitConfigList("git-p4.mapUser"):
+            mapUser = mapUserConfigRegex.findall(mapUserConfig)
+            if mapUser and len(mapUser[0]) == 3:
+                user = mapUser[0][0]
+                fullname = mapUser[0][1]
+                email = mapUser[0][2]
+                self.users[user] = fullname + " <" + email + ">"
+                self.emails[email] = user
 
         s = ''
         for (key, val) in self.users.items():
@@ -1458,6 +1472,8 @@ class P4Submit(Command, P4UserMap):
            Remove lines in the Files section that show changes to files
            outside the depot path we're committing into."""
 
+        [upstream, settings] = findUpstreamBranchPoint()
+
         template = ""
         inFilesSection = False
         for line in p4_read_pipe_lines(['change', '-o']):
@@ -1470,8 +1486,13 @@ class P4Submit(Command, P4UserMap):
                     lastTab = path.rfind("\t")
                     if lastTab != -1:
                         path = path[:lastTab]
-                        if not p4PathStartsWith(path, self.depotPath):
-                            continue
+                        if settings.has_key('depot-paths'):
+                            if not [p for p in settings['depot-paths']
+                                    if p4PathStartsWith(path, p)]:
+                                continue
+                        else:
+                            if not p4PathStartsWith(path, self.depotPath):
+                                continue
                 else:
                     inFilesSection = False
             else:
@@ -1549,6 +1570,7 @@ class P4Submit(Command, P4UserMap):
 
         diff = read_pipe_lines("git diff-tree -r %s \"%s^\" \"%s\"" % (self.diffOpts, id, id))
         filesToAdd = set()
+        filesToChangeType = set()
         filesToDelete = set()
         editedFiles = set()
         pureRenameCopy = set()
@@ -1609,6 +1631,8 @@ class P4Submit(Command, P4UserMap):
                     os.unlink(dest)
                     filesToDelete.add(src)
                 editedFiles.add(dest)
+            elif modifier == "T":
+                filesToChangeType.add(path)
             else:
                 die("unknown modifier %s for %s" % (modifier, path))
 
@@ -1668,6 +1692,8 @@ class P4Submit(Command, P4UserMap):
         #
         system(applyPatchCmd)
 
+        for f in filesToChangeType:
+            p4_edit(f, "-t", "auto")
         for f in filesToAdd:
             p4_add(f)
         for f in filesToDelete:
@@ -2301,6 +2327,15 @@ class P4Sync(Command, P4UserMap):
             fnum = fnum + 1
         return files
 
+    def extractJobsFromCommit(self, commit):
+        jobs = []
+        jnum = 0
+        while commit.has_key("job%s" % jnum):
+            job = commit["job%s" % jnum]
+            jobs.append(job)
+            jnum = jnum + 1
+        return jobs
+
     def stripRepoPath(self, path, prefixes):
         """When streaming files, this is called to map a p4 depot path
            to where it should go in git.  The prefixes are either
@@ -2556,12 +2591,6 @@ class P4Sync(Command, P4UserMap):
         filesToDelete = []
 
         for f in files:
-            # if using a client spec, only add the files that have
-            # a path in the client
-            if self.clientSpecDirs:
-                if self.clientSpecDirs.map_in_client(f['path']) == "":
-                    continue
-
             filesForCommit.append(f)
             if f['action'] in self.delete_actions:
                 filesToDelete.append(f)
@@ -2632,24 +2661,41 @@ class P4Sync(Command, P4UserMap):
         gitStream.write(description)
         gitStream.write("\n")
 
+    def inClientSpec(self, path):
+        if not self.clientSpecDirs:
+            return True
+        inClientSpec = self.clientSpecDirs.map_in_client(path)
+        if not inClientSpec and self.verbose:
+            print('Ignoring file outside of client spec: {0}'.format(path))
+        return inClientSpec
+
+    def hasBranchPrefix(self, path):
+        if not self.branchPrefixes:
+            return True
+        hasPrefix = [p for p in self.branchPrefixes
+                        if p4PathStartsWith(path, p)]
+        if hasPrefix and self.verbose:
+            print('Ignoring file outside of prefix: {0}'.format(path))
+        return hasPrefix
+
     def commit(self, details, files, branch, parent = ""):
         epoch = details["time"]
         author = details["user"]
+        jobs = self.extractJobsFromCommit(details)
 
         if self.verbose:
-            print "commit into %s" % branch
-
-        # start with reading files; if that fails, we should not
-        # create a commit.
-        new_files = []
-        for f in files:
-            if [p for p in self.branchPrefixes if p4PathStartsWith(f['path'], p)]:
-                new_files.append (f)
-            else:
-                sys.stderr.write("Ignoring file outside of prefix: %s\n" % f['path'])
+            print('commit into {0}'.format(branch))
 
         if self.clientSpecDirs:
             self.clientSpecDirs.update_client_spec_path_cache(files)
+
+        files = [f for f in files
+            if self.inClientSpec(f['path']) and self.hasBranchPrefix(f['path'])]
+
+        if not files and not gitConfigBool('git-p4.keepEmptyCommits'):
+            print('Ignoring revision {0} as it would produce an empty commit.'
+                .format(details['change']))
+            return
 
         self.gitStream.write("commit %s\n" % branch)
         self.gitStream.write("mark :%s\n" % details["change"])
@@ -2663,6 +2709,8 @@ class P4Sync(Command, P4UserMap):
 
         self.gitStream.write("data <<EOT\n")
         self.gitStream.write(details["desc"])
+        if len(jobs) > 0:
+            self.gitStream.write("\nJobs: %s" % (' '.join(jobs)))
         self.gitStream.write("\n[git-p4: depot-paths = \"%s\": change = %s" %
                              (','.join(self.branchPrefixes), details["change"]))
         if len(details['options']) > 0:
@@ -2674,7 +2722,7 @@ class P4Sync(Command, P4UserMap):
                 print "parent %s" % parent
             self.gitStream.write("from %s\n" % parent)
 
-        self.streamP4Files(new_files)
+        self.streamP4Files(files)
         self.gitStream.write("\n")
 
         change = int(details["change"])

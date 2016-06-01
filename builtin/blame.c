@@ -28,6 +28,7 @@
 #include "line-range.h"
 #include "line-log.h"
 #include "dir.h"
+#include "progress.h"
 
 static char blame_usage[] = N_("git blame [<options>] [<rev-opts>] [<rev>] [--] <file>");
 
@@ -50,6 +51,7 @@ static int incremental;
 static int xdl_opts;
 static int abbrev = -1;
 static int no_whole_file_rename;
+static int show_progress;
 
 static struct date_mode blame_date_mode = { DATE_ISO8601 };
 static size_t blame_date_width;
@@ -125,6 +127,11 @@ struct origin {
 	 */
 	char guilty;
 	char path[FLEX_ARRAY];
+};
+
+struct progress_info {
+	struct progress *progress;
+	int blamed_lines;
 };
 
 static int diff_hunks(mmfile_t *file_a, mmfile_t *file_b, long ctxlen,
@@ -459,13 +466,11 @@ static void queue_blames(struct scoreboard *sb, struct origin *porigin,
 static struct origin *make_origin(struct commit *commit, const char *path)
 {
 	struct origin *o;
-	size_t pathlen = strlen(path) + 1;
-	o = xcalloc(1, sizeof(*o) + pathlen);
+	FLEX_ALLOC_STR(o, path, path);
 	o->commit = commit;
 	o->refcnt = 1;
 	o->next = commit->util;
 	commit->util = o;
-	memcpy(o->path, path, pathlen); /* includes NUL */
 	return o;
 }
 
@@ -506,7 +511,7 @@ static int fill_blob_sha1_and_mode(struct origin *origin)
 {
 	if (!is_null_sha1(origin->blob_sha1))
 		return 0;
-	if (get_tree_entry(origin->commit->object.sha1,
+	if (get_tree_entry(origin->commit->object.oid.hash,
 			   origin->path,
 			   origin->blob_sha1, &origin->mode))
 		goto error_out;
@@ -557,11 +562,11 @@ static struct origin *find_origin(struct scoreboard *sb,
 		       PATHSPEC_LITERAL_PATH, "", paths);
 	diff_setup_done(&diff_opts);
 
-	if (is_null_sha1(origin->commit->object.sha1))
-		do_diff_cache(parent->tree->object.sha1, &diff_opts);
+	if (is_null_oid(&origin->commit->object.oid))
+		do_diff_cache(parent->tree->object.oid.hash, &diff_opts);
 	else
-		diff_tree_sha1(parent->tree->object.sha1,
-			       origin->commit->tree->object.sha1,
+		diff_tree_sha1(parent->tree->object.oid.hash,
+			       origin->commit->tree->object.oid.hash,
 			       "", &diff_opts);
 	diffcore_std(&diff_opts);
 
@@ -627,11 +632,11 @@ static struct origin *find_rename(struct scoreboard *sb,
 	diff_opts.single_follow = origin->path;
 	diff_setup_done(&diff_opts);
 
-	if (is_null_sha1(origin->commit->object.sha1))
-		do_diff_cache(parent->tree->object.sha1, &diff_opts);
+	if (is_null_oid(&origin->commit->object.oid))
+		do_diff_cache(parent->tree->object.oid.hash, &diff_opts);
 	else
-		diff_tree_sha1(parent->tree->object.sha1,
-			       origin->commit->tree->object.sha1,
+		diff_tree_sha1(parent->tree->object.oid.hash,
+			       origin->commit->tree->object.oid.hash,
 			       "", &diff_opts);
 	diffcore_std(&diff_opts);
 
@@ -977,8 +982,8 @@ static void pass_blame_to_parent(struct scoreboard *sb,
 
 	if (diff_hunks(&file_p, &file_o, 0, blame_chunk_cb, &d))
 		die("unable to generate diff (%s -> %s)",
-		    sha1_to_hex(parent->commit->object.sha1),
-		    sha1_to_hex(target->commit->object.sha1));
+		    oid_to_hex(&parent->commit->object.oid),
+		    oid_to_hex(&target->commit->object.oid));
 	/* The rest are the same as the parent */
 	blame_chunk(&d.dstq, &d.srcq, INT_MAX, d.offset, INT_MAX, parent);
 	*d.dstq = NULL;
@@ -1126,7 +1131,7 @@ static void find_copy_in_blob(struct scoreboard *sb,
 	memset(split, 0, sizeof(struct blame_entry [3]));
 	if (diff_hunks(file_p, &file_o, 1, handle_split_cb, &d))
 		die("unable to generate diff (%s)",
-		    sha1_to_hex(parent->commit->object.sha1));
+		    oid_to_hex(&parent->commit->object.oid));
 	/* remainder, if any, all match the preimage */
 	handle_split(sb, ent, d.tlno, d.plno, ent->num_lines, parent, split);
 }
@@ -1275,11 +1280,11 @@ static void find_copy_in_parent(struct scoreboard *sb,
 		&& (!porigin || strcmp(target->path, porigin->path))))
 		DIFF_OPT_SET(&diff_opts, FIND_COPIES_HARDER);
 
-	if (is_null_sha1(target->commit->object.sha1))
-		do_diff_cache(parent->tree->object.sha1, &diff_opts);
+	if (is_null_oid(&target->commit->object.oid))
+		do_diff_cache(parent->tree->object.oid.hash, &diff_opts);
 	else
-		diff_tree_sha1(parent->tree->object.sha1,
-			       target->commit->tree->object.sha1,
+		diff_tree_sha1(parent->tree->object.oid.hash,
+			       target->commit->tree->object.oid.hash,
 			       "", &diff_opts);
 
 	if (!DIFF_OPT_TST(&diff_opts, FIND_COPIES_HARDER))
@@ -1690,7 +1695,7 @@ static void get_commit_info(struct commit *commit,
 	if (len)
 		strbuf_add(&ret->summary, subject, len);
 	else
-		strbuf_addf(&ret->summary, "(%s)", sha1_to_hex(commit->object.sha1));
+		strbuf_addf(&ret->summary, "(%s)", oid_to_hex(&commit->object.oid));
 
 	unuse_commit_buffer(commit, message);
 }
@@ -1733,7 +1738,7 @@ static int emit_one_suspect_detail(struct origin *suspect, int repeat)
 		printf("boundary\n");
 	if (suspect->previous) {
 		struct origin *prev = suspect->previous;
-		printf("previous %s ", sha1_to_hex(prev->commit->object.sha1));
+		printf("previous %s ", oid_to_hex(&prev->commit->object.oid));
 		write_name_quoted(prev->path, stdout, '\n');
 	}
 
@@ -1746,18 +1751,21 @@ static int emit_one_suspect_detail(struct origin *suspect, int repeat)
  * The blame_entry is found to be guilty for the range.
  * Show it in incremental output.
  */
-static void found_guilty_entry(struct blame_entry *ent)
+static void found_guilty_entry(struct blame_entry *ent,
+			   struct progress_info *pi)
 {
 	if (incremental) {
 		struct origin *suspect = ent->suspect;
 
 		printf("%s %d %d %d\n",
-		       sha1_to_hex(suspect->commit->object.sha1),
+		       oid_to_hex(&suspect->commit->object.oid),
 		       ent->s_lno + 1, ent->lno + 1, ent->num_lines);
 		emit_one_suspect_detail(suspect, 0);
 		write_filename_info(suspect->path);
 		maybe_flush_or_die(stdout, "stdout");
 	}
+	pi->blamed_lines += ent->num_lines;
+	display_progress(pi->progress, pi->blamed_lines);
 }
 
 /*
@@ -1768,6 +1776,11 @@ static void assign_blame(struct scoreboard *sb, int opt)
 {
 	struct rev_info *revs = sb->revs;
 	struct commit *commit = prio_queue_get(&sb->commits);
+	struct progress_info pi = { NULL, 0 };
+
+	if (show_progress)
+		pi.progress = start_progress_delay(_("Blaming lines"),
+						   sb->num_lines, 50, 1);
 
 	while (commit) {
 		struct blame_entry *ent;
@@ -1809,7 +1822,7 @@ static void assign_blame(struct scoreboard *sb, int opt)
 			suspect->guilty = 1;
 			for (;;) {
 				struct blame_entry *next = ent->next;
-				found_guilty_entry(ent);
+				found_guilty_entry(ent, &pi);
 				if (next) {
 					ent = next;
 					continue;
@@ -1825,6 +1838,8 @@ static void assign_blame(struct scoreboard *sb, int opt)
 		if (DEBUG) /* sanity */
 			sanity_check_refcnt(sb);
 	}
+
+	stop_progress(&pi.progress);
 }
 
 static const char *format_time(unsigned long time, const char *tz_str,
@@ -1882,7 +1897,7 @@ static void emit_porcelain(struct scoreboard *sb, struct blame_entry *ent,
 	struct origin *suspect = ent->suspect;
 	char hex[GIT_SHA1_HEXSZ + 1];
 
-	sha1_to_hex_r(hex, suspect->commit->object.sha1);
+	sha1_to_hex_r(hex, suspect->commit->object.oid.hash);
 	printf("%s %d %d %d\n",
 	       hex,
 	       ent->s_lno + 1,
@@ -1922,7 +1937,7 @@ static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
 	int show_raw_time = !!(opt & OUTPUT_RAW_TIMESTAMP);
 
 	get_commit_info(suspect->commit, &ci, 1);
-	sha1_to_hex_r(hex, suspect->commit->object.sha1);
+	sha1_to_hex_r(hex, suspect->commit->object.oid.hash);
 
 	cp = nth_line(sb, ent->lno);
 	for (cnt = 0; cnt < ent->num_lines; cnt++) {
@@ -2042,7 +2057,8 @@ static int prepare_lines(struct scoreboard *sb)
 	for (p = buf; p < end; p = get_next_line(p, end))
 		num++;
 
-	sb->lineno = lineno = xmalloc(sizeof(*sb->lineno) * (num + 1));
+	ALLOC_ARRAY(sb->lineno, num + 1);
+	lineno = sb->lineno;
 
 	for (p = buf; p < end; p = get_next_line(p, end))
 		*lineno++ = p - buf;
@@ -2077,7 +2093,7 @@ static int read_ancestry(const char *graft_file)
 
 static int update_auto_abbrev(int auto_abbrev, struct origin *suspect)
 {
-	const char *uniq = find_unique_abbrev(suspect->commit->object.sha1,
+	const char *uniq = find_unique_abbrev(suspect->commit->object.oid.hash,
 					      auto_abbrev);
 	int len = strlen(uniq);
 	if (auto_abbrev < len)
@@ -2153,7 +2169,7 @@ static void sanity_check_refcnt(struct scoreboard *sb)
 		if (ent->suspect->refcnt <= 0) {
 			fprintf(stderr, "%s in %s has negative refcnt %d\n",
 				ent->suspect->path,
-				sha1_to_hex(ent->suspect->commit->object.sha1),
+				oid_to_hex(&ent->suspect->commit->object.oid),
 				ent->suspect->refcnt);
 			baa = 1;
 		}
@@ -2216,7 +2232,7 @@ static void verify_working_tree_path(struct commit *work_tree, const char *path)
 	struct commit_list *parents;
 
 	for (parents = work_tree->parents; parents; parents = parents->next) {
-		const unsigned char *commit_sha1 = parents->item->object.sha1;
+		const unsigned char *commit_sha1 = parents->item->object.oid.hash;
 		unsigned char blob_sha1[20];
 		unsigned mode;
 
@@ -2291,6 +2307,7 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	unsigned mode;
 	struct strbuf msg = STRBUF_INIT;
 
+	read_cache();
 	time(&now);
 	commit = alloc_commit_node();
 	commit->object.parsed = 1;
@@ -2310,7 +2327,7 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	strbuf_addstr(&msg, "tree 0000000000000000000000000000000000000000\n");
 	for (parent = commit->parents; parent; parent = parent->next)
 		strbuf_addf(&msg, "parent %s\n",
-			    sha1_to_hex(parent->item->object.sha1));
+			    oid_to_hex(&parent->item->object.oid));
 	strbuf_addf(&msg,
 		    "author %s\n"
 		    "committer %s\n\n"
@@ -2392,11 +2409,6 @@ static struct commit *fake_working_tree_commit(struct diff_options *opt,
 	ce->ce_mode = create_ce_mode(mode);
 	add_cache_entry(ce, ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE);
 
-	/*
-	 * We are not going to write this out, so this does not matter
-	 * right now, but someday we might optimize diff-index --cached
-	 * with cache-tree information.
-	 */
 	cache_tree_invalidate_path(&the_index, path);
 
 	return commit;
@@ -2520,6 +2532,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		OPT_BOOL('b', NULL, &blank_boundary, N_("Show blank SHA-1 for boundary commits (Default: off)")),
 		OPT_BOOL(0, "root", &show_root, N_("Do not treat root commits as boundaries (Default: off)")),
 		OPT_BOOL(0, "show-stats", &show_stats, N_("Show work cost statistics")),
+		OPT_BOOL(0, "progress", &show_progress, N_("Force progress reporting")),
 		OPT_BIT(0, "score-debug", &output_option, N_("Show output score for blame entries"), OUTPUT_SHOW_SCORE),
 		OPT_BIT('f', "show-name", &output_option, N_("Show original filename (Default: auto)"), OUTPUT_SHOW_NAME),
 		OPT_BIT('n', "show-number", &output_option, N_("Show original linenumber (Default: off)"), OUTPUT_SHOW_NUMBER),
@@ -2555,6 +2568,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 
 	save_commit_buffer = 0;
 	dashdash_pos = 0;
+	show_progress = -1;
 
 	parse_options_start(&ctx, argc, argv, prefix, options,
 			    PARSE_OPT_KEEP_DASHDASH | PARSE_OPT_KEEP_ARGV0);
@@ -2578,6 +2592,13 @@ parse_done:
 	no_whole_file_rename = !DIFF_OPT_TST(&revs.diffopt, FOLLOW_RENAMES);
 	DIFF_OPT_CLR(&revs.diffopt, FOLLOW_RENAMES);
 	argc = parse_options_end(&ctx);
+
+	if (incremental || (output_option & OUTPUT_PORCELAIN)) {
+		if (show_progress > 0)
+			die("--progress can't be used with --incremental or porcelain formats");
+		show_progress = 0;
+	} else if (show_progress < 0)
+		show_progress = isatty(2);
 
 	if (0 < abbrev)
 		/* one more abbrev length is needed for the boundary commit */
@@ -2738,7 +2759,7 @@ parse_done:
 
 		sb.revs->children.name = "children";
 		while (c->parents &&
-		       hashcmp(c->object.sha1, sb.final->object.sha1)) {
+		       oidcmp(&c->object.oid, &sb.final->object.oid)) {
 			struct commit_list *l = xcalloc(1, sizeof(*l));
 
 			l->item = c;
@@ -2748,11 +2769,11 @@ parse_done:
 			c = c->parents->item;
 		}
 
-		if (hashcmp(c->object.sha1, sb.final->object.sha1))
+		if (oidcmp(&c->object.oid, &sb.final->object.oid))
 			die("--reverse --first-parent together require range along first-parent chain");
 	}
 
-	if (is_null_sha1(sb.final->object.sha1)) {
+	if (is_null_oid(&sb.final->object.oid)) {
 		o = sb.final->util;
 		sb.final_buf = xmemdupz(o->file.ptr, o->file.size);
 		sb.final_buf_size = o->file.size;
@@ -2828,10 +2849,10 @@ parse_done:
 
 	read_mailmap(&mailmap, NULL);
 
+	assign_blame(&sb, opt);
+
 	if (!incremental)
 		setup_pager();
-
-	assign_blame(&sb, opt);
 
 	free(final_commit_name);
 
