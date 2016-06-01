@@ -59,6 +59,7 @@ base_file="$splice_dir/base"
 branch_file="$splice_dir/branch"
 insert_todo="$splice_dir/insert-todo"
 remove_todo="$splice_dir/remove-todo"
+rebase_cancelled="$splice_dir/rebase-cancelled"
 TMP_BRANCH="tmp/splice"
 
 main ()
@@ -139,13 +140,26 @@ splice ()
         args=( --continue )
     else
         args=( -i --onto "$TMP_BRANCH" "$base" "$branch" )
+        if [ "$base" = "$branch" ]; then
+            skip_rebase=y
+            echo git checkout -B "$branch" "$TMP_BRANCH"
+            git checkout -B "$branch" "$TMP_BRANCH"
+        fi
     fi
 
-    export GIT_SEQUENCE_EDITOR="$0 $debug --rebase-edit"
-    echo git rebase "${args[@]}"
-    git rebase "${args[@]}" | tweak_rebase_error
-    if [ "${PIPESTATUS[0]}" -ne 0 ]; then
-        error_and_pause "git rebase ${args[*]} failed!"
+    if [ -z "$skip_rebase" ]; then
+        export GIT_SEQUENCE_EDITOR="$0 $debug --rebase-edit"
+        echo git rebase "${args[@]}"
+        git rebase "${args[@]}" | tweak_rebase_error
+        if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+            if [ -e "$rebase_cancelled" ]; then
+                : "happens if there were no commits (left) to rebase"
+		git reset --hard "$TMP_BRANCH"
+                rm "$rebase_cancelled"
+            else
+                error_and_pause "git rebase ${args[*]} failed!"
+            fi
+        fi
     fi
 
     git branch -d "$TMP_BRANCH"
@@ -360,6 +374,12 @@ rebase_edit ()
             cat "$rebase_todo.new"
         fi
         mv "$rebase_todo".new "$rebase_todo"
+    fi
+
+    if ! grep '^ *[a-z]' "$rebase_todo"; then
+        echo "Nothing left to rebase; cancelling."
+        >"$rebase_todo"
+        touch "$rebase_cancelled"
     fi
 }
 

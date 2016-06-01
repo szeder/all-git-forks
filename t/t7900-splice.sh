@@ -268,6 +268,20 @@ test_expect_success 'remove range of commits with --' '
 	test_remove_range_of_commits --
 '
 
+test_expect_success 'remove commit from branch tip' '
+	reset &&
+	git splice -d HEAD^! &&
+	[ `git rev-parse HEAD` = `git rev-parse three-a` ] &&
+	test_splice_not_in_progress
+'
+
+test_expect_success 'remove commits from branch tip' '
+	reset &&
+	git splice -d HEAD~3..HEAD &&
+	[ `git rev-parse HEAD` = `git rev-parse two-a` ] &&
+	test_splice_not_in_progress
+'
+
 test_expect_failure 'remove range of commits starting at root' '
 	reset &&
 	test_must_fail git splice one-b >stdout 2>stderr &&
