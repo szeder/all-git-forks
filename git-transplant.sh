@@ -235,7 +235,7 @@ remove_command ()
         # or this is the first attempt to run this workflow.  Either
         # way, this is the first attempt at the removal phase.
         echo "$action" >"$splice_file"
-        cat "$remove_todo" | xargs git splice $debug --transplant
+        cat "$remove_todo" | xargs -t git splice $debug --transplant
     fi
 }
 
