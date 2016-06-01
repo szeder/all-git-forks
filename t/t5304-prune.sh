@@ -304,4 +304,23 @@ test_expect_success 'prune: handle HEAD in multiple worktrees' '
 	test_cmp third-worktree/blob actual
 '
 
+test_expect_success 'prune: handle HEAD reflog in multiple worktrees' '
+	(
+		cd third-worktree &&
+		git config core.logAllRefUpdates true &&
+		echo "HEAD{1} blob for third-worktree" >blob &&
+		git add blob &&
+		git commit -m "second commit in third" &&
+		cp blob expected &&
+		echo "HEAD{0} blob for third-worktree" >blob &&
+		git add blob &&
+		git commit -m "third commit in third" &&
+		git show HEAD@{1}:blob >actual &&
+		test_cmp expected actual
+	) &&
+	git prune --expire=now &&
+	git -C third-worktree show HEAD@{1}:blob >actual &&
+	test_cmp third-worktree/expected actual
+'
+
 test_done
