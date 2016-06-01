@@ -170,7 +170,8 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	revs->tree_objects = 1;
 
 	/* Add all refs from the index file */
-	add_index_objects_to_pending(revs, 0);
+	read_cache();
+	add_index_objects_to_pending(revs, 0, &the_index);
 
 	/* Add all external refs */
 	for_each_ref(add_one_ref, revs);
