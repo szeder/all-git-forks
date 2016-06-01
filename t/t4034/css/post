@@ -1,6 +1,6 @@
-.other-form label.control-label {
-    margin-top: 15px!important;
-    border : 10px dotted #C6C6C6;
+.class-form label.control-label {
+    margin-top: 10px!important;
+    border : 10px dashed #C6C6C6;
 }
 #CCCCCB
 10em
