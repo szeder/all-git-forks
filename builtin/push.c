@@ -11,6 +11,8 @@
 #include "submodule.h"
 #include "submodule-config.h"
 #include "send-pack.h"
+#include "urlmatch.h"
+#include "url.h"
 
 static const char * const push_usage[] = {
 	N_("git push [<options>] [<repository> [<refspec>...]]"),
@@ -353,6 +355,80 @@ static int push_with_options(struct transport *transport, int flags)
 	return 1;
 }
 
+static void url_data(const char *long_url, const char **protocol, const char **short_url, struct url_info *url_infos)
+{
+	if (is_url(long_url)) {
+		*protocol = xmemdupz(long_url, 5);
+		*short_url = url_normalize(long_url, url_infos);
+	} else {
+		*protocol = NULL;
+		*short_url = xmemdupz(long_url, strlen(long_url));
+	}
+}
+
+static int check_prefix(const char *target_repo_long, const struct string_list *repo_list, int *protocol_max_match_size)
+{
+	struct string_list_item *config_repo_long;
+	const char *target_repo_short, *config_repo_short;
+	struct url_info target_infos, config_infos;
+	const char *target_protocol, *config_protocol;
+
+	int path_max_match_size = 0;
+	*protocol_max_match_size = 0;
+	if (!repo_list)
+		return 0;
+
+	// Recup donnees target
+	url_data(target_repo_long, &target_protocol, &target_repo_short, &target_infos);
+	// Boucle sur les repos de la liste
+	for_each_string_list_item(config_repo_long, repo_list) {
+		// Recup donnees config
+		url_data(config_repo_long->string, &config_protocol, &config_repo_short, &config_infos);
+		// Test du match
+		if (starts_with(target_repo_short, config_repo_short)) {
+			if (target_protocol && config_protocol && !strcmp(target_protocol, config_protocol) && *protocol_max_match_size < strlen(config_repo_short))
+				*protocol_max_match_size = strlen(config_repo_short);
+			if (path_max_match_size < strlen(config_repo_short))
+				path_max_match_size = strlen(config_repo_short);
+		}
+	}
+	return path_max_match_size;
+}
+
+static void block_unauthorized_url(const char *target_repo)
+{
+	const char *default_policy, *deny_message, *deny_protocol_message;
+	const struct string_list *whitelist, *blacklist;
+	int whitelist_match_size, blacklist_match_size;
+	int whitelist_protocol_match, blacklist_protocol_match;
+
+	if (git_config_get_value("remote.pushDefaultPolicy", &default_policy))
+		default_policy = "allow";
+	if (git_config_get_value("remote.pushDenyMessage", &deny_message))
+		deny_message = "Pushing to this remote is forbidden.";
+	if (git_config_get_value("remote.pushDenyMessageProtocol", &deny_protocol_message))
+		deny_protocol_message = "Pushing to this remote using this protocol is forbidden";
+	whitelist = git_config_get_value_multi("remote.pushWhitelisted");
+	blacklist = git_config_get_value_multi("remote.pushBlacklisted");
+
+	whitelist_match_size = check_prefix(target_repo, whitelist, &whitelist_protocol_match);
+	blacklist_match_size = check_prefix(target_repo, blacklist, &blacklist_protocol_match);
+
+	if (blacklist_protocol_match > whitelist_protocol_match)
+		die(_("%s"), deny_protocol_message);
+
+	if (whitelist_match_size < blacklist_match_size)
+		die(_("%s"), deny_message);
+	if (whitelist_match_size == blacklist_match_size) {
+		if (whitelist_match_size)
+			die(_("%s cannot be whitelisted and blacklisted at the same time"), target_repo);
+		if (!strcmp(default_policy, "deny"))
+			die(_("%s"), deny_message);
+		if (strcmp(default_policy, "allow"))
+			die(_("Unrecognized value for remote.pushDefaultPolicy, should be 'allow' or 'deny'"));
+	}
+}
+
 static int do_push(const char *repo, int flags)
 {
 	int i, errs;
@@ -404,15 +480,18 @@ static int do_push(const char *repo, int flags)
 	url_nr = push_url_of_remote(remote, &url);
 	if (url_nr) {
 		for (i = 0; i < url_nr; i++) {
-			struct transport *transport =
-				transport_get(remote, url[i]);
+			struct transport *transport;
+			if (!(flags & TRANSPORT_PUSH_NO_HOOK))
+				block_unauthorized_url(url[i]);
+			transport = transport_get(remote, url[i]);
 			if (push_with_options(transport, flags))
 				errs++;
 		}
 	} else {
-		struct transport *transport =
-			transport_get(remote, NULL);
-
+		struct transport *transport;
+		if (!(flags & TRANSPORT_PUSH_NO_HOOK))
+			block_unauthorized_url(remote->url[0]);
+		transport = transport_get(remote, NULL);
 		if (push_with_options(transport, flags))
 			errs++;
 	}
