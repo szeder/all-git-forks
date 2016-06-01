@@ -44,6 +44,10 @@
 #   # Resume a transplant after manually fixing conflicts caused by
 #   # cherry-pick or rebase
 #   git transplant --continue
+#
+# FIXME:
+#
+#  - correctly handle when range contains commits outside the current branch
 
 me=`basename $0`
 git_dir=`git rev-parse --git-dir` || exit 1
