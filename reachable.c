@@ -170,6 +170,13 @@ static void add_objects_from_worktree(struct rev_info *revs)
 				    worktree_git_path(wt, "index")) > 0)
 			add_index_objects_to_pending(revs, 0, &istate);
 		discard_index(&istate);
+
+		if (wt->is_detached) {
+			struct object *o;
+			o = parse_object_or_die(wt->head_sha1, "HEAD");
+			add_pending_object(revs, o, "");
+		}
+
 	}
 	free_worktrees(worktrees);
 
@@ -199,13 +206,14 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 	/* Add all external refs */
 	for_each_ref(add_one_ref, revs);
 
-	/* detached HEAD is not included in the list above */
-	head_ref(add_one_ref, revs);
-
 	/* Add all reflog info */
 	if (mark_reflog)
 		add_reflogs_to_pending(revs, 0);
 
+	/*
+	 * Add all objects from the in-core index file and detached
+	 * HEAD which is not included in the list above
+	 */
 	add_objects_from_worktree(revs);
 
 	cp.progress = progress;
