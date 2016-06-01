@@ -2069,6 +2069,23 @@ static void add_indexed_objects_from_worktrees(struct rev_info *revs)
 	free_worktrees(worktrees);
 }
 
+static void add_detached_heads_from_wortrees(struct rev_info *revs)
+{
+	struct worktree **worktrees, **p;
+
+	worktrees = get_worktrees();
+	for (p = worktrees; *p; p++) {
+		struct worktree *wt = *p;
+		struct object *o;
+
+		if (!wt->is_detached)
+			continue;
+		o = parse_object_or_die(wt->head_sha1, "HEAD");
+		add_pending_object(revs, o, "");
+	}
+	free_worktrees(worktrees);
+}
+
 static int handle_revision_pseudo_opt(const char *submodule,
 				struct rev_info *revs,
 				int argc, const char **argv, int *flags)
@@ -2093,6 +2110,8 @@ static int handle_revision_pseudo_opt(const char *submodule,
 		handle_refs(submodule, revs, *flags, for_each_ref_submodule);
 		handle_refs(submodule, revs, *flags, head_ref_submodule);
 		clear_ref_exclusion(&revs->ref_excludes);
+		if (revs->all_worktrees)
+			add_detached_heads_from_wortrees(revs);
 	} else if (!strcmp(arg, "--branches")) {
 		handle_refs(submodule, revs, *flags, for_each_branch_ref_submodule);
 		clear_ref_exclusion(&revs->ref_excludes);
