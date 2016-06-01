@@ -475,6 +475,18 @@ notes for details).
    dir-diff mode.
    (merge 366f9ce da/difftool later to maint).
 
+ * "git commit-tree" plumbing command required the user to always sign
+   its result when the user sets the commit.gpgsign configuration
+   variable, which was an ancient mistake.  Rework "git rebase" that
+   relied on this mistake so that it reads commit.gpgsign and pass (or
+   not pass) the -S option to "git commit-tree" to keep the end-user
+   expectation the same, while teaching "git commit-tree" to ignore
+   the configuration variable.  This will stop requiring the users to
+   sign commit objects used internally as an implementation detail of
+   "git stash".
+   (merge 6694856 jc/commit-tree-ignore-commit-gpgsign later to maint).
+
+
  * Other minor clean-ups and documentation updates
    (merge 832c0e5 lp/typofixes later to maint).
    (merge f5ee54a sb/z-is-gnutar-ism later to maint).

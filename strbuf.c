@@ -1,6 +1,14 @@
 #include "cache.h"
 #include "refs.h"
 #include "utf8.h"
+#include <sys/param.h>
+
+/**
+ * Flags
+ * --------------
+ */
+#define STRBUF_OWNS_MEMORY 1
+#define STRBUF_FIXED_MEMORY (1 << 1)
 
 int starts_with(const char *str, const char *prefix)
 {
@@ -20,16 +28,37 @@ char strbuf_slopbuf[1];
 
 void strbuf_init(struct strbuf *sb, size_t hint)
 {
+	sb->flags = 0;
 	sb->alloc = sb->len = 0;
 	sb->buf = strbuf_slopbuf;
 	if (hint)
 		strbuf_grow(sb, hint);
 }
 
+void strbuf_wrap_preallocated(struct strbuf *sb, char *path_buf,
+			      size_t path_buf_len, size_t alloc_len)
+{
+	if (!path_buf)
+		die("you try to use a NULL buffer to initialize a strbuf");
+
+	strbuf_init(sb, 0);
+	strbuf_attach(sb, path_buf, path_buf_len, alloc_len);
+	sb->flags &= ~STRBUF_OWNS_MEMORY;
+	sb->flags &= ~STRBUF_FIXED_MEMORY;
+}
+
+void strbuf_wrap_fixed(struct strbuf *sb, char *path_buf,
+		       size_t path_buf_len, size_t alloc_len)
+{
+	strbuf_wrap_preallocated(sb, path_buf, path_buf_len, alloc_len);
+	sb->flags |= STRBUF_FIXED_MEMORY;
+}
+
 void strbuf_release(struct strbuf *sb)
 {
 	if (sb->alloc) {
-		free(sb->buf);
+		if (sb->flags & STRBUF_OWNS_MEMORY)
+			free(sb->buf);
 		strbuf_init(sb, 0);
 	}
 }
@@ -38,7 +67,11 @@ char *strbuf_detach(struct strbuf *sb, size_t *sz)
 {
 	char *res;
 	strbuf_grow(sb, 0);
-	res = sb->buf;
+	if (sb->flags & STRBUF_OWNS_MEMORY)
+		res = sb->buf;
+	else
+		res = xmemdupz(sb->buf, sb->alloc - 1);
+
 	if (sz)
 		*sz = sb->len;
 	strbuf_init(sb, 0);
@@ -51,6 +84,8 @@ void strbuf_attach(struct strbuf *sb, void *buf, size_t len, size_t alloc)
 	sb->buf   = buf;
 	sb->len   = len;
 	sb->alloc = alloc;
+	sb->flags |= STRBUF_OWNS_MEMORY;
+	sb->flags &= ~STRBUF_FIXED_MEMORY;
 	strbuf_grow(sb, 0);
 	sb->buf[sb->len] = '\0';
 }
@@ -61,9 +96,32 @@ void strbuf_grow(struct strbuf *sb, size_t extra)
 	if (unsigned_add_overflows(extra, 1) ||
 	    unsigned_add_overflows(sb->len, extra + 1))
 		die("you want to use way too much memory");
-	if (new_buf)
-		sb->buf = NULL;
-	ALLOC_GROW(sb->buf, sb->len + extra + 1, sb->alloc);
+	if ((sb->flags & STRBUF_FIXED_MEMORY) && sb->len + extra + 1 > sb->alloc)
+		die("you try to make a string overflow the buffer of a fixed strbuf");
+
+	/*
+	 * ALLOC_GROW may do a realloc() if needed, so we must not use it on
+	 * a buffer the strbuf doesn't own
+	 */
+	if (sb->flags & STRBUF_OWNS_MEMORY) {
+		if (new_buf)
+			sb->buf = NULL;
+		ALLOC_GROW(sb->buf, sb->len + extra + 1, sb->alloc);
+	} else {
+		/*
+		 * The strbuf doesn't own the buffer: to avoid to realloc it,
+		 * the strbuf needs to use a new buffer without freeing the old
+		 */
+		if (sb->len + extra + 1 > sb->alloc) {
+			size_t new_alloc = MAX(sb->len + extra + 1, alloc_nr(sb->alloc));
+			char *buf = xmalloc(new_alloc);
+			memcpy(buf, sb->buf, sb->alloc);
+			sb->buf = buf;
+			sb->alloc = new_alloc;
+			sb->flags |= STRBUF_OWNS_MEMORY;
+		}
+	}
+
 	if (new_buf)
 		sb->buf[0] = '\0';
 }

@@ -30,9 +30,11 @@ IPATTERN("fortran",
 	 /* -- */
 	 "[a-zA-Z][a-zA-Z0-9_]*"
 	 "|\\.([Ee][Qq]|[Nn][Ee]|[Gg][TtEe]|[Ll][TtEe]|[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[Aa][Nn][Dd]|[Oo][Rr]|[Nn]?[Ee][Qq][Vv]|[Nn][Oo][Tt])\\."
-	 /* numbers and format statements like 2E14.4, or ES12.6, 9X.
+	 /*
+	  * numbers and format statements like 2E14.4, or ES12.6, 9X.
 	  * Don't worry about format statements without leading digits since
-	  * they would have been matched above as a variable anyway. */
+	  * they would have been matched above as a variable anyway.
+	  */
 	 "|[-+]?[0-9.]+([AaIiDdEeFfLlTtXx][Ss]?[-+]?[0-9.]*)?(_[a-zA-Z0-9][a-zA-Z0-9_]*)?"
 	 "|//|\\*\\*|::|[/<>=]="),
 IPATTERN("fountain", "^((\\.[^.]|(int|ext|est|int\\.?/ext|i/e)[. ]).*)$",
@@ -148,6 +150,17 @@ PATTERNS("csharp",
 	 "[a-zA-Z_][a-zA-Z0-9_]*"
 	 "|[-+0-9.e]+[fFlL]?|0[xXbB]?[0-9a-fA-F]+[lL]?"
 	 "|[-+*/<>%&^|=!]=|--|\\+\\+|<<=?|>>=?|&&|\\|\\||::|->"),
+IPATTERN("css",
+	 "^([^,{}]+)((,[^}]*\\{)|([ \t]*\\{))$",
+	 /* -- */
+	 /*
+	  * This regex comes from W3C CSS specs. Should theoretically
+	  * also allow ISO 10646 characters U+00A0 and higher,
+	  * but they are not handled with this regex.
+	  */
+	 "-?[_a-zA-Z][-_a-zA-Z0-9]*" /* identifiers */
+	 "|-?[0-9]+|\\#[0-9a-fA-F]+" /* numbers */
+),
 { "default", NULL, -1, { NULL, 0 } },
 };
 #undef PATTERNS
