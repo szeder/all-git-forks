@@ -9,6 +9,7 @@
 #include "cache-tree.h"
 #include "progress.h"
 #include "list-objects.h"
+#include "argv-array.h"
 
 struct connectivity_progress {
 	struct progress *progress;
@@ -20,23 +21,6 @@ static void update_progress(struct connectivity_progress *cp)
 	cp->count++;
 	if ((cp->count & 1023) == 0)
 		display_progress(cp->progress, cp->count);
-}
-
-static int add_one_ref(const char *path, const struct object_id *oid,
-		       int flag, void *cb_data)
-{
-	struct rev_info *revs = (struct rev_info *)cb_data;
-	struct object *object;
-
-	if ((flag & REF_ISSYMREF) && (flag & REF_ISBROKEN)) {
-		warning("symbolic ref is dangling: %s", path);
-		return 0;
-	}
-
-	object = parse_object_or_die(oid->hash, path);
-	add_pending_object(revs, object, "");
-
-	return 0;
 }
 
 /*
@@ -161,27 +145,28 @@ void mark_reachable_objects(struct rev_info *revs, int mark_reflog,
 			    struct progress *progress)
 {
 	struct connectivity_progress cp;
+	struct argv_array av = ARGV_ARRAY_INIT;
+
+	argv_array_push(&av, "program-name");
 
 	/*
 	 * Set up revision parsing, and mark us as being interested
 	 * in all object types, not just commits.
 	 */
-	revs->tag_objects = 1;
-	revs->blob_objects = 1;
-	revs->tree_objects = 1;
+	argv_array_push(&av, "--objects");
 
 	/* Add all refs from the index file */
-	add_index_objects_to_pending(revs, 0);
+	argv_array_push(&av, "--indexed-objects");
 
-	/* Add all external refs */
-	for_each_ref(add_one_ref, revs);
-
-	/* detached HEAD is not included in the list above */
-	head_ref(add_one_ref, revs);
+	/* Add all external refs including detached HEADs */
+	argv_array_push(&av, "--all");
 
 	/* Add all reflog info */
 	if (mark_reflog)
-		add_reflogs_to_pending(revs, 0);
+		argv_array_push(&av, "--reflog");
+
+	setup_revisions(av.argc, av.argv, revs, NULL);
+	argv_array_clear(&av);
 
 	cp.progress = progress;
 	cp.count = 0;
