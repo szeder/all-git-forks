@@ -2689,6 +2689,9 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	} else
 		argv_array_push(&rp, "--objects");
 
+	if (rev_list_all || rev_list_reflog || rev_list_index)
+		argv_array_push(&rp, "--all-worktrees");
+
 	if (rev_list_all) {
 		use_internal_rev_list = 1;
 		argv_array_push(&rp, "--all");
