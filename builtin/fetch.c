@@ -451,6 +451,7 @@ fail:
 }
 
 static int refcol_width = 10;
+static int compact_format;
 
 static void adjust_refcol_width(const struct ref *ref)
 {
@@ -480,6 +481,19 @@ static void adjust_refcol_width(const struct ref *ref)
 static void prepare_format_display(struct ref *ref_map)
 {
 	struct ref *rm;
+	const char *format = "full";
+
+	git_config_get_string_const("fetch.output", &format);
+	if (!strcasecmp(format, "full"))
+		compact_format = 0;
+	else if (!strcasecmp(format, "compact"))
+		compact_format = 1;
+	else
+		die(_("configuration fetch.output contains invalid value %s"),
+		    format);
+
+	if (compact_format)
+		return;
 
 	for (rm = ref_map; rm; rm = rm->next) {
 		if (rm->status == REF_STATUS_REJECT_SHALLOW ||
@@ -491,12 +505,63 @@ static void prepare_format_display(struct ref *ref_map)
 	}
 }
 
+static int common_suffix_length(const char *a, const char *b)
+{
+	const char *pa = a + strlen(a);
+	const char *pb = b + strlen(b);
+	int count = 0, final_count = 0;
+
+	while (pa > a && pb > b && pa[-1] == pb[-1]) {
+		pa--;
+		pb--;
+		count++;
+		if (*pa == '/' ||
+		    /*
+		     * if a and b are "abc" and "origin/abc" respectively,
+		     * accept "a" as the suffix boundary too.
+		     */
+		    (pa == a && pb > b && pb[-1] == '/') ||
+		    (pb == b && pa > a && pa[-1] == '/'))
+			final_count = count;
+	}
+
+	return final_count;
+}
+
+static void print_remote_to_local(struct strbuf *display,
+				  const char *remote, const char *local)
+{
+	strbuf_addf(display, "%-*s -> %s", refcol_width, remote, local);
+}
+
+static void print_compact(struct strbuf *display,
+			  const char *remote, const char *local)
+{
+	int len = common_suffix_length(remote, local);
+
+	if (len) {
+		strbuf_addf(display, "{%.*s -> %.*s}%s",
+			    (int)strlen(remote) - len, remote,
+			    (int)strlen(local) - len, local,
+			    remote + strlen(remote) - len);
+		return;
+	}
+	print_remote_to_local(display, remote, local);
+}
+
 static void format_display(struct strbuf *display, char code,
 			   const char *summary, const char *error,
 			   const char *remote, const char *local)
 {
 	strbuf_addf(display, "%c %-*s ", code, TRANSPORT_SUMMARY(summary));
-	strbuf_addf(display, "%-*s -> %s", refcol_width, remote, local);
+	switch (compact_format) {
+	case 0:
+		print_remote_to_local(display, remote, local);
+		break;
+	case 1:
+		print_compact(display, remote, local);
+		break;
+	}
 	if (error)
 		strbuf_addf(display, "  (%s)", error);
 }
