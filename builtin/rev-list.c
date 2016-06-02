@@ -360,6 +360,8 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			uint32_t commit_count;
 			if (!prepare_bitmap_walk(&revs)) {
 				count_bitmap_commit_list(&commit_count, NULL, NULL, NULL);
+				if (revs.max_count && revs.max_count < commit_count)
+					commit_count = revs.max_count;
 				printf("%d\n", commit_count);
 				return 0;
 			}
