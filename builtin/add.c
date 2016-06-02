@@ -26,7 +26,7 @@ static int patch_interactive, add_interactive, edit_interactive;
 static int take_worktree_changes;
 
 struct update_callback_data {
-	int flags;
+	int flags, force_mode;
 	int add_errors;
 };
 
@@ -65,7 +65,8 @@ static void update_callback(struct diff_queue_struct *q,
 			die(_("unexpected diff status %c"), p->status);
 		case DIFF_STATUS_MODIFIED:
 		case DIFF_STATUS_TYPE_CHANGED:
-			if (add_file_to_index(&the_index, path, data->flags)) {
+			if (add_file_to_index(&the_index, path,
+					data->flags, data->force_mode)) {
 				if (!(data->flags & ADD_CACHE_IGNORE_ERRORS))
 					die(_("updating files failed"));
 				data->add_errors++;
@@ -83,14 +84,15 @@ static void update_callback(struct diff_queue_struct *q,
 	}
 }
 
-int add_files_to_cache(const char *prefix,
-		       const struct pathspec *pathspec, int flags)
+int add_files_to_cache(const char *prefix, const struct pathspec *pathspec,
+	int flags, int force_mode)
 {
 	struct update_callback_data data;
 	struct rev_info rev;
 
 	memset(&data, 0, sizeof(data));
 	data.flags = flags;
+	data.force_mode = force_mode;
 
 	init_revisions(&rev, prefix);
 	setup_revisions(0, NULL, &rev, NULL);
@@ -279,7 +281,7 @@ static int add_config(const char *var, const char *value, void *cb)
 	return git_default_config(var, value, cb);
 }
 
-static int add_files(struct dir_struct *dir, int flags)
+static int add_files(struct dir_struct *dir, int flags, int force_mode)
 {
 	int i, exit_status = 0;
 
@@ -292,7 +294,8 @@ static int add_files(struct dir_struct *dir, int flags)
 	}
 
 	for (i = 0; i < dir->nr; i++)
-		if (add_file_to_cache(dir->entries[i]->name, flags)) {
+		if (add_file_to_index(&the_index, dir->entries[i]->name,
+				flags, force_mode)) {
 			if (!ignore_add_errors)
 				die(_("adding files failed"));
 			exit_status = 1;
@@ -305,7 +308,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	int exit_status = 0;
 	struct pathspec pathspec;
 	struct dir_struct dir;
-	int flags;
+	int flags, force_mode;
 	int add_new_files;
 	int require_pathspec;
 	char *seen = NULL;
@@ -339,10 +342,14 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	if (!show_only && ignore_missing)
 		die(_("Option --ignore-missing can only be used together with --dry-run"));
 
-	if (chmod_arg) {
-		if (strcmp(chmod_arg, "-x") && strcmp(chmod_arg, "+x"))
-			die(_("--chmod param must be either -x or +x"));
-	}
+	if (!chmod_arg)
+		force_mode = 0;
+	else if (!strcmp(chmod_arg, "-x"))
+		force_mode = 0666;
+	else if (!strcmp(chmod_arg, "+x"))
+		force_mode = 0777;
+	else
+		die(_("--chmod param '%s' must be either -x or +x"), chmod_arg);
 
 	add_new_files = !take_worktree_changes && !refresh_only;
 	require_pathspec = !(take_worktree_changes || (0 < addremove_explicit));
@@ -354,9 +361,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		 (intent_to_add ? ADD_CACHE_INTENT : 0) |
 		 (ignore_add_errors ? ADD_CACHE_IGNORE_ERRORS : 0) |
 		 (!(addremove || take_worktree_changes)
-		  ? ADD_CACHE_IGNORE_REMOVAL : 0)) |
-		 (chmod_arg && *chmod_arg == '+' ? ADD_CACHE_FORCE_EXECUTABLE : 0) |
-		 (chmod_arg && *chmod_arg == '-' ? ADD_CACHE_FORCE_NOTEXECUTABLE : 0);
+		  ? ADD_CACHE_IGNORE_REMOVAL : 0));
 
 	if (require_pathspec && argc == 0) {
 		fprintf(stderr, _("Nothing specified, nothing added.\n"));
@@ -436,10 +441,10 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	plug_bulk_checkin();
 
-	exit_status |= add_files_to_cache(prefix, &pathspec, flags);
+	exit_status |= add_files_to_cache(prefix, &pathspec, flags, force_mode);
 
 	if (add_new_files)
-		exit_status |= add_files(&dir, flags);
+		exit_status |= add_files(&dir, flags, force_mode);
 
 	unplug_bulk_checkin();
 
