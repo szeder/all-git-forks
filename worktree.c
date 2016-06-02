@@ -98,6 +98,7 @@ static struct worktree *get_main_worktree(void)
 	worktree->is_detached = is_detached;
 	worktree->is_current = 0;
 	add_head_info(&head_ref, worktree);
+	worktree->lock_reason = NULL;
 
 done:
 	strbuf_release(&path);
@@ -143,6 +144,17 @@ static struct worktree *get_linked_worktree(const char *id)
 	worktree->is_detached = is_detached;
 	worktree->is_current = 0;
 	add_head_info(&head_ref, worktree);
+
+	strbuf_reset(&path);
+	strbuf_addf(&path, "%s/worktrees/%s/locked", get_git_common_dir(), id);
+	if (file_exists(path.buf)) {
+		struct strbuf lock_reason = STRBUF_INIT;
+		if (strbuf_read_file(&lock_reason, path.buf, 0) < 0)
+			die_errno(_("failed to read '%s'"), path.buf);
+		strbuf_trim(&lock_reason);
+		worktree->lock_reason = strbuf_detach(&lock_reason, NULL);
+	} else
+		worktree->lock_reason = NULL;
 
 done:
 	strbuf_release(&path);
@@ -212,6 +224,47 @@ const char *get_worktree_git_dir(const struct worktree *wt)
 		return get_git_common_dir();
 	else
 		return git_common_path("worktrees/%s", wt->id);
+}
+
+static struct worktree *find_worktree_by_basename(struct worktree **list,
+						  const char *base_name)
+{
+	struct worktree *found = NULL;
+	int nr_found = 0;
+
+	for (; *list && nr_found < 2; list++) {
+		char *path = xstrdup((*list)->path);
+		if (!fspathcmp(base_name, basename(path))) {
+			found = *list;
+			nr_found++;
+		}
+		free(path);
+	}
+	return nr_found == 1 ? found : NULL;
+}
+
+struct worktree *find_worktree(struct worktree **list,
+			       const char *prefix,
+			       const char *arg)
+{
+	struct worktree *wt;
+	char *path;
+
+	if ((wt = find_worktree_by_basename(list, arg)))
+		return wt;
+
+	arg = prefix_filename(prefix, strlen(prefix), arg);
+	path = xstrdup(real_path(arg));
+	for (; *list; list++)
+		if (!fspathcmp(path, real_path((*list)->path)))
+			break;
+	free(path);
+	return *list;
+}
+
+int is_main_worktree(const struct worktree *wt)
+{
+	return !wt->id;
 }
 
 int is_worktree_being_rebased(const struct worktree *wt,
