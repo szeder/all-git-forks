@@ -2152,6 +2152,10 @@ static int handle_revision_pseudo_opt(const char *submodule,
 		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--reflog")) {
 		add_reflogs_to_pending(revs, *flags);
+		/*
+		 * FIXME: make sure per-worktree reflogs are marked as
+		 * well when --all-worktrees is specified.
+		 */
 	} else if (!strcmp(arg, "--indexed-objects")) {
 		read_cache();
 		add_index_objects_to_pending(revs, *flags, &the_index);
