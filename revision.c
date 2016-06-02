@@ -1166,6 +1166,11 @@ static int handle_one_ref(const char *path, const struct object_id *oid,
 	struct all_refs_cb *cb = cb_data;
 	struct object *object;
 
+	if ((flag & REF_ISSYMREF) && (flag & REF_ISBROKEN)) {
+		warning("symbolic ref is dangling: %s", path);
+		return 0;
+	}
+
 	if (ref_excluded(cb->all_revs->ref_excludes, path))
 	    return 0;
 
@@ -1245,7 +1250,7 @@ static int handle_one_reflog(const char *path, const struct object_id *oid,
 	return 0;
 }
 
-void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)
+static void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)
 {
 	struct all_refs_cb cb;
 
@@ -1275,7 +1280,7 @@ static void add_cache_tree(struct cache_tree *it, struct rev_info *revs,
 
 }
 
-void add_index_objects_to_pending(struct rev_info *revs, unsigned flags)
+static void add_index_objects_to_pending(struct rev_info *revs, unsigned flags)
 {
 	int i;
 
