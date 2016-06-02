@@ -1,17 +1,19 @@
 #include "git-compat-util.h"
 #include "strbuf.h"
+#include "parse-options.h"
+#include "builtin.h"
 
 /*
  * Check behavior on usual use cases
  */
-int test_usual(struct strbuf *sb)
+static int strbuf_check_behavior(struct strbuf *sb)
 {
+	char *str_test = xstrdup("test"),*res, *old_buf;
 	size_t size, old_alloc;
-	char *res, *old_buf, *str_test = malloc(5*sizeof(char));
+	
 	strbuf_grow(sb, 1);
-	strcpy(str_test, "test");
 	old_alloc = sb->alloc;
-	strbuf_grow(sb, 1000);
+	strbuf_grow(sb, sb->alloc - sb->len + 1000);
 	if (old_alloc == sb->alloc)
 		die("strbuf_grow does not realloc the buffer as expected");
 	old_buf = sb->buf;
@@ -20,9 +22,12 @@ int test_usual(struct strbuf *sb)
 		die("strbuf_detach does not return the expected buffer");
 	free(res);
 
-	strcpy(str_test, "test");
-	strbuf_attach(sb, (void *)str_test, strlen(str_test), sizeof(str_test));
+	str_test = xstrdup("test");
+	strbuf_attach(sb, str_test, strlen(str_test), strlen(str_test) + 1);
 	res = strbuf_detach(sb, &size);
+	if (size != strlen(str_test)) 
+		die ("size is not as expected");
+
 	if (res != str_test)
 		die("strbuf_detach does not return the expected buffer");
 	free(res);
@@ -31,80 +36,177 @@ int test_usual(struct strbuf *sb)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+static int basic_grow(struct strbuf *sb) 
 {
-	size_t size = 1;
-	struct strbuf sb;
+	strbuf_init(sb, 0);
+	strbuf_grow(sb, 0);
+	if (sb->buf == strbuf_slopbuf)
+		die("strbuf_grow failed to alloc memory");
+	strbuf_release(sb);
+	if (sb->buf != strbuf_slopbuf)
+		die("strbuf_release does not reinitialize the strbuf");
+
+	return 0;
+}
+
+static int grow_overflow(struct strbuf *sb)
+{
+	strbuf_init(sb, 1000);
+	strbuf_grow(sb, maximum_unsigned_value_of_type((size_t)1));
+
+	return 0;
+}
+
+static int preallocated_NULL(struct strbuf *sb) 
+{
 	char str_test[5] = "test";
+
+	strbuf_wrap_preallocated(sb, NULL, 0, sizeof(str_test));
+
+	return 0;
+}
+
+static int grow_fixed_overflow(struct strbuf *sb) 
+{
 	char str_foo[7] = "foo";
 
-	if (argc != 2)
-		usage("test-strbuf mode");
+	strbuf_wrap_fixed(sb, (void *)str_foo,
+			  strlen(str_foo), sizeof(str_foo));
+	strbuf_grow(sb, 3);
+	strbuf_grow(sb, 1000);
 
-	if (!strcmp(argv[1], "basic_grow")) {
+	return 0;
+}
+
+static int grow_fixed_overflow_min(struct strbuf *sb) 
+{
+	char str_foo[7] = "foo";
+
+	strbuf_wrap_fixed(sb, (void *)str_foo,
+			  strlen(str_foo), sizeof(str_foo));
+	strbuf_grow(sb, 4);
+
+	return 0;
+}
+
+static int grow_fixed_success(struct strbuf *sb)
+{
+	char str_foo[7] = "foo";
+
+	strbuf_wrap_fixed(sb, (void *)str_foo,
+			  strlen(str_foo), sizeof(str_foo));
+	strbuf_grow(sb, 3);
+
+	return 0;
+}
+
+static int detach_fixed(struct strbuf *sb)
+{
+	size_t size = 1;
+	char str_test[5] = "test";
+	char *buf;
+
+	strbuf_wrap_fixed(sb, (void *)str_test,
+			  strlen(str_test), sizeof(str_test));
+	buf = strbuf_detach(sb, &size);
+	if (size != strlen(str_test)) 
+		die ("size is not as expected");
+
+	if (str_test == buf)
+		die("strbuf_detach does not copy the buffer");
+	free(buf);
+
+	return 0;
+}
+
+static int release_fixed(struct strbuf *sb)
+{
+	char str_test[5] = "test";
+
+	strbuf_wrap_fixed(sb, (void *)str_test, strlen(str_test),
+			  sizeof(sb) + 1);
+	strbuf_release(sb);
+	if (sb->buf != strbuf_slopbuf)
+		die("strbuf_release does not reinitialize the strbuf");
+
+	return 0;
+}
+
+int main(int argc,  const char *argv[])
+{
+	struct strbuf sb;
+	enum {
+		MODE_UNSPECIFIED = 0,
+		MODE_BASIC_GROW ,
+		MODE_STRBUF_CHECK,
+		MODE_GROW_OVERFLOW,
+		MODE_PREALLOC_CHECK,
+		MODE_PREALLOC_NULL,
+		MODE_GROW_FIXED_OVERFLOW,
+		MODE_GROW_FIXED_OVERFLOW_MIN,
+		MODE_GROW_FIXED_SUCCESS,
+		MODE_DETACH_FIXED,
+		MODE_RELEASE_FIXED
+	} cmdmode = MODE_UNSPECIFIED;
+	struct option options[] = {
+		OPT_CMDMODE(0, "basic_grow", &cmdmode, N_(" basic grow test"), MODE_BASIC_GROW),
+		OPT_CMDMODE(0, "strbuf_check_behavior", &cmdmode, N_("check the strbuf's behavior"), MODE_STRBUF_CHECK),
+		OPT_CMDMODE(0, "grow_overflow", &cmdmode, N_("test grow expecting overflow"), MODE_GROW_OVERFLOW),
+		OPT_CMDMODE(0, "preallocated_check_behavior", &cmdmode, N_("check the wrap_preallocated's behavior"), MODE_PREALLOC_CHECK),
+		OPT_CMDMODE(0, "preallocated_NULL", &cmdmode, N_("initializing wrap_preallocated with NULL"), MODE_PREALLOC_NULL),
+		OPT_CMDMODE(0, "grow_fixed_overflow", &cmdmode, N_("check grow, fixed memory expecting overflow"), MODE_GROW_FIXED_OVERFLOW),
+		OPT_CMDMODE(0, "grow_fixed_overflow_min", &cmdmode, N_("check grow, fixed memory and lower_bound for an overflow"), MODE_GROW_FIXED_OVERFLOW_MIN),
+		OPT_CMDMODE(0, "grow_fixed_success", &cmdmode, N_("check grow, fixed memory"), MODE_GROW_FIXED_SUCCESS),
+		OPT_CMDMODE(0, "detach_fixed", &cmdmode, N_("check detach, fixed memory"), MODE_DETACH_FIXED),
+		OPT_CMDMODE(0, "release_fixed", &cmdmode, N_("check release, fixed memory"), MODE_RELEASE_FIXED),
+		OPT_END()
+	};
+
+	argc = parse_options(argc, argv, NULL, options, NULL, 0);
+
+	if (cmdmode == MODE_BASIC_GROW) {
 		/*
 		 * Check if strbuf_grow(0) allocate a new NUL-terminated buffer
 		 */
+		return basic_grow(&sb);
+	} else if (cmdmode == MODE_STRBUF_CHECK) {
 		strbuf_init(&sb, 0);
-		strbuf_grow(&sb, 0);
-		if (sb.buf == strbuf_slopbuf)
-			die("strbuf_grow failed to alloc memory");
-		strbuf_release(&sb);
-		if (sb.buf != strbuf_slopbuf)
-			die("strbuf_release does not reinitialize the strbuf");
-	} else if (!strcmp(argv[1], "strbuf_check_behavior")) {
-		strbuf_init(&sb, 0);
-		return test_usual(&sb);
-	} else if (!strcmp(argv[1], "grow_overflow")) {
+		return strbuf_check_behavior(&sb);
+	} else if (cmdmode == MODE_GROW_OVERFLOW) {
 		/*
 		 * size_t overflow: should die()
+		 * if this does not die(), fall through to returning success
 		 */
-		strbuf_init(&sb, 1000);
-		strbuf_grow(&sb, maximum_unsigned_value_of_type((size_t)1));
-	} else if (!strcmp(argv[1], "preallocated_check_behavior")) {
+		return grow_overflow(&sb);
+	} else if (cmdmode == MODE_PREALLOC_CHECK) {
+		char str_test[5] = "test";
+
 		strbuf_wrap_preallocated(&sb, (void *)str_test,
 					 strlen(str_test), sizeof(str_test));
-		return test_usual(&sb);
-	} else if (!strcmp(argv[1], "preallocated_NULL")) {
-		/*
+		return strbuf_check_behavior(&sb);
+	} else if (cmdmode == MODE_PREALLOC_NULL) {
+		 /*
 		 * Violation of invariant "strbuf must not be NULL": should die()
 		 */
-		strbuf_wrap_preallocated(&sb, NULL, 0, sizeof(str_test));
-	} else if (!strcmp(argv[1], "grow_fixed_overflow")) {
+		return preallocated_NULL(&sb);
+	} else if (cmdmode == MODE_GROW_FIXED_OVERFLOW) {
 		/*
 		 * Overflowing the buffer of a fixed strbuf: should die()
 		 */
-		strbuf_wrap_fixed(&sb, (void *)str_foo,
-				  strlen(str_foo), sizeof(str_foo));
-		strbuf_grow(&sb, 3);
-		strbuf_grow(&sb, 1000);
-	} else if (!strcmp(argv[1], "grow_fixed_overflow_min")) {
+		return grow_fixed_overflow(&sb);
+	} else if  (cmdmode == MODE_GROW_FIXED_OVERFLOW_MIN) {
 		/*
 		 * Minimum strbuf_grow() for overflowing a fixed strbuf: should die()
 		 */
-		strbuf_wrap_fixed(&sb, (void *)str_foo,
-				  strlen(str_foo), sizeof(str_foo));
-		strbuf_grow(&sb, 4);
-	} else if (!strcmp(argv[1], "grow_fixed_success")) {
-		strbuf_wrap_fixed(&sb, (void *)str_foo,
-				  strlen(str_foo), sizeof(str_foo));
-		strbuf_grow(&sb, 3);
-	} else if (!strcmp(argv[1], "detach_fixed")) {
-		char *buf;
-		strbuf_wrap_fixed(&sb, (void *)str_test,
-				  strlen(str_test), sizeof(str_test));
-		buf = strbuf_detach(&sb, &size);
-		if (str_test == buf)
-			die("strbuf_detach does not copy the buffer");
-		free(buf);
-	} else if (!strcmp(argv[1], "release_fixed")) {
-		strbuf_wrap_fixed(&sb, (void *)str_test, strlen(str_test),
-				  sizeof(sb) + 1);
-		strbuf_release(&sb);
-		if (sb.buf != strbuf_slopbuf)
-			die("strbuf_release does not reinitialize the strbuf");
+		return grow_fixed_overflow_min(&sb);
+	} else if (cmdmode == MODE_GROW_FIXED_SUCCESS) {
+		return grow_fixed_success(&sb);
+	} else if (cmdmode == MODE_DETACH_FIXED) {
+		return detach_fixed(&sb);
+	} else if (cmdmode == MODE_RELEASE_FIXED) {
+		return release_fixed(&sb);
 	} else {
-		usage("test-strbuf mode");
+		usage("test-strbuf mode");		
 	}
 
 	return 0;
