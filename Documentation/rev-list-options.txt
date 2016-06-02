@@ -136,6 +136,12 @@ parents) and `--max-parents=-1` (negative numbers denote no upper limit).
 	Pretend as if all the refs in `refs/` are listed on the
 	command line as '<commit>'.
 
+--all-worktrees::
+	The following options will consider all working trees instead
+	of current working tree. This only affects options related to
+	refs in working trees, for example `--all` or
+	`--indexed-objects`.
+
 --branches[=<pattern>]::
 	Pretend as if all the refs in `refs/heads` are listed
 	on the command line as '<commit>'. If '<pattern>' is given, limit

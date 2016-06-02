@@ -2066,7 +2066,9 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	 * When implementing your new pseudo-option, remember to
 	 * register it in the list at the top of handle_revision_opt.
 	 */
-	if (!strcmp(arg, "--all")) {
+	if (!strcmp(arg, "--all-worktrees")) {
+		revs->all_worktrees = 1;
+	} else if (!strcmp(arg, "--all")) {
 		handle_refs(submodule, revs, *flags, for_each_ref_submodule);
 		handle_refs(submodule, revs, *flags, head_ref_submodule);
 		clear_ref_exclusion(&revs->ref_excludes);
