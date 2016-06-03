@@ -1108,10 +1108,19 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		strbuf_release(&buf);
 	}
 
-	if (split_index > 0)
+	if (split_index > 0) {
+		if (git_config_get_split_index() == 0)
+			warning("core.splitIndex is set to false; "
+				"remove or change it, if you really want to "
+				"enable split index");
 		add_split_index(&the_index);
-	else if (!split_index && the_index.split_index)
+	} else if (!split_index && the_index.split_index) {
+		if (git_config_get_split_index() == 1)
+			warning("core.splitIndex is set to true; "
+				"remove or change it, if you really want to "
+				"disable split index");
 		remove_split_index(&the_index);
+	}
 
 	switch (untracked_cache) {
 	case UC_UNSPECIFIED:
