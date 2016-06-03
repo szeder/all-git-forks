@@ -5,6 +5,8 @@
 #include "dir.h"
 #include "wt-status.h"
 
+static const char *lock_field_uninitialized = "value is not important";
+
 void free_worktrees(struct worktree **worktrees)
 {
 	int i = 0;
@@ -13,6 +15,8 @@ void free_worktrees(struct worktree **worktrees)
 		free(worktrees[i]->path);
 		free(worktrees[i]->id);
 		free(worktrees[i]->head_ref);
+		if (worktrees[i]->lock_reason != lock_field_uninitialized)
+			free(worktrees[i]->lock_reason);
 		free(worktrees[i]);
 	}
 	free (worktrees);
@@ -98,6 +102,7 @@ static struct worktree *get_main_worktree(void)
 	worktree->is_detached = is_detached;
 	worktree->is_current = 0;
 	add_head_info(&head_ref, worktree);
+	worktree->lock_reason = (char *)lock_field_uninitialized;
 
 done:
 	strbuf_release(&path);
@@ -143,6 +148,7 @@ static struct worktree *get_linked_worktree(const char *id)
 	worktree->is_detached = is_detached;
 	worktree->is_current = 0;
 	add_head_info(&head_ref, worktree);
+	worktree->lock_reason = (char *)lock_field_uninitialized;
 
 done:
 	strbuf_release(&path);
@@ -232,6 +238,26 @@ struct worktree *find_worktree(struct worktree **list,
 int is_main_worktree(const struct worktree *wt)
 {
 	return !wt->id;
+}
+
+const char *is_worktree_locked(struct worktree *wt)
+{
+	if (wt->lock_reason == lock_field_uninitialized) {
+		struct strbuf path = STRBUF_INIT;
+
+		strbuf_addstr(&path, worktree_git_path(wt, "locked"));
+		if (file_exists(path.buf)) {
+			struct strbuf lock_reason = STRBUF_INIT;
+			if (strbuf_read_file(&lock_reason, path.buf, 0) < 0)
+				die_errno(_("failed to read '%s'"), path.buf);
+			strbuf_trim(&lock_reason);
+			wt->lock_reason = strbuf_detach(&lock_reason, NULL);
+		} else
+			wt->lock_reason = NULL;
+		strbuf_release(&path);
+	}
+
+	return wt->lock_reason;
 }
 
 int is_worktree_being_rebased(const struct worktree *wt,
