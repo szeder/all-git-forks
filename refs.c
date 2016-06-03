@@ -1301,19 +1301,25 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 
 int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1)
 {
-	int len = strlen(path);
-	struct strbuf submodule = STRBUF_INIT;
+	size_t len, orig_len = strlen(path);
 	struct ref_store *refs;
 	int flags;
 
-	while (len && path[len-1] == '/')
-		len--;
+	for (len = orig_len; len && path[len - 1] == '/'; len--)
+		;
+
 	if (!len)
 		return -1;
 
-	strbuf_add(&submodule, path, len);
-	refs = get_ref_store(submodule.buf);
-	strbuf_release(&submodule);
+	if (len == orig_len) {
+		refs = get_ref_store(path);
+	} else {
+		char *stripped = xmemdupz(path, len);
+
+		refs = get_ref_store(stripped);
+		free(stripped);
+	}
+
 	if (!refs)
 		return -1;
 
