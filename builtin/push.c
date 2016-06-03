@@ -11,6 +11,8 @@
 #include "submodule.h"
 #include "submodule-config.h"
 #include "send-pack.h"
+#include "urlmatch.h"
+#include "url.h"
 
 static const char * const push_usage[] = {
 	N_("git push [<options>] [<repository> [<refspec>...]]"),
@@ -353,6 +355,101 @@ static int push_with_options(struct transport *transport, int flags)
 	return 1;
 }
 
+static void check_length_prefix(const int whitelist,
+				const int blacklist,
+				const char *repo,
+				const char *deny_message,
+				const char *default_policy)
+{
+	if (whitelist < blacklist)
+		die(_("%s"), deny_message);
+	if (whitelist == blacklist) {
+		if (whitelist)
+			die(_("%s cannot be whitelisted and blacklisted"
+			      "at the same time"), repo);
+		if (!strcmp(default_policy, "deny"))
+			die(_("%s"), deny_message);
+		if (strcmp(default_policy, "allow"))
+			die(_("Unrecognized value for remote.pushDefaultPolicy,"
+			      "should be 'allow' or 'deny'"));
+	}
+
+}
+
+static void find_longest_prefix(const char *str, const char *pre, int *max)
+{
+	if (starts_with(str, pre)) {
+		int tmp = strlen(pre);
+		if (*max < tmp)
+			*max = tmp;
+	}
+}
+
+/*
+ * NEEDSWORK: Ugly because file://... is recognized as an url, and we
+ * may want to compare it to local path without this scheme. Forcing
+ * the user to put file:// before every local path would make the code
+ * easier and avoid confusion with a distant repo like 'github.com'
+ * which is not an url.
+ */
+static int longest_prefix_size(const char* target_str,
+			       const struct string_list *list)
+{
+	struct string_list_item *curr_item;
+	struct url_info target_url;
+	int max_size = 0;
+	if (!list)
+		return 0;
+
+	skip_prefix(target_str, "file://", &target_str);
+	url_normalize(target_str, &target_url);
+
+	for_each_string_list_item(curr_item, list) {
+		struct url_info curr_url;
+		const char *curr_str = curr_item->string;
+		skip_prefix(curr_str, "file://", &curr_str);
+		url_normalize(curr_str, &curr_url);
+		if (target_url.url && curr_url.url &&
+		    target_url.scheme_len == curr_url.scheme_len &&
+		    !strncmp(target_url.url, curr_url.url, curr_url.scheme_len))
+			find_longest_prefix(target_url.url + target_url.host_off,
+					    curr_url.url + curr_url.host_off,
+					    &max_size);
+		else if (target_url.url && !curr_url.url)
+			find_longest_prefix(target_url.url + target_url.host_off,
+					    curr_str,
+					    &max_size);
+
+		else if(!target_url.url && !curr_url.url)
+			find_longest_prefix(target_str, curr_str, &max_size);
+	}
+	return max_size;
+}
+
+static void block_unauthorized_url(const char *repo)
+{
+	struct url_info target_url;
+	const char *default_policy, *deny_message;
+	const struct string_list *whitelist, *blacklist;
+	int whitelist_size, blacklist_size;
+
+	url_normalize(repo, &target_url);
+
+	if (git_config_get_value("remote.pushDefaultPolicy", &default_policy))
+		default_policy = "allow";
+	if (git_config_get_value("remote.pushDenyMessage", &deny_message))
+		deny_message = "Pushing to this remote using this protocol is forbidden";
+
+	whitelist = git_config_get_value_multi("remote.pushWhitelist");
+	blacklist = git_config_get_value_multi("remote.pushBlacklist");
+
+	whitelist_size = longest_prefix_size(repo, whitelist);
+	blacklist_size = longest_prefix_size(repo, blacklist);
+
+	check_length_prefix(whitelist_size, blacklist_size, repo, deny_message,
+			    default_policy);
+}
+
 static int do_push(const char *repo, int flags)
 {
 	int i, errs;
@@ -404,15 +501,18 @@ static int do_push(const char *repo, int flags)
 	url_nr = push_url_of_remote(remote, &url);
 	if (url_nr) {
 		for (i = 0; i < url_nr; i++) {
-			struct transport *transport =
-				transport_get(remote, url[i]);
+			struct transport *transport;
+			if (!(flags & TRANSPORT_PUSH_NO_HOOK))
+				block_unauthorized_url(url[i]);
+			transport = transport_get(remote, url[i]);
 			if (push_with_options(transport, flags))
 				errs++;
 		}
 	} else {
-		struct transport *transport =
-			transport_get(remote, NULL);
-
+		struct transport *transport;
+		if (!(flags & TRANSPORT_PUSH_NO_HOOK))
+			block_unauthorized_url(remote->url[0]);
+		transport = transport_get(remote, NULL);
 		if (push_with_options(transport, flags))
 			errs++;
 	}
