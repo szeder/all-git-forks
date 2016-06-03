@@ -240,6 +240,11 @@ const char *find_descendant_ref(const char *dirname,
 				const struct string_list *extras,
 				const struct string_list *skip);
 
+/*
+ * Check if the new name does not conflict with any existing refs
+ * (other than possibly the old ref).  Return 0 if the ref can be
+ * renamed to the new name.
+ */
 int rename_ref_available(const char *oldname, const char *newname);
 
 /* We allow "recursive" symbolic refs. Only within reason, though */
