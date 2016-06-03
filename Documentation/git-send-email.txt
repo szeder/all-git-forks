@@ -107,7 +107,9 @@ Only necessary if --compose is also set.  If --compose
 is not set, this will be prompted for.
 
 --quote-email=<email_file>::
-	Fill appropriately header fields for the reply to the given email.
+	Fill appropriately header fields for the reply to the given email and quote
+	the message body in the cover letter if `--compose` is set or otherwise
+	after the triple-dash in the first patch given.
 
 --subject=<string>::
 	Specify the initial subject of the email thread.
