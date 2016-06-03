@@ -451,12 +451,47 @@ fail:
 
 #define REFCOL_WIDTH  10
 
+static int common_suffix_length(const char *a, const char *b)
+{
+	const char *pa = a + strlen(a);
+	const char *pb = b + strlen(b);
+	int count = 0;
+
+	while (pa > a && pb > b && pa[-1] == pb[-1]) {
+		pa--;
+		pb--;
+		count++;
+	}
+
+	/* stick to '/' boundary, do not break in the middle of a word */
+	while (count) {
+		if (*pa == '/' ||
+		    (pa == a && pb > b && pb[-1] == '/') ||
+		    (pb == b && pa > a && pa[-1] == '/'))
+			break;
+		pa++;
+		pb++;
+		count--;
+	}
+
+	return count;
+}
+
 static void format_display(struct strbuf *display, char code,
 			   const char *summary, const char *error,
 			   const char *remote, const char *local)
 {
+	int len;
+
 	strbuf_addf(display, "%c %-*s ", code, TRANSPORT_SUMMARY(summary));
-	strbuf_addf(display, "%-*s -> %s", REFCOL_WIDTH, remote, local);
+	len = common_suffix_length(remote, local);
+	if (len)
+		strbuf_addf(display, "{%.*s -> %.*s}%s",
+			    (int)strlen(remote) - len, remote,
+			    (int)strlen(local) - len, local,
+			    remote + strlen(remote) - len);
+	else
+		strbuf_addf(display, "%-*s -> %s", REFCOL_WIDTH, remote, local);
 	if (error)
 		strbuf_addf(display, "  (%s)", error);
 }
