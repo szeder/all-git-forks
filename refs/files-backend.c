@@ -3703,11 +3703,12 @@ static int lock_ref_for_update(struct ref_update *update,
 	return 0;
 }
 
-int ref_transaction_commit(struct ref_transaction *transaction,
-			   struct strbuf *err)
+static int files_transaction_commit(struct ref_store *ref_store,
+				    struct ref_transaction *transaction,
+				    struct strbuf *err)
 {
 	struct files_ref_store *refs =
-		get_files_ref_store(NULL, "ref_transaction_commit");
+		files_downcast(ref_store, 0, "ref_transaction_commit");
 	int ret = 0, i;
 	struct ref_update **updates = transaction->updates;
 	struct string_list refs_to_delete = STRING_LIST_INIT_NODUP;
@@ -4097,5 +4098,6 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 struct ref_storage_be refs_be_files = {
 	NULL,
 	"files",
-	files_ref_store_create
+	files_ref_store_create,
+	files_transaction_commit
 };
