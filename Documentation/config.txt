@@ -2517,6 +2517,23 @@ remote.pushDefault::
 	`branch.<name>.remote` for all branches, and is overridden by
 	`branch.<name>.pushRemote` for specific branches.
 
+remote.pushBlacklist::
+	The list of remotes the user is forbidden to push to.
+	See linkgit:git-push[1]
+
+remote.pushWhitelist::
+	The list of remotes the user is allowed to push to.
+	See linkgit:git-push[1]
+
+remote.pushDefaultPolicy::
+	Can be set to either 'allow' or 'deny', defines the policy to
+	adopt when the user tries to push to a remote not in the
+	whitelist or the blacklist. Defaults to 'allow'.
+
+remote.pushDenyMessage:: The message printed when pushing to a
+	forbidden remote. Defaults to "Pushing to this remote has
+	been forbidden, please see your configuration file".
+
 remote.<name>.url::
 	The URL of a remote repository.  See linkgit:git-fetch[1] or
 	linkgit:git-push[1].

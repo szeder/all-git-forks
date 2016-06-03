@@ -89,6 +89,64 @@ git push uses:
 	HEAD:refs/heads/<head>
 ------------
 
+Denying pushes to the wrong remotes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you fear accidental pushes to the wrong remotes, you can use the
+blacklist/whitelist feature. The goal is to catch pushes to unwanted
+remotes before they happen.
+
+The simplest way to forbid pushes to a remote is to add its url in the
+config file under the `remote.pushBlacklist` variable.  A more
+restrictive way is to change `remote.pushDefaultPolicy` to 'deny',
+thus denying pushes to every remote not whitelisted. You can then add
+the right remotes under `remote.pushWhitelist`.
+
+A local path must be absolute.
+
+You can also configure more advanced acceptance/denial behavior
+following this rule: the more the url in the config prefixes the asked
+url the more priority it has.
+
+For example, if we set up the configuration variables like this:
+
+-------------------------------
+git config --add remote.pushBlacklist example.com
+git config --add remote.pushWhitelist example.com/Special_Path
+-------------------------------
+
+Pushes like this  will be accepted:
+-------------------------------
+git push example.com/Special_Path/Sub_Directory
+-------------------------------
+
+While this one for example will be denied:
+-------------------------------
+git push example.com/Other_Path/
+-------------------------------
+
+`remote.pushBlacklist` and `remote.pushWhitelist` are multi-valued
+variables, hence you can more than one element using `git config
+--add`.
+
+Specific schemes can also be denied. For example:
+
+-------------------------------
+git config --add remote.pushBlacklist http://example.com
+-------------------------------
+
+By doing so, only pushes to `example.com` using 'http' will be denied,
+whereas other will be allowed, like 'https'. If you want to deny all
+pushes to a certain repo, don't put scheme at the beginning.
+
+Additionally, you can configure the message printed when a push is
+denied with the 'remote.pushDenyMessage' configuration variable.
+
+You can dismiss this process by using '--no-verify'.
+
+An error will be raised if the url is blacklisted and whitelisted at
+the same time.
+
 
 
 

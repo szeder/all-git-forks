@@ -11,6 +11,10 @@
 #include "submodule.h"
 #include "submodule-config.h"
 #include "send-pack.h"
+#include "urlmatch.h"
+#include "url.h"
+#include "cache.h"
+#include "strbuf.h"
 
 static const char * const push_usage[] = {
 	N_("git push [<options>] [<repository> [<refspec>...]]"),
@@ -144,14 +148,14 @@ static NORETURN int die_push_simple(struct branch *branch, struct remote *remote
 				 "To choose either option permanently, "
 				 "see push.default in 'git help config'.");
 	die(_("The upstream branch of your current branch does not match\n"
-	      "the name of your current branch.  To push to the upstream branch\n"
+	      "the name of your current branch.	 To push to the upstream branch\n"
 	      "on the remote, use\n"
 	      "\n"
-	      "    git push %s HEAD:%s\n"
+	      "	   git push %s HEAD:%s\n"
 	      "\n"
 	      "To push to the branch of the same name on the remote, use\n"
 	      "\n"
-	      "    git push %s %s\n"
+	      "	   git push %s %s\n"
 	      "%s"),
 	    remote->name, short_upstream,
 	    remote->name, branch->name, advice_maybe);
@@ -162,7 +166,7 @@ static const char message_detached_head_die[] =
 	   "To push the history leading to the current (detached HEAD)\n"
 	   "state now, use\n"
 	   "\n"
-	   "    git push %s HEAD:<name-of-remote-branch>\n");
+	   "	git push %s HEAD:<name-of-remote-branch>\n");
 
 static void setup_push_upstream(struct remote *remote, struct branch *branch,
 				int triangular, int simple)
@@ -175,7 +179,7 @@ static void setup_push_upstream(struct remote *remote, struct branch *branch,
 		die(_("The current branch %s has no upstream branch.\n"
 		    "To push the current branch and set the remote as upstream, use\n"
 		    "\n"
-		    "    git push --set-upstream %s %s\n"),
+		    "	 git push --set-upstream %s %s\n"),
 		    branch->name,
 		    remote->name,
 		    branch->name);
@@ -353,6 +357,130 @@ static int push_with_options(struct transport *transport, int flags)
 	return 1;
 }
 
+static void check_length_prefix(const int whitelist_size,
+				const int blacklist_size,
+				const char *repo,
+				const char *deny_message,
+				const char *default_policy)
+{
+	if (whitelist_size < blacklist_size)
+		die(_("%s"), deny_message);
+	if (whitelist_size == blacklist_size) {
+		if (whitelist_size)
+			die(_("%s cannot be whitelisted and blacklisted"
+			      "at the same time"), repo);
+		if (!strcmp(default_policy, "deny"))
+			die(_("%s"), deny_message);
+		if (strcmp(default_policy, "allow"))
+			die(_("Unrecognized value for remote.pushDefaultPolicy,"
+			      "should be 'allow' or 'deny'"));
+	}
+
+}
+
+static void find_max_prefix(const char *str, const char *pre, int *max)
+{
+	if (starts_with(str, pre)) {
+		int tmp = strlen(pre);
+		if (*max < tmp)
+			*max = tmp;
+	}
+}
+
+static int max_prefix_size(const char* target_str,
+			   const struct string_list *list,
+			   int is_target_local)
+{
+	struct string_list_item *curr_remote;
+	struct url_info target_url;
+	int max_size = 0;
+
+	if (!list)
+		return 0;
+
+	if (is_absolute_path(target_str))
+		is_target_local = 1;
+	else
+		url_normalize(target_str,&target_url);
+
+	for_each_string_list_item(curr_remote, list) {
+		struct url_info curr_url;
+		const char *curr_str = curr_remote->string;
+		int is_curr_local = 0;
+
+		if (is_absolute_path(curr_str))
+			is_curr_local = 1;
+		else
+			url_normalize(curr_str, &curr_url);
+
+		/*
+		 * 3 cases :
+		 * - they are both local path
+		 * - target is an url, curr url is a an url with no scheme
+		 * - They are both url with the same scheme
+		 */
+
+		if (is_curr_local && is_target_local)
+			find_max_prefix(target_str, curr_str, &max_size);
+		else if (!is_curr_local && !is_target_local){
+			if (!curr_url.url)
+				find_max_prefix(target_url.url + target_url.host_off,
+						curr_str, &max_size);
+			else if(target_url.scheme_len == curr_url.scheme_len &&
+				!strncmp(target_url.url, curr_url.url, curr_url.scheme_len))
+				find_max_prefix(target_url.url + target_url.host_off,
+						curr_url.url + curr_url.host_off,
+						&max_size);
+		}
+	}
+	return max_size;
+}
+
+static void block_unauthorized_url(const char *repo)
+{
+	const char *default_policy, *deny_message;
+	const struct string_list *whitelist, *blacklist;
+	int whitelist_size, blacklist_size;
+	int is_target_local = 0;
+
+	if (git_config_get_value("remote.pushDefaultPolicy", &default_policy))
+		default_policy = "allow";
+	if (git_config_get_value("remote.pushDenyMessage", &deny_message))
+		deny_message = "Pushing to this remote using this protocol is forbidden";
+
+	whitelist = git_config_get_value_multi("remote.pushWhitelist");
+	blacklist = git_config_get_value_multi("remote.pushBlacklist");
+
+	whitelist_size = max_prefix_size(repo, whitelist, is_target_local);
+	blacklist_size = max_prefix_size(repo, blacklist, is_target_local);
+
+	check_length_prefix(whitelist_size, blacklist_size, repo, deny_message,
+			    default_policy);
+}
+
+
+static void do_transport(const char *url, struct remote *remote,
+			 int *errs, int flags)
+{
+	struct transport *transport;
+	const char *true_url, *arg2_transport;
+	if (url){
+		true_url =url;
+		arg2_transport = url;
+	} else {
+		true_url = remote->url[0];
+		arg2_transport = NULL;
+	}
+
+	if (!(flags & TRANSPORT_PUSH_NO_HOOK))
+		block_unauthorized_url(true_url);
+
+	transport = transport_get(remote, arg2_transport);
+
+	if (push_with_options(transport, flags))
+		*errs++;
+
+}
 static int do_push(const char *repo, int flags)
 {
 	int i, errs;
@@ -366,11 +494,11 @@ static int do_push(const char *repo, int flags)
 		die(_("No configured push destination.\n"
 		    "Either specify the URL from the command-line or configure a remote repository using\n"
 		    "\n"
-		    "    git remote add <name> <url>\n"
+		    "	 git remote add <name> <url>\n"
 		    "\n"
 		    "and then push using the remote name\n"
 		    "\n"
-		    "    git push <name>\n"));
+		    "	 git push <name>\n"));
 	}
 
 	if (remote->mirror)
@@ -403,19 +531,10 @@ static int do_push(const char *repo, int flags)
 	errs = 0;
 	url_nr = push_url_of_remote(remote, &url);
 	if (url_nr) {
-		for (i = 0; i < url_nr; i++) {
-			struct transport *transport =
-				transport_get(remote, url[i]);
-			if (push_with_options(transport, flags))
-				errs++;
-		}
-	} else {
-		struct transport *transport =
-			transport_get(remote, NULL);
-
-		if (push_with_options(transport, flags))
-			errs++;
-	}
+		for (i = 0; i < url_nr; i++)
+			do_transport(url[i], remote, &errs, flags);
+	} else
+		do_transport(NULL, remote, &errs, flags);
 	return !!errs;
 }
 
