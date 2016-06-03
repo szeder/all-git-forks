@@ -4491,7 +4491,7 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 		len1 = remove_space(p->one->path, strlen(p->one->path));
 		len2 = remove_space(p->two->path, strlen(p->two->path));
 		if (p->one->mode == 0)
-			len1 = snprintf(buffer, sizeof(buffer),
+			len1 = xsnprintf(buffer, sizeof(buffer),
 					"diff--gita/%.*sb/%.*s"
 					"newfilemode%06o"
 					"---/dev/null"
@@ -4501,7 +4501,7 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 					p->two->mode,
 					len2, p->two->path);
 		else if (p->two->mode == 0)
-			len1 = snprintf(buffer, sizeof(buffer),
+			len1 = xsnprintf(buffer, sizeof(buffer),
 					"diff--gita/%.*sb/%.*s"
 					"deletedfilemode%06o"
 					"---a/%.*s"
@@ -4511,7 +4511,7 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 					p->one->mode,
 					len1, p->one->path);
 		else
-			len1 = snprintf(buffer, sizeof(buffer),
+			len1 = xsnprintf(buffer, sizeof(buffer),
 					"diff--gita/%.*sb/%.*s"
 					"---a/%.*s"
 					"+++b/%.*s",
