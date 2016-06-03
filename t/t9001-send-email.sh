@@ -1909,7 +1909,7 @@ test_expect_success $PREREQ 'Fields with --quote-email are correct' '
 		--quote-email=email \
 		--from="Example <nobody@example.com>" \
 		--smtp-server="$(pwd)/fake.sendmail" \
-		-1 \
+		-2 \
 		2>errors &&
 	grep "From: Example <nobody@example.com>" msgtxt1 &&
 	grep "In-Reply-To: <author_123456@example.com>" msgtxt1 &&
@@ -1927,6 +1927,17 @@ test_expect_success $PREREQ 'Fields with --quote-email are correct' '
 	echo "$ref_adr" | grep "<thirdauthor_1395838@example.com>" &&
 	echo "$ref_adr" | grep "<author_123456@example.com>" &&
 	echo "$ref_adr" | grep -v "References: <author_123456@example.com>"
+'
+
+test_expect_success $PREREQ 'correct quoted message with --quote-email' '
+	msg_quoted=$(grep -A 3 "^---$" msgtxt1) &&
+	echo "$msg_quoted" | grep "On Sat, 12 Jun 2010 15:53:58 +0200, author@example.com wrote:" &&
+	echo "$msg_quoted" | grep "> Have you seen my previous email?" &&
+	echo "$msg_quoted" | grep ">> Previous content"
+'
+
+test_expect_success $PREREQ 'second patch body is not modified by --quote-email' '
+	! grep "Have you seen my previous email?" msgtxt2
 '
 
 test_expect_success $PREREQ 'Fields with --quote-email and --compose are correct' '
@@ -1966,6 +1977,12 @@ test_expect_success $PREREQ 'Re: written only once with --quote-email and --comp
 		-1 \
 		2>errors &&
 	grep "Subject: Re: subject goes here" msgtxt3
+'
+
+test_expect_success $PREREQ 'correct quoted message with --quote-email and --compose' '
+	grep "> On Sat, 12 Jun 2010 15:53:58 +0200, author@example.com wrote:" msgtxt3 &&
+	grep ">> Have you seen my previous email?" msgtxt3 &&
+	grep ">>> Previous content" msgtxt3
 '
 
 test_done

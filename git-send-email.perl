@@ -26,6 +26,7 @@ use Text::ParseWords;
 use Term::ANSIColor;
 use File::Temp qw/ tempdir tempfile /;
 use File::Spec::Functions qw(catfile);
+use File::Copy;
 use Error qw(:try);
 use Git;
 
@@ -55,7 +56,8 @@ git send-email --dump-aliases
     --[no-]bcc              <str>  * Email Bcc:
     --subject               <str>  * Email "Subject:"
     --in-reply-to           <str>  * Email "In-Reply-To:"
-    --quote-email           <file> * Populate header fields appropriately.
+    --quote-email           <file> * Populate header fields appropriately and
+                                     quote the message body.
     --[no-]xmailer                 * Add "X-Mailer:" header (default).
     --[no-]annotate                * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
@@ -641,12 +643,15 @@ if (@files) {
 	usage();
 }
 
+my $message_quoted;
 if ($quote_email) {
 	my $error = validate_patch($quote_email);
 	die "fatal: $quote_email: $error\nwarning: no patches were sent\n"
 		if $error;
 
 	my @header = ();
+	my $date;
+	my $recipient;
 
 	open my $fh, "<", $quote_email or die "can't open file $quote_email";
 
@@ -678,7 +683,8 @@ if ($quote_email) {
 			}
 			$initial_subject = $prefix_re . $subject_re;
 		} elsif (/^From:\s+(.*)$/i) {
-			push @initial_to, $1;
+			$recipient = $1;
+			push @initial_to, $recipient;
 		} elsif (/^To:\s+(.*)$/i) {
 			foreach my $addr (parse_address_line($1)) {
 				if (!($addr eq $initial_sender)) {
@@ -700,9 +706,28 @@ if ($quote_email) {
 			$initial_reply_to = $1;
 		} elsif (/^References:\s+(.*)/i) {
 			$initial_references = $1;
+		} elsif (/^Date: (.*)/i) {
+			$date = $1;
 		}
 	}
 	$initial_references = $initial_references . $initial_reply_to;
+
+	my $tpl_date = $date && "On $date, " || '';
+	$message_quoted = $tpl_date . $recipient . " wrote:\n";
+
+	# Quote the message body
+	while (<$fh>) {
+		# Turn crlf line endings into lf-only
+		s/\r//g;
+		my $space = "";
+		if (/^[^>]/) {
+			$space = " ";
+		}
+		$message_quoted .= ">" . $space . $_;
+	}
+	if (!$compose) {
+		$annotate = 1;
+	}
 }
 
 sub get_patch_subject {
@@ -730,6 +755,9 @@ if ($compose) {
 	my $tpl_sender = $sender || $repoauthor || $repocommitter || '';
 	my $tpl_subject = $initial_subject || '';
 	my $tpl_reply_to = $initial_reply_to || '';
+	my $tpl_quote = $message_quoted &&
+		"\nGIT: Please, trim down irrelevant sections in the quoted message\n".
+		"GIT: to keep your email concise.\n" . $message_quoted || '';
 
 	print $c <<EOT;
 From $tpl_sender # This line is ignored.
@@ -741,7 +769,7 @@ GIT: Clear the body content if you don't wish to send a summary.
 From: $tpl_sender
 Subject: $tpl_subject
 In-Reply-To: $tpl_reply_to
-
+$tpl_quote
 EOT
 	for my $f (@files) {
 		print $c get_patch_subject($f);
@@ -806,9 +834,53 @@ EOT
 		$compose = -1;
 	}
 } elsif ($annotate) {
-	do_edit(@files);
+	if ($quote_email) {
+		my $quote_email_filename = ($repo ?
+			tempfile(".gitsendemail.msg.XXXXXX",
+				DIR => $repo->repo_path()) :
+			tempfile(".gitsendemail.msg.XXXXXX",
+				DIR => "."))[1];
+
+		# Insertion in a temporary file to keep the original file clean
+		# in case of cancellation/error.
+		do_insert_quoted_message($quote_email_filename, $files[0]);
+
+		my $tmp = $files[0];
+		$files[0] = $quote_email_filename;
+
+		do_edit(@files);
+
+		# Erase the original patch if the edition went well
+		move($quote_email_filename, $tmp);
+		$files[0] = $tmp;
+	} else {
+		do_edit(@files);
+	}
 }
 
+sub do_insert_quoted_message {
+	my $tmp_file = shift;
+	my $original_file = shift;
+
+	open my $c, "<", $original_file
+	or die "Failed to open $original_file: " . $!;
+
+	open my $c2, ">", $tmp_file
+		or die "Failed to open $tmp_file: " . $!;
+
+	# Insertion after the triple-dash
+	while (<$c>) {
+		print $c2 $_;
+		last if (/^---$/);
+	}
+	print $c2 $message_quoted;
+	while (<$c>) {
+		print $c2 $_;
+	}
+
+	close $c;
+	close $c2;
+}
 sub ask {
 	my ($prompt, %arg) = @_;
 	my $valid_re = $arg{valid_re};
