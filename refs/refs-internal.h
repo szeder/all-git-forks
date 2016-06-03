@@ -399,18 +399,6 @@ struct ref_iterator *prefix_ref_iterator_begin(struct ref_iterator *iter0,
 					       const char *prefix,
 					       int trim);
 
-struct ref_store;
-
-/*
- * Iterate over the packed and loose references in the specified
- * ref_store that are within find_containing_dir(prefix). If prefix is
- * NULL or the empty string, iterate over all references in the
- * submodule.
- */
-struct ref_iterator *files_ref_iterator_begin(struct ref_store *ref_store,
-					      const char *prefix,
-					      unsigned int flags);
-
 /*
  * Iterate over the references in the main ref_store that have a
  * reflog. The paths within a directory are iterated over in arbitrary
@@ -483,6 +471,8 @@ int do_for_each_ref_iterator(struct ref_iterator *iter,
 
 /* refs backends */
 
+struct ref_store;
+
 /*
  * Initialize the ref_store for the specified submodule, or for the
  * main repository if submodule == NULL. These functions should call
@@ -502,6 +492,15 @@ typedef int create_symref_fn(struct ref_store *ref_store,
 			     const char *ref_target,
 			     const char *refs_heads_master,
 			     const char *logmsg);
+
+/*
+ * Iterate over the references in the specified ref_store that are
+ * within find_containing_dir(prefix). If prefix is NULL or the empty
+ * string, iterate over all references in the submodule.
+ */
+typedef struct ref_iterator *ref_iterator_begin_fn(
+		struct ref_store *ref_store,
+		const char *prefix, unsigned int flags);
 
 /*
  * Read a reference from the specified reference store, non-recursively.
@@ -561,6 +560,7 @@ struct ref_storage_be {
 	peel_ref_fn *peel_ref;
 	create_symref_fn *create_symref;
 
+	ref_iterator_begin_fn *iterator_begin;
 	read_raw_ref_fn *read_raw_ref;
 	verify_refname_available_fn *verify_refname_available;
 };

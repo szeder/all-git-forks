@@ -1866,7 +1866,7 @@ struct ref_iterator_vtable files_ref_iterator_vtable = {
 	files_ref_iterator_abort
 };
 
-struct ref_iterator *files_ref_iterator_begin(
+static struct ref_iterator *files_ref_iterator_begin(
 		struct ref_store *ref_store,
 		const char *prefix, unsigned int flags)
 {
@@ -4047,6 +4047,7 @@ struct ref_storage_be refs_be_files = {
 	files_peel_ref,
 	files_create_symref,
 
+	files_ref_iterator_begin,
 	files_read_raw_ref,
 	files_verify_refname_available
 };
