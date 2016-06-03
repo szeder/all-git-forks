@@ -641,6 +641,8 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	int intent_only = flags & ADD_CACHE_INTENT;
 	int add_option = (ADD_CACHE_OK_TO_ADD|ADD_CACHE_OK_TO_REPLACE|
 			  (intent_only ? ADD_CACHE_NEW_ONLY : 0));
+	int force_executable = flags & ADD_CACHE_FORCE_EXECUTABLE;
+	int force_notexecutable = flags & ADD_CACHE_FORCE_NOTEXECUTABLE;
 
 	if (!S_ISREG(st_mode) && !S_ISLNK(st_mode) && !S_ISDIR(st_mode))
 		return error("%s: can only add regular files, symbolic links or git-directories", path);
@@ -659,9 +661,14 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	else
 		ce->ce_flags |= CE_INTENT_TO_ADD;
 
-	if (trust_executable_bit && has_symlinks)
+	if (S_ISREG(st_mode) && (force_executable || force_notexecutable)) {
+		if (force_executable)
+			ce->ce_mode = create_ce_mode(0777);
+		else
+			ce->ce_mode = create_ce_mode(0666);
+	} else if (trust_executable_bit && has_symlinks) {
 		ce->ce_mode = create_ce_mode(st_mode);
-	else {
+	} else {
 		/* If there is an existing entry, pick the mode bits and type
 		 * from it, otherwise assume unexecutable regular file.
 		 */
