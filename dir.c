@@ -2036,6 +2036,14 @@ int file_exists(const char *f)
 	return lstat(f, &sb) == 0;
 }
 
+ssize_t file_size(const char *filename)
+{
+	struct stat st;
+	if (stat(filename, &st) < 0)
+		return -1;
+	return xsize_t(st.st_size);
+}
+
 static int cmp_icase(char a, char b)
 {
 	if (a == b)

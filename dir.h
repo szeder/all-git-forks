@@ -248,6 +248,13 @@ extern void clear_exclude_list(struct exclude_list *el);
 extern void clear_directory(struct dir_struct *dir);
 extern int file_exists(const char *);
 
+/*
+ * Return the size of the file `filename`. It returns -1 if error
+ * occurred, 0 if file is empty and a positive number denoting the size
+ * of the file.
+ */
+extern ssize_t file_size(const char *);
+
 extern int is_inside_dir(const char *dir);
 extern int dir_inside_of(const char *subdir, const char *dir);
 
