@@ -1987,7 +1987,7 @@ endif
 
 ifdef NO_REGEX
 compat/regex/regex.sp compat/regex/regex.o: EXTRA_CPPFLAGS = \
-	-DGAWK -DNO_MBSUPPORT
+	-DGAWK -DNO_MBSUPPORT -DHAVE_STDINT_H
 endif
 
 ifdef USE_NED_ALLOCATOR
