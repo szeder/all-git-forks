@@ -15,6 +15,7 @@
 #include "submodule.h"
 #include "connected.h"
 #include "argv-array.h"
+#include "utf8.h"
 
 static const char * const builtin_fetch_usage[] = {
 	N_("git fetch [<options>] [<repository> [<refspec>...]]"),
@@ -449,14 +450,41 @@ fail:
 			   : STORE_REF_ERROR_OTHER;
 }
 
-#define REFCOL_WIDTH  10
+static int refcol_width = 10;
+
+static void adjust_refcol_width(const struct ref *ref)
+{
+	const char *remote, *local;
+	int max, rlen, llen;
+
+	/* uptodate lines are only shown on high verbosity level */
+	if (!verbosity && !oidcmp(&ref->peer_ref->old_oid, &ref->old_oid))
+		return;
+
+	max    = term_columns();
+	remote = prettify_refname(ref->name);
+	rlen   = utf8_strwidth(remote);
+	local  = prettify_refname(ref->peer_ref->name);
+	llen   = utf8_strwidth(local);
+
+	/*
+	 * rough estimation, we can't do precise calculation anyway
+	 * because we don't know if the error explanation part will be
+	 * printed.
+	 */
+	if (21 /* flag and summary */ + rlen + 4 /* => */ + llen >= max)
+		return;
+
+	if (refcol_width < rlen)
+		refcol_width = rlen;
+}
 
 static void format_display(struct strbuf *display, char code,
 			   const char *summary, const char *error,
 			   const char *remote, const char *local)
 {
 	strbuf_addf(display, "%c %-*s ", code, TRANSPORT_SUMMARY(summary));
-	strbuf_addf(display, "%-*s -> %s", REFCOL_WIDTH, remote, local);
+	strbuf_addf(display, "%-*s -> %s", refcol_width, remote, local);
 	if (error)
 		strbuf_addf(display, "  (%s)", error);
 }
@@ -616,6 +644,19 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 	if (check_everything_connected(iterate_ref_map, 0, &rm)) {
 		rc = error(_("%s did not send all necessary objects\n"), url);
 		goto abort;
+	}
+
+	/*
+	 * go through all refs to determine column size for
+	 * "remote -> local" output
+	 */
+	for (rm = ref_map; rm; rm = rm->next) {
+		if (rm->status == REF_STATUS_REJECT_SHALLOW ||
+		    !rm->peer_ref ||
+		    !strcmp(rm->name, "HEAD"))
+			continue;
+
+		adjust_refcol_width(rm);
 	}
 
 	/*
