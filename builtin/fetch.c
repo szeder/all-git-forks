@@ -488,11 +488,13 @@ static void prepare_format_display(struct ref *ref_map)
 		compact_format = 0;
 	else if (!strcasecmp(format, "compact"))
 		compact_format = 1;
+	else if (!strcasecmp(format, "dollar"))
+		compact_format = 2;
 	else
 		die(_("configuration fetch.output contains invalid value %s"),
 		    format);
 
-	if (compact_format)
+	if (compact_format == 1)
 		return;
 
 	for (rm = ref_map; rm; rm = rm->next) {
@@ -549,6 +551,48 @@ static void print_compact(struct strbuf *display,
 	print_remote_to_local(display, remote, local);
 }
 
+static int dollarize(struct strbuf *haystack, const char *needle)
+{
+	const char *p = strstr(haystack->buf, needle);
+	int plen, nlen;
+
+	if (!p)
+		return 0;
+
+	if (p > haystack->buf && p[-1] != '/')
+		return 0;
+
+	plen = strlen(p);
+	nlen = strlen(needle);
+	if (plen > nlen && p[nlen] != '/')
+		return 0;
+
+	strbuf_splice(haystack, p - haystack->buf, nlen, "$", 1);
+	return 1;
+}
+
+static void print_dollar(struct strbuf *display,
+			 const char *remote, const char *local)
+{
+	struct strbuf r = STRBUF_INIT;
+	struct strbuf l = STRBUF_INIT;
+
+	if (!strcmp(remote, local)) {
+		strbuf_addf(display, "%s -> $", remote);
+		return;
+	}
+
+	strbuf_addstr(&r, remote);
+	strbuf_addstr(&l, local);
+
+	if (!dollarize(&r, local))
+		dollarize(&l, remote);
+	print_remote_to_local(display, r.buf, l.buf);
+
+	strbuf_release(&r);
+	strbuf_release(&l);
+}
+
 static void format_display(struct strbuf *display, char code,
 			   const char *summary, const char *error,
 			   const char *remote, const char *local)
@@ -560,6 +604,9 @@ static void format_display(struct strbuf *display, char code,
 		break;
 	case 1:
 		print_compact(display, remote, local);
+		break;
+	case 2:
+		print_dollar(display, remote, local);
 		break;
 	}
 	if (error)
