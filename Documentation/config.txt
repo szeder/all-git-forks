@@ -1220,6 +1220,10 @@ fetch.prune::
 	If true, fetch will automatically behave as if the `--prune`
 	option was given on the command line.  See also `remote.<name>.prune`.
 
+fetch.output::
+	Valid values are "compact" or "full". See OUTPUT section in
+	linkgit:git-fetch[1] for detail.
+
 format.attach::
 	Enable multipart/mixed attachments as the default for
 	'format-patch'.  The value can also be a double quoted string

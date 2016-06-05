@@ -113,6 +113,14 @@ representing the status of a single ref. Each line is of the form:
  <flag> <summary> <from> -> <to> (<reason>)
 -------------------------------
 
+When configuration variable `fetch.output` contains `compact` and
+`from` and `to` share a common suffix, the line could be displayed in
+the form:
+
+-------------------------------
+ <flag> <summary> {<from> -> <to>}<common-suffix> (<reason>)
+-------------------------------
+
 The status of up-to-date refs is shown only if --verbose option is
 used.
 
