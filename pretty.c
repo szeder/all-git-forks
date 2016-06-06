@@ -904,8 +904,8 @@ static void parse_commit_message(struct format_commit_context *c)
 	c->commit_message_parsed = 1;
 }
 
-static void strbuf_wrap(struct strbuf *sb, size_t pos,
-			size_t width, size_t indent1, size_t indent2)
+static void strbuf_wrap_message(struct strbuf *sb, size_t pos,
+				size_t width, size_t indent1, size_t indent2)
 {
 	struct strbuf tmp = STRBUF_INIT;
 
@@ -926,7 +926,8 @@ static void rewrap_message_tail(struct strbuf *sb,
 	    c->indent2 == new_indent2)
 		return;
 	if (c->wrap_start < sb->len)
-		strbuf_wrap(sb, c->wrap_start, c->width, c->indent1, c->indent2);
+		strbuf_wrap_message(sb, c->wrap_start, c->width, c->indent1,
+				    c->indent2);
 	c->wrap_start = sb->len;
 	c->width = new_width;
 	c->indent1 = new_indent1;
