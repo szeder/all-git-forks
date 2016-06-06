@@ -555,6 +555,8 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 	struct strbuf oldsection = STRBUF_INIT, newsection = STRBUF_INIT;
 	int recovery = 0;
 	int clobber_head_ok;
+	int flags = 0;
+	unsigned char sha1[20];
 
 	if (!oldname)
 		die(_("cannot rename the current branch while not on any."));
@@ -564,7 +566,11 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 		 * Bad name --- this could be an attempt to rename a
 		 * ref that we used to allow to be created by accident.
 		 */
-		if (ref_exists(oldref.buf))
+		resolve_ref_unsafe(oldref.buf, RESOLVE_REF_READING
+					 | RESOLVE_REF_NO_RECURSE
+					 | RESOLVE_REF_ALLOW_BAD_NAME,
+					 sha1, &flags);
+		if (flags & REF_ISBROKEN)
 			recovery = 1;
 		else
 			die(_("Invalid branch name: '%s'"), oldname);

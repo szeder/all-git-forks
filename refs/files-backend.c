@@ -1537,6 +1537,23 @@ out:
 }
 
 /*
+ * Read raw ref from the filesystem.
+ *
+ * Should only be used for known broken refs after proper resolution in order
+ * to retrieve associated sha1.
+ */
+static int read_broken_ref(const char *refname, unsigned char *sha1)
+{
+	unsigned int flags = 0;
+	int ret;
+	struct strbuf buf = STRBUF_INIT;
+
+	ret = read_raw_ref(refname, sha1, &buf, &flags);
+
+	return ret;
+}
+
+/*
  * Peel the entry (if possible) and return its new peel_status.  If
  * repeel is true, re-peel the entry even if there is an old peeled
  * value that is already stored in it.
@@ -1714,11 +1731,13 @@ static int verify_lock(struct ref_lock *lock,
 		       const unsigned char *old_sha1, int mustexist,
 		       struct strbuf *err)
 {
+	int flags = 0;
+
 	assert(err);
 
 	if (read_ref_full(lock->ref_name,
-			  mustexist ? RESOLVE_REF_READING : 0,
-			  lock->old_oid.hash, NULL)) {
+			  RESOLVE_REF_ALLOW_BAD_NAME | (mustexist ? RESOLVE_REF_READING : 0),
+			  lock->old_oid.hash, &flags)) {
 		if (old_sha1) {
 			int save_errno = errno;
 			strbuf_addf(err, "can't verify ref %s", lock->ref_name);
@@ -1729,6 +1748,10 @@ static int verify_lock(struct ref_lock *lock,
 			return 0;
 		}
 	}
+
+	if (flags & REF_ISBROKEN)
+		read_broken_ref(lock->ref_name, lock->old_oid.hash);
+
 	if (old_sha1 && hashcmp(lock->old_oid.hash, old_sha1)) {
 		strbuf_addf(err, "ref %s is at %s but expected %s",
 			    lock->ref_name,
@@ -1787,6 +1810,10 @@ static struct ref_lock *lock_ref_sha1_basic(const char *refname,
 
 	refname = resolve_ref_unsafe(refname, resolve_flags,
 				     lock->old_oid.hash, &type);
+
+	if (refname && (type & REF_ISBROKEN))
+		read_broken_ref(refname, lock->old_oid.hash);
+
 	if (!refname && errno == EISDIR) {
 		/*
 		 * we are trying to lock foo but we used to
@@ -2357,22 +2384,29 @@ int rename_ref(const char *oldrefname, const char *newrefname, const char *logms
 	if (log && S_ISLNK(loginfo.st_mode))
 		return error("reflog for %s is a symlink", oldrefname);
 
-	symref = resolve_ref_unsafe(oldrefname, RESOLVE_REF_READING,
+	symref = resolve_ref_unsafe(oldrefname,
+				    RESOLVE_REF_READING | RESOLVE_REF_ALLOW_BAD_NAME,
 				    orig_sha1, &flag);
+
 	if (flag & REF_ISSYMREF)
 		return error("refname %s is a symbolic ref, renaming it is not supported",
 			oldrefname);
+
 	if (!symref)
 		return error("refname %s not found", oldrefname);
 
 	if (!rename_ref_available(oldrefname, newrefname))
 		return 1;
 
+	if (flag & REF_ISBROKEN)
+		read_broken_ref(oldrefname, orig_sha1);
+
 	if (log && rename(git_path("logs/%s", oldrefname), git_path(TMP_RENAMED_LOG)))
 		return error("unable to move logfile logs/%s to "TMP_RENAMED_LOG": %s",
 			oldrefname, strerror(errno));
 
-	if (delete_ref(oldrefname, orig_sha1, REF_NODEREF)) {
+	if (delete_ref(oldrefname, is_null_sha1(orig_sha1) ? NULL : orig_sha1,
+		       REF_NODEREF | RESOLVE_REF_ALLOW_BAD_NAME)) {
 		error("unable to delete old %s", oldrefname);
 		goto rollback;
 	}

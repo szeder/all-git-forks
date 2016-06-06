@@ -104,7 +104,7 @@ test_expect_success 'branch -m cannot rename to a bad ref name' '
 	! grep -e "broken\.\.\.ref" output
 '
 
-test_expect_failure 'branch -m can rename from a bad ref name' '
+test_expect_success 'branch -m can rename from a bad ref name' '
 	cp .git/refs/heads/master .git/refs/heads/broken...ref &&
 	test_when_finished "rm -f .git/refs/heads/broken...ref" &&
 	git branch -m broken...ref renamed &&
