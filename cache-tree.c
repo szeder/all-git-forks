@@ -155,20 +155,28 @@ static int verify_cache(struct cache_entry **cache,
 {
 	int i, funny;
 	int silent = flags & WRITE_TREE_SILENT;
+	int core_error_commit_ita = 0;
+
+	git_config_get_bool("core.errorcommitita", &core_error_commit_ita);
 
 	/* Verify that the tree is merged */
 	funny = 0;
 	for (i = 0; i < entries; i++) {
 		const struct cache_entry *ce = cache[i];
-		if (ce_stage(ce)) {
+		if (ce_stage(ce) ||
+		    (core_error_commit_ita && ce_intent_to_add(ce))) {
 			if (silent)
 				return -1;
 			if (10 < ++funny) {
 				fprintf(stderr, "...\n");
 				break;
 			}
-			fprintf(stderr, "%s: unmerged (%s)\n",
-				ce->name, sha1_to_hex(ce->sha1));
+			if (ce_stage(ce))
+				fprintf(stderr, "%s: unmerged (%s)\n",
+					ce->name, sha1_to_hex(ce->sha1));
+			else
+				fprintf(stderr, "%s: not added yet\n",
+					ce->name);
 		}
 	}
 	if (funny)
