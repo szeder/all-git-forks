@@ -153,7 +153,7 @@ my %init_opts = ( 'template=s' => \$_template, 'shared:s' => \$_shared,
 		  'use-svnsync-props' => sub { $icv{useSvnsyncProps} = 1 },
 		  'rewrite-root=s' => sub { $icv{rewriteRoot} = $_[1] },
 		  'rewrite-uuid=s' => sub { $icv{rewriteUUID} = $_[1] },
-		  'enable-filters' => \$Git::SVN::Fetcher::_enable_filters,
+		  'use-filters' => \$Git::SVN::Fetcher::_use_filters,
                   %remote_opts );
 my %cmt_opts = ( 'edit|e' => \$_edit,
 		'rmdir' => \$Git::SVN::Editor::_rmdir,
@@ -497,8 +497,8 @@ sub do_git_init_db {
 		command_noisy('config', "$pfx.placeholder-filename", $$fname);
 	}
 
-	command_noisy('config', "$pfx.enable-filters", 'true')
-		if defined $Git::SVN::Fetcher::_enable_filters
+	command_noisy('config', "$pfx.use-filters", 'true')
+		if defined $Git::SVN::Fetcher::_use_filters
 }
 
 sub init_subdir {

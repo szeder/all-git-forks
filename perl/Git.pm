@@ -963,13 +963,13 @@ The function returns the SHA1 hash.
 
 # TODO: Support for passing FILEHANDLE instead of FILENAME
 sub hash_and_insert_object {
-	my ($self, $filename, $path, $enable_filters) = @_;
+	my ($self, $filename, $path, $use_filters) = @_;
 	carp "Bad filename \"$filename\"" if $filename =~ /[\r\n\t]/;
 	if (defined($path)) {
 		$filename = join("\t", $filename, $path);
 	}
 
-	$self->_open_hash_and_insert_object_if_needed($enable_filters);
+	$self->_open_hash_and_insert_object_if_needed($use_filters);
 	my ($in, $out) = ($self->{hash_object_in}, $self->{hash_object_out});
 
 	unless (print $out $filename, "\n") {
@@ -987,12 +987,12 @@ sub hash_and_insert_object {
 }
 
 sub _open_hash_and_insert_object_if_needed {
-	my ($self, $enable_filters) = @_;
+	my ($self, $use_filters) = @_;
 
 	return if defined($self->{hash_object_pid});
 
 	my @command = qw(hash-object -w --stdin-paths);
-	if (!$enable_filters) {
+	if (!$use_filters) {
 		push(@command, "--no-filters");
 	}
 
