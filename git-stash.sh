@@ -191,12 +191,20 @@ store_stash () {
 }
 
 save_stash () {
+	checkpoint=
 	keep_index=
 	patch_mode=
 	untracked=
+	reset=t
 	while test $# != 0
 	do
 		case "$1" in
+		-c|--checkpoint|--no-reset)
+			reset=
+			;;
+		-r|--reset)
+			reset=t
+			;;
 		-k|--keep-index)
 			keep_index=t
 			;;
@@ -267,6 +275,11 @@ save_stash () {
 	store_stash -m "$stash_msg" -q $w_commit ||
 	die "$(gettext "Cannot save the current status")"
 	say Saved working directory and index state "$stash_msg"
+
+	if test -z "$reset"
+	then
+		exit 0
+	fi
 
 	if test -z "$patch_mode"
 	then
@@ -357,6 +370,7 @@ show_help () {
 #
 #   GIT_QUIET is set to t if -q is specified
 #   INDEX_OPTION is set to --index if --index is specified.
+#   reset is set to t if -r|--reset is specified.
 #   FLAGS is set to the remaining flags (if allowed)
 #
 # dies if:
@@ -375,6 +389,7 @@ parse_flags_and_rev()
 	IS_STASH_LIKE=
 	IS_STASH_REF=
 	INDEX_OPTION=
+	reset=
 	s=
 	w_commit=
 	b_commit=
@@ -391,6 +406,12 @@ parse_flags_and_rev()
 	for opt
 	do
 		case "$opt" in
+			-c|--checkpoint|--no-reset)
+				reset=
+			;;
+			-r|--reset)
+				reset=t
+			;;
 			-q|--quiet)
 				GIT_QUIET=-t
 			;;
@@ -471,6 +492,11 @@ assert_stash_ref() {
 apply_stash () {
 
 	assert_stash_like "$@"
+
+	if test -n "$reset"
+	then
+		git reset --hard ${GIT_QUIET:+-q}
+	fi
 
 	git update-index -q --refresh || die "$(gettext "unable to refresh index")"
 
@@ -606,6 +632,10 @@ show)
 save)
 	shift
 	save_stash "$@"
+	;;
+checkpoint)
+	shift
+	save_stash "--no-reset" "$@"
 	;;
 apply)
 	shift
