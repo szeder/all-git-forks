@@ -17,6 +17,7 @@
 #include "revision.h"
 #include "tempfile.h"
 #include "lockfile.h"
+#include "branch.h"
 
 enum rebase_type {
 	REBASE_INVALID = -1,
@@ -109,12 +110,18 @@ static char *opt_unshallow;
 static char *opt_update_shallow;
 static char *opt_refmap;
 
+/* Options about upstream */
+static int opt_set_upstream;
+
 static struct option pull_options[] = {
 	/* Shared options */
 	OPT__VERBOSITY(&opt_verbosity),
 	OPT_PASSTHRU(0, "progress", &opt_progress, NULL,
 		N_("force progress reporting"),
 		PARSE_OPT_NOARG),
+
+	/* Options about upstream */
+	OPT_BOOL('u', "set-upstream", &opt_set_upstream, N_("set upstream for git pull/status")),
 
 	/* Options passed to git-merge or git-rebase */
 	OPT_GROUP(N_("Options related to merging")),
@@ -497,6 +504,10 @@ static void NORETURN die_no_merge_candidates(const char *repo, const char **refs
 		fprintf(stderr, "\n");
 		fprintf_ln(stderr, _("If you wish to set tracking information for this branch you can do so with:"));
 		fprintf(stderr, "\n");
+		fprintf_ln(stderr, "    git pull -u %s %s", _("<remote>"), _("<branch>"));
+		fprintf(stderr, "\n");
+		fprintf_ln(stderr, _("or"));
+		fprintf(stderr, "\n");
 		fprintf_ln(stderr, "    git branch --set-upstream-to=%s/%s %s\n",
 				remote_name, _("<branch>"), curr_branch->name);
 	} else
@@ -829,8 +840,92 @@ static int run_rebase(const unsigned char *curr_head,
 	return ret;
 }
 
+static void set_pull_upstream(const char *repo, const char **refspecs_name)
+{
+	unsigned char sha1[GIT_SHA1_RAWSZ];
+	struct refspec *refspec;
+	struct branch *branch;
+	struct remote *remote;
+	struct strbuf buf;
+	struct refspec tracking_refspec;
+	int nr_refspec, i, flags;
+
+	if (!repo) {
+		warning(_("a remote must be specified to set the upstream"));
+		return;
+	}
+
+	remote = remote_get(repo);
+	if (!remote) {
+		warning(_("cannot set upstream: "
+			"'%s' is not a configured remote"), repo);
+	}
+
+	for (nr_refspec = 0; refspecs_name[nr_refspec] != NULL; nr_refspec++)
+		; /* just counting */
+
+	if (nr_refspec == 0) {
+		warning(_("a remote branch must be specified to set the upstream"));
+		return;
+	}
+
+	strbuf_init(&buf, 0);
+	refspec = parse_fetch_refspec(nr_refspec, refspecs_name);
+
+	for (i = 0; i < nr_refspec; i++) {
+		if (refspec[i].pattern) {
+			warning(_("upstream cannot be set for patterns"));
+			continue;
+		}
+
+		branch = branch_get(refspec[i].dst);
+		if (!branch || !ref_exists(branch->refname)) {
+			if (!refspec[i].dst || !*refspec[i].dst)
+				warning(_("could not set upstream of HEAD when "
+					"it does not point to any branch."));
+			else
+				warning(_("cannot set upstream: "
+					"'%s' is not a branch"), refspec[i].dst);
+
+			continue;
+		}
+
+		if (!refspec[i].src || !*refspec[i].src) {
+			warning(_("remote branch must be specified "
+				"to set upstream"));
+			continue;
+		}
+		
+		strbuf_reset(&buf);
+		strbuf_addf(&buf, "refs/heads/%s", refspec[i].src);
+		memset(&tracking_refspec, 0, sizeof(struct refspec));
+		tracking_refspec.src = buf.buf;
+
+		if (remote_find_tracking(remote, &tracking_refspec)) {
+			warning(_("cannot set upstream: "
+				"no such remote branch '%s'"), refspec[i].src);
+			continue;
+		}
+
+		if (!resolve_ref_unsafe(tracking_refspec.dst, RESOLVE_REF_READING,
+					sha1, &flags)
+				|| (flags & REF_ISSYMREF)) {
+			warning(_("cannot set upstream: "
+				"no such remote branch '%s'"), refspec[i].src);
+			continue;
+		}
+
+		install_branch_config((opt_verbosity >= 0 ? BRANCH_CONFIG_VERBOSE : 0),
+		      branch->name, repo, buf.buf);
+	}
+
+	free_refspec(nr_refspec, refspec);
+	strbuf_release(&buf);
+}
+
 int cmd_pull(int argc, const char **argv, const char *prefix)
 {
+	int ret;
 	const char *repo, **refspecs;
 	struct sha1_array merge_heads = SHA1_ARRAY_INIT;
 	unsigned char orig_head[GIT_SHA1_RAWSZ], curr_head[GIT_SHA1_RAWSZ];
@@ -918,11 +1013,16 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 	if (is_null_sha1(orig_head)) {
 		if (merge_heads.nr > 1)
 			die(_("Cannot merge multiple branches into empty head."));
-		return pull_into_void(*merge_heads.sha1, curr_head);
+		ret = pull_into_void(*merge_heads.sha1, curr_head);
 	} else if (opt_rebase) {
 		if (merge_heads.nr > 1)
 			die(_("Cannot rebase onto multiple branches."));
-		return run_rebase(curr_head, *merge_heads.sha1, rebase_fork_point);
+		ret = run_rebase(curr_head, *merge_heads.sha1, rebase_fork_point);
 	} else
-		return run_merge();
+		ret = run_merge();
+
+	if (opt_set_upstream && ret < 128)
+		set_pull_upstream(repo, refspecs);
+
+	return ret;
 }

@@ -93,6 +93,24 @@ OPTIONS
 	has to be called afterwards to bring the work tree up to date with the
 	merge result.
 
+-u::
+--set-upstream::
+	After successfully pulling from explicitly given <repository> and
+	<refspecs>, set the configuration of the local branches pulled on, so
+	that each one tracks the remote branch pulled from. If a configuration
+	already exists, it is overwriten. For example, with `git pull -u origin
+	branch` the current branch will track `branch` from `origin`.
++
+If two or more branches are pulled on the same local branch, only the last one
+in arguments will be tracked.
++
+The given <repository> must be a configured remote. Can only set tracking to
+remote branches (e.g. can't set upstream to remote HEAD).
++
+Works symmetrically as `--set-upstream` for linkgit:git-push[1]. Allow using
+argumentless linkgit:git-pull[1] and other commands.  For more information, see
+`branch.<name>.merge` in linkgit:git-config[1].
+
 Options related to merging
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
