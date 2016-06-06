@@ -1137,11 +1137,12 @@ static int pp_collect_finished(struct parallel_processes *pp)
 {
 	int i, code;
 	int n = pp->max_processes;
+	int *ptemp, **p_value;
 	int result = 0;
 	struct prio_queue queue;
 
 	memset(&queue, '\0', sizeof(queue));
-	int **p_value = xmalloc(n * sizeof(*p_value));
+	p_value = xmalloc(n * sizeof(*p_value));
 	for (i = 0; i < n; i++) {
 		p_value[i] = xmalloc(sizeof(**p_value));
 	}
@@ -1187,7 +1188,7 @@ static int pp_collect_finished(struct parallel_processes *pp)
 			 * the one with the longest or shortest
 			 * running process time.
 			 */
-			int *ptemp = prio_queue_get(&queue);
+			ptemp = prio_queue_get(&queue);
 			if (ptemp != NULL)
 				pp->output_owner = *ptemp;
 		}
