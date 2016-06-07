@@ -1115,8 +1115,8 @@ static int compare_pp_by_buf_length(const void *a_, const void *b_,
 }
 
 /* Filling the queue with
- * all the processes which could be
- * picked to access the output
+ * all the candidates
+ * to access the output
  */
 static void pp_fill_priority(struct parallel_processes *pp,
 			     struct prio_queue *queue, int ***p_value)
