@@ -100,7 +100,7 @@ int init_apply_state(struct apply_state *state,
 	return 0;
 }
 
-static void clear_apply_state(struct apply_state *state)
+void clear_apply_state(struct apply_state *state)
 {
 	string_list_clear(&state->limit_by_name, 0);
 	string_list_clear(&state->symlink_changes, 0);

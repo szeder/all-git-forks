@@ -119,6 +119,7 @@ extern int apply_option_parse_space_change(const struct option *opt,
 extern int init_apply_state(struct apply_state *state,
 			    const char *prefix,
 			    struct lock_file *lock_file);
+extern void clear_apply_state(struct apply_state *state);
 extern int check_apply_state(struct apply_state *state, int force_apply);
 
 #define APPLY_OPT_INACCURATE_EOF	(1<<0)
