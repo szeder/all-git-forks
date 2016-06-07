@@ -55,6 +55,14 @@ int gpg_verify_tag(const unsigned char *sha1, const char *name_to_report,
 
 	ret = run_gpg_verify(buf, size, flags);
 
+	if (flags & TAG_VERIFY_NAME) {
+		struct tag tag_info;
+		ret += parse_tag_buffer(&tag_info, buf, size);
+		if strncmp(tag_info.tag, name_to_report, size)
+			ret += error("tag name doesn't match tag header!(%s)",
+					tag_info.tag);
+	}
+
 	free(buf);
 	return ret;
 }

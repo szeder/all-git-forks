@@ -2,6 +2,7 @@
 #define TAG_H
 
 #include "object.h"
+#define TAG_VERIFY_NAME 0x10
 
 extern const char *tag_type;
 
