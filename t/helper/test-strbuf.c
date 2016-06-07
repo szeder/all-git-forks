@@ -26,7 +26,7 @@ static int strbuf_check_behavior(struct strbuf *sb)
 	strbuf_attach(sb, str_test, strlen(str_test), strlen(str_test) + 1);
 	res = strbuf_detach(sb, &size);
 	if (size != strlen(str_test)) 
-		die("incorrect size. Expected %d , got %d", strlen(str_test), size);
+		die("incorrect size. Expected %zu , got %zu", strlen(str_test), size);
 
 	if (res != str_test)
 		die("strbuf_detach does not return the expected buffer");
@@ -102,7 +102,7 @@ static int detach_fixed(struct strbuf *sb)
 			  strlen(str_test), sizeof(str_test));
 	buf = strbuf_detach(sb, &size);
 	if (size != strlen(str_test))
-		die("incorrect size. Expected %d , got %d", strlen(str_test), size);
+		die("incorrect size. Expected %zu , got %zu", strlen(str_test), size);
 
 	if (str_test == buf)
 		die("strbuf_detach does not copy the buffer");
