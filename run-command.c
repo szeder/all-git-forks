@@ -5,6 +5,7 @@
 #include "argv-array.h"
 #include "thread-utils.h"
 #include "strbuf.h"
+#include "prio-queue.h"
 
 void child_process_init(struct child_process *child)
 {
@@ -1096,11 +1097,53 @@ static void pp_output(struct parallel_processes *pp)
 	}
 }
 
+static int compare_pp_by_buf_length(const void *a_, const void *b_,
+					  void *cb_data)
+{
+	int a = *(int *)a_, b = *(int *)b_;
+	struct parallel_processes pp = *(struct parallel_processes *)cb_data;
+
+	/*
+	 * larger buffer first because we want to pick
+	 * the processus which has the most to say
+	 */
+	if (pp.children[a].err.len < pp.children[b].err.len)
+		return 1;
+	else if (pp.children[a].err.len > pp.children[b].err.len)
+		return -1;
+	return 0;
+}
+
+/* Filling the queue with all the candidates that can access the output */
+static void pp_fill_priority(struct parallel_processes *pp,
+			     struct prio_queue *queue, int ***p_value)
+{
+	int n = pp->max_processes, i;
+
+	queue->compare = compare_pp_by_buf_length;
+	queue->cb_data = pp;
+	for (i = 0; i < n; i++) {
+		if (pp->children[i].state == GIT_CP_WORKING) {
+			*(*p_value)[i] = i;
+			prio_queue_put(queue, (void *)(*p_value)[i]);
+		}
+	}
+}
+
 static int pp_collect_finished(struct parallel_processes *pp)
 {
 	int i, code;
 	int n = pp->max_processes;
+	int *ptemp, **p_value;
 	int result = 0;
+	struct prio_queue queue;
+
+	memset(&queue, '\0', sizeof(queue));
+	p_value = xmalloc(n * sizeof(*p_value));
+	for (i = 0; i < n; i++) {
+		p_value[i] = xmalloc(sizeof(**p_value));
+	}
+	pp_fill_priority(pp, &queue, &p_value);
 
 	while (pp->nr_processes > 0) {
 		for (i = 0; i < pp->max_processes; i++)
@@ -1139,17 +1182,22 @@ static int pp_collect_finished(struct parallel_processes *pp)
 			/*
 			 * Pick next process to output live.
 			 * NEEDSWORK:
-			 * For now we pick it randomly by doing a round
-			 * robin. Later we may want to pick the one with
-			 * the most output or the longest or shortest
+			 * For now we're picking the one with
+			 * the most output but we may pick
+			 * the one with the longest or shortest
 			 * running process time.
 			 */
-			for (i = 0; i < n; i++)
-				if (pp->children[(pp->output_owner + i) % n].state == GIT_CP_WORKING)
-					break;
-			pp->output_owner = (pp->output_owner + i) % n;
+			ptemp = prio_queue_get(&queue);
+			if (ptemp != NULL)
+				pp->output_owner = *ptemp;
 		}
 	}
+	for (i = 0; i < n; i++) {
+		free(p_value[i]);
+	}
+	free(p_value);
+	clear_prio_queue(&queue);
+
 	return result;
 }
 
