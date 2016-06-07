@@ -209,6 +209,7 @@ int main(int argc, const char *argv[])
 		 */
 		grow_fixed_overflow(&sb);
 	} else if (cmdmode == MODE_GROW_FIXED_OVERFLOW_MIN) {
+		strbuf_wrap(&sb, (char[]){0, 1, 2, 3}, 0, 4);
 		/*
 		 * Minimum strbuf_grow() for overflowing a fixed strbuf: should
 		 * die().
