@@ -130,9 +130,9 @@ int main(int argc, const char *argv[])
 	enum {
 		MODE_UNSPECIFIED = 0,
 		MODE_BASIC_GROW ,
-		MODE_STRBUF_CHECK,
+		MODE_STRBUF_CHECK_BEHAVIOR,
 		MODE_GROW_OVERFLOW,
-		MODE_PREALLOC_CHECK,
+		MODE_PREALLOC_CHECK_BEHAVIOR,
 		MODE_PREALLOC_NULL,
 		MODE_GROW_FIXED_OVERFLOW,
 		MODE_GROW_FIXED_OVERFLOW_MIN,
@@ -146,13 +146,13 @@ int main(int argc, const char *argv[])
 			    MODE_BASIC_GROW),
 		OPT_CMDMODE(0, "strbuf_check_behavior", &cmdmode,
 			    N_("check the strbuf's behavior"),
-			    MODE_STRBUF_CHECK),
+			    MODE_STRBUF_CHECK_BEHAVIOR),
 		OPT_CMDMODE(0, "grow_overflow", &cmdmode,
 			    N_("test grow expecting overflow"),
 			    MODE_GROW_OVERFLOW),
 		OPT_CMDMODE(0, "preallocated_check_behavior", &cmdmode,
 			    N_("check the wrap's behavior"),
-			    MODE_PREALLOC_CHECK),
+			    MODE_PREALLOC_CHECK_BEHAVIOR),
 		OPT_CMDMODE(0, "preallocated_NULL", &cmdmode,
 			    N_("initializing wrap with NULL"),
 			    MODE_PREALLOC_NULL),
@@ -181,7 +181,7 @@ int main(int argc, const char *argv[])
 		 * Check if strbuf_grow(0) allocate a new NUL-terminated buffer
 		 */
 		return basic_grow(&sb);
-	} else if (cmdmode == MODE_STRBUF_CHECK) {
+	} else if (cmdmode == MODE_STRBUF_CHECK_BEHAVIOR) {
 		strbuf_init(&sb, 0);
 		return strbuf_check_behavior(&sb);
 	} else if (cmdmode == MODE_GROW_OVERFLOW) {
@@ -190,7 +190,7 @@ int main(int argc, const char *argv[])
 		 * If this does not die(), fall through to returning success.
 		 */
 		grow_overflow(&sb);
-	} else if (cmdmode == MODE_PREALLOC_CHECK) {
+	} else if (cmdmode == MODE_PREALLOC_CHECK_BEHAVIOR) {
 		char str_test[5] = "test";
 
 		strbuf_wrap(&sb, (void *)str_test,
