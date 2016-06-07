@@ -1,6 +1,6 @@
 #!/bin/sh
 
-test_description='Test the strbuf API.'
+test_description='Test the strbuf API'
 
 . ./test-lib.sh
 
