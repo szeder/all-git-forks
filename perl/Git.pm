@@ -865,6 +865,40 @@ sub ident_person {
 	return "$ident[0] <$ident[1]>";
 }
 
+=item parse_email
+
+Return a hash of email fields extracted from a file handler.
+
+=cut
+
+sub parse_email {
+	my %mail = ();
+	my $fh = shift;
+	my $last_header;
+
+	# Unfold and parse multiline header fields
+	while (<$fh>) {
+		last if /^\s*$/;
+		s/\r\n|\n|\r//;
+		if (/^([^\s:]+):[\s]+(.*)$/) {
+			$last_header = lc($1);
+			@{$mail{$last_header}} = ()
+				unless defined $mail{$last_header};
+			push @{$mail{$last_header}}, $2;
+		} elsif (/^\s+\S/ and defined $last_header) {
+			s/^\s+/ /;
+			push @{$mail{$last_header}}, $_;
+		} else {
+			die("Mail format undefined!\n");
+		}
+	}
+
+	# Separate body from header
+	$mail{"body"} = [(<$fh>)];
+
+	return \%mail;
+}
+
 =item parse_mailboxes
 
 Return an array of mailboxes extracted from a string.
