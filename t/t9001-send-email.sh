@@ -1915,6 +1915,7 @@ test_expect_success $PREREQ 'Fields with --in-reply-to are correct' '
 	git send-email \
 		--in-reply-to=email \
 		--from="Example <nobody@example.com>" \
+		--cite \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		-2 \
 		2>errors &&
@@ -1936,10 +1937,22 @@ test_expect_success $PREREQ 'Fields with --in-reply-to are correct' '
 	echo "$ref_adr" | grep -v "References: <author_123456@example.com>"
 '
 
+test_expect_success $PREREQ 'correct cited message with --in-reply-to' '
+	msg_cited=$(grep -A 3 "^---$" msgtxt1) &&
+	echo "$msg_cited" | grep "On Sat, 12 Jun 2010 15:53:58 +0200, author@example.com wrote:" &&
+	echo "$msg_cited" | grep "> Have you seen my previous email?" &&
+	echo "$msg_cited" | grep ">> Previous content"
+'
+
+test_expect_success $PREREQ 'second patch body is not modified by --in-reply-to' '
+	! grep "Have you seen my previous email?" msgtxt2
+'
+
 test_expect_success $PREREQ 'Fields with --in-reply-to and --compose are correct' '
 	clean_fake_sendmail &&
 	git send-email \
 		--in-reply-to=email \
+		--cite \
 		--compose \
 		--from="Example <nobody@example.com>" \
 		--smtp-server="$(pwd)/fake.sendmail" \
@@ -1967,12 +1980,31 @@ test_expect_success $PREREQ 'Fields with --in-reply-to and --compose are correct
 test_expect_success $PREREQ 'Re: written only once with --in-reply-to and --compose ' '
 	git send-email \
 		--in-reply-to=msgtxt1 \
+		--cite \
 		--compose \
 		--from="Example <nobody@example.com>" \
 		--smtp-server="$(pwd)/fake.sendmail" \
 		-1 \
 		2>errors &&
 	grep "Subject: Re: subject goes here" msgtxt3
+'
+
+test_expect_success $PREREQ 'correct cited message with --in-reply-to and --compose' '
+	grep "> On Sat, 12 Jun 2010 15:53:58 +0200, author@example.com wrote:" msgtxt3 &&
+	grep ">> Have you seen my previous email?" msgtxt3 &&
+	grep ">>> Previous content" msgtxt3
+'
+
+test_expect_success $PREREQ 'Message is not cited with only --in-reply-to' '
+	clean_fake_sendmail &&
+	git send-email \
+		--in-reply-to=email \
+		--compose \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-1 \
+		2>errors &&
+	! grep "Have you seen my previous email?" msgtxt1
 '
 
 test_done
