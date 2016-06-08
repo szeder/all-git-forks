@@ -26,6 +26,7 @@ use Text::ParseWords;
 use Term::ANSIColor;
 use File::Temp qw/ tempdir tempfile /;
 use File::Spec::Functions qw(catfile);
+use File::Copy;
 use Error qw(:try);
 use Git;
 
@@ -56,6 +57,8 @@ git send-email --dump-aliases
     --subject               <str>  * Email "Subject:"
     --in-reply-to           <str>  * Email "In-Reply-To:"
     --in-reply-to          <file>  * Populate header fields appropriately.
+    --cite                         * Quote the message body in the cover if
+                                     --compose is set, else in the first patch.
     --[no-]xmailer                 * Add "X-Mailer:" header (default).
     --[no-]annotate                * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
@@ -161,7 +164,7 @@ my $re_encoded_word = qr/=\?($re_token)\?($re_token)\?($re_encoded_text)\?=/;
 
 # Variables we fill in automatically, or via prompting:
 my (@to,$no_to,@initial_to,@cc,$no_cc,@initial_cc,@bcclist,$no_bcc,@xh,
-	$initial_reply_to,$initial_references,$initial_subject,@files,
+	$initial_reply_to,$initial_references,$cite,$initial_subject,@files,
 	$author,$sender,$smtp_authpass,$annotate,$use_xmailer,$compose,$time);
 
 my $envelope_sender;
@@ -305,6 +308,7 @@ $rc = GetOptions(
 		    "sender|from=s" => \$sender,
                     "in-reply-to=s" => \$initial_reply_to,
 		    "subject=s" => \$initial_subject,
+		    "cite" => \$cite,
 		    "to=s" => \@initial_to,
 		    "to-cmd=s" => \$to_cmd,
 		    "no-to" => \$no_to,
@@ -640,6 +644,7 @@ if (@files) {
 	usage();
 }
 
+my $message_cited;
 if ($initial_reply_to && -f $initial_reply_to) {
 	my $error = validate_patch($initial_reply_to);
 	die "fatal: $initial_reply_to: $error\nwarning: no patches were sent\n"
@@ -658,7 +663,8 @@ if ($initial_reply_to && -f $initial_reply_to) {
 	}
 	$initial_subject = $prefix_re . $subject_re;
 
-	push @initial_to, $mail->{"from"}[0];
+	my $recipient = $mail->{"from"}[0];
+	push @initial_to, $recipient;
 
 	foreach my $to_addr (parse_address_line(join ",", @{$mail->{"to"}})) {
 		if (!($to_addr eq $initial_sender)) {
@@ -683,6 +689,25 @@ if ($initial_reply_to && -f $initial_reply_to) {
 	if ($mail->{"references"}) {
 		$initial_references = join("", @{$mail->{"references"}}) .
 			" " . $initial_reply_to;
+	}
+
+	if ($cite) {
+		my $date = $mail->{"date"}[0];
+		my $tpl_date =  $date && "On $date, " || '';
+		$message_cited = $tpl_date . $recipient . " wrote:\n";
+
+		# Quote the message body
+		foreach (@{$mail->{"body"}}) {
+			my $space = "";
+			if (/^[^>]/) {
+				$space = " ";
+			}
+			$message_cited .= ">" . $space . $_;
+		}
+
+		if (!$compose) {
+			$annotate = 1;
+		}
 	}
 }
 
@@ -711,6 +736,9 @@ if ($compose) {
 	my $tpl_sender = $sender || $repoauthor || $repocommitter || '';
 	my $tpl_subject = $initial_subject || '';
 	my $tpl_reply_to = $initial_reply_to || '';
+	my $tpl_quote = $message_cited &&
+		"\nGIT: Please, trim down irrelevant sections in the cited message\n".
+		"GIT: to keep your email concise.\n" . $message_cited || '';
 
 	print $c <<EOT;
 From $tpl_sender # This line is ignored.
@@ -722,7 +750,7 @@ GIT: Clear the body content if you don't wish to send a summary.
 From: $tpl_sender
 Subject: $tpl_subject
 In-Reply-To: $tpl_reply_to
-
+$tpl_quote
 EOT
 	for my $f (@files) {
 		print $c get_patch_subject($f);
@@ -787,7 +815,52 @@ EOT
 		$compose = -1;
 	}
 } elsif ($annotate) {
-	do_edit(@files);
+	if ($message_cited) {
+		my $cite_email_filename = ($repo ?
+			tempfile(".gitsendemail.msg.XXXXXX",
+				DIR => $repo->repo_path()) :
+			tempfile(".gitsendemail.msg.XXXXXX",
+				DIR => "."))[1];
+
+		# Insertion in a temporary file to keep the original file clean
+		# in case of cancellation/error.
+		do_insert_cited_message($cite_email_filename, $files[0]);
+
+		my $tmp = $files[0];
+		$files[0] = $cite_email_filename;
+
+		do_edit(@files);
+
+		# Erase the original patch if the edition went well
+		move($cite_email_filename, $tmp);
+		$files[0] = $tmp;
+	} else {
+		do_edit(@files);
+	}
+}
+
+sub do_insert_cited_message {
+	my $tmp_file = shift;
+	my $original_file = shift;
+
+	open my $c, "<", $original_file
+	or die "Failed to open $original_file: " . $!;
+
+	open my $c2, ">", $tmp_file
+		or die "Failed to open $tmp_file: " . $!;
+
+	# Insertion after the triple-dash
+	while (<$c>) {
+		print $c2 $_;
+		last if (/^---$/);
+	}
+	print $c2 $message_cited;
+	while (<$c>) {
+		print $c2 $_;
+	}
+
+	close $c;
+	close $c2;
 }
 
 sub ask {

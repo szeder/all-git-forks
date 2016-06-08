@@ -109,6 +109,14 @@ illustration below where `[PATCH v2 0/3]` is in reply to `[PATCH 0/2]`:
 Only necessary if --compose is also set.  If --compose
 is not set, this will be prompted for.
 
+--cite::
+	When used with `--in-reply-to=<email_file>`, quote the message body of the
+	given email file.
++
+If `--compose` is also set, the message cited will be in the cover letter. If
+`--compose` is not set, `--annotate` option is implied by default and the
+message body will be cited in the "below-triple-dash" section.
+
 --subject=<string>::
 	Specify the initial subject of the email thread.
 	Only necessary if --compose is also set.  If --compose
