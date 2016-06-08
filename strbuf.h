@@ -13,14 +13,14 @@
  *
  * You can avoid the malloc/free overhead of `strbuf_init()`, `strbuf_add()` and
  * `strbuf_release()` by wrapping pre-allocated memory (stack-allocated for
- * example) using `strbuf_wrap()` or `strbuf_wrap_fixed()`.
+ * example) using `strbuf_wrap()`.
  *
  * strbufs have some invariants that are very important to keep in mind:
  *
  *  - The `buf` member is never NULL, so it can be used in any usual C
  *    string operations safely. strbuf's _have_ to be initialized either by
- *    `strbuf_init()`, `= STRBUF_INIT`, `strbuf_wrap()` or `strbuf_wrap_fixed()`
- *    before the invariants, though.
+ *    `strbuf_init()`, `= STRBUF_INIT`, `strbuf_wrap()` before the
+ *    invariants, though.
  *
  *    Do *not* assume anything on what `buf` really is (e.g. if it is
  *    allocated memory or not), use `strbuf_detach()` to unwrap a memory
@@ -74,20 +74,20 @@ struct strbuf {
 	/*
 	 * The `owns_memory` flag is unset by default as strbuf_slopbuf is
 	 * shared by all buffers, thus owned by none.
-	 * The `fixed_memory` guarantees that the buffer will not be moved by
-	 * realloc().
 	 */
-	unsigned owns_memory:1, fixed_memory:1;
+	unsigned owns_memory:1;
 	size_t alloc;
 	size_t len;
 	char *buf;
+    	char *preallocated_buf;
+    	size_t preallocated_alloc;
 };
 
 extern char strbuf_slopbuf[];
-#define STRBUF_INIT  { 0, 0, 0, 0, strbuf_slopbuf }
-#define STRBUF_WRAP(buf, buf_len, alloc_len) { 0, 0, alloc_len, buf_len, buf }
-#define STRBUF_WRAP_FIXED(buf, buf_len, alloc_len) \
-	{ 0, 1, alloc_len, buf_len, buf }
+#define STRBUF_INIT  { 0, 0, 0, strbuf_slopbuf, NULL, 0 }
+#define STRBUF_INIT_ON_STACK(alloc_len) \
+	{ 0, (alloc_len) + 1, 0, (char[(alloc_len) + 1]){}, NULL, (alloc_len) +\
+ 1 }
 
 /**
  * Life Cycle Functions
@@ -99,25 +99,6 @@ extern char strbuf_slopbuf[];
  * number to allocate memory, in case you want to prevent further reallocs.
  */
 extern void strbuf_init(struct strbuf *, size_t);
-
-/**
- * Allow the caller to give a pre-allocated piece of memory for the strbuf
- * to use. It is possible then to strbuf_grow() the string past the size of the
- * pre-allocated buffer: a new buffer will then be allocated. The pre-allocated
- * buffer will never be freed.
- */
-void strbuf_wrap(struct strbuf *sb, char *buf,
-		 size_t buf_len, size_t alloc_len);
-
-/**
- * Allow the caller to give a pre-allocated piece of memory for the strbuf
- * to use and indicate that the strbuf must use exclusively this buffer,
- * never realloc() it or allocate a new one. It means that the string can
- * grow or shrink but cannot overflow the pre-allocated buffer. The
- * pre-allocated buffer will never be freed.
- */
-void strbuf_wrap_fixed(struct strbuf *sb, char *buf,
-		       size_t buf_len, size_t alloc_len);
 
 /**
  * Release a string buffer and the memory it used. You should not use the
@@ -143,6 +124,15 @@ extern char *strbuf_detach(struct strbuf *, size_t *);
  * anymore, and neither be free()d directly.
  */
 extern void strbuf_attach(struct strbuf *, void *, size_t, size_t);
+
+/**
+ * Allow the caller to give a pre-allocated piece of memory for the strbuf
+ * to use. It is possible then to strbuf_grow() the string past the size of the
+ * pre-allocated buffer: a new buffer will then be allocated. The pre-allocated
+ * buffer will never be freed.
+ */
+void strbuf_attach_preallocated(struct strbuf *sb, char *buf,
+		 		size_t buf_len, size_t alloc_len);
 
 /**
  * Swap the contents of two string buffers.
@@ -195,7 +185,16 @@ static inline void strbuf_setlen(struct strbuf *sb, size_t len)
 /**
  * Empty the buffer by setting the size of it to zero.
  */
-#define strbuf_reset(sb)  strbuf_setlen(sb, 0)
+static inline void strbuf_reset(struct strbuf *sb) {
+	strbuf_setlen(sb, 0);
+	if ((sb)->preallocated_buf) {
+		free((sb)->buf);
+		(sb)->buf = (sb)->preallocated_buf;
+		(sb)->alloc = (sb)->preallocated_alloc;
+		(sb)->preallocated_buf = NULL;
+		(sb)->owns_memory = 0;
+	}
+}
 
 
 /**

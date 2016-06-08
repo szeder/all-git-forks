@@ -899,7 +899,7 @@ struct parallel_processes {
 		struct child_process process;
 		struct strbuf err;
 		void *data;
-	} *children;
+		} *children;
 	/*
 	 * The struct pollfd is logically part of *children,
 	 * but the system call expects it as its own array.

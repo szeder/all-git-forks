@@ -528,6 +528,9 @@ extern int daemonize(void);
 
 #define alloc_nr(x) (((x)+16)*3/2)
 
+#define ALLOC_GROW_COUNT(nr, alloc) \
+	((alloc_nr(alloc) < (nr)) ? (nr) : alloc_nr(alloc))
+
 /*
  * Realloc the buffer pointed at by variable 'x' so that it can hold
  * at least 'nr' entries; the number of entries currently allocated
@@ -538,10 +541,7 @@ extern int daemonize(void);
 #define ALLOC_GROW(x, nr, alloc) \
 	do { \
 		if ((nr) > alloc) { \
-			if (alloc_nr(alloc) < (nr)) \
-				alloc = (nr); \
-			else \
-				alloc = alloc_nr(alloc); \
+			alloc = ALLOC_GROW_COUNT(nr, alloc); \
 			REALLOC_ARRAY(x, alloc); \
 		} \
 	} while (0)

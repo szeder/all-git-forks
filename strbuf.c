@@ -1,9 +1,6 @@
 #include "cache.h"
 #include "refs.h"
 #include "utf8.h"
-#include <sys/param.h>
-
-#define MAX_ALLOC(a, b) (((a)>(b))?(a):(b))
 
 int starts_with(const char *str, const char *prefix)
 {
@@ -23,16 +20,16 @@ char strbuf_slopbuf[1];
 
 void strbuf_init(struct strbuf *sb, size_t hint)
 {
-	sb->owns_memory = 0;
-	sb->fixed_memory = 0;
 	sb->alloc = sb->len = 0;
 	sb->buf = strbuf_slopbuf;
+	sb->owns_memory = 0;
+	sb->preallocated_buf = NULL;
 	if (hint)
 		strbuf_grow(sb, hint);
 }
 
-static void strbuf_wrap_internal(struct strbuf *sb, char *buf,
-				 size_t buf_len, size_t alloc_len)
+static void strbuf_attach_internal(struct strbuf *sb, char *buf,
+				   size_t buf_len, size_t alloc_len)
 {
 	if (!buf)
 		die("the buffer of a strbuf cannot be NULL");
@@ -41,22 +38,7 @@ static void strbuf_wrap_internal(struct strbuf *sb, char *buf,
 	sb->len = buf_len;
 	sb->alloc = alloc_len;
 	sb->buf = buf;
-}
-
-void strbuf_wrap(struct strbuf *sb, char *buf,
-		 size_t buf_len, size_t alloc_len)
-{
-	strbuf_wrap_internal(sb, buf, buf_len, alloc_len);
-	sb->owns_memory = 0;
-	sb->fixed_memory = 0;
-}
-
-void strbuf_wrap_fixed(struct strbuf *sb, char *buf,
-		       size_t buf_len, size_t alloc_len)
-{
-	strbuf_wrap_internal(sb, buf, buf_len, alloc_len);
-	sb->owns_memory = 0;
-	sb->fixed_memory = 1;
+	sb->preallocated_buf = NULL;
 }
 
 void strbuf_release(struct strbuf *sb)
@@ -71,26 +53,33 @@ void strbuf_release(struct strbuf *sb)
 char *strbuf_detach(struct strbuf *sb, size_t *sz)
 {
 	char *res;
-
 	strbuf_grow(sb, 0);
-	if (sb->owns_memory)
-		res = sb->buf;
-	else
-		res = xmemdupz(sb->buf, sb->len);
-
 	if (sz)
 		*sz = sb->len;
-	strbuf_init(sb, 0);
+
+	if (sb->owns_memory) {
+		res = sb->buf;
+	} else {
+		res = xmemdupz(sb->buf, sb->len);
+	}
+
+		strbuf_init(sb, 0);
 	return res;
 }
 
 void strbuf_attach(struct strbuf *sb, void *buf, size_t len, size_t alloc)
 {
-	strbuf_wrap_internal(sb, buf, len, alloc);
+	strbuf_attach_internal(sb, buf, len, alloc);
 	sb->owns_memory = 1;
-	sb->fixed_memory = 0;
 	strbuf_grow(sb, 0);
 	sb->buf[sb->len] = '\0';
+}
+
+void strbuf_attach_preallocated(struct strbuf *sb, char *buf,
+		 		size_t buf_len, size_t alloc_len)
+{
+	strbuf_attach_internal(sb, buf, buf_len, alloc_len);
+	sb->owns_memory = 0;
 }
 
 void strbuf_grow(struct strbuf *sb, size_t extra)
@@ -98,9 +87,6 @@ void strbuf_grow(struct strbuf *sb, size_t extra)
 	if (unsigned_add_overflows(extra, 1) ||
 	    unsigned_add_overflows(sb->len, extra + 1))
 		die("you want to use way too much memory");
-	if ((sb->fixed_memory) &&
-	    sb->len + extra + 1 > sb->alloc)
-		die("you try to overflow the buffer of a fixed strbuf");
 
 	/*
 	 * ALLOC_GROW may do a realloc() if needed, so we must not use it on
@@ -114,11 +100,15 @@ void strbuf_grow(struct strbuf *sb, size_t extra)
 		 * the strbuf needs to use a new buffer without freeing the old
 		 */
 		if (sb->len + extra + 1 > sb->alloc) {
-			size_t new_alloc =
-				MAX_ALLOC(sb->len + extra + 1,
-					  alloc_nr(sb->alloc));
-			char *new_buf = xmalloc(new_alloc);
+			size_t new_alloc;
+			char *new_buf;
+
+			new_alloc = ALLOC_GROW_COUNT(sb->len + extra + 1,
+						     sb->alloc);
+			new_buf = xmalloc(new_alloc);
 			memcpy(new_buf, sb->buf, sb->len + 1);
+			if (sb->alloc)
+				sb->preallocated_buf = sb->buf;
 			sb->buf = new_buf;
 			sb->alloc = new_alloc;
 			sb->owns_memory = 1;
