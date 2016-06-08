@@ -899,13 +899,16 @@ struct git_attr_check *git_attr_check_alloc(void)
 	return xcalloc(1, sizeof(struct git_attr_check));
 }
 
-void git_attr_check_append(struct git_attr_check *check,
-			   const struct git_attr *attr)
+struct git_attr_check_elem *git_attr_check_append(struct git_attr_check *check,
+						  const struct git_attr *attr)
 {
+	struct git_attr_check_elem *elem;
 	if (check->finalized)
 		die("BUG: append after git_attr_check structure is finalized");
 	ALLOC_GROW(check->check, check->check_nr + 1, check->check_alloc);
-	check->check[check->check_nr++].attr = attr;
+	elem = &check->check[check->check_nr++];
+	elem->attr = attr;
+	return elem;
 }
 
 void git_attr_check_clear(struct git_attr_check *check)
