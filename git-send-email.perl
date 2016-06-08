@@ -55,6 +55,7 @@ git send-email --dump-aliases
     --[no-]bcc              <str>  * Email Bcc:
     --subject               <str>  * Email "Subject:"
     --in-reply-to           <str>  * Email "In-Reply-To:"
+    --in-reply-to          <file>  * Populate header fields appropriately.
     --[no-]xmailer                 * Add "X-Mailer:" header (default).
     --[no-]annotate                * Review each patch that will be sent in an editor.
     --compose                      * Open an editor for introduction.
@@ -160,7 +161,7 @@ my $re_encoded_word = qr/=\?($re_token)\?($re_token)\?($re_encoded_text)\?=/;
 
 # Variables we fill in automatically, or via prompting:
 my (@to,$no_to,@initial_to,@cc,$no_cc,@initial_cc,@bcclist,$no_bcc,@xh,
-	$initial_reply_to,$initial_subject,@files,
+	$initial_reply_to,$initial_references,$initial_subject,@files,
 	$author,$sender,$smtp_authpass,$annotate,$use_xmailer,$compose,$time);
 
 my $envelope_sender;
@@ -637,6 +638,52 @@ if (@files) {
 } else {
 	print STDERR "\nNo patch files specified!\n\n";
 	usage();
+}
+
+if ($initial_reply_to && -f $initial_reply_to) {
+	my $error = validate_patch($initial_reply_to);
+	die "fatal: $initial_reply_to: $error\nwarning: no patches were sent\n"
+		if $error;
+
+	open my $fh, "<", $initial_reply_to or die "can't open file $initial_reply_to";
+	my $mail = Git::parse_email($fh);
+	close $fh;
+
+	my $initial_sender = $sender || $repoauthor || $repocommitter || '';
+
+	my $prefix_re = "";
+	my $subject_re = $mail->{"subject"}[0];
+	if ($subject_re =~ /^[^Re:]/) {
+		$prefix_re = "Re: ";
+	}
+	$initial_subject = $prefix_re . $subject_re;
+
+	push @initial_to, $mail->{"from"}[0];
+
+	foreach my $to_addr (parse_address_line(join ",", @{$mail->{"to"}})) {
+		if (!($to_addr eq $initial_sender)) {
+			push @initial_cc, $to_addr;
+		}
+	}
+
+	if (defined $mail->{"cc"}) {
+		foreach my $cc_addr (parse_address_line(join ",", @{$mail->{"cc"}})) {
+			my $qaddr = unquote_rfc2047($cc_addr);
+			my $saddr = sanitize_address($qaddr);
+			if ($saddr eq $initial_sender) {
+				next if ($suppress_cc{'self'});
+			} else {
+				next if ($suppress_cc{'cc'});
+			}
+			push @initial_cc, $cc_addr;
+		}
+	}
+
+	$initial_reply_to = $mail->{"message-id"}[0];
+	if ($mail->{"references"}) {
+		$initial_references = join("", @{$mail->{"references"}}) .
+			" " . $initial_reply_to;
+	}
 }
 
 sub get_patch_subject {
@@ -1426,7 +1473,7 @@ Message-Id: $message_id
 }
 
 $reply_to = $initial_reply_to;
-$references = $initial_reply_to || '';
+$references = $initial_references || $initial_reply_to || '';
 $subject = $initial_subject;
 $message_num = 0;
 
