@@ -39,6 +39,13 @@ test_expect_success $PREREQ 'Extract patches' '
 	patches=$(git format-patch -s --cc="One <one@example.com>" --cc=two@example.com -n HEAD^1)
 '
 
+# Check if two files have the same content, non-order sensitive
+test_cmp_noorder () {
+	sort "$1" >"$1_noorder"
+	sort "$2" >"$2_noorder"
+	test_cmp $1 $2
+}
+
 # Test no confirm early to ensure remaining tests will not hang
 test_no_confirm () {
 	rm -f no_confirm_okay
@@ -97,7 +104,7 @@ test_expect_success $PREREQ 'setup expect' '
 '
 
 test_expect_success $PREREQ 'Verify commandline' '
-	test_cmp expected commandline1
+	test_cmp_noorder expected commandline1
 '
 
 test_expect_success $PREREQ 'Send patches with --envelope-sender' '
@@ -117,7 +124,7 @@ test_expect_success $PREREQ 'setup expect' '
 '
 
 test_expect_success $PREREQ 'Verify commandline' '
-	test_cmp expected commandline1
+	test_cmp_noorder expected commandline1
 '
 
 test_expect_success $PREREQ 'Send patches with --envelope-sender=auto' '
@@ -137,7 +144,7 @@ test_expect_success $PREREQ 'setup expect' '
 '
 
 test_expect_success $PREREQ 'Verify commandline' '
-	test_cmp expected commandline1
+	test_cmp_noorder expected commandline1
 '
 
 test_expect_success $PREREQ 'setup expect' "
