@@ -888,8 +888,8 @@ test_expect_success $PREREQ 'utf8 Cc is rfc2047 encoded' '
 	--to=nobody@example.com \
 	--smtp-server="$(pwd)/fake.sendmail" \
 	outdir/*.patch &&
-	grep "^	" msgtxt1 |
-	grep "=?UTF-8?q?=C3=A0=C3=A9=C3=AC=C3=B6=C3=BA?= <utf8@example.com>"
+	cc_adr=$(awk "/^Cc: /{flag=1}/^Subject: /{flag=0} flag {print}" msgtxt1) &&
+	echo "$cc_adr" | fgrep "=?UTF-8?q?=C3=A0=C3=A9=C3=AC=C3=B6=C3=BA?= <utf8@example.com>"
 '
 
 test_expect_success $PREREQ '--compose adds MIME for utf8 body' '
