@@ -84,12 +84,15 @@ See the CONFIGURATION section for 'sendemail.multiEdit'.
 	the value of GIT_AUTHOR_IDENT, or GIT_COMMITTER_IDENT if that is not
 	set, as returned by "git var -l".
 
---in-reply-to=<identifier>::
+--in-reply-to=<Message-Id|email_file>::
 	Make the first mail (or all the mails with `--no-thread`) appear as a
-	reply to the given Message-Id, which avoids breaking threads to
-	provide a new patch series.
+	reply to the given Message-Id (given directly by argument or via the email
+	file), which avoids breaking threads to provide a new patch series.
 	The second and subsequent emails will be sent as replies according to
 	the `--[no]-chain-reply-to` setting.
++
+Furthermore, if the argument is an email file, parse it and populate header
+fields appropriately for the reply.
 +
 So for example when `--thread` and `--no-chain-reply-to` are specified, the
 second and subsequent patches will be replies to the first one like in the

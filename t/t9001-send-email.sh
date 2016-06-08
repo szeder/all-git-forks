@@ -1892,4 +1892,87 @@ test_expect_success $PREREQ 'leading and trailing whitespaces are removed' '
 	test_cmp expected-list actual-list
 '
 
+test_expect_success $PREREQ 'setup expect' '
+	cat >email <<-\EOF
+	Subject: subject goes here
+	From: author@example.com
+	To: to1@example.com
+	Cc: cc1@example.com, cc2@example.com,
+     cc3@example.com
+	Date: Sat, 12 Jun 2010 15:53:58 +0200
+	Message-Id: <author_123456@example.com>
+	References: <firstauthor_654321@example.com>
+        <secondauthor_01546567@example.com>
+        <thirdauthor_1395838@example.com>
+
+	Have you seen my previous email?
+	> Previous content
+	EOF
+'
+
+test_expect_success $PREREQ 'Fields with --in-reply-to are correct' '
+	clean_fake_sendmail &&
+	git send-email \
+		--in-reply-to=email \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-2 \
+		2>errors &&
+	grep "From: Example <nobody@example.com>" msgtxt1 &&
+	grep "In-Reply-To: <author_123456@example.com>" msgtxt1 &&
+	to_adr=$(awk "/^To: /{flag=1}/^Cc: /{flag=0} flag {print}" msgtxt1) &&
+	cc_adr=$(awk "/^Cc: /{flag=1}/^Subject: /{flag=0} flag {print}" msgtxt1) &&
+	ref_adr=$(awk "/^References: /{flag=1}/^MIME-Version: /{flag=0} flag {print}" \
+		msgtxt1) &&
+	echo "$to_adr" | grep author@example.com &&
+	echo "$cc_adr" | grep to1@example.com &&
+	echo "$cc_adr" | grep cc1@example.com &&
+	echo "$cc_adr" | grep cc2@example.com &&
+	echo "$cc_adr" | grep cc3@example.com &&
+	echo "$ref_adr" | grep "<firstauthor_654321@example.com>" &&
+	echo "$ref_adr" | grep "<secondauthor_01546567@example.com>" &&
+	echo "$ref_adr" | grep "<thirdauthor_1395838@example.com>" &&
+	echo "$ref_adr" | grep "<author_123456@example.com>" &&
+	echo "$ref_adr" | grep -v "References: <author_123456@example.com>"
+'
+
+test_expect_success $PREREQ 'Fields with --in-reply-to and --compose are correct' '
+	clean_fake_sendmail &&
+	git send-email \
+		--in-reply-to=email \
+		--compose \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-1 \
+		2>errors &&
+	grep "From: Example <nobody@example.com>" msgtxt1 &&
+	grep "In-Reply-To: <author_123456@example.com>" msgtxt1 &&
+	grep "Subject: Re: subject goes here" msgtxt1 &&
+	to_adr=$(awk "/^To: /{flag=1}/^Cc: /{flag=0} flag {print}" msgtxt1) &&
+	cc_adr=$(awk "/^Cc: /{flag=1}/^Subject: /{flag=0} flag {print}" msgtxt1) &&
+	ref_adr=$(awk "/^References: /{flag=1}/^MIME-Version: /{flag=0} flag {print}" \
+		msgtxt1) &&
+	echo "$to_adr" | grep author@example.com &&
+	echo "$cc_adr" | grep to1@example.com &&
+	echo "$cc_adr" | grep cc1@example.com &&
+	echo "$cc_adr" | grep cc2@example.com &&
+	echo "$cc_adr" | grep cc3@example.com &&
+	echo "$ref_adr" | grep "<firstauthor_654321@example.com>" &&
+	echo "$ref_adr" | grep "<secondauthor_01546567@example.com>" &&
+	echo "$ref_adr" | grep "<thirdauthor_1395838@example.com>" &&
+	echo "$ref_adr" | grep "<author_123456@example.com>" &&
+	echo "$ref_adr" | grep -v "References: <author_123456@example.com>"
+'
+
+test_expect_success $PREREQ 'Re: written only once with --in-reply-to and --compose ' '
+	git send-email \
+		--in-reply-to=msgtxt1 \
+		--compose \
+		--from="Example <nobody@example.com>" \
+		--smtp-server="$(pwd)/fake.sendmail" \
+		-1 \
+		2>errors &&
+	grep "Subject: Re: subject goes here" msgtxt3
+'
+
 test_done
