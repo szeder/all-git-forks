@@ -33,16 +33,18 @@ use Git;
 Getopt::Long::Configure qw/ pass_through /;
 
 package FakeTerm;
+
 sub new {
 	my ($class, $reason) = @_;
 	return bless \$reason, shift;
 }
+
 sub readline {
 	my $self = shift;
 	die "Cannot use readline on FakeTerm: $$self";
 }
-package main;
 
+package main;
 
 sub usage {
 	print <<EOT;
@@ -173,11 +175,11 @@ my $repo = eval { Git->repository() };
 my @repo = $repo ? ($repo) : ();
 my $term = eval {
 	$ENV{"GIT_SEND_EMAIL_NOTTY"}
-		? new Term::ReadLine 'git-send-email', \*STDIN, \*STDOUT
-		: new Term::ReadLine 'git-send-email';
+		? Term::ReadLine->new('git-send-email', \*STDIN, \*STDOUT)
+		: Term::ReadLine->new('git-send-email');
 };
 if ($@) {
-	$term = new FakeTerm "$@: going non-interactive";
+	$term = FakeTerm->new("$@: going non-interactive");
 }
 
 # Behavior modification variables
@@ -192,6 +194,7 @@ my $multiedit;
 my $editor;
 
 sub do_edit {
+	my @args = @_;
 	if (!defined($editor)) {
 		$editor = Git::command_oneline('var', 'GIT_EDITOR');
 	}
@@ -201,13 +204,14 @@ sub do_edit {
 			if (($? & 127) || ($? >> 8)) {
 				die("the editor exited uncleanly, aborting everything");
 			}
-		} @_;
+		} @args;
 	} else {
-		system('sh', '-c', $editor.' "$@"', $editor, @_);
+		system('sh', '-c', $editor.' "$@"', $editor, @args);
 		if (($? & 127) || ($? >> 8)) {
 			die("the editor exited uncleanly, aborting everything");
 		}
 	}
+	return;
 }
 
 # Variables with corresponding config settings
@@ -300,7 +304,7 @@ my $rc = GetOptions("h" => \$help,
                     "dump-aliases" => \$dump_aliases);
 usage() unless $rc;
 die "--dump-aliases incompatible with other options\n"
-    if !$help and $dump_aliases and @ARGV;
+    if (!$help) and $dump_aliases and @ARGV;
 $rc = GetOptions(
 		    "sender|from=s" => \$sender,
                     "in-reply-to=s" => \$initial_reply_to,
@@ -412,6 +416,7 @@ sub read_config {
 			$smtp_encryption = 'ssl';
 		}
 	}
+	return;
 }
 
 # read configuration from [sendemail "$identity"], fall back on [sendemail]
@@ -476,15 +481,17 @@ my ($repoauthor, $repocommitter);
 ($repocommitter) = Git::ident_person(@repo, 'committer');
 
 sub parse_address_line {
+	my $arg = shift;
 	if ($have_mail_address) {
-		return map { $_->format } Mail::Address->parse($_[0]);
+		return map { $_->format } Mail::Address->parse($arg);
 	} else {
-		return Git::parse_mailboxes($_[0]);
+		return Git::parse_mailboxes($arg);
 	}
 }
 
 sub split_addrs {
-	return quotewords('\s*,\s*', 1, @_);
+	my @args = @_;
+	return quotewords('\s*,\s*', 1, @args);
 }
 
 my %aliases;
@@ -503,6 +510,7 @@ sub parse_sendmail_alias {
 	} else {
 		print STDERR "warning: sendmail line is not recognized: $_\n";
 	}
+	return;
 }
 
 sub parse_sendmail_aliases {
@@ -511,12 +519,16 @@ sub parse_sendmail_aliases {
 	while (<$fh>) {
 		chomp;
 		next if /^\s*$/ || /^\s*#/;
-		$s .= $_, next if $s =~ s/\\$// || s/^\s+//;
+		if ($s =~ s/\\$// || s/^\s+//) {
+			$s .= $_;
+			next;
+		}
 		parse_sendmail_alias($s) if $s;
 		$s = $_;
 	}
 	$s =~ s/\\$//; # silently tolerate stray '\' on last line
 	parse_sendmail_alias($s) if $s;
+	return;
 }
 
 my %parse_alias = (
@@ -593,6 +605,7 @@ EOF
 		# Not a valid revision.  Treat it as a filename.
 		return 0;
 	}
+	return;
 }
 
 # Now that all the defaults are set, process the rest of the command line
@@ -602,14 +615,14 @@ while (defined(my $f = shift @ARGV)) {
 	if ($f eq "--") {
 		push @rev_list_opts, "--", @ARGV;
 		@ARGV = ();
-	} elsif (-d $f and !is_format_patch_arg($f)) {
+	} elsif (-d $f and (!is_format_patch_arg($f))) {
 		opendir my $dh, $f
 			or die "Failed to opendir $f: $!";
 
 		push @files, grep { -f $_ } map { catfile($f, $_) }
 				sort readdir $dh;
 		closedir $dh;
-	} elsif ((-f $f or -p $f) and !is_format_patch_arg($f)) {
+	} elsif ((-f $f or -p $f) and (!is_format_patch_arg($f))) {
 		push @files, $f;
 	} else {
 		push @rev_list_opts, $f;
@@ -658,13 +671,13 @@ if ($compose) {
 	$compose_filename = ($repo ?
 		tempfile(".gitsendemail.msg.XXXXXX", DIR => $repo->repo_path()) :
 		tempfile(".gitsendemail.msg.XXXXXX", DIR => "."))[1];
-	open my $c, ">", $compose_filename
-		or die "Failed to open for writing $compose_filename: $!";
-
 
 	my $tpl_sender = $sender || $repoauthor || $repocommitter || '';
 	my $tpl_subject = $initial_subject || '';
 	my $tpl_reply_to = $initial_reply_to || '';
+
+	open my $c, ">", $compose_filename
+		or die "Failed to open for writing $compose_filename: $!";
 
 	print $c <<EOT;
 From $tpl_sender # This line is ignored.
@@ -763,7 +776,7 @@ sub ask {
 		if ($resp eq '' and defined $default) {
 			return $default;
 		}
-		if (!defined $valid_re or $resp =~ /$valid_re/) {
+		if ((!defined $valid_re) or $resp =~ /$valid_re/) {
 			return $resp;
 		}
 		if ($confirm_only) {
@@ -839,7 +852,8 @@ if (!@initial_to && !defined $to_cmd) {
 }
 
 sub expand_aliases {
-	return map { expand_one_alias($_) } @_;
+	my @args = @_;
+	return map { expand_one_alias($_) } @args;
 }
 
 my %EXPANDED_ALIASES;
@@ -921,7 +935,7 @@ sub validate_address {
 			valid_re => qr/^(?:quit|q|drop|d|edit|e)/i,
 			default => 'q');
 		if (/^d/i) {
-			return undef;
+			return;
 		} elsif (/^q/i) {
 			cleanup_compose_files();
 			exit(0);
@@ -934,8 +948,9 @@ sub validate_address {
 }
 
 sub validate_address_list {
+	my @args = @_;
 	return (grep { defined $_ }
-		map { validate_address($_) } @_);
+		map { validate_address($_) } @args);
 }
 
 # Usually don't need to change anything below here.
@@ -969,6 +984,7 @@ sub make_message_id {
 	my $message_id_template = "<%s-%s>";
 	$message_id = sprintf($message_id_template, $uniq, $du_part);
 	#print "new message id = $message_id\n"; # Was useful for debugging
+	return;
 }
 
 
@@ -1009,8 +1025,8 @@ sub quote_rfc2047 {
 
 sub is_rfc2047_quoted {
 	my $s = shift;
-	length($s) <= 75 &&
-	$s =~ m/^(?:"[[:ascii:]]*"|$re_encoded_word)$/o;
+	return (length($s) <= 75 &&
+		$s =~ m/^(?:"[[:ascii:]]*"|$re_encoded_word)$/o);
 }
 
 sub subject_needs_rfc2047_quoting {
@@ -1066,11 +1082,13 @@ sub sanitize_address {
 }
 
 sub sanitize_address_list {
-	return (map { sanitize_address($_) } @_);
+	my @args = @_;
+	return (map { sanitize_address($_) } @args);
 }
 
 sub process_address_list {
-	my @addr_list = map { parse_address_line($_) } @_;
+	my @args = @_;
+	my @addr_list = map { parse_address_line($_) } @args;
 	@addr_list = expand_aliases(@addr_list);
 	@addr_list = sanitize_address_list(@addr_list);
 	@addr_list = validate_address_list(@addr_list);
@@ -1416,8 +1434,6 @@ $subject = $initial_subject;
 $message_num = 0;
 
 foreach my $t (@files) {
-	open my $fh, "<", $t or die "can't open file $t";
-
 	my $author = undef;
 	my $sauthor = undef;
 	my $author_encoding;
@@ -1432,13 +1448,16 @@ foreach my $t (@files) {
 	my @header = ();
 	$message = "";
 	$message_num++;
+
+	open my $fh, "<", $t or die "can't open file $t";
+
 	# First unfold multiline header fields
 	while(<$fh>) {
 		last if /^\s*$/;
 		if (/^\s+\S/ and @header) {
-			chomp($header[$#header]);
+			chomp($header[-1]);
 			s/^\s+/ /;
-			$header[$#header] .= $_;
+			$header[-1] .= $_;
 	    } else {
 			push(@header, $_);
 		}
@@ -1657,6 +1676,7 @@ cleanup_compose_files();
 
 sub cleanup_compose_files {
 	unlink($compose_filename, $compose_filename . ".final") if $compose;
+	return;
 }
 
 $smtp->quit if $smtp;
@@ -1688,10 +1708,11 @@ sub apply_transfer_encoding {
 }
 
 sub unique_email_list {
+	my @args = @_;
 	my %seen;
 	my @emails;
 
-	foreach my $entry (@_) {
+	foreach my $entry (@args) {
 		my $clean = extract_valid_address_or_die($entry);
 		$seen{$clean} ||= 0;
 		next if $seen{$clean}++;
@@ -1709,6 +1730,7 @@ sub validate_patch {
 			return "$.: patch contains a line longer than 998 characters";
 		}
 	}
+	close $fh;
 	return;
 }
 
@@ -1719,6 +1741,7 @@ sub file_has_nonascii {
 	while (my $line = <$fh>) {
 		return 1 if $line =~ /[^[:ascii:]]/;
 	}
+	close $fh;
 	return 0;
 }
 
@@ -1733,5 +1756,6 @@ sub body_or_subject_has_nonascii {
 	while (my $line = <$fh>) {
 		return 1 if $line =~ /[^[:ascii:]]/;
 	}
+	close $fh;
 	return 0;
 }
