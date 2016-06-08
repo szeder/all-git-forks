@@ -150,9 +150,9 @@ test_expect_success $PREREQ 'Verify commandline' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-show-all-headers <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -503,9 +503,9 @@ test_expect_success $PREREQ 'second message is patch' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-sob <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -555,9 +555,9 @@ test_expect_success $PREREQ 'sendemail.cc set' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-sob <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -587,10 +587,10 @@ test_expect_success $PREREQ 'sendemail.cc unset' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-cccmd <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
-(body) Adding cc: C O Mitter <committer@example.com> from line 'Signed-off-by: C O Mitter <committer@example.com>'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
+Adding cc: C O Mitter <committer@example.com> from Signed-off-by: trailer
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -647,10 +647,10 @@ test_expect_success $PREREQ '--suppress-cc=all' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-body <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
-(cc-cmd) Adding cc: cc-cmd@example.com from: './cccmd'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
+Adding cc: cc-cmd@example.com from: './cccmd'
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -681,9 +681,9 @@ test_expect_success $PREREQ '--suppress-cc=body' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-body-cccmd <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -712,9 +712,9 @@ test_expect_success $PREREQ '--suppress-cc=body --suppress-cc=cccmd' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-sob <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -744,10 +744,10 @@ test_expect_success $PREREQ '--suppress-cc=sob' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-bodycc <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(mbox) Adding cc: One <one@example.com> from line 'Cc: One <one@example.com>, two@example.com'
-(mbox) Adding cc: two@example.com from line 'Cc: One <one@example.com>, two@example.com'
-(body) Adding cc: C O Mitter <committer@example.com> from line 'Signed-off-by: C O Mitter <committer@example.com>'
+Adding cc: A <author@example.com> from From: header
+Adding cc: One <one@example.com> from Cc: header
+Adding cc: two@example.com from Cc: header
+Adding cc: C O Mitter <committer@example.com> from Signed-off-by: trailer
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>
@@ -778,8 +778,8 @@ test_expect_success $PREREQ '--suppress-cc=bodycc' '
 test_expect_success $PREREQ 'setup expect' "
 cat >expected-suppress-cc <<\EOF
 0001-Second.patch
-(mbox) Adding cc: A <author@example.com> from line 'From: A <author@example.com>'
-(body) Adding cc: C O Mitter <committer@example.com> from line 'Signed-off-by: C O Mitter <committer@example.com>'
+Adding cc: A <author@example.com> from From: header
+Adding cc: C O Mitter <committer@example.com> from Signed-off-by: trailer
 Dry-OK. Log says:
 Server: relay.example.com
 MAIL FROM:<from@example.com>

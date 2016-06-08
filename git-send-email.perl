@@ -1478,14 +1478,14 @@ foreach my $t (@files) {
 				$sauthor = sanitize_address($author);
 				next if $suppress_cc{'author'};
 				next if $suppress_cc{'self'} and $sauthor eq $sender;
-				printf("(mbox) Adding cc: %s from line '%s'\n",
-					$1, $_) unless $quiet;
+				printf("Adding cc: %s from From: header\n",
+					$1) unless $quiet;
 				push @cc, $1;
 			}
 			elsif (/^To:\s+(.*)$/i) {
 				foreach my $addr (parse_address_line($1)) {
-					printf("(mbox) Adding to: %s from line '%s'\n",
-						$addr, $_) unless $quiet;
+					printf("Adding to: %s from To: header\n",
+						$addr) unless $quiet;
 					push @to, $addr;
 				}
 			}
@@ -1498,8 +1498,8 @@ foreach my $t (@files) {
 					} else {
 						next if ($suppress_cc{'cc'});
 					}
-					printf("(mbox) Adding cc: %s from line '%s'\n",
-						$addr, $_) unless $quiet;
+					printf("Adding cc: %s from Cc: header\n",
+						$addr) unless $quiet;
 					push @cc, $addr;
 				}
 			}
@@ -1532,8 +1532,8 @@ foreach my $t (@files) {
 			# So let's support that, too.
 			$input_format = 'lots';
 			if (@cc == 0 && !$suppress_cc{'cc'}) {
-				printf("(non-mbox) Adding cc: %s from line '%s'\n",
-					$_, $_) unless $quiet;
+				printf("Adding cc: %s from Cc: header\n",
+					$_) unless $quiet;
 				push @cc, $_;
 			} elsif (!defined $subject) {
 				$subject = $_;
@@ -1555,8 +1555,8 @@ foreach my $t (@files) {
 				next if $suppress_cc{'bodycc'} and $what =~ /Cc/i;
 			}
 			push @cc, $c;
-			printf("(body) Adding cc: %s from line '%s'\n",
-				$c, $_) unless $quiet;
+			printf("Adding cc: %s from Signed-off-by: trailer\n",
+				$c) unless $quiet;
 		}
 	}
 	close $fh;
@@ -1660,7 +1660,7 @@ sub recipients_cmd {
 		$address = sanitize_address($address);
 		next if ($address eq $sender and $suppress_cc{'self'});
 		push @addresses, $address;
-		printf("($prefix) Adding %s: %s from: '%s'\n",
+		printf("Adding %s: %s from: '%s'\n",
 		       $what, $address, $cmd) unless $quiet;
 		}
 	close $fh
