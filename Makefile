@@ -1339,6 +1339,7 @@ ifndef NO_UNIX_SOCKETS
 	LIB_OBJS += unix-socket.o
 	PROGRAM_OBJS += credential-cache.o
 	PROGRAM_OBJS += credential-cache--daemon.o
+	BASIC_CFLAGS += -DNO_UNIX_SOCKETS
 endif
 
 ifdef NO_ICONV
