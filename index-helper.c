@@ -188,6 +188,7 @@ static void share_the_index(void)
 
 static void set_socket_blocking_flag(int fd, int make_nonblocking)
 {
+#if 0 /* TODO: make it a Makefile option */
 	int flags;
 
 	flags = fcntl(fd, F_GETFL, NULL);
@@ -202,6 +203,7 @@ static void set_socket_blocking_flag(int fd, int make_nonblocking)
 
 	if (fcntl(fd, F_SETFL, flags) < 0)
 		die(_("fcntl failed"));
+#endif
 }
 
 static void refresh(void)
