@@ -1247,12 +1247,11 @@ int git_config_system(void)
 }
 
 static inline void config_from_file_gently(config_fn_t fn, const char *filename,
-		void *data, unsigned access_flags, int *ret, int *found) {
+		void *data, unsigned access_flags, int *ret) {
 	if (!filename || access_or_die(filename, R_OK, access_flags))
 		return;
 
 	*ret += git_config_from_file(fn, filename, data);
-	(*found)++;
 }
 
 static int do_git_config_sequence(config_fn_t fn, void *data)
@@ -1266,19 +1265,16 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 	if (git_config_system()) {
 		config_from_file_gently(fn, git_program_data_config(), data,
 				0, &ret);
-		config_from_file_gently(fn, git_etc_gitconfig(), data, 0,
-				&ret, &found);
+		config_from_file_gently(fn, git_etc_gitconfig(), data, 0, &ret);
 	}
 
 	current_parsing_scope = CONFIG_SCOPE_GLOBAL;
-	config_from_file_gently(fn, xdg_config, data, ACCESS_EACCES_OK,
-			&ret, &found);
+	config_from_file_gently(fn, xdg_config, data, ACCESS_EACCES_OK, &ret);
 
-	config_from_file_gently(fn, user_config, data, ACCESS_EACCES_OK,
-			&ret, &found);
+	config_from_file_gently(fn, user_config, data, ACCESS_EACCES_OK, &ret);
 
 	current_parsing_scope = CONFIG_SCOPE_REPO;
-	config_from_file_gently(fn, repo_config, data, 0, &ret, &found);
+	config_from_file_gently(fn, repo_config, data, 0, &ret);
 
 	current_parsing_scope = CONFIG_SCOPE_CMDLINE;
 	if (git_config_from_parameters(fn, data) < 0)
