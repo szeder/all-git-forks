@@ -14,7 +14,7 @@ int main(int argc, const char *argv[])
             strbuf_add(&buf, "lolilolololololololololololololo", 32);
         strbuf_setlen(&buf, 0);
     }
-    /strbuf_release(&buf);
+    strbuf_release(&buf);
 
     return 0;
 }
