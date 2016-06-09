@@ -8,6 +8,7 @@ exec wish "$0" -- "$@"
 # either version 2, or (at your option) any later version.
 
 package require Tk
+package require Signal
 
 proc hasworktree {} {
     return [expr {[exec git rev-parse --is-bare-repository] == "false" &&
@@ -12362,6 +12363,8 @@ if {$i >= [llength $argv] && $revtreeargs ne {}} {
 	exit 1
     }
 }
+
+signal add SIGUSR1 updatecommits
 
 set nullid "0000000000000000000000000000000000000000"
 set nullid2 "0000000000000000000000000000000000000001"
