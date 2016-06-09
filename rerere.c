@@ -501,8 +501,7 @@ static int handle_file(const char *path, unsigned char *sha1, const char *output
 		error("There were errors while writing %s (%s)",
 		      path, strerror(io.io.wrerror));
 	if (io.io.output && fclose(io.io.output))
-		io.io.wrerror = error("Failed to flush %s: %s",
-				      path, strerror(errno));
+		io.io.wrerror = error_errno("Failed to flush %s", path);
 
 	if (hunk_no < 0) {
 		if (output)
@@ -684,20 +683,17 @@ static int merge(const struct rerere_id *id, const char *path)
 	 * Mark that "postimage" was used to help gc.
 	 */
 	if (utime(rerere_path(id, "postimage"), NULL) < 0)
-		warning("failed utime() on %s: %s",
-			rerere_path(id, "postimage"),
-			strerror(errno));
+		warning_errno("failed utime() on %s",
+			      rerere_path(id, "postimage"));
 
 	/* Update "path" with the resolution */
 	f = fopen(path, "w");
 	if (!f)
-		return error("Could not open %s: %s", path,
-			     strerror(errno));
+		return error_errno("Could not open %s", path);
 	if (fwrite(result.ptr, result.size, 1, f) != 1)
-		error("Could not write %s: %s", path, strerror(errno));
+		error_errno("Could not write %s", path);
 	if (fclose(f))
-		return error("Writing %s failed: %s", path,
-			     strerror(errno));
+		return error_errno("Writing %s failed", path);
 
 out:
 	free(cur.ptr);
@@ -1054,8 +1050,8 @@ static int rerere_forget_one_path(const char *path, struct string_list *rr)
 		handle_cache(path, sha1, rerere_path(id, "thisimage"));
 		if (read_mmfile(&cur, rerere_path(id, "thisimage"))) {
 			free(cur.ptr);
-			return error("Failed to update conflicted state in '%s'",
-				     path);
+			error("Failed to update conflicted state in '%s'", path);
+			goto fail_exit;
 		}
 		cleanly_resolved = !try_merge(id, path, &cur, &result);
 		free(result.ptr);
@@ -1064,14 +1060,19 @@ static int rerere_forget_one_path(const char *path, struct string_list *rr)
 			break;
 	}
 
-	if (id->collection->status_nr <= id->variant)
-		return error("no remembered resolution for '%s'", path);
+	if (id->collection->status_nr <= id->variant) {
+		error("no remembered resolution for '%s'", path);
+		goto fail_exit;
+	}
 
 	filename = rerere_path(id, "postimage");
-	if (unlink(filename))
-		return (errno == ENOENT
-			? error("no remembered resolution for %s", path)
-			: error("cannot unlink %s: %s", filename, strerror(errno)));
+	if (unlink(filename)) {
+		if (errno == ENOENT)
+			error("no remembered resolution for %s", path);
+		else
+			error_errno("cannot unlink %s", filename);
+		goto fail_exit;
+	}
 
 	/*
 	 * Update the preimage so that the user can resolve the
@@ -1090,6 +1091,10 @@ static int rerere_forget_one_path(const char *path, struct string_list *rr)
 	item->util = id;
 	fprintf(stderr, "Forgot resolution for %s\n", path);
 	return 0;
+
+fail_exit:
+	free(id);
+	return -1;
 }
 
 int rerere_forget(struct pathspec *pathspec)

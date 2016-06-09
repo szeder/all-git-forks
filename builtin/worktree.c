@@ -110,7 +110,7 @@ static void prune_worktrees(void)
 		if (ret < 0 && errno == ENOTDIR)
 			ret = unlink(path.buf);
 		if (ret)
-			error(_("failed to remove: %s"), strerror(errno));
+			error_errno(_("failed to remove '%s'"), path.buf);
 	}
 	closedir(dir);
 	if (!show_only)
@@ -205,7 +205,7 @@ static int add_worktree(const char *path, const char *refname,
 	if (!opts->detach && !strbuf_check_branch_ref(&symref, refname) &&
 		 ref_exists(symref.buf)) { /* it's a branch */
 		if (!opts->force)
-			die_if_checked_out(symref.buf);
+			die_if_checked_out(symref.buf, 0);
 	} else { /* must be a commit */
 		commit = lookup_commit_reference_by_name(refname);
 		if (!commit)
@@ -349,7 +349,7 @@ static int add(int ac, const char **av, const char *prefix)
 		if (!opts.force &&
 		    !strbuf_check_branch_ref(&symref, opts.new_branch) &&
 		    ref_exists(symref.buf))
-			die_if_checked_out(symref.buf);
+			die_if_checked_out(symref.buf, 0);
 		strbuf_release(&symref);
 	}
 

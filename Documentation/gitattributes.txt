@@ -525,7 +525,7 @@ patterns are available:
 
 - `csharp` suitable for source code in the C# language.
 
-- `css` suitable for source code in the CSS language.
+- `css` suitable for cascading style sheets.
 
 - `fortran` suitable for source code in the Fortran language.
 

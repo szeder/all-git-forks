@@ -82,6 +82,7 @@ rewritten_pending="$state_dir"/rewritten-pending
 cr=$(printf "\015")
 
 strategy_args=${strategy:+--strategy=$strategy}
+test -n "$strategy_opts" &&
 eval '
 	for strategy_opt in '"$strategy_opts"'
 	do
@@ -866,12 +867,12 @@ add_exec_commands () {
 # $3: the input filename
 check_commit_sha () {
 	badsha=0
-	if test -z $1
+	if test -z "$1"
 	then
 		badsha=1
 	else
 		sha1_verif="$(git rev-parse --verify --quiet $1^{commit})"
-		if test -z $sha1_verif
+		if test -z "$sha1_verif"
 		then
 			badsha=1
 		fi

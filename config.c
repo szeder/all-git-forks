@@ -717,6 +717,9 @@ static int git_default_core_config(const char *var, const char *value)
 	if (!strcmp(var, "core.attributesfile"))
 		return git_config_pathname(&git_attributes_file, var, value);
 
+	if (!strcmp(var, "core.hookspath"))
+		return git_config_pathname(&git_hooks_path, var, value);
+
 	if (!strcmp(var, "core.bare")) {
 		is_bare_repository_cfg = git_config_bool(var, value);
 		return 0;
@@ -803,8 +806,6 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.autocrlf")) {
 		if (value && !strcasecmp(value, "input")) {
-			if (core_eol == EOL_CRLF)
-				return error("core.autocrlf=input conflicts with core.eol=crlf");
 			auto_crlf = AUTO_CRLF_INPUT;
 			return 0;
 		}
@@ -830,8 +831,6 @@ static int git_default_core_config(const char *var, const char *value)
 			core_eol = EOL_NATIVE;
 		else
 			core_eol = EOL_UNSET;
-		if (core_eol == EOL_CRLF && auto_crlf == AUTO_CRLF_INPUT)
-			return error("core.autocrlf=input conflicts with core.eol=crlf");
 		return 0;
 	}
 
@@ -909,6 +908,14 @@ static int git_default_core_config(const char *var, const char *value)
 
 	if (!strcmp(var, "core.protectntfs")) {
 		protect_ntfs = git_config_bool(var, value);
+		return 0;
+	}
+
+	if (!strcmp(var, "core.hidedotfiles")) {
+		if (value && !strcasecmp(value, "dotgitonly"))
+			hide_dotfiles = HIDE_DOTFILES_DOTGITONLY;
+		else
+			hide_dotfiles = git_config_bool(var, value);
 		return 0;
 	}
 
@@ -2009,7 +2016,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 	lock = xcalloc(1, sizeof(struct lock_file));
 	fd = hold_lock_file_for_update(lock, config_filename, 0);
 	if (fd < 0) {
-		error("could not lock config file %s: %s", config_filename, strerror(errno));
+		error_errno("could not lock config file %s", config_filename);
 		free(store.key);
 		ret = CONFIG_NO_LOCK;
 		goto out_free;
@@ -2023,8 +2030,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 		free(store.key);
 
 		if ( ENOENT != errno ) {
-			error("opening %s: %s", config_filename,
-			      strerror(errno));
+			error_errno("opening %s", config_filename);
 			ret = CONFIG_INVALID_FILE; /* same as "invalid config file" */
 			goto out_free;
 		}
@@ -2108,8 +2114,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 		if (contents == MAP_FAILED) {
 			if (errno == ENODEV && S_ISDIR(st.st_mode))
 				errno = EISDIR;
-			error("unable to mmap '%s': %s",
-			      config_filename, strerror(errno));
+			error_errno("unable to mmap '%s'", config_filename);
 			ret = CONFIG_INVALID_FILE;
 			contents = NULL;
 			goto out_free;
@@ -2118,8 +2123,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 		in_fd = -1;
 
 		if (chmod(get_lock_file_path(lock), st.st_mode & 07777) < 0) {
-			error("chmod on %s failed: %s",
-			      get_lock_file_path(lock), strerror(errno));
+			error_errno("chmod on %s failed", get_lock_file_path(lock));
 			ret = CONFIG_NO_WRITE;
 			goto out_free;
 		}
@@ -2175,8 +2179,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 	}
 
 	if (commit_lock_file(lock) < 0) {
-		error("could not write config file %s: %s", config_filename,
-		      strerror(errno));
+		error_errno("could not write config file %s", config_filename);
 		ret = CONFIG_NO_WRITE;
 		lock = NULL;
 		goto out_free;
@@ -2327,8 +2330,8 @@ int git_config_rename_section_in_file(const char *config_filename,
 	fstat(fileno(config_file), &st);
 
 	if (chmod(get_lock_file_path(lock), st.st_mode & 07777) < 0) {
-		ret = error("chmod on %s failed: %s",
-			    get_lock_file_path(lock), strerror(errno));
+		ret = error_errno("chmod on %s failed",
+				  get_lock_file_path(lock));
 		goto out;
 	}
 
@@ -2382,8 +2385,8 @@ int git_config_rename_section_in_file(const char *config_filename,
 	fclose(config_file);
 unlock_and_out:
 	if (commit_lock_file(lock) < 0)
-		ret = error("could not write config file %s: %s",
-			    config_filename, strerror(errno));
+		ret = error_errno("could not write config file %s",
+				  config_filename);
 out:
 	free(filename_buf);
 	return ret;
