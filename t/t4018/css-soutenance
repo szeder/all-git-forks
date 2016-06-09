@@ -1,0 +1,4 @@
+li.class a {
+    color: red;
+    FindContext;
+}
