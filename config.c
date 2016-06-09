@@ -1265,7 +1265,7 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 	current_parsing_scope = CONFIG_SCOPE_SYSTEM;
 	if (git_config_system()) {
 		config_from_file_gently(fn, git_program_data_config(), data,
-				0, &ret, &found);
+				0, &ret);
 		config_from_file_gently(fn, git_etc_gitconfig(), data, 0,
 				&ret, &found);
 	}
