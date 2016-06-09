@@ -38,6 +38,8 @@ silent git add fichier.txt
 silent git commit -am 'Commit initial'
 cd ..
 
+silent git clone super_depot bitbucket_depot
+
 echo -e "Présentation pull --set-upstream"
 read
 afficherimg etat_initial
@@ -65,18 +67,34 @@ execcmd "git pull"
 echo -e "Robert a travaillé sur le projet de son côté...\n\n"
 cd ..
 cd super_depot
+silent git checkout -b branche
 echo nouveau >travail_de_robert.txt
 silent git add travail_de_robert.txt
 silent git commit -am 'Robert a travaillé'
+git push ../bitbucket_depot branche:master
 cd ..
 cd local
 
 execcmd "$GITPATH/git pull -u origin branche"
 
 afficherimg robert_branche_perso
-
 read
+afficherimg Bitbucket
+read
+afficherimg Bitbucket_complique
 
+cd ../bitbucket_depot
+echo Bitbucket >bitbucket.txt
+silent git add bitbucket.txt
+silent git commit -am 'Bitbucket ftw'
+cd ../local
+
+fakecmd "git remote add bitbucket https://bitbucket/robert/super_depot" "git remote add bitbucket ../bitbucket_depot"
+
+execcmd "$GITPATH/git pull -u bitbucket master"
+
+echo "Fin"
+read
 
 exit
 
