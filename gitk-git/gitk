@@ -8,6 +8,12 @@ exec wish "$0" -- "$@"
 # either version 2, or (at your option) any later version.
 
 package require Tk
+try {
+    package require inotify
+    set we_have_inotify true
+} on error {em} {
+    set we_have_inotify false
+}
 
 proc hasworktree {} {
     return [expr {[exec git rev-parse --is-bare-repository] == "false" &&
@@ -12361,6 +12367,67 @@ if {$i >= [llength $argv] && $revtreeargs ne {}} {
 	show_error {} . "[mc "Bad arguments to gitk:"]\n$err"
 	exit 1
     }
+}
+
+proc inotify_handler { fd } {
+    set events [inotify_watch read]
+    set watch_info [inotify_watch info]
+    set update_view false
+
+    foreach {event} $events {
+        set current_watchid [dict get $event watchid]
+        set flags [dict get $event flags]
+        set event_filename [dict get $event filename]
+
+        foreach {path watchid watch_flags} $watch_info {
+            if {$watchid eq $current_watchid} {
+                set watch_path $path
+            }
+        }
+
+        set full_filename [file join $watch_path $event_filename]
+
+#        if {$flags eq "s"} {
+#            puts "Remove watch $full_filename"
+#            set wd [inotify_watch remove $full_filename]
+#        }
+
+        puts "Event: $flags $full_filename"
+
+        if {$flags eq "nD"} {
+            puts "Add watch $full_filename"
+            set wd [inotify_watch add $full_filename "nwds"]
+        }
+        if {![string match *.lock $event_filename]} {
+            set update_view true
+        }
+    }
+
+    #reloadcommits or updatecommits - depending on file and operation?
+    if {$update_view} {
+        puts "Updating"
+        updatecommits
+    } else {
+        puts "Not updating"
+    }
+}
+
+proc watch_recursive { dir } {
+    set res {}
+
+    puts "Adding watch $dir"
+    inotify_watch add $dir "nwaCmMds"
+
+    foreach i [glob -nocomplain -dir $dir *] {
+        if {[file type $i] eq {directory}} {
+            watch_recursive $i
+        }
+    }
+}
+
+if { $we_have_inotify } {
+    set fd [inotify create "inotify_watch" "::inotify_handler"]
+    watch_recursive $gitdir
 }
 
 set nullid "0000000000000000000000000000000000000000"
