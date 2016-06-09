@@ -2313,7 +2313,7 @@ msgstr ""
 
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "커밋할 사항 없음, 작업 폴더 깨끗함\n"
 
 #: wt-status.c:1642

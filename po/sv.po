@@ -2289,7 +2289,7 @@ msgstr "inget att checka in (använd -u för att visa ospårade filer)\n"
 
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "inget att checka in, arbetskatalogen ren\n"
 
 #: wt-status.c:1642

@@ -2318,7 +2318,7 @@ msgstr ""
 
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "no hi ha res a cometre, directori de treball net\n"
 
 #: wt-status.c:1642

@@ -2295,7 +2295,7 @@ msgstr ""
 
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "липсват каквито и да е промени, работното дърво е чисто\n"
 
 #: wt-status.c:1642

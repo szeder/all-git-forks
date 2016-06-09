@@ -2421,7 +2421,7 @@ msgstr "无文件要提交（使用 -u 显示未跟踪的文件）\n"
 #  译者：中文字符串拼接，可删除前导空格
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "无文件要提交，干净的工作区\n"
 
 #  译者：注意保持句尾空格

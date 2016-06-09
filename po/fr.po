@@ -2394,7 +2394,7 @@ msgstr "rien à valider (utilisez -u pour afficher les fichiers non suivis)\n"
 
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "rien à valider, la copie de travail est propre\n"
 
 #: wt-status.c:1642

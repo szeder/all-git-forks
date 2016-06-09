@@ -2233,7 +2233,7 @@ msgstr "нечего коммитить (используйте опцию «-u�
 
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "нечего коммитить, нет изменений в рабочем каталоге\n"
 
 #: wt-status.c:1642

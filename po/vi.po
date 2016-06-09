@@ -2306,7 +2306,7 @@ msgstr ""
 
 #: wt-status.c:1535
 #, c-format
-msgid "nothing to commit, working directory clean\n"
+msgid "nothing to commit, working tree clean\n"
 msgstr "không có gì để chuyển giao, thư mục làm việc sạch sẽ\n"
 
 #: wt-status.c:1642
