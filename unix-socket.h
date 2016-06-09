@@ -2,8 +2,14 @@
 #define UNIX_SOCKET_H
 
 #ifdef NO_UNIX_SOCKETS
-#define unix_stream_connect(x) -1
-#define unix_stream_listen(x) -1
+static inline int unix_stream_connect(const char *path)
+{
+	return -1;
+}
+static inline int unix_stream_listen(const char *path)
+{
+	return -1;
+}
 #else
 int unix_stream_connect(const char *path);
 int unix_stream_listen(const char *path);
