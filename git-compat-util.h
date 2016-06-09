@@ -538,6 +538,11 @@ static inline int ends_with(const char *str, const char *suffix)
 extern void *git_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
 extern int git_munmap(void *start, size_t length);
 
+#define MADV_WILLNEED 0
+static inline int madvise(void *start, size_t length, int advice) {
+	return 0;
+}
+
 #else /* NO_MMAP || USE_WIN32_MMAP */
 
 #include <sys/mman.h>
