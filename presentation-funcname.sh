@@ -43,7 +43,9 @@ do
 	else
 		result=success
 	fi
-	cat $TEST_DIRECTORY/t4018/$i  && read pause &&
+	cat $TEST_DIRECTORY/t4018/$i && echo &&
+	echo "------------------" &&
+	echo "------------------" && read pause  &&
 		test_when_finished 'cat actual' &&	# for debugging only
 		git diff -U1 $i
 done
