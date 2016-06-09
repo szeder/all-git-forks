@@ -12387,15 +12387,13 @@ proc inotify_handler { fd } {
 
         set full_filename [file join $watch_path $event_filename]
 
+#        remove does not seem to work
 #        if {$flags eq "s"} {
 #            puts "Remove watch $full_filename"
 #            set wd [inotify_watch remove $full_filename]
 #        }
 
-        puts "Event: $flags $full_filename"
-
         if {$flags eq "nD"} {
-            puts "Add watch $full_filename"
             set wd [inotify_watch add $full_filename "nwds"]
         }
         if {![string match *.lock $event_filename]} {
@@ -12405,17 +12403,11 @@ proc inotify_handler { fd } {
 
     #reloadcommits or updatecommits - depending on file and operation?
     if {$update_view} {
-        puts "Updating"
         updatecommits
-    } else {
-        puts "Not updating"
     }
 }
 
 proc watch_recursive { dir } {
-    set res {}
-
-    puts "Adding watch $dir"
     inotify_watch add $dir "nwaCmMds"
 
     foreach i [glob -nocomplain -dir $dir *] {
