@@ -494,8 +494,10 @@ static void check_non_tip(void)
 		if (!is_our_ref(o))
 			continue;
 		memcpy(namebuf + 1, oid_to_hex(&o->oid), GIT_SHA1_HEXSZ);
-		if (write_in_full(cmd.in, namebuf, 42) < 0)
+		if (write_in_full(cmd.in, namebuf, 42) < 0) {
+			sigchain_pop(SIGPIPE);
 			goto error;
+		}
 	}
 	namebuf[40] = '\n';
 	for (i = 0; i < want_obj.nr; i++) {
@@ -503,10 +505,13 @@ static void check_non_tip(void)
 		if (is_our_ref(o))
 			continue;
 		memcpy(namebuf, oid_to_hex(&o->oid), GIT_SHA1_HEXSZ);
-		if (write_in_full(cmd.in, namebuf, 41) < 0)
+		if (write_in_full(cmd.in, namebuf, 41) < 0) {
+			sigchain_pop(SIGPIPE);
 			goto error;
+		}
 	}
 	close(cmd.in);
+	cmd.in = -1;
 
 	sigchain_pop(SIGPIPE);
 
@@ -518,6 +523,7 @@ static void check_non_tip(void)
 	if (i)
 		goto error;
 	close(cmd.out);
+	cmd.out = -1;
 
 	/*
 	 * rev-list may have died by encountering a bad commit
@@ -531,6 +537,11 @@ static void check_non_tip(void)
 	return;
 
 error:
+	if (cmd.in >= 0)
+		close(cmd.in);
+	if (cmd.out >= 0)
+		close(cmd.out);
+
 	/* Pick one of them (we know there at least is one) */
 	for (i = 0; i < want_obj.nr; i++) {
 		o = want_obj.objects[i].item;
