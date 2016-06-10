@@ -417,7 +417,7 @@ msgstr ""
 "Konnte die über die Befehlszeile angegebene Konfiguration nicht parsen."
 
 #: config.c:1281
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr ""
 "Es trat ein unbekannter Fehler beim Lesen der Konfigurationsdateien auf."
 

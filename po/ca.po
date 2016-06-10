@@ -419,7 +419,7 @@ msgid "unable to parse command-line config"
 msgstr "no s'ha pogut analitzar la configuració de la línia d'ordres"
 
 #: config.c:1281
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr "ha ocorregut un error desconegut en llegir els fitxers de configuració"
 
 #: config.c:1629

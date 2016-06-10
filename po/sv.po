@@ -410,7 +410,7 @@ msgid "unable to parse command-line config"
 msgstr "kan inte tolka kommandoradskonfiguration"
 
 #: config.c:1281
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr "okänt fel uppstod vid läsning av konfigurationsfilerna"
 
 #: config.c:1629

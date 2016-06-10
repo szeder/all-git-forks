@@ -414,7 +414,7 @@ msgid "unable to parse command-line config"
 msgstr "không thể phân tích cấu hình dòng lệnh"
 
 #: config.c:1281
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr "đã có lỗi chưa biết xảy ra trong khi đọc các tập tin cấu hình"
 
 #: config.c:1629

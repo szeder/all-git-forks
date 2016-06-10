@@ -531,7 +531,7 @@ msgid "unable to parse command-line config"
 msgstr "无法解析命令行中的配置"
 
 #: config.c:1281
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr "在读取配置文件时遇到未知错误"
 
 #: config.c:1629

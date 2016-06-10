@@ -498,7 +498,7 @@ msgid "unable to parse command-line config"
 msgstr "неправилни настройки от командния ред"
 
 #: config.c:1277
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr "неочаквана грешка при изчитането на конфигурационните файлове"
 
 #: config.c:1601

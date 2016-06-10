@@ -390,7 +390,7 @@ msgid "unable to parse command-line config"
 msgstr ""
 
 #: config.c:1281
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr ""
 
 #: config.c:1629

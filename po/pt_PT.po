@@ -410,7 +410,7 @@ msgid "unable to parse command-line config"
 msgstr "não é possível analisar configuração de linha de comandos"
 
 #: config.c:1281
-msgid "unknown error occured while reading the configuration files"
+msgid "unknown error occurred while reading the configuration files"
 msgstr ""
 "ocorreu um erro desconhecido durante a leitura dos ficheiros de configuração"
 
