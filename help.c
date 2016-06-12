@@ -409,7 +409,7 @@ const char *help_unknown_cmd(const char *cmd)
 			fprintf(stderr, "\t%s\n", main_cmds.names[i]->name);
 	}
 
-	exit(1);
+	exit(127);
 }
 
 int cmd_version(int argc, const char **argv, const char *prefix)

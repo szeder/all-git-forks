@@ -702,7 +702,7 @@ int main(int argc, char **av)
 			fprintf(stderr, "Expansion of alias '%s' failed; "
 				"'%s' is not a git command\n",
 				cmd, argv[0]);
-			exit(1);
+			exit(127);
 		}
 		if (!done_help) {
 			cmd = argv[0] = help_unknown_cmd(cmd);
