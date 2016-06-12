@@ -44,6 +44,13 @@ static struct passwd *xgetpwuid_self(int *is_bogus)
 		if (is_bogus)
 			*is_bogus = 1;
 	}
+
+#ifndef NO_GECOS_IN_PWENT
+	if (! pw->pw_gecos) {
+		pw->pw_gecos = pw->pw_name;
+	}
+#endif
+
 	return pw;
 }
 
