@@ -78,6 +78,17 @@ on_branch ()
 	fi
 }
 
+valid_ref ()
+{
+	if git rev-parse --quiet --verify "$1" >/dev/null; then
+		echo "ref $1 exists"
+		return 0
+	else
+		echo "ref $1 doesn't exist"
+		return 1
+	fi
+}
+
 refs_equal ()
 {
 	a=$( git rev-parse "$1" )
@@ -365,6 +376,22 @@ test_expect_success 'transplant commit causing insertion conflict; abort' '
 	git transplant --abort &&
 	on_original_master &&
 	refs_equal four four-c &&
+	test_transplant_not_in_progress
+'
+
+test_expect_success 'transplant commit to new causing insertion conflict; abort' '
+	reset &&
+	test_must_fail git transplant -n four two-b^! four-two-b >stdout 2>stderr &&
+	test_debug "echo STDOUT; cat stdout; echo ----" &&
+	test_debug "echo STDERR; cat stderr; echo ----" &&
+	grep "CONFLICT.*: two deleted in HEAD and modified in .* two b" stdout &&
+	grep "error: could not apply .* two b" stderr &&
+	grep "When you have resolved this problem, run \"git transplant --continue\"" stderr &&
+	grep "or run \"git transplant --abort\"" stderr &&
+	git transplant --abort &&
+	on_original_master &&
+	refs_equal four four-c &&
+	! valid_ref four-two-b &&
 	test_transplant_not_in_progress
 '
 

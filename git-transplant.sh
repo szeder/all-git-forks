@@ -54,6 +54,7 @@ git_dir=`git rev-parse --git-dir` || exit 1
 transplant_dir="$git_dir/transplant"
 src_branch_file="$transplant_dir/src-branch"
 dest_branch_file="$transplant_dir/dest-branch"
+dest_branch_created_file="$transplant_dir/dest-branch-created"
 dest_branch_orig_sha_file="$transplant_dir/dest-branch-orig-sha"
 after_file="$transplant_dir/after"
 insert_todo="$transplant_dir/insert-todo"
@@ -120,7 +121,9 @@ prep_dest_branch ()
     fi
 
     if [ -n "$new_from" ]; then
-        if ! git checkout -b "$dest_branch" "$new_from"; then
+        if git checkout -b "$dest_branch" "$new_from"; then
+            touch "$dest_branch_created_file"
+        else
             cleanup
             abort "Couldn't create $dest_branch at $new_from"
         fi
@@ -326,7 +329,17 @@ cleanup ()
         aborted=y
     fi
 
-    if [ -e "$dest_branch_orig_sha_file" ]; then
+    if [ -n "$src_branch" ] && ! on_branch "$src_branch"; then
+        git checkout "$src_branch"
+        aborted=y
+    fi
+
+    if [ -e "$dest_branch_created_file" ]; then
+        if valid_ref "$dest_branch"; then
+            git branch -D "$dest_branch"
+            aborted=y
+        fi
+    elif [ -e "$dest_branch_orig_sha_file" ]; then
         orig_dest_sha="$(<$dest_branch_orig_sha_file)"
         if [ `git rev-parse "$dest_branch"` != "$orig_dest_sha" ]
         then
@@ -337,11 +350,6 @@ cleanup ()
 
     if [ -d "$transplant_dir" ]; then
         rm -rf "$transplant_dir"
-        aborted=y
-    fi
-
-    if ! on_branch "$src_branch"; then
-        git checkout "$src_branch"
         aborted=y
     fi
 }
