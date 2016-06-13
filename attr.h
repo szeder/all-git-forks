@@ -40,6 +40,7 @@ struct git_attr_check {
 	int check_nr;
 	int check_alloc;
 	struct git_attr_check_elem *check;
+	struct attr_stack *attr_stack;
 };
 
 extern struct git_attr_check *git_attr_check_initl(const char *, ...);
