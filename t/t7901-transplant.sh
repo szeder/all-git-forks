@@ -42,7 +42,8 @@ test_expect_success "setup other branch" '
 test_debug 'git show-ref'
 
 del_tmp_branch () {
-	git update-ref -d refs/heads/$TMP_BRANCH
+	git update-ref -d refs/heads/$TMP_BRANCH &&
+	echo "deleted $TMP_BRANCH"
 }
 
 reset () {
