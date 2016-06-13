@@ -40,6 +40,7 @@ test_expect_success "setup other branch" '
 '
 
 test_debug 'git show-ref'
+orig_master=$( git rev-parse HEAD )
 
 del_tmp_branch () {
 	git update-ref -d refs/heads/$TMP_BRANCH &&
@@ -88,6 +89,12 @@ refs_equal ()
 		echo "$1 is different commit to $2 ($a vs. $b)"
 		return 1
 	fi
+}
+
+on_original_master ()
+{
+	on_branch master &&
+	refs_equal master "$orig_master"
 }
 
 test_transplant_not_in_progress () {
@@ -274,7 +281,7 @@ test_expect_success "create $TMP_BRANCH; ensure transplant won't start" "
 	git branch $TMP_BRANCH master &&
 	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
 	grep 'BUG: $TMP_BRANCH branch exists, but no splice in progress' stderr &&
-	on_branch master &&
+	on_original_master &&
 	del_tmp_branch &&
 	test_transplant_not_in_progress
 "
@@ -286,7 +293,7 @@ test_expect_success "start cherry-pick with conflicts; ensure transplant won't s
 	grep "error: could not apply .* four b" stderr &&
 	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
 	grep "Can'\''t start git transplant when there is a cherry-pick in progress" stderr &&
-	on_branch master &&
+	on_original_master &&
 	del_tmp_branch &&
 	test_transplant_not_in_progress
 '
@@ -356,7 +363,7 @@ test_expect_success 'transplant commit causing insertion conflict; abort' '
 	grep "When you have resolved this problem, run \"git transplant --continue\"" stderr &&
 	grep "or run \"git transplant --abort\"" stderr &&
 	git transplant --abort &&
-	on_branch master &&
+	on_original_master &&
 	refs_equal four four-c &&
 	test_transplant_not_in_progress
 '
@@ -371,7 +378,7 @@ test_expect_success 'transplant commit causing removal conflict; abort' '
 	grep "When you have resolved this problem, run \"git transplant --continue\"" stderr &&
 	grep "or run \"git transplant --abort\"" stderr &&
 	git transplant --abort &&
-	on_branch master &&
+	on_original_master &&
 	refs_equal four four-c &&
 	test_transplant_not_in_progress
 '
