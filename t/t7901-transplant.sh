@@ -272,6 +272,40 @@ for sep in ' ' '='; do
 	done
 done
 
+test_expect_success 'transplant using HEAD^!' '
+	reset &&
+	git transplant --new-from three-a HEAD^! three-bee &&
+	on_branch master &&
+	branch_history master |
+		grep "three a, two b, two a, one b, one a" &&
+	branch_history three-bee |
+		grep "three b, three a, two b, two a, one b, one a" &&
+	test_transplant_not_in_progress
+'
+
+test_expect_success 'transplant using HEAD~2..HEAD' '
+	reset &&
+	git transplant --new-from two-b HEAD~2..HEAD new-three &&
+	on_branch master &&
+	branch_history master |
+		grep "two b, two a, one b, one a" &&
+	branch_history new-three |
+		grep "three b, three a, two b, two a, one b, one a" &&
+	test_transplant_not_in_progress
+'
+
+test_expect_failure 'transplant using HEAD~2..' '
+	test_when_finished "git transplant --abort" &&
+	reset &&
+	git transplant --new-from two-b HEAD~2.. new-three &&
+	on_branch master &&
+	branch_history master |
+		grep "two b, two a, one b, one a" &&
+	branch_history new-three |
+		grep "three b, three a, two b, two a, one b, one a" &&
+	test_transplant_not_in_progress
+'
+
 #############################################################################
 # Invalid initial state
 

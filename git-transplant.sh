@@ -575,13 +575,15 @@ parse_args ()
 
     mkdir -p "$transplant_dir"
 
-    echo "${range[@]}" > "$insert_todo"
-    echo "${range[@]}" > "$remove_todo"
-
     if ! head_ref > "$src_branch_file"; then
         cleanup
         abort "Cannot run $me on detached head"
     fi
+
+    head=$(<$src_branch_file)
+
+    echo "${range[@]}" | sed "s/\(^\|[^_]\)HEAD/\1${head//\//\\/}/g" > "$insert_todo"
+    cp "$insert_todo" "$remove_todo"
 
     if [ -z "$new_from" ]; then
         if ! valid_ref "$dest_branch"; then
