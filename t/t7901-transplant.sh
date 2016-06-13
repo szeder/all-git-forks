@@ -369,14 +369,16 @@ test_expect_success 'cause conflict; ensure not re-entrant' '
 	test_transplant_in_progress
 '
 
-test_expect_failure 'dirty working tree prevents removing range' '
+test_expect_success 'dirty working tree prevents removing range' '
 	reset &&
 	echo dirty >>two &&
 	test_when_finished "
 		test_transplant_not_in_progress
 	" &&
 	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
-	! grep rebase stderr &&
+	grep "error: Your local changes to the following files would be overwritten by checkout:" stderr &&
+	grep "two" stderr &&
+	grep "Couldn'\''t checkout four; aborting" stderr &&
 	test_transplant_not_in_progress
 '
 
