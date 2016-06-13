@@ -77,6 +77,19 @@ on_branch ()
 	fi
 }
 
+refs_equal ()
+{
+	a=$( git rev-parse "$1" )
+	b=$( git rev-parse "$2" )
+	if [ "$a" = "$b" ]; then
+		echo "$1 is same commit as $2"
+		return 0
+	else
+		echo "$1 is different commit to $2 ($a vs. $b)"
+		return 1
+	fi
+}
+
 test_transplant_not_in_progress () {
 	test_must_fail git transplant --in-progress &&
 	test_must_fail git transplant --continue 2>stderr &&
@@ -344,6 +357,7 @@ test_expect_success 'transplant commit causing insertion conflict; abort' '
 	grep "or run \"git transplant --abort\"" stderr &&
 	git transplant --abort &&
 	on_branch master &&
+	refs_equal four four-c &&
 	test_transplant_not_in_progress
 '
 
@@ -358,6 +372,7 @@ test_expect_success 'transplant commit causing removal conflict; abort' '
 	grep "or run \"git transplant --abort\"" stderr &&
 	git transplant --abort &&
 	on_branch master &&
+	refs_equal four four-c &&
 	test_transplant_not_in_progress
 '
 
@@ -374,6 +389,7 @@ test_expect_success 'transplant commit causing insertion conflict; continue' '
 	git add two &&
 	git transplant --continue &&
 	test_transplant_not_in_progress &&
+	! refs_equal four four-c &&
 	git show four:two | grep "two b resolved" &&
 	branch_history master |
 		grep "three b, three a, two a, one b, one a" &&
@@ -394,6 +410,7 @@ test_expect_success 'transplant commit causing removal conflict; continue' '
 	git add two &&
 	git transplant --continue &&
 	test_transplant_not_in_progress &&
+	! refs_equal four four-c &&
 	git show four:two | grep "two a" &&
 	grep "two b resolved" two &&
 	branch_history master |

@@ -54,6 +54,7 @@ git_dir=`git rev-parse --git-dir` || exit 1
 transplant_dir="$git_dir/transplant"
 src_branch_file="$transplant_dir/src-branch"
 dest_branch_file="$transplant_dir/dest-branch"
+dest_branch_orig_sha_file="$transplant_dir/dest-branch-orig-sha"
 after_file="$transplant_dir/after"
 insert_todo="$transplant_dir/insert-todo"
 remove_todo="$transplant_dir/remove-todo"
@@ -86,6 +87,7 @@ main ()
     parse_args "${ARGV[@]}"
 
     src_branch="$(<$src_branch_file)"
+    dest_branch="$(<$dest_branch_file)"
 
     if [ -n "$abort" ]; then
         transplant_abort
@@ -98,8 +100,6 @@ main ()
 
 transplant ()
 {
-    dest_branch="$(<$dest_branch_file)"
-
     prep_dest_branch
 
     if [ -s "$insert_todo" ]; then
@@ -324,6 +324,15 @@ cleanup ()
     if [ -e "$splice_file" ] && git splice --in-progress >/dev/null; then
         git splice --abort
         aborted=y
+    fi
+
+    if [ -e "$dest_branch_orig_sha_file" ]; then
+        orig_dest_sha="$(<$dest_branch_orig_sha_file)"
+        if [ `git rev-parse "$dest_branch"` != "$orig_dest_sha" ]
+        then
+            git branch -f "$dest_branch" "$orig_dest_sha"
+            aborted=y
+        fi
     fi
 
     if [ -d "$transplant_dir" ]; then
@@ -590,6 +599,9 @@ parse_args ()
     done
 
     echo "$dest_branch" > "$dest_branch_file"
+    if [ -z "$new_from" ]; then
+        git rev-parse "$dest_branch" > "$dest_branch_orig_sha_file"
+    fi
 
     if [ -n "$after" ]; then
         echo "$after" > "$after_file"
