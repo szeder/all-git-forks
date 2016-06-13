@@ -61,6 +61,7 @@ insert_todo="$splice_dir/insert-todo"
 remove_todo="$splice_dir/remove-todo"
 rebase_cancelled="$splice_dir/rebase-cancelled"
 TMP_BRANCH="tmp/splice"
+export PS4='${BASH_SOURCE/$HOME/~}@${LINENO}(${FUNCNAME[0]}): '
 
 main ()
 {

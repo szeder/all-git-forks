@@ -60,6 +60,7 @@ after_file="$transplant_dir/after"
 insert_todo="$transplant_dir/insert-todo"
 remove_todo="$transplant_dir/remove-todo"
 splice_file="$transplant_dir/splice-in-progress"
+export PS4='${BASH_SOURCE/$HOME/~}@${LINENO}(${FUNCNAME[0]}): '
 
 main ()
 {
