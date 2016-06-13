@@ -85,6 +85,8 @@ main ()
 
     parse_args "${ARGV[@]}"
 
+    src_branch="$(<$src_branch_file)"
+
     if [ -n "$abort" ]; then
         transplant_abort
         return
@@ -96,7 +98,6 @@ main ()
 
 transplant ()
 {
-    src_branch="$(<$src_branch_file)"
     dest_branch="$(<$dest_branch_file)"
 
     prep_dest_branch

@@ -48,8 +48,10 @@ del_tmp_branch () {
 
 reset () {
 	# First check that tests don't leave a transplant in progress,
-	# as they should always do --abort or --continue if necessary
+	# as they should always do --abort or --continue if necessary.
+	# We also expect them to leave the master branch checked out.
 	test_transplant_not_in_progress &&
+	on_branch master &&
 	git reset --hard $latest_tag &&
 	git branch -f four four-c &&
 	git update-ref -d refs/heads/new &&
@@ -259,6 +261,7 @@ test_expect_success "create $TMP_BRANCH; ensure transplant won't start" "
 	git branch $TMP_BRANCH master &&
 	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
 	grep 'BUG: $TMP_BRANCH branch exists, but no splice in progress' stderr &&
+	on_branch master &&
 	del_tmp_branch &&
 	test_transplant_not_in_progress
 "
@@ -270,6 +273,7 @@ test_expect_success "start cherry-pick with conflicts; ensure transplant won't s
 	grep "error: could not apply .* four b" stderr &&
 	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
 	grep "Can'\''t start git transplant when there is a cherry-pick in progress" stderr &&
+	on_branch master &&
 	del_tmp_branch &&
 	test_transplant_not_in_progress
 '
@@ -329,7 +333,35 @@ test_expect_failure "dirty working tree doesn't prevent removing range" '
 #############################################################################
 # Handling conflicts
 
-test_expect_success 'transplant a commit causing an insertion conflict' '
+test_expect_success 'transplant commit causing insertion conflict; abort' '
+	reset &&
+	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
+	test_debug "echo STDOUT; cat stdout; echo ----" &&
+	test_debug "echo STDERR; cat stderr; echo ----" &&
+	grep "CONFLICT.*: two deleted in HEAD and modified in .* two b" stdout &&
+	grep "error: could not apply .* two b" stderr &&
+	grep "When you have resolved this problem, run \"git transplant --continue\"" stderr &&
+	grep "or run \"git transplant --abort\"" stderr &&
+	git transplant --abort &&
+	on_branch master &&
+	test_transplant_not_in_progress
+'
+
+test_expect_success 'transplant commit causing removal conflict; abort' '
+	reset &&
+	test_must_fail git transplant two-a^! four >stdout 2>stderr &&
+	test_debug "echo STDOUT; cat stdout; echo ----" &&
+	test_debug "echo STDERR; cat stderr; echo ----" &&
+	grep "error: could not apply .* two b" stdout &&
+	grep "CONFLICT .*: two deleted in HEAD and modified in .* two b" stdout &&
+	grep "When you have resolved this problem, run \"git transplant --continue\"" stderr &&
+	grep "or run \"git transplant --abort\"" stderr &&
+	git transplant --abort &&
+	on_branch master &&
+	test_transplant_not_in_progress
+'
+
+test_expect_success 'transplant commit causing insertion conflict; continue' '
 	reset &&
 	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
 	test_debug "echo STDOUT; cat stdout; echo ----" &&
@@ -349,7 +381,7 @@ test_expect_success 'transplant a commit causing an insertion conflict' '
 		grep "two b, four c, four b, four a, one b, one a"
 '
 
-test_expect_success 'transplant a commit causing a removal conflict' '
+test_expect_success 'transplant commit causing removal conflict; continue' '
 	reset &&
 	test_must_fail git transplant two-a^! four >stdout 2>stderr &&
 	test_debug "echo STDOUT; cat stdout; echo ----" &&
