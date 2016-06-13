@@ -345,8 +345,7 @@ test_expect_success 'transplant a commit causing an insertion conflict' '
 	branch_history master |
 		grep "three b, three a, two a, one b, one a" &&
 	branch_history four |
-		grep "two b, four c, four b, four a, one b, one a" &&
-	test_transplant_not_in_progress
+		grep "two b, four c, four b, four a, one b, one a"
 '
 
 test_expect_success 'transplant a commit causing a removal conflict' '
