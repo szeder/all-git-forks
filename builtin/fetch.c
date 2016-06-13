@@ -1226,8 +1226,6 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 		argv_array_clear(&options);
 	}
 
-	/* All names were strdup()ed or strndup()ed */
-	list.strdup_strings = 1;
 	string_list_clear(&list, 0);
 
 	close_all_packs();
