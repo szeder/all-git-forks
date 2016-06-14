@@ -138,7 +138,11 @@ prep_dest_branch ()
 
 insert_range ()
 {
-    action="insert onto/into $dest_branch"
+    if [ -s "$after_file" ]; then
+        action="insert into $dest_branch"
+    else
+        action="insert onto $dest_branch"
+    fi
 
     if [ -z "$continue" ]; then
         if [ -s "$after_file" ]; then
