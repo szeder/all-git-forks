@@ -42,9 +42,13 @@ test_expect_success "setup other branch" '
 test_debug 'git show-ref'
 orig_master=$( git rev-parse HEAD )
 
+del_branch () {
+	git update-ref -d refs/heads/$1 &&
+	echo "deleted $1 branch"
+}
+
 del_tmp_branch () {
-	git update-ref -d refs/heads/$TMP_BRANCH &&
-	echo "deleted $TMP_BRANCH"
+	del_branch $TMP_BRANCH
 }
 
 reset () {
@@ -280,7 +284,8 @@ test_expect_success 'transplant using HEAD^!' '
 		grep "three a, two b, two a, one b, one a" &&
 	branch_history three-bee |
 		grep "three b, three a, two b, two a, one b, one a" &&
-	test_transplant_not_in_progress
+	test_transplant_not_in_progress &&
+	del_branch three-bee
 '
 
 test_expect_success 'transplant using HEAD~2..HEAD' '
@@ -291,7 +296,8 @@ test_expect_success 'transplant using HEAD~2..HEAD' '
 		grep "two b, two a, one b, one a" &&
 	branch_history new-three |
 		grep "three b, three a, two b, two a, one b, one a" &&
-	test_transplant_not_in_progress
+	test_transplant_not_in_progress &&
+	del_branch new-three
 '
 
 test_expect_failure 'transplant using HEAD~2..' '
