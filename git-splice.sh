@@ -481,8 +481,8 @@ parse_opts ()
                 ;;
             -d|--debug)
                 debug=--debug
-                echo >&2 "##################################################"
-                echo >&2 "### Invocation: $0 ${ORIG_ARGV[@]}"
+                echo >&2 "#-------------------------------------------------"
+                echo >&2 "# Invocation: $0 ${ORIG_ARGV[@]}"
                 set -x
 
                 shift

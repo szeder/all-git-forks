@@ -136,6 +136,16 @@ prep_dest_branch ()
     fi
 }
 
+announce_action ()
+{
+    set +x
+    echo "###############################################################"
+    echo "# $action"
+    if [ -n "$debug" ]; then
+        set -x
+    fi
+}
+
 insert_range ()
 {
     if [ -s "$after_file" ]; then
@@ -143,6 +153,8 @@ insert_range ()
     else
         action="insert onto $dest_branch"
     fi
+
+    announce_action
 
     if [ -z "$continue" ]; then
         if [ -s "$after_file" ]; then
@@ -217,6 +229,8 @@ remove_range ()
     if [ -z "$continue" ] && [ -e "$splice_file" ]; then
         abort "BUG: $splice_file should not exist at this point"
     fi
+
+    announce_action
 
     if remove_command; then
         rm -rf "$transplant_dir"
@@ -501,8 +515,8 @@ parse_opts ()
                 ;;
             -d|--debug)
                 debug=--debug
-                echo >&2 "##################################################"
-                echo >&2 "### Invocation: $0 ${ORIG_ARGV[@]}"
+                echo >&2 "#-------------------------------------------------"
+                echo >&2 "# Invocation: $0 ${ORIG_ARGV[@]}"
                 set -x
                 shift
                 ;;
