@@ -150,17 +150,19 @@ const char *get_signing_key(void)
 int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *signing_key)
 {
 	struct child_process gpg = CHILD_PROCESS_INIT;
-	const char *args[4];
-	ssize_t len;
+	const char *args[5];
 	size_t i, j, bottom;
+	struct strbuf err = STRBUF_INIT;
 
 	gpg.argv = args;
 	gpg.in = -1;
 	gpg.out = -1;
+	gpg.err = -1;
 	args[0] = gpg_program;
-	args[1] = "-bsau";
-	args[2] = signing_key;
-	args[3] = NULL;
+	args[1] = "--status-fd=2";
+	args[2] = "-bsau";
+	args[3] = signing_key;
+	args[4] = NULL;
 
 	if (start_command(&gpg))
 		return error(_("could not run gpg."));
@@ -174,19 +176,25 @@ int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *sig
 	if (write_in_full(gpg.in, buffer->buf, buffer->len) != buffer->len) {
 		close(gpg.in);
 		close(gpg.out);
+		close(gpg.err);
 		finish_command(&gpg);
 		return error(_("gpg did not accept the data"));
 	}
 	close(gpg.in);
 
 	bottom = signature->len;
-	len = strbuf_read(signature, gpg.out, 1024);
+	strbuf_read(signature, gpg.out, 1024);
+	strbuf_read(&err, gpg.err, 0);
 	close(gpg.out);
+	close(gpg.err);
 
 	sigchain_pop(SIGPIPE);
 
-	if (finish_command(&gpg) || !len || len < 0)
+	if (finish_command(&gpg) || !strstr(err.buf, "\n[GNUPG:] SIG_CREATED ")) {
+		strbuf_release(&err);
 		return error(_("gpg failed to sign the data"));
+	}
+	strbuf_release(&err);
 
 	/* Strip CR from the line endings, in case we are on Windows. */
 	for (i = j = bottom; i < signature->len; i++)

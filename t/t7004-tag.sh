@@ -1202,9 +1202,17 @@ test_expect_success GPG,RFC1991 \
 # try to sign with bad user.signingkey
 git config user.signingkey BobTheMouse
 test_expect_success GPG \
-	'git tag -s fails if gpg is misconfigured' \
+	'git tag -s fails if gpg is misconfigured (bad key)' \
 	'test_must_fail git tag -s -m tail tag-gpg-failure'
 git config --unset user.signingkey
+
+# try to produce invalid signature
+git config gpg.program echo
+test_expect_success GPG \
+	'git tag -s fails if gpg is misconfigured (bad signature format)' \
+	'test_must_fail git tag -s -m tail tag-gpg-failure'
+git config --unset gpg.program
+
 
 # try to verify without gpg:
 
