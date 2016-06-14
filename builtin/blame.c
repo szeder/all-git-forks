@@ -2473,7 +2473,7 @@ static char *prepare_initial(struct scoreboard *sb)
 		final_commit_name = revs->pending.objects[i].name;
 	}
 	if (!final_commit_name)
-		die("No commit to dig down to?");
+		die("No commit to dig up from?");
 	return xstrdup(final_commit_name);
 }
 
