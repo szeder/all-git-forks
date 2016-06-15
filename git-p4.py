@@ -999,24 +999,34 @@ class LargeFileSystem(object):
     def isLargeFile(self, relPath):
         return relPath in self.largeFiles
 
-    def processContent(self, git_mode, relPath, contents):
+    def processContent(self, git_mode, depotPath, changelist, relPath, contents):
         """Processes the content of git fast import. This method decides if a
            file is stored in the large file system and handles all necessary
            steps."""
         if self.exceedsLargeFileThreshold(relPath, contents) or self.hasLargeFileExtension(relPath):
-            contentTempFile = self.generateTempFile(contents)
-            (git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
+            fileHeadRevInfo = p4Cmd(['files', depotPath])
+            if gitConfigBool('git-p4.largeFileIgnoreDeleted') and fileHeadRevInfo['action'] == 'delete':
+                contents = ''
+                if verbose:
+                    sys.stderr.write("%s not moved to large file system since it is not present in the head revision\n" % (relPath))
+            elif gitConfigBool('git-p4.largeFileIgnoreHistory') and fileHeadRevInfo['change'] != changelist:
+                contents = ''
+                if verbose:
+                    sys.stderr.write("%s not moved to large file system since it is not the head revision\n" % (relPath))
+            else:
+                contentTempFile = self.generateTempFile(contents)
+                (git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
 
-            # Move temp file to final location in large file system
-            largeFileDir = os.path.dirname(localLargeFile)
-            if not os.path.isdir(largeFileDir):
-                os.makedirs(largeFileDir)
-            shutil.move(contentTempFile, localLargeFile)
-            self.addLargeFile(relPath)
-            if gitConfigBool('git-p4.largeFilePush'):
-                self.pushFile(localLargeFile)
-            if verbose:
-                sys.stderr.write("%s moved to large file system (%s)\n" % (relPath, localLargeFile))
+                # Move temp file to final location in large file system
+                largeFileDir = os.path.dirname(localLargeFile)
+                if not os.path.isdir(largeFileDir):
+                    os.makedirs(largeFileDir)
+                shutil.move(contentTempFile, localLargeFile)
+                self.addLargeFile(relPath)
+                if gitConfigBool('git-p4.largeFilePush'):
+                    self.pushFile(localLargeFile)
+                if verbose:
+                    sys.stderr.write("%s moved to large file system (%s)\n" % (relPath, localLargeFile))
         return (git_mode, contents)
 
 class MockLFS(LargeFileSystem):
@@ -1117,12 +1127,12 @@ class GitLFS(LargeFileSystem):
         LargeFileSystem.removeLargeFile(self, relPath)
         self.writeToGitStream('100644', '.gitattributes', self.generateGitAttributes())
 
-    def processContent(self, git_mode, relPath, contents):
+    def processContent(self, git_mode, depotPath, changelist, relPath, contents):
         if relPath == '.gitattributes':
             self.baseGitAttributes = contents
             return (git_mode, self.generateGitAttributes())
         else:
-            return LargeFileSystem.processContent(self, git_mode, relPath, contents)
+            return LargeFileSystem.processContent(self, git_mode, depotPath, changelist, relPath, contents)
 
 class Command:
     def __init__(self):
@@ -2505,7 +2515,7 @@ class P4Sync(Command, P4UserMap):
                 print 'Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, relPath)
 
         if self.largeFileSystem and sum(len(d) for d in contents) > 0:
-            (git_mode, contents) = self.largeFileSystem.processContent(git_mode, relPath, contents)
+            (git_mode, contents) = self.largeFileSystem.processContent(git_mode, file['depotFile'], file['change'], relPath, contents)
 
         self.writeToGitStream(git_mode, relPath, contents)
 
