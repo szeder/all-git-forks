@@ -1631,7 +1631,7 @@ void pp_title_line(struct pretty_print_context *pp,
 	strbuf_release(&title);
 }
 
-static int pp_utf8_width(const char *start, const char *end)
+int pp_utf8_width(const char *start, const char *end)
 {
 	int width = 0;
 	size_t remain = end - start;
@@ -1645,8 +1645,8 @@ static int pp_utf8_width(const char *start, const char *end)
 	return width;
 }
 
-static void strbuf_add_tabexpand(struct strbuf *sb, int tabwidth,
-				 const char *line, int linelen)
+void strbuf_add_tabexpand(struct strbuf *sb, int tabwidth,
+			  const char *line, int linelen)
 {
 	const char *tab;
 

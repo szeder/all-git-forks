@@ -155,6 +155,7 @@ struct diff_options {
 	int stat_count;
 	const char *word_regex;
 	enum diff_words_type word_diff;
+	int tabwidth;
 
 	/* this is set by diffcore for DIFF_FORMAT_PATCH */
 	int found_changes;

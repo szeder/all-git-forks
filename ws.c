@@ -6,6 +6,7 @@
 
 #include "cache.h"
 #include "attr.h"
+#include "utf8.h"
 
 static struct whitespace_rule {
 	const char *rule_name;
@@ -146,6 +147,21 @@ char *whitespace_error_string(unsigned ws)
 	return strbuf_detach(&err, NULL);
 }
 
+static void write_tab(FILE *stream, const char *line, int len,
+		      unsigned ws_rule)
+{
+	if (ws_rule & WS_EXPAND_TAB) {
+		const char *spaces = "        ";
+		int width = utf8_strnwidth(line, len, 0);
+		int tabwidth = ws_tab_width(ws_rule);
+		if (width < 0) {
+			fputc('\t', stream); fprintf(stream, "[%.*s]", len, line); }
+		else
+			fwrite(spaces, tabwidth - (width % tabwidth), 1, stream);
+	} else
+		fputc('\t', stream);
+}
+
 /* If stream is non-NULL, emits the line after checking. */
 static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 				FILE *stream, const char *set,
@@ -196,18 +212,19 @@ static unsigned ws_check_emit_1(const char *line, int len, unsigned ws_rule,
 				fputs(ws, stream);
 				fwrite(line + written, i - written, 1, stream);
 				fputs(reset, stream);
-				fwrite(line + i, 1, 1, stream);
+				write_tab(stream, line + written, i - written, ws_rule);
 			}
 		} else if (ws_rule & WS_TAB_IN_INDENT) {
 			result |= WS_TAB_IN_INDENT;
 			if (stream) {
 				fwrite(line + written, i - written, 1, stream);
 				fputs(ws, stream);
-				fwrite(line + i, 1, 1, stream);
+				write_tab(stream, line + written, i - written, ws_rule);
 				fputs(reset, stream);
 			}
 		} else if (stream) {
-			fwrite(line + written, i - written + 1, 1, stream);
+			fwrite(line + written, i - written, 1, stream);
+			write_tab(stream, line + written, i - written, ws_rule);
 		}
 		written = i + 1;
 	}

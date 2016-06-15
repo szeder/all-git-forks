@@ -287,6 +287,18 @@ int git_diff_basic_config(const char *var, const char *value, void *cb)
 	return git_default_config(var, value, cb);
 }
 
+unsigned diff_whitespace_rule(struct diff_options *opt, const char *path)
+{
+	unsigned ws_rule = whitespace_rule(path);
+
+	if (opt->tabwidth) {
+		if (!ws_tab_width(ws_rule))
+			ws_rule |= opt->tabwidth;
+		ws_rule |= WS_EXPAND_TAB;
+	}
+	return ws_rule;
+}
+
 static char *quote_two(const char *one, const char *two)
 {
 	int need_one = quote_c_style(one, NULL, NULL, 1);
@@ -478,7 +490,14 @@ static void emit_line_0(struct diff_options *o, const char *set, const char *res
 		fputs(set, file);
 		if (!nofirst)
 			fputc(first, file);
-		fwrite(line, len, 1, file);
+		if (o->tabwidth) {
+			struct strbuf sb = STRBUF_INIT;
+
+			strbuf_add_tabexpand(&sb, o->tabwidth, line, len);
+			fwrite(sb.buf, sb.len, 1, file);
+			strbuf_release(&sb);
+		} else
+			fwrite(line, len, 1, file);
 		fputs(reset, file);
 	}
 	if (has_trailing_carriage_return)
@@ -723,7 +742,7 @@ static void emit_rewrite_diff(const char *name_a,
 	memset(&ecbdata, 0, sizeof(ecbdata));
 	ecbdata.color_diff = want_color(o->use_color);
 	ecbdata.found_changesp = &o->found_changes;
-	ecbdata.ws_rule = whitespace_rule(name_b);
+	ecbdata.ws_rule = diff_whitespace_rule(o, name_b);
 	ecbdata.opt = o;
 	if (ecbdata.ws_rule & WS_BLANK_AT_EOF) {
 		mmfile_t mf1, mf2;
@@ -2438,7 +2457,7 @@ static void builtin_diff(const char *name_a,
 		ecbdata.label_path = lbl;
 		ecbdata.color_diff = want_color(o->use_color);
 		ecbdata.found_changesp = &o->found_changes;
-		ecbdata.ws_rule = whitespace_rule(name_b);
+		ecbdata.ws_rule = diff_whitespace_rule(o, name_b);
 		if (ecbdata.ws_rule & WS_BLANK_AT_EOF)
 			check_blank_at_eof(&mf1, &mf2, &ecbdata);
 		ecbdata.opt = o;
@@ -2563,7 +2582,7 @@ static void builtin_checkdiff(const char *name_a, const char *name_b,
 	data.filename = name_b ? name_b : name_a;
 	data.lineno = 0;
 	data.o = o;
-	data.ws_rule = whitespace_rule(attr_path);
+	data.ws_rule = diff_whitespace_rule(o, attr_path);
 	data.conflict_marker_size = ll_merge_marker_size(attr_path);
 
 	if (fill_mmfile(&mf1, one) < 0 || fill_mmfile(&mf2, two) < 0)
@@ -3755,6 +3774,8 @@ int diff_opt_parse(struct diff_options *options,
 	else if (starts_with(arg, "--stat"))
 		/* --stat, --stat-width, --stat-name-width, or --stat-count */
 		return stat_opt(options, av);
+	else if (skip_prefix(arg, "--expand-tabs=", &arg))
+		options->tabwidth = atoi(arg);
 
 	/* renames options */
 	else if (starts_with(arg, "-B") || starts_with(arg, "--break-rewrites=") ||
