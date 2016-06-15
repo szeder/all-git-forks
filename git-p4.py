@@ -969,25 +969,27 @@ class LargeFileSystem(object):
         contentFile.close()
         return contentFile.name
 
+    def exceedsCompressedContentSize(self, contents, maxCompressedContentSize):
+        contentsSize = sum(len(d) for d in contents)
+        if contentsSize <= maxCompressedContentSize:
+            return False
+        contentTempFile = self.generateTempFile(contents)
+        compressedContentFile = tempfile.NamedTemporaryFile(prefix='git-p4-large-file', delete=False)
+        zf = zipfile.ZipFile(compressedContentFile.name, mode='w')
+        zf.write(contentTempFile, compress_type=zipfile.ZIP_DEFLATED)
+        zf.close()
+        compressedContentsSize = zf.infolist()[0].compress_size
+        os.remove(contentTempFile)
+        os.remove(compressedContentFile.name)
+        return compressedContentsSize > maxCompressedContentSize
+
     def exceedsLargeFileThreshold(self, relPath, contents):
         if gitConfigInt('git-p4.largeFileThreshold'):
             contentsSize = sum(len(d) for d in contents)
             if contentsSize > gitConfigInt('git-p4.largeFileThreshold'):
                 return True
         if gitConfigInt('git-p4.largeFileCompressedThreshold'):
-            contentsSize = sum(len(d) for d in contents)
-            if contentsSize <= gitConfigInt('git-p4.largeFileCompressedThreshold'):
-                return False
-            contentTempFile = self.generateTempFile(contents)
-            compressedContentFile = tempfile.NamedTemporaryFile(prefix='git-p4-large-file', delete=False)
-            zf = zipfile.ZipFile(compressedContentFile.name, mode='w')
-            zf.write(contentTempFile, compress_type=zipfile.ZIP_DEFLATED)
-            zf.close()
-            compressedContentsSize = zf.infolist()[0].compress_size
-            os.remove(contentTempFile)
-            os.remove(compressedContentFile.name)
-            if compressedContentsSize > gitConfigInt('git-p4.largeFileCompressedThreshold'):
-                return True
+            return self.exceedsCompressedContentSize(contents, gitConfigInt('git-p4.largeFileCompressedThreshold'))
         return False
 
     def addLargeFile(self, relPath):
@@ -1003,8 +1005,8 @@ class LargeFileSystem(object):
         """Processes the content of git fast import. This method decides if a
            file is stored in the large file system and handles all necessary
            steps."""
+        fileHeadRevInfo = p4Cmd(['files', depotPath])
         if self.exceedsLargeFileThreshold(relPath, contents) or self.hasLargeFileExtension(relPath):
-            fileHeadRevInfo = p4Cmd(['files', depotPath])
             if gitConfigBool('git-p4.largeFileIgnoreDeleted') and fileHeadRevInfo['action'] == 'delete':
                 contents = ''
                 if verbose:
@@ -1027,6 +1029,10 @@ class LargeFileSystem(object):
                     self.pushFile(localLargeFile)
                 if verbose:
                     sys.stderr.write("%s moved to large file system (%s)\n" % (relPath, localLargeFile))
+        elif self.exceedsCompressedContentSize(contents, gitConfigInt('git-p4.largeFileCompressedDeletedThreshold')) and fileHeadRevInfo['action'] == 'delete':
+            contents = ''
+            if verbose:
+                sys.stderr.write("%s ignored since it is compressed larger than %i not present in the head revision\n" % (gitConfigInt('git-p4.largeFileCompressedDeletedThreshold'), relPath))
         return (git_mode, contents)
 
 class MockLFS(LargeFileSystem):
