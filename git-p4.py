@@ -2684,8 +2684,8 @@ class P4Sync(Command, P4UserMap):
             return True
         hasPrefix = [p for p in self.branchPrefixes
                         if p4PathStartsWith(path, p)]
-        if hasPrefix and self.verbose:
-            print('Ignoring file outside of prefix: {0}'.format(path))
+        if not hasPrefix and self.verbose:
+            print('File outside of prefix: {0}'.format(path))
         return hasPrefix
 
     def commit(self, details, files, branch, parent = ""):
