@@ -1010,11 +1010,11 @@ class LargeFileSystem(object):
             if gitConfigBool('git-p4.largeFileIgnoreDeleted') and fileHeadRevInfo['action'] == 'delete':
                 contents = ''
                 if verbose:
-                    sys.stderr.write("%s not moved to large file system since it is not present in the head revision\n" % (relPath))
+                    sys.stderr.write("\nLarge File System: %s not moved since it is not present in the head revision\n" % (relPath))
             elif gitConfigBool('git-p4.largeFileIgnoreHistory') and fileHeadRevInfo['change'] != changelist:
                 contents = ''
                 if verbose:
-                    sys.stderr.write("%s not moved to large file system since it is not the head revision\n" % (relPath))
+                    sys.stderr.write("\nLarge File System: %s not moved since it is not the head revision\n" % (relPath))
             else:
                 contentTempFile = self.generateTempFile(contents)
                 (git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
@@ -1028,7 +1028,7 @@ class LargeFileSystem(object):
                 if gitConfigBool('git-p4.largeFilePush'):
                     self.pushFile(localLargeFile)
                 if verbose:
-                    sys.stderr.write("%s moved to large file system (%s)\n" % (relPath, localLargeFile))
+                    sys.stderr.write("\nLarge File System: moved %s (%s)\n" % (relPath, localLargeFile))
         elif (
             gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold') and
             self.exceedsCompressedContentSize(contents, gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold')) and
@@ -1036,7 +1036,7 @@ class LargeFileSystem(object):
         ):
             contents = ''
             if verbose:
-                sys.stderr.write("%s ignored since it is compressed larger than %i bytes and not present in the head revision\n" % (relPath, gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold')))
+                sys.stderr.write("\nLarge File System: %s ignored since it is compressed larger than %i bytes and not present in the head revision\n" % (relPath, gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold')))
         return (git_mode, contents)
 
 class MockLFS(LargeFileSystem):
