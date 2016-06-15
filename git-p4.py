@@ -1029,10 +1029,10 @@ class LargeFileSystem(object):
                     self.pushFile(localLargeFile)
                 if verbose:
                     sys.stderr.write("%s moved to large file system (%s)\n" % (relPath, localLargeFile))
-        elif self.exceedsCompressedContentSize(contents, gitConfigInt('git-p4.largeFileCompressedDeletedThreshold')) and fileHeadRevInfo['action'] == 'delete':
+        elif self.exceedsCompressedContentSize(contents, gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold')) and fileHeadRevInfo['action'] == 'delete':
             contents = ''
             if verbose:
-                sys.stderr.write("%s ignored since it is compressed larger than %i not present in the head revision\n" % (gitConfigInt('git-p4.largeFileCompressedDeletedThreshold'), relPath))
+                sys.stderr.write("%s ignored since it is compressed larger than %i not present in the head revision\n" % (gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold'), relPath))
         return (git_mode, contents)
 
 class MockLFS(LargeFileSystem):
