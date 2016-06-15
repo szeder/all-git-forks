@@ -2765,6 +2765,22 @@ class P4Sync(Command, P4UserMap):
                 .format(details['change']))
             return
 
+        filesToIgnore = []
+
+        completeCL = gitConfigInt('git-p4.ignoreBinaryFileHistoryBefore')
+        if completeCL and int(details["change"]) < completeCL:
+            filesToImport = []
+            for f in files:
+                if 'binary' in f['type']:
+                    completeInfo = p4Cmd(['files', '%s@%s' % (f['path'], completeCL)])
+                    if (('action' in completeInfo and completeInfo['action'] in self.delete_actions) or
+                        ('rev' in completeInfo and completeInfo['rev'] > f['rev'])):
+                        print "Ignore binary file %s as its content is not present after CL %i " % (f['path'], completeCL)
+                        filesToIgnore.append('{}: {}#{}'.format(f['action'], f['path'], f['rev']))
+                        continue
+                filesToImport.append(f)
+            files = filesToImport
+
         self.gitStream.write("commit %s\n" % branch)
         self.gitStream.write("mark :%s\n" % details["change"])
         self.committedChanges.add(int(details["change"]))
@@ -2792,7 +2808,10 @@ class P4Sync(Command, P4UserMap):
                              (','.join(self.branchPrefixes), details["change"]))
         if len(details['options']) > 0:
             self.gitStream.write(": options = %s" % details['options'])
-        self.gitStream.write("]\nEOT\n\n")
+        self.gitStream.write("]\n")
+        if len(filesToIgnore) > 0:
+            self.gitStream.write("\nIgnored binaries on git-p4 import:\n%s\n" % '\n'.join(filesToIgnore))
+        self.gitStream.write("EOT\n\n")
 
         if len(parent) > 0:
             if self.verbose:
