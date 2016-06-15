@@ -184,3 +184,54 @@ Date:   Wed Jun 15 09:13:29 2016 +0000
     # gpg:          There is no indication that the signature belongs to the owner.
     # Primary key fingerprint: D4BE 2231 1AD3 131E 5EDA  29A4 6109 2E85 B722 7189
 ----
+
+== Push certificates
+
+- created by: `git push --signed`
+- payload: a push certificate header followed by the push transcript
+  (see pack-protocol.txt and below)
+- embedding: append the signature to the push transcript and pass it to receive hooks
+  via the environment (see below)
+- example: push of commit `dd1416f` updating `master` on `.` from `d36de3d`,
+  resulting in push certificate object `d4169b9`:
+
+----
+certificate version 0.1
+pusher C O Mitter <committer@example.com> 1465983405 +0000
+pushee .
+nonce 1465983405-07421dc1515c6f4d76d4
+
+d36de3db9b6a83076477254a3186b721a7bfaab7 dd1416f2cd1ec85957a9520a33e9053a133a775d refs/heads/master
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+
+iEYEABECAAYFAldhIa0ACgkQE7b1Hs3eQw2pGwCgmJs98xETSDZb6rooh/X7af3V
+zWgAn08ctVNga27jRkIdhFNetJy3x8De
+=WH0m
+-----END PGP SIGNATURE-----
+----
+
+- verify with: `gpg --verify <(git cat-file -p pushcert | sed -n '/-----BEGIN PGP/,$p') <(git cat-file -p pushcert | sed  '/-----BEGIN PGP/Q')`
+  (assuming the push certificate is stored in the blob tagged `pushcert`)
+
+----
+gpg: Signature made Wed Jun 15 11:36:45 2016 CEST using DSA key ID CDDE430D
+gpg: Good signature from "C O Mitter <committer@example.com>"
+----
+
+- pre- and post-receive hook input:
+
+----
+d36de3db9b6a83076477254a3186b721a7bfaab7 dd1416f2cd1ec85957a9520a33e9053a133a775d refs/heads/master
+----
+
+- pre- and post-receive hook environment:
+
+----
+GIT_PUSH_CERT_NONCE_STATUS=OK
+GIT_PUSH_CERT_KEY=13B6F51ECDDE430D
+GIT_PUSH_CERT=d4169b9a3c2674458f9656796132c145bbc5ba74
+GIT_PUSH_CERT_STATUS=G
+GIT_PUSH_CERT_SIGNER=C O Mitter <committer@example.com>
+GIT_PUSH_CERT_NONCE=1465983405-07421dc1515c6f4d76d4
+----
