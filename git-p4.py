@@ -1036,7 +1036,7 @@ class LargeFileSystem(object):
         ):
             contents = ''
             if verbose:
-                sys.stderr.write("%s ignored since it is compressed larger than %i not present in the head revision\n" % (relPath, gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold')))
+                sys.stderr.write("%s ignored since it is compressed larger than %i bytes and not present in the head revision\n" % (relPath, gitConfigInt('git-p4.largeFileIgnoreDeletedCompressedThreshold')))
         return (git_mode, contents)
 
 class MockLFS(LargeFileSystem):
