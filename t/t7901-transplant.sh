@@ -63,10 +63,6 @@ reset () {
 	rm -f stdout stderr
 }
 
-test_transplant_in_progress () {
-	git transplant --in-progress
-}
-
 head_ref ()
 {
 	git symbolic-ref --short -q HEAD
@@ -110,6 +106,10 @@ on_original_master ()
 {
 	on_branch master &&
 	refs_equal master "$orig_master"
+}
+
+test_transplant_in_progress () {
+	git transplant --in-progress
 }
 
 test_transplant_not_in_progress () {
