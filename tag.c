@@ -39,7 +39,7 @@ int gpg_verify_tag(const unsigned char *sha1, const char *name_to_report,
 	int ret;
 
 	type = sha1_object_info(sha1, NULL);
-	if (type != OBJ_TAG)
+	if ((type != OBJ_TAG) && ((type != OBJ_BLOB) || !(flags & GPG_VERIFY_BLOB)))
 		return error("%s: cannot verify a non-tag object of type %s.",
 				name_to_report ?
 				name_to_report :
