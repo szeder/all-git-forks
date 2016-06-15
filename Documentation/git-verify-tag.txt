@@ -20,6 +20,10 @@ OPTIONS
 	Print the raw gpg status output to standard error instead of the normal
 	human-readable output.
 
+--blob::
+	Allow to verify signed blob objects (in addition to tag objects), such as the
+	objects containing a push certificate.
+
 -v::
 --verbose::
 	Print the contents of the tag object before validating it.

@@ -33,6 +33,7 @@ int cmd_verify_tag(int argc, const char **argv, const char *prefix)
 	const struct option verify_tag_options[] = {
 		OPT__VERBOSE(&verbose, N_("print tag contents")),
 		OPT_BIT(0, "raw", &flags, N_("print raw gpg status output"), GPG_VERIFY_RAW),
+		OPT_BIT(0, "blob", &flags, N_("allow to verify blob objects"), GPG_VERIFY_BLOB),
 		OPT_END()
 	};
 

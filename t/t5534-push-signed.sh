@@ -94,7 +94,8 @@ test_expect_success GPG 'signed push sends push certificate' '
 	# record the push certificate
 	if test -n "${GIT_PUSH_CERT-}"
 	then
-		git cat-file blob $GIT_PUSH_CERT >../push-cert
+		git cat-file blob $GIT_PUSH_CERT >../push-cert &&
+		git verify-tag --blob $GIT_PUSH_CERT
 	fi &&
 
 	cat >../push-cert-status <<E_O_F
