@@ -375,31 +375,25 @@ test_expect_success 'cause conflict; ensure not re-entrant' '
 	test_transplant_in_progress
 '
 
-test_expect_success 'dirty working tree prevents removing range' '
+test_expect_success 'dirty working tree would prevent checkout of dest branch' '
 	reset &&
 	echo dirty >>two &&
-	test_when_finished "
-		test_transplant_not_in_progress
-	" &&
 	test_must_fail git transplant two-b^! four >stdout 2>stderr &&
-	grep "error: Your local changes to the following files would be overwritten by checkout:" stderr &&
-	grep "two" stderr &&
-	grep "Couldn'\''t checkout four; aborting" stderr &&
+        grep "Cannot transplant: You have unstaged changes" stderr &&
+        grep "Please commit or stash them" stderr &&
+	on_original_master &&
+	grep dirty two &&
 	test_transplant_not_in_progress
 '
 
-test_expect_failure "dirty working tree doesn't prevent removing range" '
+test_expect_success "dirty working tree would prevent final removal rebase" '
 	reset &&
-	echo dirty >>three &&
-	test_when_finished "
-		git transplant --abort &&
-		test_transplant_not_in_progress
-	" &&
-	git transplant two-b^! four &&
-	grep dirty three &&
-	grep two-a two &&
-	! grep two-b two &&
-	grep three-b three &&
+	echo dirty >>one &&
+	test_must_fail git transplant two-a^..two-b four >stdout 2>stderr &&
+        grep "Cannot transplant: You have unstaged changes" stderr &&
+        grep "Please commit or stash them" stderr &&
+	on_original_master &&
+	grep dirty one &&
 	test_transplant_not_in_progress
 '
 

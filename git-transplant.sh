@@ -62,6 +62,8 @@ remove_todo="$transplant_dir/remove-todo"
 splice_file="$transplant_dir/splice-in-progress"
 export PS4='${BASH_SOURCE/$HOME/~}@${LINENO}(${FUNCNAME[0]}): '
 
+. "$(git --exec-path)/git-sh-setup"
+
 main ()
 {
     parse_opts "$@"
@@ -84,6 +86,7 @@ main ()
         ensure_transplant_not_in_progress
         ensure_cherry_pick_not_in_progress
         ensure_rebase_not_in_progress
+        require_clean_work_tree transplant "Please commit or stash them."
     fi
 
     parse_args "${ARGV[@]}"
