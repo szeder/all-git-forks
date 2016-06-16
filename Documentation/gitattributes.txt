@@ -365,8 +365,8 @@ you can declare that the filter is `required`, in the configuration:
 ------------------------
 
 Sequence "%f" on the filter command line is replaced with the name of
-the file the filter is working on.  A filter might use this in keyword
-substitution.  For example:
+the file in the git repository the filter is working on.
+A filter might use this in keyword substitution.  For example:
 
 ------------------------
 [filter "p4"]
@@ -374,6 +374,9 @@ substitution.  For example:
 	smudge = git-p4-filter --smudge %f
 ------------------------
 
+Note that the "%f" is the name of a file in the git repository; the
+corresponding file on disk may not exist, or may have unrelated contents to
+what git is filtering.
 
 Interaction between checkin/checkout attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
