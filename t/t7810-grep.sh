@@ -1364,4 +1364,33 @@ test_expect_success 'grep --color -e A --and -e B -p with context' '
 	test_cmp expected actual
 '
 
+test_expect_success 'grep can find things only in the work tree' '
+	touch work-tree-only &&
+	git add work-tree-only &&
+	echo "find in work tree" >work-tree-only &&
+	git grep --quiet "find in work tree" &&
+	test_must_fail git grep --quiet --cached "find in work tree" &&
+	test_must_fail git grep --quiet "find in work tree" HEAD &&
+	git rm -f work-tree-only
+'
+
+test_expect_success 'grep can find things only in the work tree (i-t-a)' '
+	echo "intend to add this" >intend-to-add &&
+	git add -N intend-to-add &&
+	git grep --quiet "intend to add this" &&
+	test_must_fail git grep --quiet --cached "intend to add this" &&
+	test_must_fail git grep --quiet "intend to add this" HEAD &&
+	git rm -f intend-to-add
+'
+
+test_expect_success 'grep can find things only in the index' '
+	echo "only in the index" >cache-this &&
+	git add cache-this &&
+	rm cache-this &&
+	test_must_fail git grep --quiet "only in the index" &&
+	git grep --quiet --cached "only in the index" &&
+	test_must_fail git grep --quiet "only in the index" HEAD &&
+	git rm --cached cache-this
+'
+
 test_done
