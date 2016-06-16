@@ -14,11 +14,19 @@ chmod +x rot13.sh
 
 cat <<EOF >rot13-from-file.sh
 #!$SHELL_PATH
-fsfile="\$1"
+srcfile="\$1"
 touch rot13-from-file.ran
-cat "\$fsfile" | ./rot13.sh
+cat "\$srcfile" | ./rot13.sh
 EOF
 chmod +x rot13-from-file.sh
+
+cat <<EOF >rot13-to-file.sh
+#!$SHELL_PATH
+destfile="\$1"
+touch rot13-to-file.ran
+./rot13.sh > "\$destfile"
+EOF
+chmod +x rot13-to-file.sh
 
 test_expect_success setup '
 	git config filter.rot13.smudge ./rot13.sh &&
@@ -291,17 +299,37 @@ test_expect_success 'clean-from-file filter is used when adding a file' '
 	cmp test.t fstest.t
 '
 
-test_expect_success 'clean-from-file filter is not used when clean filter is not configured' '
-	test_config filter.no.smudge ./rot13.sh &&
-	test_config filter.no.clean-from-file "./rot13-from-file.sh %p" &&
+test_expect_success 'smudge-to-file filter is used when checking out a file' '
+	test_config filter.rot13.smudge-to-file "./rot13-to-file.sh %p" &&
 
-	echo "*.no filter=no" >.gitattributes &&
+	rm -f fstest.t &&
+	git checkout -- fstest.t &&
+	cmp test.t fstest.t &&
+
+	test -e rot13-to-file.ran &&
+	rm -f rot13-to-file.ran
+'
+
+test_expect_success 'clean-from-file filter is not used when clean filter is not configured' '
+	test_config filter.noclean.smudge ./rot13.sh &&
+	test_config filter.noclean.clean-from-file "./rot13-from-file.sh %p" &&
+
+	echo "*.no filter=noclean" >.gitattributes &&
 
 	cat test.t >test.no &&
 	git add test.no &&
-	test ! -e rot13-from-file.ran &&
-	git cat-file blob :test.no >actual &&
-	cmp test.t actual
+	test ! -e rot13-from-file.ran
+'
+
+test_expect_success 'smudge-to-file filter is not used when smudge filter is not configured' '
+	test_config filter.nosmudge.clean ./rot13.sh &&
+	test_config filter.nosmudge.smudge-to-file "./rot13-to-file.sh %p" &&
+
+	echo "*.no filter=nosmudge" >.gitattributes &&
+
+	rm -f fstest.t &&
+	git checkout -- fstest.t &&
+	test ! -e rot13-to-file.ran
 '
 
 test_done
