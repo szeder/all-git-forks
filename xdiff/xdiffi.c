@@ -405,6 +405,35 @@ static int is_blank_line(xrecord_t **recs, long ix, long flags)
 	return xdl_blankline(recs[ix]->ptr, recs[ix]->size, flags);
 }
 
+static unsigned int leading_blank(const char *line)
+{
+	unsigned int ret = 0;
+	while (*line) {
+		if (*line == '\t')
+			ret += 8;
+		else if (*line == ' ')
+			ret ++;
+		else
+			break;
+		line++;
+	}
+	return ret;
+}
+
+static unsigned int surrounding_leading_blank(xrecord_t **recs, long ix,
+		long flags, long nrec)
+{
+	unsigned int i, ret = UINT_MAX;
+	if (ix > 0)
+		ret = leading_blank(recs[ix - 1]->ptr);
+	if (ix < nrec - 1) {
+		i = leading_blank(recs[ix + 1]->ptr);
+		if (i < ret)
+			ret = i;
+	}
+	return ret;
+}
+
 static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
 {
 	return (recs[ixs]->ha == recs[ix]->ha &&
@@ -416,7 +445,7 @@ static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
 int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 	long ix, ixo, ixs, ixref, grpsiz, nrec = xdf->nrec;
 	char *rchg = xdf->rchg, *rchgo = xdfo->rchg;
-	unsigned int blank_lines;
+	unsigned int blank_lines, min_bl_neigh_indent;
 	xrecord_t **recs = xdf->recs;
 
 	/*
@@ -451,6 +480,7 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		do {
 			grpsiz = ix - ixs;
 			blank_lines = 0;
+			min_bl_neigh_indent = UINT_MAX;
 
 			/*
 			 * If the line before the current change group, is equal to
@@ -485,7 +515,13 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * the group.
 			 */
 			while (ix < nrec && recs_match(recs, ixs, ix, flags)) {
-				blank_lines += is_blank_line(recs, ix, flags);
+				if (is_blank_line(recs, ix, flags)) {
+					unsigned int bl_neigh_indent =
+						surrounding_leading_blank(recs, ix, flags, nrec);
+					if (min_bl_neigh_indent > bl_neigh_indent)
+						min_bl_neigh_indent = min_bl_neigh_indent;
+					blank_lines++;
+				}
 
 				rchg[ixs++] = 0;
 				rchg[ix++] = 1;
@@ -525,6 +561,7 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
 			while (ixs > 0 &&
 			       !is_blank_line(recs, ix - 1, flags) &&
+			       surrounding_leading_blank(recs, ix - 1, flags, nrec) > min_bl_neigh_indent &&
 			       recs_match(recs, ixs - 1, ix - 1, flags)) {
 				rchg[--ixs] = 1;
 				rchg[--ix] = 0;
