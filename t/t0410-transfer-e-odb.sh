@@ -48,4 +48,13 @@ test_expect_success 'new blobs are put in object store' '
 	ls "$OBJECT_STORE"/"$hash2"-*
 '
 
+test_expect_success 'clone repo gets the objects' '
+	git init other-repo &&
+	(cd other-repo &&
+	 git remote add origin .. &&
+	 git fetch origin "refs/odbs/magic/*:refs/odbs/magic/*"
+	) &&
+	echo ok
+'
+
 test_done
