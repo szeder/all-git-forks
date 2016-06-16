@@ -12,6 +12,14 @@ tr \
 EOF
 chmod +x rot13.sh
 
+cat <<EOF >rot13-from-file.sh
+#!$SHELL_PATH
+fsfile="\$1"
+touch rot13-from-file.ran
+cat "\$fsfile" | ./rot13.sh
+EOF
+chmod +x rot13-from-file.sh
+
 test_expect_success setup '
 	git config filter.rot13.smudge ./rot13.sh &&
 	git config filter.rot13.clean ./rot13.sh &&
@@ -266,6 +274,34 @@ test_expect_success 'disable filter with empty override' '
 	rm -f test.disable &&
 	git -c filter.disable.smudge= checkout -- test.disable 2>err &&
 	test_must_be_empty err
+'
+
+test_expect_success 'clean-from-file filter is used when adding a file' '
+	test_config filter.rot13.clean-from-file "./rot13-from-file.sh %p" &&
+
+	echo "*.t filter=rot13" >.gitattributes &&
+
+	cat test.t >fstest.t &&
+	git add fstest.t &&
+	test -e rot13-from-file.ran &&
+	rm -f rot13-from-file.ran &&
+
+	rm -f fstest.t &&
+	git checkout -- fstest.t &&
+	cmp test.t fstest.t
+'
+
+test_expect_success 'clean-from-file filter is not used when clean filter is not configured' '
+	test_config filter.no.smudge ./rot13.sh &&
+	test_config filter.no.clean-from-file "./rot13-from-file.sh %p" &&
+
+	echo "*.no filter=no" >.gitattributes &&
+
+	cat test.t >test.no &&
+	git add test.no &&
+	test ! -e rot13-from-file.ran &&
+	git cat-file blob :test.no >actual &&
+	cmp test.t actual
 '
 
 test_done
