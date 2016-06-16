@@ -1299,14 +1299,29 @@ format.useAutoBase::
 	format-patch by default.
 
 filter.<driver>.clean::
-	The command which is used to convert the content of a worktree
-	file to a blob upon checkin.  See linkgit:gitattributes[5] for
-	details.
+	The command which is used on checkin to convert the content of
+	a worktree file (provided on stdin) to a blob (written to stdout).
+	See linkgit:gitattributes[5] for details.
 
 filter.<driver>.smudge::
-	The command which is used to convert the content of a blob
-	object to a worktree file upon checkout.  See
-	linkgit:gitattributes[5] for details.
+	The command which is used on checkout to convert the content of a
+	blob object (provided on stdin) to a worktree file (written to
+	stdout).
+	See linkgit:gitattributes[5] for details.
+
+filter.<driver>.clean-from-file::
+	Optional command which is used on checkin to convert the content
+	of a worktree file, which can be read from disk, to a blob
+	(written to stdout).
+	Only used when filter.<driver>.clean is also configured.
+	See linkgit:gitattributes[5] for details.
+
+filter.<driver>.smudge-to-file::
+	Optional command which is used to convert the content of a blob
+	object (provided on stdin) to a worktree file, writing directly
+	to the file.
+	Only used when filter.<driver>.clean is also configured.
+	See linkgit:gitattributes[5] for details.
 
 fsck.<msg-id>::
 	Allows overriding the message type (error, warn or ignore) of a

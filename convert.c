@@ -360,7 +360,8 @@ struct filter_params {
 	unsigned long size;
 	int fd;
 	const char *cmd;
-	const char *path;
+	const char *path; /* Path within the git repository */
+	const char *fspath; /* Path to file on disk */
 };
 
 static int filter_buffer_or_fd(int in, int out, void *data)
@@ -376,16 +377,22 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	/* apply % substitution to cmd */
 	struct strbuf cmd = STRBUF_INIT;
 	struct strbuf path = STRBUF_INIT;
+	struct strbuf fspath = STRBUF_INIT;
 	struct strbuf_expand_dict_entry dict[] = {
 		{ "f", NULL, },
+		{ (params->fspath ? "p" : NULL), NULL, },
 		{ NULL, NULL, },
 	};
 
 	/* quote the path to preserve spaces, etc. */
 	sq_quote_buf(&path, params->path);
 	dict[0].value = path.buf;
+	if (params->fspath) {
+		sq_quote_buf(&fspath, params->fspath);
+		dict[1].value = fspath.buf;
+	}
 
-	/* expand all %f with the quoted path */
+	/* expand all %f and %p with the quoted path and fspath */
 	strbuf_expand(&cmd, params->cmd, strbuf_expand_dict_cb, &dict);
 	strbuf_release(&path);
 
@@ -427,7 +434,8 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	return (write_err || status);
 }
 
-static int apply_filter(const char *path, const char *src, size_t len, int fd,
+static int apply_filter(const char *path, const char *fspath,
+			const char *src, size_t len, int fd,
                         struct strbuf *dst, const char *cmd)
 {
 	/*
@@ -456,6 +464,7 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	params.fd = fd;
 	params.cmd = cmd;
 	params.path = path;
+	params.fspath = fspath;
 
 	fflush(NULL);
 	if (start_async(&async))
@@ -486,6 +495,8 @@ static struct convert_driver {
 	struct convert_driver *next;
 	const char *smudge;
 	const char *clean;
+	const char *smudge_to_file;
+	const char *clean_from_file;
 	int required;
 } *user_convert, **user_convert_tail;
 
@@ -512,8 +523,9 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 	}
 
 	/*
-	 * filter.<name>.smudge and filter.<name>.clean specifies
-	 * the command line:
+	 * filter.<name>.smudge, filter.<name>.clean,
+	 * filter.<name>.smudge-to-file, filter.<name>.clean-from-file
+	 * specifies the command line:
 	 *
 	 *	command-line
 	 *
@@ -525,6 +537,12 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 
 	if (!strcmp("clean", key))
 		return git_config_string(&drv->clean, var, value);
+
+	if (!strcmp("smudge-to-file", key))
+		return git_config_string(&drv->smudge_to_file, var, value);
+
+	if (!strcmp("clean-from-file", key))
+		return git_config_string(&drv->clean_from_file, var, value);
 
 	if (!strcmp("required", key)) {
 		drv->required = git_config_bool(var, value);
@@ -823,7 +841,35 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
-	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean);
+	return apply_filter(path, NULL, NULL, 0, -1, NULL, ca.drv->clean);
+}
+
+int can_clean_from_file(const char *path)
+{
+	struct conv_attrs ca;
+
+	convert_attrs(&ca, path);
+	if (!ca.drv)
+		return 0;
+
+	/* Only use the clean-from-file filter when the clean filter is also
+	 * configured.
+	 */
+	return (ca.drv->clean_from_file && ca.drv->clean);
+}
+
+int can_smudge_to_file(const char *path)
+{
+	struct conv_attrs ca;
+
+	convert_attrs(&ca, path);
+	if (!ca.drv)
+		return 0;
+
+	/* Only use the smudge-to-file filter when the smudge filter is also
+	 * configured.
+	 */
+	return (ca.drv->smudge_to_file && ca.drv->smudge);
 }
 
 const char *get_convert_attr_ascii(const char *path)
@@ -866,7 +912,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		required = ca.drv->required;
 	}
 
-	ret |= apply_filter(path, src, len, -1, dst, filter);
+	ret |= apply_filter(path, NULL, src, len, -1, dst, filter);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -891,14 +937,33 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv);
 	assert(ca.drv->clean);
 
-	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
+	if (!apply_filter(path, NULL, NULL, 0, fd, dst, ca.drv->clean))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action, checksafe);
 	ident_to_git(path, dst->buf, dst->len, dst, ca.ident);
 }
 
-static int convert_to_working_tree_internal(const char *path, const char *src,
+void convert_to_git_filter_from_file(const char *path, struct strbuf *dst,
+				   enum safe_crlf checksafe)
+{
+	struct conv_attrs ca;
+	convert_attrs(&ca, path);
+
+	assert(ca.drv);
+	assert(ca.drv->clean);
+	assert(ca.drv->clean_from_file);
+
+	if (!apply_filter(path, path, "", 0, -1, dst, ca.drv->clean_from_file))
+		die("%s: clean-from-file filter '%s' failed", path, ca.drv->name);
+
+	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action, checksafe);
+	ident_to_git(path, dst->buf, dst->len, dst, ca.ident);
+}
+
+static int convert_to_working_tree_internal(const char *path,
+					    const char *destpath,
+					    const char *src,
 					    size_t len, struct strbuf *dst,
 					    int normalizing)
 {
@@ -909,7 +974,10 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 
 	convert_attrs(&ca, path);
 	if (ca.drv) {
-		filter = ca.drv->smudge;
+		if (destpath)
+			filter = ca.drv->smudge_to_file;
+		else
+			filter = ca.drv->smudge;
 		required = ca.drv->required;
 	}
 
@@ -920,7 +988,7 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 	}
 	/*
 	 * CRLF conversion can be skipped if normalizing, unless there
-	 * is a smudge filter.  The filter might expect CRLFs.
+	 * is a filter.  The filter might expect CRLFs.
 	 */
 	if (filter || !normalizing) {
 		ret |= crlf_to_worktree(path, src, len, dst, ca.crlf_action);
@@ -930,21 +998,30 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 		}
 	}
 
-	ret_filter = apply_filter(path, src, len, -1, dst, filter);
+	ret_filter = apply_filter(path, destpath, src, len, -1, dst, filter);
 	if (!ret_filter && required)
-		die("%s: smudge filter %s failed", path, ca.drv->name);
+		die("%s: %s filter %s failed", path, destpath ? "smudge-to-file" : "smudge", ca.drv->name);
 
 	return ret | ret_filter;
 }
 
 int convert_to_working_tree(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	return convert_to_working_tree_internal(path, src, len, dst, 0);
+	return convert_to_working_tree_internal(path, NULL, src, len, dst, 0);
+}
+
+int convert_to_working_tree_filter_to_file(const char *path, const char *destpath, const char *src, size_t len)
+{
+	struct strbuf output = STRBUF_INIT;
+	int ret = convert_to_working_tree_internal(path, destpath, src, len, &output, 0);
+	/* The smudge-to-file filter stdout is not used. */
+	strbuf_release(&output);
+	return ret;
 }
 
 int renormalize_buffer(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	int ret = convert_to_working_tree_internal(path, src, len, dst, 1);
+	int ret = convert_to_working_tree_internal(path, NULL, src, len, dst, 1);
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;

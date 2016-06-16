@@ -378,6 +378,43 @@ Note that the "%f" is the name of a file in the git repository; the
 corresponding file on disk may not exist, or may have unrelated contents to
 what git is filtering.
 
+There are two extra commands "clean-from-file" and "smudge-to-file", which
+can optionally be set in a filter driver. These are similar to the "clean"
+and "smudge" commands, but avoid needing to pipe the contents of files
+through the filters, and instead reading/writing files in the filesystem.
+This can be more efficient when using filters with large files that are not
+directly stored in the repository.
+
+Sequence "%p" on the "clean-from-file" and "smudge-to-file" command line
+is replaced with the path to a file that the filter can access.
+
+In the "clean-from-file" command, "%p" is the path to the file that
+it should clean. Like the "clean" command, it should output the cleaned
+version to standard output.
+
+In the "smudge-from-file" command, "%p" is the path to the file that it
+should write to. (This file will already exist, as an empty file that can
+be written to or replaced.) Like the "smudge" command, "smudge-from-file"
+is fed the blob object from its standard input.
+
+Some git operations that need to apply filters cannot use "clean-from-file"
+and "smudge-to-file", since the files are not present to disk. So, to avoid
+inconsistent behavior, "clean-from-file" will only be used if "clean" is
+also configured, and "smudge-to-file" will only be used if "smudge" is also
+configured.
+
+An example large file storage filter driver using "*-from-file" follows:
+
+------------------------
+[filter "bigfiles"]
+	clean = store-bigfile --from-stdin
+	clean-from-file = store-bigfile %p
+	smudge = retrieve-bigfile --to-stdout
+	smudge-to-file = retrieve-bigfile %p
+	required
+
+------------------------
+
 Interaction between checkin/checkout attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
