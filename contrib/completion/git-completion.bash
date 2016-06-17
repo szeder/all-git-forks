@@ -1136,6 +1136,8 @@ _git_clone ()
 			--depth
 			--single-branch
 			--branch
+			--recursive
+			--init-submodule
 			"
 		return
 		;;
