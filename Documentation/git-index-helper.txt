@@ -71,7 +71,7 @@ command. The following commands are used to control the daemon:
 	prepares a shared memory object with the watchman index
 	extension before replying.
 
-All commands and replies are terminated by a NUL byte.
+All commands and replies are terminated in pkt-line format.
 
 In the event of an error, messages may be written to
 $GIT_DIR/index-helper.log.
