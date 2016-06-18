@@ -890,6 +890,16 @@ test_expect_success GPG 'log --graph --show-signature for merged tag' '
 	grep "^| | gpg: Good signature" actual
 '
 
+test_expect_success GPG '--no-show-signature overrides --show-signature' '
+	test_when_finished "git reset --hard && git checkout master" &&
+	git checkout -b nosign master &&
+	echo foo >foo &&
+	git add foo &&
+	git commit -S -m signed_commit &&
+	git log -1 --show-signature --no-show-signature nosign >actual &&
+	! grep "^gpg:" actual
+'
+
 test_expect_success 'log --graph --no-walk is forbidden' '
 	test_must_fail git log --graph --no-walk
 '
