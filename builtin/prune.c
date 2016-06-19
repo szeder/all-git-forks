@@ -14,6 +14,7 @@ static const char * const prune_usage[] = {
 static int show_only;
 static int verbose;
 static unsigned long expire;
+static time_t start;
 static int show_progress = -1;
 
 static int prune_tmp_file(const char *fullpath)
@@ -21,7 +22,7 @@ static int prune_tmp_file(const char *fullpath)
 	struct stat st;
 	if (lstat(fullpath, &st))
 		return error("Could not stat '%s'", fullpath);
-	if (st.st_mtime > expire)
+	if (st.st_mtime > expire || st.st_ctime >= start)
 		return 0;
 	if (show_only || verbose)
 		printf("Removing stale temporary file %s\n", fullpath);
@@ -47,7 +48,7 @@ static int prune_object(const unsigned char *sha1, const char *fullpath,
 		error("Could not stat '%s'", fullpath);
 		return 0;
 	}
-	if (st.st_mtime > expire)
+	if (st.st_mtime > expire || st.st_ctime >= start)
 		return 0;
 	if (show_only || verbose) {
 		enum object_type type = sha1_object_info(sha1, NULL);
@@ -111,6 +112,7 @@ int cmd_prune(int argc, const char **argv, const char *prefix)
 	};
 	char *s;
 
+	start = time(NULL);
 	expire = ULONG_MAX;
 	save_commit_buffer = 0;
 	check_replace_refs = 0;
