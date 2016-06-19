@@ -791,6 +791,10 @@ test_expect_success 'setup for testing rm messages' '
 	git add bar.txt foo.txt
 '
 
+test_expect_success 'rm files with empty string pathspec' '
+  test_must_fail git rm ""
+'
+
 test_expect_success 'rm files with different staged content' '
 	cat >expect <<-\EOF &&
 	error: the following files have staged content different from both the

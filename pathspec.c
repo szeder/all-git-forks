@@ -402,8 +402,12 @@ void parse_pathspec(struct pathspec *pathspec,
 	}
 
 	n = 0;
-	while (argv[n])
+	while (argv[n]) {
+		if (*argv[n] == '\0') {
+			die("Empty string is not a valid pathspec.");
+		}
 		n++;
+	}
 
 	pathspec->nr = n;
 	ALLOC_ARRAY(pathspec->items, n);
