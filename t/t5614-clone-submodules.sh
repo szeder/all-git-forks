@@ -37,9 +37,9 @@ test_expect_success 'nonshallow clone implies nonshallow submodule' '
 	)
 '
 
-test_expect_success 'shallow clone implies shallow submodule' '
+test_expect_success 'shallow clone does not imply shallow submodule' '
 	test_when_finished "rm -rf super_clone" &&
-	git clone --recurse-submodules --depth 2 "file://$pwd/." super_clone &&
+	git clone --recurse-submodules --depth 2 --shallow-submodules "file://$pwd/." super_clone &&
 	(
 		cd super_clone &&
 		git log --oneline >lines &&
