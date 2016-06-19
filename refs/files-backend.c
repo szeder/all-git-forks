@@ -3491,6 +3491,41 @@ static const char *original_update_refname(struct ref_update *update)
 }
 
 /*
+ * Check whether the REF_HAVE_OLD and old_oid values stored in update
+ * are consistent with the result read for the reference. error is
+ * true iff there was an error reading the reference; otherwise, oid
+ * is the value read for the reference.
+ *
+ * If there was a problem, write an error message to err and return
+ * -1.
+ */
+static int check_old_oid(struct ref_update *update, struct object_id *oid,
+			 struct strbuf *err)
+{
+	if (!(update->flags & REF_HAVE_OLD) ||
+		   !hashcmp(oid->hash, update->old_sha1))
+		return 0;
+
+	if (is_null_sha1(update->old_sha1))
+		strbuf_addf(err, "cannot lock ref '%s': "
+			    "reference already exists",
+			    original_update_refname(update));
+	else if (is_null_oid(oid))
+		strbuf_addf(err, "cannot lock ref '%s': "
+			    "reference is missing but expected %s",
+			    original_update_refname(update),
+			    sha1_to_hex(update->old_sha1));
+	else
+		strbuf_addf(err, "cannot lock ref '%s': "
+			    "is at %s but expected %s",
+			    original_update_refname(update),
+			    oid_to_hex(oid),
+			    sha1_to_hex(update->old_sha1));
+
+	return -1;
+}
+
+/*
  * Prepare for carrying out update:
  * - Lock the reference referred to by update.
  * - Read the reference under lock.
@@ -3536,7 +3571,7 @@ static int lock_ref_for_update(struct files_ref_store *refs,
 
 		reason = strbuf_detach(err, NULL);
 		strbuf_addf(err, "cannot lock ref '%s': %s",
-			    update->refname, reason);
+			    original_update_refname(update), reason);
 		free(reason);
 		return ret;
 	}
@@ -3550,25 +3585,15 @@ static int lock_ref_for_update(struct files_ref_store *refs,
 			 * the transaction, so we have to read it here
 			 * to record and possibly check old_sha1:
 			 */
-			if (read_ref_full(update->refname,
-					  mustexist ? RESOLVE_REF_READING : 0,
+			if (read_ref_full(referent.buf, 0,
 					  lock->old_oid.hash, NULL)) {
 				if (update->flags & REF_HAVE_OLD) {
 					strbuf_addf(err, "cannot lock ref '%s': "
-						    "can't resolve old value",
-						    update->refname);
-					return TRANSACTION_GENERIC_ERROR;
-				} else {
-					hashclr(lock->old_oid.hash);
+						    "error reading reference",
+						    original_update_refname(update));
+					return -1;
 				}
-			}
-			if ((update->flags & REF_HAVE_OLD) &&
-			    hashcmp(lock->old_oid.hash, update->old_sha1)) {
-				strbuf_addf(err, "cannot lock ref '%s': "
-					    "is at %s but expected %s",
-					    update->refname,
-					    sha1_to_hex(lock->old_oid.hash),
-					    sha1_to_hex(update->old_sha1));
+			} else if (check_old_oid(update, &lock->old_oid, err)) {
 				return TRANSACTION_GENERIC_ERROR;
 			}
 		} else {
@@ -3588,6 +3613,9 @@ static int lock_ref_for_update(struct files_ref_store *refs,
 	} else {
 		struct ref_update *parent_update;
 
+		if (check_old_oid(update, &lock->old_oid, err))
+			return TRANSACTION_GENERIC_ERROR;
+
 		/*
 		 * If this update is happening indirectly because of a
 		 * symref update, record the old SHA-1 in the parent
@@ -3598,20 +3626,6 @@ static int lock_ref_for_update(struct files_ref_store *refs,
 		     parent_update = parent_update->parent_update) {
 			struct ref_lock *parent_lock = parent_update->backend_data;
 			oidcpy(&parent_lock->old_oid, &lock->old_oid);
-		}
-
-		if ((update->flags & REF_HAVE_OLD) &&
-		    hashcmp(lock->old_oid.hash, update->old_sha1)) {
-			if (is_null_sha1(update->old_sha1))
-				strbuf_addf(err, "cannot lock ref '%s': reference already exists",
-					    original_update_refname(update));
-			else
-				strbuf_addf(err, "cannot lock ref '%s': is at %s but expected %s",
-					    original_update_refname(update),
-					    sha1_to_hex(lock->old_oid.hash),
-					    sha1_to_hex(update->old_sha1));
-
-			return TRANSACTION_GENERIC_ERROR;
 		}
 	}
 
@@ -3634,7 +3648,7 @@ static int lock_ref_for_update(struct files_ref_store *refs,
 			 */
 			update->backend_data = NULL;
 			strbuf_addf(err,
-				    "cannot update the ref '%s': %s",
+				    "cannot update ref '%s': %s",
 				    update->refname, write_err);
 			free(write_err);
 			return TRANSACTION_GENERIC_ERROR;
