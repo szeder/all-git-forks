@@ -417,8 +417,7 @@ int find_commit_subject(const char *commit_buffer, const char **subject)
 		p += 2;
 		while (*p == '\n')
 			p++;
-		for (eol = p; *eol && *eol != '\n'; eol++)
-			; /* do nothing */
+		eol = strchrnul(p, '\n');
 	} else
 		eol = p;
 
