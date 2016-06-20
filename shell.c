@@ -142,6 +142,7 @@ int main(int argc, char **argv)
 {
 	char *prog;
 	const char **user_argv;
+	const char *ssh_command;
 	struct commands *cmd;
 	int count;
 
@@ -157,10 +158,19 @@ int main(int argc, char **argv)
 	sanitize_stdfds();
 
 	/*
+	 * Instead of setting a user's shell to git-shell, we also support setting
+	 * it via the authorized keys as forced command. In this case ssh will
+	 * populate the SSH_ORIGINAL_COMMAND variable.
+	 */
+	ssh_command = getenv("SSH_ORIGINAL_COMMAND");
+
+	/*
 	 * Special hack to pretend to be a CVS server
 	 */
 	if (argc == 2 && !strcmp(argv[1], "cvs server")) {
-		argv--;
+		prog = xstrdup(argv[1]);
+	} else if (argc == 1 && ssh_command) {
+		prog = xstrdup(ssh_command);
 	} else if (argc == 1) {
 		/* Allow the user to run an interactive shell */
 		cd_to_homedir();
@@ -178,9 +188,10 @@ int main(int argc, char **argv)
 		 * commands or a command in the COMMAND_DIR
 		 */
 		die("Run with no arguments or with -c cmd");
+	} else {
+		prog = xstrdup(argv[2]);
 	}
 
-	prog = xstrdup(argv[2]);
 	if (!strncmp(prog, "git", 3) && isspace(prog[3]))
 		/* Accept "git foo" as if the caller said "git-foo". */
 		prog[3] = '-';
@@ -214,10 +225,10 @@ int main(int argc, char **argv)
 		}
 		free(prog);
 		free(user_argv);
-		die("unrecognized command '%s'", argv[2]);
+		die("unrecognized command '%s'", prog);
 	} else {
 		free(prog);
-		die("invalid command format '%s': %s", argv[2],
+		die("invalid command format '%s': %s", prog,
 		    split_cmdline_strerror(count));
 	}
 }
