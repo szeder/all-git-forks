@@ -560,10 +560,10 @@ void show_log(struct rev_info *opt)
 			show_children(opt, commit, abbrev_commit);
 		show_decorations(opt, commit);
 		if (opt->graph && !graph_is_commit_finished(opt->graph)) {
-			fputc('\n', opt->diffopt.file);
+			putc('\n', opt->diffopt.file);
 			graph_show_remainder(opt->graph);
 		}
-		fputc(opt->diffopt.line_termination, opt->diffopt.file);
+		putc(opt->diffopt.line_termination, opt->diffopt.file);
 		return;
 	}
 
@@ -589,7 +589,7 @@ void show_log(struct rev_info *opt)
 		if (opt->diffopt.line_termination == '\n' &&
 		    !opt->missing_newline)
 			graph_show_padding(opt->graph);
-		fputc(opt->diffopt.line_termination, opt->diffopt.file);
+		putc(opt->diffopt.line_termination, opt->diffopt.file);
 	}
 	opt->shown_one = 1;
 
@@ -626,9 +626,9 @@ void show_log(struct rev_info *opt)
 		fputs(diff_get_color_opt(&opt->diffopt, DIFF_RESET), opt->diffopt.file);
 		show_decorations(opt, commit);
 		if (opt->commit_format == CMIT_FMT_ONELINE) {
-			fputc(' ', opt->diffopt.file);
+			putc(' ', opt->diffopt.file);
 		} else {
-			fputc('\n', opt->diffopt.file);
+			putc('\n', opt->diffopt.file);
 			graph_show_oneline(opt->graph);
 		}
 		if (opt->reflog_info) {
@@ -722,7 +722,7 @@ void show_log(struct rev_info *opt)
 	if (opt->use_terminator && !commit_format_is_empty(opt->commit_format)) {
 		if (!opt->missing_newline)
 			graph_show_padding(opt->graph);
-		fputc(opt->diffopt.line_termination, opt->diffopt.file);
+		putc(opt->diffopt.line_termination, opt->diffopt.file);
 	}
 
 	strbuf_release(&msgbuf);
@@ -775,7 +775,7 @@ int log_tree_diff_flush(struct rev_info *opt)
 			if (!opt->shown_dashes &&
 			    (pch & opt->diffopt.output_format) == pch)
 				fprintf(opt->diffopt.file, "---");
-			fputc('\n', opt->diffopt.file);
+			putc('\n', opt->diffopt.file);
 		}
 	}
 	diff_flush(&opt->diffopt);
@@ -882,7 +882,6 @@ int log_tree_commit(struct rev_info *opt, struct commit *commit)
 	if (opt->track_linear && !opt->linear && opt->reverse_output_stage)
 		fprintf(opt->diffopt.file, "\n%s\n", opt->break_bar);
 	opt->loginfo = NULL;
-	if (opt->diffopt.file == stdout)
-		maybe_flush_or_die(stdout, "stdout");
+	maybe_flush_or_die(stdout, "log-tree output");
 	return shown;
 }

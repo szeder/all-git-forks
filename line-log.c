@@ -854,10 +854,10 @@ static void print_line(const char *prefix, char first,
 
 	fputs(prefix, file);
 	fputs(color, file);
-	fputc(first, file);
+	putc(first, file);
 	fwrite(begin, 1, end-begin, file);
 	fputs(reset, file);
-	fputc('\n', file);
+	putc('\n', file);
 	if (!had_nl)
 		fputs("\\ No newline at end of file\n", file);
 }

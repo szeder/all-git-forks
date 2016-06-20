@@ -328,7 +328,7 @@ void shortlog_output(struct shortlog *log)
 				else
 					fprintf(log->file, "      %s\n", msg);
 			}
-			fputc('\n', log->file);
+			putc('\n', log->file);
 			onelines->strdup_strings = 1;
 			string_list_clear(onelines, 0);
 			free(onelines);

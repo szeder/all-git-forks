@@ -1196,7 +1196,7 @@ void graph_show_commit(struct git_graph *graph)
 		fwrite(msgbuf.buf, sizeof(char), msgbuf.len,
 			graph->revs->diffopt.file);
 		if (!shown_commit_line)
-			fputc('\n', graph->revs->diffopt.file);
+			putc('\n', graph->revs->diffopt.file);
 		strbuf_setlen(&msgbuf, 0);
 	}
 
@@ -1246,7 +1246,7 @@ int graph_show_remainder(struct git_graph *graph)
 		shown = 1;
 
 		if (!graph_is_commit_finished(graph))
-			fputc('\n', graph->revs->diffopt.file);
+			putc('\n', graph->revs->diffopt.file);
 		else
 			break;
 	}
@@ -1322,7 +1322,7 @@ void graph_show_commit_msg(struct git_graph *graph,
 		 * new line.
 		 */
 		if (!newline_terminated)
-			fputc('\n', graph->revs->diffopt.file);
+			putc('\n', graph->revs->diffopt.file);
 
 		graph_show_remainder(graph);
 
@@ -1330,6 +1330,6 @@ void graph_show_commit_msg(struct git_graph *graph,
 		 * If sb ends with a newline, our output should too.
 		 */
 		if (newline_terminated)
-			fputc('\n', graph->revs->diffopt.file);
+			putc('\n', graph->revs->diffopt.file);
 	}
 }
