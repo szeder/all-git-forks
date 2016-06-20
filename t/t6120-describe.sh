@@ -206,4 +206,47 @@ test_expect_success 'describe --contains with the exact tags' '
 	test_cmp expect actual
 '
 
+test_expect_success setup_submodules '
+
+	test_tick &&
+	git submodule init  &&
+	test_create_repo subModule &&
+	echo "data" > subModule/file &&
+	git -C subModule add file &&
+	git -C subModule commit -m addedFile &&
+	git submodule add ./subModule &&
+	git commit -am AddedsubModule &&
+
+	test_tick &&
+	test_create_repo subModule/subSubModule &&
+	echo "data" > subModule/subSubModule/file &&
+	git -C subModule/subSubModule add file &&
+	git -C subModule/subSubModule commit -m addedFile &&
+	git -C subModule submodule add ./subModule/subSubModule &&
+	git -C subModule commit -am "subModule" &&
+	git commit -am AddedsubModule
+'
+test_expect_success 'describe --dirty with subModule dirty' '
+	test_tick &&
+	git describe > expect &&
+	git describe --dirty >actual &&
+	test_cmp expect actual &&
+
+	echo "new data" >> subModule/file &&
+	git describe --dirty >actual &&
+	git -C subModule reset --hard &&
+	! test_cmp expect actual
+'
+test_expect_success 'describe --dirty with sub-subModule dirty' '
+	test_tick &&
+	git describe > expect &&
+	git describe --dirty >actual &&
+	test_cmp expect actual &&
+
+	echo "new data" >> subModule/subSubModule/file &&
+	git describe --dirty >actual &&
+	git -C subModule/subSubModule reset --hard &&
+	! test_cmp expect actual
+'
+
 test_done
