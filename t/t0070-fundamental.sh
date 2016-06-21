@@ -34,4 +34,8 @@ test_expect_success 'check for a bug in the regex routines' '
 	test-regex
 '
 
+test_expect_success 'check for a bug in the quoting routines' '
+	test-quote
+'
+
 test_done
