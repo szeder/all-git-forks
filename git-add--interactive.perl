@@ -636,25 +636,25 @@ sub list_and_choose {
 }
 
 sub singleton_prompt_help_cmd {
-	print colored $help_color, <<\EOF ;
-Prompt help:
+	print colored $help_color, __(
+"Prompt help:
 1          - select a numbered item
 foo        - select item based on unique prefix
-           - (empty) select nothing
-EOF
+           - (empty) select nothing"),
+"\n";
 }
 
 sub prompt_help_cmd {
-	print colored $help_color, <<\EOF ;
-Prompt help:
+	print colored $help_color, __(
+"Prompt help:
 1          - select a single item
 3-5        - select a range of items
 2-3,6-9    - select multiple ranges
 foo        - select item based on unique prefix
 -...       - unselect specified items
 *          - choose all items
-           - (empty) finish selecting
-EOF
+           - (empty) finish selecting"),
+"\n";
 }
 
 sub status_cmd {
@@ -1573,14 +1573,14 @@ sub quit_cmd {
 }
 
 sub help_cmd {
-	print colored $help_color, <<\EOF ;
-status        - show paths with changes
+	print colored $help_color, __(
+"status        - show paths with changes
 update        - add working tree state to the staged set of changes
 revert        - revert staged set of changes back to the HEAD version
 patch         - pick hunks and update selectively
 diff	      - view diff between HEAD and index
-add untracked - add contents of untracked files to the staged set of changes
-EOF
+add untracked - add contents of untracked files to the staged set of changes"),
+"\n";
 }
 
 sub process_args {
