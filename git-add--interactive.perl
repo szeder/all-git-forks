@@ -666,12 +666,18 @@ sub status_cmd {
 sub say_n_paths {
 	my $did = shift @_;
 	my $cnt = scalar @_;
-	print "$did ";
-	if (1 < $cnt) {
-		print "$cnt paths\n";
-	}
-	else {
-		print "one path\n";
+	if ($did eq 'added') {
+		printf Q__("added one path\n", "added %d paths\n",
+			   $cnt), $cnt;
+	} elsif ($did eq 'updated') {
+		printf Q__("updated one path\n", "updated %d paths\n",
+			   $cnt), $cnt;
+	} elsif ($did eq 'reversed') {
+		printf Q__("reversed one path\n", "reversed %d paths\n",
+			   $cnt), $cnt;
+	} else {
+		printf Q__("touched one path\n", "touched %d paths\n",
+			   $cnt), $cnt;
 	}
 }
 
@@ -1508,8 +1514,10 @@ sub patch_update_file {
 			elsif ($other =~ /s/ && $line =~ /^s/) {
 				my @split = split_hunk($hunk[$ix]{TEXT}, $hunk[$ix]{DISPLAY});
 				if (1 < @split) {
-					print colored $header_color, "Split into ",
-					scalar(@split), " hunks.\n";
+					print colored $header_color, sprintf
+						Q__("Split into %d hunk.\n",
+						    "Split into %d hunks.\n",
+						    scalar(@split)), scalar(@split);
 				}
 				splice (@hunk, $ix, 1, @split);
 				$num = scalar @hunk;
