@@ -132,5 +132,11 @@ test_expect_success 'server request log matches test results' '
 	test_cmp exp act
 '
 
+test_expect_success 'shallow clone' '
+	config http.uploadpack true &&
+	git clone --depth=1 "$HTTPD_URL/smart/repo.git" shallow &&
+	tail "$HTTPD_ROOT_PATH"/error.log | grep fatal
+'
+
 stop_httpd
 test_done
