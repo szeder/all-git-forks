@@ -207,6 +207,10 @@ test_expect_success POSIXPERM,SANITY 'git add should fail atomically upon an unr
 	! ( git ls-files foo1 | grep foo1 )
 '
 
+test_expect_success 'git add empty string should invoke warning' '
+	git add "" 2>&1 | grep "warning: empty string"
+'
+
 rm -f foo2
 
 test_expect_success POSIXPERM,SANITY 'git add --ignore-errors' '

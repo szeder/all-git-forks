@@ -881,4 +881,8 @@ test_expect_success 'rm files with two different errors' '
 	test_i18ncmp expect actual
 '
 
+test_expect_success 'rm empty string should invoke warning' '
+	git rm -rf "" 2>&1 | grep "warning: empty string"
+'
+
 test_done
