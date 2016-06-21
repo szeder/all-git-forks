@@ -612,12 +612,12 @@ sub list_and_choose {
 			else {
 				$bottom = $top = find_unique($choice, @stuff);
 				if (!defined $bottom) {
-					error_msg "Huh ($choice)?\n";
+					error_msg sprintf __("Huh (%s)?\n"), $choice;
 					next TOPLOOP;
 				}
 			}
 			if ($opts->{SINGLETON} && $bottom != $top) {
-				error_msg "Huh ($choice)?\n";
+				error_msg sprintf __("Huh (%s)?\n"), $choice;
 				next TOPLOOP;
 			}
 			for ($i = $bottom-1; $i <= $top-1; $i++) {
@@ -1048,7 +1048,7 @@ sub edit_hunk_manually {
 	my $hunkfile = $repo->repo_path . "/addp-hunk-edit.diff";
 	my $fh;
 	open $fh, '>', $hunkfile
-		or die "failed to open hunk edit file for writing: " . $!;
+		or die sprintf __("failed to open hunk edit file for writing: %s"), $!;
 	print $fh "# Manual hunk edit mode -- see bottom for a quick guide\n";
 	print $fh @$oldtext;
 	my $participle = $patch_mode_flavour{PARTICIPLE};
@@ -1075,7 +1075,7 @@ EOF
 	}
 
 	open $fh, '<', $hunkfile
-		or die "failed to open hunk edit file for reading: " . $!;
+		or die sprintf __("failed to open hunk edit file for reading: %s"), $!;
 	my @newtext = grep { !/^#/ } <$fh>;
 	close $fh;
 	unlink $hunkfile;
@@ -1225,7 +1225,7 @@ sub apply_patch_for_checkout_commit {
 
 sub patch_update_cmd {
 	my @all_mods = list_modified($patch_mode_flavour{FILTER});
-	error_msg "ignoring unmerged: $_->{VALUE}\n"
+	error_msg sprintf __("ignoring unmerged: %s\n"), $_->{VALUE}
 		for grep { $_->{UNMERGED} } @all_mods;
 	@all_mods = grep { !$_->{UNMERGED} } @all_mods;
 
@@ -1407,11 +1407,13 @@ sub patch_update_file {
 					chomp $response;
 				}
 				if ($response !~ /^\s*\d+\s*$/) {
-					error_msg "Invalid number: '$response'\n";
+					error_msg sprintf __("Invalid number: '%s'\n"),
+						      $response;
 				} elsif (0 < $response && $response <= $num) {
 					$ix = $response - 1;
 				} else {
-					error_msg "Sorry, only $num hunks available.\n";
+					error_msg sprintf __("Sorry, only %s hunks available.\n"),
+						      $num;
 				}
 				next;
 			}
@@ -1449,7 +1451,7 @@ sub patch_update_file {
 				if ($@) {
 					my ($err,$exp) = ($@, $1);
 					$err =~ s/ at .*git-add--interactive line \d+, <STDIN> line \d+.*$//;
-					error_msg "Malformed search regexp $exp: $err\n";
+					error_msg sprintf __("Malformed search regexp %s: %s\n"), $exp, $err;
 					next;
 				}
 				my $iy = $ix;
@@ -1612,18 +1614,18 @@ sub process_args {
 				$patch_mode = $1;
 				$arg = shift @ARGV or die __("missing --");
 			} else {
-				die "unknown --patch mode: $1";
+				die sprintf __("unknown --patch mode: %s"), $1;
 			}
 		} else {
 			$patch_mode = 'stage';
 			$arg = shift @ARGV or die __("missing --");
 		}
-		die "invalid argument $arg, expecting --"
-		    unless $arg eq "--";
+		die sprintf __("invalid argument %s, expecting --"),
+			       $arg unless $arg eq "--";
 		%patch_mode_flavour = %{$patch_modes{$patch_mode}};
 	}
 	elsif ($arg ne "--") {
-		die "invalid argument $arg, expecting --";
+		die sprintf __("invalid argument %s, expecting --"), $arg;
 	}
 }
 
