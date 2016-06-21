@@ -91,6 +91,7 @@ sub colored {
 }
 
 # command line options
+my $cmd;
 my $patch_mode;
 my $patch_mode_revision;
 
@@ -171,7 +172,8 @@ my %patch_modes = (
 	},
 );
 
-my %patch_mode_flavour = %{$patch_modes{stage}};
+$patch_mode = 'stage';
+my %patch_mode_flavour = %{$patch_modes{$patch_mode}};
 
 sub run_cmd_pipe {
 	if ($^O eq 'MSWin32') {
@@ -1372,12 +1374,105 @@ sub patch_update_file {
 		for (@{$hunk[$ix]{DISPLAY}}) {
 			print;
 		}
-		print colored $prompt_color, $patch_mode_flavour{VERB},
-		  ($hunk[$ix]{TYPE} eq 'mode' ? ' mode change' :
-		   $hunk[$ix]{TYPE} eq 'deletion' ? ' deletion' :
-		   ' this hunk'),
-		  $patch_mode_flavour{TARGET},
-		  " [y,n,q,a,d,/$other,?]? ";
+		if ($patch_mode eq 'stage') {
+			if ($hunk[$ix]{TYPE} eq 'mode') {
+			  print colored $prompt_color,
+			    sprintf __("Stage mode change [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} elsif ($hunk[$ix]{TYPE} eq 'deletion') {
+			  print colored $prompt_color,
+			    sprintf __("Stage deletion [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} else {
+			  print colored $prompt_color,
+			    sprintf __("Stage this hunk [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			}
+		} elsif ($patch_mode eq 'stash') {
+			if ($hunk[$ix]{TYPE} eq 'mode') {
+			  print colored $prompt_color,
+			    sprintf __("Stash mode change [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} elsif ($hunk[$ix]{TYPE} eq 'deletion') {
+			  print colored $prompt_color,
+			    sprintf __("Stash deletion [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} else {
+			  print colored $prompt_color,
+			    sprintf __("Stash this hunk [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			}
+		} elsif ($patch_mode eq 'reset_head') {
+			if ($hunk[$ix]{TYPE} eq 'mode') {
+			  print colored $prompt_color,
+			    sprintf __("Unstage mode change [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} elsif ($hunk[$ix]{TYPE} eq 'deletion') {
+			  print colored $prompt_color,
+			    sprintf __("Unstage deletion [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} else {
+			  print colored $prompt_color,
+			    sprintf __("Unstage this hunk [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			}
+		} elsif ($patch_mode eq 'reset_nothead') {
+			if ($hunk[$ix]{TYPE} eq 'mode') {
+			  print colored $prompt_color,
+			    sprintf __("Apply mode change to index [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} elsif ($hunk[$ix]{TYPE} eq 'deletion') {
+			  print colored $prompt_color,
+			    sprintf __("Apply deletion to index [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} else {
+			  print colored $prompt_color,
+			    sprintf __("Apply this hunk to index [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			}
+		} elsif ($patch_mode eq 'checkout_index') {
+			if ($hunk[$ix]{TYPE} eq 'mode') {
+			  print colored $prompt_color,
+			    sprintf __("Discard mode change from worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} elsif ($hunk[$ix]{TYPE} eq 'deletion') {
+			  print colored $prompt_color,
+			    sprintf __("Discard deletion from worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} else {
+			  print colored $prompt_color,
+			    sprintf __("Discard this hunk from worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			}
+		} elsif ($patch_mode eq 'checkout_head') {
+			if ($hunk[$ix]{TYPE} eq 'mode') {
+			  print colored $prompt_color,
+			    sprintf __("Discard mode change from index and worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} elsif ($hunk[$ix]{TYPE} eq 'deletion') {
+			  print colored $prompt_color,
+			    sprintf __("Discard deletion from index and worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} else {
+			  print colored $prompt_color,
+			    sprintf __("Discard this hunk from index and worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			}
+		} elsif ($patch_mode eq 'checkout_nothead') {
+			if ($hunk[$ix]{TYPE} eq 'mode') {
+			  print colored $prompt_color,
+			    sprintf __("Apply mode change to index and worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} elsif ($hunk[$ix]{TYPE} eq 'deletion') {
+			  print colored $prompt_color,
+			    sprintf __("Apply deletion to index and worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			} else {
+			  print colored $prompt_color,
+			    sprintf __("Apply this hunk to index and worktree [y,n,q,a,d,/%s,?]? "),
+				       $other;
+			}
+		}
 		my $line = prompt_single_character;
 		last unless defined $line;
 		if ($line) {
@@ -1631,6 +1726,7 @@ sub process_args {
 		die sprintf __("invalid argument %s, expecting --"),
 			       $arg unless $arg eq "--";
 		%patch_mode_flavour = %{$patch_modes{$patch_mode}};
+		$cmd = 1;
 	}
 	elsif ($arg ne "--") {
 		die sprintf __("invalid argument %s, expecting --"), $arg;
@@ -1667,7 +1763,7 @@ sub main_loop {
 
 process_args();
 refresh();
-if ($patch_mode) {
+if ($cmd) {
 	patch_update_cmd();
 }
 else {
