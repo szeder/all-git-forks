@@ -125,11 +125,11 @@ static int parse_color(struct color *out, const char *name, int len)
 
 static int parse_attr(const char *name, int len)
 {
-	static const int attr_values[] = { 1, 2, 4, 5, 7,
-					   22, 22, 24, 25, 27 };
+	static const int attr_values[] = { 1, 2, 3, 4, 5, 7,
+					   22, 22, 23, 24, 25, 27 };
 	static const char * const attr_names[] = {
-		"bold", "dim", "ul", "blink", "reverse",
-		"nobold", "nodim", "noul", "noblink", "noreverse"
+		"bold", "dim", "italic", "ul", "blink", "reverse",
+		"nobold", "nodim", "noitalic", "noul", "noblink", "noreverse"
 	};
 	int i;
 	for (i = 0; i < ARRAY_SIZE(attr_names); i++) {
