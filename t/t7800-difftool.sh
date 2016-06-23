@@ -20,7 +20,7 @@ difftool_test_setup ()
 prompt_given ()
 {
 	prompt="$1"
-	test "$prompt" = "Launch 'test-tool' [Y/n]: branch"
+	test "$prompt" = "Launch 'test-tool' [Y/n]? branch"
 }
 
 # Create a file on master and change it on branch
@@ -417,6 +417,29 @@ run_dir_diff_test 'difftool --dir-diff when worktree file is missing' '
 	rm file2 &&
 	git difftool --dir-diff $symlinks --extcmd ls branch master >output &&
 	grep file2 output
+'
+
+run_dir_diff_test 'difftool --dir-diff with unmerged files' '
+	test_when_finished git reset --hard &&
+	test_config difftool.echo.cmd "echo ok" &&
+	git checkout -B conflict-a &&
+	git checkout -B conflict-b &&
+	git checkout conflict-a &&
+	echo a >>file &&
+	git add file &&
+	git commit -m conflict-a &&
+	git checkout conflict-b &&
+	echo b >>file &&
+	git add file &&
+	git commit -m conflict-b &&
+	git checkout master &&
+	git merge conflict-a &&
+	test_must_fail git merge conflict-b &&
+	cat >expect <<-EOF &&
+		ok
+	EOF
+	git difftool --dir-diff $symlinks -t echo >actual &&
+	test_cmp expect actual
 '
 
 write_script .git/CHECK_SYMLINKS <<\EOF
