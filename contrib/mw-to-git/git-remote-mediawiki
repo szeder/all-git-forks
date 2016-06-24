@@ -289,21 +289,22 @@ sub get_pages {
 
 
 	my $user_defined;
+        my %pages;
 	if (@tracked_pages) {
 		print STDERR "Listing tracked pages on remote wiki...\n";
 		$user_defined = 1;
 		# The user provided a list of pages titles, but we
 		# still need to query the API to get the page IDs.
-		return get_tracked_pages();
+		get_tracked_pages(\%pages);
 	}
 	if (@tracked_categories) {
 		print STDERR "Listing tracked categories on remote wiki...\n";
 		$user_defined = 1;
-		return get_tracked_categories();
+		get_tracked_categories(\%pages);
 	}
 	if (!$user_defined) {
 		print STDERR "Listing all pages on remote wiki...\n";
-		return get_all_pages();
+                get_all_pages(\%pages);
 	}
 	if ($import_media) {
 		print STDERR "Getting media files for selected pages...\n";
