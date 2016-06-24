@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use lib (split(/:/, $ENV{GITPERLLIB} || "/usr/share/perl/5.20.2"));
 
 # Copyright (C) 2013
 #     Benoit Person <benoit.person@ensimag.imag.fr>
