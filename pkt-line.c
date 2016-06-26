@@ -94,7 +94,7 @@ void packet_flush(int fd)
 int packet_flush_gently(int fd)
 {
 	packet_trace("0000", 4, 1);
-	return write_in_full(fd, "0000", 4) != 4;
+	return write_in_full(fd, "0000", 4) == 4 ? 0 : -1;
 }
 
 void packet_buf_flush(struct strbuf *buf)

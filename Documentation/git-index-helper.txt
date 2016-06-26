@@ -55,6 +55,17 @@ command. The following commands are used to control the daemon:
 	Let the daemon know the index is to be read. It keeps the
 	daemon alive longer, unless `--exit-after=0` is used.
 
+"poke <pid> <capabilities>":
+	Like "poke", but replies with "OK".  If the "watchman"
+	capability is requested, and git is built with watchman, and
+	the index has the watchman extension, then index-helper
+	queries watchman.  When watchman replies, index-helper
+	prepares a shared memory object with the watchman index
+	extension, then replies "OK watchman".  If git was built
+	without watchman, "NAK watchman" is sent.  This shouldn't
+	happen very often, since a git built without watchman won't
+	request the watchman capability.
+
 All commands and replies are in pkt-line format.
 
 In the event of an error, messages may be written to
