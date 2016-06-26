@@ -208,7 +208,7 @@ static void add_branch_desc(struct strbuf *out, const char *name)
 {
 	struct strbuf desc = STRBUF_INIT;
 
-	if (!read_branch_desc(&desc, name)) {
+	if (!read_branch_description(&desc, name)) {
 		const char *bp = desc.buf;
 		while (*bp) {
 			const char *ep = strchrnul(bp, '\n');

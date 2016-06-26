@@ -163,7 +163,7 @@ static void setup_tracking(const char *new_ref, const char *orig_ref,
 	free(tracking.src);
 }
 
-int read_branch_desc(struct strbuf *buf, const char *branch_name)
+int read_branch_description(struct strbuf *buf, const char *branch_name)
 {
 	char *v = NULL;
 	struct strbuf name = STRBUF_INIT;

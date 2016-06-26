@@ -51,7 +51,7 @@ extern int install_branch_config(int flag, const char *local, const char *origin
 /*
  * Read branch description
  */
-extern int read_branch_desc(struct strbuf *, const char *branch_name);
+extern int read_branch_description(struct strbuf *, const char *branch_name);
 
 /*
  * Check if a branch is checked out in the main worktree or any linked
