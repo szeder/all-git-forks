@@ -103,7 +103,8 @@ static void share_index(struct index_state *istate, struct shm *is)
 	if (shared_mmap_create(istate->mmap_size, &new_mmap,
 			       git_path("shm-index-%s",
 					sha1_to_hex(istate->sha1))) < 0) {
-		die("Failed to create shm-index file");
+		warning("Failed to create shm-index file");
+		exit(1);
 	}
 
 
@@ -336,8 +337,17 @@ int main(int argc, char **argv)
 		die("--exit-after value must be less than %d seconds",
 		    INT_MAX / 1000);
 
+	if (detach) {
+		FILE *fp = fopen(git_path("index-helper.log"), "a");
+		if (!fp)
+			die("failed to open %s for writing",
+			    git_path("index-helper.log"));
+		set_error_handle(fp);
+	}
+
 	if (detach && daemonize(&daemonized))
 		die_errno(_("unable to detach"));
+
 	loop(fd, idle_in_seconds);
 
 	close(fd);
