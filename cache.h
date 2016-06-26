@@ -1196,6 +1196,8 @@ extern char *sha1_to_hex_r(char *out, const unsigned char *sha1);
 extern char *sha1_to_hex(const unsigned char *sha1);	/* static buffer result! */
 extern char *oid_to_hex(const struct object_id *oid);	/* same static buffer as sha1_to_hex */
 
+extern char *sha256_to_hex_r(char *out, const unsigned char *sha1);
+
 extern int interpret_branch_name(const char *str, int len, struct strbuf *);
 extern int get_sha1_mb(const char *str, unsigned char *sha1);
 

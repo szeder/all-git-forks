@@ -18,6 +18,10 @@
 #define CONVERT_STAT_BITS_TXT_CRLF  0x2
 #define CONVERT_STAT_BITS_BIN       0x4
 
+const char *LFS_VERSION_MARKER = "version https://git-lfs.github.com/spec/v1\n";
+const char *LFS_OID_MARKER = "oid sha256:";
+
+
 enum crlf_action {
 	CRLF_UNDEFINED,
 	CRLF_BINARY,
@@ -427,6 +431,79 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	return (write_err || status);
 }
 
+static int cached_lfs_smudge(const char *src, const char *cmd,
+							 struct strbuf *lfsbuf)
+{
+	int ret = 0;
+	if (src &&
+		strlen(src) > strlen(LFS_VERSION_MARKER) &&
+		!strncmp(LFS_VERSION_MARKER, src, strlen(LFS_VERSION_MARKER)) &&
+		!strcmp("git-lfs smudge %f", cmd)
+	) {
+		const char *lfs_oid_found = strstr(src, LFS_OID_MARKER);
+		if (lfs_oid_found) {
+			const char *lfs_oid = lfs_oid_found + strlen(LFS_OID_MARKER);
+
+			// Construct path to LFS object
+			strbuf_reset(lfsbuf);
+			strbuf_addstr(lfsbuf, git_pathdup("lfs/objects/"));
+			strbuf_add(lfsbuf, lfs_oid, 2);
+			strbuf_addch(lfsbuf, '/');
+			strbuf_add(lfsbuf, lfs_oid+2, 2);
+			strbuf_addch(lfsbuf, '/');
+			strbuf_add(lfsbuf, lfs_oid, 64);
+
+			if (access(lfsbuf->buf, F_OK) != -1) {
+				// LFS object found in local LFS cache
+				ret = 1;
+			}
+		}
+	}
+	return ret;
+}
+
+static int cached_lfs_clean(const char *path, const char *cmd,
+							struct strbuf *lfsbuf)
+{
+	int ret = 0;
+	if (path && !strcmp("git-lfs clean %f", cmd)) {
+
+		// TODO: Is there an easy way to access the content of the last
+		// known committed state of this file in the Git repo? If yes,
+		// then we could read the last known Git LFS OID, construct a
+		// path in the Git LFS cache and compare this file against "path".
+		// If both files are equal then we can use the last known committed
+		// state as "clean" and we could get rid of the SHA256 dependency
+		// here.
+		ssize_t file_size;
+		unsigned char sha256[64];
+		sha256fd(path, &sha256, &file_size);
+
+		char lfs_oid[64];
+		sha256_to_hex_r(lfs_oid, sha256);
+
+		// Construct path to LFS object
+		strbuf_reset(lfsbuf);
+		strbuf_addstr(lfsbuf, git_pathdup("lfs/objects/"));
+		strbuf_add(lfsbuf, lfs_oid, 2);
+		strbuf_addch(lfsbuf, '/');
+		strbuf_add(lfsbuf, lfs_oid+2, 2);
+		strbuf_addch(lfsbuf, '/');
+		strbuf_add(lfsbuf, lfs_oid, 64);
+
+		if (access(lfsbuf->buf, F_OK) != -1) {
+			// LFS object found in local LFS cache
+			strbuf_reset(lfsbuf);
+			strbuf_addstr(lfsbuf, LFS_VERSION_MARKER);
+			strbuf_addstr(lfsbuf, LFS_OID_MARKER);
+			strbuf_add(lfsbuf, lfs_oid, 64);
+			strbuf_addf(lfsbuf, "\nsize %d\n", file_size);
+			ret = 1;
+		}
+	}
+	return ret;
+}
+
 static int apply_filter(const char *path, const char *src, size_t len, int fd,
                         struct strbuf *dst, const char *cmd)
 {
@@ -437,6 +514,7 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	 * (child --> cmd) --> us
 	 */
 	int ret = 1;
+	struct strbuf lfsbuf = STRBUF_INIT;
 	struct strbuf nbuf = STRBUF_INIT;
 	struct async async;
 	struct filter_params params;
@@ -447,37 +525,56 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	if (!dst)
 		return 1;
 
-	memset(&async, 0, sizeof(async));
-	async.proc = filter_buffer_or_fd;
-	async.data = &params;
-	async.out = -1;
-	params.src = src;
-	params.size = len;
-	params.fd = fd;
-	params.cmd = cmd;
-	params.path = path;
-
-	fflush(NULL);
-	if (start_async(&async))
-		return 0;	/* error was already reported */
-
-	if (strbuf_read(&nbuf, async.out, len) < 0) {
-		error("read from external filter %s failed", cmd);
-		ret = 0;
+	// TODO: check if git config "lfs.native-cache" is true
+	if (cached_lfs_smudge(src, cmd, &lfsbuf)) {
+		fd = open(lfsbuf.buf, O_RDONLY);
+		if (strbuf_read(&nbuf, fd, len) < 0) {
+			error("reading from cached LFS object failed", lfsbuf.buf);
+			ret = 0;
+		}
+		if (close(fd)) {
+			error("closing cached LFS object failed", lfsbuf.buf);
+			ret = 0;
+		}
 	}
-	if (close(async.out)) {
-		error("read from external filter %s failed", cmd);
-		ret = 0;
-	}
-	if (finish_async(&async)) {
-		error("external filter %s failed", cmd);
-		ret = 0;
+	// TODO: check if git config "lfs.native-cache" is true
+	else if (cached_lfs_clean(path, cmd, &lfsbuf)) {
+		strbuf_reset(&nbuf);
+		strbuf_addstr(&nbuf, lfsbuf.buf);
+	} else {
+		memset(&async, 0, sizeof(async));
+		async.proc = filter_buffer_or_fd;
+		async.data = &params;
+		async.out = -1;
+		params.src = src;
+		params.size = len;
+		params.fd = fd;
+		params.cmd = cmd;
+		params.path = path;
+
+		fflush(NULL);
+		if (start_async(&async))
+			return 0;	/* error was already reported */
+
+		if (strbuf_read(&nbuf, async.out, len) < 0) {
+			error("read from external filter %s failed", cmd);
+			ret = 0;
+		}
+		if (close(async.out)) {
+			error("read from external filter %s failed", cmd);
+			ret = 0;
+		}
+		if (finish_async(&async)) {
+			error("external filter %s failed", cmd);
+			ret = 0;
+		}
 	}
 
 	if (ret) {
 		strbuf_swap(dst, &nbuf);
 	}
 	strbuf_release(&nbuf);
+	strbuf_release(&lfsbuf);
 	return ret;
 }
 

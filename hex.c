@@ -88,3 +88,19 @@ char *oid_to_hex(const struct object_id *oid)
 {
 	return sha1_to_hex(oid->hash);
 }
+
+char *sha256_to_hex_r(char *buffer, const unsigned char *sha1)
+{
+	static const char hex[] = "0123456789abcdef";
+	char *buf = buffer;
+	int i;
+
+	for (i = 0; i < 32; i++) {
+		unsigned int val = *sha1++;
+		*buf++ = hex[val >> 4];
+		*buf++ = hex[val & 0xf];
+	}
+	*buf = '\0';
+
+	return buffer;
+}
