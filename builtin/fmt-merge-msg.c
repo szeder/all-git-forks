@@ -204,24 +204,6 @@ static void print_joined(const char *singular, const char *plural,
 	}
 }
 
-static void add_branch_desc(struct strbuf *out, const char *name)
-{
-	struct strbuf desc = STRBUF_INIT;
-
-	if (!read_branch_description(&desc, name)) {
-		const char *bp = desc.buf;
-		while (*bp) {
-			const char *ep = strchrnul(bp, '\n');
-			if (*ep)
-				ep++;
-			strbuf_addf(out, "  : %.*s", (int)(ep - bp), bp);
-			bp = ep;
-		}
-		strbuf_complete_line(out);
-	}
-	strbuf_release(&desc);
-}
-
 #define util_as_integral(elem) ((intptr_t)((elem)->util))
 
 static void record_person_from_buf(int which, struct string_list *people,
@@ -391,7 +373,7 @@ static void shortlog(const char *name,
 		strbuf_addf(out, "\n* %s:\n", name);
 
 	if (origin_data->is_local_branch && use_branch_desc)
-		add_branch_desc(out, name);
+		add_branch_description(out, name, "  : ");
 
 	for (i = 0; i < subjects.nr; i++)
 		if (i >= limit)
