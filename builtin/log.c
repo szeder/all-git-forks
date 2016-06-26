@@ -893,20 +893,6 @@ static void print_signature(void)
 	putchar('\n');
 }
 
-static void add_branch_description(struct strbuf *buf, const char *branch_name)
-{
-	struct strbuf desc = STRBUF_INIT;
-	if (!branch_name || !*branch_name)
-		return;
-	read_branch_description(&desc, branch_name);
-	if (desc.len) {
-		strbuf_addch(buf, '\n');
-		strbuf_addbuf(buf, &desc);
-		strbuf_addch(buf, '\n');
-	}
-	strbuf_release(&desc);
-}
-
 static char *find_branch_name(struct rev_info *rev)
 {
 	int i, positive = -1;
@@ -981,7 +967,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	pp_user_info(&pp, NULL, &sb, committer, encoding);
 	pp_title_line(&pp, &msg, &sb, encoding, need_8bit_cte);
 	pp_remainder(&pp, &msg, &sb, 0);
-	add_branch_description(&sb, branch_name);
+	add_branch_description(&sb, branch_name, NULL);
 	printf("%s\n", sb.buf);
 
 	strbuf_release(&sb);

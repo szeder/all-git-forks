@@ -178,6 +178,16 @@ int read_branch_description(struct strbuf *buf, const char *branch_name)
 	return 0;
 }
 
+void add_branch_description(struct strbuf *buf, const char *branch_name,
+			    const char *prefix)
+{
+	struct strbuf desc = STRBUF_INIT;
+
+	if (!read_branch_description(&desc, branch_name))
+		strbuf_add_lines(buf, prefix ? prefix : "", desc.buf, desc.len);
+	strbuf_release(&desc);
+}
+
 int validate_new_branchname(const char *name, struct strbuf *ref,
 			    int force, int attr_only)
 {
