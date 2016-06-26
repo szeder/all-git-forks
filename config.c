@@ -140,9 +140,58 @@ static int handle_path_include(const char *path, struct config_include_data *inc
 	return ret;
 }
 
+static int include_condition_is_true(const char *cond, int cond_len)
+{
+	const char *value;
+
+	/* no condition (i.e., "include.path") is always true */
+	if (!cond)
+		return 1;
+
+	/*
+	 * It's OK to run over cond_len in our checks here, as that just pushes
+	 * us past the final ".", which cannot match any of our prefixes.
+	 */
+	if (skip_prefix(cond, "gitdir:", &value)) {
+		struct strbuf text = STRBUF_INIT;
+		struct strbuf pattern = STRBUF_INIT;
+		char *buf;
+		int ret;
+
+		strbuf_add_absolute_path(&text, get_git_dir());
+
+		strbuf_add(&pattern, value, cond_len - (value - cond));
+		buf = expand_user_path(pattern.buf);
+		if (buf) {
+			strbuf_reset(&pattern);
+			strbuf_addstr(&pattern, buf);
+			free(buf);
+		}
+
+		if (pattern.len && pattern.buf[pattern.len - 1] == '/') {
+			/* foo/ matches recursively */
+			strbuf_addstr(&pattern, "**");
+		} else if (!strchr(pattern.buf, '/')) {
+			/* no slashes match one directory component */
+			strbuf_insert(&pattern, 0, "**/", 3);
+			strbuf_addstr(&pattern, "/**");
+		}
+
+		ret = !wildmatch(pattern.buf, text.buf, 0, NULL);
+		strbuf_release(&pattern);
+		strbuf_release(&text);
+		return ret;
+	}
+
+	/* unknown conditionals are always false */
+	return 0;
+}
+
 int git_config_include(const char *var, const char *value, void *data)
 {
 	struct config_include_data *inc = data;
+	const char *cond, *key;
+	int cond_len;
 	int ret;
 
 	/*
@@ -153,8 +202,12 @@ int git_config_include(const char *var, const char *value, void *data)
 	if (ret < 0)
 		return ret;
 
-	if (!strcmp(var, "include.path"))
-		ret = handle_path_include(value, inc);
+	if (!parse_config_key(var, "include", &cond, &cond_len, &key) &&
+	    include_condition_is_true(cond, cond_len)) {
+		if (!strcmp(key, "path"))
+			ret = handle_path_include(value, inc);
+		/* else we do not know about this type of include; ignore */
+	}
 	return ret;
 }
 
