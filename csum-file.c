@@ -11,6 +11,37 @@
 #include "progress.h"
 #include "csum-file.h"
 
+void sha256fd(const char *name, unsigned char *sha256, ssize_t *file_size)
+{
+	int fd;
+	struct stat st;
+	fd = open(name, O_RDONLY);
+	if (fd < 0)
+		die_errno("unable to open '%s'", name);
+	fstat(fd, &st);
+	size_t size = xsize_t(st.st_size);
+	*file_size = size;
+
+	SHA256_CTX ctx;
+	SHA256_Init(&ctx);
+	unsigned char fd_buffer[8192];
+
+	while (size > 0) {
+		ssize_t rsize = size < sizeof(fd_buffer) ? size : sizeof(fd_buffer);
+		ssize_t ret = read_in_full(fd, fd_buffer, rsize);
+
+		if (ret < 0)
+			die_errno("%s: sha256 file read error", name);
+		if (ret != rsize)
+			die("failed to read %d bytes from '%s'", (int)rsize, name);
+		SHA256_Update(&ctx, fd_buffer, rsize);
+		size -= rsize;
+	}
+
+	SHA256_Final(sha256, &ctx);
+	close(fd);
+}
+
 static void flush(struct sha1file *f, const void *buf, unsigned int count)
 {
 	if (0 <= f->check_fd && count)  {
