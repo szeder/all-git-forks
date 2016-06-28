@@ -192,4 +192,15 @@ test_expect_success 'abort rebase -i with --autostash' '
 	test_cmp expected file0
 '
 
+test_expect_success 'restore autostash on editor failure' '
+	test_when_finished "git reset --hard" &&
+	echo uncommited-content >file0 &&
+	(
+		test_set_editor "false" &&
+		test_must_fail git rebase -i --autostash HEAD^
+	) &&
+	echo uncommited-content >expected &&
+	test_cmp expected file0
+'
+
 test_done
