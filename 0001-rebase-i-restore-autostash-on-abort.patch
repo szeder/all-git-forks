@@ -1,0 +1,61 @@
+From d30b95787da57096136e8ebcc4ce167de23e4fb4 Mon Sep 17 00:00:00 2001
+From: Patrick Steinhardt <ps@pks.im>
+Date: Tue, 28 Jun 2016 19:38:26 +0200
+Subject: [PATCH] rebase -i: restore autostash on abort
+To: git@vger.kernel.org
+Cc: Junio C Hamano <gitster@pobox.com>,
+    Johannes Schindelin <Johannes.Schindelin@gmx.de>,
+    Daniel Hahler <git@thequod.de>
+
+When we abort an interactive rebase we do so by calling
+`die_abort`, which cleans up after us by removing the rebase
+state directory. If the user has requested to use the autostash
+feature, though, the state directory may also contain a reference
+to the autostash, which will now be deleted.
+
+Fix the issue by trying to re-apply the autostash in `die_abort`.
+This will also handle the case where the autostash does not apply
+cleanly anymore by recording it in a user-visible stash.
+
+Reported-by: Daniel Hahler <git@thequod.de>
+Signed-off-by: Patrick Steinhardt <ps@pks.im>
+---
+ git-rebase--interactive.sh  |  1 +
+ t/t3420-rebase-autostash.sh | 11 +++++++++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/git-rebase--interactive.sh b/git-rebase--interactive.sh
+index 05f22e4..4f499d2 100644
+--- a/git-rebase--interactive.sh
++++ b/git-rebase--interactive.sh
+@@ -212,6 +212,7 @@ exit_with_patch () {
+ }
+ 
+ die_abort () {
++	apply_autostash
+ 	rm -rf "$state_dir"
+ 	die "$1"
+ }
+diff --git a/t/t3420-rebase-autostash.sh b/t/t3420-rebase-autostash.sh
+index 944154b..2e1171e 100755
+--- a/t/t3420-rebase-autostash.sh
++++ b/t/t3420-rebase-autostash.sh
+@@ -192,4 +192,15 @@ test_expect_success 'abort rebase -i with --autostash' '
+ 	test_cmp expected file0
+ '
+ 
++test_expect_success 'restore autostash on editor failure' '
++	test_when_finished "git reset --hard" &&
++	echo uncommited-content >file0 &&
++	(
++		test_set_editor "false" &&
++		test_must_fail git rebase -i --autostash HEAD^
++	) &&
++	echo uncommited-content >expected &&
++	test_cmp expected file0
++'
++
+ test_done
+-- 
+2.9.0
+
