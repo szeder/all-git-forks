@@ -295,6 +295,28 @@ test_expect_success 'setup submodule' '
 	mkdir -p deep/directory/hierachy &&
 	git submodule add ./. deep/directory/hierachy/sub &&
 	git commit -m "added another submodule" &&
+	mkdir inner_sub &&
+	(
+		cd inner_sub &&
+		git init &&
+		test_commit initial
+	) &&
+	mkdir outer_sub &&
+	(
+		cd outer_sub &&
+		git init &&
+		test_commit initial &&
+		git submodule add ../inner_sub &&
+		git commit -a -m "add an inner submodule"
+	) &&
+	git submodule add ./outer_sub ./deep/outer_sub &&
+	git commit -a -m "add outer sub" &&
+	git -C deep ls-tree HEAD |cut -f 2 >actual &&
+	cat >expect <<-EOF &&
+	directory
+	outer_sub
+	EOF
+	test_cmp expect actual &&
 	git branch submodule
 '
 
@@ -488,6 +510,27 @@ test_expect_success 'moving a submodule in nested directories' '
 		git config -f ../.gitmodules submodule.deep/directory/hierachy/sub.path >../actual &&
 		echo "directory/hierachy/sub" >../expect
 	) &&
+	test_cmp actual expect &&
+	git commit -a -m "mv a submodule in nested dir"
+'
+
+test_expect_success 'moving a submodule with a nested submodule' '
+	git mv deep/outer_sub outer_sub_moved &&
+	# git status would fail if the update of linking git dir to
+	# work dir of the submodule failed.
+	git status &&
+	git config -f .gitmodules submodule.deep/outer_sub.path >actual &&
+	echo "outer_sub_moved" >expect &&
+	test_cmp actual expect
+'
+
+test_expect_success 'moving back the submodule with a nested submodule' '
+	git mv outer_sub_moved deep/outer_sub &&
+	# git status would fail if the update of linking git dir to
+	# work dir of the submodule failed.
+	git status &&
+	git config -f .gitmodules submodule.deep/outer_sub.path >actual &&
+	echo "deep/outer_sub" >expect &&
 	test_cmp actual expect
 '
 
