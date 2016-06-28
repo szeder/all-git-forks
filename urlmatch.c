@@ -1,5 +1,6 @@
 #include "cache.h"
 #include "urlmatch.h"
+#include "regex.h"
 
 #define URL_ALPHA "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 #define URL_DIGIT "0123456789"
@@ -471,6 +472,26 @@ static int match_urls(const struct url_info *url,
 	return pathmatchlen;
 }
 
+static int match_regex_urls(const char *pattern, const char *url)
+{
+	regmatch_t match;
+	regex_t regex;
+	int retval = -1;
+
+	if (regcomp(&regex, pattern, 0) < 0)
+		goto out;
+
+	if (regexec(&regex, url, 1, &match, 0) == REG_NOMATCH)
+		goto out;
+
+	if (match.rm_so == 0 && match.rm_eo == strlen(url))
+		retval = match.rm_eo - match.rm_so;
+
+out:
+	regfree(&regex);
+	return retval;
+}
+
 int urlmatch_config_entry(const char *var, const char *value, void *cb)
 {
 	struct string_list_item *item;
@@ -494,12 +515,13 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
 		struct url_info norm_info;
 
 		config_url = xmemdupz(key, dot - key);
-		norm_url = url_normalize(config_url, &norm_info);
+		if ((norm_url = url_normalize(config_url, &norm_info)) != NULL) {
+		    matched_len = match_urls(url, &norm_info, &user_matched);
+		    free(norm_url);
+		} else {
+		    matched_len = match_regex_urls(config_url, url->url);
+		}
 		free(config_url);
-		if (!norm_url)
-			return 0;
-		matched_len = match_urls(url, &norm_info, &user_matched);
-		free(norm_url);
 		if (!matched_len)
 			return 0;
 		key = dot + 1;

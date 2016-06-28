@@ -11,23 +11,29 @@ struct url_info {
 
 	size_t url_len;		/* total length of url (which is now normalized) */
 	size_t scheme_len;	/* length of scheme name (excluding final :) */
+	char scheme_wildcard;
 	size_t user_off;	/* offset into url to start of user name (0 => none) */
-	size_t user_len;	/* length of user name; if user_off != 0 but
+	size_t user_len;	/* length of user name; if user_off != -1 but
 				   user_len == 0, an empty user name was given */
+	char user_wildcard;
 	size_t passwd_off;	/* offset into url to start of passwd (0 => none) */
 	size_t passwd_len;	/* length of passwd; if passwd_off != 0 but
 				   passwd_len == 0, an empty passwd was given */
+	char passwd_wildcard;
 	size_t host_off;	/* offset into url to start of host name (0 => none) */
 	size_t host_len;	/* length of host name; this INCLUDES any ':portnum';
 				 * file urls may have host_len == 0 */
+	char host_wildcard;
 	size_t port_len;	/* if a portnum is present (port_len != 0), it has
 				 * this length (excluding the leading ':') at the
 				 * end of the host name (always 0 for file urls) */
+	char port_wildcard;
 	size_t path_off;	/* offset into url to the start of the url path;
 				 * this will always point to a '/' character
 				 * after the url has been normalized */
 	size_t path_len;	/* length of path portion excluding any trailing
 				 * '?...' and '#...' portion; will always be >= 1 */
+	char path_wildcard;
 };
 
 extern char *url_normalize(const char *, struct url_info *);
