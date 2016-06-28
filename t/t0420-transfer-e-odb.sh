@@ -7,13 +7,14 @@ test_description='basic tests for transfering external ODBs'
 ORIG_SOURCE="$PWD/.git"
 export ORIG_SOURCE
 
-ALT_SOURCE1="$PWD/alt-repo/.git"
+ALT_SOURCE1="$PWD/alt-repo1/.git"
 export ALT_SOURCE1
 write_script odb-helper1 <<\EOF
 die() {
 	printf >&2 "%s\n" "$@"
 	exit 1
 }
+echo >&2 "odb-helper1 called with: '$@'"
 GIT_DIR=$ALT_SOURCE1; export GIT_DIR
 case "$1" in
 have)
@@ -39,7 +40,7 @@ esac
 EOF
 HELPER1="\"$PWD\"/odb-helper1"
 
-ALT_SOURCE2="$PWD/alt-repo/.git"
+ALT_SOURCE2="$PWD/alt-repo2/.git"
 export ALT_SOURCE2
 write_script odb-helper2 <<\EOF
 die() {
@@ -88,7 +89,7 @@ test_expect_success 'new blobs are put in object store' '
 
 test_expect_success 'setup other repo and its alternate repo' '
 	git init other-repo &&
-	git init alt-repo1
+	git init alt-repo2
 '
 
 test_expect_success 'other repo gets the objects' '
