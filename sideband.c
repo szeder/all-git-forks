@@ -33,13 +33,15 @@ int recv_sideband(const char *me, int in_stream, int out)
 	else
 		suffix = DUMB_SUFFIX;
 
-	while (retval == 0) {
+	while (!retval) {
 		int band, len;
 		len = packet_read(in_stream, NULL, NULL, buf, LARGE_PACKET_MAX, 0);
 		if (len == 0)
 			break;
 		if (len < 1) {
-			fprintf(stderr, "%s: protocol error: no band designator\n", me);
+			strbuf_addf(&outbuf,
+				    "\n%s: protocol error: no band designator\n",
+				    me);
 			retval = SIDEBAND_PROTOCOL_ERROR;
 			break;
 		}
@@ -48,7 +50,7 @@ int recv_sideband(const char *me, int in_stream, int out)
 		len--;
 		switch (band) {
 		case 3:
-			fprintf(stderr, "%s%s\n", PREFIX, buf + 1);
+			strbuf_addf(&outbuf, "\n%s%s\n", PREFIX, buf + 1);
 			retval = SIDEBAND_REMOTE_ERROR;
 			break;
 		case 2:
@@ -58,13 +60,12 @@ int recv_sideband(const char *me, int in_stream, int out)
 			 * Append a suffix to each nonempty line to clear the
 			 * end of the screen line.
 			 *
-			 * The output is accumulated in a buffer and each line
-			 * is printed to stderr using fprintf() with a single
-			 * conversion specifier. This is a "best effort"
-			 * approach to supporting both inter-process atomicity
-			 * (single conversion specifiers are likely to end up
-			 * in single atomic write() system calls) and the ANSI
-			 * control code emulation under Windows.
+			 * The output is accumulated in a buffer and
+			 * each line is printed to stderr using
+			 * fwrite(3).  This is a "best effort"
+			 * approach to support inter-process atomicity
+			 * (single fwrite(3) call is likely to end up
+			 * in single atomic write() system calls).
 			 */
 			while ((brk = strpbrk(b, "\n\r"))) {
 				int linelen = brk - b;
@@ -75,8 +76,7 @@ int recv_sideband(const char *me, int in_stream, int out)
 				} else {
 					strbuf_addf(&outbuf, "%c", *brk);
 				}
-				fprintf(stderr, "%.*s", (int)outbuf.len,
-					outbuf.buf);
+				fwrite(outbuf.buf, 1, outbuf.len, stderr);
 				strbuf_reset(&outbuf);
 				strbuf_addf(&outbuf, "%s", PREFIX);
 
@@ -90,15 +90,15 @@ int recv_sideband(const char *me, int in_stream, int out)
 			write_or_die(out, buf + 1, len);
 			break;
 		default:
-			fprintf(stderr, "%s: protocol error: bad band #%d\n",
+			strbuf_addf(&outbuf, "\n%s: protocol error: bad band #%d\n",
 				me, band);
 			retval = SIDEBAND_PROTOCOL_ERROR;
 			break;
 		}
 	}
 
-	if (outbuf.len > 0)
-		fprintf(stderr, "%.*s", (int)outbuf.len, outbuf.buf);
+	if (outbuf.len)
+		fwrite(outbuf.buf, 1, outbuf.len, stderr);
 	strbuf_release(&outbuf);
 	return retval;
 }
