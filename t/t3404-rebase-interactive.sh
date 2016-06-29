@@ -1281,4 +1281,11 @@ test_expect_success 'editor saves as CR/LF' '
 	)
 '
 
+EPIPHANY="'"
+test_expect_success 'rebase -i --gpg-sign=<key-id>' '
+	set_fake_editor &&
+	FAKE_LINES="edit 1" git rebase -i --gpg-sign=\" HEAD^ >out 2>err &&
+	grep "$EPIPHANY-S\"$EPIPHANY" err
+'
+
 test_done
