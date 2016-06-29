@@ -424,6 +424,7 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 		error("external filter %s failed %d", params->cmd, status);
 
 	strbuf_release(&cmd);
+	// fprintf(stderr, "write_err || status = %d\n", write_err || status);
 	return (write_err || status);
 }
 
@@ -940,6 +941,59 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 int convert_to_working_tree(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
 	return convert_to_working_tree_internal(path, src, len, dst, 0);
+}
+
+int convert_to_working_tree_filter_fd(const char *path, const char *src, size_t len, int out)
+{
+	/*
+	 * Create a pipeline to have the command filter the buffer's
+	 * contents.
+	 *
+	 * (child --> cmd) --> fd
+	 */
+	int ret = 0;
+	const char *cmd;
+	struct async async;
+	struct filter_params params;
+	struct conv_attrs ca;
+
+	// fprintf(stderr, "convert_attrs(path=%s)\n", path);
+	convert_attrs(&ca, path);
+
+	if (!ca.drv || !ca.drv->smudge) {
+		// fprintf(stderr, "!ca.drv || !ca.drv->smudge\n");
+		return -1;
+	}
+	else
+		cmd = ca.drv->smudge;
+
+	// fprintf(stderr, "ca.drv->smudge = %s\n", ca.drv->smudge);
+
+	memset(&async, 0, sizeof(async));
+	async.proc = filter_buffer_or_fd;
+	async.data = &params;
+	async.out = dup(out);
+	params.src = src;
+	params.size = len;
+	params.fd = -1;
+	params.cmd = cmd;
+	params.path = path;
+
+	fflush(NULL);
+	if (start_async(&async)) {
+		// fprintf(stderr, "error in start_async\n");
+		close(async.out);
+		return 0;	/* error was already reported */
+	}
+
+	if (finish_async(&async)) {
+		error("external filter %s failed", cmd);
+		ret = 1;
+	}
+
+	fflush(NULL);
+	close(async.out);
+	return ret;
 }
 
 int renormalize_buffer(const char *path, const char *src, size_t len, struct strbuf *dst)

@@ -52,6 +52,7 @@ extern void convert_to_git_filter_fd(const char *path, int fd,
 				     struct strbuf *dst,
 				     enum safe_crlf checksafe);
 extern int would_convert_to_git_filter_fd(const char *path);
+extern int convert_to_working_tree_filter_fd(const char *path, const char *src, size_t len, int out);
 
 /*****************************************************************
  *
