@@ -1020,9 +1020,12 @@ returns the number of bytes printed.
 =cut
 
 sub cat_blob {
-	my ($self, $sha1, $fh) = @_;
+	my ($self, $sha1, $fh, $path) = @_;
 
-	$self->_open_cat_blob_if_needed();
+	$self->_open_cat_blob_if_needed(defined($path));
+	if (defined($path)) {
+		$sha1 = join(" ", $sha1, $path);
+	}
 	my ($in, $out) = ($self->{cat_blob_in}, $self->{cat_blob_out});
 
 	unless (print $out $sha1, "\n") {
@@ -1055,9 +1058,12 @@ sub cat_blob {
 			$self->_close_cat_blob();
 			throw Error::Simple("in pipe went bad");
 		}
-		unless (print $fh $blob) {
-			$self->_close_cat_blob();
-			throw Error::Simple("couldn't write to passed in filehandle");
+		# FIXME: git-lfs only
+		unless (defined($path)) {
+			unless (print $fh $blob) {
+				$self->_close_cat_blob();
+				throw Error::Simple("couldn't write to passed in filehandle");
+			}
 		}
 		$bytesLeft -= $read;
 	}
@@ -1071,20 +1077,60 @@ sub cat_blob {
 	}
 	unless ($read == 1 && $newline eq "\n") {
 		$self->_close_cat_blob();
-		throw Error::Simple("didn't find newline after blob");
+		throw Error::Simple("didn't find newline after blob[$size]: $read, '$newline'");
+	}
+
+	# FIXME: git-lfs only
+	if (defined($path)) {
+		if ($blob =~ /\nsize (\d+)$/) {
+			$size = $1;
+		} # If not, reread the same size
+
+		my $blob;
+		my $bytesLeft = $size;
+		# carp "blob = $blob, size = $size, bytesLeft = $bytesLeft";
+
+		while (1) {
+			last unless $bytesLeft;
+
+			my $bytesToRead = $bytesLeft < 1024 ? $bytesLeft : 1024;
+			my $read = read($in, $blob, $bytesToRead);
+			unless (defined($read)) {
+				$self->_close_cat_blob();
+				throw Error::Simple("in pipe went bad");
+			}
+			unless (print $fh $blob) {
+				$self->_close_cat_blob();
+				throw Error::Simple("couldn't write to passed in filehandle");
+			}
+			$bytesLeft -= $read;
+		}
+
+		# Skip past the trailing newline.
+		my $newline;
+		my $read = read($in, $newline, 1);
+		unless (defined($read)) {
+			$self->_close_cat_blob();
+			throw Error::Simple("in pipe went bad");
+		}
+		unless ($read == 1 && $newline eq "\n") {
+			$self->_close_cat_blob();
+			throw Error::Simple("didn't find newline after lfs-blob[$size]: $read, '$newline'");
+		}
 	}
 
 	return $size;
 }
 
 sub _open_cat_blob_if_needed {
-	my ($self) = @_;
+	my ($self, $use_filters) = @_;
 
 	return if defined($self->{cat_blob_pid});
 
+	carp "FIXME: _open_cat_blob_if_needed forced to --use-filters";
 	($self->{cat_blob_pid}, $self->{cat_blob_in},
 	 $self->{cat_blob_out}, $self->{cat_blob_ctx}) =
-		$self->command_bidi_pipe(qw(cat-file --batch));
+		$self->command_bidi_pipe(qw(cat-file --batch --use-filters));
 }
 
 sub _close_cat_blob {
