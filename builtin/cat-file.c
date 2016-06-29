@@ -10,6 +10,7 @@
 #include "streaming.h"
 #include "tree-walk.h"
 #include "sha1-array.h"
+#include "convert.h"
 
 struct batch_options {
 	int enabled;
@@ -17,6 +18,7 @@ struct batch_options {
 	int print_contents;
 	int buffer_output;
 	int all_objects;
+	int use_filters;
 	const char *format;
 };
 
@@ -229,7 +231,7 @@ static void print_object_or_die(struct batch_options *opt, struct expand_data *d
 
 	assert(data->info.typep);
 
-	if (data->type == OBJ_BLOB) {
+	if (data->type == OBJ_BLOB && !opt->use_filters) {
 		if (opt->buffer_output)
 			fflush(stdout);
 		if (stream_blob_to_fd(1, sha1, NULL, 0) < 0)
@@ -249,6 +251,18 @@ static void print_object_or_die(struct batch_options *opt, struct expand_data *d
 			die("object %s changed size!?", sha1_to_hex(sha1));
 
 		batch_write(opt, contents, size);
+		batch_write(opt, "\n", 1);
+		if (opt->use_filters) {
+			int ret_filter = 0;
+			// fprintf(stderr, "convert_to_working_tree_filter_fd(%s)\n------\n%s\n------\n",
+			//			    data->rest, (char *)contents);
+			ret_filter = convert_to_working_tree_filter_fd(data->rest, contents, size, 1);
+			// fprintf(stderr, "ret_filter = %d\n", ret_filter);
+			if (ret_filter < 0)
+				batch_write(opt, contents, size);
+			else if (ret_filter > 0)
+				die("smudge filter error on %s", data->rest);
+		}
 		free(contents);
 	}
 }
@@ -401,6 +415,9 @@ static int batch_objects(struct batch_options *opt)
 	save_warning = warn_on_object_refname_ambiguity;
 	warn_on_object_refname_ambiguity = 0;
 
+	if (opt->use_filters)
+		data.split_on_whitespace = 1;
+
 	while (strbuf_getline(&buf, stdin) != EOF) {
 		if (data.split_on_whitespace) {
 			/*
@@ -426,7 +443,7 @@ static int batch_objects(struct batch_options *opt)
 
 static const char * const cat_file_usage[] = {
 	N_("git cat-file (-t [--allow-unknown-type]|-s [--allow-unknown-type]|-e|-p|<type>|--textconv) <object>"),
-	N_("git cat-file (--batch | --batch-check) [--follow-symlinks]"),
+	N_("git cat-file (--batch | --batch-check) [--follow-symlinks | --use-filters]"),
 	NULL
 };
 
@@ -484,6 +501,8 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 			 N_("follow in-tree symlinks (used with --batch or --batch-check)")),
 		OPT_BOOL(0, "batch-all-objects", &batch.all_objects,
 			 N_("show all objects with --batch or --batch-check")),
+		OPT_BOOL(0, "use-filters", &batch.use_filters,
+			 N_("pass the blob throught the smudge filters (batch mode)")),
 		OPT_END()
 	};
 
