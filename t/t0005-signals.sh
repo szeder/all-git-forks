@@ -11,12 +11,7 @@ EOF
 
 test_expect_success 'sigchain works' '
 	{ test-sigchain >actual; ret=$?; } &&
-	case "$ret" in
-	143) true ;; # POSIX w/ SIGTERM=15
-	271) true ;; # ksh w/ SIGTERM=15
-	  3) true ;; # Windows
-	  *) false ;;
-	esac &&
+	test_match_signal 15 "$ret" &&
 	test_cmp expect actual
 '
 
@@ -41,12 +36,12 @@ test_expect_success 'create blob' '
 
 test_expect_success !MINGW 'a constipated git dies with SIGPIPE' '
 	OUT=$( ((large_git; echo $? 1>&3) | :) 3>&1 ) &&
-	test "$OUT" -eq 141
+	test_match_signal 13 "$OUT"
 '
 
 test_expect_success !MINGW 'a constipated git dies with SIGPIPE even if parent ignores it' '
 	OUT=$( ((trap "" PIPE; large_git; echo $? 1>&3) | :) 3>&1 ) &&
-	test "$OUT" -eq 141
+	test_match_signal 13 "$OUT"
 '
 
 test_done
