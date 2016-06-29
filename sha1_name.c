@@ -912,7 +912,8 @@ static int get_sha1_oneline(const char *prefix, unsigned char *sha1,
 			continue;
 		buf = get_commit_buffer(commit, NULL);
 		p = strstr(buf, "\n\n");
-		matches = negative ^ (p && !regexec(&regex, p + 2, 0, NULL, 0));
+		matches = negative ^ (p && !regexec(&regex,
+			skip_blank_lines(p + 2), 0, NULL, 0));
 		unuse_commit_buffer(commit, buf);
 
 		if (matches) {
