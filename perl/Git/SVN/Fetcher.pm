@@ -343,7 +343,8 @@ sub apply_textdelta {
 			$base_is_link = 1;
 		}
 	retry:
-		$size = $::_repository->cat_blob($fb->{blob}, $base);
+		my $path = $self->git_path($fb->{path});
+		$size = $::_repository->cat_blob($fb->{blob}, $base, $path);
 		die "Failed to read object $fb->{blob}" if ($size < 0);
 
 		if (defined $exp) {
