@@ -1090,11 +1090,15 @@ static const int gpg_sig_header_len = sizeof(gpg_sig_header) - 1;
 
 static int do_sign_commit(struct strbuf *buf, const char *keyid)
 {
+	const char *eoh = strstr(buf->buf, "\n\n");
 	struct strbuf sig = STRBUF_INIT;
 	int inspos, copypos;
 
 	/* find the end of the header */
-	inspos = strstr(buf->buf, "\n\n") - buf->buf + 1;
+	if (!eoh)
+		inspos = buf->len;
+	else
+		inspos = eoh - buf->buf + 1;
 
 	if (!keyid || !*keyid)
 		keyid = get_signing_key();
