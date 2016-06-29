@@ -35,6 +35,8 @@ all: $(DEFAULT_TEST_TARGET)
 test: pre-clean $(TEST_LINT)
 	$(MAKE) aggregate-results-and-cleanup
 
+failed: $(patsubst trash,,$(patsubst directory.%,%.sh,$(wildcard trash\ directory.t[0-9]*)))
+
 prove: pre-clean $(TEST_LINT)
 	@echo "*** prove ***"; $(PROVE) --exec '$(SHELL_PATH_SQ)' $(GIT_PROVE_OPTS) $(T) :: $(GIT_TEST_OPTS)
 	$(MAKE) clean-except-prove-cache
