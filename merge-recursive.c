@@ -658,6 +658,7 @@ static int was_tracked(const char *path)
 {
 	int pos = cache_name_pos(path, strlen(path));
 
+	/* cache_name_pos() looks for stage == 0, so pos may be < 0 */
 	if (pos < 0)
 		pos = -1 - pos;
 	while (pos < active_nr &&
