@@ -247,6 +247,8 @@ Both standard output and standard error output are forwarded to
 'git send-pack' on the other end, so you can simply `echo` messages
 for the user.
 
+The push options are available in the variable GIT_PUSH_OPTION_FILE.
+
 [[update]]
 update
 ~~~~~~
@@ -321,6 +323,8 @@ The default 'post-receive' hook is empty, but there is
 a sample script `post-receive-email` provided in the `contrib/hooks`
 directory in Git distribution, which implements sending commit
 emails.
+
+The push options are available in the variable GIT_PUSH_OPTION_FILE.
 
 [[post-update]]
 post-update
