@@ -44,10 +44,12 @@ static struct strbuf fsck_msg_types = STRBUF_INIT;
 static int receive_unpack_limit = -1;
 static int transfer_unpack_limit = -1;
 static int advertise_atomic_push = 1;
+static int advertise_push_options = 1;
 static int unpack_limit = 100;
 static int report_status;
 static int use_sideband;
 static int use_atomic;
+static int use_push_options;
 static int quiet;
 static int prefer_ofs_delta = 1;
 static int auto_update_server_info;
@@ -193,6 +195,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (strcmp(var, "receive.advertisepushoptions") == 0) {
+		advertise_push_options = git_config_bool(var, value);
+		return 0;
+	}
+
 	return git_default_config(var, value, cb);
 }
 
@@ -207,6 +214,8 @@ static void show_ref(const char *path, const unsigned char *sha1)
 			      "report-status delete-refs side-band-64k quiet");
 		if (advertise_atomic_push)
 			strbuf_addstr(&cap, " atomic");
+		if (advertise_push_options)
+			strbuf_addstr(&cap, " push-options");
 		if (prefer_ofs_delta)
 			strbuf_addstr(&cap, " ofs-delta");
 		if (push_cert_nonce)
@@ -1448,6 +1457,9 @@ static struct command *read_head_info(struct sha1_array *shallow)
 			if (advertise_atomic_push
 			    && parse_feature_request(feature_list, "atomic"))
 				use_atomic = 1;
+			if (advertise_push_options
+			    && parse_feature_request(feature_list, "push-options"))
+				use_push_options = 1;
 		}
 
 		if (!strcmp(line, "push-cert")) {
@@ -1478,6 +1490,35 @@ static struct command *read_head_info(struct sha1_array *shallow)
 		queue_commands_from_cert(p, &push_cert);
 
 	return commands;
+}
+
+static const char *stream_push_options_to_file()
+{
+	static const char *fname = "push-options-XXXXXX";
+	char *ret = xmallocz(strlen(fname));
+	int fd;
+	memcpy(ret, fname, strlen(fname));
+	fd = mkstemp(ret);
+
+	for (;;) {
+		char *line;
+		int len;
+
+		line = packet_read_line(0, &len);
+
+		if (!line)
+			break;
+
+		if (write_in_full(fd, line, len) < 0 ||
+		    write_in_full(fd, "\n", 1) < 0)
+			goto fail;
+	}
+
+	return ret;
+fail:
+	close(fd);
+	free(ret);
+	return NULL;
 }
 
 static const char *parse_pack_header(struct pack_header *hdr)
@@ -1766,6 +1807,9 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 	if ((commands = read_head_info(&shallow)) != NULL) {
 		const char *unpack_status = NULL;
 		const char *push_options_file = NULL;
+
+		if (use_push_options)
+			push_options_file = stream_push_options_to_file();
 
 		prepare_shallow_info(&si, &shallow);
 		if (!si.nr_ours && !si.nr_theirs)
