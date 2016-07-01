@@ -836,8 +836,6 @@ int cmd_main(int argc, const char **argv)
 		OPT_END()
 	};
 
-	git_setup_gettext();
-
 	packet_trace_identity("upload-pack");
 	check_replace_refs = 0;
 
