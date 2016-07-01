@@ -839,7 +839,6 @@ int cmd_main(int argc, const char **argv)
 	git_setup_gettext();
 
 	packet_trace_identity("upload-pack");
-	git_extract_argv0_path(argv[0]);
 	check_replace_refs = 0;
 
 	argc = parse_options(argc, argv, NULL, options, upload_pack_usage, 0);
