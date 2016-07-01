@@ -336,7 +336,7 @@ fail_pipe:
 	trace_argv_printf(cmd->argv, "trace: run_command:");
 	fflush(NULL);
 
-#ifndef GIT_WINDOWS_NATIVE
+#ifndef GIT_AVOID_FORK
 {
 	int notify_pipe[2];
 	if (pipe(notify_pipe))
@@ -446,8 +446,18 @@ fail_pipe:
 #else
 {
 	int fhin = 0, fhout = 1, fherr = 2;
+  int oldin, oldout, olderr;
+  char * oldcwd;
 	const char **sargv = cmd->argv;
 	struct argv_array nargv = ARGV_ARRAY_INIT;
+
+  oldin = dup(0);
+  oldout = dup(1);
+  olderr = dup(2);
+
+  close(0);
+  close(1);
+  close(2);
 
 	if (cmd->no_stdin)
 		fhin = open("/dev/null", O_RDWR);
@@ -455,13 +465,8 @@ fail_pipe:
 		fhin = dup(fdin[0]);
 	else if (cmd->in)
 		fhin = dup(cmd->in);
-
-	if (cmd->no_stderr)
-		fherr = open("/dev/null", O_RDWR);
-	else if (need_err)
-		fherr = dup(fderr[1]);
-	else if (cmd->err > 2)
-		fherr = dup(cmd->err);
+  else
+    fhin = dup(oldin);
 
 	if (cmd->no_stdout)
 		fhout = open("/dev/null", O_RDWR);
@@ -471,14 +476,29 @@ fail_pipe:
 		fhout = dup(fdout[1]);
 	else if (cmd->out > 1)
 		fhout = dup(cmd->out);
+  else
+    fhin = dup(oldout);
+
+	if (cmd->no_stderr)
+		fherr = open("/dev/null", O_RDWR);
+	else if (need_err)
+		fherr = dup(fderr[1]);
+	else if (cmd->err > 2)
+		fherr = dup(cmd->err);
+  else
+    fherr = dup(olderr);
 
 	if (cmd->git_cmd)
 		cmd->argv = prepare_git_cmd(&nargv, cmd->argv);
 	else if (cmd->use_shell)
 		cmd->argv = prepare_shell_cmd(&nargv, cmd->argv);
 
-	cmd->pid = mingw_spawnvpe(cmd->argv[0], cmd->argv, (char**) cmd->env,
-			cmd->dir, fhin, fhout, fherr);
+  oldcwd = xgetcwd();
+
+  chdir(cmd->dir);
+	cmd->pid = spawnvpe(_P_NOWAIT, cmd->argv[0], cmd->argv, cmd->env);
+  chdir(oldcwd);
+
 	failed_errno = errno;
 	if (cmd->pid < 0 && (!cmd->silent_exec_failure || errno != ENOENT))
 		error_errno("cannot spawn %s", cmd->argv[0]);
@@ -487,13 +507,14 @@ fail_pipe:
 
 	argv_array_clear(&nargv);
 	cmd->argv = sargv;
-	if (fhin != 0)
-		close(fhin);
-	if (fhout != 1)
-		close(fhout);
-	if (fherr != 2)
-		close(fherr);
-}
+  close(fhin);
+  close(fhout);
+  close(fherr);
+
+  dup2(oldin, 0);
+  dup2(oldout, 1);
+  dup2(olderr, 2);
+ }
 #endif
 
 	if (cmd->pid < 0) {

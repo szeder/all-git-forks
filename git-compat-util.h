@@ -153,6 +153,12 @@
 #include <winsock2.h>
 #include <windows.h>
 #define GIT_WINDOWS_NATIVE
+#define GIT_AVOID_FORK
+#endif
+
+#if defined(__CYGWIN__)
+#include <process.h>
+#define GIT_AVOID_FORK
 #endif
 
 #include <unistd.h>
