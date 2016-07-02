@@ -523,6 +523,7 @@ const char *read_gitfile_gently(const char *path, int *return_error_code)
 	}
 	buf = xmallocz(st.st_size);
 	len = read_in_full(fd, buf, st.st_size);
+	printf("%d\n", st.st_size);
 	close(fd);
 	if (len != st.st_size) {
 		error_code = READ_GITFILE_ERR_READ_FAILED;

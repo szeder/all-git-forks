@@ -12,5 +12,7 @@ extern int server_supports(const char *feature);
 extern int parse_feature_request(const char *features, const char *feature);
 extern const char *server_feature_value(const char *feature, int *len_ret);
 extern int url_is_local_not_ssh(const char *url);
+extern struct alt_resource *get_alt_res_connect(int fd);
+extern int alt_res_service_available(const char *url);
 
 #endif

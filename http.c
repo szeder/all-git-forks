@@ -10,6 +10,7 @@
 #include "pkt-line.h"
 #include "gettext.h"
 #include "transport.h"
+#include "progress.h"
 
 static struct trace_key trace_curl = TRACE_KEY_INIT(CURL);
 #if LIBCURL_VERSION_NUM >= 0x070a08
@@ -1283,7 +1284,10 @@ static int handle_curl_result(struct slot_results *results)
 				curl_easy_strerror(results->curl_result),
 				sizeof(curl_errorstr));
 #endif
-		return HTTP_ERROR;
+		if (results->http_code >= 400)
+			return HTTP_ERROR;
+		else 
+			return HTTP_ERROR_RESUMABLE;
 	}
 }
 
@@ -1522,6 +1526,35 @@ static void http_opt_request_remainder(CURL *curl, off_t pos)
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
 
+static int bytes_to_rounded_kb(double bytes) {
+	return (int) (bytes + 512)/1024;
+}
+
+int progress_func(void *data, double TotalToDownload, double NowDownloaded, double TotalToUpload, double NowUploaded)
+{
+	struct progress **progress = data;
+	int kilobytes = TotalToDownload >= 1024;
+
+	if (TotalToDownload <= 0.0) {
+		return 0;
+	}
+	if (kilobytes) {
+		NowDownloaded = bytes_to_rounded_kb(NowDownloaded);
+		TotalToDownload = bytes_to_rounded_kb(TotalToDownload);
+	}
+	if (!*progress && NowDownloaded < TotalToDownload) {
+		if (TotalToDownload > 1024)  
+			*progress = start_progress("Downloading (KB)", TotalToDownload);
+		else 
+			*progress = start_progress("Downloading (B)", TotalToDownload);
+	}
+	display_progress(*progress, NowDownloaded);
+	if (NowDownloaded == TotalToDownload) {
+		stop_progress(progress);
+	}
+	return 0;
+}
+
 static int http_request(const char *url,
 			void *result, int target,
 			const struct http_get_options *options)
@@ -1530,6 +1563,7 @@ static int http_request(const char *url,
 	struct slot_results results;
 	struct curl_slist *headers = http_copy_default_headers();
 	struct strbuf buf = STRBUF_INIT;
+	struct progress *progress = NULL;
 	const char *accept_language;
 	int ret;
 
@@ -1546,6 +1580,11 @@ static int http_request(const char *url,
 			off_t posn = ftello(result);
 			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
 					 fwrite);
+			if (options && options->progress) {
+				curl_easy_setopt(slot->curl, CURLOPT_NOPROGRESS, 0);
+				curl_easy_setopt(slot->curl, CURLOPT_PROGRESSFUNCTION, progress_func);
+				curl_easy_setopt(slot->curl, CURLOPT_PROGRESSDATA, &progress);
+			}
 			if (posn > 0)
 				http_opt_request_remainder(slot->curl, posn);
 		} else
@@ -1692,11 +1731,14 @@ int http_get_strbuf(const char *url,
  * file is still around) the download is resumed.
  */
 static int http_get_file(const char *url, const char *filename,
-			 struct http_get_options *options)
+			 struct http_get_options *options, int try_count)
 {
 	int ret;
 	struct strbuf tmpfile = STRBUF_INIT;
 	FILE *result;
+
+	if (try_count == 0)
+		return HTTP_ERROR;
 
 	strbuf_addf(&tmpfile, "%s.temp", filename);
 	result = fopen(tmpfile.buf, "a");
@@ -1709,7 +1751,16 @@ static int http_get_file(const char *url, const char *filename,
 	ret = http_request_reauth(url, result, HTTP_REQUEST_FILE, options);
 	fclose(result);
 
-	if (ret == HTTP_OK && finalize_object_file(tmpfile.buf, filename))
+	if (ret == HTTP_ERROR_RESUMABLE) {
+		try_count--;
+		if (try_count > 0) {
+			struct timeval time = {10, 0};
+			select(0, NULL, NULL, NULL, &time);
+		}
+		fprintf(stderr, "Connection interrupted for some reason, retrying (%d attempts left)\n", try_count);
+		ret = http_get_file(url, filename, options, try_count);
+	}
+	else if (ret == HTTP_OK && finalize_object_file(tmpfile.buf, filename))
 		ret = HTTP_ERROR;
 cleanup:
 	strbuf_release(&tmpfile);
@@ -1741,6 +1792,19 @@ int http_fetch_ref(const char *base, struct ref *ref)
 	return ret;
 }
 
+int http_download_primer(const char *url, const char *out_file)
+{
+	int ret = 0;
+	struct http_get_options options = {0};
+	options.progress = 1;
+	
+	if (http_get_file(url, out_file, &options, HTTP_TRY_COUNT) != HTTP_OK) {
+		error("Unable to get resource: %s", url);
+		ret = -1;
+	}
+	return ret;
+}
+
 /* Helpers for fetching packs */
 static char *fetch_pack_index(unsigned char *sha1, const char *base_url)
 {
@@ -1757,7 +1821,7 @@ static char *fetch_pack_index(unsigned char *sha1, const char *base_url)
 	strbuf_addf(&buf, "%s.temp", sha1_pack_index_name(sha1));
 	tmp = strbuf_detach(&buf, NULL);
 
-	if (http_get_file(url, tmp, NULL) != HTTP_OK) {
+	if (http_get_file(url, tmp, NULL, 1) != HTTP_OK) {
 		error("Unable to get pack index %s", url);
 		free(tmp);
 		tmp = NULL;

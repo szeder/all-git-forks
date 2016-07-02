@@ -315,8 +315,9 @@ static int find_common(struct fetch_pack_args *args,
 							    git_user_agent_sanitized());
 			packet_buf_write(&req_buf, "want %s%s\n", remote_hex, c.buf);
 			strbuf_release(&c);
-		} else
+		} else {
 			packet_buf_write(&req_buf, "want %s\n", remote_hex);
+		}
 		fetching++;
 	}
 
@@ -444,6 +445,7 @@ static int find_common(struct fetch_pack_args *args,
 			}
 		}
 	}
+
 done:
 	if (!got_ready || !no_done) {
 		packet_buf_write(&req_buf, "done\n");

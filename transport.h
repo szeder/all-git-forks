@@ -15,6 +15,7 @@ struct git_transport_options {
 	int depth;
 	const char *uploadpack;
 	const char *receivepack;
+	const char *primeclone;
 	struct push_cas_option *cas;
 };
 
@@ -29,6 +30,7 @@ struct transport {
 	const char *url;
 	void *data;
 	const struct ref *remote_refs;
+	const struct alt_resource *alt_res;
 
 	/**
 	 * Indicates whether we already called get_refs_list(); set by
@@ -66,6 +68,23 @@ struct transport {
 	 * in the ref's old_sha1 field; otherwise it should be all 0.
 	 **/
 	struct ref *(*get_refs_list)(struct transport *transport, int for_push);
+
+	/**
+	 * Returns the location of an alternate resource to fetch before
+	 * cloning.
+	 *
+	 * If the transport cannot determine an alternate resource, then
+	 * NULL is returned.
+	**/
+	const struct alt_resource *(*prime_clone)(struct transport *transport);
+
+	/**
+	 * Downloads the resource specified from prime_clone and assigned 
+	 * to transport->alt_res
+	**/
+	char *(*download_primer)(struct transport *transport,
+				 const struct alt_resource *alt_res,
+				 const char *download_path);
 
 	/**
 	 * Fetch the objects for the given refs. Note that this gets
@@ -167,6 +186,9 @@ int transport_restrict_protocols(void);
 /* The program to use on the remote side to receive a pack */
 #define TRANS_OPT_RECEIVEPACK "receivepack"
 
+/* The program to use on the remote side to receive a pack */
+#define TRANS_OPT_PRIMECLONE "primeclone"
+
 /* Transfer the data as a thin pack if not null */
 #define TRANS_OPT_THIN "thin"
 
@@ -208,6 +230,11 @@ int transport_push(struct transport *connection,
 		   unsigned int * reject_reasons);
 
 const struct ref *transport_get_remote_refs(struct transport *transport);
+
+const struct alt_resource *transport_prime_clone(struct transport *transport);
+char *transport_download_primer(struct transport *transport, 
+				const struct alt_resource *alt_res,
+				const char *download_path);
 
 int transport_fetch_refs(struct transport *transport, struct ref *refs);
 void transport_unlock_pack(struct transport *transport);

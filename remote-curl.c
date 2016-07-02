@@ -869,6 +869,143 @@ static void parse_fetch(struct strbuf *buf)
 	strbuf_reset(buf);
 }
 
+static void prime_clone()
+{
+	struct strbuf exp = STRBUF_INIT;
+	struct strbuf type = STRBUF_INIT;
+	struct strbuf charset = STRBUF_INIT;
+	struct strbuf buffer = STRBUF_INIT;
+	struct strbuf refs_url = STRBUF_INIT;
+	struct strbuf effective_url = STRBUF_INIT;
+	char *buffer_final, *primer_url = "\0", *filetype = "\0", *value;
+	int http_ret, maybe_smart = 0;
+	size_t buffer_final_len, value_len;
+	struct http_get_options options;
+
+	strbuf_addf(&refs_url, "%sinfo/refs", url.buf);
+	if ((starts_with(url.buf, "http://") || starts_with(url.buf, "https://")) &&
+	     git_env_bool("GIT_SMART_HTTP", 1)) {
+		maybe_smart = 1;
+		if (!strchr(url.buf, '?'))
+			strbuf_addch(&refs_url, '?');
+		else
+			strbuf_addch(&refs_url, '&');
+		strbuf_addf(&refs_url, "service=git-prime-clone");
+	}
+
+	memset(&options, 0, sizeof(options));
+	options.content_type = &type;
+	options.charset = &charset;
+	options.effective_url = &effective_url;
+	options.base_url = &url;
+	options.no_cache = 1;
+	options.keep_error = 1;
+
+	http_ret = http_get_strbuf(refs_url.buf, &buffer, &options);
+	switch (http_ret) {
+	case HTTP_OK:
+		break;
+	case HTTP_MISSING_TARGET:
+		show_http_message(&type, &charset, &buffer);
+		printf("repository '%s' not found\n", url.buf);
+		fflush(stdout);
+		break;
+	case HTTP_NOAUTH:
+		show_http_message(&type, &charset, &buffer);
+		printf("Authentication failed for '%s\n'", url.buf);
+		fflush(stdout);
+		break;
+	default:
+		show_http_message(&type, &charset, &buffer);
+		printf("unable to access '%s': %s\n", url.buf, curl_errorstr);
+		fflush(stdout);
+		break;
+	}
+
+	if (http_ret == HTTP_OK) {
+		buffer_final = strbuf_detach(&buffer, &buffer_final_len);
+
+		strbuf_addf(&exp, "application/x-git-prime-clone-advertisement");
+		if (maybe_smart &&
+		    (5 <= buffer_final_len && buffer_final[4] == '#') &&
+		    !strbuf_cmp(&exp, &type)) {
+			char *line;
+
+			/*
+			 * smart HTTP response; validate that the service
+			 * pkt-line matches our request.
+			 */
+			line = packet_read_line_buf(&buffer_final, &buffer_final_len, NULL);
+
+			strbuf_reset(&exp);
+			strbuf_addf(&exp, "# service=git-prime-clone");
+			if (strcmp(line, exp.buf))
+				die("invalid server response; got '%s'", line);
+			strbuf_release(&exp);
+
+			/* The header can include additional metadata lines, up
+			 * until a packet flush marker.  Ignore these now, but
+			 * in the future we might start to scan them.
+			 */
+			while (packet_read_line_buf(&buffer_final, &buffer_final_len, NULL))
+				;
+
+			while (line = packet_read_line_buf(&buffer_final, &buffer_final_len, NULL)) {
+				if (strstr(line, "url") == line) {
+					value = strchr(line, ' ') + 1;
+					value_len = strlen(value) + 1;
+					primer_url = xcalloc(sizeof(char), value_len);
+					memcpy(primer_url, value, value_len);
+				}
+				else if (strstr(line, "filetype") == line) {
+					value = strchr(line, ' ') + 1;
+					value_len = strlen(value) + 1;
+					filetype = xcalloc(sizeof(char), value_len);
+					memcpy(filetype, value, value_len);
+				}
+			}
+		}
+
+		printf("url %s\n", primer_url);
+		printf("filetype %s\n", filetype);
+	}
+
+	printf("\n");
+	fflush(stdout);
+
+	strbuf_release(&refs_url);
+	strbuf_release(&exp);
+	strbuf_release(&type);
+	strbuf_release(&charset);
+	strbuf_release(&effective_url);
+	strbuf_release(&buffer);
+}
+
+static void download_primer(const char *url, const char *base_dir)
+{
+	char *slash_ptr = strchr(url, '/'), *out_file;
+	struct strbuf out_path = STRBUF_INIT;
+	do {
+		out_file = slash_ptr + 1;
+	} while (slash_ptr = strchr(out_file, '/'));
+	strbuf_addf(&out_path, "%s/%s", base_dir, out_file);
+	if (!http_download_primer(url, out_path.buf))
+		printf("%s\n", out_path.buf);
+	printf("\n");
+	fflush(stdout);
+}
+
+static void parse_download_primer(struct strbuf *buf)
+{
+	const char *remote_url;
+	if (skip_prefix(buf->buf, "download-primer ", &remote_url)) {
+		char *base_path;
+		base_path = strchr(remote_url, ' ');
+		*base_path++ = '\0';
+		download_primer(remote_url, base_path);
+	}
+}
+
 static int push_dav(int nr_spec, char **specs)
 {
 	struct child_process child = CHILD_PROCESS_INIT;
@@ -993,6 +1130,7 @@ int main(int argc, const char **argv)
 
 	git_extract_argv0_path(argv[0]);
 	setup_git_directory_gently(&nongit);
+
 	if (argc < 2) {
 		error("remote-curl: usage: git remote-curl <remote> [<url>]");
 		return 1;
@@ -1027,6 +1165,10 @@ int main(int argc, const char **argv)
 				die("remote-curl: fetch attempted without a local repo");
 			parse_fetch(&buf);
 
+		} else if (starts_with(buf.buf, "download-primer")) {
+			parse_download_primer(&buf);
+		} else if (!strcmp(buf.buf, "prime-clone")) {
+			prime_clone();
 		} else if (!strcmp(buf.buf, "list") || starts_with(buf.buf, "list ")) {
 			int for_push = !!strstr(buf.buf + 4, "for-push");
 			output_refs(get_refs(for_push));
@@ -1054,6 +1196,8 @@ int main(int argc, const char **argv)
 
 		} else if (!strcmp(buf.buf, "capabilities")) {
 			printf("fetch\n");
+			printf("download-primer\n");
+			printf("prime-clone\n");
 			printf("option\n");
 			printf("push\n");
 			printf("check-connectivity\n");

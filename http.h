@@ -139,7 +139,8 @@ extern char *get_remote_object_url(const char *url, const char *hex,
 /* Options for http_get_*() */
 struct http_get_options {
 	unsigned no_cache:1,
-		 keep_error:1;
+		 keep_error:1,
+		 progress:1;
 
 	/* If non-NULL, returns the content-type of the response. */
 	struct strbuf *content_type;
@@ -173,6 +174,7 @@ struct http_get_options {
 #define HTTP_START_FAILED	3
 #define HTTP_REAUTH	4
 #define HTTP_NOAUTH	5
+#define HTTP_ERROR_RESUMABLE	6
 
 /*
  * Requests a URL and stores the result in a strbuf.
@@ -180,6 +182,9 @@ struct http_get_options {
  * If the result pointer is NULL, a HTTP HEAD request is made instead of GET.
  */
 int http_get_strbuf(const char *url, struct strbuf *result, struct http_get_options *options);
+
+#define HTTP_TRY_COUNT 5
+int http_download_primer(const char *url, const char *out_file);
 
 extern int http_fetch_ref(const char *base, struct ref *ref);
 

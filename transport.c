@@ -81,7 +81,8 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 
 	if (data->fd > 0)
 		close(data->fd);
-	data->fd = read_bundle_header(transport->url, &data->header);
+	init_bundle_header(&data->header, transport->url);
+	data->fd = read_bundle_header(NULL, &data->header);
 	if (data->fd < 0)
 		die ("Could not read bundle '%s'.", transport->url);
 	for (i = 0; i < data->header.references.nr; i++) {
@@ -128,6 +129,9 @@ static int set_git_option(struct git_transport_options *opts,
 		return 0;
 	} else if (!strcmp(name, TRANS_OPT_RECEIVEPACK)) {
 		opts->receivepack = value;
+		return 0;
+	} else if (!strcmp(name, TRANS_OPT_PRIMECLONE)) {
+		opts->primeclone = value;
 		return 0;
 	} else if (!strcmp(name, TRANS_OPT_THIN)) {
 		opts->thin = !!value;
@@ -227,6 +231,7 @@ static int fetch_refs_via_pack(struct transport *transport,
 			  refs_tmp ? refs_tmp : transport->remote_refs,
 			  dest, to_fetch, nr_heads, &data->shallow,
 			  &transport->pack_lockfile);
+
 	close(data->fd[0]);
 	close(data->fd[1]);
 	if (finish_connect(data->conn)) {
@@ -531,6 +536,37 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	return ret;
 }
 
+char *transport_download_primer(struct transport *transport, const struct alt_resource *alt_res, const char *download_path)
+{
+	return transport->download_primer(transport, alt_res, download_path);
+}
+
+const struct alt_resource *transport_prime_clone(struct transport *transport)
+{
+	if (transport->alt_res == NULL && transport->prime_clone)
+		transport->alt_res = transport->prime_clone(transport);
+
+	return transport->alt_res;
+}
+
+static const struct alt_resource *get_alt_res_smart(struct transport *transport)
+{
+	struct git_transport_data data_temp;
+	struct alt_resource *res = NULL;
+
+	if (alt_res_service_available(transport->url)) {
+		data_temp.conn = git_connect(data_temp.fd, transport->url,
+					 transport->smart_options->primeclone, 0);
+		res = get_alt_res_connect(data_temp.fd[0]);
+		close(data_temp.fd[0]);
+		close(data_temp.fd[1]);
+		finish_connect(data_temp.conn);
+		data_temp.conn = NULL;
+	}
+	
+	return res;
+}
+
 static int connect_git(struct transport *transport, const char *name,
 		       const char *executable, int fd[2])
 {
@@ -546,8 +582,9 @@ static int disconnect_git(struct transport *transport)
 {
 	struct git_transport_data *data = transport->data;
 	if (data->conn) {
-		if (data->got_remote_heads)
+		if (data->got_remote_heads) {
 			packet_flush(data->fd[1]);
+		}
 		close(data->fd[0]);
 		close(data->fd[1]);
 		finish_connect(data->conn);
@@ -579,6 +616,7 @@ void transport_take_over(struct transport *transport,
 	transport->fetch = fetch_refs_via_pack;
 	transport->push = NULL;
 	transport->push_refs = git_transport_push;
+	transport->prime_clone = get_alt_res_smart;
 	transport->disconnect = disconnect_git;
 	transport->smart_options = &(data->options);
 
@@ -691,6 +729,7 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->get_refs_list = get_refs_via_connect;
 		ret->fetch = fetch_refs_via_pack;
 		ret->push_refs = git_transport_push;
+		ret->prime_clone = get_alt_res_smart;
 		ret->connect = connect_git;
 		ret->disconnect = disconnect_git;
 		ret->smart_options = &(data->options);
@@ -712,6 +751,9 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->smart_options->receivepack = "git-receive-pack";
 		if (remote->receivepack)
 			ret->smart_options->receivepack = remote->receivepack;
+		ret->smart_options->primeclone = "git-prime-clone";
+		if (remote->primeclone)
+			ret->smart_options->primeclone = remote->primeclone;
 	}
 
 	return ret;

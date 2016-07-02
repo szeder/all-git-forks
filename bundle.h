@@ -10,10 +10,16 @@ struct ref_list {
 };
 
 struct bundle_header {
+	int bundle_version;
+	int size;
+	const char *filename;
+	const char *datafile;
+	unsigned char csum[GIT_SHA1_RAWSZ];
 	struct ref_list prerequisites;
 	struct ref_list references;
 };
 
+void init_bundle_header(struct bundle_header *header, const char *name);
 int is_bundle(const char *path, int quiet);
 int read_bundle_header(const char *path, struct bundle_header *header);
 int create_bundle(struct bundle_header *header, const char *path,

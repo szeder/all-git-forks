@@ -38,7 +38,7 @@ static unsigned long oldest_have;
 static int multi_ack;
 static int no_done;
 static int use_thin_pack, use_ofs_delta, use_include_tag;
-static int no_progress, daemon_mode;
+static int no_progress, daemon_mode, prime_clone_daemon = 0;
 /* Allow specifying sha1 if it is a ref tip. */
 #define ALLOW_TIP_SHA1	01
 /* Allow request of a sha1 if it is reachable from a ref (possibly hidden ref). */
@@ -730,7 +730,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
+		" include-tag multi_ack_detailed prime-clone";
 	const char *refname_nons = strip_namespace(refname);
 	struct object_id peeled;
 
@@ -741,7 +741,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 		struct strbuf symref_info = STRBUF_INIT;
 
 		format_symref_info(&symref_info, cb_data);
-		packet_write(1, "%s %s%c%s%s%s%s%s agent=%s\n",
+		packet_write(1, "%s %s%c%s%s%s%s%s%s agent=%s\n",
 			     oid_to_hex(oid), refname_nons,
 			     0, capabilities,
 			     (allow_unadvertised_object_request & ALLOW_TIP_SHA1) ?
@@ -749,6 +749,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 			     (allow_unadvertised_object_request & ALLOW_REACHABLE_SHA1) ?
 				     " allow-reachable-sha1-in-want" : "",
 			     stateless_rpc ? " no-done" : "",
+			     prime_clone_daemon ? " prime-clone-daemon" : "",
 			     symref_info.buf,
 			     git_user_agent_sanitized());
 		strbuf_release(&symref_info);
@@ -857,6 +858,8 @@ int main(int argc, const char **argv)
 
 	if (timeout)
 		daemon_mode = 1;
+
+	git_config_get_bool("daemon.primeclone", &prime_clone_daemon);
 
 	setup_path();
 

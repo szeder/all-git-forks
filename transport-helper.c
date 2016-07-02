@@ -28,7 +28,9 @@ struct helper_data {
 		signed_tags : 1,
 		check_connectivity : 1,
 		no_disconnect_req : 1,
-		no_private_update : 1;
+		no_private_update : 1,
+		download_primer : 1,
+		prime_clone : 1;
 	char *export_marks;
 	char *import_marks;
 	/* These go from remote name (as in "list") to private name */
@@ -180,6 +182,10 @@ static struct child_process *get_helper(struct transport *transport)
 			data->export = 1;
 		else if (!strcmp(capname, "check-connectivity"))
 			data->check_connectivity = 1;
+		else if (!strcmp(capname, "prime-clone"))
+			data->prime_clone = 1;
+		else if (!strcmp(capname, "download-primer"))
+			data->download_primer = 1;
 		else if (!data->refspecs && skip_prefix(capname, "refspec ", &arg)) {
 			ALLOC_GROW(refspecs,
 				   refspec_nr + 1,
@@ -193,6 +199,8 @@ static struct child_process *get_helper(struct transport *transport)
 			data->export_marks = xstrdup(arg);
 		} else if (skip_prefix(capname, "import-marks ", &arg)) {
 			data->import_marks = xstrdup(arg);
+		} else if (starts_with(capname, "no-private-update")) {
+			data->no_private_update = 1;
 		} else if (starts_with(capname, "no-private-update")) {
 			data->no_private_update = 1;
 		} else if (mandatory) {
@@ -248,6 +256,7 @@ static int disconnect_helper(struct transport *transport)
 }
 
 static const char *unsupported_options[] = {
+	TRANS_OPT_PRIMECLONE,
 	TRANS_OPT_UPLOADPACK,
 	TRANS_OPT_RECEIVEPACK,
 	TRANS_OPT_THIN,
@@ -621,6 +630,7 @@ static int fetch(struct transport *transport,
 		do_take_over(transport);
 		return transport->fetch(transport, nr_heads, to_fetch);
 	}
+
 
 	count = 0;
 	for (i = 0; i < nr_heads; i++)
@@ -1054,6 +1064,65 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	return ret;
 }
 
+static char *download_primer(struct transport *transport, const struct alt_resource *res, const char *base_path)
+{
+	struct helper_data *data = transport->data;
+	struct child_process *helper;
+	struct strbuf buf = STRBUF_INIT, out = STRBUF_INIT;
+	char *ret = NULL;
+
+	helper = get_helper(transport);
+
+	strbuf_addf(&buf, "download-primer %s %s\n", res->url, base_path);
+	sendline(data, &buf);
+	recvline(data, &out);
+	strbuf_release(&buf);
+	if (out.len > 0)
+		ret = strbuf_detach(&out, NULL);
+	return ret;
+}
+
+static const struct alt_resource *get_alt_res(struct transport *transport)
+{
+	struct helper_data *data = transport->data;
+	struct child_process *helper;
+	struct strbuf buf = STRBUF_INIT, out = STRBUF_INIT;
+	struct alt_resource *alt_res = NULL;
+	char *url = NULL, *filetype = NULL;
+
+	helper = get_helper(transport);
+
+	write_constant(helper->in, "prime-clone\n");
+	while (!recvline(data, &out)) {
+		const char *line = strbuf_detach(&out, NULL), *value;
+		if (skip_prefix(line, "url ", &value)) {
+			url = xstrdup(value);
+		}
+		else if (skip_prefix(line, "filetype ", &value)) {
+			filetype = xstrdup(value);
+		}
+		if (!*line)
+			break;
+	}
+
+	if (filetype && url) {
+		alt_res = xcalloc(1, sizeof(struct alt_resource *));
+		alt_res->filetype = filetype;
+		alt_res->url = url;
+	}
+	else {
+		if (filetype) {
+			free(filetype);
+		}
+		if (url) {
+			free(url);
+		}
+	}
+
+	strbuf_release(&buf);
+	return alt_res;
+}
+
 int transport_helper_init(struct transport *transport, const char *name)
 {
 	struct helper_data *data = xcalloc(1, sizeof(*data));
@@ -1067,6 +1136,8 @@ int transport_helper_init(struct transport *transport, const char *name)
 	transport->data = data;
 	transport->set_option = set_helper_option;
 	transport->get_refs_list = get_refs_list;
+	transport->download_primer = download_primer;
+	transport->prime_clone = get_alt_res;
 	transport->fetch = fetch;
 	transport->push_refs = push_refs;
 	transport->disconnect = release_helper;

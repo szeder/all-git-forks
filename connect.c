@@ -831,3 +831,52 @@ int finish_connect(struct child_process *conn)
 	free(conn);
 	return code;
 }
+
+int alt_res_service_available(const char *url)
+{
+	char *host, *path;
+	enum protocol protocol = parse_connect_url(url, &host, &path);
+	free(host);
+	free(path);
+	return (protocol == PROTO_GIT && server_supports("prime-clone-daemon")) ||
+	       (protocol != PROTO_GIT && server_supports("prime-clone"));
+}
+
+struct alt_resource *get_alt_res_connect(int fd) {
+
+	struct alt_resource *res = NULL;
+	char *buf, *value, *primer_url = NULL, *filetype = NULL;
+	int len, value_len;
+
+
+	while (buf = packet_read_line(fd, NULL)) {
+		if (strstr(buf, "url") == buf) {
+			value = strchr(buf, ' ') + 1;
+			value_len = strlen(value) + 1;
+			primer_url = xcalloc(sizeof(char), value_len);
+			memcpy(primer_url, value, value_len);
+		}
+		else if (strstr(buf, "filetype") == buf) {
+			value = strchr(buf, ' ') + 1;
+			value_len = strlen(value) + 1;
+			filetype = xcalloc(sizeof(char), value_len);
+			memcpy(filetype, value, value_len);
+		}
+	}
+
+	if (filetype && primer_url) {
+		res = xcalloc(1, sizeof(struct alt_resource));
+		res->filetype = filetype;
+		res->url = primer_url;
+	}
+	else {
+		if (filetype) {
+			free(filetype);
+		}
+		if (primer_url) {
+			free(primer_url);
+		}
+	}
+
+	return res;
+}

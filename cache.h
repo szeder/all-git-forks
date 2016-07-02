@@ -854,6 +854,7 @@ const char *git_path_merge_rr(void);
 const char *git_path_merge_mode(void);
 const char *git_path_merge_head(void);
 const char *git_path_fetch_head(void);
+const char *git_path_resumable(void);
 const char *git_path_shallow(void);
 
 /*

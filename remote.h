@@ -50,6 +50,7 @@ struct remote {
 
 	const char *receivepack;
 	const char *uploadpack;
+	const char *primeclone;
 
 	/*
 	 * for curl remotes only
@@ -290,5 +291,10 @@ extern int parse_push_cas_option(struct push_cas_option *, const char *arg, int 
 
 extern int is_empty_cas(const struct push_cas_option *);
 void apply_push_cas(struct push_cas_option *, struct remote *, struct ref *);
+
+struct alt_resource {
+	char *url;
+	char *filetype;
+};
 
 #endif

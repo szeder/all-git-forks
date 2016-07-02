@@ -628,10 +628,10 @@ static struct service_cmd {
 	{"GET", "/objects/[0-9a-f]{2}/[0-9a-f]{38}$", get_loose_object},
 	{"GET", "/objects/pack/pack-[0-9a-f]{40}\\.pack$", get_pack_file},
 	{"GET", "/objects/pack/pack-[0-9a-f]{40}\\.idx$", get_idx_file},
+	{"GET", "/git-prime-clone$", service_rpc},
 
 	{"POST", "/git-upload-pack$", service_rpc},
-	{"POST", "/git-receive-pack$", service_rpc},
-	{"POST", "/git-prime-clone$", service_rpc}
+	{"POST", "/git-receive-pack$", service_rpc}
 };
 
 int main(int argc, char **argv)
