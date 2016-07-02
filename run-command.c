@@ -5,6 +5,7 @@
 #include "argv-array.h"
 #include "thread-utils.h"
 #include "strbuf.h"
+#include "argv-array.h"
 
 void child_process_init(struct child_process *child)
 {
@@ -445,48 +446,50 @@ fail_pipe:
 }
 #else
 {
-	int fhin = 0, fhout = 1, fherr = 2;
   int oldin, oldout, olderr;
   char * oldcwd;
-	const char **sargv = cmd->argv;
-	struct argv_array nargv = ARGV_ARRAY_INIT;
+	const char **sargv = cmd->argv, * const *e;
+	struct argv_array nargv = ARGV_ARRAY_INIT, env = ARGV_ARRAY_INIT;
+
+  for (e = (const char **)environ; *e; ++e)
+    argv_array_push(&env, *e);
+
+  if (cmd->env) {
+    for (e = cmd->env; *e; e++)
+      argv_array_push(&env, *e);
+  }
+
+  fflush(NULL);
 
   oldin = dup(0);
   oldout = dup(1);
   olderr = dup(2);
 
-  close(0);
-  close(1);
-  close(2);
+  if (cmd->no_stdin)
+    dup_devnull(0);
+  else if (need_in) {
+    dup2(fdin[0], 0);
+  } else if (cmd->in) {
+    dup2(cmd->in, 0);
+  }
 
-	if (cmd->no_stdin)
-		fhin = open("/dev/null", O_RDWR);
-	else if (need_in)
-		fhin = dup(fdin[0]);
-	else if (cmd->in)
-		fhin = dup(cmd->in);
-  else
-    fhin = dup(oldin);
+  if (cmd->no_stderr)
+    dup_devnull(2);
+  else if (need_err) {
+    dup2(fderr[1], 2);
+  } else if (cmd->err > 1) {
+    dup2(cmd->err, 2);
+  }
 
-	if (cmd->no_stdout)
-		fhout = open("/dev/null", O_RDWR);
-	else if (cmd->stdout_to_stderr)
-		fhout = dup(fherr);
-	else if (need_out)
-		fhout = dup(fdout[1]);
-	else if (cmd->out > 1)
-		fhout = dup(cmd->out);
-  else
-    fhin = dup(oldout);
-
-	if (cmd->no_stderr)
-		fherr = open("/dev/null", O_RDWR);
-	else if (need_err)
-		fherr = dup(fderr[1]);
-	else if (cmd->err > 2)
-		fherr = dup(cmd->err);
-  else
-    fherr = dup(olderr);
+  if (cmd->no_stdout)
+    dup_devnull(1);
+  else if (cmd->stdout_to_stderr)
+    dup2(2, 1);
+  else if (need_out) {
+    dup2(fdout[1], 1);
+  } else if (cmd->out > 1) {
+    dup2(cmd->out, 1);
+  }
 
 	if (cmd->git_cmd)
 		cmd->argv = prepare_git_cmd(&nargv, cmd->argv);
@@ -496,7 +499,7 @@ fail_pipe:
   oldcwd = xgetcwd();
 
   chdir(cmd->dir);
-	cmd->pid = spawnvpe(_P_NOWAIT, cmd->argv[0], cmd->argv, cmd->env);
+	cmd->pid = spawnvpe(_P_NOWAIT, cmd->argv[0], cmd->argv, env.argv);
   chdir(oldcwd);
 
 	failed_errno = errno;
@@ -507,9 +510,7 @@ fail_pipe:
 
 	argv_array_clear(&nargv);
 	cmd->argv = sargv;
-  close(fhin);
-  close(fhout);
-  close(fherr);
+	argv_array_clear(&env);
 
   dup2(oldin, 0);
   dup2(oldout, 1);
