@@ -188,7 +188,7 @@ static const char **prepare_shell_cmd(struct argv_array *out, const char **argv)
 	return out->argv;
 }
 
-#ifndef GIT_WINDOWS_NATIVE
+#ifndef GIT_AVOID_FORK
 static int execv_shell_cmd(const char **argv)
 {
 	struct argv_array nargv = ARGV_ARRAY_INIT;
@@ -200,7 +200,7 @@ static int execv_shell_cmd(const char **argv)
 }
 #endif
 
-#ifndef GIT_WINDOWS_NATIVE
+#ifndef GIT_AVOID_FORK
 static int child_notifier = -1;
 
 static void notify_parent(void)
@@ -285,7 +285,7 @@ int start_command(struct child_process *cmd)
 
 	need_in = !cmd->no_stdin && cmd->in < 0;
 	if (need_in) {
-		if (pipe(fdin) < 0) {
+		if (pipe2(fdin, O_CLOEXEC) < 0) {
 			failed_errno = errno;
 			if (cmd->out > 0)
 				close(cmd->out);
@@ -299,7 +299,7 @@ int start_command(struct child_process *cmd)
 		&& !cmd->stdout_to_stderr
 		&& cmd->out < 0;
 	if (need_out) {
-		if (pipe(fdout) < 0) {
+		if (pipe2(fdout, O_CLOEXEC) < 0) {
 			failed_errno = errno;
 			if (need_in)
 				close_pair(fdin);
@@ -313,7 +313,7 @@ int start_command(struct child_process *cmd)
 
 	need_err = !cmd->no_stderr && cmd->err < 0;
 	if (need_err) {
-		if (pipe(fderr) < 0) {
+		if (pipe2(fderr, O_CLOEXEC) < 0) {
 			failed_errno = errno;
 			if (need_in)
 				close_pair(fdin);
@@ -469,6 +469,7 @@ fail_pipe:
     dup_devnull(0);
   else if (need_in) {
     dup2(fdin[0], 0);
+    close(fdin[0]);
   } else if (cmd->in) {
     dup2(cmd->in, 0);
   }
@@ -477,6 +478,7 @@ fail_pipe:
     dup_devnull(2);
   else if (need_err) {
     dup2(fderr[1], 2);
+    close(fderr[1]);
   } else if (cmd->err > 1) {
     dup2(cmd->err, 2);
   }
@@ -487,6 +489,7 @@ fail_pipe:
     dup2(2, 1);
   else if (need_out) {
     dup2(fdout[1], 1);
+    close(fdout[1]);
   } else if (cmd->out > 1) {
     dup2(cmd->out, 1);
   }
@@ -515,6 +518,10 @@ fail_pipe:
   dup2(oldin, 0);
   dup2(oldout, 1);
   dup2(olderr, 2);
+
+  close(oldin);
+  close(oldout);
+  close(olderr);
  }
 #endif
 
