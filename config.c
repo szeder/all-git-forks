@@ -503,6 +503,7 @@ static int git_parse_signed(const char *value, intmax_t *ret, intmax_t max)
 		intmax_t val;
 		uintmax_t uval;
 		uintmax_t factor = 1;
+		long int lival;
 
 		errno = 0;
 		val = strtoimax(value, &end, 0);
@@ -512,9 +513,14 @@ static int git_parse_signed(const char *value, intmax_t *ret, intmax_t max)
 			errno = EINVAL;
 			return 0;
 		}
-		uval = labs(val);
+		lival = (long int)val;
+		if (lival != val) {
+			errno = ERANGE;
+			return 0;
+		}
+		uval = labs(lival);
 		uval *= factor;
-		if (uval > max || labs(val) > uval) {
+		if (uval > max || labs(lival) > uval) {
 			errno = ERANGE;
 			return 0;
 		}
