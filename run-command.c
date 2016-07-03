@@ -266,6 +266,69 @@ static int wait_or_whine(pid_t pid, const char *argv0, int in_signal)
 	return code;
 }
 
+#ifdef GIT_AVOID_FORK
+/*
+ * Compare environment entries by key (i.e. stopping at '=' or '\0').
+ */
+static int compareenv(const void *v1, const void *v2)
+{
+	const char *e1 = *(const char**)v1;
+	const char *e2 = *(const char**)v2;
+
+	for (;;) {
+		int c1 = *e1++;
+		int c2 = *e2++;
+		c1 = (c1 == '=') ? 0 : tolower(c1);
+		c2 = (c2 == '=') ? 0 : tolower(c2);
+		if (c1 > c2)
+			return 1;
+		if (c1 < c2)
+			return -1;
+		if (c1 == 0)
+			return 0;
+	}
+}
+
+static int bsearchenv(const char **env, const char *name, size_t size)
+{
+	unsigned low = 0, high = size;
+	while (low < high) {
+		unsigned mid = low + ((high - low) >> 1);
+		int cmp = compareenv(&env[mid], &name);
+		if (cmp < 0)
+			low = mid + 1;
+		else if (cmp > 0)
+			high = mid;
+		else
+			return mid;
+	}
+	return ~low; /* not found, return 1's complement of insert position */
+}
+
+static void do_putenv(struct argv_array *env, const char *name)
+{
+	int i = bsearchenv(env->argv, name, env->argc - 1);
+
+	/* optionally free removed / replaced entry */
+	if (i >= 0)
+		free((char*)env->argv[i]);
+
+	if (strchr(name, '=')) {
+		/* if new value ('key=value') is specified, insert or replace entry */
+		if (i < 0) {
+			i = ~i;
+			memmove(&env->argv[i + 1], &env->argv[i], (env->argc - i) * sizeof(char*));
+			env->argc++;
+		}
+		env->argv[i] = xstrdup(name);
+	} else if (i >= 0) {
+		/* otherwise ('key') remove existing entry */
+		env->argc--;
+		memmove(&env->argv[i], &env->argv[i + 1], (env->argc - i) * sizeof(char*));
+	}
+}
+#endif
+
 int start_command(struct child_process *cmd)
 {
 	int need_in, need_out, need_err;
@@ -454,9 +517,11 @@ fail_pipe:
   for (e = (const char **)environ; *e; ++e)
     argv_array_push(&env, *e);
 
+	qsort(env.argv, env.argc, sizeof(char*), compareenv);
+
   if (cmd->env) {
     for (e = cmd->env; *e; e++)
-      argv_array_push(&env, *e);
+      do_putenv(&env, *e);
   }
 
   fflush(NULL);
