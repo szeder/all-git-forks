@@ -318,6 +318,7 @@ static struct atom_str **atom_table;
 static struct pack_idx_option pack_idx_opts;
 static unsigned int pack_id;
 static struct sha1file *pack_file;
+static struct pack_window *pack_win;
 static struct packed_git *pack_data;
 static struct packed_git **all_packs;
 static off_t pack_size;
@@ -891,6 +892,39 @@ static struct tree_content *dup_tree_content(struct tree_content *s)
 	return d;
 }
 
+static void _sha1write(struct sha1file *f, const void *buf, unsigned int count)
+{
+	sha1write(f, buf, count);
+	/* Always last used */
+	pack_win->last_used = -1;
+	pack_win->inuse_cnt = -1;
+
+	pack_data->pack_size += count;
+
+	if (packed_git_window_size - pack_win->len >= count) {
+		memcpy(pack_win->base + pack_win->len - 20, buf, count);
+		pack_win->len += count;
+	} else {
+		struct pack_window *cursor = NULL;
+		/* We're sliding the window, so we don't need to memcpy
+		 * everything. */
+		pack_win->offset += ((pack_win->len - 20 + count)
+			 / packed_git_window_size) * packed_git_window_size;
+		pack_win->len = count % packed_git_window_size -
+			(packed_git_window_size - pack_win->len);
+		memcpy(pack_win->base, buf + count - pack_win->len + 20,
+		       pack_win->len - 20);
+
+		/* Ensure a pack window on the data before that, otherwise,
+		 * use_pack() may try to create a window that overlaps with
+		 * this one, and that won't work because it won't be complete. */
+		sha1flush(f);
+		use_pack(pack_data, &cursor,
+			 pack_win->offset - packed_git_window_size, NULL);
+		unuse_pack(&cursor);
+	}
+}
+
 static void start_packfile(void)
 {
 	static char tmp_file[PATH_MAX];
@@ -902,15 +936,22 @@ static void start_packfile(void)
 			      "pack/tmp_pack_XXXXXX");
 	FLEX_ALLOC_STR(p, pack_name, tmp_file);
 	p->pack_fd = pack_fd;
+	p->pack_size = 20;
 	p->do_not_close = 1;
 	pack_file = sha1fd(pack_fd, p->pack_name);
+
+	p->windows = pack_win = xcalloc(1, sizeof(*p->windows));
+	pack_win->offset = 0;
+	pack_win->len = 20;
+	pack_win->base = xmalloc(packed_git_window_size);
+	pack_win->next = NULL;
 
 	hdr.hdr_signature = htonl(PACK_SIGNATURE);
 	hdr.hdr_version = htonl(2);
 	hdr.hdr_entries = 0;
-	sha1write(pack_file, &hdr, sizeof(hdr));
-
 	pack_data = p;
+	_sha1write(pack_file, &hdr, sizeof(hdr));
+
 	pack_size = sizeof(hdr);
 	object_count = 0;
 
@@ -1000,9 +1041,24 @@ static int loosen_small_pack(const struct packed_git *p)
 static void end_packfile(void)
 {
 	static int running;
+	struct pack_window *win, *prev;
 
 	if (running || !pack_data)
 		return;
+
+	/* Remove the fake pack window first */
+	for (prev = NULL, win = pack_data->windows; win;
+	     prev = win, win = win->next) {
+		if (win != pack_win)
+			continue;
+		if (prev)
+			prev->next = win->next;
+		else
+			pack_data->windows = win->next;
+		break;
+	}
+	free(pack_win->base);
+	free(pack_win);
 
 	running = 1;
 	clear_delta_base_cache();
@@ -1177,22 +1233,22 @@ static int store_object(
 		e->depth = last->depth + 1;
 
 		hdrlen = encode_in_pack_object_header(OBJ_OFS_DELTA, deltalen, hdr);
-		sha1write(pack_file, hdr, hdrlen);
+		_sha1write(pack_file, hdr, hdrlen);
 		pack_size += hdrlen;
 
 		hdr[pos] = ofs & 127;
 		while (ofs >>= 7)
 			hdr[--pos] = 128 | (--ofs & 127);
-		sha1write(pack_file, hdr + pos, sizeof(hdr) - pos);
+		_sha1write(pack_file, hdr + pos, sizeof(hdr) - pos);
 		pack_size += sizeof(hdr) - pos;
 	} else {
 		e->depth = 0;
 		hdrlen = encode_in_pack_object_header(type, dat->len, hdr);
-		sha1write(pack_file, hdr, hdrlen);
+		_sha1write(pack_file, hdr, hdrlen);
 		pack_size += hdrlen;
 	}
 
-	sha1write(pack_file, out, s.total_out);
+	_sha1write(pack_file, out, s.total_out);
 	pack_size += s.total_out;
 
 	e->idx.crc32 = crc32_end(pack_file);
@@ -1275,7 +1331,7 @@ static void stream_blob(uintmax_t len, unsigned char *sha1out, uintmax_t mark)
 
 		if (!s.avail_out || status == Z_STREAM_END) {
 			size_t n = s.next_out - out_buf;
-			sha1write(pack_file, out_buf, n);
+			_sha1write(pack_file, out_buf, n);
 			pack_size += n;
 			s.next_out = out_buf;
 			s.avail_out = out_sz;
@@ -1350,26 +1406,6 @@ static void *gfi_unpack_entry(
 {
 	enum object_type type;
 	struct packed_git *p = all_packs[oe->pack_id];
-	if (p == pack_data && p->pack_size < (pack_size + 20)) {
-		/* The object is stored in the packfile we are writing to
-		 * and we have modified it since the last time we scanned
-		 * back to read a previously written object.  If an old
-		 * window covered [p->pack_size, p->pack_size + 20) its
-		 * data is stale and is not valid.  Closing all windows
-		 * and updating the packfile length ensures we can read
-		 * the newly written data.
-		 */
-		close_pack_windows(p);
-		sha1flush(pack_file);
-
-		/* We have to offer 20 bytes additional on the end of
-		 * the packfile as the core unpacker code assumes the
-		 * footer is present at the file end and must promise
-		 * at least 20 bytes within any window it maps.  But
-		 * we don't actually create the footer here.
-		 */
-		p->pack_size = pack_size + 20;
-	}
 	return unpack_entry(p, oe->idx.offset, &type, sizep);
 }
 
