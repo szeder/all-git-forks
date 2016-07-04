@@ -82,5 +82,18 @@ test_expect_success 'cache-tree invalidates i-t-a paths' '
 	test_cmp expect actual
 '
 
+test_expect_success 'cache-tree does not ignore dir that has i-t-a entries' '
+	git init ita-in-dir &&
+	(
+		cd ita-in-dir &&
+		mkdir 2 &&
+		touch 1 2/1 2/2 3 &&
+		git add 1 2/2 3 &&
+		git add -N 2/1 &&
+		git commit -m comitted &&
+		git ls-tree -r HEAD | grep 2/2
+	)
+'
+
 test_done
 
