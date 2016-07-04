@@ -325,6 +325,7 @@ static void do_putenv(struct argv_array *env, const char *name)
 		/* otherwise ('key') remove existing entry */
 		env->argc--;
 		memmove(&env->argv[i], &env->argv[i + 1], (env->argc - i) * sizeof(char*));
+    env->argv[env->argc] = NULL;
 	}
 }
 #endif
