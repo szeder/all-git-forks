@@ -1,0 +1,100 @@
+git-mediawiki(1)
+==============
+
+NAME
+----
+git-mediawiki - Abstracts a Mediawiki as a git repository.
+
+
+SYNOPSIS
+--------
+[verse]
+'git clone' -c <name>=<value> mediawiki::<repository>
+'git fetch' -c <name>=<value>
+'git mw' help
+'git mw' preview
+
+DESCRIPTION
+-----------
+Git-Mediawiki is a project which aims the creation of a gate
+between git and mediawiki, allowing git users to push and pull
+objects from mediawiki just as one would do with a classic git
+repository thanks to 'remote-helpers'.
+
+[TIP]
+For more information, visit the wiki at
+https://github.com/moy/Git-Mediawiki/wiki
+
+[TIP]
+Limit the pages to be imported. If you don't want to clone the
+whole wiki, you can import only some pages with:
+
+	$ git clone -c remote.origin.pages='A_page Another_page' \
+        mediawiki::http://yourwikiadress.com
+
+and/or select the content of MediaWiki Categories with:
+
+    $ git clone -c remote.origin.categories='First Second' \
+        mediawiki::http://yourwikiadress.com
+
+
+COMMANDS
+--------
+help::
+    Display help information about git mw.
+
+preview::
+    Parse and render local file into HTML. Preview a page without actually pushing it to the wiki.
+
+OPTIONS FOR git
+-----------------
+
+remote.<name>.pages::
+    Imports only the page specified.
+
+remote.<name>.categories::
+    Imports only the category page specified.
+
+remote.<name>.shallow::
+    Imports only the last revision of a wiki
+
+remote.<name>.mwLogin::
+    Login username for the wiki
+
+remote.<name>.mwDomain::
+    If your wiki requires specifying a domain when logging in (if you use LDAP authentication for instance), this value represents the domain for your 'remote.<name>.mwLogin'.
+
+remote.<name>.mwPassword::
+    Login password for the wiki
+
+remote.<name>.dumbPush::
+    If 'true', then 'git push' will not touch the MediaWiki metadata, and will ask you to reimport history after a successful push, typically with 'git pull --rebase'. For those who know 'git svn', in this mode, 'git push; git pull --rebase' is the equivalent of 'git svn dcommit'.
+
+remote.<name>.fetchStrategy::
+    by_page::
+        This is the most efficient method when cloning a small subset of a very active wiki. On the other hand, fetching from a wiki with little activity but many pages is long (the tool has to query every page even to say "Everything up to date").
+
+    by_rev::
+        Then, git-remote-mediawiki will query the whole wiki for new revisions, and will filter-out revisions that should not be fetched because they do not touch tracked pages. In this case, for example, fetching from an up-to-date wiki is done in constant time (not O(number of pages)).
+
+AUTHOR
+------
+The authors from the git log (alphabetic)::
+    Benoit Person <benoit.person@gmail.com>
+    Célestin Matte <celestin.matte@ensimag.fr>
+    David Aguilar <davvid@gmail.com>
+    Elia Pinto <gitter.spiros@gmail.com>
+    Guillaume Sasdy <guillaume.sasdy@ensimag.imag.fr>
+    Jeff King <peff@peff.net>
+    Jeremie Nikaes <jeremie.nikaes@ensimag.imag.fr>
+    Jonathan Nieder <jrnieder@gmail.com>
+    Junio C Hamano <gitster@pobox.com>
+    Masanari Iida <standby24x7@gmail.com>
+    NGUYEN Kim Thuat <Kim-Thuat.Nguyen@ensimag.imag.fr>
+    Pavel Volek <Pavel.Volek@ensimag.imag.fr>
+    Simon Cathebras <simon.cathebras@ensimag.imag.fr>
+    Stefano Lattarini <stefano.lattarini@gmail.com>
+
+GIT
+---
+Part of the linkgit:git[1] suite
