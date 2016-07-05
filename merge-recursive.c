@@ -658,23 +658,22 @@ static int was_tracked(const char *path)
 {
 	int pos = cache_name_pos(path, strlen(path));
 
-	if (pos < 0)
-		pos = -1 - pos;
-	while (pos < active_nr &&
-	       !strcmp(path, active_cache[pos]->name)) {
+	if (pos >= 0)
+		return pos < active_nr;
+	/*
+	 * cache_name_pos() looks for stage == 0, even if we did not ask for
+	 * it. Let's look for stage == 2 now.
+	 */
+	for (pos = -1 - pos; pos < active_nr &&
+	     !strcmp(path, active_cache[pos]->name); pos++)
 		/*
 		 * If stage #0, it is definitely tracked.
 		 * If it has stage #2 then it was tracked
 		 * before this merge started.  All other
 		 * cases the path was not tracked.
 		 */
-		switch (ce_stage(active_cache[pos])) {
-		case 0:
-		case 2:
+		if (ce_stage(active_cache[pos]) == 2)
 			return 1;
-		}
-		pos++;
-	}
 	return 0;
 }
 
