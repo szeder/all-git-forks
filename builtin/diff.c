@@ -256,6 +256,97 @@ static int builtin_diff_files(struct rev_info *revs, int argc, const char **argv
 	return run_diff_files(revs, options);
 }
 
+/*
+ * Check for symmetric-difference arguments, and if present,
+ * convert A...B to $(merge-base A B) B.
+ */
+static int builtin_diff_sdiff(struct rev_info *rev, struct object_array *ent)
+{
+	int i;
+	int on_left = 0, uninteresting = 0, unflagged = 0;
+	int lpos = -1, rpos = -1, upos = -1;
+	char *lname, *rname, *uname;
+	struct object *robj, *uobj;
+
+	/*
+	 * If there were any A...B symmetric differences specified,
+	 * we'll have A marked with SYMMETRIC_LEFT | UNINTERESTING,
+	 * and each merge base marked with UNINTERESTING.  B will
+	 * be unmarked.  If we were given additional revisions they
+	 * may have other markings, so remember the first A and B
+	 * for error messages as well.
+	 *
+	 * The actual order of these are that the merge bases come
+	 * first, then A, then B, but we don't depend on that in
+	 * this code.
+	 *
+	 * If we don't have just one merge base, we pick one
+	 * at (essentially) random (by using the first).
+	 *
+	 * Note that we don't check obj->parsed, since symmetric
+	 * difference objects are always pre-parsed: a non-parsed
+	 * object is by definition not part of a symmetric difference.
+	 */
+	for (i = 0; i < rev->pending.nr; i++) {
+		struct object *obj = rev->pending.objects[i].item;
+
+		if (obj->flags & SYMMETRIC_LEFT) {
+			on_left++;
+			if (lpos < 0)
+				lpos = i;
+		} else if (obj->flags & UNINTERESTING) {
+			uninteresting++;
+			if (upos < 0)
+				upos = i;
+		} else {
+			unflagged++;
+			if (lpos >= 0 && rpos < 0)
+				rpos = i;
+		}
+	}
+
+	if (on_left == 0)	/* no symmetric differences */
+		return (0);
+
+	/*
+	 * N.B.: lname retains the three dots.  The name of
+	 * the right hand side object (there should be one) is
+	 * a subset of this string.
+	 */
+	lname = rev->pending.objects[lpos].name;
+	/* demand exactly 1 on left and 1 unflagged */
+	if (unflagged > 1)
+		die(_("%s: must not list additional revs"), lname);
+	if (unflagged < 1)
+		die(_("%s: internal error: '...' but no unflagged revs"), lname);
+	if (uninteresting == 0)
+		die(_("%s: no merge base"), lname);
+
+	/*
+	 * Pick the tree from an "uninteresting" commit for the left
+	 * side, and the tree from the right hand side commit (rname)
+	 * for the other.  If there is more than one uninteresting
+	 * tree, print a warning.
+	 *
+	 * Note that the two objects (at upos and rpos) are by
+	 * definition commit objects.
+	 */
+	rname = rev->pending.objects[rpos].name;
+	uname = rev->pending.objects[upos].name;
+	if (uninteresting > 1)
+		warning(_("%s: multiple merge bases, using %s"), lname, uname);
+	robj = rev->pending.objects[rpos].item;
+	uobj = rev->pending.objects[upos].item;
+	if (uobj->type != OBJ_COMMIT || robj->type != OBJ_COMMIT)
+		die(_("internal error: uobj type %d, robj type %d"),
+		    uobj->type, robj->type);
+	robj = &((struct commit *)robj)->tree->object;
+	uobj = &((struct commit *)uobj)->tree->object;
+	add_object_array(uobj, uname, ent);
+	add_object_array(robj, rname, ent);
+	return (1);
+}
+
 int cmd_diff(int argc, const char **argv, const char *prefix)
 {
 	int i;
@@ -391,32 +482,40 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 		}
 	}
 
-	for (i = 0; i < rev.pending.nr; i++) {
-		struct object_array_entry *entry = &rev.pending.objects[i];
-		struct object *obj = entry->item;
-		const char *name = entry->name;
-		int flags = (obj->flags & UNINTERESTING);
-		if (!obj->parsed)
-			obj = parse_object(obj->oid.hash);
-		obj = deref_tag(obj, NULL, 0);
-		if (!obj)
-			die(_("invalid object '%s' given."), name);
-		if (obj->type == OBJ_COMMIT)
-			obj = &((struct commit *)obj)->tree->object;
+	/*
+	 * We treat symmetric difference specially.  Check that first;
+	 * if it handled the arguments, it will put exactly two trees
+	 * into ent.  Otherwise go on to convert objects to blobs
+	 * and/or trees, putting any trees into the ent array.
+	 */
+	if (!builtin_diff_sdiff(&rev, &ent)) {
+		for (i = 0; i < rev.pending.nr; i++) {
+			struct object_array_entry *entry = &rev.pending.objects[i];
+			struct object *obj = entry->item;
+			const char *name = entry->name;
+			int flags = (obj->flags & UNINTERESTING);
+			if (!obj->parsed)
+				obj = parse_object(obj->oid.hash);
+			obj = deref_tag(obj, NULL, 0);
+			if (!obj)
+				die(_("invalid object '%s' given."), name);
+			if (obj->type == OBJ_COMMIT)
+				obj = &((struct commit *)obj)->tree->object;
 
-		if (obj->type == OBJ_TREE) {
-			obj->flags |= flags;
-			add_object_array(obj, name, &ent);
-		} else if (obj->type == OBJ_BLOB) {
-			if (2 <= blobs)
-				die(_("more than two blobs given: '%s'"), name);
-			hashcpy(blob[blobs].sha1, obj->oid.hash);
-			blob[blobs].name = name;
-			blob[blobs].mode = entry->mode;
-			blobs++;
+			if (obj->type == OBJ_TREE) {
+				obj->flags |= flags;
+				add_object_array(obj, name, &ent);
+			} else if (obj->type == OBJ_BLOB) {
+				if (2 <= blobs)
+					die(_("more than two blobs given: '%s'"), name);
+				hashcpy(blob[blobs].sha1, obj->oid.hash);
+				blob[blobs].name = name;
+				blob[blobs].mode = entry->mode;
+				blobs++;
 
-		} else {
-			die(_("unhandled object '%s' given."), name);
+			} else {
+				die(_("unhandled object '%s' given."), name);
+			}
 		}
 	}
 	if (rev.prune_data.nr)
@@ -451,19 +550,7 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	else if (ent.nr == 2)
 		result = builtin_diff_tree(&rev, argc, argv,
 					   &ent.objects[0], &ent.objects[1]);
-	else if (ent.objects[0].item->flags & UNINTERESTING) {
-		/*
-		 * diff A...B where there is at least one merge base
-		 * between A and B.  We have ent.objects[0] ==
-		 * merge-base, ent.objects[ents-2] == A, and
-		 * ent.objects[ents-1] == B.  Show diff between the
-		 * base and B.  Note that we pick one merge base at
-		 * random if there are more than one.
-		 */
-		result = builtin_diff_tree(&rev, argc, argv,
-					   &ent.objects[0],
-					   &ent.objects[ent.nr-1]);
-	} else
+	else
 		result = builtin_diff_combined(&rev, argc, argv,
 					       ent.objects, ent.nr);
 	result = diff_result_code(&rev.diffopt, result);
