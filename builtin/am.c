@@ -1584,14 +1584,14 @@ static int build_fake_ancestor(const struct am_state *state, const char *index_f
 }
 
 /**
- * Do the three-way merge using fake ancestor, his tree constructed
+ * Do the three-way merge using fake ancestor, her tree constructed
  * from the fake ancestor and the postimage of the patch, and our
  * state.
  */
 static int run_fallback_merge_recursive(const struct am_state *state,
 					unsigned char *orig_tree,
 					unsigned char *our_tree,
-					unsigned char *his_tree)
+					unsigned char *her_tree)
 {
 	struct child_process cp = CHILD_PROCESS_INIT;
 	int status;
@@ -1599,7 +1599,7 @@ static int run_fallback_merge_recursive(const struct am_state *state,
 	cp.git_cmd = 1;
 
 	argv_array_pushf(&cp.env_array, "GITHEAD_%s=%.*s",
-			 sha1_to_hex(his_tree), linelen(state->msg), state->msg);
+			 sha1_to_hex(her_tree), linelen(state->msg), state->msg);
 	if (state->quiet)
 		argv_array_push(&cp.env_array, "GIT_MERGE_VERBOSITY=0");
 
@@ -1607,7 +1607,7 @@ static int run_fallback_merge_recursive(const struct am_state *state,
 	argv_array_push(&cp.args, sha1_to_hex(orig_tree));
 	argv_array_push(&cp.args, "--");
 	argv_array_push(&cp.args, sha1_to_hex(our_tree));
-	argv_array_push(&cp.args, sha1_to_hex(his_tree));
+	argv_array_push(&cp.args, sha1_to_hex(her_tree));
 
 	status = run_command(&cp) ? (-1) : 0;
 	discard_cache();
@@ -1620,7 +1620,7 @@ static int run_fallback_merge_recursive(const struct am_state *state,
  */
 static int fall_back_threeway(const struct am_state *state, const char *index_path)
 {
-	unsigned char orig_tree[GIT_SHA1_RAWSZ], his_tree[GIT_SHA1_RAWSZ],
+	unsigned char orig_tree[GIT_SHA1_RAWSZ], her_tree[GIT_SHA1_RAWSZ],
 		      our_tree[GIT_SHA1_RAWSZ];
 
 	if (get_sha1("HEAD", our_tree) < 0)
@@ -1657,7 +1657,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 		return error(_("Did you hand edit your patch?\n"
 				"It does not apply to blobs recorded in its index."));
 
-	if (write_index_as_tree(his_tree, &the_index, index_path, 0, NULL))
+	if (write_index_as_tree(her_tree, &the_index, index_path, 0, NULL))
 		return error("could not write tree");
 
 	say(state, stdout, _("Falling back to patching base and 3-way merge..."));
@@ -1667,13 +1667,13 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 
 	/*
 	 * This is not so wrong. Depending on which base we picked, orig_tree
-	 * may be wildly different from ours, but his_tree has the same set of
+	 * may be wildly different from ours, but her_tree has the same set of
 	 * wildly different changes in parts the patch did not touch, so
 	 * recursive ends up canceling them, saying that we reverted all those
 	 * changes.
 	 */
 
-	if (run_fallback_merge_recursive(state, orig_tree, our_tree, his_tree)) {
+	if (run_fallback_merge_recursive(state, orig_tree, our_tree, her_tree)) {
 		rerere(state->allow_rerere_autoupdate);
 		return error(_("Failed to merge in the changes."));
 	}
