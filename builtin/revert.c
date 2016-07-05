@@ -92,6 +92,7 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 		{ OPTION_STRING, 'S', "gpg-sign", &opts->gpg_sign, N_("key-id"),
 		  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
 		OPT_END(),
+		/* place-holders for REPLAY_PICK's extra options, see below */
 		OPT_END(),
 		OPT_END(),
 		OPT_END(),
