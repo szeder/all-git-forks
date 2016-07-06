@@ -317,8 +317,10 @@ static void do_putenv(struct argv_array *env, const char *name)
 		/* if new value ('key=value') is specified, insert or replace entry */
 		if (i < 0) {
 			i = ~i;
+      ALLOC_GROW(env->argv, env->argc + 2, env->alloc);
 			memmove(&env->argv[i + 1], &env->argv[i], (env->argc - i) * sizeof(char*));
 			env->argc++;
+      env->argv[env->argc] = NULL;
 		}
 		env->argv[i] = xstrdup(name);
 	} else if (i >= 0) {
