@@ -347,6 +347,12 @@ static void parse_pathspec_arg(const char **pathspec,
 	}
 }
 
+static int is_reachable(const char *refname, const struct object_id *oid, int flags, void *cb_data)
+{
+	const unsigned char *sha1 = (unsigned char *)cb_data;
+	return in_merge_bases(lookup_commit(sha1), lookup_commit(oid->hash));
+}
+
 static void parse_treeish_arg(const char **argv,
 		struct archiver_args *ar_args, const char *prefix,
 		int remote)
@@ -364,8 +370,13 @@ static void parse_treeish_arg(const char **argv,
 		const char *colon = strchrnul(name, ':');
 		int refnamelen = colon - name;
 
-		if (!dwim_ref(name, refnamelen, oid.hash, &ref))
-			die("no such ref: %.*s", refnamelen, name);
+		if (!dwim_ref(name, refnamelen, oid.hash, &ref)) {
+			if (get_sha1(name, oid.hash))
+				die("Not a valid object name");
+			if (!for_each_branch_ref(&is_reachable, oid.hash) &&
+			    !for_each_tag_ref(&is_reachable, oid.hash))
+				die("no such ref: %.*s", refnamelen, name);
+		}
 		free(ref);
 	}
 
