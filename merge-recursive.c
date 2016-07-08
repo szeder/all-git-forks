@@ -199,14 +199,14 @@ static void output_commit_title(struct merge_options *o, struct commit *commit)
 }
 
 static int add_cacheinfo(unsigned int mode, const struct object_id *oid,
-		const char *path, int stage, int refresh, int options)
+		const char *path, int stage, int options)
 {
 	struct cache_entry *ce;
-	ce = make_cache_entry(mode, oid ? oid->hash : null_sha1, path, stage,
-			      (refresh ? (CE_MATCH_REFRESH |
-					  CE_MATCH_IGNORE_MISSING) : 0 ));
+
+	ce = make_cache_entry(mode, oid ? oid->hash : null_sha1, path, stage, 0);
 	if (!ce)
 		return error(_("addinfo_cache failed for path '%s'"), path);
+
 	return add_cache_entry(ce, options);
 }
 
@@ -552,13 +552,13 @@ static int update_stages(const char *path, const struct diff_filespec *o,
 		if (remove_file_from_cache(path))
 			return -1;
 	if (o)
-		if (add_cacheinfo(o->mode, &o->oid, path, 1, 0, options))
+		if (add_cacheinfo(o->mode, &o->oid, path, 1, options))
 			return -1;
 	if (a)
-		if (add_cacheinfo(a->mode, &a->oid, path, 2, 0, options))
+		if (add_cacheinfo(a->mode, &a->oid, path, 2, options))
 			return -1;
 	if (b)
-		if (add_cacheinfo(b->mode, &b->oid, path, 3, 0, options))
+		if (add_cacheinfo(b->mode, &b->oid, path, 3, options))
 			return -1;
 	return 0;
 }
@@ -804,7 +804,7 @@ static void update_file_flags(struct merge_options *o,
 	}
  update_index:
 	if (update_cache)
-		add_cacheinfo(mode, oid, path, 0, update_wd, ADD_CACHE_OK_TO_ADD);
+		add_cacheinfo(mode, oid, path, 0, ADD_CACHE_OK_TO_ADD);
 }
 
 static void update_file(struct merge_options *o,
@@ -1646,8 +1646,7 @@ static int merge_content(struct merge_options *o,
 		 */
 		path_renamed_outside_HEAD = !path2 || !strcmp(path, path2);
 		if (!path_renamed_outside_HEAD) {
-			add_cacheinfo(mfi.mode, &mfi.oid, path,
-				      0, (!o->call_depth), 0);
+			add_cacheinfo(mfi.mode, &mfi.oid, path, 0, 0);
 			return mfi.clean;
 		}
 	} else
@@ -2025,6 +2024,7 @@ int merge_recursive_generic(struct merge_options *o,
 	hold_locked_index(lock, 1);
 	clean = merge_recursive(o, head_commit, next_commit, ca,
 			result);
+	refresh_cache(CE_MATCH_REFRESH | CE_MATCH_IGNORE_MISSING);
 	if (active_cache_changed &&
 	    write_locked_index(&the_index, lock, COMMIT_LOCK))
 		return error(_("Unable to write index."));
