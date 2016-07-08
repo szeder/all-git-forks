@@ -3279,6 +3279,7 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 {
 	int ret, re_allocated = 0;
 	int write_object = flags & HASH_WRITE_OBJECT;
+	const int valid_sha1 = flags & HASH_USE_SHA_NOT_PATH;
 
 	if (!type)
 		type = OBJ_BLOB;
@@ -3289,7 +3290,8 @@ static int index_mem(unsigned char *sha1, void *buf, size_t size,
 	if ((type == OBJ_BLOB) && path) {
 		struct strbuf nbuf = STRBUF_INIT;
 		if (convert_to_git(path, buf, size, &nbuf,
-				   write_object ? safe_crlf : SAFE_CRLF_FALSE)) {
+				   write_object ? safe_crlf : SAFE_CRLF_FALSE,
+				   valid_sha1 ? sha1 : NULL)) {
 			buf = strbuf_detach(&nbuf, &size);
 			re_allocated = 1;
 		}
@@ -3317,13 +3319,40 @@ static int index_stream_convert_blob(unsigned char *sha1, int fd,
 {
 	int ret;
 	const int write_object = flags & HASH_WRITE_OBJECT;
+	const int valid_sha1 = flags & HASH_USE_SHA_NOT_PATH;
 	struct strbuf sbuf = STRBUF_INIT;
 
 	assert(path);
 	assert(would_convert_to_git_filter_fd(path));
 
 	convert_to_git_filter_fd(path, fd, &sbuf,
-				 write_object ? safe_crlf : SAFE_CRLF_FALSE);
+				 write_object ? safe_crlf : SAFE_CRLF_FALSE,
+				 valid_sha1 ? sha1 : NULL);
+
+	if (write_object)
+		ret = write_sha1_file(sbuf.buf, sbuf.len, typename(OBJ_BLOB),
+				      sha1);
+	else
+		ret = hash_sha1_file(sbuf.buf, sbuf.len, typename(OBJ_BLOB),
+				     sha1);
+	strbuf_release(&sbuf);
+	return ret;
+}
+
+static int index_from_file_convert_blob(unsigned char *sha1,
+				      const char *path, unsigned flags)
+{
+	int ret;
+	const int write_object = flags & HASH_WRITE_OBJECT;
+	const int valid_sha1 = flags & HASH_USE_SHA_NOT_PATH;
+	struct strbuf sbuf = STRBUF_INIT;
+
+	assert(path);
+	assert(can_clean_from_file(path));
+
+	convert_to_git_filter_from_file(path, &sbuf,
+				 write_object ? safe_crlf : SAFE_CRLF_FALSE,
+				 valid_sha1 ? sha1 : NULL);
 
 	if (write_object)
 		ret = write_sha1_file(sbuf.buf, sbuf.len, typename(OBJ_BLOB),
@@ -3400,6 +3429,8 @@ int index_fd(unsigned char *sha1, int fd, struct stat *st,
 	     enum object_type type, const char *path, unsigned flags)
 {
 	int ret;
+	const unsigned char *sha1_ce;
+	sha1_ce = flags & HASH_USE_SHA_NOT_PATH ? sha1 : NULL;
 
 	/*
 	 * Call xsize_t() only when needed to avoid potentially unnecessary
@@ -3410,7 +3441,7 @@ int index_fd(unsigned char *sha1, int fd, struct stat *st,
 	else if (!S_ISREG(st->st_mode))
 		ret = index_pipe(sha1, fd, type, path, flags);
 	else if (st->st_size <= big_file_threshold || type != OBJ_BLOB ||
-		 (path && would_convert_to_git(path)))
+		 (path && would_convert_to_git(path,sha1_ce)))
 		ret = index_core(sha1, fd, xsize_t(st->st_size), type, path,
 				 flags);
 	else
@@ -3427,12 +3458,19 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 
 	switch (st->st_mode & S_IFMT) {
 	case S_IFREG:
-		fd = open(path, O_RDONLY);
-		if (fd < 0)
-			return error_errno("open(\"%s\")", path);
-		if (index_fd(sha1, fd, st, OBJ_BLOB, path, flags) < 0)
-			return error("%s: failed to insert into database",
-				     path);
+		if (can_clean_from_file(path)) {
+			if (index_from_file_convert_blob(sha1, path, flags) < 0)
+				return error("%s: failed to insert into database",
+					     path);
+		}
+		else {
+			fd = open(path, O_RDONLY);
+			if (fd < 0)
+				return error_errno("open(\"%s\")", path);
+			if (index_fd(sha1, fd, st, OBJ_BLOB, path, flags) < 0)
+				return error("%s: failed to insert into database",
+					     path);
+		}
 		break;
 	case S_IFLNK:
 		if (strbuf_readlink(&sb, path, st->st_size))

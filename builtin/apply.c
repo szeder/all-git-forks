@@ -2246,7 +2246,8 @@ static int read_old_data(struct stat *st, const char *path, struct strbuf *buf)
 	case S_IFREG:
 		if (strbuf_read_file(buf, path, st->st_size) != st->st_size)
 			return error(_("unable to open or read %s"), path);
-		convert_to_git(path, buf->buf, buf->len, buf, 0);
+		convert_to_git(path, buf->buf, buf->len, buf,
+			       SAFE_CRLF_FALSE, NULL);
 		return 0;
 	default:
 		return -1;
@@ -4248,6 +4249,22 @@ static int try_create_file(const char *path, unsigned int mode, const char *buf,
 	fd = open(path, O_CREAT | O_EXCL | O_WRONLY, (mode & 0100) ? 0777 : 0666);
 	if (fd < 0)
 		return -1;
+
+	if (can_smudge_to_file(path)) {
+		close(fd);
+		fd = convert_to_working_tree_filter_to_file(path, path, buf, size);
+		if (fd < 0) {
+			/* smudgeToFile filter failed; continue
+			 * with regular file creation. */
+			fd = open(path, O_CREAT | O_EXCL | O_WRONLY, (mode & 0100) ? 0777 : 0666);
+			if (fd < 0)
+				return -1;
+		}
+		else {
+			close(fd);
+			return 0;
+		}
+	}
 
 	if (convert_to_working_tree(path, buf, size, &nbuf)) {
 		size = nbuf.len;
