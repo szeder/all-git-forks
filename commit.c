@@ -1623,7 +1623,7 @@ void print_commit_list(struct commit_list *list,
 {
 	for ( ; list; list = list->next) {
 		const char *format = list->next ? format_cur : format_last;
-		printf(format, oid_to_hex(&list->item->object.oid));
+		printf(format, "%s", oid_to_hex(&list->item->object.oid));
 	}
 }
 
