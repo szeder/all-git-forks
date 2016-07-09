@@ -373,8 +373,119 @@ struct filter_params {
 	int fd;
 	const char *cmd;
 	const char *path; /* Path within the git repository */
-	const char *fspath; /* Path to file on disk */
 };
+
+static int cmd_process_map_init = 0;
+static struct hashmap cmd_process_map;
+
+struct cmd2process {
+	struct hashmap_entry ent; /* must be the first member! */
+	const char *cmd;
+	struct child_process process;
+};
+
+static int cmd2process_cmp(const struct cmd2process *e1,
+                           const struct cmd2process *e2,
+                           const void *unused)
+{
+	return strcmp(e1->cmd, e2->cmd);
+}
+
+static struct cmd2process *find_entry(const char *cmd)
+{
+	struct cmd2process k;
+	hashmap_entry_init(&k, memhash(&cmd, sizeof(char *)));
+	k.cmd = cmd;
+	return hashmap_get(&cmd_process_map, &k, NULL);
+}
+
+static int apply_file_filter(const char *path, const char *src, size_t len,
+                             struct strbuf *dst, const char *cmd)
+{
+	int ret = 1;
+	struct strbuf nbuf = STRBUF_INIT;
+	struct cmd2process *entry = NULL;
+	struct child_process *process = NULL;
+	const char *argv[] = { NULL, NULL };
+
+	if (!cmd || !*cmd)
+		return 0;
+
+	if (!dst)
+		return 1;
+
+	if (!cmd_process_map_init) {
+		cmd_process_map_init = 1;
+		hashmap_init(&cmd_process_map, (hashmap_cmp_fn) cmd2process_cmp, 0);
+	} else {
+		entry = find_entry(cmd);
+	}
+
+	if (entry) {
+		process = &entry->process;
+	} else {
+		entry = malloc(sizeof(struct cmd2process));
+		hashmap_entry_init(entry, memhash(&cmd, sizeof(char *)));
+		entry->cmd = cmd;
+		hashmap_add(&cmd_process_map, entry);
+		process = &entry->process;
+
+		child_process_init(process);
+		argv[0] = cmd;
+		process->argv = argv;
+		process->use_shell = 1;
+		process->in = -1;
+		process->out = -1;
+
+		if (start_command(process)) {
+			error("cannot fork to run external filter %s", cmd);
+			return 0;
+		}
+	}
+
+	fflush(NULL);
+
+	// TODO: Is the signchain_push OK here?
+	sigchain_push(SIGPIPE, SIG_IGN);
+	write_str_in_full(process->in, path);
+	write_str_in_full(process->in, "\n");
+	if (src && len > 0) {
+		// smudge filter processing
+		struct strbuf lenstr = STRBUF_INIT;
+		strbuf_reset(&lenstr);
+		strbuf_addf(&lenstr, "%zu", len);
+		write_str_in_full(process->in, lenstr.buf);
+		write_str_in_full(process->in, "\n");
+		write_in_full(process->in, src, len);
+		strbuf_reset(&nbuf);
+		if (strbuf_read_once(&nbuf, process->out, 2) < 0 ||
+			strcmp(nbuf.buf, "OK") != 0) {
+			error("read from external file filter %s failed", cmd);
+			ret = 0;
+		}
+	} else {
+		// clean filter processing
+		strbuf_reset(&nbuf);
+		// TODO: Should we read the expected size here first?
+		if (strbuf_read_once(&nbuf, process->out, 0) < 0) {
+			error("read from external file filter %s failed", cmd);
+			ret = 0;
+		} else {
+			strbuf_swap(dst, &nbuf);
+		}
+		// TODO: Should we ask for an OK from the filter here, too?
+	}
+	sigchain_pop(SIGPIPE);
+
+	// TODO: We propably should close the pipes and finish all processes
+	// in the hashmap. What would be a good place to do this?
+	// close(process->in)
+	// close(process->out)
+	// finish_command(process);
+
+	strbuf_release(&nbuf);
+	return ret;
+}
 
 static int filter_buffer_or_fd(int in, int out, void *data)
 {
@@ -401,15 +512,6 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	/* expand all %f with the quoted path */
 	strbuf_expand(&cmd, params->cmd, strbuf_expand_dict_cb, &dict);
 	strbuf_release(&path);
-
-	/* append fspath to the command if it's set, separated with a space */
-	if (params->fspath) {
-		struct strbuf fspath = STRBUF_INIT;
-		sq_quote_buf(&fspath, params->fspath);
-		strbuf_addstr(&cmd, " ");
-		strbuf_addbuf(&cmd, &fspath);
-		strbuf_release(&fspath);
-	}
 
 	argv[0] = cmd.buf;
 
@@ -449,9 +551,8 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	return (write_err || status);
 }
 
-static int apply_filter(const char *path, const char *fspath,
-			const char *src, size_t len, int fd,
-                        struct strbuf *dst, const char *cmd)
+static int apply_filter(const char *path, const char *src, size_t len,
+                        int fd, struct strbuf *dst, const char *cmd)
 {
 	/*
 	 * Create a pipeline to have the command filter the buffer's
@@ -479,7 +580,6 @@ static int apply_filter(const char *path, const char *fspath,
 	params.fd = fd;
 	params.cmd = cmd;
 	params.path = path;
-	params.fspath = fspath;
 
 	fflush(NULL);
 	if (start_async(&async))
@@ -860,7 +960,7 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
-	return apply_filter(path, NULL, NULL, 0, -1, NULL, ca.drv->clean);
+	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean);
 }
 
 static int can_filter_file(const char *filefilter, const char *filefiltername,
@@ -950,7 +1050,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		required = ca.drv->required;
 	}
 
-	ret |= apply_filter(path, NULL, src, len, -1, dst, filter);
+	ret |= apply_filter(path, src, len, -1, dst, filter);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -976,7 +1076,7 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv);
 	assert(ca.drv->clean);
 
-	if (!apply_filter(path, NULL, NULL, 0, fd, dst, ca.drv->clean))
+	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action,
@@ -995,7 +1095,7 @@ void convert_to_git_filter_from_file(const char *path, struct strbuf *dst,
 	assert(ca.drv->clean);
 	assert(ca.drv->clean_from_file);
 
-	if (!apply_filter(path, path, "", 0, -1, dst, ca.drv->clean_from_file))
+	if (!apply_file_filter(path, "", 0, dst, ca.drv->clean_from_file))
 		die("%s: cleanFromFile filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action,
@@ -1040,7 +1140,10 @@ static int convert_to_working_tree_internal(const char *path,
 		}
 	}
 
-	ret_filter = apply_filter(path, destpath, src, len, -1, dst, filter);
+	if (destpath)
+		ret_filter = apply_file_filter(destpath, src, len, dst, filter);
+	else
+		ret_filter = apply_filter(path, src, len, -1, dst, filter);
 	if (!ret_filter && required)
 		die("%s: %s filter %s failed", path, destpath ? "smudgeToFile" : "smudge", ca.drv->name);
 
