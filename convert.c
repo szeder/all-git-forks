@@ -378,52 +378,26 @@ struct filter_params {
 };
 
 static int cmd_async_map_init = 0;
-// static struct hashmap cmd_async_map;
+static struct hashmap cmd_process_map;
 
-static struct child_process csprocess;
-
-// struct cmd2async {
-// 	struct hashmap_entry ent; /* must be the first member! */
-// 	const char *cmd;
-// 	struct async async;
-// };
-
-// static int cmd2async_cmp(const struct cmd2async *e1, const struct cmd2async *e2, const void *unused)
-// {
-// 	return strcmp(e1->cmd, e2->cmd);
-// }
-
-// static struct cmd2async *find_entry(const char *cmd)
-// {
-// 	struct cmd2async k;
-// 	hashmap_entry_init(&k, memhash(&cmd, sizeof(char *)));
-// 	k.cmd = cmd;
-// 	return hashmap_get(&cmd_async_map, &k, NULL);
-// }
-
-// static int filter_stream(int in, int out, void *data)
-// {
-// 	struct filter_params *params = (struct filter_params *)data;
-// 	const char *argv[] = { NULL, NULL };
-// 	argv[0] = params->cmd;
-
-// 	printf("################ S T A R T %s\n", params->cmd);
-// 	printf("IN %i\n", in);
-// 	printf("OUT %i\n", out);
-// 	params->process.argv = argv;
-// 	params->process.use_shell = 1;
-// 	params->process.in = in;
-// 	params->process.out = out;
-// 	if (start_command(&params->process))
-// 		return error("cannot fork to run external filter %s", params->cmd);
-
-// 	return 0;
-// }
-
-enum filter_type {
-	CLEAN = 0,
-	SMUDGE = 1
+struct cmd2process {
+	struct hashmap_entry ent; /* must be the first member! */
+	const char *cmd;
+	struct child_process process;
 };
+
+static int cmd2process_cmp(const struct cmd2process *e1, const struct cmd2process *e2, const void *unused)
+{
+	return strcmp(e1->cmd, e2->cmd);
+}
+
+static struct cmd2process *find_entry(const char *cmd)
+{
+	struct cmd2process k;
+	hashmap_entry_init(&k, memhash(&cmd, sizeof(char *)));
+	k.cmd = cmd;
+	return hashmap_get(&cmd_process_map, &k, NULL);
+}
 
 static int apply_filter_stream(const char *path, const char *src, size_t len, struct strbuf *dst, const char *cmd)
 {
@@ -436,9 +410,8 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 	 */
 	int ret = 1;
 	struct strbuf nbuf = STRBUF_INIT;
-	struct filter_params params;
-	// struct cmd2async *e = NULL;
-	int filter;
+	struct cmd2process *entry = NULL;
+	struct child_process *process = NULL;
 
 	if (!cmd || !*cmd)
 		return 0;
@@ -446,100 +419,58 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 	if (!dst)
 		return 1;
 
-	if (src && len > 0)
-		filter = SMUDGE;
-	else
-		filter = CLEAN;
+	fflush(NULL);
 
 	if (!cmd_async_map_init) {
-
-		child_process_init(&csprocess);
-
-		const char *argv[] = { NULL, NULL };
-		argv[0] = cmd;
-		csprocess.argv = argv;
-		csprocess.use_shell = 1;
-		csprocess.in = -1;
-		csprocess.out = -1;
-
-		// printf("NEW HASH MAP\n");
-		// hashmap_init(&cmd_async_map, (hashmap_cmp_fn) cmd2async_cmp, 0);
-		// cmd_async_map_init = 1;
-	// }
-	// else
-	// 	e = find_entry(cmd);
-
-	fflush(NULL);
-	// if (!e) {
-	// 	e = malloc(sizeof(struct cmd2async));
-	// 	hashmap_entry_init(e, memhash(&cmd, sizeof(char *)));
-	// 	e->cmd = cmd;
-	// 	hashmap_add(&cmd_async_map, e);
-	// 	memset(&e->async, 0, sizeof(e->async));
-	// 	e->async.proc = filter_stream;
-	// 	e->async.data = &params;
-	// 	e->async.out = -1;
-	// 	e->async.in = -1;
-	// 	params.src = "";
-	// 	params.size = 1;
-	// 	params.fd = -1;
-	// 	params.cmd = cmd;
-	// 	params.path = path;
-	// 	child_process_init(&params.process);
-
-
-	// const char *argv[] = { NULL, NULL };
-	// argv[0] = params.cmd;
-
-	// // printf("################ S T A R T %s\n", params->cmd);
-	// // printf("IN %i\n", in);
-	// // printf("OUT %i\n", out);
-	// params.process.argv = argv;
-	// params.process.use_shell = 1;
-	// params.process.in = -1;
-	// params.process.out = -1;
-	if (start_command(&csprocess))
-		return error("cannot fork to run external filter %s", params.cmd);
-
-
-		// if (start_async(&e->async))
-		// 	return 0;	/* error was already reported */
+		cmd_async_map_init = 1;
+		hashmap_init(&cmd_process_map, (hashmap_cmp_fn) cmd2process_cmp, 0);
+	} else {
+		entry = find_entry(cmd);
 	}
 
+	if (entry) {
+		process = &entry->process;
+	} else {
+		entry = malloc(sizeof(struct cmd2process));
+		hashmap_entry_init(entry, memhash(&cmd, sizeof(char *)));
+		entry->cmd = cmd;
+		hashmap_add(&cmd_process_map, entry);
+		process = &entry->process;
 
-// struct filter_params *gparams = (struct filter_params *)e->async.data;
+		child_process_init(process);
+		const char *argv[] = { NULL, NULL };
+		argv[0] = cmd;
+		process->argv = argv;
+		process->use_shell = 1;
+		process->in = -1;
+		process->out = -1;
 
+		if (start_command(process))
+			return error("cannot fork to run external filter %s", cmd);
+	}
 
 	// TODO: is this OK here?
 	sigchain_push(SIGPIPE, SIG_IGN);
-	printf("!!---- %s %s %zu\n", cmd, path, len);
-	printf("pipe %i\n", csprocess.in);
-	write_str_in_full(csprocess.in, path);
-	write_str_in_full(csprocess.in, "\n");
-
-	if (filter == SMUDGE) {
+	write_str_in_full(process->in, path);
+	write_str_in_full(process->in, "\n");
+	if (src && len > 0) {
+		// smudge filter
 		struct strbuf lenstr = STRBUF_INIT;
 		strbuf_reset(&lenstr);
 		strbuf_addf(&lenstr, "%zu", len);
-		write_str_in_full(csprocess.in, lenstr.buf);
-		write_str_in_full(csprocess.in, "\n");
-
-		printf("----\n%s\n-----\n", src);
-		write_in_full(csprocess.in, src, len);
-	}
-	sigchain_pop(SIGPIPE);
-
-	printf("JOOOOOO %zu\n", len);
-	if (filter == CLEAN)
-	{
-		if (strbuf_read_once(&nbuf, csprocess.out, 0) < 0) {
+		write_str_in_full(process->in, lenstr.buf);
+		write_str_in_full(process->in, "\n");
+		write_in_full(process->in, src, len);
+	} else {
+		// clean filter
+		if (strbuf_read_once(&nbuf, process->out, 0) < 0) {
 			error("read from external filter %s failed", cmd);
 			ret = 0;
 		}
-		printf("## read from filter: %s\n", nbuf.buf);
-	}
 
-fflush(NULL);
+	}
+	sigchain_pop(SIGPIPE);
+
 	// TODO: run for all filter in hashmap. but where?
 	// close(e->async.out)
 	// finish_async(&e->async)
@@ -550,7 +481,6 @@ fflush(NULL);
 	strbuf_release(&nbuf);
 	return ret;
 }
-
 
 static int filter_buffer_or_fd(int in, int out, void *data)
 {
