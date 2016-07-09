@@ -411,6 +411,7 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 	struct strbuf nbuf = STRBUF_INIT;
 	struct cmd2process *entry = NULL;
 	struct child_process *process = NULL;
+	const char *argv[] = { NULL, NULL };
 
 	if (!cmd || !*cmd)
 		return 0;
@@ -437,7 +438,6 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 		process = &entry->process;
 
 		child_process_init(process);
-		const char *argv[] = { NULL, NULL };
 		argv[0] = cmd;
 		process->argv = argv;
 		process->use_shell = 1;
