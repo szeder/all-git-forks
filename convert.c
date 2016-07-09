@@ -401,7 +401,6 @@ static struct cmd2process *find_entry(const char *cmd)
 
 static int apply_filter_stream(const char *path, const char *src, size_t len, struct strbuf *dst, const char *cmd)
 {
-	printf("convert.c: apply_filter_stream %s %s\n", cmd, path);
 	/*
 	 * Create a pipeline to have the command filter the buffer's
 	 * contents.
@@ -560,7 +559,6 @@ static int apply_filter(const char *path, const char *fspath,
 			const char *src, size_t len, int fd,
                         struct strbuf *dst, const char *cmd)
 {
-	printf("convert.c: apply_filter %s %s %s\n", cmd, path, fspath);
 	/*
 	 * Create a pipeline to have the command filter the buffer's
 	 * contents.
@@ -968,7 +966,6 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
-	printf("would_convert_to_git_filter_fd\n");
 	return apply_filter(path, NULL, NULL, 0, -1, NULL, ca.drv->clean);
 }
 
@@ -1059,7 +1056,6 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		required = ca.drv->required;
 	}
 
-	printf("convert_to_git\n");
 	ret |= apply_filter(path, NULL, src, len, -1, dst, filter);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
@@ -1086,7 +1082,6 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv);
 	assert(ca.drv->clean);
 
-	printf("convert_to_git_filter_fd\n");
 	if (!apply_filter(path, NULL, NULL, 0, fd, dst, ca.drv->clean))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -1106,7 +1101,6 @@ void convert_to_git_filter_from_file(const char *path, struct strbuf *dst,
 	assert(ca.drv->clean);
 	assert(ca.drv->clean_from_file);
 
-	printf("convert_to_git_filter_from_file\n");
 	if (!apply_filter_stream(path, "", 0, dst, ca.drv->clean_from_file))
 		die("%s: cleanFromFile filter '%s' failed", path, ca.drv->name);
 
@@ -1152,9 +1146,6 @@ static int convert_to_working_tree_internal(const char *path,
 		}
 	}
 
-	printf("convert_to_working_tree_internal\n");
-	printf("src %s\n", src);
-	printf("dst %s\n", dst->buf);
 	if (destpath)
 		ret_filter = apply_filter_stream(path, src, len, dst, filter);
 	else
@@ -1162,13 +1153,11 @@ static int convert_to_working_tree_internal(const char *path,
 	if (!ret_filter && required)
 		die("%s: %s filter %s failed", path, destpath ? "smudgeToFile" : "smudge", ca.drv->name);
 
-	printf("LOSSSSSSSSS %s\n", dst->buf);
 	return ret | ret_filter;
 }
 
 int convert_to_working_tree(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	printf("convert_to_working_tree\n");
 	return convert_to_working_tree_internal(path, NULL, src, len, dst, 0);
 }
 
@@ -1176,7 +1165,6 @@ int convert_to_working_tree(const char *path, const char *src, size_t len, struc
  * On failure, the worktree file will not exist. */
 int convert_to_working_tree_filter_to_file(const char *path, const char *destpath, const char *src, size_t len)
 {
-	printf("convert_to_working_tree_filter_to_file %s\n", path);
 	struct strbuf output = STRBUF_INIT;
 	int ok = convert_to_working_tree_internal(path, destpath, src, len, &output, 0);
 	/* The smudgeToFile filter stdout is not used. */
@@ -1199,7 +1187,6 @@ int convert_to_working_tree_filter_to_file(const char *path, const char *destpat
 
 int renormalize_buffer(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	printf("renormalize_buffer %s\n", path);
 	int ret = convert_to_working_tree_internal(path, NULL, src, len, dst, 1);
 	if (ret) {
 		src = dst->buf;
