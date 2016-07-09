@@ -380,6 +380,13 @@ static int update_one(struct cache_tree *it,
 			continue;
 		}
 
+		/*
+		 * "sub" can be an empty tree if subentries are i-t-a.
+		 */
+		if (sub && sub->cache_tree->entry_count < 0 &&
+		    !hashcmp(sha1, EMPTY_TREE_SHA1_BIN))
+			continue;
+
 		strbuf_grow(&buffer, entlen + 100);
 		strbuf_addf(&buffer, "%o %.*s%c", mode, entlen, path + baselen, '\0');
 		strbuf_add(&buffer, sha1, 20);
