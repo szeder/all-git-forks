@@ -445,8 +445,18 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 		process->in = -1;
 		process->out = -1;
 
-		if (start_command(process))
-			return error("cannot fork to run external filter %s", cmd);
+		if (start_command(process)) {
+			error("cannot fork to run external filter %s", cmd);
+			return 0;
+		}
+		strbuf_reset(&nbuf);
+		if (strbuf_read_once(&nbuf, process->out, 0) < 0) {
+			error("read from external filter %s failed", cmd);
+			return 0;
+		}
+		if (strcmp(nbuf.buf, "OK\n")) {
+			return 0;
+		}
 	}
 
 	// TODO: is this OK here?
@@ -461,11 +471,15 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 		write_str_in_full(process->in, lenstr.buf);
 		write_str_in_full(process->in, "\n");
 		write_in_full(process->in, src, len);
+
 	} else {
 		// clean filter
+		strbuf_reset(&nbuf);
 		if (strbuf_read_once(&nbuf, process->out, 0) < 0) {
 			error("read from external filter %s failed", cmd);
 			ret = 0;
+		} else {
+			strbuf_swap(dst, &nbuf);
 		}
 
 	}
@@ -475,9 +489,6 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 	// close(e->async.out)
 	// finish_async(&e->async)
 
-	if (ret) {
-		strbuf_swap(dst, &nbuf);
-	}
 	strbuf_release(&nbuf);
 	return ret;
 }

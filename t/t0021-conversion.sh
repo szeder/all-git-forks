@@ -14,6 +14,7 @@ chmod +x rot13.sh
 
 cat <<EOF >rot13-from-file.sh
 #!$SHELL_PATH
+echo "OK"
 while read LINE; do
    srcfile="\$LINE"
    echo "CLEAN \$srcfile" >> rot13-from-file.ran
@@ -27,11 +28,10 @@ cat <<EOF >rot13-to-file.py
 #!/usr/bin/env python
 import sys
 from subprocess import Popen, PIPE, STDOUT
-import os
-import time
-
-for filename in iter(sys.stdin.readline, ''):
-	filename = filename[:-1]
+with (sys.stdout) as f:
+    f.write('OK\n')
+for data in iter(sys.stdin.readline, ''):
+	filename = data[:-1]
 	content_size = sys.stdin.readline()[:-1]
 	content = sys.stdin.read(int(content_size))
 
@@ -360,48 +360,49 @@ test_expect_success 'smudgeToFile filter is used when checking out a file' '
 	rm -f rot13-to-file.ran
 '
 
-# test_expect_success 'recovery from failure of smudgeToFile filter, using smudge filter' '
-# 	test_config filter.rot13.smudgeToFile false &&
+test_expect_success 'recovery from failure of smudgeToFile filter, using smudge filter' '
+	test_config filter.rot13.smudgeToFile false &&
 
-# 	rm -f fstest.t &&
-# 	git checkout -- fstest.t &&
-# 	cmp test fstest.t
-# '
+	rm -f fstest.t &&
+	git checkout -- fstest.t &&
 
-# test_expect_success 'recovery from failure of smudgeToFile filter that deletes the worktree file' '
-# 	test_config filter.rot13.smudgeToFile ./delete-file-and-fail.sh &&
+	cmp test fstest.t
+'
 
-# 	rm -f fstest.t &&
-# 	git checkout -- fstest.t &&
-# 	cmp test fstest.t
-# '
+test_expect_success 'recovery from failure of smudgeToFile filter that deletes the worktree file' '
+	test_config filter.rot13.smudgeToFile ./delete-file-and-fail.sh &&
 
-# test_expect_success 'smudgeToFile filter is used in merge' '
-# 	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
+	rm -f fstest.t &&
+	git checkout -- fstest.t &&
+	cmp test fstest.t
+'
 
-# 	git commit -m "added fstest.t" fstest.t &&
-# 	git checkout -b old &&
-# 	git reset --hard HEAD^ &&
-# 	git merge master &&
+test_expect_success 'smudgeToFile filter is used in merge' '
+	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
 
-# 	test -e rot13-to-file.ran &&
-# 	rm -f rot13-to-file.ran &&
+	git commit -m "added fstest.t" fstest.t &&
+	git checkout -b old &&
+	git reset --hard HEAD^ &&
+	git merge master &&
 
-# 	cmp test fstest.t &&
-# 	git checkout master
-# '
+	test -e rot13-to-file.ran &&
+	rm -f rot13-to-file.ran &&
 
-# test_expect_success 'smudgeToFile filter is used by git am' '
-# 	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
+	cmp test fstest.t &&
+	git checkout master
+'
 
-# 	git format-patch HEAD^ --stdout > fstest.patch &&
-# 	git reset --hard HEAD^ &&
-# 	git am < fstest.patch &&
+test_expect_success 'smudgeToFile filter is used by git am' '
+	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
 
-# 	test -e rot13-to-file.ran &&
-# 	rm -f rot13-to-file.ran &&
-# 	cmp test fstest.t
-# '
+	git format-patch HEAD^ --stdout > fstest.patch &&
+	git reset --hard HEAD^ &&
+	git am < fstest.patch &&
+
+	test -e rot13-to-file.ran &&
+	rm -f rot13-to-file.ran &&
+	cmp test fstest.t
+'
 
 test_expect_success 'cleanFromFile filter is not used when clean filter is not configured' '
 	test_config filter.noclean.smudge ./rot13.sh &&
