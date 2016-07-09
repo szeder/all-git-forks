@@ -14,19 +14,39 @@ chmod +x rot13.sh
 
 cat <<EOF >rot13-from-file.sh
 #!$SHELL_PATH
-srcfile="\$1"
-touch rot13-from-file.ran
-cat "\$srcfile" | ./rot13.sh
+while read LINE; do
+   srcfile="\$LINE"
+   echo "CLEAN \$srcfile" >> rot13-from-file.ran
+   cat "\$srcfile" | ./rot13.sh
+done
+
 EOF
 chmod +x rot13-from-file.sh
 
-cat <<EOF >rot13-to-file.sh
-#!$SHELL_PATH
-destfile="\$1"
-touch rot13-to-file.ran
-./rot13.sh > "\$destfile"
+# TODO: Is there a way to read X bytes from a pipe via shell?
+# I implemented the filter in Python as workaround. If Python
+# is an undesired dependency then I could reimplement it in Perl, too.
+cat <<EOF >rot13-to-file.py
+#!/usr/bin/env python
+import sys
+from subprocess import Popen, PIPE, STDOUT
+
+for data in iter(sys.stdin.readline, ''):
+	filename = data[:-1]
+	content_size = sys.stdin.readline()[:-1]
+	content = sys.stdin.read(int(content_size))
+
+	p = Popen(['./rot13.sh'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+	with open(filename, 'w') as f:
+		f.write(p.communicate(input=content)[0])
+
+	with open('rot13-to-file.ran', 'a') as f:
+		f.write('SMUDGE {} {}\n'.format(filename, content_size))
+
+	sys.stdout.write('OK')
+	sys.stdout.flush()
 EOF
-chmod +x rot13-to-file.sh
+chmod +x rot13-to-file.py
 
 cat <<EOF >delete-file-and-fail.sh
 #!$SHELL_PATH
@@ -293,28 +313,52 @@ test_expect_success 'disable filter with empty override' '
 '
 
 test_expect_success 'cleanFromFile filter is used when adding a file' '
+	{
+	    echo a
+	    echo bb
+	    echo ccc
+	} >test2 &&
+
+
 	test_config filter.rot13.cleanFromFile ./rot13-from-file.sh &&
+	test_config filter.rot13.required true &&
 
 	echo "*.t filter=rot13" >.gitattributes &&
 
 	cat test >fstest.t &&
-	git add fstest.t &&
-	test -e rot13-from-file.ran &&
+	cat test2 >fstest2.t &&
+	git add fstest.t fstest2.t &&
+
+	test_line_count = 2 rot13-from-file.ran &&
+	grep "CLEAN fstest.t" rot13-from-file.ran &&
+	grep "CLEAN fstest2.t" rot13-from-file.ran &&
 	rm -f rot13-from-file.ran &&
 
 	rm -f fstest.t &&
-	git checkout -- fstest.t &&
-	cmp test fstest.t
+	rm -f fstest2.t &&
+
+	git checkout . &&
+	cmp test fstest.t &&
+	cmp test2 fstest2.t
 '
 
 test_expect_success 'smudgeToFile filter is used when checking out a file' '
-	test_config filter.rot13.smudgeToFile ./rot13-to-file.sh &&
+	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
+	test_config filter.rot13.required true &&
 
 	rm -f fstest.t &&
-	git checkout -- fstest.t &&
-	cmp test fstest.t &&
+	rm -f fstest2.t &&
+	git checkout . &&
 
-	test -e rot13-to-file.ran &&
+	# TODO: Why is this necessary?
+	sleep 0.1 &&
+
+	cmp test fstest.t &&
+	cmp test2 fstest2.t &&
+
+	test_line_count = 2 rot13-to-file.ran &&
+	grep "SMUDGE fstest.t 57" rot13-to-file.ran &&
+	grep "SMUDGE fstest2.t 9" rot13-to-file.ran &&
 	rm -f rot13-to-file.ran
 '
 
@@ -335,7 +379,7 @@ test_expect_success 'recovery from failure of smudgeToFile filter that deletes t
 '
 
 test_expect_success 'smudgeToFile filter is used in merge' '
-	test_config filter.rot13.smudgeToFile ./rot13-to-file.sh &&
+	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
 
 	git commit -m "added fstest.t" fstest.t &&
 	git checkout -b old &&
@@ -350,7 +394,7 @@ test_expect_success 'smudgeToFile filter is used in merge' '
 '
 
 test_expect_success 'smudgeToFile filter is used by git am' '
-	test_config filter.rot13.smudgeToFile ./rot13-to-file.sh &&
+	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
 
 	git format-patch HEAD^ --stdout > fstest.patch &&
 	git reset --hard HEAD^ &&
