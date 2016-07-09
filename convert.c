@@ -374,7 +374,183 @@ struct filter_params {
 	const char *cmd;
 	const char *path; /* Path within the git repository */
 	const char *fspath; /* Path to file on disk */
+	struct child_process process;
 };
+
+static int cmd_async_map_init = 0;
+// static struct hashmap cmd_async_map;
+
+static struct child_process csprocess;
+
+// struct cmd2async {
+// 	struct hashmap_entry ent; /* must be the first member! */
+// 	const char *cmd;
+// 	struct async async;
+// };
+
+// static int cmd2async_cmp(const struct cmd2async *e1, const struct cmd2async *e2, const void *unused)
+// {
+// 	return strcmp(e1->cmd, e2->cmd);
+// }
+
+// static struct cmd2async *find_entry(const char *cmd)
+// {
+// 	struct cmd2async k;
+// 	hashmap_entry_init(&k, memhash(&cmd, sizeof(char *)));
+// 	k.cmd = cmd;
+// 	return hashmap_get(&cmd_async_map, &k, NULL);
+// }
+
+// static int filter_stream(int in, int out, void *data)
+// {
+// 	struct filter_params *params = (struct filter_params *)data;
+// 	const char *argv[] = { NULL, NULL };
+// 	argv[0] = params->cmd;
+
+// 	printf("################ S T A R T %s\n", params->cmd);
+// 	printf("IN %i\n", in);
+// 	printf("OUT %i\n", out);
+// 	params->process.argv = argv;
+// 	params->process.use_shell = 1;
+// 	params->process.in = in;
+// 	params->process.out = out;
+// 	if (start_command(&params->process))
+// 		return error("cannot fork to run external filter %s", params->cmd);
+
+// 	return 0;
+// }
+
+enum filter_type {
+	CLEAN = 0,
+	SMUDGE = 1
+};
+
+static int apply_filter_stream(const char *path, const char *src, size_t len, struct strbuf *dst, const char *cmd)
+{
+	printf("convert.c: apply_filter_stream %s %s\n", cmd, path);
+	/*
+	 * Create a pipeline to have the command filter the buffer's
+	 * contents.
+	 *
+	 * (child --> cmd) --> us
+	 */
+	int ret = 1;
+	struct strbuf nbuf = STRBUF_INIT;
+	struct filter_params params;
+	// struct cmd2async *e = NULL;
+	int filter;
+
+	if (!cmd || !*cmd)
+		return 0;
+
+	if (!dst)
+		return 1;
+
+	if (src && len > 0)
+		filter = SMUDGE;
+	else
+		filter = CLEAN;
+
+	if (!cmd_async_map_init) {
+
+		child_process_init(&csprocess);
+
+		const char *argv[] = { NULL, NULL };
+		argv[0] = cmd;
+		csprocess.argv = argv;
+		csprocess.use_shell = 1;
+		csprocess.in = -1;
+		csprocess.out = -1;
+
+		// printf("NEW HASH MAP\n");
+		// hashmap_init(&cmd_async_map, (hashmap_cmp_fn) cmd2async_cmp, 0);
+		// cmd_async_map_init = 1;
+	// }
+	// else
+	// 	e = find_entry(cmd);
+
+	fflush(NULL);
+	// if (!e) {
+	// 	e = malloc(sizeof(struct cmd2async));
+	// 	hashmap_entry_init(e, memhash(&cmd, sizeof(char *)));
+	// 	e->cmd = cmd;
+	// 	hashmap_add(&cmd_async_map, e);
+	// 	memset(&e->async, 0, sizeof(e->async));
+	// 	e->async.proc = filter_stream;
+	// 	e->async.data = &params;
+	// 	e->async.out = -1;
+	// 	e->async.in = -1;
+	// 	params.src = "";
+	// 	params.size = 1;
+	// 	params.fd = -1;
+	// 	params.cmd = cmd;
+	// 	params.path = path;
+	// 	child_process_init(&params.process);
+
+
+	// const char *argv[] = { NULL, NULL };
+	// argv[0] = params.cmd;
+
+	// // printf("################ S T A R T %s\n", params->cmd);
+	// // printf("IN %i\n", in);
+	// // printf("OUT %i\n", out);
+	// params.process.argv = argv;
+	// params.process.use_shell = 1;
+	// params.process.in = -1;
+	// params.process.out = -1;
+	if (start_command(&csprocess))
+		return error("cannot fork to run external filter %s", params.cmd);
+
+
+		// if (start_async(&e->async))
+		// 	return 0;	/* error was already reported */
+	}
+
+
+// struct filter_params *gparams = (struct filter_params *)e->async.data;
+
+
+	// TODO: is this OK here?
+	sigchain_push(SIGPIPE, SIG_IGN);
+	printf("!!---- %s %s %zu\n", cmd, path, len);
+	printf("pipe %i\n", csprocess.in);
+	write_str_in_full(csprocess.in, path);
+	write_str_in_full(csprocess.in, "\n");
+
+	if (filter == SMUDGE) {
+		struct strbuf lenstr = STRBUF_INIT;
+		strbuf_reset(&lenstr);
+		strbuf_addf(&lenstr, "%zu", len);
+		write_str_in_full(csprocess.in, lenstr.buf);
+		write_str_in_full(csprocess.in, "\n");
+
+		printf("----\n%s\n-----\n", src);
+		write_in_full(csprocess.in, src, len);
+	}
+	sigchain_pop(SIGPIPE);
+
+	printf("JOOOOOO %zu\n", len);
+	if (filter == CLEAN)
+	{
+		if (strbuf_read_once(&nbuf, csprocess.out, 0) < 0) {
+			error("read from external filter %s failed", cmd);
+			ret = 0;
+		}
+		printf("## read from filter: %s\n", nbuf.buf);
+	}
+
+fflush(NULL);
+	// TODO: run for all filter in hashmap. but where?
+	// close(e->async.out)
+	// finish_async(&e->async)
+
+	if (ret) {
+		strbuf_swap(dst, &nbuf);
+	}
+	strbuf_release(&nbuf);
+	return ret;
+}
+
 
 static int filter_buffer_or_fd(int in, int out, void *data)
 {
@@ -401,15 +577,6 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	/* expand all %f with the quoted path */
 	strbuf_expand(&cmd, params->cmd, strbuf_expand_dict_cb, &dict);
 	strbuf_release(&path);
-
-	/* append fspath to the command if it's set, separated with a space */
-	if (params->fspath) {
-		struct strbuf fspath = STRBUF_INIT;
-		sq_quote_buf(&fspath, params->fspath);
-		strbuf_addstr(&cmd, " ");
-		strbuf_addbuf(&cmd, &fspath);
-		strbuf_release(&fspath);
-	}
 
 	argv[0] = cmd.buf;
 
@@ -453,6 +620,7 @@ static int apply_filter(const char *path, const char *fspath,
 			const char *src, size_t len, int fd,
                         struct strbuf *dst, const char *cmd)
 {
+	printf("convert.c: apply_filter %s %s %s\n", cmd, path, fspath);
 	/*
 	 * Create a pipeline to have the command filter the buffer's
 	 * contents.
@@ -860,6 +1028,7 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
+	printf("would_convert_to_git_filter_fd\n");
 	return apply_filter(path, NULL, NULL, 0, -1, NULL, ca.drv->clean);
 }
 
@@ -950,6 +1119,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		required = ca.drv->required;
 	}
 
+	printf("convert_to_git\n");
 	ret |= apply_filter(path, NULL, src, len, -1, dst, filter);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
@@ -976,6 +1146,7 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv);
 	assert(ca.drv->clean);
 
+	printf("convert_to_git_filter_fd\n");
 	if (!apply_filter(path, NULL, NULL, 0, fd, dst, ca.drv->clean))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -995,7 +1166,8 @@ void convert_to_git_filter_from_file(const char *path, struct strbuf *dst,
 	assert(ca.drv->clean);
 	assert(ca.drv->clean_from_file);
 
-	if (!apply_filter(path, path, "", 0, -1, dst, ca.drv->clean_from_file))
+	printf("convert_to_git_filter_from_file\n");
+	if (!apply_filter_stream(path, "", 0, dst, ca.drv->clean_from_file))
 		die("%s: cleanFromFile filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action,
@@ -1040,15 +1212,23 @@ static int convert_to_working_tree_internal(const char *path,
 		}
 	}
 
-	ret_filter = apply_filter(path, destpath, src, len, -1, dst, filter);
+	printf("convert_to_working_tree_internal\n");
+	printf("src %s\n", src);
+	printf("dst %s\n", dst->buf);
+	if (destpath)
+		ret_filter = apply_filter_stream(path, src, len, dst, filter);
+	else
+		ret_filter = apply_filter(path, destpath, src, len, -1, dst, filter);
 	if (!ret_filter && required)
 		die("%s: %s filter %s failed", path, destpath ? "smudgeToFile" : "smudge", ca.drv->name);
 
+	printf("LOSSSSSSSSS %s\n", dst->buf);
 	return ret | ret_filter;
 }
 
 int convert_to_working_tree(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
+	printf("convert_to_working_tree\n");
 	return convert_to_working_tree_internal(path, NULL, src, len, dst, 0);
 }
 
@@ -1056,6 +1236,7 @@ int convert_to_working_tree(const char *path, const char *src, size_t len, struc
  * On failure, the worktree file will not exist. */
 int convert_to_working_tree_filter_to_file(const char *path, const char *destpath, const char *src, size_t len)
 {
+	printf("convert_to_working_tree_filter_to_file %s\n", path);
 	struct strbuf output = STRBUF_INIT;
 	int ok = convert_to_working_tree_internal(path, destpath, src, len, &output, 0);
 	/* The smudgeToFile filter stdout is not used. */
@@ -1078,6 +1259,7 @@ int convert_to_working_tree_filter_to_file(const char *path, const char *destpat
 
 int renormalize_buffer(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
+	printf("renormalize_buffer %s\n", path);
 	int ret = convert_to_working_tree_internal(path, NULL, src, len, dst, 1);
 	if (ret) {
 		src = dst->buf;
