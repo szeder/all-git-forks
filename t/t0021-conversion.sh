@@ -40,7 +40,7 @@ for data in iter(sys.stdin.readline, ''):
 	with open('rot13-to-file.ran', 'a') as f:
 		f.write('SMUDGE {} {}\n'.format(filename, content_size))
 
-	sys.stdout.write('SMUDGE SUCCESSFUL\n')
+	sys.stdout.write('SMUDGE SUCCESSFUL')
 	sys.stdout.flush()
 EOF
 chmod +x rot13-to-file.py

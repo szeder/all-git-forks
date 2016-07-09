@@ -468,7 +468,7 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 			error("read from external filter %s failed", cmd);
 			ret = 0;
 		}
-		if (strcmp(nbuf.buf, "SMUDGE SUCCESSFUL\n")) {
+		if (strcmp(nbuf.buf, "SMUDGE SUCCESSFUL")) {
 			ret = 0;
 		}
 	} else {
@@ -480,13 +480,13 @@ static int apply_filter_stream(const char *path, const char *src, size_t len, st
 		} else {
 			strbuf_swap(dst, &nbuf);
 		}
-
 	}
 	sigchain_pop(SIGPIPE);
 
 	// TODO: run for all filter in hashmap. but where?
-	// close(e->async.out)
-	// finish_async(&e->async)
+	// close(process->in)
+	// close(process->out)
+	// finish_command(process);
 
 	strbuf_release(&nbuf);
 	return ret;
