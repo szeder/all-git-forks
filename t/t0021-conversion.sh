@@ -14,7 +14,6 @@ chmod +x rot13.sh
 
 cat <<EOF >rot13-from-file.sh
 #!$SHELL_PATH
-echo "OK"
 while read LINE; do
    srcfile="\$LINE"
    echo "CLEAN \$srcfile" >> rot13-from-file.ran
@@ -28,8 +27,7 @@ cat <<EOF >rot13-to-file.py
 #!/usr/bin/env python
 import sys
 from subprocess import Popen, PIPE, STDOUT
-with (sys.stdout) as f:
-    f.write('OK\n')
+
 for data in iter(sys.stdin.readline, ''):
 	filename = data[:-1]
 	content_size = sys.stdin.readline()[:-1]
@@ -41,6 +39,9 @@ for data in iter(sys.stdin.readline, ''):
 
 	with open('rot13-to-file.ran', 'a') as f:
 		f.write('SMUDGE {} {}\n'.format(filename, content_size))
+
+	sys.stdout.write('SMUDGE SUCCESSFUL\n')
+	sys.stdout.flush()
 EOF
 chmod +x rot13-to-file.py
 
