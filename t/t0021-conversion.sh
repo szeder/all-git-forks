@@ -14,57 +14,14 @@ chmod +x rot13.sh
 
 cat <<EOF >rot13-from-file.sh
 #!$SHELL_PATH
- echo "------ 1CLEAN INVOCATION -------" >> /Users/lars/infraworks-migrator/git/t/lars.txt
- echo "new entry" >> /Users/lars/infraworks-migrator/git/t/lars.txt
- echo "parameter: \$1" >> /Users/lars/infraworks-migrator/git/t/lars.txt
 while read LINE; do
-	echo "stdin: \$LINE" >> /Users/lars/infraworks-migrator/git/t/lars.txt
    srcfile="\$LINE"
-   touch rot13-from-file.ran
-   # echo "LA!!RS"
+   echo "CLEAN \$srcfile" >> rot13-from-file.ran
    cat "\$srcfile" | ./rot13.sh
-   # echo "llllllll"
-   # echo "stdin: \$LINE DONE" >> /Users/lars/infraworks-migrator/git/t/lars.txt
 done
 
 EOF
 chmod +x rot13-from-file.sh
-
-cat <<EOF >rot13-to-file.sh
-#!$SHELL_PATH
-echo "------ SMDUGE INVOCATION -------" >> /Users/lars/infraworks-migrator/git/t/lars.txt
-# echo "parameter: \$1" >> /Users/lars/infraworks-migrator/git/t/lars.txt
-
-while read LINE; do
-	echo "stdin: \$LINE" >> /Users/lars/infraworks-migrator/git/t/lars.txt
-# 	read SIZE
-# 	echo "       size: \$SIZE" >> /Users/lars/infraworks-migrator/git/t/lars.txt
-
-#   # import sys
-#   # s = sys.stdin.read(\$SIZE)           # read data
-#   # if len(s) < n: raise ValueError("input file too short")
-#   # # Process s here
-
-python -c "with open('/Users/lars/infraworks-migrator/git/t/romy.txt', 'a') as f: f.write('WWWwooot')"
-
-	#  COUNTER=0
-	#  CONTENT=""
- #     while [  \$COUNTER -lt \$SIZE ]; do
- #              # echo "The counter is \$COUNTER"  >> /Users/lars/infraworks-migrator/git/t/lars.txt
- #    read -n 1 byte
- #             let COUNTER=COUNTER+1
- #             CONTENT+="\$byte"
- #         done
-	# echo -e "       content: \$CONTENT" >> /Users/lars/infraworks-migrator/git/t/lars.txt
-
-	# destfile="\$LINE"
-	# touch rot13-to-file.ran
-	# printf "\$CONTENT" | ./rot13.sh > "\$destfile"
-done
-EOF
-chmod +x rot13-to-file.sh
-
-
 
 cat <<EOF >rot13-to-file.py
 #!/usr/bin/env python
@@ -75,15 +32,15 @@ import time
 
 for filename in iter(sys.stdin.readline, ''):
 	filename = filename[:-1]
-	content_size = sys.stdin.readline()
+	content_size = sys.stdin.readline()[:-1]
 	content = sys.stdin.read(int(content_size))
 
 	p = Popen(['./rot13.sh'], stdout=PIPE, stdin=PIPE, stderr=PIPE)
 	with open(filename, 'w') as f:
 		f.write(p.communicate(input=content)[0])
-		# f.flush()
-		# os.fsync(f.fileno())
-	time.sleep(1)
+
+	with open('rot13-to-file.ran', 'a') as f:
+		f.write('SMUDGE {} {}\n'.format(filename, content_size))
 EOF
 chmod +x rot13-to-file.py
 
@@ -110,12 +67,6 @@ test_expect_success setup '
 	    echo '\''$Id$'\''
 	} >test &&
 
-	{
-	    echo aaaa
-	    echo bbb
-	    echo '\''$Id$'\''
-	} >test2 &&
-
 	cat test >test.t &&
 	cat test >test.o &&
 	cat test >test.i &&
@@ -125,241 +76,248 @@ test_expect_success setup '
 	git checkout -- test test.t test.i
 '
 
-# script='s/^\$Id: \([0-9a-f]*\) \$/\1/p'
+script='s/^\$Id: \([0-9a-f]*\) \$/\1/p'
 
-# test_expect_success check '
+test_expect_success check '
 
-# 	cmp test.o test &&
-# 	cmp test.o test.t &&
+	cmp test.o test &&
+	cmp test.o test.t &&
 
-# 	# ident should be stripped in the repository
-# 	git diff --raw --exit-code :test :test.i &&
-# 	id=$(git rev-parse --verify :test) &&
-# 	embedded=$(sed -ne "$script" test.i) &&
-# 	test "z$id" = "z$embedded" &&
+	# ident should be stripped in the repository
+	git diff --raw --exit-code :test :test.i &&
+	id=$(git rev-parse --verify :test) &&
+	embedded=$(sed -ne "$script" test.i) &&
+	test "z$id" = "z$embedded" &&
 
-# 	git cat-file blob :test.t > test.r &&
+	git cat-file blob :test.t > test.r &&
 
-# 	./rot13.sh < test.o > test.t &&
-# 	cmp test.r test.t
-# # '
-
-# # If an expanded ident ever gets into the repository, we want to make sure that
-# # it is collapsed before being expanded again on checkout
-# test_expect_success expanded_in_repo '
-# 	{
-# 		echo "File with expanded keywords"
-# 		echo "\$Id\$"
-# 		echo "\$Id:\$"
-# 		echo "\$Id: 0000000000000000000000000000000000000000 \$"
-# 		echo "\$Id: NoSpaceAtEnd\$"
-# 		echo "\$Id:NoSpaceAtFront \$"
-# 		echo "\$Id:NoSpaceAtEitherEnd\$"
-# 		echo "\$Id: NoTerminatingSymbol"
-# 		echo "\$Id: Foreign Commit With Spaces \$"
-# 	} >expanded-keywords.0 &&
-
-# 	{
-# 		cat expanded-keywords.0 &&
-# 		printf "\$Id: NoTerminatingSymbolAtEOF"
-# 	} >expanded-keywords &&
-# 	cat expanded-keywords >expanded-keywords-crlf &&
-# 	git add expanded-keywords expanded-keywords-crlf &&
-# 	git commit -m "File with keywords expanded" &&
-# 	id=$(git rev-parse --verify :expanded-keywords) &&
-
-# 	{
-# 		echo "File with expanded keywords"
-# 		echo "\$Id: $id \$"
-# 		echo "\$Id: $id \$"
-# 		echo "\$Id: $id \$"
-# 		echo "\$Id: $id \$"
-# 		echo "\$Id: $id \$"
-# 		echo "\$Id: $id \$"
-# 		echo "\$Id: NoTerminatingSymbol"
-# 		echo "\$Id: Foreign Commit With Spaces \$"
-# 	} >expected-output.0 &&
-# 	{
-# 		cat expected-output.0 &&
-# 		printf "\$Id: NoTerminatingSymbolAtEOF"
-# 	} >expected-output &&
-# 	{
-# 		append_cr <expected-output.0 &&
-# 		printf "\$Id: NoTerminatingSymbolAtEOF"
-# 	} >expected-output-crlf &&
-# 	{
-# 		echo "expanded-keywords ident"
-# 		echo "expanded-keywords-crlf ident text eol=crlf"
-# 	} >>.gitattributes &&
-
-# 	rm -f expanded-keywords expanded-keywords-crlf &&
-
-# 	git checkout -- expanded-keywords &&
-# 	test_cmp expanded-keywords expected-output &&
-
-# 	git checkout -- expanded-keywords-crlf &&
-# 	test_cmp expanded-keywords-crlf expected-output-crlf
+	./rot13.sh < test.o > test.t &&
+	cmp test.r test.t
 # '
 
-# # The use of %f in a filter definition is expanded to the path to
-# # the filename being smudged or cleaned.  It must be shell escaped.
-# # First, set up some interesting file names and pet them in
-# # .gitattributes.
-# test_expect_success 'filter shell-escaped filenames' '
-# 	cat >argc.sh <<-EOF &&
-# 	#!$SHELL_PATH
-# 	cat >/dev/null
-# 	echo argc: \$# "\$@"
-# 	EOF
-# 	normal=name-no-magic &&
-# 	special="name  with '\''sq'\'' and \$x" &&
-# 	echo some test text >"$normal" &&
-# 	echo some test text >"$special" &&
-# 	git add "$normal" "$special" &&
-# 	git commit -q -m "add files" &&
-# 	echo "name* filter=argc" >.gitattributes &&
+# If an expanded ident ever gets into the repository, we want to make sure that
+# it is collapsed before being expanded again on checkout
+test_expect_success expanded_in_repo '
+	{
+		echo "File with expanded keywords"
+		echo "\$Id\$"
+		echo "\$Id:\$"
+		echo "\$Id: 0000000000000000000000000000000000000000 \$"
+		echo "\$Id: NoSpaceAtEnd\$"
+		echo "\$Id:NoSpaceAtFront \$"
+		echo "\$Id:NoSpaceAtEitherEnd\$"
+		echo "\$Id: NoTerminatingSymbol"
+		echo "\$Id: Foreign Commit With Spaces \$"
+	} >expanded-keywords.0 &&
 
-# 	# delete the files and check them out again, using a smudge filter
-# 	# that will count the args and echo the command-line back to us
-# 	git config filter.argc.smudge "sh ./argc.sh %f" &&
-# 	rm "$normal" "$special" &&
-# 	git checkout -- "$normal" "$special" &&
+	{
+		cat expanded-keywords.0 &&
+		printf "\$Id: NoTerminatingSymbolAtEOF"
+	} >expanded-keywords &&
+	cat expanded-keywords >expanded-keywords-crlf &&
+	git add expanded-keywords expanded-keywords-crlf &&
+	git commit -m "File with keywords expanded" &&
+	id=$(git rev-parse --verify :expanded-keywords) &&
 
-# 	# make sure argc.sh counted the right number of args
-# 	echo "argc: 1 $normal" >expect &&
-# 	test_cmp expect "$normal" &&
-# 	echo "argc: 1 $special" >expect &&
-# 	test_cmp expect "$special" &&
+	{
+		echo "File with expanded keywords"
+		echo "\$Id: $id \$"
+		echo "\$Id: $id \$"
+		echo "\$Id: $id \$"
+		echo "\$Id: $id \$"
+		echo "\$Id: $id \$"
+		echo "\$Id: $id \$"
+		echo "\$Id: NoTerminatingSymbol"
+		echo "\$Id: Foreign Commit With Spaces \$"
+	} >expected-output.0 &&
+	{
+		cat expected-output.0 &&
+		printf "\$Id: NoTerminatingSymbolAtEOF"
+	} >expected-output &&
+	{
+		append_cr <expected-output.0 &&
+		printf "\$Id: NoTerminatingSymbolAtEOF"
+	} >expected-output-crlf &&
+	{
+		echo "expanded-keywords ident"
+		echo "expanded-keywords-crlf ident text eol=crlf"
+	} >>.gitattributes &&
 
-# 	# do the same thing, but with more args in the filter expression
-# 	git config filter.argc.smudge "sh ./argc.sh %f --my-extra-arg" &&
-# 	rm "$normal" "$special" &&
-# 	git checkout -- "$normal" "$special" &&
+	rm -f expanded-keywords expanded-keywords-crlf &&
 
-# 	# make sure argc.sh counted the right number of args
-# 	echo "argc: 2 $normal --my-extra-arg" >expect &&
-# 	test_cmp expect "$normal" &&
-# 	echo "argc: 2 $special --my-extra-arg" >expect &&
-# 	test_cmp expect "$special" &&
-# 	:
-# '
+	git checkout -- expanded-keywords &&
+	test_cmp expanded-keywords expected-output &&
 
-# test_expect_success 'required filter should filter data' '
-# 	git config filter.required.smudge ./rot13.sh &&
-# 	git config filter.required.clean ./rot13.sh &&
-# 	git config filter.required.required true &&
+	git checkout -- expanded-keywords-crlf &&
+	test_cmp expanded-keywords-crlf expected-output-crlf
+'
 
-# 	echo "*.r filter=required" >.gitattributes &&
+# The use of %f in a filter definition is expanded to the path to
+# the filename being smudged or cleaned.  It must be shell escaped.
+# First, set up some interesting file names and pet them in
+# .gitattributes.
+test_expect_success 'filter shell-escaped filenames' '
+	cat >argc.sh <<-EOF &&
+	#!$SHELL_PATH
+	cat >/dev/null
+	echo argc: \$# "\$@"
+	EOF
+	normal=name-no-magic &&
+	special="name  with '\''sq'\'' and \$x" &&
+	echo some test text >"$normal" &&
+	echo some test text >"$special" &&
+	git add "$normal" "$special" &&
+	git commit -q -m "add files" &&
+	echo "name* filter=argc" >.gitattributes &&
 
-# 	cat test.o >test.r &&
-# 	git add test.r &&
+	# delete the files and check them out again, using a smudge filter
+	# that will count the args and echo the command-line back to us
+	git config filter.argc.smudge "sh ./argc.sh %f" &&
+	rm "$normal" "$special" &&
+	git checkout -- "$normal" "$special" &&
 
-# 	rm -f test.r &&
-# 	git checkout -- test.r &&
-# 	cmp test.o test.r &&
+	# make sure argc.sh counted the right number of args
+	echo "argc: 1 $normal" >expect &&
+	test_cmp expect "$normal" &&
+	echo "argc: 1 $special" >expect &&
+	test_cmp expect "$special" &&
 
-# 	./rot13.sh <test.o >expected &&
-# 	git cat-file blob :test.r >actual &&
-# 	cmp expected actual
-# '
+	# do the same thing, but with more args in the filter expression
+	git config filter.argc.smudge "sh ./argc.sh %f --my-extra-arg" &&
+	rm "$normal" "$special" &&
+	git checkout -- "$normal" "$special" &&
 
-# test_expect_success 'required filter smudge failure' '
-# 	git config filter.failsmudge.smudge false &&
-# 	git config filter.failsmudge.clean cat &&
-# 	git config filter.failsmudge.required true &&
+	# make sure argc.sh counted the right number of args
+	echo "argc: 2 $normal --my-extra-arg" >expect &&
+	test_cmp expect "$normal" &&
+	echo "argc: 2 $special --my-extra-arg" >expect &&
+	test_cmp expect "$special" &&
+	:
+'
 
-# 	echo "*.fs filter=failsmudge" >.gitattributes &&
+test_expect_success 'required filter should filter data' '
+	git config filter.required.smudge ./rot13.sh &&
+	git config filter.required.clean ./rot13.sh &&
+	git config filter.required.required true &&
 
-# 	echo test >test.fs &&
-# 	git add test.fs &&
-# 	rm -f test.fs &&
-# 	test_must_fail git checkout -- test.fs
-# '
+	echo "*.r filter=required" >.gitattributes &&
 
-# test_expect_success 'required filter clean failure' '
-# 	git config filter.failclean.smudge cat &&
-# 	git config filter.failclean.clean false &&
-# 	git config filter.failclean.required true &&
+	cat test.o >test.r &&
+	git add test.r &&
 
-# 	echo "*.fc filter=failclean" >.gitattributes &&
+	rm -f test.r &&
+	git checkout -- test.r &&
+	cmp test.o test.r &&
 
-# 	echo test >test.fc &&
-# 	test_must_fail git add test.fc
-# '
+	./rot13.sh <test.o >expected &&
+	git cat-file blob :test.r >actual &&
+	cmp expected actual
+'
 
-# test_expect_success 'filtering large input to small output should use little memory' '
-# 	git config filter.devnull.clean "cat >/dev/null" &&
-# 	git config filter.devnull.required true &&
-# 	for i in $(test_seq 1 30); do printf "%1048576d" 1; done >30MB &&
-# 	echo "30MB filter=devnull" >.gitattributes &&
-# 	GIT_MMAP_LIMIT=1m GIT_ALLOC_LIMIT=1m git add 30MB
-# '
+test_expect_success 'required filter smudge failure' '
+	git config filter.failsmudge.smudge false &&
+	git config filter.failsmudge.clean cat &&
+	git config filter.failsmudge.required true &&
 
-# test_expect_success 'filter that does not read is fine' '
-# 	test-genrandom foo $((128 * 1024 + 1)) >big &&
-# 	echo "big filter=epipe" >.gitattributes &&
-# 	git config filter.epipe.clean "echo xyzzy" &&
-# 	git add big &&
-# 	git cat-file blob :big >actual &&
-# 	echo xyzzy >expect &&
-# 	test_cmp expect actual
-# '
+	echo "*.fs filter=failsmudge" >.gitattributes &&
 
-# test_expect_success EXPENSIVE 'filter large file' '
-# 	git config filter.largefile.smudge cat &&
-# 	git config filter.largefile.clean cat &&
-# 	for i in $(test_seq 1 2048); do printf "%1048576d" 1; done >2GB &&
-# 	echo "2GB filter=largefile" >.gitattributes &&
-# 	git add 2GB 2>err &&
-# 	! test -s err &&
-# 	rm -f 2GB &&
-# 	git checkout -- 2GB 2>err &&
-# 	! test -s err
-# '
+	echo test >test.fs &&
+	git add test.fs &&
+	rm -f test.fs &&
+	test_must_fail git checkout -- test.fs
+'
 
-# test_expect_success "filter: clean empty file" '
-# 	git config filter.in-repo-header.clean  "echo cleaned && cat" &&
-# 	git config filter.in-repo-header.smudge "sed 1d" &&
+test_expect_success 'required filter clean failure' '
+	git config filter.failclean.smudge cat &&
+	git config filter.failclean.clean false &&
+	git config filter.failclean.required true &&
 
-# 	echo "empty-in-worktree    filter=in-repo-header" >>.gitattributes &&
-# 	>empty-in-worktree &&
+	echo "*.fc filter=failclean" >.gitattributes &&
 
-# 	echo cleaned >expected &&
-# 	git add empty-in-worktree &&
-# 	git show :empty-in-worktree >actual &&
-# 	test_cmp expected actual
-# '
+	echo test >test.fc &&
+	test_must_fail git add test.fc
+'
 
-# test_expect_success "filter: smudge empty file" '
-# 	git config filter.empty-in-repo.clean "cat >/dev/null" &&
-# 	git config filter.empty-in-repo.smudge "echo smudged && cat" &&
+test_expect_success 'filtering large input to small output should use little memory' '
+	git config filter.devnull.clean "cat >/dev/null" &&
+	git config filter.devnull.required true &&
+	for i in $(test_seq 1 30); do printf "%1048576d" 1; done >30MB &&
+	echo "30MB filter=devnull" >.gitattributes &&
+	GIT_MMAP_LIMIT=1m GIT_ALLOC_LIMIT=1m git add 30MB
+'
 
-# 	echo "empty-in-repo filter=empty-in-repo" >>.gitattributes &&
-# 	echo dead data walking >empty-in-repo &&
-# 	git add empty-in-repo &&
+test_expect_success 'filter that does not read is fine' '
+	test-genrandom foo $((128 * 1024 + 1)) >big &&
+	echo "big filter=epipe" >.gitattributes &&
+	git config filter.epipe.clean "echo xyzzy" &&
+	git add big &&
+	git cat-file blob :big >actual &&
+	echo xyzzy >expect &&
+	test_cmp expect actual
+'
 
-# 	echo smudged >expected &&
-# 	git checkout-index --prefix=filtered- empty-in-repo &&
-# 	test_cmp expected filtered-empty-in-repo
-# '
+test_expect_success EXPENSIVE 'filter large file' '
+	git config filter.largefile.smudge cat &&
+	git config filter.largefile.clean cat &&
+	for i in $(test_seq 1 2048); do printf "%1048576d" 1; done >2GB &&
+	echo "2GB filter=largefile" >.gitattributes &&
+	git add 2GB 2>err &&
+	! test -s err &&
+	rm -f 2GB &&
+	git checkout -- 2GB 2>err &&
+	! test -s err
+'
 
-# test_expect_success 'disable filter with empty override' '
-# 	test_config_global filter.disable.smudge false &&
-# 	test_config_global filter.disable.clean false &&
-# 	test_config filter.disable.smudge false &&
-# 	test_config filter.disable.clean false &&
+test_expect_success "filter: clean empty file" '
+	git config filter.in-repo-header.clean  "echo cleaned && cat" &&
+	git config filter.in-repo-header.smudge "sed 1d" &&
 
-# 	echo "*.disable filter=disable" >.gitattributes &&
+	echo "empty-in-worktree    filter=in-repo-header" >>.gitattributes &&
+	>empty-in-worktree &&
 
-# 	echo test >test.disable &&
-# 	git -c filter.disable.clean= add test.disable 2>err &&
-# 	test_must_be_empty err &&
-# 	rm -f test.disable &&
-# 	git -c filter.disable.smudge= checkout -- test.disable 2>err &&
-# 	test_must_be_empty err
-# '
+	echo cleaned >expected &&
+	git add empty-in-worktree &&
+	git show :empty-in-worktree >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success "filter: smudge empty file" '
+	git config filter.empty-in-repo.clean "cat >/dev/null" &&
+	git config filter.empty-in-repo.smudge "echo smudged && cat" &&
+
+	echo "empty-in-repo filter=empty-in-repo" >>.gitattributes &&
+	echo dead data walking >empty-in-repo &&
+	git add empty-in-repo &&
+
+	echo smudged >expected &&
+	git checkout-index --prefix=filtered- empty-in-repo &&
+	test_cmp expected filtered-empty-in-repo
+'
+
+test_expect_success 'disable filter with empty override' '
+	test_config_global filter.disable.smudge false &&
+	test_config_global filter.disable.clean false &&
+	test_config filter.disable.smudge false &&
+	test_config filter.disable.clean false &&
+
+	echo "*.disable filter=disable" >.gitattributes &&
+
+	echo test >test.disable &&
+	git -c filter.disable.clean= add test.disable 2>err &&
+	test_must_be_empty err &&
+	rm -f test.disable &&
+	git -c filter.disable.smudge= checkout -- test.disable 2>err &&
+	test_must_be_empty err
+'
 
 test_expect_success 'cleanFromFile filter is used when adding a file' '
+	{
+	    echo a
+	    echo bb
+	    echo ccc
+	} >test2 &&
+
+
 	test_config filter.rot13.cleanFromFile ./rot13-from-file.sh &&
 	test_config filter.rot13.required true &&
 
@@ -369,7 +327,9 @@ test_expect_success 'cleanFromFile filter is used when adding a file' '
 	cat test2 >fstest2.t &&
 	git add fstest.t fstest2.t &&
 
-	test -e rot13-from-file.ran &&
+	test_line_count = 2 rot13-from-file.ran &&
+	grep "CLEAN fstest.t" rot13-from-file.ran &&
+	grep "CLEAN fstest2.t" rot13-from-file.ran &&
 	rm -f rot13-from-file.ran &&
 
 	rm -f fstest.t &&
@@ -392,10 +352,12 @@ test_expect_success 'smudgeToFile filter is used when checking out a file' '
 	sleep 0.1 &&
 
 	cmp test fstest.t &&
-	cmp test2 fstest2.t
+	cmp test2 fstest2.t &&
 
-	# test -e rot13-to-file.ran &&
-	# rm -f rot13-to-file.ran
+	test_line_count = 2 rot13-to-file.ran &&
+	grep "SMUDGE fstest.t 57" rot13-to-file.ran &&
+	grep "SMUDGE fstest2.t 9" rot13-to-file.ran &&
+	rm -f rot13-to-file.ran
 '
 
 # test_expect_success 'recovery from failure of smudgeToFile filter, using smudge filter' '
@@ -415,7 +377,7 @@ test_expect_success 'smudgeToFile filter is used when checking out a file' '
 # '
 
 # test_expect_success 'smudgeToFile filter is used in merge' '
-# 	test_config filter.rot13.smudgeToFile ./rot13-to-file.sh &&
+# 	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
 
 # 	git commit -m "added fstest.t" fstest.t &&
 # 	git checkout -b old &&
@@ -430,7 +392,7 @@ test_expect_success 'smudgeToFile filter is used when checking out a file' '
 # '
 
 # test_expect_success 'smudgeToFile filter is used by git am' '
-# 	test_config filter.rot13.smudgeToFile ./rot13-to-file.sh &&
+# 	test_config filter.rot13.smudgeToFile ./rot13-to-file.py &&
 
 # 	git format-patch HEAD^ --stdout > fstest.patch &&
 # 	git reset --hard HEAD^ &&
@@ -441,26 +403,26 @@ test_expect_success 'smudgeToFile filter is used when checking out a file' '
 # 	cmp test fstest.t
 # '
 
-# test_expect_success 'cleanFromFile filter is not used when clean filter is not configured' '
-# 	test_config filter.noclean.smudge ./rot13.sh &&
-# 	test_config filter.noclean.cleanFromFile ./rot13-from-file.sh &&
+test_expect_success 'cleanFromFile filter is not used when clean filter is not configured' '
+	test_config filter.noclean.smudge ./rot13.sh &&
+	test_config filter.noclean.cleanFromFile ./rot13-from-file.sh &&
 
-# 	echo "*.no filter=noclean" >.gitattributes &&
+	echo "*.no filter=noclean" >.gitattributes &&
 
-# 	cat test >test.no &&
-# 	git add test.no &&
-# 	test ! -e rot13-from-file.ran
-# '
+	cat test >test.no &&
+	git add test.no &&
+	test ! -e rot13-from-file.ran
+'
 
-# test_expect_success 'smudgeToFile filter is not used when smudge filter is not configured' '
-# 	test_config filter.nosmudge.clean ./rot13.sh &&
-# 	test_config filter.nosmudge.smudgeToFile ./rot13-to-file.sh &&
+test_expect_success 'smudgeToFile filter is not used when smudge filter is not configured' '
+	test_config filter.nosmudge.clean ./rot13.sh &&
+	test_config filter.nosmudge.smudgeToFile ./rot13-to-file.sh &&
 
-# 	echo "*.no filter=nosmudge" >.gitattributes &&
+	echo "*.no filter=nosmudge" >.gitattributes &&
 
-# 	rm -f fstest.t &&
-# 	git checkout -- fstest.t &&
-# 	test ! -e rot13-to-file.ran
-# '
+	rm -f fstest.t &&
+	git checkout -- fstest.t &&
+	test ! -e rot13-to-file.ran
+'
 
 test_done
