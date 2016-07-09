@@ -373,8 +373,6 @@ struct filter_params {
 	int fd;
 	const char *cmd;
 	const char *path; /* Path within the git repository */
-	const char *fspath; /* Path to file on disk */
-	struct child_process process;
 };
 
 static int cmd_async_map_init = 0;
@@ -555,9 +553,8 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	return (write_err || status);
 }
 
-static int apply_filter(const char *path, const char *fspath,
-			const char *src, size_t len, int fd,
-                        struct strbuf *dst, const char *cmd)
+static int apply_filter(const char *path, const char *src, size_t len,
+                        int fd, struct strbuf *dst, const char *cmd)
 {
 	/*
 	 * Create a pipeline to have the command filter the buffer's
@@ -585,7 +582,6 @@ static int apply_filter(const char *path, const char *fspath,
 	params.fd = fd;
 	params.cmd = cmd;
 	params.path = path;
-	params.fspath = fspath;
 
 	fflush(NULL);
 	if (start_async(&async))
@@ -966,7 +962,7 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
-	return apply_filter(path, NULL, NULL, 0, -1, NULL, ca.drv->clean);
+	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean);
 }
 
 static int can_filter_file(const char *filefilter, const char *filefiltername,
@@ -1056,7 +1052,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		required = ca.drv->required;
 	}
 
-	ret |= apply_filter(path, NULL, src, len, -1, dst, filter);
+	ret |= apply_filter(path, src, len, -1, dst, filter);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -1082,7 +1078,7 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv);
 	assert(ca.drv->clean);
 
-	if (!apply_filter(path, NULL, NULL, 0, fd, dst, ca.drv->clean))
+	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action,
@@ -1147,9 +1143,9 @@ static int convert_to_working_tree_internal(const char *path,
 	}
 
 	if (destpath)
-		ret_filter = apply_filter_stream(path, src, len, dst, filter);
+		ret_filter = apply_filter_stream(destpath, src, len, dst, filter);
 	else
-		ret_filter = apply_filter(path, destpath, src, len, -1, dst, filter);
+		ret_filter = apply_filter(path, src, len, -1, dst, filter);
 	if (!ret_filter && required)
 		die("%s: %s filter %s failed", path, destpath ? "smudgeToFile" : "smudge", ca.drv->name);
 
