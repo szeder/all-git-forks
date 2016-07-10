@@ -105,6 +105,8 @@ static int verify_packfile(struct packed_git *p,
 		void *data;
 		enum object_type type;
 		unsigned long size;
+		off_t curpos;
+		int data_valid = 0;
 
 		if (p->index_version > 1) {
 			off_t offset = entries[i].offset;
@@ -116,8 +118,17 @@ static int verify_packfile(struct packed_git *p,
 					    sha1_to_hex(entries[i].sha1),
 					    p->pack_name, (uintmax_t)offset);
 		}
-		data = unpack_entry(p, entries[i].offset, &type, &size);
-		if (!data)
+
+		curpos = entries[i].offset;
+		type = unpack_object_header(p, w_curs, &curpos, &size);
+		unuse_pack(w_curs);
+
+		if (type != OBJ_BLOB || size < big_file_threshold) {
+			data = unpack_entry(p, entries[i].offset, &type, &size);
+			data_valid = 1;
+		}
+
+		if (data_valid && !data)
 			err = error("cannot unpack %s from %s at offset %"PRIuMAX"",
 				    sha1_to_hex(entries[i].sha1), p->pack_name,
 				    (uintmax_t)entries[i].offset);
