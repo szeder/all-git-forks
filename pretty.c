@@ -1212,6 +1212,24 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 						    placeholder[1],
 						    c->pretty_ctx->reflog_info,
 						    &c->pretty_ctx->date_mode);
+		case 'r':	/* date, relative */
+			strbuf_addstr(sb,
+				show_reflog_date(c->pretty_ctx->reflog_info,
+					DATE_MODE(RELATIVE)));
+			return 2;
+		case 'i':	/* date, ISO 8601-like */
+			strbuf_addstr(sb,
+				show_reflog_date(c->pretty_ctx->reflog_info,
+					DATE_MODE(ISO8601)));
+			return 2;
+		case 'I':	/* date, ISO 8601 strict */
+			strbuf_addstr(sb,
+				show_reflog_date(c->pretty_ctx->reflog_info,
+					DATE_MODE(ISO8601_STRICT)));
+			return 2;
+		case 't':
+			strbuf_addf(sb, "%lu", get_reflog_time_t(c->pretty_ctx->reflog_info));
+			return 2;
 		}
 		return 0;	/* unknown %g placeholder */
 	case 'N':

@@ -292,17 +292,24 @@ void get_reflog_selector(struct strbuf *sb,
 	strbuf_addch(sb, '}');
 }
 
+static struct reflog_info *get_reflog_info(struct reflog_walk_info *reflog_info)
+{
+	struct commit_reflog *commit_reflog = reflog_info->last_commit_reflog;
+
+	if (!commit_reflog)
+		return NULL;
+
+	return &commit_reflog->reflogs->items[commit_reflog->recno+1];
+}
+
 void get_reflog_message(struct strbuf *sb,
 			struct reflog_walk_info *reflog_info)
 {
-	struct commit_reflog *commit_reflog = reflog_info->last_commit_reflog;
-	struct reflog_info *info;
+	struct reflog_info *info = get_reflog_info(reflog_info);
 	size_t len;
 
-	if (!commit_reflog)
-		return;
-
-	info = &commit_reflog->reflogs->items[commit_reflog->recno+1];
+	if (!info)
+		return NULL;
 	len = strlen(info->message);
 	if (len > 0)
 		len--; /* strip away trailing newline */
@@ -311,14 +318,30 @@ void get_reflog_message(struct strbuf *sb,
 
 const char *get_reflog_ident(struct reflog_walk_info *reflog_info)
 {
-	struct commit_reflog *commit_reflog = reflog_info->last_commit_reflog;
-	struct reflog_info *info;
+	struct reflog_info *info = get_reflog_info(reflog_info);
 
-	if (!commit_reflog)
+	if (!info)
 		return NULL;
-
-	info = &commit_reflog->reflogs->items[commit_reflog->recno+1];
 	return info->email;
+}
+
+unsigned long get_reflog_time_t(struct reflog_walk_info *reflog_info)
+{
+	struct reflog_info *info = get_reflog_info(reflog_info);
+
+	if (!info)
+		return NULL;
+	return gm_time_t(info->timestamp, info->tz);
+}
+
+const char *show_reflog_date(struct reflog_walk_info *reflog_info,
+			     const struct date_mode *mode)
+{
+	struct reflog_info *info = get_reflog_info(reflog_info);
+
+	if (!info)
+		return NULL;
+	return show_date(info->timestamp, info->tz, mode);
 }
 
 void show_reflog_message(struct reflog_walk_info *reflog_info, int oneline,
