@@ -191,34 +191,21 @@ static int write_entry(struct cache_entry *ce,
 
 		if (smudge_to_file) {
 			close(fd);
-			if (convert_to_working_tree_filter_to_file(ce->name, path, new, size)) {
+			fd = convert_to_working_tree_filter_to_file(ce->name, path, new, size);
+			if (fd >= 0) {
 				free(new);
-				/*
-				 * The smudgeToFile filter may have replaced
-				 * or deleted the file; reopen it to make
-				 * sure that the file exists.
-				 */
-				fd = open(path, O_RDONLY);
-				if (fd < 0)
-					return error_errno("unable to create file %s", path);
 				if (!to_tempfile)
 					fstat_done = fstat_output(fd, state, &st);
 				close(fd);
 			}
 			else {
-				/*
-				 * The failing smudgeToFile filter may have
-				 * deleted or replaced the file; delete
-				 * the file and re-open for recovery write.
-				 */
-				unlink(path);
+				/* Fall through to normal write below. */
+				smudge_to_file = 0;
 				fd = open_output_fd(path, ce, to_tempfile);
 				if (fd < 0) {
 					free(new);
 					return error_errno("unable to create file %s", path);
 				}
-				/* Fall through to normal write below. */
-				smudge_to_file = 0;
 			}
 		}
 
