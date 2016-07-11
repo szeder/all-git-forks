@@ -40,11 +40,13 @@ static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 #define CACHE_EXT_RESOLVE_UNDO 0x52455543 /* "REUC" */
 #define CACHE_EXT_LINK 0x6c696e6b	  /* "link" */
 #define CACHE_EXT_UNTRACKED 0x554E5452	  /* "UNTR" */
+#define CACHE_EXT_SPARSE 0x5350434F	  /* "SPCO" */
 
 /* changes that can be kept in $GIT_DIR/index (basically all extensions) */
 #define EXTMASK (RESOLVE_UNDO_CHANGED | CACHE_TREE_CHANGED | \
 		 CE_ENTRY_ADDED | CE_ENTRY_REMOVED | CE_ENTRY_CHANGED | \
-		 SPLIT_INDEX_ORDERED | UNTRACKED_CHANGED)
+		 SPLIT_INDEX_ORDERED | UNTRACKED_CHANGED | \
+		 SPARSE_CHECKOUT_CHANGED)
 
 struct index_state the_index;
 static const char *alternate_index_output;
@@ -1384,6 +1386,11 @@ static int read_index_extension(struct index_state *istate,
 	case CACHE_EXT_UNTRACKED:
 		istate->untracked = read_untracked_extension(data, sz);
 		break;
+	case CACHE_EXT_SPARSE:
+		if (sz != sizeof(istate->sparse_checkout))
+			return error("bad %.4s extension", ext);
+		hashcpy(istate->sparse_checkout, data);
+		break;
 	default:
 		if (*ext < 'A' || 'Z' < *ext)
 			return error("index uses %.4s extension, which we do not understand",
@@ -1704,6 +1711,7 @@ int discard_index(struct index_state *istate)
 	discard_split_index(istate);
 	free_untracked_cache(istate->untracked);
 	istate->untracked = NULL;
+	hashclr(&istate->sparse_checkout);
 	return 0;
 }
 
@@ -2095,6 +2103,18 @@ static int do_write_index(struct index_state *istate, int newfd,
 
 		write_untracked_extension(&sb, istate->untracked);
 		err = write_index_ext_header(&c, newfd, CACHE_EXT_UNTRACKED,
+					     sb.len) < 0 ||
+			ce_write(&c, newfd, sb.buf, sb.len) < 0;
+		strbuf_release(&sb);
+		if (err)
+			return -1;
+	}
+	if (!strip_extensions && !is_null_sha1(istate->sparse_checkout)) {
+		struct strbuf sb = STRBUF_INIT;
+
+		strbuf_add(&sb, istate->sparse_checkout,
+			   sizeof(istate->sparse_checkout));
+		err = write_index_ext_header(&c, newfd, CACHE_EXT_SPARSE,
 					     sb.len) < 0 ||
 			ce_write(&c, newfd, sb.buf, sb.len) < 0;
 		strbuf_release(&sb);

@@ -320,6 +320,7 @@ static inline unsigned int canon_mode(unsigned int mode)
 #define CACHE_TREE_CHANGED	(1 << 5)
 #define SPLIT_INDEX_ORDERED	(1 << 6)
 #define UNTRACKED_CHANGED	(1 << 7)
+#define SPARSE_CHECKOUT_CHANGED	(1 << 8)
 
 struct split_index;
 struct untracked_cache;
@@ -338,6 +339,7 @@ struct index_state {
 	struct hashmap dir_hash;
 	unsigned char sha1[20];
 	struct untracked_cache *untracked;
+	unsigned char sparse_checkout[20];
 };
 
 extern struct index_state the_index;

@@ -1080,6 +1080,25 @@ static void mark_new_skip_worktree(struct exclude_list *el,
 		       select_flag, skip_wt_flag, el);
 }
 
+static void get_sparse_checkout_hash(unsigned char *sha1)
+{
+	struct stat st;
+	int fd;
+
+	hashclr(sha1);
+	fd = open(git_path("info/sparse-checkout"), O_RDONLY);
+	if (fd == -1)
+		return;
+	if (fstat(fd, &st)) {
+		close(fd);
+		return;
+	}
+	if (index_fd(sha1, fd, &st, OBJ_BLOB,
+		     git_path("info/sparse-checkout"), 0) < 0)
+		hashclr(sha1);
+	close(fd);
+}
+
 static int verify_absent(const struct cache_entry *,
 			 enum unpack_trees_error_types,
 			 struct unpack_trees_options *);
@@ -1094,6 +1113,7 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	int i, ret;
 	static struct cache_entry *dfc;
 	struct exclude_list el;
+	unsigned char sparse_checkout_hash[20];
 
 	if (len > MAX_UNPACK_TREES)
 		die("unpack_trees takes at most %d trees", MAX_UNPACK_TREES);
@@ -1131,8 +1151,21 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 	/*
 	 * Sparse checkout loop #1: set NEW_SKIP_WORKTREE on existing entries
 	 */
-	if (!o->skip_sparse_checkout)
-		mark_new_skip_worktree(o->el, o->src_index, 0, CE_NEW_SKIP_WORKTREE);
+	if (!o->skip_sparse_checkout) {
+		get_sparse_checkout_hash(sparse_checkout_hash);
+
+		if (!is_null_sha1(sparse_checkout_hash) &&
+		    !hashcmp(o->src_index->sparse_checkout, sparse_checkout_hash)) {
+			struct index_state *istate = o->src_index;
+			for (i = 0; i < istate->cache_nr; i++) {
+				struct cache_entry *ce = istate->cache[i];
+				if (ce_skip_worktree(ce))
+					ce->ce_flags |= CE_NEW_SKIP_WORKTREE;
+			}
+		} else
+			mark_new_skip_worktree(o->el, o->src_index,
+					       0, CE_NEW_SKIP_WORKTREE);
+	}
 
 	if (!dfc)
 		dfc = xcalloc(1, cache_entry_size(0));
@@ -1235,6 +1268,11 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 		if (o->result.cache_nr && empty_worktree) {
 			ret = unpack_failed(o, "Sparse checkout leaves no entry on working directory");
 			goto done;
+		}
+
+		if (o->dst_index && !is_null_sha1(sparse_checkout_hash)) {
+			hashcpy(o->result.sparse_checkout, sparse_checkout_hash);
+			o->result.cache_changed |= SPARSE_CHECKOUT_CHANGED;
 		}
 	}
 

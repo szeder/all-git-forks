@@ -295,3 +295,9 @@ The remaining data of each directory block is grouped by type:
     in the previous ewah bitmap.
 
   - One NUL.
+
+== Sparse checkout cache
+
+  Sparse checkout extension saves the 20 bytes SHA-1 hash of
+  $GIT_DIR/info/sparse-checkout at the time it is applied to the
+  index.
