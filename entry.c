@@ -182,12 +182,6 @@ static int write_entry(struct cache_entry *ce,
 		regular_file = ce_mode_s_ifmt == S_IFREG;
 		smudge_to_file = regular_file
 			&& can_smudge_to_file(ce->name);
-		if (regular_file && !smudge_to_file &&
-		    convert_to_working_tree(ce->name, new, size, &buf)) {
-			free(new);
-			new = strbuf_detach(&buf, &newsize);
-			size = newsize;
-		}
 
 		fd = open_output_fd(path, ce, to_tempfile);
 		if (fd < 0) {
@@ -195,7 +189,51 @@ static int write_entry(struct cache_entry *ce,
 			return error_errno("unable to create file %s", path);
 		}
 
+		if (smudge_to_file) {
+			close(fd);
+			if (convert_to_working_tree_filter_to_file(ce->name, path, new, size)) {
+				free(new);
+				/*
+				 * The smudgeToFile filter may have replaced
+				 * or deleted the file; reopen it to make
+				 * sure that the file exists.
+				 */
+				fd = open(path, O_RDONLY);
+				if (fd < 0)
+					return error_errno("unable to create file %s", path);
+				if (!to_tempfile)
+					fstat_done = fstat_output(fd, state, &st);
+				close(fd);
+			}
+			else {
+				/*
+				 * The failing smudgeToFile filter may have
+				 * deleted or replaced the file; delete
+				 * the file and re-open for recovery write.
+				 */
+				unlink(path);
+				fd = open_output_fd(path, ce, to_tempfile);
+				if (fd < 0) {
+					free(new);
+					return error_errno("unable to create file %s", path);
+				}
+				/* Fall through to normal write below. */
+				smudge_to_file = 0;
+			}
+		}
+
+		/*
+		 * Not an else of above if (smudge_to_file) because the
+		 * smudgeToFile filter may fail and in that case this is
+		 * run to recover.
+		 */
 		if (!smudge_to_file) {
+			if (regular_file &&
+			    convert_to_working_tree(ce->name, new, size, &buf)) {
+				free(new);
+				new = strbuf_detach(&buf, &newsize);
+				size = newsize;
+			}
 			wrote = write_in_full(fd, new, size);
 			if (!to_tempfile)
 				fstat_done = fstat_output(fd, state, &st);
@@ -203,22 +241,6 @@ static int write_entry(struct cache_entry *ce,
 			free(new);
 			if (wrote != size)
 				return error("unable to write file %s", path);
-		}
-		else {
-			close(fd);
-			convert_to_working_tree_filter_to_file(ce->name, path, new, size);
-			free(new);
-			/*
-			 * The smudgeToFile filter may have replaced the
-			 * file; open it to make sure that the file
-			 * exists.
-			 */
-			fd = open(path, O_RDONLY);
-			if (fd < 0)
-				return error_errno("unable to create file %s", path);
-			if (!to_tempfile)
-				fstat_done = fstat_output(fd, state, &st);
-			close(fd);
 		}
 		break;
 	case S_IFGITLINK:
