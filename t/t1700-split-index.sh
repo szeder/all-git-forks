@@ -310,4 +310,10 @@ EOF
 	test_cmp expect actual
 '
 
+test_expect_success 'only one "sharedindex" files' '
+	: >ten &&
+	git update-index --add ten &&
+	test $(ls .git/sharedindex.* | wc -l) = 1
+'
+
 test_done
