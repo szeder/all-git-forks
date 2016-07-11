@@ -2163,6 +2163,28 @@ static int write_split_index(struct index_state *istate,
 	return ret;
 }
 
+static void clean_shared_index_files(const char *current_hex)
+{
+	struct dirent *de;
+	DIR *dir = opendir(get_git_dir());
+
+	if (!dir) {
+		error_errno("unable to open git dir: %s", get_git_dir());
+		return;
+	}
+
+	while ((de = readdir(dir)) != NULL) {
+		const char *sha1_hex;
+		if (!skip_prefix(de->d_name, "sharedindex.", &sha1_hex))
+			continue;
+		if (!strcmp(sha1_hex, current_hex))
+			continue;
+		if (unlink(git_path("%s", de->d_name)))
+			error_errno("unable to unlink: %s", git_path("%s", de->d_name));
+	}
+	closedir(dir);
+}
+
 static struct tempfile temporary_sharedindex;
 
 static int write_shared_index(struct index_state *istate,
@@ -2184,8 +2206,11 @@ static int write_shared_index(struct index_state *istate,
 	}
 	ret = rename_tempfile(&temporary_sharedindex,
 			      git_path("sharedindex.%s", sha1_to_hex(si->base->sha1)));
-	if (!ret)
+	if (!ret) {
 		hashcpy(si->base_sha1, si->base->sha1);
+		clean_shared_index_files(sha1_to_hex(si->base->sha1));
+	}
+
 	return ret;
 }
 
