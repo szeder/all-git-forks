@@ -1503,8 +1503,6 @@ static struct string_list *read_push_options(void)
 {
 	int i;
 	struct string_list *ret = xmalloc(sizeof(*ret));
-	string_list_init(ret, 1);
-
 	/* NEEDSWORK: expose the limitations to be configurable. */
 	int max_options = 32;
 
@@ -1518,6 +1516,7 @@ static struct string_list *read_push_options(void)
 	 */
 	int max_size = 1024;
 
+	string_list_init(ret, 1);
 	for (i = 0; i < max_options; i++) {
 		char *line;
 		int len;
