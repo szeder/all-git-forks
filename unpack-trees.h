@@ -85,5 +85,7 @@ int bind_merge(const struct cache_entry * const *src,
 	       struct unpack_trees_options *o);
 int oneway_merge(const struct cache_entry * const *src,
 		 struct unpack_trees_options *o);
+int subtract_merge(const struct cache_entry * const *src,
+		   struct unpack_trees_options *o);
 
 #endif

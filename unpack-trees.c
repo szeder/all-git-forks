@@ -1976,3 +1976,26 @@ int oneway_merge(const struct cache_entry * const *src,
 	}
 	return merged_entry(a, old, o);
 }
+
+/*
+ * if stage0 matches stage1, the entry is deleted, otherwise stage0 is
+ * kept.
+ */
+int subtract_merge(const struct cache_entry * const *src,
+		   struct unpack_trees_options *o)
+{
+	const struct cache_entry *old = src[0];
+	const struct cache_entry *a = src[1];
+
+	if (o->merge_size != 1)
+		return error("Cannot do a subtract merge of %d trees",
+			     o->merge_size);
+
+	if (!a)
+		return keep_entry(old, o);
+
+	if (old && same(old, a))
+		return deleted_entry(old, old, o);
+
+	return error("No idea what to do here");
+}

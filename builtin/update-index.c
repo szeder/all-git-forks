@@ -15,6 +15,7 @@
 #include "pathspec.h"
 #include "dir.h"
 #include "split-index.h"
+#include "fold-index.h"
 
 /*
  * Default to not allowing changes to the list of files. The
@@ -31,6 +32,7 @@ static int force_remove;
 static int verbose;
 static int mark_valid_only;
 static int mark_skip_worktree_only;
+static int fold_tree;
 #define MARK_FLAG 1
 #define UNMARK_FLAG 2
 static struct strbuf mtime_dir = STRBUF_INIT;
@@ -470,6 +472,10 @@ static void update_one(const char *path)
 		if (remove_file_from_cache(path))
 			die("git update-index: unable to remove %s", path);
 		report("remove '%s'", path);
+		return;
+	}
+	if (fold_tree) {
+		fold_index(&the_index, path);
 		return;
 	}
 	if (process_path(path))
@@ -938,6 +944,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			N_("let files replace directories and vice-versa"), 1),
 		OPT_SET_INT(0, "remove", &allow_remove,
 			N_("notice files missing from worktree"), 1),
+		OPT_SET_INT(0, "fold", &fold_tree,
+			N_("fold directories"), 1),
 		OPT_BIT(0, "unmerged", &refresh_args.flags,
 			N_("refresh even if index contains unmerged entries"),
 			REFRESH_UNMERGED),

@@ -519,6 +519,11 @@ int index_name_pos(const struct index_state *istate, const char *name, int namel
 	return index_name_mode_stage_pos(istate, name, namelen, S_IFREG, 0);
 }
 
+int index_dir_pos(const struct index_state *istate, const char *name, int namelen)
+{
+	return index_name_mode_stage_pos(istate, name, namelen, S_IFDIR, 0);
+}
+
 /* Remove entry, return true if there are more entries to go.. */
 int remove_index_entry_at(struct index_state *istate, int pos)
 {
