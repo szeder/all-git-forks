@@ -10,6 +10,7 @@
 #include "color.h"
 #include "reflog-walk.h"
 #include "gpg-interface.h"
+#include "rev-counter.h"
 
 static char *user_format;
 static struct cmt_fmt_map {
@@ -1127,6 +1128,8 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	case 'H':		/* commit hash */
 		strbuf_addstr(sb, diff_get_color(c->auto_color, DIFF_COMMIT));
 		strbuf_addstr(sb, oid_to_hex(&commit->object.oid));
+		if (c->pretty_ctx->mark_commits)
+			strbuf_addf(sb, " @%s", oid_to_commit_mark(&commit->object.oid));
 		strbuf_addstr(sb, diff_get_color(c->auto_color, DIFF_RESET));
 		return 1;
 	case 'h':		/* abbreviated commit hash */
@@ -1137,6 +1140,8 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 		}
 		strbuf_addstr(sb, find_unique_abbrev(commit->object.oid.hash,
 						     c->pretty_ctx->abbrev));
+		if (c->pretty_ctx->mark_commits)
+			strbuf_addf(sb, " @%s", oid_to_commit_mark(&commit->object.oid));
 		strbuf_addstr(sb, diff_get_color(c->auto_color, DIFF_RESET));
 		c->abbrev_commit_hash.len = sb->len - c->abbrev_commit_hash.off;
 		return 1;

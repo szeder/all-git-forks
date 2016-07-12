@@ -146,6 +146,7 @@ struct rev_info {
 	unsigned int	track_linear:1,
 			track_first_time:1,
 			linear:1;
+	unsigned int	mark_commits:1;
 
 	struct date_mode date_mode;
 	int		expand_tabs_in_log; /* unset if negative */

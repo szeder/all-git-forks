@@ -7,6 +7,7 @@
 #include "refs.h"
 #include "remote.h"
 #include "dir.h"
+#include "rev-counter.h"
 
 static int get_sha1_oneline(const char *, unsigned char *, struct commit_list *);
 
@@ -484,6 +485,13 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 			free(real_ref);
 		}
 		return 0;
+	}
+	if (len > 2 && str[0] == '@' && isalpha(str[1]) && isdigit(str[2])) {
+		struct object_id oid;
+		if (!commit_mark_to_oid(str + 1, &oid)) {
+			hashcpy(sha1, oid.hash);
+			return 0;
+		}
 	}
 
 	/* basic@{time or number or -number} format to query ref-log */

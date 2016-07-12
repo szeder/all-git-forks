@@ -11,6 +11,7 @@
 #include "gpg-interface.h"
 #include "sequencer.h"
 #include "line-log.h"
+#include "rev-counter.h"
 
 static struct decoration name_decoration = { "object names" };
 static int decoration_loaded;
@@ -593,6 +594,9 @@ void show_log(struct rev_info *opt)
 	}
 	opt->shown_one = 1;
 
+	if (opt->mark_commits)
+		mark_commit(&commit->object.oid);
+
 	/*
 	 * If the history graph was requested,
 	 * print the graph, up to this commit's line
@@ -615,6 +619,8 @@ void show_log(struct rev_info *opt)
 			put_revision_mark(opt, commit);
 		fputs(find_unique_abbrev(commit->object.oid.hash, abbrev_commit),
 		      stdout);
+		if (opt->mark_commits)
+			printf(" @%s", oid_to_commit_mark(&commit->object.oid));
 		if (opt->print_parents)
 			show_parents(commit, abbrev_commit);
 		if (opt->children.name)
@@ -687,6 +693,7 @@ void show_log(struct rev_info *opt)
 	ctx.output_encoding = get_log_output_encoding();
 	if (opt->from_ident.mail_begin && opt->from_ident.name_begin)
 		ctx.from_ident = &opt->from_ident;
+	ctx.mark_commits = opt->mark_commits;
 	pretty_print_commit(&ctx, commit, &msgbuf);
 
 	if (opt->add_signoff)

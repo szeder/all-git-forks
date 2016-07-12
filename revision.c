@@ -1998,6 +1998,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->limited = 1;
 	} else if (!strcmp(arg, "--ignore-missing")) {
 		revs->ignore_missing = 1;
+	} else if (!strcmp(arg, "--mark-commits")) {
+		revs->mark_commits = 1;
+	} else if (!strcmp(arg, "--no-mark-commits")) {
+		revs->mark_commits = 0;
 	} else {
 		int opts = diff_opt_parse(&revs->diffopt, argv, argc, revs->prefix);
 		if (!opts)
