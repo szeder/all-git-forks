@@ -123,7 +123,14 @@ static int verify_packfile(struct packed_git *p,
 		type = unpack_object_header(p, w_curs, &curpos, &size);
 		unuse_pack(w_curs);
 
-		if (type != OBJ_BLOB || size < big_file_threshold) {
+		if (type == OBJ_BLOB && big_file_threshold <= size) {
+			/*
+			 * Let check_sha1_signature() check it with
+			 * the streaming interface; no point slurping
+			 * the data in-core only to discard.
+			 */
+			data = NULL;
+		} else {
 			data = unpack_entry(p, entries[i].offset, &type, &size);
 			data_valid = 1;
 		}
