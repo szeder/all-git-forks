@@ -18,6 +18,7 @@
 #include "varint.h"
 #include "split-index.h"
 #include "utf8.h"
+#include "run-command.h"
 
 static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options);
@@ -1222,8 +1223,11 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 			continue;
 
 		new = refresh_cache_ent(istate, ce, options, &cache_errno, &changed);
-		if (new == ce)
+		if (new == ce) {
+			ce->ce_flags &= ~CE_FSDAEMON_DIRTY;
 			continue;
+		}
+
 		if (!new) {
 			const char *fmt;
 
@@ -1365,6 +1369,30 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	if (hashcmp(sha1, (unsigned char *)hdr + size - 20))
 		return error("bad index file sha1 signature");
 	return 0;
+}
+
+static struct untracked_cache_dir *find_untracked_cache_dir(
+	struct untracked_cache *uc, struct untracked_cache_dir *ucd,
+	const char *name)
+{
+	int component_len;
+	const char *end;
+	struct untracked_cache_dir *dir;
+
+	if (!*name)
+		return ucd;
+
+	end = strrchr(name, '/');
+	if (end)
+		component_len = end - name;
+	else
+		component_len = strlen(name);
+
+	dir = lookup_untracked(uc, ucd, name, component_len);
+	if (dir)
+		return find_untracked_cache_dir(uc, dir, name + component_len + 1);
+
+	return NULL;
 }
 
 static int read_index_extension(struct index_state *istate,
@@ -1544,6 +1572,143 @@ static void post_read_index_from(struct index_state *istate)
 	tweak_untracked_cache(istate);
 }
 
+/*
+* Call the query-fsdaemon hook passing the date time of the last saved results.
+* Returns the list of files changed on success (may be empty) or NULL on error.
+*/
+struct string_list *query_fsdaemon(time_t last_update)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	char date[64];
+	struct strbuf buffer = STRBUF_INIT;
+	struct string_list *res;
+	const char *argv[3];
+	char *buf, *entry;
+	int i, ret;
+
+	if (!(argv[0] = find_hook("query-fsdaemon")))
+		return NULL;
+
+	snprintf(date, sizeof(date), "%lu", last_update);
+	argv[1] = date;
+	argv[2] = NULL;
+	cp.argv = argv;
+	cp.out = -1;
+
+	ret = capture_command(&cp, &buffer, 1024);
+	if (ret) {
+		strbuf_release(&buffer);
+		return NULL;
+	}
+
+	/*
+	 * Read the results into a string_list for easy processing
+	 */
+	res = xcalloc(1, sizeof(struct string_list));
+	res->strdup_strings = 1;
+	buf = entry = buffer.buf;
+	for (i = 0; i < buffer.len; i++) {
+		if (buf[i] == '\n') {
+			if (entry != buf + i) {
+				buf[i - (i && buf[i - 1] == '\r')] = 0;
+				string_list_append(res, entry);
+			}
+			entry = buf + i + 1;
+		}
+	}
+
+	strbuf_release(&buffer);
+	return res;
+}
+
+static int update_istate(struct string_list_item *item, void *is)
+{
+	struct index_state *istate = is;
+	int pos;
+
+	/*
+	 * find it in the index and mark that entry as dirty
+	 */
+	pos = index_name_pos(istate, item->string, strlen(item->string));
+	if (pos >= 0)
+		istate->cache[pos]->ce_flags |= CE_FSDAEMON_DIRTY;
+
+	/*
+	 * Find the corresponding directory in the untracked cache
+	 * and mark it as invalid
+	 */
+	if (istate->untracked) {
+		struct untracked_cache_dir *dir;
+
+		dir = find_untracked_cache_dir(istate->untracked, istate->untracked->root, item->string);
+		if (dir)
+			dir->valid = 0;
+	}
+
+	return 0;
+}
+
+static void refresh_by_fsdaemon(struct index_state *istate)
+{
+	struct string_list *changes = NULL;
+	time_t last_update;
+	int i;
+
+	/*
+	 * This could be racy so save the date/time now and the hook
+	 * should be inclusive to ensure we don't miss potential changes.
+	 */
+	last_update = time(NULL);
+
+	changes = query_fsdaemon(istate->last_update);
+
+	// if we can't update the cache, fall back to checking them all
+	if (!changes) {
+		/* let refresh clear them later */
+		for (i = 0; i < istate->cache_nr; i++)
+			istate->cache[i]->ce_flags |= CE_FSDAEMON_DIRTY;
+
+		/* mark all untracked cache entries as invalid */
+		if (istate->untracked)
+			istate->untracked->use_fsdaemon = 0;
+		return;
+	}
+
+	/* TODO: potential optimizations
+	 *	- dedupe entries via string_list_remove_duplicates
+	 *  - build seperate list of directories for untracked cache
+	 *    and dedupe it before marking them invalid
+	 */
+
+	/*
+	 * Loop through list of changed files and mark all corresponding
+	 * index entries and untracked cache directories as dirty.
+	 */
+	for_each_string_list(changes, update_istate, istate);
+
+	/*
+	 * Now that we've marked the invalid entries in the
+	 * untracked-cache itself, we can mark the untracked cache for
+	 * fsdaemon usage.
+	 */
+	if (istate->untracked)
+		istate->untracked->use_fsdaemon = 1;
+
+	/*
+	 * Mark all clean entries up-to-date
+	 */
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+		if (ce_stage(ce) || (ce->ce_flags & CE_FSDAEMON_DIRTY))
+			continue;
+		ce_mark_uptodate(ce);
+	}
+	string_list_clear(changes, 0);
+
+	/* Now that we've updated istate, save the last_update time */
+	istate->last_update = last_update;
+}
+
 /* remember to discard_cache() before reading a different cache! */
 int do_read_index(struct index_state *istate, const char *path, int must_exist)
 {
@@ -1651,7 +1816,7 @@ int read_index_from(struct index_state *istate, const char *path)
 	split_index = istate->split_index;
 	if (!split_index || is_null_sha1(split_index->base_sha1)) {
 		post_read_index_from(istate);
-		return ret;
+		goto done;
 	}
 
 	if (split_index->base)
@@ -1669,6 +1834,11 @@ int read_index_from(struct index_state *istate, const char *path)
 		    sha1_to_hex(split_index->base->sha1));
 	merge_base_index(istate);
 	post_read_index_from(istate);
+
+done:
+	if (ret > 0)
+		refresh_by_fsdaemon(istate);
+
 	return ret;
 }
 

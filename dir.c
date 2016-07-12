@@ -584,7 +584,7 @@ static void trim_trailing_spaces(char *buf)
  *
  * If "name" has the trailing slash, it'll be excluded in the search.
  */
-static struct untracked_cache_dir *lookup_untracked(struct untracked_cache *uc,
+struct untracked_cache_dir *lookup_untracked(struct untracked_cache *uc,
 						    struct untracked_cache_dir *dir,
 						    const char *name, int len)
 {
@@ -1551,6 +1551,17 @@ static int valid_cached_dir(struct dir_struct *dir,
 	if (!untracked)
 		return 0;
 
+	if (dir->untracked->use_fsdaemon) {
+		/*
+		 * With file system daemon, we can trust the untracked cache's
+		 * valid field.
+		 */
+		if (untracked->valid)
+			goto skip_stat;
+		else
+			invalidate_directory(dir->untracked, untracked);
+	}
+
 	if (stat(path->len ? path->buf : ".", &st)) {
 		invalidate_directory(dir->untracked, untracked);
 		memset(&untracked->stat_data, 0, sizeof(untracked->stat_data));
@@ -1564,6 +1575,7 @@ static int valid_cached_dir(struct dir_struct *dir,
 		return 0;
 	}
 
+skip_stat:
 	if (untracked->check_only != !!check_only) {
 		invalidate_directory(dir->untracked, untracked);
 		return 0;
