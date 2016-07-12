@@ -385,7 +385,7 @@ static void fsck_handle_reflog_sha1(const char *refname, unsigned char *sha1)
 }
 
 static int fsck_handle_reflog_ent(unsigned char *osha1, unsigned char *nsha1,
-		const char *email, unsigned long timestamp, int tz,
+		const char *email, time_t timestamp, int tz,
 		const char *message, void *cb_data)
 {
 	const char *refname = cb_data;

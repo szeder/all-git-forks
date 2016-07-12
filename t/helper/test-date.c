@@ -32,7 +32,7 @@ static void show_dates(char **argv, const char *format)
 		 * Do not use our normal timestamp parsing here, as the point
 		 * is to test the formatting code in isolation.
 		 */
-		t = strtol(arg, &arg, 10);
+		t = strtoull(arg, &arg, 10);
 		while (*arg == ' ')
 			arg++;
 		tz = atoi(arg);

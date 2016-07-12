@@ -246,9 +246,9 @@ int safe_create_reflog(const char *refname, int force_create, struct strbuf *err
 
 /** Reads log for the value of ref during at_time. **/
 extern int read_ref_at(const char *refname, unsigned int flags,
-		       unsigned long at_time, int cnt,
+		       time_t at_time, int cnt,
 		       unsigned char *sha1, char **msg,
-		       unsigned long *cutoff_time, int *cutoff_tz, int *cutoff_cnt);
+		       time_t *cutoff_time, int *cutoff_tz, int *cutoff_cnt);
 
 /** Check if a particular reflog exists */
 extern int reflog_exists(const char *refname);
@@ -274,7 +274,7 @@ extern int delete_refs(struct string_list *refnames);
 extern int delete_reflog(const char *refname);
 
 /* iterate over reflog entries */
-typedef int each_reflog_ent_fn(unsigned char *osha1, unsigned char *nsha1, const char *, unsigned long, int, const char *, void *);
+typedef int each_reflog_ent_fn(unsigned char *osha1, unsigned char *nsha1, const char *, time_t, int, const char *, void *);
 int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_data);
 int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void *cb_data);
 
@@ -512,7 +512,7 @@ typedef void reflog_expiry_prepare_fn(const char *refname,
 typedef int reflog_expiry_should_prune_fn(unsigned char *osha1,
 					  unsigned char *nsha1,
 					  const char *email,
-					  unsigned long timestamp, int tz,
+					  time_t timestamp, int tz,
 					  const char *message, void *cb_data);
 typedef void reflog_expiry_cleanup_fn(void *cb_data);
 
