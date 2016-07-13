@@ -23,4 +23,13 @@ test_expect_success 'checkout' '
 	test_must_be_empty err
 '
 
+test_expect_success 'write-tree' '
+	sha1=$(git write-tree) &&
+	git ls-tree $sha1 >actual &&
+	cat >expected <<-EOF &&
+	040000 tree $tree_sha1	empty-dir
+	EOF
+	test_cmp expected actual
+'
+
 test_done
