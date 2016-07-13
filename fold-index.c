@@ -81,3 +81,58 @@ int fold_index(struct index_state *istate, const char *path)
 	free(buffer);
 	return 0;
 }
+
+static void *init_tree_desc_from_cache_entry(const struct cache_entry *ce,
+					     struct tree_desc *desc)
+{
+	struct index_state istate = {0};
+	unsigned char sha1[20];
+
+	/* generate a root tree that contains only <path> */
+	add_index_entry(&istate, dup_cache_entry(ce), ADD_CACHE_OK_TO_ADD);
+	if (cache_tree_update(&istate, WRITE_TREE_SILENT) < 0) {
+		discard_index(&istate);
+		error("failed to create tree objects for %s", ce->name);
+		return NULL;
+	}
+	hashcpy(sha1, istate.cache_tree->sha1);
+	discard_index(&istate);
+
+	return init_tree_desc_from_sha1(sha1, desc);
+}
+
+int unfold_index(struct index_state *istate, const char *path)
+{
+	struct unpack_trees_options opts = {0};
+	struct tree_desc tree_desc;
+	void *buffer;
+	int pos, len;
+
+	len = strlen(path);
+	pos = index_dir_pos(istate, path, len);
+	if (pos < 0)
+		return error("%s not in index", path);
+
+	buffer = init_tree_desc_from_cache_entry(istate->cache[pos],
+						 &tree_desc);
+	if (!buffer)
+		return -1;
+
+	memset(&opts, 0, sizeof(opts));
+	opts.head_idx  = -1;
+	opts.reset     = 0;
+	opts.merge     = 1;
+	opts.update    = 1;
+	opts.fn	       = bind_merge;
+	opts.src_index = istate;
+	opts.dst_index = istate;
+
+	remove_index_entry_at(istate, pos);
+	if (unpack_trees(1, &tree_desc, &opts)) {
+		free(buffer);
+		return error("failed to unpack %s",
+			     sha1_to_hex(istate->cache[pos]->sha1));
+	}
+	free(buffer);
+	return 0;
+}
