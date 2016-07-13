@@ -949,6 +949,12 @@ clean.requireForce::
 	A boolean to make git-clean do nothing unless given -f,
 	-i or -n.   Defaults to true.
 
+checkout.recurseSubmodules::
+	This option can be set to a boolean value.
+	When set to true checkout will recurse into submodules and
+	update them. When set to false, which is the default, checkout
+	will leave submodules untouched.
+
 color.branch::
 	A boolean to enable/disable color in the output of
 	linkgit:git-branch[1]. May be set to `always`,

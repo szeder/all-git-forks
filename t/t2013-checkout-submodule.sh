@@ -149,6 +149,25 @@ test_expect_success '"checkout --recurse-submodules" repopulates submodule' '
 	)
 '
 
+test_expect_success 'option checkout.recurseSubmodules updates submodule' '
+	test_config -C super checkout.recurseSubmodules 1 &&
+	(
+		cd super &&
+		git checkout base &&
+		git checkout -b advanced-base &&
+		git -C submodule commit --allow-empty -m "empty commit" &&
+		git add submodule &&
+		git commit -m "advance submodule" &&
+		git checkout base &&
+		git diff-files --quiet &&
+		git diff-index --quiet --cached base &&
+		git checkout advanced-base &&
+		git diff-files --quiet &&
+		git diff-index --quiet --cached advanced-base &&
+		git checkout --recurse-submodules base
+	)
+'
+
 test_expect_success '"checkout --recurse-submodules" repopulates submodule in existing directory' '
 	(
 		cd super &&
