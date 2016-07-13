@@ -251,6 +251,8 @@ static inline void copy_cache_entry(struct cache_entry *dst,
 	dst->ce_flags = (dst->ce_flags & ~CE_HASHED) | state;
 }
 
+struct cache_entry *dup_cache_entry(const struct cache_entry *ce);
+
 static inline unsigned create_ce_flags(unsigned stage)
 {
 	return (stage << CE_STAGESHIFT);

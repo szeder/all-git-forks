@@ -2347,3 +2347,12 @@ void sort_index(struct index_state *istate)
 	qsort(istate->cache, istate->cache_nr, sizeof(*istate->cache),
 	      cmp_cache_name_compare);
 }
+
+struct cache_entry *dup_cache_entry(const struct cache_entry *ce)
+{
+	unsigned int size = ce_size(ce);
+	struct cache_entry *new = xmalloc(size);
+
+	memcpy(new, ce, size);
+	return new;
+}

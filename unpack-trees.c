@@ -146,20 +146,11 @@ static int do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
 			       ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
 }
 
-static struct cache_entry *dup_entry(const struct cache_entry *ce)
-{
-	unsigned int size = ce_size(ce);
-	struct cache_entry *new = xmalloc(size);
-
-	memcpy(new, ce, size);
-	return new;
-}
-
 static void add_entry(struct unpack_trees_options *o,
 		      const struct cache_entry *ce,
 		      unsigned int set, unsigned int clear)
 {
-	do_add_entry(o, dup_entry(ce), set, clear);
+	do_add_entry(o, dup_cache_entry(ce), set, clear);
 }
 
 /*
@@ -1575,7 +1566,7 @@ static int merged_entry(const struct cache_entry *ce,
 			struct unpack_trees_options *o)
 {
 	int update = CE_UPDATE;
-	struct cache_entry *merge = dup_entry(ce);
+	struct cache_entry *merge = dup_cache_entry(ce);
 
 	if (!old) {
 		/*
