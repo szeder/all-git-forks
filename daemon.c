@@ -1374,7 +1374,7 @@ int cmd_main(int argc, const char **argv)
 		return execute();
 
 	if (detach) {
-		if (daemonize())
+		if (daemonize(NULL))
 			die("--detach not supported on this platform");
 	}
 
