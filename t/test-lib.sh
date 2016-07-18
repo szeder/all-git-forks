@@ -1103,7 +1103,7 @@ test_lazy_prereq SANITY '
 GIT_UNZIP=${GIT_UNZIP:-unzip}
 test_lazy_prereq UNZIP '
 	"$GIT_UNZIP" -v
-	test $? -ne 127
+	test $? -eq 0
 '
 
 run_with_limited_cmdline () {
