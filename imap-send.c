@@ -506,12 +506,12 @@ static char *next_arg(char **s)
 
 static int nfsnprintf(char *buf, int blen, const char *fmt, ...)
 {
-	int ret;
+	int ret = -1;
 	va_list va;
 
 	va_start(va, fmt);
 	if (blen <= 0 || (unsigned)(ret = vsnprintf(buf, blen, fmt, va)) >= (unsigned)blen)
-		die("Fatal: buffer too small. Please report a bug.");
+		die("BUG: buffer too small (%d < %d)", ret, blen);
 	va_end(va);
 	return ret;
 }
