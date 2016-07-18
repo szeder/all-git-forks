@@ -29,6 +29,11 @@ enum crlf_action {
 	CRLF_AUTO_CRLF
 };
 
+enum filter_type {
+	CLEAN = 1,
+	SMUDGE = 2
+};
+
 struct text_stat {
 	/* NUL, CR, LF and CRLF counts */
 	unsigned nul, lonecr, lonelf, crlf;
@@ -360,8 +365,32 @@ struct filter_params {
 	unsigned long size;
 	int fd;
 	const char *cmd;
-	const char *path;
+	const char *path; /* Path within the git repository */
 };
+
+static int cmd_process_map_init = 0;
+static struct hashmap cmd_process_map;
+
+struct cmd2process {
+	struct hashmap_entry ent; /* must be the first member! */
+	const char *cmd;
+	struct child_process process;
+};
+
+static int cmd2process_cmp(const struct cmd2process *e1,
+							const struct cmd2process *e2,
+							const void *unused)
+{
+	return strcmp(e1->cmd, e2->cmd);
+}
+
+static struct cmd2process *find_entry(const char *cmd)
+{
+	struct cmd2process k;
+	hashmap_entry_init(&k, memhash(&cmd, sizeof(char *)));
+	k.cmd = cmd;
+	return hashmap_get(&cmd_process_map, &k, NULL);
+}
 
 static int filter_buffer_or_fd(int in, int out, void *data)
 {
@@ -427,8 +456,9 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	return (write_err || status);
 }
 
-static int apply_filter(const char *path, const char *src, size_t len, int fd,
-                        struct strbuf *dst, const char *cmd)
+static int apply_filter(const char *path, const char *src, size_t len,
+						int fd, struct strbuf *dst, const char *cmd,
+						const enum filter_type filter)
 {
 	/*
 	 * Create a pipeline to have the command filter the buffer's
@@ -438,8 +468,9 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	 */
 	int ret = 1;
 	struct strbuf nbuf = STRBUF_INIT;
-	struct async async;
-	struct filter_params params;
+	struct cmd2process *entry = NULL;
+	struct child_process *process = NULL;
+	const char *argv[] = { NULL, NULL };
 
 	if (!cmd || !*cmd)
 		return 0;
@@ -447,37 +478,85 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	if (!dst)
 		return 1;
 
-	memset(&async, 0, sizeof(async));
-	async.proc = filter_buffer_or_fd;
-	async.data = &params;
-	async.out = -1;
-	params.src = src;
-	params.size = len;
-	params.fd = fd;
-	params.cmd = cmd;
-	params.path = path;
-
-	fflush(NULL);
-	if (start_async(&async))
-		return 0;	/* error was already reported */
-
-	if (strbuf_read(&nbuf, async.out, len) < 0) {
-		error("read from external filter %s failed", cmd);
-		ret = 0;
-	}
-	if (close(async.out)) {
-		error("read from external filter %s failed", cmd);
-		ret = 0;
-	}
-	if (finish_async(&async)) {
-		error("external filter %s failed", cmd);
-		ret = 0;
+	if (!cmd_process_map_init) {
+		cmd_process_map_init = 1;
+		hashmap_init(&cmd_process_map, (hashmap_cmp_fn) cmd2process_cmp, 0);
+	} else {
+		entry = find_entry(cmd);
 	}
 
+	if (entry) {
+		process = &entry->process;
+	} else {
+		entry = malloc(sizeof(struct cmd2process));
+		hashmap_entry_init(entry, memhash(&cmd, sizeof(char *)));
+		entry->cmd = cmd;
+		hashmap_add(&cmd_process_map, entry);
+		process = &entry->process;
+
+		child_process_init(process);
+		argv[0] = cmd;
+		process->argv = argv;
+		process->use_shell = 1;
+		process->in = -1;
+		process->out = -1;
+
+		if (start_command(process)) {
+			error("cannot fork to run external filter %s", cmd);
+			return 0;
+		}
+	}
+	sigchain_push(SIGPIPE, SIG_IGN);
+
+	trace_printf("- FILTER %i", filter);
+	xwrite(process->in, &filter, sizeof(uint32_t));
+
+	const uint32_t lenPath = strlen(path);
+	trace_printf("-- write filename len %i", lenPath);
+	xwrite(process->in, &lenPath, sizeof(uint32_t));
+
+	if (lenPath > 0) {
+		trace_printf("-- write filename: %s", path);
+		write_str_in_full(process->in, path);
+	}
+
+	if (src) {
+		trace_printf("-- write data len %zu", len);
+		xwrite(process->in, &len, sizeof(uint32_t));
+		trace_printf( "-- write data:\n%s\n--", src);
+		write_in_full(process->in, src, len);
+	} else {
+		struct stat s;
+		if (fstat(fd, &s) == -1) {
+			return 0;
+		}
+		len = s.st_size;
+		trace_printf( "-- write FD");
+		xwrite(process->in, &len, sizeof(uint32_t));
+		copy_fd(fd, process->in);
+	}
+
+	uint32_t nbuf_len = 0;
+	strbuf_reset(&nbuf);
+	trace_printf("-- read data len");
+
+	if (xread(process->out, &nbuf_len, sizeof(uint32_t)) != sizeof(uint32_t)) {
+		error("buffer length read from external file filter %s failed", cmd);
+		ret = 0;
+	}
+	if (ret && nbuf_len) {
+		trace_printf("-- read data");
+		if (strbuf_read_once(&nbuf, process->out, nbuf_len) != nbuf_len) {
+			error("read from external file filter %s failed", cmd);
+			ret = 0;
+		}
+		trace_printf( "-- read data:\n%s\n--", nbuf.buf);
+	}
 	if (ret) {
 		strbuf_swap(dst, &nbuf);
 	}
 	strbuf_release(&nbuf);
+	trace_printf( "-- DONE! %i", ret);
 	return ret;
 }
 
@@ -577,7 +656,7 @@ static int count_ident(const char *cp, unsigned long size)
 }
 
 static int ident_to_git(const char *path, const char *src, size_t len,
-                        struct strbuf *buf, int ident)
+						struct strbuf *buf, int ident)
 {
 	char *dst, *dollar;
 
@@ -823,7 +902,7 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
-	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean);
+	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean, CLEAN);
 }
 
 const char *get_convert_attr_ascii(const char *path)
@@ -866,7 +945,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		required = ca.drv->required;
 	}
 
-	ret |= apply_filter(path, src, len, -1, dst, filter);
+	ret |= apply_filter(path, src, len, -1, dst, filter, CLEAN);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -891,7 +970,7 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv);
 	assert(ca.drv->clean);
 
-	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
+	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean, CLEAN))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action, checksafe);
@@ -930,7 +1009,7 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 		}
 	}
 
-	ret_filter = apply_filter(path, src, len, -1, dst, filter);
+	ret_filter = apply_filter(path, src, len, -1, dst, filter, SMUDGE);
 	if (!ret_filter && required)
 		die("%s: smudge filter %s failed", path, ca.drv->name);
 
