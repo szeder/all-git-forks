@@ -421,8 +421,6 @@ run_dir_diff_test 'difftool --dir-diff from subdirectory with GIT_DIR set' '
 		cd sub &&
 		git difftool --dir-diff $symlinks --extcmd ls \
 			branch -- sub >output &&
-		sane_unset GIT_WORK_TREE &&
-		sane_unset GIT_DIR &&
 		grep sub output &&
 		! grep file output
 	)

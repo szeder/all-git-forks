@@ -88,11 +88,11 @@ sub changed_files
 	my @refreshargs = (
 		@gitargs, 'update-index',
 		'--really-refresh', '-q', '--unmerged');
-	my @diffargs = (@gitargs, 'diff-files', '--name-only', '-z');
 	try {
 		Git::command_oneline(@refreshargs);
 	} catch Git::Error::Command with {};
 
+	my @diffargs = (@gitargs, 'diff-files', '--name-only', '-z');
 	my $line = Git::command_oneline(@diffargs);
 	my @files;
 	if (defined $line) {
