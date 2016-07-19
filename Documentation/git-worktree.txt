@@ -9,7 +9,7 @@ git-worktree - Manage multiple working trees
 SYNOPSIS
 --------
 [verse]
-'git worktree add' [-f] [--detach] [--checkout] [-b <new-branch>] <path> [<branch>]
+'git worktree add' [-f] [--detach] [--checkout] [-b <new-branch>] [--name <name>] <path> [<branch>]
 'git worktree list' [--porcelain]
 'git worktree prune' [-n] [-v] [--expire <expire>]
 
@@ -83,6 +83,10 @@ OPTIONS
 	By default, `-b` refuses to create a new branch if it already
 	exists. `-B` overrides this safeguard, resetting `<new-branch>` to
 	`<branch>`.
+
+--name <name>::
+	With `add`, create a new worktree named `<name>`. Defaults to
+	`$(basename <path>)`.
 
 --detach::
 	With `add`, detach HEAD in the new working tree. See "DETACHED HEAD"

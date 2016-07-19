@@ -243,6 +243,20 @@ test_expect_success '"add" worktree with --checkout' '
 	test_cmp init.t swamp2/init.t
 '
 
+test_expect_success '"add" worktree with --name' '
+	git worktree add --name kikoo -b foo foo &&
+	test_cmp init.t foo/init.t &&
+	test -d .git/worktrees/kikoo &&
+	test -d foo
+'
+
+test_expect_success '"add" worktree without --name' '
+	git worktree add -b foobar foobar &&
+	test_cmp init.t foobar/init.t &&
+	test -d .git/worktrees/foobar &&
+	test -d foobar
+'
+
 test_expect_success 'put a worktree under rebase' '
 	git worktree add under-rebase &&
 	(

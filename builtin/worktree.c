@@ -24,6 +24,7 @@ struct add_opts {
 	int checkout;
 	const char *new_branch;
 	int force_new_branch;
+	const char *name;
 };
 
 static int show_only;
@@ -212,9 +213,14 @@ static int add_worktree(const char *path, const char *refname,
 			die(_("invalid reference: %s"), refname);
 	}
 
-	name = worktree_basename(path, &len);
-	strbuf_addstr(&sb_repo,
-		      git_path("worktrees/%.*s", (int)(path + len - name), name));
+	if (!opts->name) {
+		name = worktree_basename(path, &len);
+		strbuf_addstr(&sb_repo,
+			      git_path("worktrees/%.*s", (int)(path + len - name), name));
+	} else {
+		strbuf_addstr(&sb_repo, git_path("worktrees/%s", opts->name));
+	}
+
 	len = sb_repo.len;
 	if (safe_create_leading_directories_const(sb_repo.buf))
 		die_errno(_("could not create leading directories of '%s'"),
@@ -324,6 +330,8 @@ static int add(int ac, const char **av, const char *prefix)
 			   N_("create a new branch")),
 		OPT_STRING('B', NULL, &new_branch_force, N_("branch"),
 			   N_("create or reset a branch")),
+		OPT_STRING(0, "name", &opts.name, N_("name"),
+			   N_("use a custom worktree name")),
 		OPT_BOOL(0, "detach", &opts.detach, N_("detach HEAD at named commit")),
 		OPT_BOOL(0, "checkout", &opts.checkout, N_("populate the new working tree")),
 		OPT_END()
