@@ -373,6 +373,10 @@ the submodule itself.
 +
 *NOTE*: Do *not* use this option unless you have read the note
 for linkgit:git-clone[1]'s `--reference` and `--shared` options carefully.
++
+*NOTE*: This gives the same reference to all submodules, so it is only useful
+if you are tracking different versions of a project in submodules instead
+of different projects.
 
 --recursive::
 	This option is only valid for foreach, update, status and sync commands.
