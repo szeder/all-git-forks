@@ -12,9 +12,6 @@ tr \
 EOF
 chmod +x rot13.sh
 
-cp "$TEST_DIRECTORY"/t0021/rot31.pl .
-chmod +x rot13.pl
-
 test_expect_success setup '
 	git config filter.rot13.smudge ./rot13.sh &&
 	git config filter.rot13.clean ./rot13.sh &&
@@ -271,8 +268,11 @@ test_expect_success 'disable filter with empty override' '
 	test_must_be_empty err
 '
 
+cp "$TEST_DIRECTORY"/t0021/rot13.pl .
+chmod +x rot13.pl
+
 test_expect_success 'persistent test' '
-	git config filter.persistent.driver rot13.pl &&
+	git config filter.persistent.driver ./rot13.pl &&
 	git config filter.required.required true &&
 
 	echo "*.r filter=persistent" >.gitattributes &&

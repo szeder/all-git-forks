@@ -2,28 +2,25 @@
 
 use strict;
 use warnings;
+use autodie;
 
-open my $fh, '>>', '/tmp/tail';
+open my $debug, '>>', '/tmp/tail';
 
-sub smudge {
+sub rot13 {
     my ($x) = @_;
-    $x =~ 'y/N-ZA-Mn-za-m/A-Za-z/';    # rot13
-    return $x;
-}
-
-sub clean {
-    my ($x) = @_;
-    print $fh $x;
-    $x =~ 'y/A-Za-z/N-ZA-Mn-za-m/';
+    $x =~ y/N-ZA-Mn-za-m/A-Za-z/;    # rot13
     return $x;
 }
 
 sub filter_command {
     my ( $command, $file_name_len, $file_name, $file_content_len,
         $file_content );
-    binmode STDIN;
-    binmode STDOUT;
 
+    #binmode STDIN;
+    my $buf = do { local $/; <STDIN> };
+    print $debug $buf;
+
+=begin comment
     {
         my $buf;
         my $bytes_read = 0;
@@ -49,7 +46,7 @@ sub filter_command {
         $command = unpack( "I", $buf );
     }
 
-    print $fh "wtf";
+    print $debug "wtf";
     {
         my $buf;
         my $bytes_read = 0;
@@ -155,10 +152,10 @@ sub filter_command {
 
     my $out;
     if ( $command == 1 ) {
-        $out = clean( $file_content, $file_name );
+        $out = rot13( $file_content, $file_name );
     }
     elsif ( $command == 2 ) {
-        $out = smudge( $file_content, $file_name );
+        $out = rot13( $file_content, $file_name );
     }
     else {
         print "invalid command";
@@ -193,9 +190,11 @@ sub filter_command {
 
         }
     }
+=cut
+
 }
 
-print $fh "starting ...\n";
+print $debug "starting ...\n";
 filter_command();
-print $fh "ending ...\n";
-close($fh);
+print $debug "ending ...\n";
+close($debug);
