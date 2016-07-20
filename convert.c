@@ -589,13 +589,9 @@ static int apply_persistent_filter(const char *path, const char *src, size_t len
 				ret &= xwrite(process->in, &len, sizeof(uint32_t)) == sizeof(uint32_t);
 				ret &= write_in_full(process->in, src, len) == len;
 			} else {
-				// ret &=
-					fstat(fd, &fileStat);// != -1);
-				len = fileStat.st_size;
-				// ret &=
-				xwrite(process->in, &len, sizeof(uint32_t)) == sizeof(uint32_t);
-				// ret &=
-				copy_fd(fd, process->in) == 0;
+				ret &= fstat(fd, &fileStat) != -1;
+				ret &= xwrite(process->in, &fileStat.st_size, sizeof(uint32_t)) == sizeof(uint32_t);
+				ret &= copy_fd(fd, process->in) == 0;
 			}
 			ret &= xread(process->out, &nbuf_len, sizeof(uint32_t)) == sizeof(uint32_t);
 			ret &= strbuf_read_once(&nbuf, process->out, nbuf_len) == nbuf_len;
@@ -1538,7 +1534,7 @@ struct stream_filter *get_stream_filter(const char *path, const unsigned char *s
 	struct stream_filter *filter = NULL;
 
 	convert_attrs(&ca, path);
-	if (ca.drv && (ca.drv->smudge || ca.drv->clean))
+	if (ca.drv && (ca.drv->persistent_filter || ca.drv->smudge || ca.drv->clean))
 		return NULL;
 
 	if (ca.crlf_action == CRLF_AUTO || ca.crlf_action == CRLF_AUTO_CRLF)
