@@ -29,6 +29,11 @@ enum crlf_action {
 	CRLF_AUTO_CRLF
 };
 
+enum persistent_filter_type {
+	CLEAN = 1,
+	SMUDGE = 2
+};
+
 struct text_stat {
 	/* NUL, CR, LF and CRLF counts */
 	unsigned nul, lonecr, lonelf, crlf;
@@ -360,8 +365,33 @@ struct filter_params {
 	unsigned long size;
 	int fd;
 	const char *cmd;
-	const char *path;
+	const char *path; /* Path within the git repository */
 };
+
+static int cmd_process_map_init = 0;
+static struct hashmap cmd_process_map;
+
+struct cmd2process {
+	struct hashmap_entry ent; /* must be the first member! */
+	const char *cmd;
+	int protocol;
+	struct child_process process;
+};
+
+static int cmd2process_cmp(const struct cmd2process *e1,
+							const struct cmd2process *e2,
+							const void *unused)
+{
+	return strcmp(e1->cmd, e2->cmd);
+}
+
+static struct cmd2process *find_entry(const char *cmd)
+{
+	struct cmd2process k;
+	hashmap_entry_init(&k, memhash(&cmd, sizeof(char *)));
+	k.cmd = cmd;
+	return hashmap_get(&cmd_process_map, &k, NULL);
+}
 
 static int filter_buffer_or_fd(int in, int out, void *data)
 {
@@ -397,7 +427,7 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	child_process.out = out;
 
 	if (start_command(&child_process))
-		return error("cannot fork to run external filter %s", params->cmd);
+		return error("cannot fork to run external filter '%s'", params->cmd);
 
 	sigchain_push(SIGPIPE, SIG_IGN);
 
@@ -415,13 +445,13 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	if (close(child_process.in))
 		write_err = 1;
 	if (write_err)
-		error("cannot feed the input to external filter %s", params->cmd);
+		error("cannot feed the input to external filter '%s'", params->cmd);
 
 	sigchain_pop(SIGPIPE);
 
 	status = finish_command(&child_process);
 	if (status)
-		error("external filter %s failed %d", params->cmd, status);
+		error("external filter '%s' failed %d", params->cmd, status);
 
 	strbuf_release(&cmd);
 	return (write_err || status);
@@ -462,15 +492,15 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 		return 0;	/* error was already reported */
 
 	if (strbuf_read(&nbuf, async.out, len) < 0) {
-		error("read from external filter %s failed", cmd);
+		error("read from external filter '%s' failed", cmd);
 		ret = 0;
 	}
 	if (close(async.out)) {
-		error("read from external filter %s failed", cmd);
+		error("read from external filter '%s' failed", cmd);
 		ret = 0;
 	}
 	if (finish_async(&async)) {
-		error("external filter %s failed", cmd);
+		error("external filter '%s' failed", cmd);
 		ret = 0;
 	}
 
@@ -481,9 +511,112 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	return ret;
 }
 
+static int apply_persistent_filter(const char *path, const char *src, size_t len,
+						int fd, struct strbuf *dst, const char *cmd,
+						const enum persistent_filter_type filter)
+{
+	int ret = 1;
+	uint32_t protocol;
+	struct strbuf nbuf = STRBUF_INIT;
+	struct cmd2process *entry = NULL;
+	struct child_process *process = NULL;
+	const char *argv[] = { NULL, NULL };
+	const uint32_t lenPath = strlen(path);
+	struct stat fileStat;
+	uint32_t nbuf_len;
+
+	if (!cmd || !*cmd)
+		return 0;
+
+	if (!dst)
+		return 1;
+
+	if (!cmd_process_map_init) {
+		cmd_process_map_init = 1;
+		hashmap_init(&cmd_process_map, (hashmap_cmp_fn) cmd2process_cmp, 0);
+	} else {
+		entry = find_entry(cmd);
+	}
+
+	if (entry) {
+		process = &entry->process;
+	} else {
+		entry = malloc(sizeof(struct cmd2process));
+		hashmap_entry_init(entry, memhash(&cmd, sizeof(char *)));
+		entry->cmd = cmd;
+		process = &entry->process;
+
+		child_process_init(process);
+		argv[0] = cmd;
+		process->argv = argv;
+		process->use_shell = 1;
+		process->in = -1;
+		process->out = -1;
+
+		if (start_command(process)) {
+			error("cannot fork to run external persistent filter '%s'", cmd);
+			return 0;
+		}
+		ret &= xread(process->out, &protocol, sizeof(uint32_t)) == sizeof(uint32_t);
+
+		switch (protocol) {
+			case 1:
+				entry->protocol = (int)protocol;
+				break;
+			default:
+				ret = 0;
+				error("unsupported protocol version %i for external persistent filter '%s'", protocol, cmd);
+		}
+
+		if (!ret) {
+			error("initialization for external persistent filter '%s' failed", cmd);
+			free(entry);
+			return 0;
+		}
+
+		hashmap_add(&cmd_process_map, entry);
+	}
+
+	strbuf_reset(&nbuf);
+	sigchain_push(SIGPIPE, SIG_IGN);
+	switch (entry->protocol) {
+		case 1:
+			ret &= xwrite(process->in, &filter, sizeof(uint32_t)) == sizeof(uint32_t);
+			ret &= xwrite(process->in, &lenPath, sizeof(uint32_t)) == sizeof(uint32_t);
+			if (lenPath > 0)
+				ret &= write_str_in_full(process->in, path) == lenPath;
+			if (src) {
+				ret &= xwrite(process->in, &len, sizeof(uint32_t)) == sizeof(uint32_t);
+				ret &= write_in_full(process->in, src, len) == len;
+			} else {
+				// ret &=
+					fstat(fd, &fileStat);// != -1);
+				len = fileStat.st_size;
+				// ret &=
+				xwrite(process->in, &len, sizeof(uint32_t)) == sizeof(uint32_t);
+				// ret &=
+				copy_fd(fd, process->in) == 0;
+			}
+			ret &= xread(process->out, &nbuf_len, sizeof(uint32_t)) == sizeof(uint32_t);
+			ret &= strbuf_read_once(&nbuf, process->out, nbuf_len) == nbuf_len;
+			break;
+		default:
+			ret = 0;
+	}
+
+	    trace_printf("-- RRRRRRRRRRR %i", ret);
+	sigchain_pop(SIGPIPE);
+	if (ret) {
+		strbuf_swap(dst, &nbuf);
+	}
+	strbuf_release(&nbuf);
+	return ret;
+}
+
 static struct convert_driver {
 	const char *name;
 	struct convert_driver *next;
+	const char *persistent_filter;
 	const char *smudge;
 	const char *clean;
 	int required;
@@ -525,6 +658,10 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 
 	if (!strcmp("clean", key))
 		return git_config_string(&drv->clean, var, value);
+
+	if (!strcmp("driver", key)) {
+		return git_config_string(&drv->persistent_filter, var, value);
+	}
 
 	if (!strcmp("required", key)) {
 		drv->required = git_config_bool(var, value);
@@ -577,7 +714,7 @@ static int count_ident(const char *cp, unsigned long size)
 }
 
 static int ident_to_git(const char *path, const char *src, size_t len,
-                        struct strbuf *buf, int ident)
+						struct strbuf *buf, int ident)
 {
 	char *dst, *dollar;
 
@@ -823,6 +960,16 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
+	/*
+	 * If the persistent filter is available, then try to use this one first
+	 * as it should usually be more efficient.
+	 */
+	if (apply_persistent_filter(path, NULL, 0, -1, NULL, ca.drv->persistent_filter, CLEAN))
+		return 1;
+
+	/*
+	 * Fall back on the regular clean filter.
+	 */
 	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean);
 }
 
@@ -856,17 +1003,20 @@ int convert_to_git(const char *path, const char *src, size_t len,
                    struct strbuf *dst, enum safe_crlf checksafe)
 {
 	int ret = 0;
-	const char *filter = NULL;
+	const char *filter = NULL, *persistent_filter = NULL;
 	int required = 0;
 	struct conv_attrs ca;
 
 	convert_attrs(&ca, path);
 	if (ca.drv) {
+		persistent_filter = ca.drv->persistent_filter;
 		filter = ca.drv->clean;
 		required = ca.drv->required;
 	}
 
-	ret |= apply_filter(path, src, len, -1, dst, filter);
+	ret |= apply_persistent_filter(path, src, len, -1, dst, persistent_filter, CLEAN);
+	if (!ret)
+		ret |= apply_filter(path, src, len, -1, dst, filter);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -889,9 +1039,10 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	convert_attrs(&ca, path);
 
 	assert(ca.drv);
-	assert(ca.drv->clean);
+	assert(ca.drv->persistent_filter || ca.drv->clean);
 
-	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
+	if (!apply_persistent_filter(path, NULL, 0, fd, dst, ca.drv->persistent_filter, CLEAN) &&
+		!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action, checksafe);
@@ -903,12 +1054,13 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 					    int normalizing)
 {
 	int ret = 0, ret_filter = 0;
-	const char *filter = NULL;
+	const char *filter = NULL, *persistent_filter = NULL;
 	int required = 0;
 	struct conv_attrs ca;
 
 	convert_attrs(&ca, path);
 	if (ca.drv) {
+		persistent_filter = ca.drv->persistent_filter;
 		filter = ca.drv->smudge;
 		required = ca.drv->required;
 	}
@@ -922,7 +1074,8 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 	 * CRLF conversion can be skipped if normalizing, unless there
 	 * is a smudge filter.  The filter might expect CRLFs.
 	 */
-	if (filter || !normalizing) {
+	 // TODO: in case of the persistent_filter we don't know if there is smudge filter
+	if (persistent_filter || filter || !normalizing) {
 		ret |= crlf_to_worktree(path, src, len, dst, ca.crlf_action);
 		if (ret) {
 			src = dst->buf;
@@ -930,7 +1083,9 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 		}
 	}
 
-	ret_filter = apply_filter(path, src, len, -1, dst, filter);
+	ret_filter = apply_persistent_filter(path, src, len, -1, dst, persistent_filter, SMUDGE);
+	if (!ret_filter)
+		ret_filter |= apply_filter(path, src, len, -1, dst, filter);
 	if (!ret_filter && required)
 		die("%s: smudge filter %s failed", path, ca.drv->name);
 
