@@ -389,6 +389,8 @@ static int check_repo_format(const char *var, const char *value, void *vdata)
 			;
 		else if (!strcmp(ext, "preciousobjects"))
 			data->precious_objects = git_config_bool(var, value);
+		else if (!strcmp(ext, "worktreeconfig"))
+			data->worktree_config = git_config_bool(var, value);
 		else
 			string_list_append(&data->unknown_extensions, ext);
 	} else if (strcmp(var, "core.bare") == 0) {
@@ -432,8 +434,9 @@ static int check_repository_format_gently(const char *gitdir, int *nongit_ok)
 	}
 
 	repository_format_precious_objects = candidate.precious_objects;
+	repository_format_worktree_config = candidate.worktree_config;
 	string_list_clear(&candidate.unknown_extensions, 0);
-	if (!has_common) {
+	if (!has_common || repository_format_worktree_config) {
 		if (candidate.is_bare != -1) {
 			is_bare_repository_cfg = candidate.is_bare;
 			if (is_bare_repository_cfg == 1)

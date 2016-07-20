@@ -143,6 +143,11 @@ config::
 	if $GIT_COMMON_DIR is set and "$GIT_COMMON_DIR/config" will be
 	used instead.
 
+config.worktree::
+	Working directory specific configuration file for the main
+	working directory in multiple working directory setup (see
+	linkgit:git-worktree[1]).
+
 branches::
 	A slightly deprecated way to store shorthands to be used
 	to specify a URL to 'git fetch', 'git pull' and 'git push'.
@@ -275,6 +280,9 @@ worktrees/<id>/link::
 	If this file exists, it is a hard link to the linked .git
 	file. It is used to detect if the linked repository is
 	manually removed.
+
+worktrees/<id>/config.worktree::
+	Working directory specific configuration file.
 
 SEE ALSO
 --------
