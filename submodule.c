@@ -1128,7 +1128,9 @@ void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
 {
 	struct strbuf file_name = STRBUF_INIT;
 	struct strbuf rel_path = STRBUF_INIT;
+	struct strbuf path = STRBUF_INIT;
 	const char *real_work_tree = xstrdup(real_path(work_tree));
+	struct child_process cp = CHILD_PROCESS_INIT;
 
 	/* Update gitfile */
 	strbuf_addf(&file_name, "%s/.git", work_tree);
@@ -1136,13 +1138,17 @@ void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
 		   relative_path(git_dir, real_work_tree, &rel_path));
 
 	/* Update core.worktree setting */
-	strbuf_reset(&file_name);
-	strbuf_addf(&file_name, "%s/config", git_dir);
-	git_config_set_in_file(file_name.buf, "core.worktree",
-			       relative_path(real_work_tree, git_dir,
-					     &rel_path));
+	strbuf_addstr(&path, relative_path(real_work_tree, git_dir,
+					   &rel_path));
+	cp.git_cmd = 1;
+	argv_array_pushl(&cp.args, "-C", work_tree, NULL);
+	argv_array_pushl(&cp.args, "--work-tree", ".", NULL);
+	argv_array_pushl(&cp.args, "config", "core.worktree", path.buf, NULL);
+	if (run_command(&cp) < 0)
+		die(_("failed to update core.worktree for %s"), git_dir);
 
 	strbuf_release(&file_name);
+	strbuf_release(&path);
 	strbuf_release(&rel_path);
 	free((void *)real_work_tree);
 }
