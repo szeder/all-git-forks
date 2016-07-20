@@ -55,6 +55,7 @@ matrix:
 
 before_install:
   - >
+    httpd -v;
     case "${TRAVIS_OS_NAME:-linux}" in
     linux)
       mkdir --parents custom/p4
