@@ -557,22 +557,22 @@ static int apply_persistent_filter(const char *path, const char *src, size_t len
 			error("cannot fork to run external persistent filter '%s'", cmd);
 			return 0;
 		}
-		ret &= xread(process->out, &protocol, sizeof(uint32_t)) == sizeof(uint32_t);
+		// ret &= xread(process->out, &protocol, sizeof(uint32_t)) == sizeof(uint32_t);
 
-		switch (protocol) {
-			case 1:
-				entry->protocol = (int)protocol;
-				break;
-			default:
-				ret = 0;
-				error("unsupported protocol version %i for external persistent filter '%s'", protocol, cmd);
-		}
+		// switch (protocol) {
+		// 	case 1:
+		// 		entry->protocol = (int)protocol;
+		// 		break;
+		// 	default:
+		// 		ret = 0;
+		// 		error("unsupported protocol version %i for external persistent filter '%s'", protocol, cmd);
+		// }
 
-		if (!ret) {
-			error("initialization for external persistent filter '%s' failed", cmd);
-			free(entry);
-			return 0;
-		}
+		// if (!ret) {
+		// 	error("initialization for external persistent filter '%s' failed", cmd);
+		// 	free(entry);
+		// 	return 0;
+		// }
 
 		hashmap_add(&cmd_process_map, entry);
 	}
