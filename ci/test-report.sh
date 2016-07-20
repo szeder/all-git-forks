@@ -50,11 +50,10 @@ EOF
 
 case "$CURRENT_BRANCH_NAME" in
 	master) STABLE_BRANCH="maint";;
-	next)   STABLE_BRANCH="master";;
-	pu)     STABLE_BRANCH="next";;
+	bisect-ci/v2)   STABLE_BRANCH="master";;
 esac
 
-if test "$REPO_ORG_NAME" = "git/git" && test -n $STABLE_BRANCH
+if test "$REPO_ORG_NAME" = "larsxschneider/git" && test -n $STABLE_BRANCH
 then
 	BAD_REV=$(git rev-parse HEAD)
 
