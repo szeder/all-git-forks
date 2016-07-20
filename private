@@ -35,6 +35,10 @@ done
 GIT_DIR=`git rev-parse --git-dir` || exit
 
 if test "$cont" = t; then
+	if git symbolic-ref -q HEAD >/dev/null; then
+		echo >&2 "fatal: refusing to continue private build from branch"
+		exit 1
+	fi
 	if test -f "$GIT_DIR/MERGE_HEAD"; then
 		GIT_EDITOR=true git commit || exit
 	fi
