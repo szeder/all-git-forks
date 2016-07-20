@@ -261,7 +261,7 @@ or you are unsure what this means choose another name with the '--name' option."
 			esac
 		) || die "$(eval_gettext "Unable to checkout submodule '\$sm_path'")"
 	fi
-	git config submodule."$sm_name".url "$realrepo"
+	git config --worktree submodule."$sm_name".url "$realrepo"
 
 	git add $force "$sm_path" ||
 	die "$(eval_gettext "Failed to add submodule '\$sm_path'")"
@@ -461,7 +461,7 @@ Submodule work tree '\$displaypath' contains a .git directory
 			# Remove the whole section so we have a clean state when
 			# the user later decides to init this submodule again
 			url=$(git config submodule."$name".url)
-			git config --remove-section submodule."$name" 2>/dev/null &&
+			git config --worktree --remove-section submodule."$name" 2>/dev/null &&
 			say "$(eval_gettext "Submodule '\$name' (\$url) unregistered for path '\$displaypath'")"
 		fi
 	done
@@ -1106,7 +1106,7 @@ cmd_sync()
 		then
 			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
 			say "$(eval_gettext "Synchronizing submodule url for '\$displaypath'")"
-			git config submodule."$name".url "$super_config_url"
+			git config --worktree submodule."$name".url "$super_config_url"
 
 			if test -e "$sm_path"/.git
 			then
@@ -1114,7 +1114,7 @@ cmd_sync()
 				sanitize_submodule_env
 				cd "$sm_path"
 				remote=$(get_default_remote)
-				git config remote."$remote".url "$sub_origin_url"
+				git config --worktree remote."$remote".url "$sub_origin_url"
 
 				if test -n "$recursive"
 				then
