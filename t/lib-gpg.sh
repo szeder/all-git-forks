@@ -8,7 +8,7 @@ then
 	# that version, creation of signed tags using the generated key fails.
 	case "$gpg_version" in
 	'gpg (GnuPG) 1.0.6'*)
-		say "Your version of gpg (1.0.6) is too buggy for testing"
+		skip_all='Your version of gpg (1.0.6) is too buggy for testing'
 		;;
 	*)
 		# Available key info:
@@ -40,6 +40,8 @@ then
 		test_set_prereq GPG
 		;;
 	esac
+else
+	skip_all='GPG not found or unusable'
 fi
 
 if test_have_prereq GPG &&
