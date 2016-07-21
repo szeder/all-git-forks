@@ -12,6 +12,12 @@ tr \
 EOF
 chmod +x rot13.sh
 
+cat <<EOF >run.sh
+#!$SHELL_PATH
+	echo "." >> run.count
+EOF
+chmod +x run.sh
+
 test_expect_success setup '
 	git config filter.rot13.smudge ./rot13.sh &&
 	git config filter.rot13.clean ./rot13.sh &&
@@ -268,4 +274,28 @@ test_expect_success 'disable filter with empty override' '
 	test_must_be_empty err
 '
 
+test_expect_failure 'required clean filter count' '
+	test_config_global filter.run_count.clean ./../run.sh &&
+	test_config_global filter.run_count.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=run_count" >.gitattributes &&
+
+		cat ../test.o >test.r &&
+		echo "test22" >test2.r &&
+		echo "test333" >test3.r &&
+
+		rm -f run.count &&
+		git add . &&
+		test_line_count = 3 run.count
+
+		rm -f run.count &&
+		git commit . -m "test commit" &&
+		test_line_count = 3 run.count
+	)
+'
 test_done
