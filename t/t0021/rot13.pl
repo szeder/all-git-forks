@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 use autodie;
+use File::Basename;
+use File::Spec::Functions;
 
 $| = 1;
 
@@ -12,7 +14,7 @@ sub rot13 {
     return $str;
 }
 
-open my $debug, '>>', '/mnt/migrations/projects/git/t/output';
+open my $debug, '>>', catfile( dirname($0), 'filter.debug' );
 $debug->autoflush(1);
 print $debug "start\n";
 
@@ -21,7 +23,7 @@ print $debug "wrote version\n";
 
 while (1) {
     my $command = <STDIN>;
-    unless (defined($command)) {
+    unless ( defined($command) ) {
         exit();
     }
     chomp $command;
@@ -29,7 +31,7 @@ while (1) {
     my $filename = <STDIN>;
     chomp $filename;
     print $debug "read filename: $filename\n";
-    my $filelen  = <STDIN>;
+    my $filelen = <STDIN>;
     chomp $filelen;
     print $debug "read filelen: $filelen\n";
 
@@ -40,15 +42,16 @@ while (1) {
         my $input;
         {
             binmode(STDIN);
-            my $bytes_read = 0;
-            $bytes_read = read STDIN, $input, $filelen;
-            if ( $bytes_read != $filelen ) {
-                die "not enough read";
+            my $bytes_read = read STDIN, $input, $filelen;
+            if ( $bytes_read == $filelen ) {
+                print $debug "retrieved all $filelen bytes\n";
             }
-            print $debug "read $bytes_read bytes\n";
+            else {
+                die "retrieved $bytes_read, not $filelen, bytes\n";
+            }
         }
 
-        if ( $command eq 'clean') {
+        if ( $command eq 'clean' ) {
             $output = rot13($input);
         }
         elsif ( $command eq 'smudge' ) {
@@ -67,3 +70,5 @@ while (1) {
         print $debug "wrote output\n";
     }
 }
+
+close $debug;

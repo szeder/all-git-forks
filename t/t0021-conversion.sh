@@ -282,7 +282,6 @@ test_expect_success 'persistent test' '
 
 	rm -f test.r &&
 	git checkout -- test.r &&
-    cat test.r &&
 	cmp test.o test.r &&
 
 	./rot13.sh <test.o >expected &&
@@ -290,7 +289,7 @@ test_expect_success 'persistent test' '
 	echo "actual:" &&
 	cat actual &&
 	echo "----------" &&
-	echo "expected" &&
+	echo "expected:" &&
 	cat expected &&
 	echo "----------" &&
 	cmp expected actual
