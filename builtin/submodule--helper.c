@@ -683,9 +683,9 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 	needs_cloning = !file_exists(sb.buf);
 
 	strbuf_reset(&sb);
-	strbuf_addf(&sb, "%06o %s %d %d\t%s\n", ce->ce_mode,
+	strbuf_addf(&sb, "%06o %s %d %d %s\t%s\n", ce->ce_mode,
 			sha1_to_hex(ce->sha1), ce_stage(ce),
-			needs_cloning, ce->name);
+			needs_cloning, sub->name, sub->path);
 	string_list_append(&suc->projectlines, sb.buf);
 
 	if (!needs_cloning)

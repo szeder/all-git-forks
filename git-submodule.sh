@@ -584,11 +584,10 @@ cmd_update()
 		"$@" || echo "#unmatched"
 	} | {
 	err=
-	while read mode sha1 stage just_cloned sm_path
+	while read mode sha1 stage just_cloned name sm_path
 	do
 		die_if_unmatched "$mode"
 
-		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		branch=$(get_submodule_config "$name" branch master)
 		if ! test -z "$update"
