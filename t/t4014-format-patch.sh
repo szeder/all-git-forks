@@ -1606,4 +1606,18 @@ test_expect_success 'format-patch --pretty=mboxrd' '
 	test_cmp expect actual
 '
 
+test_expect_success 'format-patch From escaping' '
+	cat >msg <<-INPUT_END &&
+	somebody pasted format-patch output into a body
+
+	From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+	INPUT_END
+
+	C=$(git commit-tree HEAD^^{tree} -p HEAD <msg) &&
+	git format-patch --stdout -1 $C~1..$C >patch &&
+	git grep -h --no-index \
+		">From 0000000000000000000000000000000000000000 " \
+		patch
+'
+
 test_done

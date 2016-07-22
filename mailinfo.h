@@ -37,5 +37,6 @@ struct mailinfo {
 extern void setup_mailinfo(struct mailinfo *);
 extern int mailinfo(struct mailinfo *, const char *msg, const char *patch);
 extern void clear_mailinfo(struct mailinfo *);
+int is_from_line(const char *line, int len);
 
 #endif /* MAILINFO_H */

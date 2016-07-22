@@ -10,6 +10,7 @@
 #include "color.h"
 #include "reflog-walk.h"
 #include "gpg-interface.h"
+#include "mailinfo.h"
 
 static char *user_format;
 static struct cmt_fmt_map {
@@ -1745,9 +1746,18 @@ void pp_remainder(struct pretty_print_context *pp,
 			strbuf_add_tabexpand(sb, pp->expand_tabs_in_log,
 					     line, linelen);
 		else {
-			if (pp->fmt == CMIT_FMT_MBOXRD &&
-					is_mboxrd_from(line, linelen))
-				strbuf_addch(sb, '>');
+			switch (pp->fmt) {
+			case CMIT_FMT_EMAIL:
+				if (is_from_line(line, linelen))
+					strbuf_addch(sb, '>');
+				break;
+			case CMIT_FMT_MBOXRD:
+				if (is_mboxrd_from(line, linelen))
+					strbuf_addch(sb, '>');
+				break;
+			default:
+				break;
+			}
 
 			strbuf_add(sb, line, linelen);
 		}
