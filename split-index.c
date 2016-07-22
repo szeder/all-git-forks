@@ -176,7 +176,13 @@ void merge_base_index(struct index_state *istate)
 	si->saved_cache_nr = 0;
 }
 
-void prepare_to_write_split_index(struct index_state *istate)
+/*
+ * Return:
+ *   1 if there are too many changes in the split index,
+ *   0 otherwise.
+ */
+int prepare_to_write_split_index(struct index_state *istate,
+				 int max_percent_changes)
 {
 	struct split_index *si = init_split_index(istate);
 	struct cache_entry **entries = NULL, *ce;
@@ -193,6 +199,10 @@ void prepare_to_write_split_index(struct index_state *istate)
 		 * CE_UPDATE_IN_BASE. If istate->cache[i] is a
 		 * duplicate, deduplicate it.
 		 */
+
+		int nr_changes = 0;
+		int max_changes = 1 + si->base->cache_nr * max_percent_changes / 100;
+
 		for (i = 0; i < istate->cache_nr; i++) {
 			struct cache_entry *base;
 			/* namelen is checked separately */
@@ -233,15 +243,19 @@ void prepare_to_write_split_index(struct index_state *istate)
 		for (i = 0; i < si->base->cache_nr; i++) {
 			ce = si->base->cache[i];
 			if ((ce->ce_flags & CE_REMOVE) ||
-			    !(ce->ce_flags & CE_MATCHED))
+			    !(ce->ce_flags & CE_MATCHED)) {
 				ewah_set(si->delete_bitmap, i);
-			else if (ce->ce_flags & CE_UPDATE_IN_BASE) {
+				nr_changes++;
+			} else if (ce->ce_flags & CE_UPDATE_IN_BASE) {
 				ewah_set(si->replace_bitmap, i);
 				ce->ce_flags |= CE_STRIP_NAME;
 				ALLOC_GROW(entries, nr_entries+1, nr_alloc);
 				entries[nr_entries++] = ce;
+				nr_changes++;
 			}
 		}
+		if (nr_changes > max_changes)
+			return 1;
 	}
 
 	for (i = 0; i < istate->cache_nr; i++) {
@@ -262,6 +276,8 @@ void prepare_to_write_split_index(struct index_state *istate)
 	si->saved_cache_nr = istate->cache_nr;
 	istate->cache = entries;
 	istate->cache_nr = nr_entries;
+
+	return 0;
 }
 
 void finish_writing_split_index(struct index_state *istate)
