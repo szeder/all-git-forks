@@ -28,7 +28,8 @@ int write_link_extension(struct strbuf *sb,
 			 struct index_state *istate);
 void move_cache_to_base_index(struct index_state *istate);
 void merge_base_index(struct index_state *istate);
-void prepare_to_write_split_index(struct index_state *istate);
+int prepare_to_write_split_index(struct index_state *istate,
+				 int max_percent_changes);
 void finish_writing_split_index(struct index_state *istate);
 void discard_split_index(struct index_state *istate);
 void add_split_index(struct index_state *istate);
