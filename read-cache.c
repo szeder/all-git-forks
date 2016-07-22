@@ -2152,12 +2152,22 @@ static int do_write_locked_index(struct index_state *istate, struct lock_file *l
 		return ret;
 }
 
+static const int max_percent_split_change = 25;
+
+static int write_shared_index(struct index_state *istate,
+			      struct lock_file *lock, unsigned flags);
+
 static int write_split_index(struct index_state *istate,
 			     struct lock_file *lock,
 			     unsigned flags)
 {
 	int ret;
-	prepare_to_write_split_index(istate);
+	if (prepare_to_write_split_index(istate, max_percent_split_change)) {
+		ret = write_shared_index(istate, lock, flags);
+		if (ret)
+			return ret;
+		prepare_to_write_split_index(istate, max_percent_split_change);
+	}
 	ret = do_write_locked_index(istate, lock, flags);
 	finish_writing_split_index(istate);
 	return ret;
