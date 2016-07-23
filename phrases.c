@@ -1984,13 +1984,17 @@ static int wordcmp(const void * w1, const void * w2)
 	return strcmp((const char *)*(const void **)w1, (const char *)*(const void **)w2);
 }
 
-const unsigned char * phrase_to_sha(const char *phrase, int * shaLen)
+int phrase_to_prefix(const char *name, int * len, unsigned char *bin_pfx, char *hex_pfx)
 {
-	size_t phraseLen = strlen(phrase);
-	char * phraseCopy = malloc(phraseLen + 1);
+	if ((len == NULL) || (*len <= 0))
+	{
+		return -1;
+	}
+
+	char * phraseCopy = malloc(*len + 1);
 	if (phraseCopy)
 	{
-		strcpy(phraseCopy, phrase);
+		strcpy(phraseCopy, name);
 		char * adj1 = strtok(phraseCopy, "-");
 		if (adj1)
 		{
@@ -2015,18 +2019,24 @@ const unsigned char * phrase_to_sha(const char *phrase, int * shaLen)
 							{
 								unsigned int nounIndex = nounFromList - noun_list;
 
-								unsigned int shaValue = adj2Index * num_adj * num_noun    +   adj1Index * num_noun     +   nounIndex;
+								unsigned int shaValue = adj2Index * num_adj * num_noun + adj1Index * num_noun + nounIndex;
 
-								static unsigned char shaBuffer[4];
-								shaBuffer[0] = 0xFF & (shaValue >> 20);
-								shaBuffer[1] = 0xFF & (shaValue >> 12);
-								shaBuffer[2] = 0xFF & (shaValue >>  4);
-								shaBuffer[3] = 0xF0 & (shaValue <<  4);
-								if (shaLen)
-								{
-									*shaLen = 7;
-								}
-								return shaBuffer;
+								bin_pfx[0] = 0xFF & (shaValue >> 20);
+								bin_pfx[1] = 0xFF & (shaValue >> 12);
+								bin_pfx[2] = 0xFF & (shaValue >> 4);
+								bin_pfx[3] = 0xF0 & (shaValue << 4);
+
+								static const char hexchars[] = "0123456789abcdef";
+								hex_pfx[0] = hexchars[bin_pfx[0] >> 4];
+								hex_pfx[1] = hexchars[bin_pfx[0] & 0x0F];
+								hex_pfx[2] = hexchars[bin_pfx[1] >> 4];
+								hex_pfx[3] = hexchars[bin_pfx[1] & 0x0F];
+								hex_pfx[4] = hexchars[bin_pfx[2] >> 4];
+								hex_pfx[5] = hexchars[bin_pfx[2] & 0x0F];
+								hex_pfx[6] = hexchars[bin_pfx[3] >> 4];
+
+								*len = 7;
+								return 0;
 							}
 						}
 					}
@@ -2037,6 +2047,5 @@ const unsigned char * phrase_to_sha(const char *phrase, int * shaLen)
 		free(phraseCopy);
 	}
 
-	return NULL;
+	return -1;
 }
-
