@@ -10,4 +10,5 @@ PKGDIR=$TARGET/stow/$PKG
 OPTS=''
 
 set -x
+(cd $TOPSRCDIR && make configure)
 exec $TOPSRCDIR/configure --prefix=$PKGDIR $OPTS ${1+"$@"}
