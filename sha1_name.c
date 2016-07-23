@@ -322,8 +322,10 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 
 	if (len < MINIMUM_ABBREV || len > 40)
 		return -1;
-	if (prepare_prefixes(name, len, bin_pfx, hex_pfx) < 0)
-		return -1;
+
+	if (phrase_to_prefix(name, &len, bin_pfx, hex_pfx))
+		if (prepare_prefixes(name, len, bin_pfx, hex_pfx) < 0)
+			return -1;
 
 	prepare_alt_odb();
 
