@@ -156,4 +156,44 @@ EOF
 	test_i18ncmp expect actual
 '
 
+test_expect_success 'git branch `--sort` option' '
+	cat >expect <<-\EOF &&
+	* (HEAD detached from fromtag)
+	  branch-two
+	  branch-one
+	  master
+	EOF
+	git branch --sort=objectsize >actual &&
+	test_i18ncmp expect actual
+'
+
+test_expect_success 'git branch --points-at option' '
+	cat >expect <<-\EOF &&
+	  branch-one
+	  master
+	EOF
+	git branch --points-at=branch-one >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'ambiguous branch/tag not marked' '
+	git tag ambiguous &&
+	git branch ambiguous &&
+	echo "  ambiguous" >expect &&
+	git branch --list ambiguous >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'local-branch symrefs shortened properly' '
+	git symbolic-ref refs/heads/ref-to-branch refs/heads/branch-one &&
+	git symbolic-ref refs/heads/ref-to-remote refs/remotes/origin/branch-one &&
+	cat >expect <<-\EOF &&
+	  ref-to-branch -> branch-one
+	  ref-to-remote -> refs/remotes/origin/branch-one
+	EOF
+	git branch >actual.raw &&
+	grep ref-to <actual.raw >actual &&
+	test_cmp expect actual
+'
+
 test_done

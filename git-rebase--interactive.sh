@@ -81,17 +81,14 @@ rewritten_pending="$state_dir"/rewritten-pending
 # and leaves CR at the end instead.
 cr=$(printf "\015")
 
-strategy_args=
-if test -n "$do_merge"
-then
-	strategy_args=${strategy:+--strategy=$strategy}
-	eval '
-		for strategy_opt in '"$strategy_opts"'
-		do
-			strategy_args="$strategy_args -X$(git rev-parse --sq-quote "${strategy_opt#--}")"
-		done
-	'
-fi
+strategy_args=${strategy:+--strategy=$strategy}
+test -n "$strategy_opts" &&
+eval '
+	for strategy_opt in '"$strategy_opts"'
+	do
+		strategy_args="$strategy_args -X$(git rev-parse --sq-quote "${strategy_opt#--}")"
+	done
+'
 
 GIT_CHERRY_PICK_HELP="$resolvemsg"
 export GIT_CHERRY_PICK_HELP
@@ -195,7 +192,6 @@ make_patch () {
 die_with_patch () {
 	echo "$1" > "$state_dir"/stopped-sha
 	make_patch "$1"
-	git rerere
 	die "$2"
 }
 
@@ -552,7 +548,8 @@ do_next () {
 
 		mark_action_done
 		do_pick $sha1 "$rest"
-		warn "Stopped at $sha1... $rest"
+		sha1_abbrev=$(git rev-parse --short $sha1)
+		warn "Stopped at $sha1_abbrev... $rest"
 		exit_with_patch $sha1 0
 		;;
 	squash|s|fixup|f)
@@ -610,7 +607,7 @@ do_next () {
 		read -r command rest < "$todo"
 		mark_action_done
 		printf 'Executing: %s\n' "$rest"
-		${SHELL:-@SHELL_PATH@} -c "$rest" # Actual execution
+		"${SHELL:-@SHELL_PATH@}" -c "$rest" # Actual execution
 		status=$?
 		# Run in subshell because require_clean_work_tree can die.
 		dirty=f
@@ -869,12 +866,12 @@ add_exec_commands () {
 # $3: the input filename
 check_commit_sha () {
 	badsha=0
-	if test -z $1
+	if test -z "$1"
 	then
 		badsha=1
 	else
 		sha1_verif="$(git rev-parse --verify --quiet $1^{commit})"
-		if test -z $sha1_verif
+		if test -z "$sha1_verif"
 		then
 			badsha=1
 		fi
@@ -1041,8 +1038,8 @@ check_todo_list () {
 # below were not inside any function, and expected to return
 # to the function that dot-sourced us.
 #
-# However, FreeBSD /bin/sh misbehaves on such a construct and
-# continues to run the statements that follow such a "return".
+# However, older (9.x) versions of FreeBSD /bin/sh misbehave on such a
+# construct and continue to run the statements that follow such a "return".
 # As a work-around, we introduce an extra layer of a function
 # here, and immediately call it after defining it.
 git_rebase__interactive () {
@@ -1237,7 +1234,8 @@ then
 	git rev-list $revisions |
 	while read rev
 	do
-		if test -f "$rewritten"/$rev && test "$(sane_grep "$rev" "$state_dir"/not-cherry-picks)" = ""
+		if test -f "$rewritten"/$rev &&
+		   ! sane_grep "$rev" "$state_dir"/not-cherry-picks >/dev/null
 		then
 			# Use -f2 because if rev-list is telling us this commit is
 			# not worthwhile, we don't want to track its multiple heads,

@@ -329,6 +329,7 @@ static const char *export_marks_file;
 static const char *import_marks_file;
 static int import_marks_file_from_stream;
 static int import_marks_file_ignore_missing;
+static int import_marks_file_done;
 static int relative_marks_paths;
 
 /* Our last blob */
@@ -414,7 +415,7 @@ static void write_crash_report(const char *err)
 	struct recent_command *rc;
 
 	if (!rpt) {
-		error("can't write crash report %s: %s", loc, strerror(errno));
+		error_errno("can't write crash report %s", loc);
 		free(loc);
 		return;
 	}
@@ -424,7 +425,7 @@ static void write_crash_report(const char *err)
 	fprintf(rpt, "fast-import crash report:\n");
 	fprintf(rpt, "    fast-import process: %"PRIuMAX"\n", (uintmax_t) getpid());
 	fprintf(rpt, "    parent process     : %"PRIuMAX"\n", (uintmax_t) getppid());
-	fprintf(rpt, "    at %s\n", show_date(time(NULL), 0, DATE_MODE(LOCAL)));
+	fprintf(rpt, "    at %s\n", show_date(time(NULL), 0, DATE_MODE(ISO8601)));
 	fputc('\n', rpt);
 
 	fputs("fatal: ", rpt);
@@ -622,7 +623,7 @@ static void *pool_alloc(size_t len)
 			return xmalloc(len);
 		}
 		total_allocd += sizeof(struct mem_pool) + mem_pool_alloc;
-		p = xmalloc(sizeof(struct mem_pool) + mem_pool_alloc);
+		p = xmalloc(st_add(sizeof(struct mem_pool), mem_pool_alloc));
 		p->next_pool = mem_pool;
 		p->next_free = (char *) p->space;
 		p->end = p->next_free + mem_pool_alloc;
@@ -644,8 +645,9 @@ static void *pool_calloc(size_t count, size_t size)
 
 static char *pool_strdup(const char *s)
 {
-	char *r = pool_alloc(strlen(s) + 1);
-	strcpy(r, s);
+	size_t len = strlen(s) + 1;
+	char *r = pool_alloc(len);
+	memcpy(r, s, len);
 	return r;
 }
 
@@ -702,7 +704,7 @@ static struct atom_str *to_atom(const char *s, unsigned short len)
 
 	c = pool_alloc(sizeof(struct atom_str) + len + 1);
 	c->str_len = len;
-	strncpy(c->str_dat, s, len);
+	memcpy(c->str_dat, s, len);
 	c->str_dat[len] = 0;
 	c->next_atom = atom_table[hc];
 	atom_table[hc] = c;
@@ -813,7 +815,8 @@ static struct tree_entry *new_tree_entry(void)
 	if (!avail_tree_entry) {
 		unsigned int n = tree_entry_alloc;
 		total_allocd += n * sizeof(struct tree_entry);
-		avail_tree_entry = e = xmalloc(n * sizeof(struct tree_entry));
+		ALLOC_ARRAY(e, n);
+		avail_tree_entry = e;
 		while (n-- > 1) {
 			*((void**)e) = e + 1;
 			e++;
@@ -868,8 +871,7 @@ static void start_packfile(void)
 
 	pack_fd = odb_mkstemp(tmp_file, sizeof(tmp_file),
 			      "pack/tmp_pack_XXXXXX");
-	p = xcalloc(1, sizeof(*p) + strlen(tmp_file) + 2);
-	strcpy(p->pack_name, tmp_file);
+	FLEX_ALLOC_STR(p, pack_name, tmp_file);
 	p->pack_fd = pack_fd;
 	p->do_not_close = 1;
 	pack_file = sha1fd(pack_fd, p->pack_name);
@@ -895,7 +897,7 @@ static const char *create_index(void)
 	struct object_entry_pool *o;
 
 	/* Build the table of object IDs. */
-	idx = xmalloc(object_count * sizeof(*idx));
+	ALLOC_ARRAY(idx, object_count);
 	c = idx;
 	for (o = blocks; o; o = o->next_pool)
 		for (e = o->next_free; e-- != o->entries;)
@@ -1035,8 +1037,8 @@ static int store_object(
 	git_SHA_CTX c;
 	git_zstream s;
 
-	hdrlen = sprintf((char *)hdr,"%s %lu", typename(type),
-		(unsigned long)dat->len) + 1;
+	hdrlen = xsnprintf((char *)hdr, sizeof(hdr), "%s %lu",
+			   typename(type), (unsigned long)dat->len) + 1;
 	git_SHA1_Init(&c);
 	git_SHA1_Update(&c, hdr, hdrlen);
 	git_SHA1_Update(&c, dat->buf, dat->len);
@@ -1511,7 +1513,7 @@ static int tree_content_set(
 	t = root->tree;
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
-		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
+		if (e->name->str_len == n && !fspathncmp(p, e->name->str_dat, n)) {
 			if (!*slash1) {
 				if (!S_ISDIR(mode)
 						&& e->versions[1].mode == mode
@@ -1601,7 +1603,7 @@ static int tree_content_remove(
 	t = root->tree;
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
-		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
+		if (e->name->str_len == n && !fspathncmp(p, e->name->str_dat, n)) {
 			if (*slash1 && !S_ISDIR(e->versions[1].mode))
 				/*
 				 * If p names a file in some subdirectory, and a
@@ -1668,7 +1670,7 @@ static int tree_content_get(
 	t = root->tree;
 	for (i = 0; i < t->entry_count; i++) {
 		e = t->entries[i];
-		if (e->name->str_len == n && !strncmp_icase(p, e->name->str_dat, n)) {
+		if (e->name->str_len == n && !fspathncmp(p, e->name->str_dat, n)) {
 			if (!*slash1)
 				goto found_entry;
 			if (!S_ISDIR(e->versions[1].mode))
@@ -1801,12 +1803,12 @@ static void dump_marks(void)
 	static struct lock_file mark_lock;
 	FILE *f;
 
-	if (!export_marks_file)
+	if (!export_marks_file || (import_marks_file && !import_marks_file_done))
 		return;
 
 	if (hold_lock_file_for_update(&mark_lock, export_marks_file, 0) < 0) {
-		failure |= error("Unable to write marks file %s: %s",
-			export_marks_file, strerror(errno));
+		failure |= error_errno("Unable to write marks file %s",
+				       export_marks_file);
 		return;
 	}
 
@@ -1821,8 +1823,8 @@ static void dump_marks(void)
 
 	dump_marks_helper(f, 0, marks);
 	if (commit_lock_file(&mark_lock)) {
-		failure |= error("Unable to commit marks file %s: %s",
-			export_marks_file, strerror(errno));
+		failure |= error_errno("Unable to write file %s",
+				       export_marks_file);
 		return;
 	}
 }
@@ -1834,7 +1836,7 @@ static void read_marks(void)
 	if (f)
 		;
 	else if (import_marks_file_ignore_missing && errno == ENOENT)
-		return; /* Marks file does not exist */
+		goto done; /* Marks file does not exist */
 	else
 		die_errno("cannot read '%s'", import_marks_file);
 	while (fgets(line, sizeof(line), f)) {
@@ -1864,6 +1866,8 @@ static void read_marks(void)
 		insert_mark(mark, e);
 	}
 	fclose(f);
+done:
+	import_marks_file_done = 1;
 }
 
 
@@ -1885,7 +1889,7 @@ static int read_next_command(void)
 			struct recent_command *rc;
 
 			strbuf_detach(&command_buf, NULL);
-			stdin_eof = strbuf_getline(&command_buf, stdin, '\n');
+			stdin_eof = strbuf_getline_lf(&command_buf, stdin);
 			if (stdin_eof)
 				return EOF;
 
@@ -1957,7 +1961,7 @@ static int parse_data(struct strbuf *sb, uintmax_t limit, uintmax_t *len_res)
 
 		strbuf_detach(&command_buf, NULL);
 		for (;;) {
-			if (strbuf_getline(&command_buf, stdin, '\n') == EOF)
+			if (strbuf_getline_lf(&command_buf, stdin) == EOF)
 				die("EOF in data (terminator '%s' not found)", term);
 			if (term_len == command_buf.len
 				&& !strcmp(term, command_buf.buf))

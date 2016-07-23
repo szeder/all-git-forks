@@ -333,6 +333,14 @@ test_expect_success 'prune empty collapsed merges' '
 	test_cmp expect actual
 '
 
+test_expect_success 'prune empty works even without index/tree filters' '
+	git rev-list HEAD >expect &&
+	git commit --allow-empty -m empty &&
+	git filter-branch -f --prune-empty HEAD &&
+	git rev-list HEAD >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success '--remap-to-ancestor with filename filters' '
 	git checkout master &&
 	git reset --hard A &&
@@ -387,7 +395,7 @@ test_expect_success 'setup submodule' '
 	git branch original HEAD
 '
 
-orig_head=`git show-ref --hash --head HEAD`
+orig_head=$(git show-ref --hash --head HEAD)
 
 test_expect_success 'rewrite submodule with another content' '
 	git filter-branch --tree-filter "test -d submod && {
@@ -396,7 +404,7 @@ test_expect_success 'rewrite submodule with another content' '
 					 mkdir submod &&
 					 : > submod/file
 					 } || :" HEAD &&
-	test $orig_head != `git show-ref --hash --head HEAD`
+	test $orig_head != $(git show-ref --hash --head HEAD)
 '
 
 test_expect_success 'replace submodule revision' '
@@ -405,7 +413,7 @@ test_expect_success 'replace submodule revision' '
 	    "if git ls-files --error-unmatch -- submod > /dev/null 2>&1
 	     then git update-index --cacheinfo 160000 0123456789012345678901234567890123456789 submod
 	     fi" HEAD &&
-	test $orig_head != `git show-ref --hash --head HEAD`
+	test $orig_head != $(git show-ref --hash --head HEAD)
 '
 
 test_expect_success 'filter commit message without trailing newline' '
@@ -416,6 +424,13 @@ test_expect_success 'filter commit message without trailing newline' '
 	echo $commit >expect &&
 	git rev-parse refs/heads/no-newline >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'tree-filter deals with object name vs pathname ambiguity' '
+	test_when_finished "git reset --hard original" &&
+	ambiguous=$(git rev-list -1 HEAD) &&
+	git filter-branch --tree-filter "mv file.t $ambiguous" HEAD^.. &&
+	git show HEAD:$ambiguous
 '
 
 test_done
