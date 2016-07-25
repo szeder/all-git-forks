@@ -981,6 +981,8 @@ static int want_object_in_pack(const unsigned char *sha1,
 				return 0;
 			if (ignore_packed_keep && p->pack_local && p->pack_keep)
 				return 0;
+			if (!ignore_packed_keep && !local)
+				break;
 		}
 	}
 
