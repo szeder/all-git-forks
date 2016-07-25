@@ -204,6 +204,11 @@ ifeq ($(uname_S),FreeBSD)
 		NO_UINTMAX_T = YesPlease
 		NO_STRTOUMAX = YesPlease
 	endif
+	R_MAJOR := $(shell expr "$(uname_R)" : '\([0-9]*\)\.')
+
+	ifeq ($(shell test "$(R_MAJOR)" -ge 5 && echo 1),1)
+		PERL_PATH = /usr/local/bin/perl
+	endif
 	PYTHON_PATH = /usr/local/bin/python
 	HAVE_PATHS_H = YesPlease
 	GMTIME_UNRELIABLE_ERRORS = UnfortunatelyYes
