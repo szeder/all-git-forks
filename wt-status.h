@@ -34,6 +34,21 @@ enum commit_whence {
 	FROM_CHERRY_PICK /* commit came from cherry-pick */
 };
 
+/*
+ * Additional per-file info which may vary based
+ * upon the chosen format.
+ */
+struct wt_status_aux_change_data {
+	struct {
+		int rename_score;
+		int mode_head;
+		int mode_index;
+		int mode_worktree;
+		struct object_id oid_head;
+		struct object_id oid_index;
+	} porcelain_v2;
+};
+
 struct wt_status_change_data {
 	int worktree_status;
 	int index_status;
@@ -41,6 +56,7 @@ struct wt_status_change_data {
 	char *head_path;
 	unsigned dirty_submodule       : 2;
 	unsigned new_submodule_commits : 1;
+	struct wt_status_aux_change_data aux;
 };
 
  enum wt_status_format {
@@ -48,6 +64,7 @@ struct wt_status_change_data {
 	STATUS_FORMAT_LONG,
 	STATUS_FORMAT_SHORT,
 	STATUS_FORMAT_PORCELAIN,
+	STATUS_FORMAT_PORCELAIN_V2,
 
 	STATUS_FORMAT_UNSPECIFIED
  };

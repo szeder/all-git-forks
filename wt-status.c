@@ -406,6 +406,110 @@ static void wt_longstatus_print_change_data(struct wt_status *s,
 	strbuf_release(&twobuf);
 }
 
+static void aux_updated_entry_porcelain_v2(
+	struct wt_status *s,
+	struct wt_status_change_data *d,
+	struct diff_filepair *p)
+{
+	switch (p->status) {
+	case DIFF_STATUS_ADDED:
+		/* {mode,sha1}_head are zero for an add. */
+		d->aux.porcelain_v2.mode_index = p->two->mode;
+		oidcpy(&d->aux.porcelain_v2.oid_index, &p->two->oid);
+		break;
+
+	case DIFF_STATUS_DELETED:
+		d->aux.porcelain_v2.mode_head = p->one->mode;
+		oidcpy(&d->aux.porcelain_v2.oid_head, &p->one->oid);
+		/* {mode,oid}_index are zero for a delete. */
+		break;
+
+	case DIFF_STATUS_RENAMED:
+		d->aux.porcelain_v2.rename_score = p->score * 100 / MAX_SCORE;
+	case DIFF_STATUS_COPIED:
+	case DIFF_STATUS_MODIFIED:
+	case DIFF_STATUS_TYPE_CHANGED:
+	case DIFF_STATUS_UNMERGED:
+		d->aux.porcelain_v2.mode_head = p->one->mode;
+		d->aux.porcelain_v2.mode_index = p->two->mode;
+		oidcpy(&d->aux.porcelain_v2.oid_head, &p->one->oid);
+		oidcpy(&d->aux.porcelain_v2.oid_index, &p->two->oid);
+		break;
+
+	case DIFF_STATUS_UNKNOWN:
+		die("BUG: index status unknown");
+		break;
+	}
+}
+
+/* Save aux info for a head-vs-index change. */
+static void aux_updated_entry(
+	struct wt_status *s,
+	struct wt_status_change_data *d,
+	struct diff_filepair *p)
+{
+	if (s->status_format == STATUS_FORMAT_PORCELAIN_V2)
+		aux_updated_entry_porcelain_v2(s, d, p);
+}
+
+static void aux_changed_entry_porcelain_v2(
+	struct wt_status *s,
+	struct wt_status_change_data *d,
+	const struct diff_filepair *p)
+{
+	switch (p->status) {
+	case DIFF_STATUS_ADDED:
+		die("BUG: worktree status add???");
+		break;
+
+	case DIFF_STATUS_DELETED:
+		d->aux.porcelain_v2.mode_index = p->one->mode;
+		oidcpy(&d->aux.porcelain_v2.oid_index, &p->one->oid);
+		/* mode_worktree is zero for a delete. */
+		break;
+
+	case DIFF_STATUS_MODIFIED:
+	case DIFF_STATUS_TYPE_CHANGED:
+	case DIFF_STATUS_UNMERGED:
+		d->aux.porcelain_v2.mode_index = p->one->mode;
+		d->aux.porcelain_v2.mode_worktree = p->two->mode;
+		oidcpy(&d->aux.porcelain_v2.oid_index, &p->one->oid);
+		break;
+
+	case DIFF_STATUS_UNKNOWN:
+		die("BUG: worktree status unknown???");
+		break;
+	}
+}
+
+/* Save aux info for an index-vs-worktree change. */
+static void aux_changed_entry(
+	struct wt_status *s,
+	struct wt_status_change_data *d,
+	struct diff_filepair *p)
+{
+	if (s->status_format == STATUS_FORMAT_PORCELAIN_V2)
+		aux_changed_entry_porcelain_v2(s, d, p);
+}
+
+static void aux_initial_entry_porcelain_v2(
+	struct wt_status *s,
+	struct wt_status_change_data *d,
+	const struct cache_entry *ce)
+{
+	d->aux.porcelain_v2.mode_index = ce->ce_mode;
+	hashcpy(d->aux.porcelain_v2.oid_index.hash, ce->sha1);
+}
+
+static void aux_initial_entry(
+	struct wt_status *s,
+	struct wt_status_change_data *d,
+	const struct cache_entry *ce)
+{
+	if (s->status_format == STATUS_FORMAT_PORCELAIN_V2)
+		aux_initial_entry_porcelain_v2(s, d, ce);
+}
+
 static void wt_status_collect_changed_cb(struct diff_queue_struct *q,
 					 struct diff_options *options,
 					 void *data)
@@ -434,6 +538,7 @@ static void wt_status_collect_changed_cb(struct diff_queue_struct *q,
 		if (S_ISGITLINK(p->two->mode))
 			d->new_submodule_commits = !!oidcmp(&p->one->oid,
 							    &p->two->oid);
+		aux_changed_entry(s, d, p);
 	}
 }
 
@@ -487,6 +592,8 @@ static void wt_status_collect_updated_cb(struct diff_queue_struct *q,
 			d->stagemask = unmerged_mask(p->two->path);
 			break;
 		}
+
+		aux_updated_entry(s, d, p);
 	}
 }
 
@@ -566,8 +673,10 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 			d->index_status = DIFF_STATUS_UNMERGED;
 			d->stagemask |= (1 << (ce_stage(ce) - 1));
 		}
-		else
+		else {
 			d->index_status = DIFF_STATUS_ADDED;
+			aux_initial_entry(s, d, ce);
+		}
 	}
 }
 
@@ -1763,6 +1872,9 @@ void wt_status_print(struct wt_status *s)
 		break;
 	case STATUS_FORMAT_PORCELAIN:
 		wt_porcelain_print(s);
+		break;
+	case STATUS_FORMAT_PORCELAIN_V2:
+		/* TODO */
 		break;
 	case STATUS_FORMAT_UNSPECIFIED:
 		die("BUG: finalize_deferred_config() should have been called");
