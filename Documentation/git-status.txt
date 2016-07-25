@@ -185,10 +185,10 @@ If -b is used the short-format status is preceded by a line
 
 ## branchname tracking info
 
-Porcelain Format
-~~~~~~~~~~~~~~~~
+Porcelain Format Version 1
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The porcelain format is similar to the short format, but is guaranteed
+Version 1 porcelain format is similar to the short format, but is guaranteed
 not to change in a backwards-incompatible way between Git versions or
 based on user configuration. This makes it ideal for parsing by scripts.
 The description of the short format above also describes the porcelain
@@ -209,6 +209,83 @@ and the terminating newline (but a space still separates the status
 field from the first filename).  Third, filenames containing special
 characters are not specially formatted; no quoting or
 backslash-escaping is performed.
+
+Porcelain Format Version 2
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Version 2 format adds more detailed information about the state of
+the worktree and the changed items.
+
+If `--branch` is given, a header line showing branch tracking information
+is printed.  This line begins with "### branch: ".  Fields are separated
+by a single space.
+
+    Field                    Meaning
+    --------------------------------------------------------
+    <sha> | (initial)        Current commit
+    <branch> | (detached)    Current branch
+    <upstream>               Upstream branch, if set
+    +<ahead>                 Ahead count, if upstream present
+    -<behind>                Behind count, if upstream present
+    --------------------------------------------------------
+
+A series of lines are then displayed for the tracked entries.
+Ordinary changed entries have the following format; the first
+character is a 'c' to distinguish them from unmerged entries.
+
+    c <xy> <sub> <mH> <mI> <mW> <hH> <hI> R<nr> <path>[\t<pathSrc>]
+
+    Field       Meaning
+    --------------------------------------------------------
+    <xy>        A 2 character field containing the staged and
+                unstaged XY values described in the short format,
+                with unchanged indicated by a "." rather than
+                a space.
+    <sub>       A 4 character field describing the submodule state.
+                "N..." when the entry is not a submodule.
+                "S<c><m><u>" when the entry is a submodule.
+                <c> is "C" if the commit changed; otherwise ".".
+                <m> is "M" if it has tracked changes; otherwise ".".
+                <u> is "U" if there are untracked changes; otherwise ".".
+    <m*>        The 6 character octal file modes for head, index,
+                and worktree.
+    <h*>        The head and index SHA1 values.
+    R<nr>       The rename percentage score.
+    <path>      The current pathname. It is C-Quoted if it contains
+                special control characters.
+    <pathSrc>   The original path. This is only present for staged renames.
+                It is C-Quoted if necessary.
+    --------------------------------------------------------
+
+Unmerged entries have the following format; the first character is
+a "u" to distinguish from ordinary changed entries.
+
+    u <xy> <sub> <m1> <m2> <m3> <h1> <h2> <h3> <path>
+
+    Field       Meaning
+    --------------------------------------------------------
+    <xy>        A 2 character field describing the conflict type
+                as described in the short format.
+    <sub>       A 4 character field describing the submodule state
+                as described above.
+    <m*>        The 6 character octal file modes for the stage 1,
+                stage 2, stage 3, and worktree.
+                For regular entries, these are the head, index, and
+                worktree modes; the fourth is zero.
+    <h*>        The stage 1, stage 2, and stage 3 SHA1 values.
+    <path>      The current pathname. It is C-Quoted if necessary.
+    --------------------------------------------------------
+
+A series of lines are then displayed for untracked and ignored entries.
+
+    <x> <path>
+
+Where <x> is "?" for untracked entries and "!" for ignored entries.
+
+When the `-z` option is given, a NUL (zero) byte follows each pathname;
+serving as both a separator and line termination. No pathname quoting
+or backslash escaping is performed. All fields are output in the same
+order.
 
 CONFIGURATION
 -------------
