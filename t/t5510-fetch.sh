@@ -694,7 +694,10 @@ test_expect_success 'fetch aligned output' '
 	(
 		cd full-output &&
 		git -c fetch.output=full fetch origin 2>&1 | \
-			grep -e "->" | cut -c 22- >../actual
+			grep -e "->" | \
+			sed -e "/master/ s/# GETTEXT POISON #//" \
+			    -e "/tag/ s/# GETTEXT POISON #/[new tag]        /" | \
+			cut -c 22- >../actual
 	) &&
 	cat >expect <<-\EOF &&
 	master               -> origin/master
@@ -709,7 +712,10 @@ test_expect_success 'fetch compact output' '
 	(
 		cd compact &&
 		git -c fetch.output=compact fetch origin 2>&1 | \
-			grep -e "->" | cut -c 22- >../actual
+			grep -e "->" | \
+			sed -e "/master/ s/# GETTEXT POISON #//" \
+			    -e "/extraa/ s/# GETTEXT POISON #/[new tag]        /" | \
+			cut -c 22- >../actual
 	) &&
 	cat >expect <<-\EOF &&
 	master     -> origin/*
