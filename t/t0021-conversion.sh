@@ -42,6 +42,9 @@ test_expect_success setup '
 	rm -f test test.t test.i &&
 	git checkout -- test test.t test.i &&
 
+	echo "content-test2" >test2.o &&
+	echo "content-test3-subdir" >test3-subdir.o &&
+
 	mkdir generated-test-data &&
 	for i in $(test_seq 1 $T0021_LARGE_FILE_SIZE)
 	do
@@ -294,6 +297,375 @@ test_expect_success 'disable filter with empty override' '
 	rm -f test.disable &&
 	git -c filter.disable.smudge= checkout -- test.disable 2>err &&
 	test_must_be_empty err
+'
+
+check_filter () {
+	rm -f rot13-filter.log actual.log &&
+	"$@" 2> git_stderr.log &&
+	test_must_be_empty git_stderr.log &&
+	cat >expected.log &&
+	sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" >actual.log &&
+	test_cmp expected.log actual.log
+}
+
+check_filter_count_clean () {
+	rm -f rot13-filter.log actual.log &&
+	"$@" 2> git_stderr.log &&
+	test_must_be_empty git_stderr.log &&
+	cat >expected.log &&
+	sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" |
+		sed "s/^\([0-9]\) IN: clean/x IN: clean/" >actual.log &&
+	test_cmp expected.log actual.log
+}
+
+check_filter_ignore_clean () {
+	rm -f rot13-filter.log actual.log &&
+	"$@" &&
+	cat >expected.log &&
+	grep -v "IN: clean" rot13-filter.log >actual.log &&
+	test_cmp expected.log actual.log
+}
+
+check_filter_no_call () {
+	rm -f rot13-filter.log &&
+	"$@" 2> git_stderr.log &&
+	test_must_be_empty git_stderr.log &&
+	test_must_be_empty rot13-filter.log
+}
+
+check_rot13 () {
+	test_cmp $1 $2 &&
+	./../rot13.sh <$1 >expected &&
+	git cat-file blob :$2 >actual &&
+	test_cmp expected actual
+}
+
+test_expect_success PERL 'required process filter should filter data' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cp ../test.o test.r &&
+		cp ../test2.o test2.r &&
+		mkdir testsubdir &&
+		cp ../test3-subdir.o testsubdir/test3-subdir.r &&
+		>test4-empty.r &&
+
+		check_filter \
+			git add . \
+				<<-\EOF &&
+					1 IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+					1 IN: clean test2.r 14 [OK] -- OUT: 14 [OK]
+					1 IN: clean test4-empty.r 0 [OK] -- OUT: 0 [OK]
+					1 IN: clean testsubdir/test3-subdir.r 21 [OK] -- OUT: 21 [OK]
+					1 start
+					1 wrote filter header
+				EOF
+
+		check_filter_count_clean \
+			git commit . -m "test commit" \
+				<<-\EOF &&
+					x IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+					x IN: clean test2.r 14 [OK] -- OUT: 14 [OK]
+					x IN: clean test4-empty.r 0 [OK] -- OUT: 0 [OK]
+					x IN: clean testsubdir/test3-subdir.r 21 [OK] -- OUT: 21 [OK]
+					1 start
+					1 wrote filter header
+				EOF
+
+		rm -f test?.r testsubdir/test3-subdir.r &&
+
+		check_filter_ignore_clean \
+			git checkout . \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+					IN: smudge testsubdir/test3-subdir.r 21 [OK] -- OUT: 21 [OK]
+				EOF
+
+		check_filter_ignore_clean \
+			git checkout empty \
+				<<-\EOF &&
+					start
+					wrote filter header
+				EOF
+
+		check_filter_ignore_clean \
+			git checkout master \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+					IN: smudge test4-empty.r 0 [OK] -- OUT: 0 [OK]
+					IN: smudge testsubdir/test3-subdir.r 21 [OK] -- OUT: 21 [OK]
+				EOF
+
+		check_rot13 ../test.o test.r &&
+		check_rot13 ../test2.o test2.r &&
+		check_rot13 ../test3-subdir.o testsubdir/test3-subdir.r
+	)
+'
+
+test_expect_success PERL 'required process filter should filter smudge data and one-shot filter should clean' '
+	test_config_global filter.protocol.clean ./../rot13.sh &&
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cp ../test.o test.r &&
+		cp ../test2.o test2.r &&
+
+		check_filter_no_call \
+			git add . &&
+
+		check_filter_no_call \
+			git commit . -m "test commit" &&
+
+		rm -f test?.r testsubdir/test3-subdir.r &&
+
+		check_filter_ignore_clean \
+			git checkout . \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+				EOF
+
+		git checkout empty &&
+
+		check_filter_ignore_clean \
+			git checkout master\
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+				EOF
+
+		check_rot13 ../test.o test.r &&
+		check_rot13 ../test2.o test2.r
+	)
+'
+
+test_expect_success PERL 'required process filter should clean only' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cp ../test.o test.r &&
+
+		check_filter \
+			git add . \
+				<<-\EOF &&
+					1 IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+					1 start
+					1 wrote filter header
+				EOF
+
+		check_filter_count_clean \
+			git commit . -m "test commit" \
+				<<-\EOF
+					x IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+					1 start
+					1 wrote filter header
+				EOF
+	)
+'
+
+test_expect_success PERL 'required process filter should process binary files larger LARGE_PACKET_MAX' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.file filter=protocol" >.gitattributes &&
+		cat ../generated-test-data/largish.file.rot13 >large.rot13 &&
+		cat ../generated-test-data/largish.file >large.file &&
+		cat large.file >large.original &&
+
+		git add large.file .gitattributes &&
+		git commit . -m "test commit" &&
+
+		rm -f large.file &&
+		git checkout -- large.file &&
+		git cat-file blob :large.file >actual &&
+		test_cmp large.rot13 actual
+	)
+'
+
+test_expect_success PERL 'required process filter should with clean error should fail' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cp ../test.o test.r &&
+		echo "this is going to fail" >clean-write-fail.r &&
+		echo "content-test3-subdir" >test3.r &&
+
+		# Note: There are three clean paths in convert.c we just test one here.
+		test_must_fail git add .
+	)
+'
+
+test_expect_success PERL 'process filter should restart after unexpected write failure' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cp ../test.o test.r &&
+		cp ../test2.o test2.r &&
+		echo "this is going to fail" >smudge-write-fail.o &&
+		cat smudge-write-fail.o >smudge-write-fail.r &&
+		git add . &&
+		git commit . -m "test commit" &&
+		rm -f *.r &&
+
+		check_filter_ignore_clean \
+			git checkout . \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge smudge-write-fail.r 22 [OK] -- OUT: 22 [WRITE FAIL]
+					start
+					wrote filter header
+					IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+				EOF
+
+		check_rot13 ../test.o test.r &&
+		check_rot13 ../test2.o test2.r &&
+
+		! test_cmp smudge-write-fail.o smudge-write-fail.r && # Smudge failed!
+		./../rot13.sh <smudge-write-fail.o >expected &&
+		git cat-file blob :smudge-write-fail.r >actual &&
+		test_cmp expected actual							  # Clean worked!
+	)
+'
+
+test_expect_success PERL 'process filter should not restart in case of an error' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cp ../test.o test.r &&
+		cp ../test2.o test2.r &&
+		echo "this will cause an error" >error.o &&
+		cp error.o error.r &&
+		git add . &&
+		git commit . -m "test commit" &&
+		rm -f *.r &&
+
+		check_filter_ignore_clean \
+			git checkout . \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge error.r 25 [OK] -- OUT: 0 [ERROR]
+					IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+				EOF
+
+		check_rot13 ../test.o test.r &&
+		check_rot13 ../test2.o test2.r &&
+		test_cmp error.o error.r
+	)
+'
+
+test_expect_success PERL 'process filter should be able to signal an error for all future files' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cp ../test.o test.r &&
+		cp ../test2.o test2.r &&
+		echo "error this blob and all future blobs" >error-all.o &&
+		cp error-all.o error-all.r &&
+		git add . &&
+		git commit . -m "test commit" &&
+		rm -f *.r &&
+
+		check_filter_ignore_clean \
+			git checkout . \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge error-all.r 37 [OK] -- OUT: 0 [ERROR-ALL]
+				EOF
+
+		test_cmp ../test.o test.r &&
+		test_cmp ../test2.o test2.r &&
+		test_cmp error-all.o error-all.r
+	)
+'
+
+test_expect_success PERL 'invalid process filter must fail (and not hang!)' '
+	test_config_global filter.protocol.process cat &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cp ../test.o test.r &&
+		test_must_fail git add . 2> git_stderr.log &&
+		grep "not support long running filter protocol" git_stderr.log
+	)
 '
 
 test_done
