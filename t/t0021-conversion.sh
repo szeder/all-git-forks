@@ -4,6 +4,15 @@ test_description='blob conversion via gitattributes'
 
 . ./test-lib.sh
 
+if test_have_prereq EXPENSIVE
+then
+	T0021_LARGE_FILE_SIZE=2048
+	T0021_LARGISH_FILE_SIZE=100
+else
+	T0021_LARGE_FILE_SIZE=30
+	T0021_LARGISH_FILE_SIZE=2
+fi
+
 cat <<EOF >rot13.sh
 #!$SHELL_PATH
 tr \
@@ -31,7 +40,26 @@ test_expect_success setup '
 	cat test >test.i &&
 	git add test test.t test.i &&
 	rm -f test test.t test.i &&
-	git checkout -- test test.t test.i
+	git checkout -- test test.t test.i &&
+
+	mkdir generated-test-data &&
+	for i in $(test_seq 1 $T0021_LARGE_FILE_SIZE)
+	do
+		RANDOM_STRING="$(test-genrandom end $i | tr -dc "A-Za-z0-9" )"
+		ROT_RANDOM_STRING="$(echo $RANDOM_STRING | ./rot13.sh )"
+		# Generate 1MB of empty data and 100 bytes of random characters
+		# printf "$(test-genrandom start $i)"
+		printf "%1048576d" 1 >>generated-test-data/large.file &&
+		printf "$RANDOM_STRING" >>generated-test-data/large.file &&
+		printf "%1048576d" 1 >>generated-test-data/large.file.rot13 &&
+		printf "$ROT_RANDOM_STRING" >>generated-test-data/large.file.rot13 &&
+
+		if test $i = $T0021_LARGISH_FILE_SIZE
+		then
+			cat generated-test-data/large.file >generated-test-data/largish.file &&
+			cat generated-test-data/large.file.rot13 >generated-test-data/largish.file.rot13
+		fi
+	done
 '
 
 script='s/^\$Id: \([0-9a-f]*\) \$/\1/p'
@@ -199,9 +227,9 @@ test_expect_success 'required filter clean failure' '
 test_expect_success 'filtering large input to small output should use little memory' '
 	test_config filter.devnull.clean "cat >/dev/null" &&
 	test_config filter.devnull.required true &&
-	for i in $(test_seq 1 30); do printf "%1048576d" 1; done >30MB &&
-	echo "30MB filter=devnull" >.gitattributes &&
-	GIT_MMAP_LIMIT=1m GIT_ALLOC_LIMIT=1m git add 30MB
+	cp generated-test-data/large.file large.file &&
+	echo "large.file filter=devnull" >.gitattributes &&
+	GIT_MMAP_LIMIT=1m GIT_ALLOC_LIMIT=1m git add large.file
 '
 
 test_expect_success 'filter that does not read is fine' '
@@ -214,15 +242,15 @@ test_expect_success 'filter that does not read is fine' '
 	test_cmp expect actual
 '
 
-test_expect_success EXPENSIVE 'filter large file' '
+test_expect_success 'filter large file' '
 	test_config filter.largefile.smudge cat &&
 	test_config filter.largefile.clean cat &&
-	for i in $(test_seq 1 2048); do printf "%1048576d" 1; done >2GB &&
-	echo "2GB filter=largefile" >.gitattributes &&
-	git add 2GB 2>err &&
+	echo "large.file filter=largefile" >.gitattributes &&
+	cp generated-test-data/large.file large.file &&
+	git add large.file 2>err &&
 	test_must_be_empty err &&
-	rm -f 2GB &&
-	git checkout -- 2GB 2>err &&
+	rm -f large.file &&
+	git checkout -- large.file 2>err &&
 	test_must_be_empty err
 '
 
