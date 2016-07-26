@@ -2069,6 +2069,7 @@ int merge_recursive(struct merge_options *o,
 	o->ancestor = "merged common ancestors";
 	clean = merge_trees(o, h1->tree, h2->tree, merged_common_ancestors->tree,
 			    &mrtree);
+	flush_output(o);
 	if (clean < 0)
 		return clean;
 
@@ -2077,7 +2078,6 @@ int merge_recursive(struct merge_options *o,
 		commit_list_insert(h1, &(*result)->parents);
 		commit_list_insert(h2, &(*result)->parents->next);
 	}
-	flush_output(o);
 	if (o->buffer_output < 2)
 		strbuf_release(&o->obuf);
 	if (show(o, 2))
