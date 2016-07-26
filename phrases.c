@@ -1959,10 +1959,14 @@ const char * sha_to_phrase(const unsigned char *sha1, int len)
 	int shaIndex;
 	for (shaIndex = 0; shaIndex < 7; ++shaIndex)
 	{
-		unsigned shaChar = (shaIndex < len) ? sha1[shaIndex] : 0;
+		unsigned shaChar = (shaIndex < len) ? sha1[shaIndex / 2] : 0;
+		if (!(1 & shaIndex))
+		{
+			shaChar >>= 4;
+		}
 
 		shaValue *= 16;
-		shaValue += shaChar;
+		shaValue += 0x0F & shaChar;
 	}
 
 	int nounIndex = shaValue % num_noun;
@@ -2013,15 +2017,11 @@ const unsigned char * phrase_to_sha(const char *phrase, int * shaLen)
 
 								unsigned int shaValue = adj2Index * num_adj * num_noun    +   adj1Index * num_noun     +   nounIndex;
 
-								static unsigned char shaBuffer[8];
-								shaBuffer[0] = 0x0F & (shaValue >> 24);
-								shaBuffer[1] = 0x0F & (shaValue >> 20);
-								shaBuffer[2] = 0x0F & (shaValue >> 16);
-								shaBuffer[3] = 0x0F & (shaValue >> 12);
-								shaBuffer[4] = 0x0F & (shaValue >>  8);
-								shaBuffer[5] = 0x0F & (shaValue >>  4);
-								shaBuffer[6] = 0x0F & (shaValue >>  0);
-								shaBuffer[7] = 0;
+								static unsigned char shaBuffer[4];
+								shaBuffer[0] = 0xFF & (shaValue >> 20);
+								shaBuffer[1] = 0xFF & (shaValue >> 12);
+								shaBuffer[2] = 0xFF & (shaValue >>  4);
+								shaBuffer[3] = 0xF0 & (shaValue <<  4);
 								if (shaLen)
 								{
 									*shaLen = 7;
