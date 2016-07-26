@@ -3,6 +3,7 @@
 #include "run-command.h"
 #include "quote.h"
 #include "sigchain.h"
+#include "pkt-line.h"
 
 /*
  * convert.c - convert a file when checking it out and checking it in.
@@ -427,7 +428,7 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	return (write_err || status);
 }
 
-static int apply_filter(const char *path, const char *src, size_t len, int fd,
+static int apply_single_file_filter(const char *path, const char *src, size_t len, int fd,
                         struct strbuf *dst, const char *cmd)
 {
 	/*
@@ -440,12 +441,6 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	struct strbuf nbuf = STRBUF_INIT;
 	struct async async;
 	struct filter_params params;
-
-	if (!cmd || !*cmd)
-		return 0;
-
-	if (!dst)
-		return 1;
 
 	memset(&async, 0, sizeof(async));
 	async.proc = filter_buffer_or_fd;
@@ -481,13 +476,244 @@ static int apply_filter(const char *path, const char *src, size_t len, int fd,
 	return ret;
 }
 
+#define FILTER_CAPABILITIES_CLEAN    (1u<<0)
+#define FILTER_CAPABILITIES_SMUDGE   (1u<<1)
+#define FILTER_SUPPORTS_CLEAN(type)  ((type) & FILTER_CAPABILITIES_CLEAN)
+#define FILTER_SUPPORTS_SMUDGE(type) ((type) & FILTER_CAPABILITIES_SMUDGE)
+
+struct cmd2process {
+	struct hashmap_entry ent; /* must be the first member! */
+	int supported_capabilities;
+	const char *cmd;
+	struct child_process process;
+};
+
+static int cmd_process_map_initialized = 0;
+static struct hashmap cmd_process_map;
+
+static int cmd2process_cmp(const struct cmd2process *e1,
+                           const struct cmd2process *e2,
+                           const void *unused)
+{
+	return strcmp(e1->cmd, e2->cmd);
+}
+
+static struct cmd2process *find_multi_file_filter_entry(struct hashmap *hashmap, const char *cmd)
+{
+	struct cmd2process key;
+	hashmap_entry_init(&key, strhash(cmd));
+	key.cmd = cmd;
+	return hashmap_get(hashmap, &key, NULL);
+}
+
+static void kill_multi_file_filter(struct hashmap *hashmap, struct cmd2process *entry)
+{
+	if (!entry)
+		return;
+	sigchain_push(SIGPIPE, SIG_IGN);
+	close(entry->process.in);
+	close(entry->process.out);
+	sigchain_pop(SIGPIPE);
+	finish_command(&entry->process);
+	child_process_clear(&entry->process);
+	hashmap_remove(hashmap, entry, NULL);
+	free(entry);
+}
+
+static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, const char *cmd)
+{
+	int did_fail;
+	struct cmd2process *entry;
+	struct child_process *process;
+	const char *argv[] = { cmd, NULL };
+	static const char cap_key[] = "capabilities=";
+	int cap_key_len = strlen(cap_key);
+	struct string_list cap_list = STRING_LIST_INIT_NODUP;
+	char *cap_buf;
+	int i;
+
+	entry = xmalloc(sizeof(*entry));
+	hashmap_entry_init(entry, strhash(cmd));
+	entry->cmd = cmd;
+	entry->supported_capabilities = 0;
+	process = &entry->process;
+
+	child_process_init(process);
+	process->argv = argv;
+	process->use_shell = 1;
+	process->in = -1;
+	process->out = -1;
+
+	if (start_command(process)) {
+		error("cannot fork to run external filter '%s'", cmd);
+		kill_multi_file_filter(hashmap, entry);
+		return NULL;
+	}
+
+	did_fail = strcmp(packet_read_line(process->out, NULL), "git-filter-protocol");
+	if (did_fail)
+		goto done;
+
+	did_fail = strcmp(packet_read_line(process->out, NULL), "version=2");
+	if (did_fail)
+		goto done;
+
+	cap_buf = packet_read_line(process->out, NULL);
+	if (!cap_buf ||
+		strlen(cap_buf) <= cap_key_len ||
+		strncmp(cap_buf, cap_key, cap_key_len)) {
+		error("filter capabilities not found");
+		did_fail = 1;
+		goto done;
+	}
+
+	string_list_split_in_place(&cap_list, &cap_buf[cap_key_len], ' ', -1);
+	if (cap_list.nr > 0) {
+		for (i = 0; i < cap_list.nr; i++) {
+			const char *requested = cap_list.items[i].string;
+			if (!strcmp(requested, "clean")) {
+				entry->supported_capabilities |= FILTER_CAPABILITIES_CLEAN;
+			} else if (!strcmp(requested, "smudge")) {
+				entry->supported_capabilities |= FILTER_CAPABILITIES_SMUDGE;
+			} else {
+				warning(
+					"external filter '%s' requested unsupported filter capability '%s'",
+					cmd, requested
+				);
+			}
+		}
+	}
+	string_list_clear(&cap_list, 0);
+
+done:
+	if (did_fail) {
+		error("initialization for external filter '%s' failed", cmd);
+		kill_multi_file_filter(hashmap, entry);
+		return NULL;
+	}
+
+	hashmap_add(hashmap, entry);
+	return entry;
+}
+
+static int apply_multi_file_filter(const char *path, const char *src, size_t len,
+                                   int fd, struct strbuf *dst, const char *cmd,
+                                   const int wanted_capability)
+{
+	int ret = 1;
+	struct cmd2process *entry;
+	struct child_process *process;
+	struct stat file_stat;
+	struct strbuf nbuf = STRBUF_INIT;
+	char *filter_type;
+	char *filter_result = NULL;
+
+	if (!cmd_process_map_initialized) {
+		cmd_process_map_initialized = 1;
+		hashmap_init(&cmd_process_map, (hashmap_cmp_fn) cmd2process_cmp, 0);
+		entry = NULL;
+	} else {
+		entry = find_multi_file_filter_entry(&cmd_process_map, cmd);
+	}
+
+	fflush(NULL);
+
+	if (!entry) {
+		entry = start_multi_file_filter(&cmd_process_map, cmd);
+		if (!entry)
+			return 0;
+	}
+	process = &entry->process;
+
+	if (!(wanted_capability & entry->supported_capabilities))
+		return 1;  // it is OK if the wanted capability is not supported
+
+	if (FILTER_SUPPORTS_CLEAN(wanted_capability))
+		filter_type = "clean";
+	else if (FILTER_SUPPORTS_SMUDGE(wanted_capability))
+		filter_type = "smudge";
+	else
+		die("unexpected filter type");
+
+	if (fd >= 0 && !src) {
+		if (fstat(fd, &file_stat) == -1)
+			return 0;
+		len = file_stat.st_size;
+	}
+
+	packet_buf_write(&nbuf, "command=%s\n", filter_type);
+	ret = !direct_packet_write(process->in, nbuf.buf, nbuf.len, 1);
+	if (!ret)
+		goto done;
+
+	strbuf_reset(&nbuf);
+	packet_buf_write(&nbuf, "pathname=%s\n", path);
+	ret = !direct_packet_write(process->in, nbuf.buf, nbuf.len, 1);
+	if (!ret)
+		goto done;
+
+	if (fd >= 0)
+		ret = !packet_write_stream_with_flush_from_fd(fd, process->in);
+	else
+		ret = !packet_write_stream_with_flush_from_buf(src, len, process->in);
+	if (!ret)
+		goto done;
+
+	strbuf_reset(&nbuf);
+	ret = packet_read_till_flush(process->out, &nbuf) >= 0;
+	if (!ret)
+		goto done;
+
+	filter_result = packet_read_line(process->out, NULL);
+	ret = !strcmp(filter_result, "result=success");
+
+done:
+	if (ret) {
+		strbuf_swap(dst, &nbuf);
+	} else {
+		if (!filter_result || strcmp(filter_result, "result=reject")) {
+			// Something went wrong with the protocol filter. Force shutdown!
+			error("external filter '%s' failed", cmd);
+			kill_multi_file_filter(&cmd_process_map, entry);
+		}
+	}
+	strbuf_release(&nbuf);
+	return ret;
+}
+
 static struct convert_driver {
 	const char *name;
 	struct convert_driver *next;
 	const char *smudge;
 	const char *clean;
+	const char *process;
 	int required;
 } *user_convert, **user_convert_tail;
+
+static int apply_filter(const char *path, const char *src, size_t len,
+                        int fd, struct strbuf *dst, struct convert_driver *drv,
+                        const int wanted_capability)
+{
+	const char* cmd = NULL;
+
+	if (!drv)
+		return 0;
+
+	if (!dst)
+		return 1;
+
+	if (FILTER_SUPPORTS_CLEAN(wanted_capability) && drv->clean)
+		cmd = drv->clean;
+	else if (FILTER_SUPPORTS_SMUDGE(wanted_capability) && drv->smudge)
+		cmd = drv->smudge;
+
+	if (cmd && *cmd)
+		return apply_single_file_filter(path, src, len, fd, dst, cmd);
+	else if (drv->process && *drv->process)
+		return apply_multi_file_filter(path, src, len, fd, dst, drv->process, wanted_capability);
+
+	return 0;
+}
 
 static int read_convert_config(const char *var, const char *value, void *cb)
 {
@@ -525,6 +751,10 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 
 	if (!strcmp("clean", key))
 		return git_config_string(&drv->clean, var, value);
+
+	if (!strcmp("process", key)) {
+		return git_config_string(&drv->process, var, value);
+	}
 
 	if (!strcmp("required", key)) {
 		drv->required = git_config_bool(var, value);
@@ -823,7 +1053,7 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
-	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean);
+	return apply_filter(path, NULL, 0, -1, NULL, ca.drv, FILTER_CAPABILITIES_CLEAN);
 }
 
 const char *get_convert_attr_ascii(const char *path)
@@ -856,18 +1086,12 @@ int convert_to_git(const char *path, const char *src, size_t len,
                    struct strbuf *dst, enum safe_crlf checksafe)
 {
 	int ret = 0;
-	const char *filter = NULL;
-	int required = 0;
 	struct conv_attrs ca;
 
 	convert_attrs(&ca, path);
-	if (ca.drv) {
-		filter = ca.drv->clean;
-		required = ca.drv->required;
-	}
 
-	ret |= apply_filter(path, src, len, -1, dst, filter);
-	if (!ret && required)
+	ret |= apply_filter(path, src, len, -1, dst, ca.drv, FILTER_CAPABILITIES_CLEAN);
+	if (!ret && ca.drv && ca.drv->required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	if (ret && dst) {
@@ -889,9 +1113,9 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	convert_attrs(&ca, path);
 
 	assert(ca.drv);
-	assert(ca.drv->clean);
+	assert(ca.drv->clean || ca.drv->process);
 
-	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
+	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv, FILTER_CAPABILITIES_CLEAN))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action, checksafe);
@@ -903,15 +1127,9 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 					    int normalizing)
 {
 	int ret = 0, ret_filter = 0;
-	const char *filter = NULL;
-	int required = 0;
 	struct conv_attrs ca;
 
 	convert_attrs(&ca, path);
-	if (ca.drv) {
-		filter = ca.drv->smudge;
-		required = ca.drv->required;
-	}
 
 	ret |= ident_to_worktree(path, src, len, dst, ca.ident);
 	if (ret) {
@@ -920,9 +1138,10 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 	}
 	/*
 	 * CRLF conversion can be skipped if normalizing, unless there
-	 * is a smudge filter.  The filter might expect CRLFs.
+	 * is a smudge or process filter (even if the process filter doesn't
+	 * support smudge).  The filters might expect CRLFs.
 	 */
-	if (filter || !normalizing) {
+	if ((ca.drv && (ca.drv->smudge || ca.drv->process)) || !normalizing) {
 		ret |= crlf_to_worktree(path, src, len, dst, ca.crlf_action);
 		if (ret) {
 			src = dst->buf;
@@ -930,8 +1149,8 @@ static int convert_to_working_tree_internal(const char *path, const char *src,
 		}
 	}
 
-	ret_filter = apply_filter(path, src, len, -1, dst, filter);
-	if (!ret_filter && required)
+	ret_filter = apply_filter(path, src, len, -1, dst, ca.drv, FILTER_CAPABILITIES_SMUDGE);
+	if (!ret_filter && ca.drv && ca.drv->required)
 		die("%s: smudge filter %s failed", path, ca.drv->name);
 
 	return ret | ret_filter;
@@ -1383,7 +1602,7 @@ struct stream_filter *get_stream_filter(const char *path, const unsigned char *s
 	struct stream_filter *filter = NULL;
 
 	convert_attrs(&ca, path);
-	if (ca.drv && (ca.drv->smudge || ca.drv->clean))
+	if (ca.drv && (ca.drv->process || ca.drv->smudge || ca.drv->clean))
 		return NULL;
 
 	if (ca.crlf_action == CRLF_AUTO || ca.crlf_action == CRLF_AUTO_CRLF)
