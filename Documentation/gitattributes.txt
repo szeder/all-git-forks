@@ -300,7 +300,11 @@ checkout, when the `smudge` command is specified, the command is
 fed the blob object from its standard input, and its standard
 output is used to update the worktree file.  Similarly, the
 `clean` command is used to convert the contents of worktree file
-upon checkin.
+upon checkin. By default these commands process only a single
+blob and terminate. If a long running filter process (see section
+below) is used then Git can process all blobs with a single filter
+invocation for the entire life of a single Git command (e.g.
+`git add .`).
 
 One use of the content filtering is to massage the content into a shape
 that is more convenient for the platform, filesystem, and the user to use.
@@ -373,6 +377,54 @@ substitution.  For example:
 	clean = git-p4-filter --clean %f
 	smudge = git-p4-filter --smudge %f
 ------------------------
+
+
+Long Running Filter Process
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If the filter command (string value) is defined via
+filter.<driver>.process then Git can process all blobs with a
+single filter invocation for the entire life of a single Git
+command by talking with the following packet format (pkt-line)
+based protocol over standard input and standard output.
+
+Git starts the filter on first usage and expects a welcome
+message, protocol version number, and filter capabilities
+seperated by spaces:
+------------------------
+packet:          git< git-filter-protocol
+packet:          git< version 2
+packet:          git< clean smudge
+------------------------
+Supported filter capabilities are "clean" and "smudge".
+
+Afterwards Git sends a command (e.g. "smudge" or "clean" - based
+on the supported capabilities), the filename, the content size as
+ASCII number in bytes, and the content in packet format with a
+flush packet at the end:
+------------------------
+packet:          git> smudge
+packet:          git> testfile.dat
+packet:          git> 7
+packet:          git> CONTENT
+packet:          git> 0000
+------------------------
+
+The filter is expected to respond with the result content size as
+ASCII number in bytes and the result content in packet format with
+a flush packet at the end:
+------------------------
+packet:          git< 57
+packet:          git< SMUDGED_CONTENT
+packet:          git< 0000
+------------------------
+Please note: In a future version of Git the capability "stream"
+might be supported. In that case the content size must not be
+part of the filter response.
+
+Afterwards the filter is expected to wait for the next command.
+A demo implementation can be found in `t/t0021/rot13-filter.pl`
+located in the Git core repository.
 
 
 Interaction between checkin/checkout attributes
