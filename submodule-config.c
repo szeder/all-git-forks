@@ -416,12 +416,7 @@ static const struct submodule *config_from(struct submodule_cache *cache,
 	}
 
 	config = read_sha1_file(sha1, &type, &config_size);
-	if (!config) {
-		strbuf_release(&rev);
-		return NULL;
-	}
-
-	if (type != OBJ_BLOB) {
+	if (!config || type != OBJ_BLOB) {
 		strbuf_release(&rev);
 		free(config);
 		return NULL;
