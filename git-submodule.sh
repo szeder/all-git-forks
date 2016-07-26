@@ -1111,28 +1111,32 @@ cmd_sync()
 			super_config_url="$url"
 			;;
 		esac
-
+		synced=0
 		if git config "submodule.$name.url" >/dev/null 2>/dev/null
 		then
-			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
-			say "$(eval_gettext "Synchronizing submodule url for '\$displaypath'")"
 			git config submodule."$name".url "$super_config_url"
+			synced=1
+		fi
+		if git submodule--helper should-exist "$sm_path"
+		then
+		(
+			sanitize_submodule_env
+			cd "$sm_path"
+			remote=$(get_default_remote)
+			git config remote."$remote".url "$sub_origin_url"
 
-			if test -e "$sm_path"/.git
+			if test -n "$recursive"
 			then
-			(
-				sanitize_submodule_env
-				cd "$sm_path"
-				remote=$(get_default_remote)
-				git config remote."$remote".url "$sub_origin_url"
-
-				if test -n "$recursive"
-				then
-					prefix="$prefix$sm_path/"
-					eval cmd_sync
-				fi
-			)
+				prefix="$prefix$sm_path/"
+				eval cmd_sync
 			fi
+			synced=1
+		)
+		fi
+		if test "$synced" -eq 1
+		then
+			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
+			say "$(eval_gettext "Synchronized submodule url for '\$displaypath'")"
 		fi
 	done
 }
