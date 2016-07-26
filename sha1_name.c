@@ -282,7 +282,7 @@ static int disambiguate_blob_only(const unsigned char *sha1, void *cb_data_unuse
 	return kind == OBJ_BLOB;
 }
 
-static int prepare_prefixes(const char *name, int len,
+static int prepare_prefixes(const char *name, int * len,
 			    unsigned char *bin_pfx,
 			    char *hex_pfx)
 {
@@ -290,7 +290,7 @@ static int prepare_prefixes(const char *name, int len,
 
 	hashclr(bin_pfx);
 	memset(hex_pfx, 'x', 40);
-	for (i = 0; i < len ;i++) {
+	for (i = 0; i < *len ;i++) {
 		unsigned char c = name[i];
 		unsigned char val;
 		if (c >= '0' && c <= '9')
@@ -302,7 +302,7 @@ static int prepare_prefixes(const char *name, int len,
 			c -= 'A' - 'a';
 		}
 		else
-			return -1;
+			return phrase_to_prefix(name, len, bin_pfx, hex_pfx);
 		hex_pfx[i] = c;
 		if (!(i & 1))
 			val <<= 4;
@@ -311,7 +311,7 @@ static int prepare_prefixes(const char *name, int len,
 	return 0;
 }
 
-static int get_short_sha1(const char *name, int len, unsigned char *sha1,
+static int get_short_sha1(const char *name, int * len, unsigned char *sha1,
 			  unsigned flags)
 {
 	int status;
@@ -320,8 +320,9 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 	struct disambiguate_state ds;
 	int quietly = !!(flags & GET_SHA1_QUIETLY);
 
-	if (len < MINIMUM_ABBREV || len > 40)
+	if (*len < MINIMUM_ABBREV || *len > 40)
 		return -1;
+
 	if (prepare_prefixes(name, len, bin_pfx, hex_pfx) < 0)
 		return -1;
 
@@ -339,12 +340,12 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 	else if (flags & GET_SHA1_BLOB)
 		ds.fn = disambiguate_blob_only;
 
-	find_short_object_filename(len, hex_pfx, &ds);
-	find_short_packed_object(len, bin_pfx, &ds);
+	find_short_object_filename(*len, hex_pfx, &ds);
+	find_short_packed_object(*len, bin_pfx, &ds);
 	status = finish_object_disambiguation(&ds, sha1);
 
 	if (!quietly && (status == SHORT_NAME_AMBIGUOUS))
-		return error("short SHA1 %.*s is ambiguous.", len, hex_pfx);
+		return error("short SHA1 %.*s is ambiguous.", *len, hex_pfx);
 	return status;
 }
 
@@ -357,7 +358,7 @@ int for_each_abbrev(const char *prefix, each_abbrev_fn fn, void *cb_data)
 
 	if (len < MINIMUM_ABBREV || len > 40)
 		return -1;
-	if (prepare_prefixes(prefix, len, bin_pfx, hex_pfx) < 0)
+	if (prepare_prefixes(prefix, &len, bin_pfx, hex_pfx) < 0)
 		return -1;
 
 	prepare_alt_odb();
@@ -372,6 +373,7 @@ int for_each_abbrev(const char *prefix, each_abbrev_fn fn, void *cb_data)
 	return ds.ambiguous;
 }
 
+//TODO? does this need int * len, it returns the updated lenth, but we should check everything that uses it
 int find_unique_abbrev_r(char *hex, const unsigned char *sha1, int len)
 {
 	int status, exists;
@@ -382,7 +384,7 @@ int find_unique_abbrev_r(char *hex, const unsigned char *sha1, int len)
 	exists = has_sha1_file(sha1);
 	while (len < 40) {
 		unsigned char sha1_ret[20];
-		status = get_short_sha1(hex, len, sha1_ret, GET_SHA1_QUIETLY);
+		status = get_short_sha1(hex, &len, sha1_ret, GET_SHA1_QUIETLY);
 		if (exists
 		    ? !status
 		    : status == SHORT_NAME_NOT_FOUND) {
@@ -457,6 +459,7 @@ static inline int push_mark(const char *string, int len)
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags);
 static int interpret_nth_prior_checkout(const char *name, int namelen, struct strbuf *buf);
 
+//TODO does this need int * len
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 			  unsigned int flags)
 {
@@ -540,7 +543,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 
 	if (warn_ambiguous_refs && !(flags & GET_SHA1_QUIETLY) &&
 	    (refs_found > 1 ||
-	     !get_short_sha1(str, len, tmp_sha1, GET_SHA1_QUIETLY)))
+	     !get_short_sha1(str, &len, tmp_sha1, GET_SHA1_QUIETLY)))
 		warning(warn_msg, len, str);
 
 	if (reflog_len) {
@@ -776,6 +779,7 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 	return 0;
 }
 
+//TODO does this need int * len - it shouldn't since it was already adjusting len
 static int get_describe_name(const char *name, int len, unsigned char *sha1)
 {
 	const char *cp;
@@ -790,13 +794,14 @@ static int get_describe_name(const char *name, int len, unsigned char *sha1)
 			if (ch == 'g' && cp[-1] == '-') {
 				cp++;
 				len -= cp - name;
-				return get_short_sha1(cp, len, sha1, flags);
+				return get_short_sha1(cp, &len, sha1, flags);
 			}
 		}
 	}
 	return -1;
 }
 
+//TODO does this need int * len
 static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned lookup_flags)
 {
 	int ret, has_suffix;
@@ -842,7 +847,7 @@ static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned l
 	if (!ret)
 		return 0;
 
-	return get_short_sha1(name, len, sha1, lookup_flags);
+	return get_short_sha1(name, &len, sha1, lookup_flags);
 }
 
 /*
