@@ -4,6 +4,13 @@ test_description='blob conversion via gitattributes'
 
 . ./test-lib.sh
 
+if test_have_prereq EXPENSIVE
+then
+	T0021_LARGE_FILE_SIZE=2048
+else
+	T0021_LARGE_FILE_SIZE=30
+fi
+
 cat <<EOF >rot13.sh
 #!$SHELL_PATH
 tr \
@@ -31,7 +38,15 @@ test_expect_success setup '
 	cat test >test.i &&
 	git add test test.t test.i &&
 	rm -f test test.t test.i &&
-	git checkout -- test test.t test.i
+	git checkout -- test test.t test.i &&
+
+	mkdir -p generated-test-data &&
+	for i in $(test_seq 1 $T0021_LARGE_FILE_SIZE)
+	do
+		# Generate 1MB of empty data and 100 bytes of random characters
+		printf "%1048576d" 1
+		printf "$(LC_ALL=C tr -dc "A-Za-z0-9" </dev/urandom | dd bs=$((RANDOM>>8)) count=1 2>/dev/null)"
+	done >generated-test-data/large.file
 '
 
 script='s/^\$Id: \([0-9a-f]*\) \$/\1/p'
@@ -199,9 +214,9 @@ test_expect_success 'required filter clean failure' '
 test_expect_success 'filtering large input to small output should use little memory' '
 	test_config filter.devnull.clean "cat >/dev/null" &&
 	test_config filter.devnull.required true &&
-	for i in $(test_seq 1 30); do printf "%1048576d" 1; done >30MB &&
-	echo "30MB filter=devnull" >.gitattributes &&
-	GIT_MMAP_LIMIT=1m GIT_ALLOC_LIMIT=1m git add 30MB
+	cp generated-test-data/large.file large.file &&
+	echo "large.file filter=devnull" >.gitattributes &&
+	GIT_MMAP_LIMIT=1m GIT_ALLOC_LIMIT=1m git add large.file
 '
 
 test_expect_success 'filter that does not read is fine' '
@@ -214,15 +229,15 @@ test_expect_success 'filter that does not read is fine' '
 	test_cmp expect actual
 '
 
-test_expect_success EXPENSIVE 'filter large file' '
+test_expect_success 'filter large file' '
 	test_config filter.largefile.smudge cat &&
 	test_config filter.largefile.clean cat &&
-	for i in $(test_seq 1 2048); do printf "%1048576d" 1; done >2GB &&
-	echo "2GB filter=largefile" >.gitattributes &&
-	git add 2GB 2>err &&
+	echo "large.file filter=largefile" >.gitattributes &&
+	cp generated-test-data/large.file large.file &&
+	git add large.file 2>err &&
 	test_must_be_empty err &&
-	rm -f 2GB &&
-	git checkout -- 2GB 2>err &&
+	rm -f large.file &&
+	git checkout -- large.file 2>err &&
 	test_must_be_empty err
 '
 
