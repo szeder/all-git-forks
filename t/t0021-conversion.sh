@@ -296,4 +296,409 @@ test_expect_success 'disable filter with empty override' '
 	test_must_be_empty err
 '
 
+test_expect_success PERL 'required process filter should filter data' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge shutdown" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cat ../test.o >test.r &&
+		echo "test22" >test2.r &&
+		mkdir testsubdir &&
+		echo "test333" >testsubdir/test3.r &&
+
+		rm -f rot13-filter.log &&
+		git add . &&
+		sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" >uniq-rot13-filter.log &&
+		cat >expected_add.log <<-\EOF &&
+			1 IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+			1 IN: clean test2.r 7 [OK] -- OUT: 7 [OK]
+			1 IN: clean testsubdir/test3.r 8 [OK] -- OUT: 8 [OK]
+			1 IN: shutdown -- [OK]
+			1 start
+			1 wrote filter header
+		EOF
+		test_cmp expected_add.log uniq-rot13-filter.log &&
+
+		>rot13-filter.log &&
+		git commit . -m "test commit" &&
+		sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" |
+			sed "s/^\([0-9]\) IN: clean/x IN: clean/" >uniq-rot13-filter.log &&
+		cat >expected_commit.log <<-\EOF &&
+			x IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+			x IN: clean test2.r 7 [OK] -- OUT: 7 [OK]
+			x IN: clean testsubdir/test3.r 8 [OK] -- OUT: 8 [OK]
+			1 IN: shutdown -- [OK]
+			1 start
+			1 wrote filter header
+		EOF
+		test_cmp expected_commit.log uniq-rot13-filter.log &&
+
+		>rot13-filter.log &&
+		rm -f test?.r testsubdir/test3.r &&
+		git checkout . &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge test2.r 7 [OK] -- OUT: 7 [OK]
+			IN: smudge testsubdir/test3.r 8 [OK] -- OUT: 8 [OK]
+			IN: shutdown -- [OK]
+		EOF
+		test_cmp expected_checkout.log smudge-rot13-filter.log &&
+
+		git checkout empty &&
+
+		>rot13-filter.log &&
+		git checkout master &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout_master.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+			IN: smudge test2.r 7 [OK] -- OUT: 7 [OK]
+			IN: smudge testsubdir/test3.r 8 [OK] -- OUT: 8 [OK]
+			IN: shutdown -- [OK]
+		EOF
+		test_cmp expected_checkout_master.log smudge-rot13-filter.log &&
+
+		./../rot13.sh <test.r >expected &&
+		git cat-file blob :test.r >actual &&
+		test_cmp expected actual &&
+
+		./../rot13.sh <test2.r >expected &&
+		git cat-file blob :test2.r >actual &&
+		test_cmp expected actual &&
+
+		./../rot13.sh <testsubdir/test3.r >expected &&
+		git cat-file blob :testsubdir/test3.r >actual &&
+		test_cmp expected actual
+	)
+'
+
+test_expect_success PERL 'required process filter should filter data stream' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl stream clean smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cat ../test.o >test.r &&
+		echo "test22" >test2.r &&
+		mkdir testsubdir &&
+		echo "test333" >testsubdir/test3.r &&
+
+		rm -f rot13-filter.log &&
+		git add . &&
+		sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" >uniq-rot13-filter.log &&
+		cat >expected_add.log <<-\EOF &&
+			1 IN: clean test.r 57 [OK] -- OUT: STREAM [OK]
+			1 IN: clean test2.r 7 [OK] -- OUT: STREAM [OK]
+			1 IN: clean testsubdir/test3.r 8 [OK] -- OUT: STREAM [OK]
+			1 start
+			1 wrote filter header
+		EOF
+		test_cmp expected_add.log uniq-rot13-filter.log &&
+
+		>rot13-filter.log &&
+		git commit . -m "test commit" &&
+		sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" |
+			sed "s/^\([0-9]\) IN: clean/x IN: clean/" >uniq-rot13-filter.log &&
+		cat >expected_commit.log <<-\EOF &&
+			x IN: clean test.r 57 [OK] -- OUT: STREAM [OK]
+			x IN: clean test2.r 7 [OK] -- OUT: STREAM [OK]
+			x IN: clean testsubdir/test3.r 8 [OK] -- OUT: STREAM [OK]
+			1 start
+			1 wrote filter header
+		EOF
+		test_cmp expected_commit.log uniq-rot13-filter.log &&
+
+		>rot13-filter.log &&
+		rm -f test?.r testsubdir/test3.r &&
+		git checkout . &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge test2.r 7 [OK] -- OUT: STREAM [OK]
+			IN: smudge testsubdir/test3.r 8 [OK] -- OUT: STREAM [OK]
+		EOF
+		test_cmp expected_checkout.log smudge-rot13-filter.log &&
+
+		git checkout empty &&
+
+		>rot13-filter.log &&
+		git checkout master &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout_master.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge test.r 57 [OK] -- OUT: STREAM [OK]
+			IN: smudge test2.r 7 [OK] -- OUT: STREAM [OK]
+			IN: smudge testsubdir/test3.r 8 [OK] -- OUT: STREAM [OK]
+		EOF
+		test_cmp expected_checkout_master.log smudge-rot13-filter.log &&
+
+		./../rot13.sh <test.r >expected &&
+		git cat-file blob :test.r >actual &&
+		test_cmp expected actual &&
+
+		./../rot13.sh <test2.r >expected &&
+		git cat-file blob :test2.r >actual &&
+		test_cmp expected actual &&
+
+		./../rot13.sh <testsubdir/test3.r >expected &&
+		git cat-file blob :testsubdir/test3.r >actual &&
+		test_cmp expected actual
+	)
+'
+
+test_expect_success PERL 'required process filter should filter smudge data and one-shot filter should clean' '
+	test_config_global filter.protocol.clean ./../rot13.sh &&
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cat ../test.o >test.r &&
+		echo "test22" >test2.r &&
+		mkdir testsubdir &&
+		echo "test333" >testsubdir/test3.r &&
+
+		rm -f rot13-filter.log &&
+		git add . &&
+		test_must_be_empty rot13-filter.log &&
+
+		>rot13-filter.log &&
+		git commit . -m "test commit" &&
+		test_must_be_empty rot13-filter.log &&
+
+		>rot13-filter.log &&
+		rm -f test?.r testsubdir/test3.r &&
+		git checkout . &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge test2.r 7 [OK] -- OUT: 7 [OK]
+			IN: smudge testsubdir/test3.r 8 [OK] -- OUT: 8 [OK]
+		EOF
+		test_cmp expected_checkout.log smudge-rot13-filter.log &&
+
+		git checkout empty &&
+
+		>rot13-filter.log &&
+		git checkout master &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout_master.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+			IN: smudge test2.r 7 [OK] -- OUT: 7 [OK]
+			IN: smudge testsubdir/test3.r 8 [OK] -- OUT: 8 [OK]
+		EOF
+		test_cmp expected_checkout_master.log smudge-rot13-filter.log &&
+
+		./../rot13.sh <test.r >expected &&
+		git cat-file blob :test.r >actual &&
+		test_cmp expected actual &&
+
+		./../rot13.sh <test2.r >expected &&
+		git cat-file blob :test2.r >actual &&
+		test_cmp expected actual &&
+
+		./../rot13.sh <testsubdir/test3.r >expected &&
+		git cat-file blob :testsubdir/test3.r >actual &&
+		test_cmp expected actual
+	)
+'
+
+test_expect_success PERL 'required process filter should clean only' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cat ../test.o >test.r &&
+
+		rm -f rot13-filter.log &&
+		git add . &&
+		sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" >uniq-rot13-filter.log &&
+		cat >expected_add.log <<-\EOF &&
+			1 IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+			1 start
+			1 wrote filter header
+		EOF
+		test_cmp expected_add.log uniq-rot13-filter.log &&
+
+		>rot13-filter.log &&
+		git commit . -m "test commit" &&
+		sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" |
+			sed "s/^\([0-9]\) IN: clean/x IN: clean/" >uniq-rot13-filter.log &&
+		cat >expected_commit.log <<-\EOF &&
+			x IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+			1 start
+			1 wrote filter header
+		EOF
+		test_cmp expected_commit.log uniq-rot13-filter.log
+	)
+'
+
+test_expect_success PERL 'required process filter should process files larger LARGE_PACKET_MAX' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.file filter=protocol" >.gitattributes &&
+		cat ../generated-test-data/largish.file.rot13 >large.rot13 &&
+		cat ../generated-test-data/largish.file >large.file &&
+		cat large.file >large.original &&
+
+		git add large.file .gitattributes &&
+		git commit . -m "test commit" &&
+
+		rm -f large.file &&
+		git checkout -- large.file &&
+		git cat-file blob :large.file >actual &&
+		test_cmp large.rot13 actual
+	)
+'
+
+test_expect_success PERL 'required process filter should with clean error should fail' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cat ../test.o >test.r &&
+		echo "this is going to fail" >clean-write-fail.r &&
+		echo "test333" >test3.r &&
+
+		# Note: There are three clean paths in convert.c we just test one here.
+		test_must_fail git add .
+	)
+'
+
+test_expect_success PERL 'process filter should restart after unexpected write failure' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cat ../test.o >test.r &&
+		echo "1234567" >test2.o &&
+		cat test2.o >test2.r &&
+		echo "this is going to fail" >smudge-write-fail.o &&
+		cat smudge-write-fail.o >smudge-write-fail.r &&
+		git add . &&
+		git commit . -m "test commit" &&
+		rm -f *.r &&
+
+		printf "" >rot13-filter.log &&
+		git checkout . &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout_master.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge smudge-write-fail.r 22 [OK] -- OUT: 22 [WRITE FAIL]
+			start
+			wrote filter header
+			IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+			IN: smudge test2.r 8 [OK] -- OUT: 8 [OK]
+		EOF
+		test_cmp expected_checkout_master.log smudge-rot13-filter.log &&
+
+		test_cmp ../test.o test.r &&
+		./../rot13.sh <../test.o >expected &&
+		git cat-file blob :test.r >actual &&
+		test_cmp expected actual &&
+
+		test_cmp test2.o test2.r &&
+		./../rot13.sh <test2.o >expected &&
+		git cat-file blob :test2.r >actual &&
+		test_cmp expected actual &&
+
+		! test_cmp smudge-write-fail.o smudge-write-fail.r && # Smudge failed!
+		./../rot13.sh <smudge-write-fail.o >expected &&
+		git cat-file blob :smudge-write-fail.r >actual &&
+		test_cmp expected actual							  # Clean worked!
+	)
+'
+
+test_expect_success PERL 'process filter should not restart after intentionally rejected file' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+
+		cat ../test.o >test.r &&
+		echo "1234567" >test2.o &&
+		cat test2.o >test2.r &&
+		echo "this is going to fail" >reject.o &&
+		cat reject.o >reject.r &&
+		git add . &&
+		git commit . -m "test commit" &&
+		rm -f *.r &&
+
+		printf "" >rot13-filter.log &&
+		git checkout . &&
+		cat rot13-filter.log | grep -v "IN: clean" >smudge-rot13-filter.log &&
+		cat >expected_checkout_master.log <<-\EOF &&
+			start
+			wrote filter header
+			IN: smudge reject.r 22 [OK] -- OUT: 0 [REJECT]
+			IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+			IN: smudge test2.r 8 [OK] -- OUT: 8 [OK]
+		EOF
+		test_cmp expected_checkout_master.log smudge-rot13-filter.log
+	)
+'
 test_done
