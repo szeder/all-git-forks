@@ -1,5 +1,8 @@
 #include "phrases.h"
 
+#include <string.h>
+#include <stdlib.h>
+
 const char * adj_list[] = {
 	"absolute",
 	"acute",
@@ -1631,7 +1634,6 @@ const char * noun_list[] = {
 	"shift",
 	"ship",
 	"shirt",
-	"shit",
 	"shock",
 	"shoe",
 	"shop",
@@ -1946,32 +1948,21 @@ const char * noun_list[] = {
 };
 const int num_noun = sizeof(noun_list) / sizeof(noun_list[0]);
 
-const char * sha_to_phrase(char *sha1, int len)
+const char * sha_to_phrase(const unsigned char *sha1, int len)
 {
 #define PHRASE_WORD_MAX (10)
 
 	static char phraseBuffer[PHRASE_WORD_MAX * 3 + 3];
 
+	//each byte in sha1 contains a value from 0 to 16, representing one character of the printed SHA
 	unsigned int shaValue = 0;
 	int shaIndex;
 	for (shaIndex = 0; shaIndex < 7; ++shaIndex)
 	{
+		unsigned shaChar = (shaIndex < len) ? sha1[shaIndex] : 0;
+
 		shaValue *= 16;
-
-		unsigned char shaChar = (shaIndex < len) ? sha1[shaIndex] : '0';
-
-		if ((shaChar >= '0') && (shaChar <= '9'))
-		{
-			shaValue += (shaChar - '0');
-		}
-		else if ((shaChar >= 'a') && (shaChar <= 'f'))
-		{
-			shaValue += (shaChar - 'a');
-		}
-		else if ((shaChar >= 'A') && (shaChar <= 'F'))
-		{
-			shaValue += (shaChar - 'A');
-		}
+		shaValue += shaChar;
 	}
 
 	int nounIndex = shaValue % num_noun;
@@ -1983,3 +1974,69 @@ const char * sha_to_phrase(char *sha1, int len)
 
 	return phraseBuffer;
 }
+
+static int wordcmp(const void * w1, const void * w2)
+{
+	return strcmp((const char *)*(const void **)w1, (const char *)*(const void **)w2);
+}
+
+const unsigned char * phrase_to_sha(const char *phrase, int * shaLen)
+{
+	size_t phraseLen = strlen(phrase);
+	char * phraseCopy = malloc(phraseLen + 1);
+	if (phraseCopy)
+	{
+		strcpy(phraseCopy, phrase);
+		char * adj1 = strtok(phraseCopy, "-");
+		if (adj1)
+		{
+			const char ** adj1FromList = bsearch(&adj1, adj_list, num_adj, sizeof(const char *), wordcmp);
+			if (adj1FromList)
+			{
+				unsigned int adj1Index = adj1FromList - adj_list;
+
+				char * adj2 = strtok(NULL, "-");
+				if (adj2)
+				{
+					const char ** adj2FromList = bsearch(&adj2, adj_list, num_adj, sizeof(const char *), wordcmp);
+					if (adj2FromList)
+					{
+						unsigned int adj2Index = adj2FromList - adj_list;
+
+						char * noun = strtok(NULL, "-");
+						if (noun)
+						{
+							const char ** nounFromList = bsearch(&noun, noun_list, num_noun, sizeof(const char *), wordcmp);
+							if (nounFromList)
+							{
+								unsigned int nounIndex = nounFromList - noun_list;
+
+								unsigned int shaValue = adj2Index * num_adj * num_noun    +   adj1Index * num_noun     +   nounIndex;
+
+								static unsigned char shaBuffer[8];
+								shaBuffer[0] = 0x0F & (shaValue >> 24);
+								shaBuffer[1] = 0x0F & (shaValue >> 20);
+								shaBuffer[2] = 0x0F & (shaValue >> 16);
+								shaBuffer[3] = 0x0F & (shaValue >> 12);
+								shaBuffer[4] = 0x0F & (shaValue >>  8);
+								shaBuffer[5] = 0x0F & (shaValue >>  4);
+								shaBuffer[6] = 0x0F & (shaValue >>  0);
+								shaBuffer[7] = 0;
+								if (shaLen)
+								{
+									*shaLen = 7;
+								}
+								return shaBuffer;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		free(phraseCopy);
+	}
+
+	return NULL;
+}
+

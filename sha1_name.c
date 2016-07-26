@@ -397,8 +397,10 @@ int find_unique_abbrev_r(char *hex, const unsigned char *sha1, int len)
 const char *find_unique_abbrev(const unsigned char *sha1, int len)
 {
 	static char hex[GIT_SHA1_HEXSZ + 1];
-	find_unique_abbrev_r(hex, sha1, len);
-	return sha_to_phrase(sha1_to_hex_r(hex, sha1), len);
+	//sha_to_phrase currently always works with the first seven characters of the SHA and does no uniqueness testing
+	//TODO this needs improvement
+	//find_unique_abbrev_r(hex, sha1, len);
+	return sha_to_phrase(sha1, len);
 }
 
 static int ambiguous_path(const char *path, int len)
