@@ -11,7 +11,7 @@ SYNOPSIS
 [verse]
 'git merge' [-n] [--stat] [--no-commit] [--squash] [--[no-]edit]
 	[-s <strategy>] [-X <strategy-option>] [-S[<keyid>]]
-	[--[no-]allow-unrelated-histories]
+	[--[no-]allow-unrelated-histories] [--no-verify]
 	[--[no-]rerere-autoupdate] [-m <msg>] [<commit>...]
 'git merge' <msg> HEAD <commit>...
 'git merge' --abort
@@ -86,6 +86,10 @@ invocations. The automated message can include the branch description.
 --[no-]rerere-autoupdate::
 	Allow the rerere mechanism to update the index with the
 	result of auto-conflict resolution if possible.
+
+--no-verify::
+	This option bypasses the commit-msg hook.
+	See also linkgit:githooks[5].
 
 --abort::
 	Abort the current conflict resolution process, and

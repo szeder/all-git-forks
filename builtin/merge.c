@@ -51,7 +51,7 @@ static const char * const builtin_merge_usage[] = {
 static int show_diffstat = 1, shortlog_len = -1, squash;
 static int option_commit = 1;
 static int option_edit = -1;
-static int allow_trivial = 1, have_message, verify_signatures;
+static int allow_trivial = 1, have_message, verify_signatures, no_verify;
 static int overwrite_ignore = 1;
 static struct strbuf merge_msg = STRBUF_INIT;
 static struct strategy **use_strategies;
@@ -228,6 +228,7 @@ static struct option builtin_merge_options[] = {
 	{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key-id"),
 	  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
 	OPT_BOOL(0, "overwrite-ignore", &overwrite_ignore, N_("update ignored files (default)")),
+	OPT_BOOL(0, "no-verify", &no_verify, N_("bypass commit-msg hook")),
 	OPT_END()
 };
 
@@ -788,6 +789,10 @@ static void prepare_to_commit(struct commit_list *remoteheads)
 		if (launch_editor(git_path_merge_msg(), NULL, NULL))
 			abort_commit(remoteheads, NULL);
 	}
+	if (!no_verify &&
+	    run_commit_hook(0 < option_edit, get_index_file(), "commit-msg",
+			    git_path_merge_msg(), NULL))
+		abort_commit(remoteheads, NULL);
 	read_merge_msg(&msg);
 	strbuf_stripspace(&msg, 0 < option_edit);
 	if (!msg.len)
