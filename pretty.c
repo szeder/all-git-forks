@@ -1066,6 +1066,8 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	const char *msg = c->message;
 	struct commit_list *p;
 	int h1, h2;
+	unsigned long timestamp;
+	int tz;
 
 	/* these are independent of the commit */
 	switch (placeholder[0]) {
@@ -1212,6 +1214,40 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 						    placeholder[1],
 						    c->pretty_ctx->reflog_info,
 						    &c->pretty_ctx->date_mode);
+		/*
+		 * all the date options except those taken for other reflog handling
+		 * (so not 'd' or 'D').
+		 */
+		case 'r':
+			if (get_reflog_timeinfo(&timestamp, &tz, c->pretty_ctx->reflog_info)) {
+				strbuf_addstr(sb, show_date(timestamp, tz, DATE_MODE(RELATIVE)));
+			}
+			return 2;
+		case 't':
+			if (get_reflog_timeinfo(&timestamp, &tz, c->pretty_ctx->reflog_info)) {
+				strbuf_addf(sb, "%lu", timestamp);
+			}
+			return 2;
+		case 'i':
+			if (get_reflog_timeinfo(&timestamp, &tz, c->pretty_ctx->reflog_info)) {
+				strbuf_addstr(sb, show_date(timestamp, tz, DATE_MODE(ISO8601)));
+			}
+			return 2;
+		case 'I':
+			if (get_reflog_timeinfo(&timestamp, &tz, c->pretty_ctx->reflog_info)) {
+				strbuf_addstr(sb, show_date(timestamp, tz, DATE_MODE(ISO8601_STRICT)));
+			}
+			return 2;
+		/*
+		 * reflog d/D are taken, so we can't use those for dates
+		 * but we do want to support using --date= format overrides
+		 * so we steal 'T' for those ('time' instead of 'date')
+		 */
+		case 'T':
+			if (get_reflog_timeinfo(&timestamp, &tz, c->pretty_ctx->reflog_info)) {
+				strbuf_addstr(sb, show_date(timestamp, tz, &c->pretty_ctx->date_mode));
+			}
+			return 2;
 		}
 		return 0;	/* unknown %g placeholder */
 	case 'N':

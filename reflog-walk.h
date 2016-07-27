@@ -19,5 +19,8 @@ extern void get_reflog_selector(struct strbuf *sb,
 		struct reflog_walk_info *reflog_info,
 		const struct date_mode *dmode, int force_date,
 		int shorten);
+extern int get_reflog_timeinfo(unsigned long *timestamp_out,
+		int *tz_out,
+		struct reflog_walk_info *reflog_info);
 
 #endif

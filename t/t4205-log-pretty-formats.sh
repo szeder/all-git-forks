@@ -533,4 +533,30 @@ EOF
 	test_cmp expected actual1
 '
 
+refhead1_short=$(git rev-parse --short --verify HEAD@{0}) &&
+refhead2_short=$(git rev-parse --short --verify HEAD@{1}) &&
+
+test_expect_success 'can access the reflog' '
+	git reflog -n 2 >actual &&
+	cat >expected <<EOF &&
+$refhead1_short HEAD@{0}: commit (amend): shorter
+$refhead2_short HEAD@{1}: commit (amend): short
+EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'reflog tformat timestamps work' '
+	git log -g -n 2 \
+		--pretty=tformat:"%h %gd / %gr %gt%n %gi %gI%n %gT : %gs" > actual &&
+	cat >expected <<EOF &&
+$refhead1_short HEAD@{0} / 11 years ago 1112912173
+ 2005-04-07 15:16:13 -0700 2005-04-07T15:16:13-07:00
+ Thu Apr 7 15:16:13 2005 -0700 : commit (amend): shorter
+$refhead2_short HEAD@{1} / 11 years ago 1112912173
+ 2005-04-07 15:16:13 -0700 2005-04-07T15:16:13-07:00
+ Thu Apr 7 15:16:13 2005 -0700 : commit (amend): short
+EOF
+	test_cmp expected actual
+'
+
 test_done

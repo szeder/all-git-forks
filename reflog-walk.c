@@ -309,6 +309,22 @@ void get_reflog_message(struct strbuf *sb,
 	strbuf_add(sb, info->message, len);
 }
 
+int get_reflog_timeinfo(unsigned long *timestamp_out,
+			 int *tz_out,
+			 struct reflog_walk_info *reflog_info)
+{
+	struct commit_reflog *commit_reflog = reflog_info->last_commit_reflog;
+	struct reflog_info *info;
+
+	if (!commit_reflog)
+		return 0;
+
+	info = &commit_reflog->reflogs->items[commit_reflog->recno+1];
+	*timestamp_out = info->timestamp;
+	*tz_out = info->tz;
+	return 1;
+}
+
 const char *get_reflog_ident(struct reflog_walk_info *reflog_info)
 {
 	struct commit_reflog *commit_reflog = reflog_info->last_commit_reflog;
