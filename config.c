@@ -538,9 +538,9 @@ static int git_parse_source(config_fn_t fn, void *data)
 	}
 
 	if (cf->die_on_error)
-		die(error_msg);
+		die("%s", error_msg);
 	else
-		error_return =  error(error_msg);
+		error_return = error("%s", error_msg);
 
 	free(error_msg);
 	return error_return;
