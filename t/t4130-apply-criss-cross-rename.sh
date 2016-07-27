@@ -29,6 +29,14 @@ test_expect_success 'criss-cross rename' '
 '
 
 test_expect_success 'diff -M -B' '
+	if test_have_prereq MINGW
+	then
+		# On Windows it is prohbitively expensive to retrieve the
+		# equivalent of an "inode" when calling stat(), therefore we
+		# rely on mtime/ctime/size changes to let us know whether a
+		# file has changed, including the mtime relative to the index.
+		test-chmtime -1 .git/index
+	fi &&
 	git diff -M -B > diff &&
 	git reset --hard
 
@@ -52,6 +60,14 @@ test_expect_success 'criss-cross rename' '
 '
 
 test_expect_success 'diff -M -B' '
+	if test_have_prereq MINGW
+	then
+		# On Windows it is prohbitively expensive to retrieve the
+		# equivalent of an "inode" when calling stat(), therefore we
+		# rely on mtime/ctime/size changes to let us know whether a
+		# file has changed, including the mtime relative to the index.
+		test-chmtime -1 .git/index
+	fi &&
 	git diff -M -B > diff &&
 	git reset --hard
 '
