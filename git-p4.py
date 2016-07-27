@@ -2738,7 +2738,8 @@ class P4Sync(Command, P4UserMap):
             for f in files:
                 if 'binary' in f['type']:
                     fileHeadRevInfo = p4Cmd(['files', f['path']])
-                    if fileHeadRevInfo['action'] in self.delete_actions or fileHeadRevInfo['rev'] != f['rev']:
+                    if (('action' in fileHeadRevInfo and fileHeadRevInfo['action'] in self.delete_actions) or
+                        ('rev' in fileHeadRevInfo and fileHeadRevInfo['rev'] != f['rev'])):
                         print "Ignore binary file %s as its content is not present in the head revision " % f['path']
                         filesToIgnore.append('{}: {}#{}'.format(f['action'], f['path'], f['rev']))
                         continue
