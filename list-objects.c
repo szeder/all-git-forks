@@ -28,7 +28,9 @@ static void process_blob(struct rev_info *revs,
 
 	pathlen = path->len;
 	strbuf_addstr(path, name);
-	show(obj, path->buf, cb_data);
+	if (!revs->sparse_prefix || starts_with(path->buf, revs->sparse_prefix + 1)) {
+		show(obj, path->buf, cb_data);
+	}
 	strbuf_setlen(path, pathlen);
 }
 

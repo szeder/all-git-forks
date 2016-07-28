@@ -1664,6 +1664,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	} else if ((argcount = parse_long_opt("skip", argv, &optarg))) {
 		revs->skip_count = atoi(optarg);
 		return argcount;
+	} else if ((argcount = parse_long_opt("sparse-prefix", argv, &optarg))) {
+		if(optarg[0] != '/') return error(N_("sparse prefix must start with /"));
+		revs->sparse_prefix = optarg;
+		return argcount;
 	} else if ((*arg == '-') && isdigit(arg[1])) {
 		/* accept -<digit>, like traditional "head" */
 		if (strtol_i(arg + 1, 10, &revs->max_count) < 0 ||

@@ -113,6 +113,7 @@ struct rev_info {
 			ancestry_path:1,
 			first_parent_only:1,
 			line_level_traverse:1;
+	const char *sparse_prefix;
 
 	/* Diff flags */
 	unsigned int	diff:1,
