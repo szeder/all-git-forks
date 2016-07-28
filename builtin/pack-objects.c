@@ -2621,6 +2621,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	struct argv_array rp = ARGV_ARRAY_INIT;
 	int rev_list_unpacked = 0, rev_list_all = 0, rev_list_reflog = 0;
 	int rev_list_index = 0;
+	const char *sparse_prefix = NULL;
+
 	struct option pack_objects_options[] = {
 		OPT_SET_INT('q', "quiet", &progress,
 			    N_("do not show progress meter"), 0),
@@ -2685,6 +2687,8 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 			 N_("create thin packs")),
 		OPT_BOOL(0, "shallow", &shallow,
 			 N_("create packs suitable for shallow fetches")),
+		OPT_STRING(0, "sparse-prefix", &sparse_prefix, N_("path"),
+		  N_("only include blobs relevant for sparse checkout (implies --revs)")),
 		OPT_BOOL(0, "honor-pack-keep", &ignore_packed_keep,
 			 N_("ignore packs that have companion .keep file")),
 		OPT_INTEGER(0, "compression", &pack_compression_level,
@@ -2725,6 +2729,13 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	} else
 		argv_array_push(&rp, "--objects");
 
+	if (sparse_prefix) {
+		use_internal_rev_list = 1;
+		// with bitmaps the path of the blobs is not known
+		use_bitmap_index = 0;
+		argv_array_push(&rp, "--sparse-prefix");
+		argv_array_push(&rp, sparse_prefix);
+	}
 	if (rev_list_all) {
 		use_internal_rev_list = 1;
 		argv_array_push(&rp, "--all");
