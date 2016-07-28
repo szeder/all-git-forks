@@ -41,6 +41,7 @@ static int tags = TAGS_DEFAULT, unshallow, update_shallow;
 static int max_children = -1;
 static enum transport_family family;
 static const char *depth;
+static const char *sparse_prefix;
 static const char *upload_pack;
 static struct strbuf default_rla = STRBUF_INIT;
 static struct transport *gtransport;
@@ -117,6 +118,8 @@ static struct option builtin_fetch_options[] = {
 	OPT_BOOL(0, "progress", &progress, N_("force progress reporting")),
 	OPT_STRING(0, "depth", &depth, N_("depth"),
 		   N_("deepen history of shallow clone")),
+	OPT_STRING(0, "sparse-prefix", &sparse_prefix, N_("path-prefix"),
+		   N_("only fetch blobs for the specified path-prefix")),
 	{ OPTION_SET_INT, 0, "unshallow", &unshallow, NULL,
 		   N_("convert to a complete repository"),
 		   PARSE_OPT_NONEG | PARSE_OPT_NOARG, NULL, 1 },
@@ -706,9 +709,11 @@ static int iterate_ref_map(void *cb_data, unsigned char sha1[20])
 	return 0;
 }
 
-static int store_updated_refs(const char *raw_url, const char *remote_name,
+static int store_updated_refs(struct transport *transport,
 		struct ref *ref_map)
 {
+	const char *raw_url = transport->url;
+	const char *remote_name = transport->remote->name;
 	FILE *fp;
 	struct commit *commit;
 	int url_len, i, rc = 0;
@@ -729,7 +734,8 @@ static int store_updated_refs(const char *raw_url, const char *remote_name,
 		url = xstrdup("foreign");
 
 	rm = ref_map;
-	if (check_everything_connected(iterate_ref_map, 0, &rm)) {
+	if (check_everything_connected_with_transport(iterate_ref_map, 0, &rm,
+				transport)) {
 		rc = error(_("%s did not send all necessary objects\n"), url);
 		goto abort;
 	}
@@ -885,9 +891,7 @@ static int fetch_refs(struct transport *transport, struct ref *ref_map)
 	if (ret)
 		ret = transport_fetch_refs(transport, ref_map);
 	if (!ret)
-		ret |= store_updated_refs(transport->url,
-				transport->remote->name,
-				ref_map);
+		ret |= store_updated_refs(transport, ref_map);
 	transport_unlock_pack(transport);
 	return ret;
 }
@@ -993,6 +997,11 @@ static struct transport *prepare_transport(struct remote *remote)
 		set_option(transport, TRANS_OPT_KEEP, "yes");
 	if (depth)
 		set_option(transport, TRANS_OPT_DEPTH, depth);
+	if (sparse_prefix) {
+		if(sparse_prefix[0] != '/')
+			die(N_("sparse prefix must start with /"));
+		set_option(transport, TRANS_OPT_SPARSE_PREFIX, sparse_prefix);
+	}
 	if (update_shallow)
 		set_option(transport, TRANS_OPT_UPDATE_SHALLOW, "yes");
 	return transport;

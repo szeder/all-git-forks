@@ -26,7 +26,7 @@ static int check_everything_connected_real(sha1_iterate_fn fn,
 					   const char *shallow_file)
 {
 	struct child_process rev_list = CHILD_PROCESS_INIT;
-	const char *argv[9];
+	const char *argv[11];
 	char commit[41];
 	unsigned char sha1[20];
 	int err = 0, ac = 0;
@@ -56,6 +56,11 @@ static int check_everything_connected_real(sha1_iterate_fn fn,
 	argv[ac++] = "--stdin";
 	argv[ac++] = "--not";
 	argv[ac++] = "--all";
+	if(transport && transport->smart_options && 
+			transport->smart_options->sparse_prefix) {
+		argv[ac++] = "--sparse-prefix";
+		argv[ac++] = transport->smart_options->sparse_prefix;
+	}
 	if (quiet)
 		argv[ac++] = "--quiet";
 	argv[ac] = NULL;
