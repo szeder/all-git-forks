@@ -20,6 +20,7 @@ static struct strbuf url = STRBUF_INIT;
 struct options {
 	int verbosity;
 	unsigned long depth;
+	const char *sparse_prefix;
 	unsigned progress : 1,
 		check_self_contained_and_connected : 1,
 		cloning : 1,
@@ -58,6 +59,10 @@ static int set_option(const char *name, const char *value)
 		if (value == end || *end)
 			return -1;
 		options.depth = v;
+		return 0;
+	}
+	else if (!strcmp(name, "sparse-prefix")) {
+		options.sparse_prefix = xstrdup(value);
 		return 0;
 	}
 	else if (!strcmp(name, "followtags")) {
@@ -754,8 +759,9 @@ static int fetch_git(struct discovery *heads,
 	struct rpc_state rpc;
 	struct strbuf preamble = STRBUF_INIT;
 	char *depth_arg = NULL;
+	char *sparse_arg = NULL;
 	int argc = 0, i, err;
-	const char *argv[17];
+	const char *argv[19];
 
 	argv[argc++] = "fetch-pack";
 	argv[argc++] = "--stateless-rpc";
@@ -783,6 +789,12 @@ static int fetch_git(struct discovery *heads,
 		depth_arg = strbuf_detach(&buf, NULL);
 		argv[argc++] = depth_arg;
 	}
+	if (options.sparse_prefix) {
+		struct strbuf buf = STRBUF_INIT;
+		strbuf_addf(&buf, "--sparse-prefix=%s", options.sparse_prefix);
+		sparse_arg = strbuf_detach(&buf, NULL);
+		argv[argc++] = sparse_arg;
+	}
 	argv[argc++] = url.buf;
 	argv[argc++] = NULL;
 
@@ -807,6 +819,7 @@ static int fetch_git(struct discovery *heads,
 	strbuf_release(&rpc.result);
 	strbuf_release(&preamble);
 	free(depth_arg);
+	free(sparse_arg);
 	return err;
 }
 
