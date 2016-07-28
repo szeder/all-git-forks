@@ -846,9 +846,10 @@ test_expect_success 'submodule update clone shallow submodule' '
 	(cd super3 &&
 	 sed -e "s#url = ../#url = file://$pwd/#" <.gitmodules >.gitmodules.tmp &&
 	 mv -f .gitmodules.tmp .gitmodules &&
-	 git submodule update --init --depth=3
+	 git submodule update --init --depth=2
 	 (cd submodule &&
-	  test 1 = $(git log --oneline | wc -l)
+	  git log --oneline >lines
+	  test_line_count = 2 lines
 	 )
 )
 '
