@@ -591,6 +591,13 @@ cmd_update()
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		branch=$(get_submodule_config "$name" branch master)
+		if test "$branch" = "."
+		then
+			if ! branch=$(git symbolic-ref --short -q HEAD)
+			then
+				die "$(eval_gettext "submodule branch configured to inherit branch from superproject, but it's not on any branch")"
+			fi
+		fi
 		if ! test -z "$update"
 		then
 			update_module=$update
