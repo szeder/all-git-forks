@@ -41,7 +41,7 @@ static const char * const builtin_clone_usage[] = {
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
 static int option_shallow_submodules;
-static char *option_template, *option_depth;
+static char *option_template, *option_depth, *option_sparse_prefix;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
 static const char *real_git_dir;
@@ -91,6 +91,8 @@ static struct option builtin_clone_options[] = {
 		   N_("path to git-upload-pack on the remote")),
 	OPT_STRING(0, "depth", &option_depth, N_("depth"),
 		    N_("create a shallow clone of that depth")),
+	OPT_STRING(0, "sparse-prefix", &option_sparse_prefix, N_("path-prefix"),
+	            N_("only fetch the blobs for the specified path-prefix")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
 		    N_("clone only one branch, HEAD or --branch")),
 	OPT_BOOL(0, "shallow-submodules", &option_shallow_submodules,
@@ -959,8 +961,21 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	}
 	init_db(option_template, INIT_DB_QUIET);
 	write_config(&option_config);
-
+	if (option_sparse_prefix) {
+		FILE *f;
+		const char *name;
+		if (option_sparse_prefix[0] != '/')
+			die(N_("sparse prefix must start with /"));
+		name = mkpath("%s/info/sparse-checkout", git_dir);
+		git_config_set("core.sparsecheckout", "true");
+		safe_create_leading_directories_const(name);
+		f = fopen(name, "w");
+		if(f == NULL) die("Could not open %s", name);
+		fprintf(f, "%s\n", option_sparse_prefix);
+		fclose(f);
+	}
 	git_config(git_default_config, NULL);
+
 
 	if (option_bare) {
 		if (option_mirror)
@@ -976,6 +991,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	strbuf_addf(&key, "remote.%s.url", option_origin);
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
+
 
 	if (option_reference.nr)
 		setup_reference();
@@ -995,6 +1011,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (is_local) {
 		if (option_depth)
 			warning(_("--depth is ignored in local clones; use file:// instead."));
+		if (option_sparse_prefix)
+			warning(_("--sparse-prefix is ignored in local clones; use file:// instead."));
 		if (!access(mkpath("%s/shallow", path), F_OK)) {
 			if (option_local > 0)
 				warning(_("source repository is shallow, ignoring --local"));
@@ -1013,6 +1031,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_depth)
 		transport_set_option(transport, TRANS_OPT_DEPTH,
 				     option_depth);
+	if (option_sparse_prefix)
+		transport_set_option(transport, TRANS_OPT_SPARSE_PREFIX,
+		                     option_sparse_prefix);
 	if (option_single_branch)
 		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
 
@@ -1020,7 +1041,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
 				     option_upload_pack);
 
-	if (transport->smart_options && !option_depth)
+	if (transport->smart_options && !option_depth && !option_sparse_prefix)
 		transport->smart_options->check_self_contained_and_connected = 1;
 
 	refs = transport_get_remote_refs(transport);
