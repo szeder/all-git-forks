@@ -57,6 +57,7 @@ static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
 static const char *pack_objects_hook;
+static char *sparse_prefix;
 
 static void reset_timeout(void)
 {
@@ -125,6 +126,12 @@ static void create_pack_file(void)
 		argv_array_push(&pack_objects.args, "--delta-base-offset");
 	if (use_include_tag)
 		argv_array_push(&pack_objects.args, "--include-tag");
+	if (sparse_prefix) {
+		argv_array_push(&pack_objects.args, "--sparse-prefix");
+		argv_array_push(&pack_objects.args, sparse_prefix);
+		free(sparse_prefix);
+		sparse_prefix = NULL;
+	}
 
 	pack_objects.in = -1;
 	pack_objects.out = -1;
@@ -582,6 +589,12 @@ static void receive_needs(void)
 				die("Invalid deepen: %s", line);
 			continue;
 		}
+		if (starts_with(line, "sparse-prefix ")) {
+			if(sparse_prefix)
+				die("Only single sparse-prefix is allowed");
+			sparse_prefix = xstrdup(line + 14);
+			continue;
+		}
 		if (!starts_with(line, "want ") ||
 		    get_sha1_hex(line+5, sha1_buf))
 			die("git upload-pack: protocol error, "
@@ -730,7 +743,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow no-progress"
-		" include-tag multi_ack_detailed";
+		" include-tag multi_ack_detailed sparse-prefix";
 	const char *refname_nons = strip_namespace(refname);
 	struct object_id peeled;
 

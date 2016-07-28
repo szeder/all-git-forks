@@ -64,6 +64,12 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.uploadpack = arg + 14;
 			continue;
 		}
+		if (starts_with(arg, "--sparse-prefix=")) {
+			args.sparse_prefix = arg + 16;
+			if(args.sparse_prefix[0] != '/')
+				die(N_("sparse prefix must start with /"));
+			continue;
+		}
 		if (starts_with(arg, "--exec=")) {
 			args.uploadpack = arg + 7;
 			continue;

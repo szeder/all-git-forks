@@ -727,6 +727,8 @@ static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 	ALLOC_ARRAY(targets, nr_heads);
 	if (options.depth)
 		die("dumb http transport does not support --depth");
+	if (options.sparse_prefix)
+		die("dumb http transport does not support --sparse-prefix");
 	for (i = 0; i < nr_heads; i++)
 		targets[i] = xstrdup(oid_to_hex(&to_fetch[i]->old_oid));
 

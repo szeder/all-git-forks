@@ -326,6 +326,8 @@ static int find_common(struct fetch_pack_args *args,
 		return 1;
 	}
 
+	if(args->sparse_prefix)
+		packet_buf_write(&req_buf, "sparse-prefix %s", args->sparse_prefix);
 	if (is_repository_shallow())
 		write_shallow_commits(&req_buf, 1, NULL);
 	if (args->depth > 0)
@@ -811,6 +813,8 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 
 	if ((args->depth > 0 || is_repository_shallow()) && !server_supports("shallow"))
 		die("Server does not support shallow clients");
+	if (args->sparse_prefix && !server_supports("sparse-prefix"))
+		die("Server does not support sparse prefix");
 	if (server_supports("multi_ack_detailed")) {
 		if (args->verbose)
 			fprintf(stderr, "Server supports multi_ack_detailed\n");
