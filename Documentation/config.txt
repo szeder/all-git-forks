@@ -760,12 +760,6 @@ relatively high IO latencies.  When enabled, Git will do the
 index comparison to the filesystem data in parallel, allowing
 overlapping IO's.  Defaults to true.
 
-core.fscache::
-	Enable additional caching of file system data for some operations.
-+
-Git for Windows uses this to bulk-read and cache lstat data of entire
-directories (instead of doing lstat file by file).
-
 core.createObject::
 	You can set this to 'link', in which case a hardlink followed by
 	a delete of the source are used to make sure that object creation
@@ -3042,3 +3036,9 @@ web.browser::
 	Specify a web browser that may be used by some commands.
 	Currently only linkgit:git-instaweb[1] and linkgit:git-help[1]
 	may use it.
+
+sendpack.sideband::
+  Allows to disable the side-band-64k capability for send-pack even
+  when it is advertised by the server. Makes it possible to work
+  around a limitation in the git for windows implementation together
+  with the dump git protocol. Defaults to true.

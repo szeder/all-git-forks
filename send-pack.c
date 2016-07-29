@@ -36,15 +36,18 @@ int option_parse_push_signed(const struct option *opt,
 	die("bad %s argument: %s", opt->long_name, arg);
 }
 
-static void feed_object(const unsigned char *sha1, FILE *fh, int negative)
+static int feed_object(const unsigned char *sha1, int fd, int negative)
 {
-	if (negative && !has_sha1_file(sha1))
-		return;
+	char buf[42];
 
+	if (negative && !has_sha1_file(sha1))
+		return 1;
+
+	memcpy(buf + negative, sha1_to_hex(sha1), 40);
 	if (negative)
-		putc('^', fh);
-	fputs(sha1_to_hex(sha1), fh);
-	putc('\n', fh);
+		buf[0] = '^';
+	buf[40 + negative] = '\n';
+	return write_or_whine(fd, buf, 41 + negative, "send-pack: send refs");
 }
 
 /*
@@ -70,7 +73,6 @@ static int pack_objects(int fd, struct ref *refs, struct sha1_array *extra, stru
 		NULL,
 	};
 	struct child_process po = CHILD_PROCESS_INIT;
-	FILE *po_in;
 	int i;
 
 	i = 4;
@@ -95,22 +97,21 @@ static int pack_objects(int fd, struct ref *refs, struct sha1_array *extra, stru
 	 * We feed the pack-objects we just spawned with revision
 	 * parameters by writing to the pipe.
 	 */
-	po_in = xfdopen(po.in, "w");
 	for (i = 0; i < extra->nr; i++)
-		feed_object(extra->sha1[i], po_in, 1);
+		if (!feed_object(extra->sha1[i], po.in, 1))
+			break;
 
 	while (refs) {
-		if (!is_null_oid(&refs->old_oid))
-			feed_object(refs->old_oid.hash, po_in, 1);
-		if (!is_null_oid(&refs->new_oid))
-			feed_object(refs->new_oid.hash, po_in, 0);
+		if (!is_null_oid(&refs->old_oid) &&
+		    !feed_object(refs->old_oid.hash, po.in, 1))
+			break;
+		if (!is_null_oid(&refs->new_oid) &&
+		    !feed_object(refs->new_oid.hash, po.in, 0))
+			break;
 		refs = refs->next;
 	}
 
-	fflush(po_in);
-	if (ferror(po_in))
-		die_errno("error writing to pack-objects");
-	fclose(po_in);
+	close(po.in);
 
 	if (args->stateless_rpc) {
 		char *buf = xmalloc(LARGE_PACKET_MAX);
@@ -260,7 +261,6 @@ static int generate_push_cert(struct strbuf *req_buf,
 			      const char *push_cert_nonce)
 {
 	const struct ref *ref;
-	struct string_list_item *item;
 	char *signing_key = xstrdup(get_signing_key());
 	const char *cp, *np;
 	struct strbuf cert = STRBUF_INIT;
@@ -277,9 +277,6 @@ static int generate_push_cert(struct strbuf *req_buf,
 	}
 	if (push_cert_nonce[0])
 		strbuf_addf(&cert, "nonce %s\n", push_cert_nonce);
-	if (args->push_options)
-		for_each_string_list_item(item, args->push_options)
-			strbuf_addf(&cert, "push-option %s\n", item->string);
 	strbuf_addstr(&cert, "\n");
 
 	for (ref = remote_refs; ref; ref = ref->next) {
@@ -374,8 +371,6 @@ int send_pack(struct send_pack_args *args,
 	int agent_supported = 0;
 	int use_atomic = 0;
 	int atomic_supported = 0;
-	int use_push_options = 0;
-	int push_options_supported = 0;
 	unsigned cmds_sent = 0;
 	int ret;
 	struct async demux;
@@ -398,8 +393,6 @@ int send_pack(struct send_pack_args *args,
 		args->use_thin_pack = 0;
 	if (server_supports("atomic"))
 		atomic_supported = 1;
-	if (server_supports("push-options"))
-		push_options_supported = 1;
 
 	if (args->push_cert != SEND_PACK_PUSH_CERT_NEVER) {
 		int len;
@@ -426,11 +419,6 @@ int send_pack(struct send_pack_args *args,
 
 	use_atomic = atomic_supported && args->atomic;
 
-	if (args->push_options && !push_options_supported)
-		die(_("the receiving end does not support push options"));
-
-	use_push_options = push_options_supported && args->push_options;
-
 	if (status_report)
 		strbuf_addstr(&cap_buf, " report-status");
 	if (use_sideband)
@@ -439,8 +427,6 @@ int send_pack(struct send_pack_args *args,
 		strbuf_addstr(&cap_buf, " quiet");
 	if (use_atomic)
 		strbuf_addstr(&cap_buf, " atomic");
-	if (use_push_options)
-		strbuf_addstr(&cap_buf, " push-options");
 	if (agent_supported)
 		strbuf_addf(&cap_buf, " agent=%s", git_user_agent_sanitized());
 
@@ -526,18 +512,6 @@ int send_pack(struct send_pack_args *args,
 	}
 	strbuf_release(&req_buf);
 	strbuf_release(&cap_buf);
-
-	if (use_push_options) {
-		struct string_list_item *item;
-		struct strbuf sb = STRBUF_INIT;
-
-		for_each_string_list_item(item, args->push_options)
-			packet_buf_write(&sb, "%s", item->string);
-
-		write_or_die(out, sb.buf, sb.len);
-		packet_flush(out);
-		strbuf_release(&sb);
-	}
 
 	if (use_sideband && cmds_sent) {
 		memset(&demux, 0, sizeof(demux));
