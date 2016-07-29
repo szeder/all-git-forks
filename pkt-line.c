@@ -135,6 +135,36 @@ void packet_write(int fd, const char *fmt, ...)
 	write_or_die(fd, buf.buf, buf.len);
 }
 
+int direct_packet_write(int fd, char *buf, size_t size, int gentle)
+{
+	int ret = 0;
+	packet_trace(buf + 4, size - 4, 1);
+	set_packet_header(buf, size);
+	if (gentle)
+		ret = !write_or_whine_pipe(fd, buf, size, "pkt-line");
+	else
+		write_or_die(fd, buf, size);
+	return ret;
+}
+
+int direct_packet_write_data(int fd, const char *buf, size_t size, int gentle)
+{
+	int ret = 0;
+	char hdr[4];
+	set_packet_header(hdr, sizeof(hdr) + size);
+	packet_trace(buf, size, 1);
+	if (gentle) {
+		ret = (
+			!write_or_whine_pipe(fd, hdr, sizeof(hdr), "pkt-line header") ||
+			!write_or_whine_pipe(fd, buf, size, "pkt-line data")
+		);
+	} else {
+		write_or_die(fd, hdr, sizeof(hdr));
+		write_or_die(fd, buf, size);
+	}
+	return ret;
+}
+
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
 {
 	va_list args;
