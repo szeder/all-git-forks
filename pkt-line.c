@@ -3,6 +3,7 @@
 #include "run-command.h"
 
 char packet_buffer[LARGE_PACKET_MAX];
+static char packet_write_buffer[LARGE_PACKET_MAX];
 static const char *packet_trace_prefix = "git";
 static struct trace_key trace_packet = TRACE_KEY_INIT(PACKET);
 static struct trace_key trace_pack = TRACE_KEY_INIT(PACKFILE);
@@ -135,6 +136,17 @@ void packet_write_fmt(int fd, const char *fmt, ...)
 	format_packet(&buf, fmt, args);
 	va_end(args);
 	write_or_die(fd, buf.buf, buf.len);
+}
+
+int packet_write_gently(const int fd_out, const char *buf, size_t size)
+{
+	if (size > sizeof(packet_write_buffer) - 4)
+		return -1;
+	packet_trace(buf, size, 1);
+	memmove(packet_write_buffer + 4, buf, size);
+	size += 4;
+	set_packet_header(packet_write_buffer, size);
+	return (write_in_full(fd_out, packet_write_buffer, size) == size ? 0 : -1);
 }
 
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
