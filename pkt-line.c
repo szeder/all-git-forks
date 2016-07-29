@@ -136,6 +136,48 @@ void packet_write(int fd, const char *fmt, ...)
 	write_or_die(fd, buf.buf, buf.len);
 }
 
+int direct_packet_write(int fd, char *buf, size_t size, int gentle)
+{
+	int ret = 0;
+	if (size > LARGE_PACKET_MAX) {
+		if (gentle)
+			return 0;
+		else
+			die("protocol error: impossibly long line");
+	}
+	packet_trace(buf + 4, size - 4, 1);
+	set_packet_header(buf, size);
+	if (gentle)
+		ret = !write_or_whine_pipe(fd, buf, size, "pkt-line");
+	else
+		write_or_die(fd, buf, size);
+	return ret;
+}
+
+int direct_packet_write_data(int fd, const char *data, size_t size, int gentle)
+{
+	int ret = 0;
+	char hdr[PKTLINE_HEADER_LEN];
+	if (size > PKTLINE_DATA_MAXLEN) {
+		if (gentle)
+			return 0;
+		else
+			die("protocol error: impossibly long line");
+	}
+	set_packet_header(hdr, PKTLINE_HEADER_LEN + size);
+	packet_trace(data, size, 1);
+	if (gentle) {
+		ret = (
+			!write_or_whine_pipe(fd, hdr, PKTLINE_HEADER_LEN, "pkt-line header") ||
+			!write_or_whine_pipe(fd, data, size, "pkt-line data")
+		);
+	} else {
+		write_or_die(fd, hdr, PKTLINE_HEADER_LEN);
+		write_or_die(fd, data, size);
+	}
+	return ret;
+}
+
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
 {
 	va_list args;
