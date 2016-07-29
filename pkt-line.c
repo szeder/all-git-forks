@@ -181,6 +181,25 @@ int packet_write_fmt_gently(int fd, const char *fmt, ...)
 	return status;
 }
 
+int packet_write_gently(const int fd_out, const char *buf, size_t size)
+{
+	static char packet_write_buffer[LARGE_PACKET_MAX];
+
+	if (size > sizeof(packet_write_buffer) - 4) {
+		error("packet write failed");
+		return -1;
+	}
+	packet_trace(buf, size, 1);
+	size += 4;
+	set_packet_header(packet_write_buffer, size);
+	memcpy(packet_write_buffer + 4, buf, size - 4);
+	if (write_in_full(fd_out, packet_write_buffer, size) == size)
+		return 0;
+
+	error("packet write failed");
+	return -1;
+}
+
 void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
 {
 	va_list args;
