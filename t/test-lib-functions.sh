@@ -990,3 +990,17 @@ test_copy_bytes () {
 		}
 	' - "$1"
 }
+
+# Test the file mode "$1" of the file "$2" in the index.
+test_mode_in_index () {
+	case "$(git ls-files --stage "$2")" in
+		$1\ *"$2")
+			echo pass
+			;;
+		*)
+			echo fail
+			git ls-files --stage "$2"
+			return 1
+			;;
+	esac
+}
