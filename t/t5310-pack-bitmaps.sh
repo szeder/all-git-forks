@@ -118,6 +118,88 @@ test_expect_success 'incremental repack can disable bitmaps' '
 	git repack -d --no-write-bitmap-index
 '
 
+test_expect_success 'pack-objects respects --local (non-local loose)' '
+	mkdir -p alt_objects/pack &&
+	echo $(pwd)/alt_objects > .git/objects/info/alternates &&
+	echo content1 > file1 &&
+	objsha1=$(GIT_OBJECT_DIRECTORY=alt_objects git hash-object -w file1) &&
+	git add file1 &&
+	test_tick &&
+	git commit -m commit_file1 &&
+	echo HEAD | \
+	git pack-objects --local --stdout --revs >1.pack &&
+	git index-pack 1.pack &&
+	git verify-pack -v 1.pack >1.objects &&
+	if egrep "^$objsha1" 1.objects; then
+		echo "Non-local object present in pack generated with --local: $objsha1"
+		return 1
+	fi
+'
+
+test_expect_success 'pack-objects respects --honor-pack-keep (local non-bitmapped pack)' '
+	echo content2 > file2 &&
+	objsha2=$(git hash-object -w file2) &&
+	git add file2 &&
+	test_tick &&
+	git commit -m commit_file2 &&
+	pack2=$(echo $objsha2 | \
+		git pack-objects pack2) &&
+	mv pack2-$pack2.* .git/objects/pack/ &&
+	touch .git/objects/pack/pack2-$pack2.keep &&
+	rm $(objpath $objsha2) &&
+	echo HEAD | \
+	git pack-objects --honor-pack-keep --stdout --revs >2a.pack &&
+	git index-pack 2a.pack &&
+	git verify-pack -v 2a.pack >2a.objects &&
+	if egrep "^$objsha2" 2a.objects; then
+		echo "Object from .keeped pack present in pack generated with --honor-pack-keep: $objsha2"
+		return 1
+	fi
+'
+
+test_expect_success 'pack-objects respects --local (non-local pack)' '
+	mv .git/objects/pack/pack2-$pack2.* alt_objects/pack/ &&
+	echo HEAD | \
+	git pack-objects --local --stdout --revs >2b.pack &&
+	git index-pack 2b.pack &&
+	git verify-pack -v 2b.pack >2b.objects &&
+	if egrep "^$objsha2" 2b.objects; then
+		echo "Non-local object present in pack generated with --local: $objsha2"
+		return 1
+	fi
+'
+
+test_expect_success 'pack-objects respects --honor-pack-keep (local bitmapped pack)' '
+	ls .git/objects/pack/ | grep bitmap >output &&
+	test_line_count = 1 output &&
+	packbitmap=$(basename $(cat output) .bitmap) &&
+	git verify-pack -v .git/objects/pack/$packbitmap.pack >packbitmap.verify &&
+	grep -o "^$_x40" packbitmap.verify |sort >packbitmap.objects &&
+	touch .git/objects/pack/$packbitmap.keep &&
+	echo HEAD | \
+	git pack-objects --honor-pack-keep --stdout --revs >3a.pack &&
+	git index-pack 3a.pack &&
+	git verify-pack -v 3a.pack >3a.objects &&
+	if grep -qFf packbitmap.objects 3a.objects; then
+		echo "Object from .keeped bitmapped pack present in pack generated with --honour-pack-keep"
+		return 1
+	fi &&
+	rm .git/objects/pack/$packbitmap.keep
+'
+
+test_expect_success 'pack-objects respects --local (non-local bitmapped pack)' '
+	mv .git/objects/pack/$packbitmap.* alt_objects/pack/ &&
+	echo HEAD | \
+	git pack-objects --local --stdout --revs >3b.pack &&
+	git index-pack 3b.pack &&
+	git verify-pack -v 3b.pack >3b.objects &&
+	if grep -qFf packbitmap.objects 3b.objects; then
+		echo "Non-local object from bitmapped pack present in pack generated with --local"
+		return 1
+	fi &&
+	mv alt_objects/pack/$packbitmap.* .git/objects/pack/
+'
+
 test_expect_success 'full repack, reusing previous bitmaps' '
 	git repack -ad &&
 	ls .git/objects/pack/ | grep bitmap >output &&
@@ -141,6 +223,24 @@ test_expect_success 'create objects for missing-HAVE tests' '
 	^HEAD^
 	^$commit
 	EOF
+'
+
+test_expect_success 'pack-objects respects --incremental' '
+	cat >revs2 <<-EOF &&
+	HEAD
+	$commit
+	EOF
+	git pack-objects --incremental --stdout --revs <revs2 >4.pack &&
+	git index-pack 4.pack &&
+	git verify-pack -v 4.pack >4.verify &&
+	grep -o "^$_x40" 4.verify |sort >4.objects &&
+	test_line_count = 4 4.objects &&
+	git rev-list --objects $commit >revlist &&
+	grep -o "^$_x40" revlist |sort >objects &&
+	if grep -qvFf objects 4.objects; then
+		echo "Expected objects not present in incremental pack"
+		return 1
+	fi
 '
 
 test_expect_success 'pack with missing blob' '
