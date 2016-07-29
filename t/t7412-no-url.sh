@@ -59,4 +59,20 @@ test_expect_success 'submodule add with new submodule.checkout option' '
 	)
 '
 
+cat <<-EOF >expect
+-anothersub
+ sub1 (initial)
+-sub2
+ sub3 (initial)
+EOF
+
+
+test_expect_success 'submodule status with new submodule.checkout option' '
+	rm -rf super/sub2 &&
+	rm -rf super/anothersub &&
+	git config submodule.checkout "sub*" &&
+	git -C super submodule status |cut -c1,43- >actual &&
+	test_cmp expect actual
+'
+
 test_done
