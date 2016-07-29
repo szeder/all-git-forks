@@ -121,7 +121,6 @@ static void format_packet(struct strbuf *out, const char *fmt, va_list args)
 		die("protocol error: impossibly long line");
 
 	set_packet_header(&out->buf[orig_len], n);
-	packet_trace(out->buf + orig_len + 4, n - 4, 1);
 }
 
 void packet_write(int fd, const char *fmt, ...)
@@ -133,6 +132,7 @@ void packet_write(int fd, const char *fmt, ...)
 	va_start(args, fmt);
 	format_packet(&buf, fmt, args);
 	va_end(args);
+	packet_trace(buf.buf + 4, buf.len - 4, 1);
 	write_or_die(fd, buf.buf, buf.len);
 }
 
