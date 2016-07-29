@@ -25,18 +25,12 @@ test_expect_success \
 	 echo foo >xfoo1 &&
 	 chmod 755 xfoo1 &&
 	 git add xfoo1 &&
-	 case "$(git ls-files --stage xfoo1)" in
-	 100644" "*xfoo1) echo pass;;
-	 *) echo fail; git ls-files --stage xfoo1; (exit 1);;
-	 esac'
+	 test_mode_in_index 100644 xfoo1'
 
 test_expect_success 'git add: filemode=0 should not get confused by symlink' '
 	rm -f xfoo1 &&
 	test_ln_s_add foo xfoo1 &&
-	case "$(git ls-files --stage xfoo1)" in
-	120000" "*xfoo1) echo pass;;
-	*) echo fail; git ls-files --stage xfoo1; (exit 1);;
-	esac
+	test_mode_in_index 120000 xfoo1
 '
 
 test_expect_success \
@@ -45,28 +39,19 @@ test_expect_success \
 	 echo foo >xfoo2 &&
 	 chmod 755 xfoo2 &&
 	 git update-index --add xfoo2 &&
-	 case "$(git ls-files --stage xfoo2)" in
-	 100644" "*xfoo2) echo pass;;
-	 *) echo fail; git ls-files --stage xfoo2; (exit 1);;
-	 esac'
+	 test_mode_in_index 100644 xfoo2'
 
 test_expect_success 'git add: filemode=0 should not get confused by symlink' '
 	rm -f xfoo2 &&
 	test_ln_s_add foo xfoo2 &&
-	case "$(git ls-files --stage xfoo2)" in
-	120000" "*xfoo2) echo pass;;
-	*) echo fail; git ls-files --stage xfoo2; (exit 1);;
-	esac
+	test_mode_in_index 120000 xfoo2
 '
 
 test_expect_success \
 	'git update-index --add: Test that executable bit is not used...' \
 	'git config core.filemode 0 &&
 	 test_ln_s_add xfoo2 xfoo3 &&	# runs git update-index --add
-	 case "$(git ls-files --stage xfoo3)" in
-	 120000" "*xfoo3) echo pass;;
-	 *) echo fail; git ls-files --stage xfoo3; (exit 1);;
-	 esac'
+	 test_mode_in_index 120000 xfoo3'
 
 test_expect_success '.gitignore test setup' '
 	echo "*.ig" >.gitignore &&
@@ -347,10 +332,7 @@ test_expect_success POSIXPERM,SYMLINKS 'git add --chmod=+x with symlinks' '
 	rm -f foo2 &&
 	echo foo >foo2 &&
 	git add --chmod=+x foo2 &&
-	case "$(git ls-files --stage foo2)" in
-	100755" "*foo2) echo pass;;
-	*) echo fail; git ls-files --stage foo2; (exit 1);;
-	esac
+	test_mode_in_index 100755 foo2
 '
 
 test_done
