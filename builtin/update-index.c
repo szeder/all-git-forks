@@ -1113,8 +1113,11 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			warning("core.splitIndex is set to false; "
 				"remove or change it, if you really want to "
 				"enable split index");
-		add_split_index(&the_index);
-	} else if (!split_index && the_index.split_index) {
+		if (the_index.split_index)
+			the_index.cache_changed |= SPLIT_INDEX_ORDERED;
+		else
+			add_split_index(&the_index);
+	} else if (!split_index) {
 		if (git_config_get_split_index() == 1)
 			warning("core.splitIndex is set to true; "
 				"remove or change it, if you really want to "

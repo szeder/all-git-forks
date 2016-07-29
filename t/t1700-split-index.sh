@@ -244,4 +244,17 @@ test_expect_success 'only one "sharedindex" files' '
 	test $(ls .git/sharedindex.* | wc -l) = 1
 '
 
+test_expect_success 'sharedindex file is rewritten when there are many changes' '
+	ls .git/sharedindex.* >current &&
+	: >four &&
+	: >five &&
+	git update-index --add four &&
+	git update-index --add five &&
+	SHARED=$(ls .git/sharedindex.*) &&
+	ls .git/sharedindex.* >new &&
+	! test_cmp current new
+'
+
+exit 1
+
 test_done
