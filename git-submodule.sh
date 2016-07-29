@@ -470,7 +470,7 @@ Submodule work tree '\$displaypath' contains a .git directory
 		then
 			# Remove the whole section so we have a clean state when
 			# the user later decides to init this submodule again
-			url=$(git config submodule."$name".url)
+			url=$(GIT_DIR="$(git rev-parse --git-path modules/$name)" git config remote.origin.url)
 			git config --remove-section submodule."$name" 2>/dev/null &&
 			say "$(eval_gettext "Submodule '\$name' (\$url) unregistered for path '\$displaypath'")"
 		fi
