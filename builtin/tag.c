@@ -225,6 +225,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 	if (type <= OBJ_NONE)
 	    die(_("bad object type."));
 
+	reset_ident_date();
 	header_len = snprintf(header_buf, sizeof(header_buf),
 			  "object %s\n"
 			  "type %s\n"
