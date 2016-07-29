@@ -1548,6 +1548,7 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 	}
 
 	/* Person/date information */
+	reset_ident_date();
 	if (!author)
 		author = git_author_info(IDENT_STRICT);
 	strbuf_addf(&buffer, "author %s\n", author);
