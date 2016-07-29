@@ -44,4 +44,19 @@ test_expect_success 'test submodule--helper should-exist' '
 	)
 '
 
+test_expect_success 'submodule add with new submodule.checkout option' '
+	(
+		cd super &&
+		git submodule add ../sub sub3 &&
+		git config --get-all submodule.checkout >actual &&
+		echo "sub*" >expect &&
+		test_cmp expect actual &&
+		git submodule add ../sub anothersub &&
+		git config --get-all submodule.checkout >actual &&
+		echo "anothersub" >>expect &&
+		test_cmp expect actual &&
+		git commit -a -m "add sub3"
+	)
+'
+
 test_done

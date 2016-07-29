@@ -261,7 +261,19 @@ or you are unsure what this means choose another name with the '--name' option."
 			esac
 		) || die "$(eval_gettext "Unable to checkout submodule '\$sm_path'")"
 	fi
-	git config submodule."$sm_name".url "$realrepo"
+
+	if ! git config --get submodule.checkout >/dev/null
+	then
+		git config --worktree submodule."$sm_name".url "$realrepo"
+	else
+		# When submodule.checkout is used, we don't need to store
+		# a copy of the url in our config, but we still need to mark
+		# that we desire the existence of this submodule.
+		if ! git submodule--helper should-exist "$sm_path"
+		then
+			git config --worktree --add submodule.checkout "$sm_path"
+		fi
+	fi
 
 	git add $force "$sm_path" ||
 	die "$(eval_gettext "Failed to add submodule '\$sm_path'")"
