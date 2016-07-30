@@ -652,7 +652,7 @@ EOF
 
 test_expect_success 'format-patch -p suppresses stat' '
 
-	git format-patch -p -2 &&
+	git format-patch --no-from -p -2 &&
 	sed -e "1,/^\$/d" -e "/^+5/q" < 0001-This-is-an-excessively-long-subject-line-for-a-messa.patch > output &&
 	test_cmp expect output
 
@@ -973,7 +973,7 @@ check_author() {
 	echo content >>file &&
 	git add file &&
 	GIT_AUTHOR_NAME=$1 git commit -m author-check &&
-	git format-patch --stdout -1 >patch &&
+	git format-patch --no-from --stdout -1 >patch &&
 	sed -n "/^From: /p; /^ /p; /^$/q" <patch >actual &&
 	test_cmp expect actual
 }
@@ -1089,11 +1089,33 @@ test_expect_success '--from=ident replaces author' '
 	test_cmp expect patch.head
 '
 
+test_expect_success 'Default uses committer ident' '
+	git format-patch -1 --stdout >patch &&
+	cat >expect <<-\EOF &&
+	From: C O Mitter <committer@example.com>
+
+	From: A U Thor <author@example.com>
+
+	EOF
+	sed -ne "/^From:/p; /^$/p; /^---$/q" <patch >patch.head &&
+	test_cmp expect patch.head
+'
+
 test_expect_success '--from uses committer ident' '
 	git format-patch -1 --stdout --from >patch &&
 	cat >expect <<-\EOF &&
 	From: C O Mitter <committer@example.com>
 
+	From: A U Thor <author@example.com>
+
+	EOF
+	sed -ne "/^From:/p; /^$/p; /^---$/q" <patch >patch.head &&
+	test_cmp expect patch.head
+'
+
+test_expect_success '--no-from suppresses default --from' '
+	git format-patch -1 --stdout --no-from >patch &&
+	cat >expect <<-\EOF &&
 	From: A U Thor <author@example.com>
 
 	EOF
@@ -1129,7 +1151,7 @@ test_expect_success 'in-body headers trigger content encoding' '
 append_signoff()
 {
 	C=$(git commit-tree HEAD^^{tree} -p HEAD) &&
-	git format-patch --stdout --signoff $C^..$C >append_signoff.patch &&
+	git format-patch --no-from --stdout --signoff $C^..$C >append_signoff.patch &&
 	sed -n -e "1,/^---$/p" append_signoff.patch |
 		egrep -n "^Subject|Sign|^$"
 }

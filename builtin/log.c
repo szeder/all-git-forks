@@ -1472,6 +1472,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	extra_hdr.strdup_strings = 1;
 	extra_to.strdup_strings = 1;
 	extra_cc.strdup_strings = 1;
+	from = xstrdup(git_committer_info(IDENT_NO_DATE));
 	init_log_defaults();
 	git_config(git_format_config, NULL);
 	init_revisions(&rev, prefix);
