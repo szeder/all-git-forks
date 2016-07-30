@@ -2181,6 +2181,7 @@ _git_config ()
 		format.attach
 		format.cc
 		format.coverLetter
+		format.from
 		format.headers
 		format.numbered
 		format.pretty
