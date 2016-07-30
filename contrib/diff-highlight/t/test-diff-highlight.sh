@@ -67,3 +67,45 @@ dh_commit_test() {
 
   diff commit.exp commit.act
 }
+
+dh_graph_test() {
+  local a="$1" b="$2" c="$3"
+
+  {
+    printf "$a" > file
+    git add file
+    git commit -m"Add a file"
+
+    printf "$b" > file
+    git commit -am"Update a file"
+
+    git checkout -b branch
+    printf "$c" > file
+    git commit -am"Update a file on branch"
+
+    git checkout master
+    printf "$a" > file
+    git commit -am"Update a file again"
+
+    git checkout branch
+    printf "$b" > file
+    git commit -am"Update a file similar to master"
+
+    git merge master
+    git checkout master
+    git merge branch --no-ff
+  } >/dev/null 2>&1
+
+  git log -p --graph --no-merges > graph.raw
+
+  # git log --graph orders the commits different than git log so we hack it by
+  # using sed to remove the graph part. We know from other tests, that CMD
+  # works without the graph, so there should be no diff when running it with
+  # and without.
+  < graph.raw sed -e 's"^\(*\|| \||/\)\+""' -e 's"^  ""' | $CMD > graph.exp
+  < graph.raw $CMD | sed -e 's"^\(*\|| \||/\)\+""' -e 's"^  ""' > graph.act
+
+  # ignore whitespace since we're using a hacky sed command to remove the graph
+  # parts.
+  diff -b graph.exp graph.act
+}

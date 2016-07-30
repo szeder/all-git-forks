@@ -60,4 +60,17 @@ test_expect_success 'diff-highlight does not highlight mismatched hunk size' '
 
 # TODO add multi-byte test
 
+test_expect_success 'diff-highlight highlightes the beginning of a line' '
+  dh_graph_test \
+    "aaa\nbbb\nccc\n" \
+    "aaa\n0bb\nccc\n" \
+    "aaa\nb0b\nccc\n" \
+"
+ aaa
+-${CW}b${CR}bb
++${CW}0${CR}bb
+ ccc
+"
+'
+
 test_done
