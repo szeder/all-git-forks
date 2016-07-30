@@ -419,6 +419,10 @@ test_expect_success 'create/modify files, some of which are gitignored' '
 	rm base
 '
 
+test_expect_success FREEBSD 'Work around lazy mtime update' '
+	ls -ld . >/dev/null
+'
+
 test_expect_success 'test sparse status with untracked cache' '
 	: >../trace &&
 	avoid_racy &&
