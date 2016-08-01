@@ -16,7 +16,7 @@ enum apply_ws_ignore {
 enum apply_verbosity {
 	verbosity_silent = -1,
 	verbosity_normal = 0,
-	verbosity_verbose = 1,
+	verbosity_verbose = 1
 };
 
 /*
