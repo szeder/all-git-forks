@@ -351,9 +351,12 @@ all::
 # Define GMTIME_UNRELIABLE_ERRORS if your gmtime() function does not
 # return NULL when it receives a bogus time_t.
 #
-# Define HAVE_CLOCK_GETTIME if your platform has clock_gettime in librt.
+# Define HAVE_CLOCK_GETTIME if your platform has clock_gettime.
 #
-# Define HAVE_CLOCK_MONOTONIC if your platform has CLOCK_MONOTONIC in librt.
+# Define HAVE_CLOCK_MONOTONIC if your platform has CLOCK_MONOTONIC.
+#
+# Define NEEDS_LIBRT if your platform requires linking with librt (glibc version
+# before 2.17) for clock_gettime and CLOCK_MONOTONIC.
 #
 # Define USE_PARENS_AROUND_GETTEXT_N to "yes" if your compiler happily
 # compiles the following initialization:
@@ -680,6 +683,7 @@ LIB_OBJS += abspath.o
 LIB_OBJS += advice.o
 LIB_OBJS += alias.o
 LIB_OBJS += alloc.o
+LIB_OBJS += apply.o
 LIB_OBJS += archive.o
 LIB_OBJS += archive-tar.o
 LIB_OBJS += archive-zip.o
@@ -718,6 +722,7 @@ LIB_OBJS += diff-lib.o
 LIB_OBJS += diff-no-index.o
 LIB_OBJS += diff.o
 LIB_OBJS += dir.o
+LIB_OBJS += dir-iterator.o
 LIB_OBJS += editor.o
 LIB_OBJS += entry.o
 LIB_OBJS += environment.o
@@ -782,6 +787,7 @@ LIB_OBJS += read-cache.o
 LIB_OBJS += reflog-walk.o
 LIB_OBJS += refs.o
 LIB_OBJS += refs/files-backend.o
+LIB_OBJS += refs/iterator.o
 LIB_OBJS += ref-filter.o
 LIB_OBJS += remote.o
 LIB_OBJS += replace_object.o
@@ -939,7 +945,7 @@ BUILTIN_OBJS += builtin/verify-tag.o
 BUILTIN_OBJS += builtin/worktree.o
 BUILTIN_OBJS += builtin/write-tree.o
 
-GITLIBS = $(LIB_FILE) $(XDIFF_LIB)
+GITLIBS = common-main.o $(LIB_FILE) $(XDIFF_LIB)
 EXTLIBS =
 
 GIT_USER_AGENT = git/$(GIT_VERSION)
@@ -1465,11 +1471,14 @@ endif
 
 ifdef HAVE_CLOCK_GETTIME
 	BASIC_CFLAGS += -DHAVE_CLOCK_GETTIME
-	EXTLIBS += -lrt
 endif
 
 ifdef HAVE_CLOCK_MONOTONIC
 	BASIC_CFLAGS += -DHAVE_CLOCK_MONOTONIC
+endif
+
+ifdef NEEDS_LIBRT
+	EXTLIBS += -lrt
 endif
 
 ifdef HAVE_BSD_SYSCTL
@@ -1572,7 +1581,15 @@ TCLTK_PATH_SQ = $(subst ','\'',$(TCLTK_PATH))
 DIFF_SQ = $(subst ','\'',$(DIFF))
 PERLLIB_EXTRA_SQ = $(subst ','\'',$(PERLLIB_EXTRA))
 
-LIBS = $(GITLIBS) $(EXTLIBS)
+# We must filter out any object files from $(GITLIBS),
+# as it is typically used like:
+#
+#   foo: foo.o $(GITLIBS)
+#	$(CC) $(filter %.o,$^) $(LIBS)
+#
+# where we use it as a dependency. Since we also pull object files
+# from the dependency list, that would make each entry appear twice.
+LIBS = $(filter-out %.o, $(GITLIBS)) $(EXTLIBS)
 
 BASIC_CFLAGS += -DSHA1_HEADER='$(SHA1_HEADER_SQ)' \
 	$(COMPAT_CFLAGS)
@@ -1708,8 +1725,8 @@ git.sp git.s git.o: EXTRA_CPPFLAGS = \
 	'-DGIT_INFO_PATH="$(infodir_relative_SQ)"'
 
 git$X: git.o GIT-LDFLAGS $(BUILTIN_OBJS) $(GITLIBS)
-	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) git.o \
-		$(BUILTIN_OBJS) $(LIBS)
+	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) \
+		$(filter %.o,$^) $(LIBS)
 
 help.sp help.s help.o: common-cmds.h
 
@@ -1902,6 +1919,7 @@ TEST_OBJS := $(patsubst %$X,%.o,$(TEST_PROGRAMS))
 OBJECTS := $(LIB_OBJS) $(BUILTIN_OBJS) $(PROGRAM_OBJS) $(TEST_OBJS) \
 	$(XDIFF_OBJS) \
 	$(VCSSVN_OBJS) \
+	common-main.o \
 	git.o
 ifndef NO_CURL
 	OBJECTS += http.o http-walker.o remote-curl.o
@@ -2063,7 +2081,10 @@ XGETTEXT_FLAGS_SH = $(XGETTEXT_FLAGS) --language=Shell \
 	--keyword=gettextln --keyword=eval_gettextln
 XGETTEXT_FLAGS_PERL = $(XGETTEXT_FLAGS) --keyword=__ --language=Perl
 LOCALIZED_C = $(C_OBJ:o=c) $(LIB_H) $(GENERATED_H)
-LOCALIZED_SH = $(SCRIPT_SH) git-parse-remote.sh
+LOCALIZED_SH = $(SCRIPT_SH)
+LOCALIZED_SH += git-parse-remote.sh
+LOCALIZED_SH += git-rebase--interactive.sh
+LOCALIZED_SH += git-sh-setup.sh
 LOCALIZED_PERL = $(SCRIPT_PERL)
 
 ifdef XGETTEXT_INCLUDE_TESTS
@@ -2225,17 +2246,9 @@ perf: all
 
 .PHONY: test perf
 
-t/helper/test-ctype$X: ctype.o
+t/helper/test-line-buffer$X: $(VCSSVN_LIB)
 
-t/helper/test-date$X: date.o ctype.o
-
-t/helper/test-delta$X: diff-delta.o patch-delta.o
-
-t/helper/test-line-buffer$X: vcs-svn/lib.a
-
-t/helper/test-parse-options$X: parse-options.o parse-options-cb.o
-
-t/helper/test-svn-fe$X: vcs-svn/lib.a
+t/helper/test-svn-fe$X: $(VCSSVN_LIB)
 
 .PRECIOUS: $(TEST_OBJS)
 

@@ -59,7 +59,7 @@ static void set_upstreams(struct transport *transport, struct ref *refs,
 				localname + 11, transport->remote->name,
 				remotename);
 		else
-			printf("Would set upstream of '%s' to '%s' of '%s'\n",
+			printf(_("Would set upstream of '%s' to '%s' of '%s'\n"),
 				localname + 11, remotename + 11,
 				transport->remote->name);
 	}
@@ -148,7 +148,7 @@ static int set_git_option(struct git_transport_options *opts,
 			char *end;
 			opts->depth = strtol(value, &end, 0);
 			if (*end)
-				die("transport: invalid depth option '%s'", value);
+				die(_("transport: invalid depth option '%s'"), value);
 		}
 		return 0;
 	}
@@ -359,8 +359,11 @@ static void print_ok_ref_status(struct ref *ref, int porcelain)
 
 static int print_one_push_status(struct ref *ref, const char *dest, int count, int porcelain)
 {
-	if (!count)
-		fprintf(porcelain ? stdout : stderr, "To %s\n", dest);
+	if (!count) {
+		char *url = transport_anonymize_url(dest);
+		fprintf(porcelain ? stdout : stderr, "To %s\n", url);
+		free(url);
+	}
 
 	switch(ref->status) {
 	case REF_STATUS_NONE:
@@ -767,19 +770,19 @@ static void die_with_unpushed_submodules(struct string_list *needs_pushing)
 {
 	int i;
 
-	fprintf(stderr, "The following submodule paths contain changes that can\n"
-			"not be found on any remote:\n");
+	fprintf(stderr, _("The following submodule paths contain changes that can\n"
+			"not be found on any remote:\n"));
 	for (i = 0; i < needs_pushing->nr; i++)
 		printf("  %s\n", needs_pushing->items[i].string);
-	fprintf(stderr, "\nPlease try\n\n"
-			"	git push --recurse-submodules=on-demand\n\n"
-			"or cd to the path and use\n\n"
-			"	git push\n\n"
-			"to push them to a remote.\n\n");
+	fprintf(stderr, _("\nPlease try\n\n"
+			  "	git push --recurse-submodules=on-demand\n\n"
+			  "or cd to the path and use\n\n"
+			  "	git push\n\n"
+			  "to push them to a remote.\n\n"));
 
 	string_list_clear(needs_pushing, 0);
 
-	die("Aborting.");
+	die(_("Aborting."));
 }
 
 static int run_pre_push_hook(struct transport *transport,

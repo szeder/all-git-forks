@@ -197,14 +197,14 @@ test_expect_success 'proper error on error in default config files' '
 	echo "[" >>.git/config &&
 	echo "fatal: bad config line 34 in file .git/config" >expect &&
 	test_expect_code 128 test-config get_value foo.bar 2>actual &&
-	test_cmp expect actual
+	test_i18ncmp expect actual
 '
 
 test_expect_success 'proper error on error in custom config files' '
 	echo "[" >>syntax-error &&
 	echo "fatal: bad config line 1 in file syntax-error" >expect &&
 	test_expect_code 128 test-config configset_get_value foo.bar syntax-error 2>actual &&
-	test_cmp expect actual
+	test_i18ncmp expect actual
 '
 
 test_expect_success 'check line errors for malformed values' '
@@ -233,11 +233,19 @@ cmdline_config="'foo.bar=from-cmdline'"
 test_expect_success 'iteration shows correct origins' '
 	echo "[foo]bar = from-repo" >.git/config &&
 	echo "[foo]bar = from-home" >.gitconfig &&
+	if test_have_prereq MINGW
+	then
+		# Use Windows path (i.e. *not* $HOME)
+		HOME_GITCONFIG=$(pwd)/.gitconfig
+	else
+		# Do not get fooled by symbolic links, i.e. $HOME != $(pwd)
+		HOME_GITCONFIG=$HOME/.gitconfig
+	fi &&
 	cat >expect <<-EOF &&
 	key=foo.bar
 	value=from-home
 	origin=file
-	name=$HOME/.gitconfig
+	name=$HOME_GITCONFIG
 	scope=global
 
 	key=foo.bar
