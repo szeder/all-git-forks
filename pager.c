@@ -63,14 +63,38 @@ const char *git_pager(int stdout_is_tty)
 	return pager;
 }
 
+#define stringify_(x) #x
+#define stringify(x) stringify_(x)
+
+static void setup_pager_env(struct argv_array *env)
+{
+	const char *pager_env = stringify(PAGER_ENV);
+
+	while (*pager_env) {
+		struct strbuf buf = STRBUF_INIT;
+		const char *cp = strchrnul(pager_env, '=');
+
+		if (!*cp)
+			die("malformed build-time PAGER_ENV");
+		strbuf_add(&buf, pager_env, cp - pager_env);
+		cp = strchrnul(pager_env, ' ');
+		if (!getenv(buf.buf)) {
+			strbuf_reset(&buf);
+			strbuf_add(&buf, pager_env, cp - pager_env);
+			argv_array_push(env, strbuf_detach(&buf, NULL));
+		}
+		strbuf_reset(&buf);
+		while (*cp && *cp == ' ')
+			cp++;
+		pager_env = cp;
+	}
+}
+
 void prepare_pager_args(struct child_process *pager_process, const char *pager)
 {
 	argv_array_push(&pager_process->args, pager);
 	pager_process->use_shell = 1;
-	if (!getenv("LESS"))
-		argv_array_push(&pager_process->env_array, "LESS=FRX");
-	if (!getenv("LV"))
-		argv_array_push(&pager_process->env_array, "LV=-c");
+	setup_pager_env(&pager_process->env_array);
 }
 
 void setup_pager(void)
