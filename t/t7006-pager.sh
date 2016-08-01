@@ -456,4 +456,18 @@ test_expect_success 'command with underscores does not complain' '
 	test_cmp expect actual
 '
 
+test_expect_success TTY 'core.pagerEnv overrides build-time env' '
+	(
+		sane_unset LESS LV MORE &&
+		git config core.pagerEnv MORE=-R &&
+		PAGER="env >pager-env.out; wc" &&
+		export PAGER &&
+		test_terminal git log
+	) &&
+	git config --unset core.pagerEnv &&
+	grep ^MORE=-R pager-env.out &&
+	grep -v ^LESS= pager-env.out &&
+	grep -v ^LV= pager-env.out
+'
+
 test_done

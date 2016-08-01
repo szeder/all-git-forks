@@ -68,7 +68,10 @@ const char *git_pager(int stdout_is_tty)
 
 static void setup_pager_env(struct argv_array *env)
 {
-	const char *pager_env = stringify(PAGER_ENV);
+	const char *pager_env;
+
+	if (git_config_get_value("core.pagerenv", &pager_env))
+		pager_env = stringify(PAGER_ENV);
 
 	while (*pager_env) {
 		struct strbuf buf = STRBUF_INIT;
