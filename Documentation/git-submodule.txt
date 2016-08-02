@@ -34,8 +34,8 @@ interfere with the history of the current repository. This can be used to
 have external dependencies such as third party libraries for example.
 
 When cloning or pulling a repository containing submodules however,
-these will not be checked out by default; the 'init' and 'update'
-subcommands will maintain submodules checked out and at
+these will not be checked out by default; the 'update'
+subcommand will maintain submodules checked out and at
 appropriate revision in your working tree.
 
 Submodules are composed from a so-called `gitlink` tree entry
