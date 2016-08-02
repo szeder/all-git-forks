@@ -118,6 +118,28 @@ test_expect_success 'Store files in Mock LFS based on extension (dat)' '
 	)
 '
 
+test_expect_success 'Store files in Mock LFS based on file glob pattern' '
+	client_view "//depot/... //client/..." &&
+	test_when_finished cleanup_git &&
+	(
+		cd "$git" &&
+		git init . &&
+		git config git-p4.useClientSpec true &&
+		git config git-p4.largeFileSystem MockLFS &&
+		git config git-p4.largeFileGlob "*[0-9].bin" &&
+		git config git-p4.largeFilePush True &&
+		git p4 clone --destination="$git" //depot@all &&
+
+		test_file_is_not_in_mock_lfs file1.txt "content 1 txt 23 bytes" &&
+		test_file_is_not_in_mock_lfs file2.dat "content 2-3 bin 25 bytes" &&
+		test_file_is_in_mock_lfs "path with spaces/file3.bin" "content 2-3 bin 25 bytes" &&
+		test_file_is_in_mock_lfs file4.bin "content 4 bin 26 bytes XX" &&
+
+		test_file_count_in_dir ".git/mock-storage/local" 2 &&
+		test_file_count_in_dir ".git/mock-storage/remote" 2
+	)
+'
+
 test_expect_success 'Store files in Mock LFS based on extension (dat) and use git p4 sync and no client spec' '
 	test_when_finished cleanup_git &&
 	(

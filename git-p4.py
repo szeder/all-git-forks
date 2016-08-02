@@ -25,6 +25,7 @@ import stat
 import zipfile
 import zlib
 import ctypes
+import fnmatch
 
 try:
     from subprocess import CalledProcessError
@@ -955,6 +956,13 @@ class LargeFileSystem(object):
            a server."""
         assert False, "Method 'pushFile' required in " + self.__class__.__name__
 
+    def matchesLargeFileGlob(self, relPath):
+        return reduce(
+            lambda a, b: a or b,
+            [fnmatch.fnmatch(relPath, e) for e in gitConfigList('git-p4.largeFileGlob')],
+            False
+        )
+
     def hasLargeFileExtension(self, relPath):
         return reduce(
             lambda a, b: a or b,
@@ -1003,7 +1011,9 @@ class LargeFileSystem(object):
         """Processes the content of git fast import. This method decides if a
            file is stored in the large file system and handles all necessary
            steps."""
-        if self.exceedsLargeFileThreshold(relPath, contents) or self.hasLargeFileExtension(relPath):
+        if self.exceedsLargeFileThreshold(relPath, contents) or \
+           self.hasLargeFileExtension(relPath) or \
+           self.matchesLargeFileGlob(relPath):
             contentTempFile = self.generateTempFile(contents)
             (git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
 
@@ -1103,11 +1113,15 @@ class GitLFS(LargeFileSystem):
                 '# Git LFS (see https://git-lfs.github.com/)\n',
                 '#\n',
             ] +
+            [f + ' filter=lfs diff=lfs merge=lfs -text\n'
+                for f in sorted(gitConfigList('git-p4.largeFileGlob'))
+            ] +
             ['*.' + self.escapeGitAttributePath(f) + ' filter=lfs diff=lfs merge=lfs -text\n'
                 for f in sorted(gitConfigList('git-p4.largeFileExtensions'))
             ] +
             ['/' + self.escapeGitAttributePath(f) + ' filter=lfs diff=lfs merge=lfs -text\n'
-                for f in sorted(self.largeFiles) if not self.hasLargeFileExtension(f)
+                for f in sorted(self.largeFiles)
+                    if not (self.hasLargeFileExtension(f) or self.matchesLargeFileGlob(f))
             ]
         )
 
