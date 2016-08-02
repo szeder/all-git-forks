@@ -684,7 +684,6 @@ __git_list_porcelain_commands ()
 		for-each-ref)     : plumbing;;
 		hash-object)      : plumbing;;
 		http-*)           : transport;;
-		index-helper)     : plumbing;;
 		index-pack)       : plumbing;;
 		init-db)          : deprecated;;
 		local-fetch)      : plumbing;;
@@ -1137,8 +1136,6 @@ _git_clone ()
 			--depth
 			--single-branch
 			--branch
-			--recurse-submodules
-			--init-submodule
 			"
 		return
 		;;

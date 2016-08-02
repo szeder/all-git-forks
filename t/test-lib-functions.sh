@@ -186,10 +186,6 @@ test_commit () {
 		test_tick
 	fi &&
 	git commit $signoff -m "$1" &&
-	if [ "$(git config core.bare)" = false ]
-	then
-	    git update-index --force-untracked-cache
-	fi
 	git tag "${4:-$1}"
 }
 
@@ -715,17 +711,11 @@ test_must_be_empty () {
 	fi
 }
 
-# Tests that the first parameter refers to the same revision
-# of at least one other parameter
+# Tests that its two parameters refer to the same revision
 test_cmp_rev () {
-	hash1="$(git rev-parse --verify "$1")" || return
-	shift
-	for rev
-	do
-		hash2="$(git rev-parse --verify "$rev")" || return
-		test "$hash1" = "$hash2" && return 0
-	done
-	return 1
+	git rev-parse --verify "$1" >expect.rev &&
+	git rev-parse --verify "$2" >actual.rev &&
+	test_cmp expect.rev actual.rev
 }
 
 # Print a sequence of integers in increasing order, either with

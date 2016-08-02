@@ -31,7 +31,7 @@ test_expect_success 'reset --merge is ok with changes in file it does not touch'
     git reset --merge HEAD^ &&
     ! grep 4 file1 &&
     grep 4 file2 &&
-    test_cmp_rev HEAD initial &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse initial)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -39,7 +39,7 @@ test_expect_success 'reset --merge is ok when switching back' '
     git reset --merge second &&
     grep 4 file1 &&
     grep 4 file2 &&
-    test_cmp_rev HEAD second &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse second)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -55,7 +55,7 @@ test_expect_success 'reset --keep is ok with changes in file it does not touch' 
     git reset --keep HEAD^ &&
     ! grep 4 file1 &&
     grep 4 file2 &&
-    test_cmp_rev HEAD initial &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse initial)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -63,7 +63,7 @@ test_expect_success 'reset --keep is ok when switching back' '
     git reset --keep second &&
     grep 4 file1 &&
     grep 4 file2 &&
-    test_cmp_rev HEAD second &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse second)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -82,7 +82,7 @@ test_expect_success 'reset --merge discards changes added to index (1)' '
     ! grep 4 file1 &&
     ! grep 5 file1 &&
     grep 4 file2 &&
-    test_cmp_rev HEAD initial &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse initial)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -94,7 +94,7 @@ test_expect_success 'reset --merge is ok again when switching back (1)' '
     ! grep 4 file2 &&
     ! grep 5 file1 &&
     grep 4 file1 &&
-    test_cmp_rev HEAD second &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse second)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -122,7 +122,7 @@ test_expect_success 'reset --merge discards changes added to index (2)' '
     git add file2 &&
     git reset --merge HEAD^ &&
     ! grep 4 file2 &&
-    test_cmp_rev HEAD initial &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse initial)" &&
     test -z "$(git diff)" &&
     test -z "$(git diff --cached)"
 '
@@ -132,7 +132,7 @@ test_expect_success 'reset --merge is ok again when switching back (2)' '
     git reset --merge second &&
     ! grep 4 file2 &&
     grep 4 file1 &&
-    test_cmp_rev HEAD second &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse second)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -148,7 +148,7 @@ test_expect_success 'reset --keep keeps changes it does not touch' '
     git add file2 &&
     git reset --keep HEAD^ &&
     grep 4 file2 &&
-    test_cmp_rev HEAD initial &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse initial)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -156,7 +156,7 @@ test_expect_success 'reset --keep keeps changes when switching back' '
     git reset --keep second &&
     grep 4 file2 &&
     grep 4 file1 &&
-    test_cmp_rev HEAD second &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse second)" &&
     test -z "$(git diff --cached)"
 '
 
@@ -223,7 +223,7 @@ test_expect_success '"reset --merge HEAD^" is ok with pending merge' '
     git checkout third &&
     test_must_fail git merge branch1 &&
     git reset --merge HEAD^ &&
-    test_cmp_rev HEAD second &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse second)" &&
     test -z "$(git diff --cached)" &&
     test -z "$(git diff)"
 '
@@ -249,7 +249,7 @@ test_expect_success '"reset --merge HEAD" is ok with pending merge' '
     git reset --hard third &&
     test_must_fail git merge branch1 &&
     git reset --merge HEAD &&
-    test_cmp_rev HEAD third &&
+    test "$(git rev-parse HEAD)" = "$(git rev-parse third)" &&
     test -z "$(git diff --cached)" &&
     test -z "$(git diff)"
 '

@@ -28,7 +28,22 @@
 #include "rerere.h"
 #include "prompt.h"
 #include "mailinfo.h"
-#include "apply.h"
+
+/**
+ * Returns 1 if the file is empty or does not exist, 0 otherwise.
+ */
+static int is_empty_file(const char *filename)
+{
+	struct stat st;
+
+	if (stat(filename, &st) < 0) {
+		if (errno == ENOENT)
+			return 1;
+		die_errno(_("could not stat %s"), filename);
+	}
+
+	return !st.st_size;
+}
 
 /**
  * Returns the length of the first line of msg.
@@ -1309,7 +1324,7 @@ static int parse_mail(struct am_state *state, const char *mail)
 		goto finish;
 	}
 
-	if (is_empty_or_missing_file(am_path(state, "patch"))) {
+	if (is_empty_file(am_path(state, "patch"))) {
 		printf_ln(_("Patch is empty. Was it split wrong?"));
 		die_user_resolve(state);
 	}
@@ -1507,93 +1522,39 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
  */
 static int run_apply(const struct am_state *state, const char *index_file)
 {
-	struct argv_array apply_paths = ARGV_ARRAY_INIT;
-	struct argv_array apply_opts = ARGV_ARRAY_INIT;
-	struct apply_state apply_state;
-	int res, opts_left;
-	char *save_index_file;
-	static struct lock_file lock_file;
+	struct child_process cp = CHILD_PROCESS_INIT;
 
-	struct option am_apply_options[] = {
-		{ OPTION_CALLBACK, 0, "whitespace", &apply_state, N_("action"),
-			N_("detect new or modified lines that have whitespace errors"),
-			0, apply_option_parse_whitespace },
-		{ OPTION_CALLBACK, 0, "ignore-space-change", &apply_state, NULL,
-			N_("ignore changes in whitespace when finding context"),
-			PARSE_OPT_NOARG, apply_option_parse_space_change },
-		{ OPTION_CALLBACK, 0, "ignore-whitespace", &apply_state, NULL,
-			N_("ignore changes in whitespace when finding context"),
-			PARSE_OPT_NOARG, apply_option_parse_space_change },
-		{ OPTION_CALLBACK, 0, "directory", &apply_state, N_("root"),
-			N_("prepend <root> to all filenames"),
-			0, apply_option_parse_directory },
-		{ OPTION_CALLBACK, 0, "exclude", &apply_state, N_("path"),
-			N_("don't apply changes matching the given path"),
-			0, apply_option_parse_exclude },
-		{ OPTION_CALLBACK, 0, "include", &apply_state, N_("path"),
-			N_("apply changes matching the given path"),
-			0, apply_option_parse_include },
-		OPT_INTEGER('C', NULL, &apply_state.p_context,
-				N_("ensure at least <n> lines of context match")),
-		{ OPTION_CALLBACK, 'p', NULL, &apply_state, N_("num"),
-			N_("remove <num> leading slashes from traditional diff paths"),
-			0, apply_option_parse_p },
-		OPT_BOOL(0, "reject", &apply_state.apply_with_reject,
-			N_("leave the rejected hunks in corresponding *.rej files")),
-		OPT_END()
-	};
-
-	if (index_file) {
-		save_index_file = get_index_file();
-		set_index_file((char *)index_file);
-	}
-
-	if (init_apply_state(&apply_state, NULL, &lock_file))
-		die("init_apply_state() failed");
-
-	argv_array_push(&apply_opts, "apply");
-	argv_array_pushv(&apply_opts, state->git_apply_opts.argv);
-
-	opts_left = parse_options(apply_opts.argc, apply_opts.argv,
-				  NULL, am_apply_options, NULL, 0);
-
-	if (opts_left != 0)
-		die("unknown option passed thru to git apply");
+	cp.git_cmd = 1;
 
 	if (index_file)
-		apply_state.cached = 1;
-	else
-		apply_state.check_index = 1;
+		argv_array_pushf(&cp.env_array, "GIT_INDEX_FILE=%s", index_file);
 
 	/*
 	 * If we are allowed to fall back on 3-way merge, don't give false
 	 * errors during the initial attempt.
 	 */
-	if (state->threeway && !index_file)
-		apply_state.be_silent = 1;
+	if (state->threeway && !index_file) {
+		cp.no_stdout = 1;
+		cp.no_stderr = 1;
+	}
 
-	if (check_apply_state(&apply_state, 0))
-		die("check_apply_state() failed");
+	argv_array_push(&cp.args, "apply");
 
-	argv_array_push(&apply_paths, am_path(state, "patch"));
-
-	res = apply_all_patches(&apply_state, apply_paths.argc, apply_paths.argv, 0);
+	argv_array_pushv(&cp.args, state->git_apply_opts.argv);
 
 	if (index_file)
-		set_index_file(save_index_file);
+		argv_array_push(&cp.args, "--cached");
+	else
+		argv_array_push(&cp.args, "--index");
 
-	argv_array_clear(&apply_paths);
-	argv_array_clear(&apply_opts);
-	clear_apply_state(&apply_state);
+	argv_array_push(&cp.args, am_path(state, "patch"));
 
-	if (res)
-		return res;
+	if (run_command(&cp))
+		return -1;
 
-	if (index_file) {
-		/* Reload index as apply_all_patches() will have modified it. */
-		discard_cache();
-		read_cache_from(index_file);
-	}
+	/* Reload index as git-apply will have modified it. */
+	discard_cache();
+	read_cache_from(index_file ? index_file : get_index_file());
 
 	return 0;
 }
@@ -1618,18 +1579,47 @@ static int build_fake_ancestor(const struct am_state *state, const char *index_f
 }
 
 /**
+ * Do the three-way merge using fake ancestor, their tree constructed
+ * from the fake ancestor and the postimage of the patch, and our
+ * state.
+ */
+static int run_fallback_merge_recursive(const struct am_state *state,
+					unsigned char *orig_tree,
+					unsigned char *our_tree,
+					unsigned char *their_tree)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	int status;
+
+	cp.git_cmd = 1;
+
+	argv_array_pushf(&cp.env_array, "GITHEAD_%s=%.*s",
+			 sha1_to_hex(their_tree), linelen(state->msg), state->msg);
+	if (state->quiet)
+		argv_array_push(&cp.env_array, "GIT_MERGE_VERBOSITY=0");
+
+	argv_array_push(&cp.args, "merge-recursive");
+	argv_array_push(&cp.args, sha1_to_hex(orig_tree));
+	argv_array_push(&cp.args, "--");
+	argv_array_push(&cp.args, sha1_to_hex(our_tree));
+	argv_array_push(&cp.args, sha1_to_hex(their_tree));
+
+	status = run_command(&cp) ? (-1) : 0;
+	discard_cache();
+	read_cache();
+	return status;
+}
+
+/**
  * Attempt a threeway merge, using index_path as the temporary index.
  */
 static int fall_back_threeway(const struct am_state *state, const char *index_path)
 {
-	struct object_id orig_tree, their_tree, our_tree;
-	const struct object_id *bases[1] = { &orig_tree };
-	struct merge_options o;
-	struct commit *result;
-	char *their_tree_name;
+	unsigned char orig_tree[GIT_SHA1_RAWSZ], their_tree[GIT_SHA1_RAWSZ],
+		      our_tree[GIT_SHA1_RAWSZ];
 
-	if (get_oid("HEAD", &our_tree) < 0)
-		hashcpy(our_tree.hash, EMPTY_TREE_SHA1_BIN);
+	if (get_sha1("HEAD", our_tree) < 0)
+		hashcpy(our_tree, EMPTY_TREE_SHA1_BIN);
 
 	if (build_fake_ancestor(state, index_path))
 		return error("could not build fake ancestor");
@@ -1637,7 +1627,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 	discard_cache();
 	read_cache_from(index_path);
 
-	if (write_index_as_tree(orig_tree.hash, &the_index, index_path, 0, NULL))
+	if (write_index_as_tree(orig_tree, &the_index, index_path, 0, NULL))
 		return error(_("Repository lacks necessary blobs to fall back on 3-way merge."));
 
 	say(state, stdout, _("Using index info to reconstruct a base tree..."));
@@ -1653,7 +1643,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 		init_revisions(&rev_info, NULL);
 		rev_info.diffopt.output_format = DIFF_FORMAT_NAME_STATUS;
 		diff_opt_parse(&rev_info.diffopt, &diff_filter_str, 1, rev_info.prefix);
-		add_pending_sha1(&rev_info, "HEAD", our_tree.hash, 0);
+		add_pending_sha1(&rev_info, "HEAD", our_tree, 0);
 		diff_setup_done(&rev_info.diffopt);
 		run_diff_index(&rev_info, 1);
 	}
@@ -1662,7 +1652,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 		return error(_("Did you hand edit your patch?\n"
 				"It does not apply to blobs recorded in its index."));
 
-	if (write_index_as_tree(their_tree.hash, &the_index, index_path, 0, NULL))
+	if (write_index_as_tree(their_tree, &the_index, index_path, 0, NULL))
 		return error("could not write tree");
 
 	say(state, stdout, _("Falling back to patching base and 3-way merge..."));
@@ -1678,22 +1668,11 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 	 * changes.
 	 */
 
-	init_merge_options(&o);
-
-	o.branch1 = "HEAD";
-	their_tree_name = xstrfmt("%.*s", linelen(state->msg), state->msg);
-	o.branch2 = their_tree_name;
-
-	if (state->quiet)
-		o.verbosity = 0;
-
-	if (merge_recursive_generic(&o, &our_tree, &their_tree, 1, bases, &result)) {
+	if (run_fallback_merge_recursive(state, orig_tree, our_tree, their_tree)) {
 		rerere(state->allow_rerere_autoupdate);
-		free(their_tree_name);
 		return error(_("Failed to merge in the changes."));
 	}
 
-	free(their_tree_name);
 	return 0;
 }
 
@@ -1933,7 +1912,7 @@ next:
 		resume = 0;
 	}
 
-	if (!is_empty_or_missing_file(am_path(state, "rewritten"))) {
+	if (!is_empty_file(am_path(state, "rewritten"))) {
 		assert(state->rebasing);
 		copy_notes_for_rebase(state);
 		run_post_rewrite_hook(state);

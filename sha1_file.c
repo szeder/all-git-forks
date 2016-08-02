@@ -795,7 +795,7 @@ void close_all_packs(void)
 
 	for (p = packed_git; p; p = p->next)
 		if (p->do_not_close)
-			die("BUG: want to close pack marked 'do-not-close'");
+			die("BUG! Want to close pack marked 'do-not-close'");
 		else
 			close_pack(p);
 }
@@ -1224,9 +1224,7 @@ void (*report_garbage)(unsigned seen_bits, const char *path);
 static void report_helper(const struct string_list *list,
 			  int seen_bits, int first, int last)
 {
-	static const int pack_and_index = PACKDIR_FILE_PACK|PACKDIR_FILE_IDX;
-
-	if ((seen_bits & pack_and_index) == pack_and_index)
+	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX))
 		return;
 
 	for (; first < last; first++)
@@ -1260,13 +1258,9 @@ static void report_pack_garbage(struct string_list *list)
 			first = i;
 		}
 		if (!strcmp(path + baselen, "pack"))
-			seen_bits |= PACKDIR_FILE_PACK;
+			seen_bits |= 1;
 		else if (!strcmp(path + baselen, "idx"))
-			seen_bits |= PACKDIR_FILE_IDX;
-		else if (!strcmp(path + baselen, "bitmap"))
-			seen_bits |= PACKDIR_FILE_BITMAP;
-		else if (!strcmp(path + baselen, "keep"))
-			seen_bits |= PACKDIR_FILE_KEEP;
+			seen_bits |= 2;
 	}
 	report_helper(list, seen_bits, first, list->nr);
 }
@@ -2336,7 +2330,7 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 	case OBJ_OFS_DELTA:
 	case OBJ_REF_DELTA:
 		if (data)
-			die("BUG: unpack_entry: left loop at a valid delta");
+			die("BUG in unpack_entry: left loop at a valid delta");
 		break;
 	case OBJ_COMMIT:
 	case OBJ_TREE:
@@ -3335,29 +3329,6 @@ static int index_stream_convert_blob(unsigned char *sha1, int fd,
 	return ret;
 }
 
-static int index_from_file_convert_blob(unsigned char *sha1,
-				      const char *path, unsigned flags)
-{
-	int ret;
-	const int write_object = flags & HASH_WRITE_OBJECT;
-	struct strbuf sbuf = STRBUF_INIT;
-
-	assert(path);
-	assert(can_clean_from_file(path));
-
-	convert_to_git_filter_from_file(path, &sbuf,
-				 write_object ? safe_crlf : SAFE_CRLF_FALSE);
-
-	if (write_object)
-		ret = write_sha1_file(sbuf.buf, sbuf.len, typename(OBJ_BLOB),
-				      sha1);
-	else
-		ret = hash_sha1_file(sbuf.buf, sbuf.len, typename(OBJ_BLOB),
-				     sha1);
-	strbuf_release(&sbuf);
-	return ret;
-}
-
 static int index_pipe(unsigned char *sha1, int fd, enum object_type type,
 		      const char *path, unsigned flags)
 {
@@ -3450,19 +3421,12 @@ int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned 
 
 	switch (st->st_mode & S_IFMT) {
 	case S_IFREG:
-		if (can_clean_from_file(path)) {
-			if (index_from_file_convert_blob(sha1, path, flags) < 0)
-				return error("%s: failed to insert into database",
-					     path);
-		}
-		else {
-			fd = open(path, O_RDONLY);
-			if (fd < 0)
-				return error_errno("open(\"%s\")", path);
-			if (index_fd(sha1, fd, st, OBJ_BLOB, path, flags) < 0)
-				return error("%s: failed to insert into database",
-					     path);
-		}
+		fd = open(path, O_RDONLY);
+		if (fd < 0)
+			return error_errno("open(\"%s\")", path);
+		if (index_fd(sha1, fd, st, OBJ_BLOB, path, flags) < 0)
+			return error("%s: failed to insert into database",
+				     path);
 		break;
 	case S_IFLNK:
 		if (strbuf_readlink(&sb, path, st->st_size))

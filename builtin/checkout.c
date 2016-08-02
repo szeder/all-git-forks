@@ -567,13 +567,10 @@ static int merge_working_tree(const struct checkout_opts *opts,
 			o.ancestor = old->name;
 			o.branch1 = new->name;
 			o.branch2 = "local";
-			ret = merge_trees(&o, new->commit->tree, work,
+			merge_trees(&o, new->commit->tree, work,
 				old->commit->tree, &result);
-			if (ret < 0)
-				exit(128);
 			ret = reset_tree(new->commit->tree, opts, 0,
 					 writeout_error);
-			strbuf_release(&o.obuf);
 			if (ret)
 				return ret;
 		}

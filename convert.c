@@ -358,8 +358,7 @@ struct filter_params {
 	unsigned long size;
 	int fd;
 	const char *cmd;
-	const char *path; /* Path within the git repository */
-	const char *fspath; /* Path to file on disk */
+	const char *path;
 };
 
 static int filter_buffer_or_fd(int in, int out, void *data)
@@ -387,15 +386,6 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	/* expand all %f with the quoted path */
 	strbuf_expand(&cmd, params->cmd, strbuf_expand_dict_cb, &dict);
 	strbuf_release(&path);
-
-	/* append fspath to the command if it's set, separated with a space */
-	if (params->fspath) {
-		struct strbuf fspath = STRBUF_INIT;
-		sq_quote_buf(&fspath, params->fspath);
-		strbuf_addstr(&cmd, " ");
-		strbuf_addbuf(&cmd, &fspath);
-		strbuf_release(&fspath);
-	}
 
 	argv[0] = cmd.buf;
 
@@ -435,8 +425,7 @@ static int filter_buffer_or_fd(int in, int out, void *data)
 	return (write_err || status);
 }
 
-static int apply_filter(const char *path, const char *fspath,
-			const char *src, size_t len, int fd,
+static int apply_filter(const char *path, const char *src, size_t len, int fd,
                         struct strbuf *dst, const char *cmd)
 {
 	/*
@@ -465,7 +454,6 @@ static int apply_filter(const char *path, const char *fspath,
 	params.fd = fd;
 	params.cmd = cmd;
 	params.path = path;
-	params.fspath = fspath;
 
 	fflush(NULL);
 	if (start_async(&async))
@@ -496,8 +484,6 @@ static struct convert_driver {
 	struct convert_driver *next;
 	const char *smudge;
 	const char *clean;
-	const char *smudge_to_file;
-	const char *clean_from_file;
 	int required;
 } *user_convert, **user_convert_tail;
 
@@ -524,9 +510,8 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 	}
 
 	/*
-	 * filter.<name>.smudge, filter.<name>.clean,
-	 * filter.<name>.smudgeToFile, filter.<name>.cleanFromFile
-	 * specifies the command line:
+	 * filter.<name>.smudge and filter.<name>.clean specifies
+	 * the command line:
 	 *
 	 *	command-line
 	 *
@@ -538,12 +523,6 @@ static int read_convert_config(const char *var, const char *value, void *cb)
 
 	if (!strcmp("clean", key))
 		return git_config_string(&drv->clean, var, value);
-
-	if (!strcmp("smudgetofile", key))
-		return git_config_string(&drv->smudge_to_file, var, value);
-
-	if (!strcmp("cleanfromfile", key))
-		return git_config_string(&drv->clean_from_file, var, value);
 
 	if (!strcmp("required", key)) {
 		drv->required = git_config_bool(var, value);
@@ -722,7 +701,7 @@ static int ident_to_worktree(const char *path, const char *src, size_t len,
 	return 1;
 }
 
-static enum crlf_action git_path_check_crlf(struct git_attr_check_elem *check)
+static enum crlf_action git_path_check_crlf(struct git_attr_check *check)
 {
 	const char *value = check->value;
 
@@ -739,7 +718,7 @@ static enum crlf_action git_path_check_crlf(struct git_attr_check_elem *check)
 	return CRLF_UNDEFINED;
 }
 
-static enum eol git_path_check_eol(struct git_attr_check_elem *check)
+static enum eol git_path_check_eol(struct git_attr_check *check)
 {
 	const char *value = check->value;
 
@@ -752,7 +731,7 @@ static enum eol git_path_check_eol(struct git_attr_check_elem *check)
 	return EOL_UNSET;
 }
 
-static struct convert_driver *git_path_check_convert(struct git_attr_check_elem *check)
+static struct convert_driver *git_path_check_convert(struct git_attr_check *check)
 {
 	const char *value = check->value;
 	struct convert_driver *drv;
@@ -765,7 +744,7 @@ static struct convert_driver *git_path_check_convert(struct git_attr_check_elem 
 	return NULL;
 }
 
-static int git_path_check_ident(struct git_attr_check_elem *check)
+static int git_path_check_ident(struct git_attr_check *check)
 {
 	const char *value = check->value;
 
@@ -779,20 +758,24 @@ struct conv_attrs {
 	int ident;
 };
 
+static const char *conv_attr_name[] = {
+	"crlf", "ident", "filter", "eol", "text",
+};
+#define NUM_CONV_ATTRS ARRAY_SIZE(conv_attr_name)
+
 static void convert_attrs(struct conv_attrs *ca, const char *path)
 {
-	static struct git_attr_check *check;
+	int i;
+	static struct git_attr_check ccheck[NUM_CONV_ATTRS];
 
-	if (!check) {
-		check = git_attr_check_initl("crlf", "ident",
-					     "filter", "eol", "text",
-					     NULL);
+	if (!ccheck[0].attr) {
+		for (i = 0; i < NUM_CONV_ATTRS; i++)
+			ccheck[i].attr = git_attr(conv_attr_name[i]);
 		user_convert_tail = &user_convert;
 		git_config(read_convert_config, NULL);
 	}
 
-	if (!git_check_attr(path, check)) {
-		struct git_attr_check_elem *ccheck = check->check;
+	if (!git_check_attr(path, NUM_CONV_ATTRS, ccheck)) {
 		ca->crlf_action = git_path_check_crlf(ccheck + 4);
 		if (ca->crlf_action == CRLF_UNDEFINED)
 			ca->crlf_action = git_path_check_crlf(ccheck + 0);
@@ -842,53 +825,7 @@ int would_convert_to_git_filter_fd(const char *path)
 	if (!ca.drv->required)
 		return 0;
 
-	return apply_filter(path, NULL, NULL, 0, -1, NULL, ca.drv->clean);
-}
-
-static int can_filter_file(const char *filefilter, const char *filefiltername,
-			   const char *stdiofilter, const char *stdiofiltername,
-			   const struct conv_attrs *ca,
-			   int *warncount)
-{
-	if (!filefilter)
-		return 0;
-
-	if (stdiofilter)
-		return 1;
-
-	if (*warncount == 0)
-		warning("Not running your configured filter.%s.%s command, because filter.%s.%s is not configured",
-			ca->drv->name, filefiltername,
-			ca->drv->name, stdiofiltername);
-		*warncount=*warncount+1;
-
-	return 0;
-}
-
-int can_clean_from_file(const char *path)
-{
-	struct conv_attrs ca;
-	static int warncount = 0;
-
-	convert_attrs(&ca, path);
-	if (!ca.drv)
-		return 0;
-
-	return can_filter_file(ca.drv->clean_from_file, "cleanFromFile",
-			       ca.drv->clean, "clean", &ca, &warncount);
-}
-
-int can_smudge_to_file(const char *path)
-{
-	struct conv_attrs ca;
-	static int warncount = 0;
-
-	convert_attrs(&ca, path);
-	if (!ca.drv)
-		return 0;
-
-	return can_filter_file(ca.drv->smudge_to_file, "smudgeToFile",
-			       ca.drv->smudge, "smudge", &ca, &warncount);
+	return apply_filter(path, NULL, 0, -1, NULL, ca.drv->clean);
 }
 
 const char *get_convert_attr_ascii(const char *path)
@@ -931,7 +868,7 @@ int convert_to_git(const char *path, const char *src, size_t len,
 		required = ca.drv->required;
 	}
 
-	ret |= apply_filter(path, NULL, src, len, -1, dst, filter);
+	ret |= apply_filter(path, src, len, -1, dst, filter);
 	if (!ret && required)
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
@@ -956,34 +893,14 @@ void convert_to_git_filter_fd(const char *path, int fd, struct strbuf *dst,
 	assert(ca.drv);
 	assert(ca.drv->clean);
 
-	if (!apply_filter(path, NULL, NULL, 0, fd, dst, ca.drv->clean))
+	if (!apply_filter(path, NULL, 0, fd, dst, ca.drv->clean))
 		die("%s: clean filter '%s' failed", path, ca.drv->name);
 
 	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action, checksafe);
 	ident_to_git(path, dst->buf, dst->len, dst, ca.ident);
 }
 
-void convert_to_git_filter_from_file(const char *path, struct strbuf *dst,
-				   enum safe_crlf checksafe)
-{
-	struct conv_attrs ca;
-	convert_attrs(&ca, path);
-
-	assert(ca.drv);
-	assert(ca.drv->clean);
-	assert(ca.drv->clean_from_file);
-
-	if (!apply_filter(path, path, "", 0, -1, dst, ca.drv->clean_from_file))
-		die("%s: cleanFromFile filter '%s' failed", path, ca.drv->name);
-
-	crlf_to_git(path, dst->buf, dst->len, dst, ca.crlf_action,
-		checksafe);
-	ident_to_git(path, dst->buf, dst->len, dst, ca.ident);
-}
-
-static int convert_to_working_tree_internal(const char *path,
-					    const char *destpath,
-					    const char *src,
+static int convert_to_working_tree_internal(const char *path, const char *src,
 					    size_t len, struct strbuf *dst,
 					    int normalizing)
 {
@@ -994,10 +911,7 @@ static int convert_to_working_tree_internal(const char *path,
 
 	convert_attrs(&ca, path);
 	if (ca.drv) {
-		if (destpath)
-			filter = ca.drv->smudge_to_file;
-		else
-			filter = ca.drv->smudge;
+		filter = ca.drv->smudge;
 		required = ca.drv->required;
 	}
 
@@ -1008,7 +922,7 @@ static int convert_to_working_tree_internal(const char *path,
 	}
 	/*
 	 * CRLF conversion can be skipped if normalizing, unless there
-	 * is a filter.  The filter might expect CRLFs.
+	 * is a smudge filter.  The filter might expect CRLFs.
 	 */
 	if (filter || !normalizing) {
 		ret |= crlf_to_worktree(path, src, len, dst, ca.crlf_action);
@@ -1018,51 +932,21 @@ static int convert_to_working_tree_internal(const char *path,
 		}
 	}
 
-	ret_filter = apply_filter(path, destpath, src, len, -1, dst, filter);
+	ret_filter = apply_filter(path, src, len, -1, dst, filter);
 	if (!ret_filter && required)
-		die("%s: %s filter %s failed", path, destpath ? "smudgeToFile" : "smudge", ca.drv->name);
+		die("%s: smudge filter %s failed", path, ca.drv->name);
 
 	return ret | ret_filter;
 }
 
 int convert_to_working_tree(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	return convert_to_working_tree_internal(path, NULL, src, len, dst, 0);
-}
-
-/*
- * Returns fd open to read the worktree file on success.
- * On failure, the worktree file will not exist.
- */
-int convert_to_working_tree_filter_to_file(const char *path, const char *destpath, const char *src, size_t len)
-{
-	struct strbuf output = STRBUF_INIT;
-	int ok = convert_to_working_tree_internal(path, destpath, src, len, &output, 0);
-	/* The smudgeToFile filter stdout is not used. */
-	strbuf_release(&output);
-	if (ok) {
-		/*
-		 * Open the file to make sure that it's present
-		 * (and readable) after the command populated it.
-		 */
-		int fd = open(path, O_RDONLY);
-		if (fd < 0)
-			unlink(path);
-		return fd;
-	}
-	else {
-		/*
-		 * The command could have created the file before failing,
-		 * so delete it.
-		 */
-		unlink(path);
-		return -1;
-	}
+	return convert_to_working_tree_internal(path, src, len, dst, 0);
 }
 
 int renormalize_buffer(const char *path, const char *src, size_t len, struct strbuf *dst)
 {
-	int ret = convert_to_working_tree_internal(path, NULL, src, len, dst, 1);
+	int ret = convert_to_working_tree_internal(path, src, len, dst, 1);
 	if (ret) {
 		src = dst->buf;
 		len = dst->len;

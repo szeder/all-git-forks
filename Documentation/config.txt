@@ -1340,28 +1340,14 @@ format.useAutoBase::
 	format-patch by default.
 
 filter.<driver>.clean::
-	The command which is used as a filter to convert the content of a worktree
+	The command which is used to convert the content of a worktree
 	file to a blob upon checkin.  See linkgit:gitattributes[5] for
 	details.
 
 filter.<driver>.smudge::
-	The command which is used as a filter to convert the content of a blob
+	The command which is used to convert the content of a blob
 	object to a worktree file upon checkout.  See
 	linkgit:gitattributes[5] for details.
-
-filter.<driver>.cleanFromFile::
-	Similar to filter.<driver>.clean but the specified command
-	directly accesses a worktree file on disk, rather than
-	receiving the file content from standard input.
-	Only used when filter.<driver>.clean is also configured.
-	See linkgit:gitattributes[5] for details.
-
-filter.<driver>.smudgeToFile::
-	Similar to filter.<driver>.smudge but the specified command
-	writes the content of a blob directly to a worktree file,
-	rather than to standard output.
-	Only used when filter.<driver>.smudge is also configured.
-	See linkgit:gitattributes[5] for details.
 
 fsck.<msg-id>::
 	Allows overriding the message type (error, warn or ignore) of a
@@ -1950,21 +1936,9 @@ imap::
 	The configuration variables in the 'imap' section are described
 	in linkgit:git-imap-send[1].
 
-index.addwatchmanextension::
-	Automatically add the watchman extension to the index whenever
-	it is written.
-
 index.version::
 	Specify the version with which new index files should be
 	initialized.  This does not affect existing repositories.
-
-indexhelper.autorun::
-	Automatically run git index-helper when any builtin git
-	command is run inside a repository.
-
-indexhelper.exitAfter::
-	When no exit-after argument is given, git index-helper defaults
-	to this number of seconds. Specify 0 to wait forever. Default is 600.
 
 init.templateDir::
 	Specify the directory from which templates will be copied.
@@ -2468,13 +2442,8 @@ rebase.instructionFormat
 
 receive.advertiseAtomic::
 	By default, git-receive-pack will advertise the atomic push
-	capability to its clients. If you don't want to advertise this
-	capability, set this variable to false.
-
-receive.advertisePushOptions::
-	By default, git-receive-pack will advertise the push options
-	capability to its clients. If you don't want to advertise this
-	capability, set this variable to false.
+	capability to its clients. If you don't want to this capability
+	to be advertised, set this variable to false.
 
 receive.autogc::
 	By default, git-receive-pack will run "git-gc --auto" after
@@ -2528,15 +2497,6 @@ receive.fsck.skipList::
 	should be accepted despite early commits containing errors that
 	can be safely ignored such as invalid committer email addresses.
 	Note: corrupt objects cannot be skipped with this setting.
-
-receive.keepAlive::
-	After receiving the pack from the client, `receive-pack` may
-	produce no output (if `--quiet` was specified) while processing
-	the pack, causing some networks to drop the TCP connection.
-	With this option set, if `receive-pack` does not transmit
-	any data in this phase for `receive.keepAlive` seconds, it will
-	send a short keepalive packet.  The default is 5 seconds; set
-	to 0 to disable keepalives entirely.
 
 receive.unpackLimit::
 	If the number of objects received in a push is below this
@@ -2877,11 +2837,6 @@ submodule.fetchJobs::
 	A positive integer allows up to that number of submodules fetched
 	in parallel. A value of 0 will give some reasonable default.
 	If unset, it defaults to 1.
-
-submodule.defaultUpdatePath::
-	Specifies a set of submodules to initialize when calling
-	`git submodule --init-default-group` by using the pathspec
-	syntax.
 
 tag.forceSignAnnotated::
 	A boolean to specify whether annotated tags created should be GPG signed.

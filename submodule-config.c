@@ -371,9 +371,9 @@ static int parse_config(const char *var, const char *value, void *data)
 }
 
 static int gitmodule_sha1_from_commit(const unsigned char *commit_sha1,
-				      unsigned char *gitmodules_sha1,
-				      struct strbuf *rev)
+				      unsigned char *gitmodules_sha1)
 {
+	struct strbuf rev = STRBUF_INIT;
 	int ret = 0;
 
 	if (is_null_sha1(commit_sha1)) {
@@ -381,10 +381,11 @@ static int gitmodule_sha1_from_commit(const unsigned char *commit_sha1,
 		return 1;
 	}
 
-	strbuf_addf(rev, "%s:.gitmodules", sha1_to_hex(commit_sha1));
-	if (get_sha1(rev->buf, gitmodules_sha1) >= 0)
+	strbuf_addf(&rev, "%s:.gitmodules", sha1_to_hex(commit_sha1));
+	if (get_sha1(rev.buf, gitmodules_sha1) >= 0)
 		ret = 1;
 
+	strbuf_release(&rev);
 	return ret;
 }
 
@@ -398,7 +399,7 @@ static const struct submodule *config_from(struct submodule_cache *cache,
 {
 	struct strbuf rev = STRBUF_INIT;
 	unsigned long config_size;
-	char *config = NULL;
+	char *config;
 	unsigned char sha1[20];
 	enum object_type type;
 	const struct submodule *submodule = NULL;
@@ -419,8 +420,8 @@ static const struct submodule *config_from(struct submodule_cache *cache,
 		return entry->config;
 	}
 
-	if (!gitmodule_sha1_from_commit(commit_sha1, sha1, &rev))
-		goto out;
+	if (!gitmodule_sha1_from_commit(commit_sha1, sha1))
+		return NULL;
 
 	switch (lookup_type) {
 	case lookup_name:
@@ -431,20 +432,24 @@ static const struct submodule *config_from(struct submodule_cache *cache,
 		break;
 	}
 	if (submodule)
-		goto out;
+		return submodule;
 
 	config = read_sha1_file(sha1, &type, &config_size);
-	if (!config || type != OBJ_BLOB)
-		goto out;
+	if (!config)
+		return NULL;
+
+	if (type != OBJ_BLOB) {
+		free(config);
+		return NULL;
+	}
 
 	/* fill the submodule config into the cache */
 	parameter.cache = cache;
 	parameter.commit_sha1 = commit_sha1;
 	parameter.gitmodules_sha1 = sha1;
 	parameter.overwrite = 0;
-	git_config_from_mem(parse_config, CONFIG_ORIGIN_SUBMODULE_BLOB, rev.buf,
+	git_config_from_mem(parse_config, "submodule-blob", rev.buf,
 			config, config_size, &parameter);
-	strbuf_release(&rev);
 	free(config);
 
 	switch (lookup_type) {
@@ -455,11 +460,6 @@ static const struct submodule *config_from(struct submodule_cache *cache,
 	default:
 		return NULL;
 	}
-
-out:
-	strbuf_release(&rev);
-	free(config);
-	return submodule;
 }
 
 static const struct submodule *config_from_path(struct submodule_cache *cache,
