@@ -583,6 +583,9 @@ cmd_update()
 		cmd_init "--" "$@" || return
 	fi
 
+	git config "submodule.checkout" >/dev/null 2>/dev/null
+	delete_submodules="$?"
+
 	{
 	git submodule--helper update-clone ${GIT_QUIET:+--quiet} \
 		${wt_prefix:+--prefix "$wt_prefix"} \
@@ -598,6 +601,14 @@ cmd_update()
 	while read mode sha1 stage just_cloned sm_path
 	do
 		die_if_unmatched "$mode" "$sha1"
+
+		if ! git submodule--helper should-exist "$sm_path" && test "$delete_submodules" eq 0
+		then
+			git-diff-index $sha1 &&
+			git-diff-index --cached $sha1 &&
+			test -z "$(git ls-files --exclude-standard --others)" &&
+			rm -rf sm_path
+		fi
 
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
