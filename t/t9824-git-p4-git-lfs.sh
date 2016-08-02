@@ -287,6 +287,36 @@ test_expect_success 'Add big files to repo and store files in LFS based on compr
 	)
 '
 
+test_expect_success 'Add glob' '
+	client_view "//depot/... //client/..." &&
+	test_when_finished cleanup_git &&
+	(
+		cd "$git" &&
+		git init . &&
+		git config git-p4.useClientSpec true &&
+		git config git-p4.largeFileSystem GitLFS &&
+		git config git-p4.largeFileGlob "*[0-9].bin" &&
+		git p4 clone --destination="$git" //depot@all &&
+
+		test_file_in_lfs "path with special-_(){}[]/file3.bin" 25 "content 2-3 bin 25 bytes" &&
+		# file4.bin was deleted but is in history
+		test_file_in_lfs file5.bin 40 "content 5 bin 40 bytes XXXXXXXXXXXXXXXX" &&
+		test_file_in_lfs file6.bin 39 "content 6 bin 39 bytes XXXXXYYYYYZZZZZ" &&
+		test_file_count_in_dir ".git/lfs/objects" 4 &&
+
+		cat >expect <<-\EOF &&
+		*.txt text
+
+		#
+		# Git LFS (see https://git-lfs.github.com/)
+		#
+		*[0-9].bin filter=lfs diff=lfs merge=lfs -text
+		EOF
+		test_path_is_file .gitattributes &&
+		test_cmp expect .gitattributes
+	)
+'
+
 test_expect_success 'kill p4d' '
 	kill_p4d
 '
