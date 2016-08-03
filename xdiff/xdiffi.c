@@ -413,6 +413,228 @@ static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
 			     flags));
 }
 
+/*
+ * If a line is indented more than this, get_indent() just returns this value.
+ * This avoids having to do absurd amounts of work for data that are not
+ * human-readable text, and also ensures that the output of get_indent fits within
+ * an int.
+ */
+#define MAX_INDENT 200
+
+/*
+ * Return the amount of indentation of the specified line, treating TAB as 8
+ * columns. Return -1 if line is empty or contains only whitespace. Clamp the
+ * output value at MAX_INDENT.
+ */
+static int get_indent(xrecord_t *rec)
+{
+	long i;
+	int ret = 0;
+
+	for (i = 0; i < rec->size; i++) {
+		char c = rec->ptr[i];
+
+		if (!XDL_ISSPACE(c))
+			return ret;
+		else if (c == ' ')
+			ret += 1;
+		else if (c == '\t')
+			ret += 8 - ret % 8;
+		/* ignore other whitespace characters */
+
+		if (ret >= MAX_INDENT)
+			return MAX_INDENT;
+	}
+	/*
+	 * We have reached the end of the line without finding any non-space
+	 * characters; i.e., the whole line consists of trailing spaces, which we
+	 * are not interested in.
+	 */
+	return -1;
+}
+
+/*
+ * If more than this number of consecutive blank rows are found, just return this
+ * value. This avoids requiring O(N^2) work for pathological cases, and also
+ * ensures that the output of score_split fits in an int.
+ */
+#define MAX_BLANKS 20
+
+/* Characteristics measured about a hypothetical split position. */
+struct split_measurement {
+	/*
+	 * Is the split at the end of the file (aside from any blank lines)?
+	 */
+	int end_of_file;
+
+	/*
+	 * How much is the line immediately following the split indented (or -1 if
+	 * the line is blank):
+	 */
+	int indent;
+
+	/*
+	 * How many consecutive lines above the split are blank?
+	 */
+	int pre_blank;
+
+	/*
+	 * How much is the nearest non-blank line above the split indented (or -1
+	 * if there is no such line)?
+	 */
+	int pre_indent;
+
+	/*
+	 * How many lines after the line following the split are blank?
+	 */
+	int post_blank;
+
+	/*
+	 * How much is the nearest non-blank line after the line following the
+	 * split indented (or -1 if there is no such line)?
+	 */
+	int post_indent;
+};
+
+/*
+ * Fill m with information about a hypothetical split of xdf above line split.
+ */
+void measure_split(const xdfile_t *xdf, long split, struct split_measurement *m)
+{
+	long i;
+
+	if (split >= xdf->nrec) {
+		m->end_of_file = 1;
+		m->indent = -1;
+	} else {
+		m->end_of_file = 0;
+		m->indent = get_indent(xdf->recs[split]);
+	}
+
+	m->pre_blank = 0;
+	for (i = split - 1; i >= 0; i--) {
+		m->pre_indent = get_indent(xdf->recs[i]);
+		if (m->pre_indent != -1)
+			break;
+		m->pre_blank += 1;
+		if (m->pre_blank == MAX_BLANKS) {
+			m->pre_indent = 0;
+			break;
+		}
+	}
+
+	m->post_blank = 0;
+	for (i = split + 1; i < xdf->nrec; i++) {
+		m->post_indent = get_indent(xdf->recs[i]);
+		if (m->post_indent != -1)
+			break;
+		m->post_blank += 1;
+		if (m->post_blank == MAX_BLANKS) {
+			m->post_indent = 0;
+			break;
+		}
+	}
+}
+
+#define START_OF_FILE_BONUS 9
+#define END_OF_FILE_BONUS 46
+#define TOTAL_BLANK_WEIGHT 4
+#define PRE_BLANK_WEIGHT 16
+#define RELATIVE_INDENT_BONUS -1
+#define RELATIVE_INDENT_HAS_BLANK_BONUS 15
+#define RELATIVE_OUTDENT_BONUS -19
+#define RELATIVE_OUTDENT_HAS_BLANK_BONUS 2
+#define RELATIVE_DEDENT_BONUS -63
+#define RELATIVE_DEDENT_HAS_BLANK_BONUS 50
+
+/*
+ * Compute a badness score for the hypothetical split whose measurements are
+ * stored in m. The weight factors were determined empirically using the tools and
+ * corpus described in
+ *
+ *     https://github.com/mhagger/diff-slider-tools
+ *
+ * Also see that project if you want to improve the weights based on, for example,
+ * a larger or more diverse corpus.
+ */
+int score_split(const struct split_measurement *m)
+{
+	/*
+	 * A place to accumulate bonus factors (positive makes this index more
+	 * favored):
+	 */
+        int bonus = 0, score, total_blanks, indent, any_blanks;
+
+        if (m->pre_indent == -1 && m->pre_blank == 0)
+		bonus += START_OF_FILE_BONUS;
+
+        if (m->end_of_file)
+		bonus += END_OF_FILE_BONUS;
+
+        total_blanks = m->pre_blank;
+        if (m->indent == -1)
+		total_blanks += 1 + m->post_blank;
+
+	/* Bonuses based on the location of blank lines: */
+        bonus += TOTAL_BLANK_WEIGHT * total_blanks;
+	bonus += PRE_BLANK_WEIGHT * m->pre_blank;
+
+        if (m->indent != -1)
+		indent = m->indent;
+        else
+		indent = m->post_indent;
+
+        any_blanks = (total_blanks != 0);
+
+        if (indent == -1) {
+		score = 0;
+        } else if (m->pre_indent == -1) {
+		score = indent;
+        } else if (indent > m->pre_indent) {
+		/*
+		 * The line is indented more than its predecessor. Score it based
+		 * on the larger indent:
+		 */
+		score = indent;
+		bonus += RELATIVE_INDENT_BONUS;
+		bonus += RELATIVE_INDENT_HAS_BLANK_BONUS * any_blanks;
+	} else if (indent < m->pre_indent) {
+		/*
+		 * The line is indented less than its predecessor. It could be
+		 * that this line is the start of a new block (e.g., of an "else"
+		 * block, or of a block without a block terminator) or it could be
+		 * the end of the previous block.
+		 */
+		if (m->post_indent == -1 || indent >= m->post_indent) {
+			/*
+			 * That was probably the end of a block. Score based on
+			 * the line's own indent:
+			 */
+			score = indent;
+			bonus += RELATIVE_DEDENT_BONUS;
+			bonus += RELATIVE_DEDENT_HAS_BLANK_BONUS * any_blanks;
+		} else {
+			/*
+			 * The following line is indented more. So it is likely
+			 * that this line is the start of a block. It's a pretty
+			 * good place to split, so score it based on its own
+			 * indent:
+			 */
+			score = indent;
+			bonus += RELATIVE_OUTDENT_BONUS;
+			bonus += RELATIVE_OUTDENT_HAS_BLANK_BONUS * any_blanks;
+		}
+	} else {
+		/*
+		 * The line has the same indentation level as its predecessor. We
+		 * score it based on its own indent:
+		 */
+		score = indent;
+	}
+
+        return 10 * score - bonus;
+}
+
 int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 	long start, end, earliest_end, end_matching_other;
 	long io, groupsize, nrec = xdf->nrec;
@@ -553,15 +775,18 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		if (end == earliest_end)
 			continue; /* no shifting is possible */
 
+		/*
+		 * The group can be shifted. Possibly use this freedom to produce
+		 * a more intuitive diff.
+		 *
+		 * The group is currently shifted as far down as possible, so the
+		 * heuristics below only have to handle upwards shifts.
+		 */
+
 		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
 			/*
-			 * Compaction heuristic: if a group can be moved back and
-			 * forth, then if possible shift the group to make its
-			 * bottom line a blank line.
-			 *
-			 * As we already shifted the group forward as far as
-			 * possible in the earlier loop, we only need to handle
-			 * backward shifts, not forward ones.
+			 * Compaction heuristic: if possible, shift the group to
+			 * make its bottom line a blank line.
 			 */
 			while (start > 0 &&
 			       !is_blank_line(recs[end - 1], flags) &&
@@ -580,6 +805,43 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * that it can align with.
 			 */
 			while (end_matching_other < end) {
+				rchg[--start] = 1;
+				rchg[--end] = 0;
+
+				io--;
+				while (rchgo[io])
+					io--;
+			}
+		} else if (flags & XDF_INDENT_HEURISTIC) {
+			/*
+			 * Indent heuristic: a group of pure add/delete lines
+			 * implies two splits, one between the end of the "before"
+			 * context and the start of the group, and another between
+			 * the end of the group and the beginning of the "after"
+			 * context. Some splits are aesthetically better and some
+			 * are worse. We compute a badness "score" for each split,
+			 * and add the scores for the two splits to define a
+			 * "score" for each position that the group can be shifted
+			 * to. Then we pick the shift with the lowest score.
+			 */
+			long shift, best_shift = -1;
+			int best_score = 0;
+
+			for (shift = earliest_end; shift <= end; shift++) {
+				struct split_measurement m;
+				int score;
+
+				measure_split(xdf, shift, &m);
+				score = score_split(&m);
+				measure_split(xdf, shift - groupsize, &m);
+				score += score_split(&m);
+				if (best_shift == -1 || score <= best_score) {
+					best_score = score;
+					best_shift = shift;
+				}
+			}
+
+			while (end > best_shift) {
 				rchg[--start] = 1;
 				rchg[--end] = 0;
 
