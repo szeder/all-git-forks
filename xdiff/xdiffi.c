@@ -434,8 +434,14 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		 * not need index bounding since the array is prepared with
 		 * a zero at position -1 and N.
 		 */
-		for (; i < nrec && !rchg[i]; i++)
-			while (rchgo[io++]);
+		for (; i < nrec && !rchg[i]; i++) {
+			/* skip over any changed lines in the other file... */
+			while (rchgo[io])
+				io++;
+
+			/* ...plus one non-changed line. */
+			io++;
+		}
 		if (i == nrec)
 			break;
 
@@ -444,45 +450,70 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		 * and find the end of it, on both to-be-compacted and other file
 		 * indexes (i and io).
 		 */
-		start = i;
-		for (i++; rchg[i]; i++);
-		for (; rchgo[io]; io++);
+		start = i++;
+
+		while (rchg[i])
+			i++;
+
+		while (rchgo[io])
+		       io++;
 
 		do {
 			groupsize = i - start;
+
+			/*
+			 * Are there any blank lines that could appear as the last
+			 * line of this group?
+			 */
 			blank_lines = 0;
 
 			/*
-			 * If the line before the current change group, is equal to
-			 * the last line of the current change group, shift backward
-			 * the group.
+			 * While the line before the current change group is equal
+			 * to the last line of the current change group, shift the
+			 * group backward.
 			 */
 			while (start > 0 && recs_match(recs, start - 1, i - 1, flags)) {
 				rchg[--start] = 1;
 				rchg[--i] = 0;
 
 				/*
-				 * This change might have joined two change groups,
-				 * so we try to take this scenario in account by moving
-				 * the start index accordingly (and so the other-file
-				 * end-of-group index).
+				 * This change might have joined two change groups.
+				 * If so, move the start index to the beginning of
+				 * the combined group:
 				 */
-				for (; rchg[start - 1]; start--);
-				while (rchgo[--io]);
+				while (rchg[start - 1])
+					start--;
+
+				/*
+				 * Move the other file index past a non-changed
+				 * line...
+				 */
+				io--;
+
+				/* ...and also past any changed lines: */
+				while (rchgo[io])
+					io--;
+			}
+
+			if (rchgo[io - 1]) {
+				/*
+				 * This change is matched to a group of changes in
+				 * the other file. Record the end-of-group
+				 * position:
+				 */
+				ixref = i;
+			} else {
+				/*
+				 * Otherwise, set a value to signify that there
+				 * are no matched changes in the other file:
+				 */
+				ixref = nrec;
 			}
 
 			/*
-			 * Record the end-of-group position in case we are matched
-			 * with a group of changes in the other file (that is, the
-			 * change record before the end-of-group index in the other
-			 * file is set).
-			 */
-			ixref = rchgo[io - 1] ? i : nrec;
-
-			/*
-			 * If the first line of the current change group, is equal to
-			 * the line next of the current change group, shift forward
-			 * the group.
+			 * Now shift the group forward as long as the first line
+			 * of the current change group is equal to the line after
+			 * the current change group.
 			 */
 			while (i < nrec && recs_match(recs, start, i, flags)) {
 				blank_lines += is_blank_line(recs, i, flags);
@@ -491,16 +522,22 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 				rchg[i++] = 1;
 
 				/*
-				 * This change might have joined two change groups,
-				 * so we try to take this scenario in account by moving
-				 * the start index accordingly (and so the other-file
-				 * end-of-group index). Keep tracking the reference
-				 * index in case we are shifting together with a
-				 * corresponding group of changes in the other file.
+				 * This change might have joined two change
+				 * groups. If so, move the start index accordingly
+				 * (and so the other-file end-of-group index).
+				 * Keep tracking the reference index in case we
+				 * are shifting together with a corresponding
+				 * group of changes in the other file.
 				 */
-				for (; rchg[i]; i++);
-				while (rchgo[++io])
+				while (rchg[i])
+					i++;
+
+				io++;
+				if (rchgo[io]) {
 					ixref = i;
+					while (rchgo[io])
+						io++;
+				}
 			}
 		} while (groupsize != i - start);
 
@@ -511,7 +548,10 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		while (ixref < i) {
 			rchg[--start] = 1;
 			rchg[--i] = 0;
-			while (rchgo[--io]);
+
+			io--;
+			while (rchgo[io])
+				io--;
 		}
 
 		/*
