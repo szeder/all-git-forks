@@ -414,7 +414,8 @@ static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
 }
 
 int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
-	long start, end, io, end_matching_other, groupsize, nrec = xdf->nrec;
+	long start, end, earliest_end, end_matching_other;
+	long io, groupsize, nrec = xdf->nrec;
 	char *rchg = xdf->rchg, *rchgo = xdfo->rchg;
 	unsigned int blank_lines;
 	xrecord_t **recs = xdf->recs;
@@ -516,6 +517,8 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 				end_matching_other = -1;
 			}
 
+			earliest_end = end;
+
 			/*
 			 * Now shift the group forward as long as the first line
 			 * of the current change group is equal to the line after
@@ -546,6 +549,9 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 				}
 			}
 		} while (groupsize != end - start);
+
+		if (end == earliest_end)
+			continue; /* no shifting is possible */
 
 		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
 			/*
