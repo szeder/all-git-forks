@@ -476,8 +476,10 @@ static int apply_single_file_filter(const char *path, const char *src, size_t le
 
 #define FILTER_CAPABILITIES_CLEAN    (1u<<0)
 #define FILTER_CAPABILITIES_SMUDGE   (1u<<1)
+#define FILTER_CAPABILITIES_SHUTDOWN (1u<<2)
 #define FILTER_SUPPORTS_CLEAN(type)  ((type) & FILTER_CAPABILITIES_CLEAN)
 #define FILTER_SUPPORTS_SMUDGE(type) ((type) & FILTER_CAPABILITIES_SMUDGE)
+#define FILTER_SUPPORTS_SHUTDOWN(type) ((type) & FILTER_CAPABILITIES_SHUTDOWN)
 
 struct cmd2process {
 	struct hashmap_entry ent; /* must be the first member! */
@@ -518,6 +520,35 @@ static void kill_multi_file_filter(struct hashmap *hashmap, struct cmd2process *
 	free(entry);
 }
 
+void shutdown_multi_file_filter(pid_t pid)
+{
+	int did_fail;
+	struct cmd2process *entry;
+	struct hashmap_iter iter;
+	static const char shutdown[] = "command=shutdown\n";
+	char *result = NULL;
+
+	if (!cmd_process_map_initialized)
+		return;
+
+	hashmap_iter_init(&cmd_process_map, &iter);
+	while ((entry = hashmap_iter_next(&iter))) {
+		if (entry->process.pid == pid &&
+			FILTER_SUPPORTS_SHUTDOWN(entry->supported_capabilities)
+		) {
+			did_fail = direct_packet_write_data(
+				entry->process.in, shutdown, strlen(shutdown), 1);
+			if (!did_fail)
+				result = packet_read_line(entry->process.out, NULL);
+			close(entry->process.in);
+			close(entry->process.out);
+
+			if (did_fail || !result || strcmp(result, "result=success"))
+				error("shutdown of external filter '%s' failed", entry->cmd);
+		}
+	}
+}
+
 static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, const char *cmd)
 {
 	int did_fail;
@@ -541,6 +572,8 @@ static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, cons
 	process->use_shell = 1;
 	process->in = -1;
 	process->out = -1;
+	process->clean_on_exit = 1;
+	process->clean_on_exit_handler = shutdown_multi_file_filter;
 
 	if (start_command(process)) {
 		error("cannot fork to run external filter '%s'", cmd);
@@ -573,6 +606,8 @@ static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, cons
 				entry->supported_capabilities |= FILTER_CAPABILITIES_CLEAN;
 			} else if (!strcmp(requested, "smudge")) {
 				entry->supported_capabilities |= FILTER_CAPABILITIES_SMUDGE;
+			} else if (!strcmp(requested, "shutdown")) {
+				entry->supported_capabilities |= FILTER_CAPABILITIES_SHUTDOWN;
 			} else {
 				warning(
 					"external filter '%s' requested unsupported filter capability '%s'",

@@ -417,6 +417,77 @@ test_expect_success PERL 'required process filter should filter data' '
 	)
 '
 
+test_expect_success PERL 'required process filter should filter data with shutdown' '
+	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge shutdown" &&
+	test_config_global filter.protocol.required true &&
+	rm -rf repo &&
+	mkdir repo &&
+	(
+		cd repo &&
+		git init &&
+
+		echo "*.r filter=protocol" >.gitattributes &&
+		git add . &&
+		git commit . -m "test commit" &&
+		git branch empty &&
+
+		cat ../test.o >test.r &&
+		cat ../test2.o >test2.r &&
+
+		check_filter \
+			git add . \
+				<<-\EOF &&
+					1 IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+					1 IN: clean test2.r 14 [OK] -- OUT: 14 [OK]
+					1 IN: shutdown -- [OK]
+					1 start
+					1 wrote filter header
+				EOF
+
+		check_filter_count_clean \
+			git commit . -m "test commit" \
+				<<-\EOF &&
+					x IN: clean test.r 57 [OK] -- OUT: 57 [OK]
+					x IN: clean test2.r 14 [OK] -- OUT: 14 [OK]
+					1 IN: shutdown -- [OK]
+					1 start
+					1 wrote filter header
+				EOF
+
+		rm -f test?.r testsubdir/test3-subdir.r &&
+
+		check_filter_ignore_clean \
+			git checkout . \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+					IN: shutdown -- [OK]
+				EOF
+
+		check_filter_ignore_clean \
+			git checkout empty \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: shutdown -- [OK]
+				EOF
+
+		check_filter_ignore_clean \
+			git checkout master \
+				<<-\EOF &&
+					start
+					wrote filter header
+					IN: smudge test.r 57 [OK] -- OUT: 57 [OK]
+					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
+					IN: shutdown -- [OK]
+				EOF
+
+		check_rot13 ../test.o test.r &&
+		check_rot13 ../test2.o test2.r
+	)
+'
+
 test_expect_success PERL 'required process filter should filter smudge data and one-shot filter should clean' '
 	test_config_global filter.protocol.clean ./../rot13.sh &&
 	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl smudge" &&

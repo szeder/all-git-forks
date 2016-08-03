@@ -403,7 +403,8 @@ packet:          git< git-filter-protocol\n
 packet:          git< version=2\n
 packet:          git< capabilities=clean smudge\n
 ------------------------
-Supported filter capabilities are "clean" and "smudge".
+Supported filter capabilities are "clean", "smudge", and
+"shutdown".
 
 Afterwards Git sends a command (based on the supported
 capabilities), the pathname of a file relative to the
@@ -455,6 +456,15 @@ packet:          git< result=error\n
 After the filter has processed a blob it is expected to wait for
 the next command. When the Git process terminates, it will send
 a kill signal to the filter in that stage.
+
+If the filter supports the "shutdown" capability then Git will
+send the "shutdown" command and wait until the filter answers
+with "done". This gives the filter the opportunity to perform
+cleanup tasks. Afterwards the filter is expected to exit.
+------------------------
+packet:          git> command=shutdown\n
+packet:          git< result=success\n
+------------------------
 
 A long running filter demo implementation can be found in
 `t/t0021/rot13-filter.pl` located in the Git core repository.
