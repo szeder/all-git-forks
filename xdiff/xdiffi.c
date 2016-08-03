@@ -547,11 +547,28 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			}
 		} while (groupsize != end - start);
 
-		/*
-		 * Try to move back the possibly merged group of changes, to match
-		 * the recorded position in the other file.
-		 */
-		if (end_matching_other != -1) {
+		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
+			/*
+			 * Compaction heuristic: if a group can be moved back and
+			 * forth, then if possible shift the group to make its
+			 * bottom line a blank line.
+			 *
+			 * As we already shifted the group forward as far as
+			 * possible in the earlier loop, we only need to handle
+			 * backward shifts, not forward ones.
+			 */
+			while (start > 0 &&
+			       !is_blank_line(recs, end - 1, flags) &&
+			       recs_match(recs, start - 1, end - 1, flags)) {
+				rchg[--start] = 1;
+				rchg[--end] = 0;
+			}
+		} else if (end_matching_other != -1) {
+			/*
+			 * Move the possibly merged group of changes back to line
+			 * up with the last group of changes from the other file
+			 * that it can align with.
+			 */
 			while (end_matching_other < end) {
 				rchg[--start] = 1;
 				rchg[--end] = 0;
@@ -559,23 +576,6 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 				io--;
 				while (rchgo[io])
 					io--;
-			}
-		}
-
-		/*
-		 * If a group can be moved back and forth, see if there is a
-		 * blank line in the moving space. If there is a blank line,
-		 * make sure the last blank line is the end of the group.
-		 *
-		 * As we already shifted the group forward as far as possible
-		 * in the earlier loop, we need to shift it back only if at all.
-		 */
-		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
-			while (start > 0 &&
-			       !is_blank_line(recs, end - 1, flags) &&
-			       recs_match(recs, start - 1, end - 1, flags)) {
-				rchg[--start] = 1;
-				rchg[--end] = 0;
 			}
 		}
 	}
