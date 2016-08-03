@@ -193,6 +193,44 @@ void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
 	va_end(args);
 }
 
+int packet_write_stream_with_flush_from_fd(const int fd_in, const int fd_out)
+{
+	int did_fail = 0;
+	ssize_t bytes_to_write;
+	while (!did_fail) {
+		bytes_to_write = xread(fd_in, PKTLINE_DATA_START(packet_buffer), PKTLINE_DATA_MAXLEN);
+		if (bytes_to_write < 0)
+			return COPY_READ_ERROR;
+		if (bytes_to_write == 0)
+			break;
+		did_fail |= direct_packet_write(fd_out, packet_buffer, PKTLINE_HEADER_LEN + bytes_to_write, 1);
+	}
+	if (!did_fail)
+		did_fail = packet_flush_gently(fd_out);
+	return (did_fail ? COPY_WRITE_ERROR : 0);
+}
+
+int packet_write_stream_with_flush_from_buf(const char *src_in, size_t len, int fd_out)
+{
+	int did_fail = 0;
+	size_t bytes_written = 0;
+	size_t bytes_to_write;
+	while (!did_fail) {
+		if ((len - bytes_written) > PKTLINE_DATA_MAXLEN)
+			bytes_to_write = PKTLINE_DATA_MAXLEN;
+		else
+			bytes_to_write = len - bytes_written;
+		if (bytes_to_write == 0)
+			break;
+		did_fail |= direct_packet_write_data(fd_out, src_in + bytes_written, bytes_to_write, 1);
+		bytes_written += bytes_to_write;
+	}
+	if (!did_fail)
+		did_fail = packet_flush_gently(fd_out);
+	return did_fail;
+}
+
+
 static int get_packet_data(int fd, char **src_buf, size_t *src_size,
 			   void *dst, unsigned size, int options)
 {
@@ -301,4 +339,54 @@ char *packet_read_line(int fd, int *len_p)
 char *packet_read_line_buf(char **src, size_t *src_len, int *dst_len)
 {
 	return packet_read_line_generic(-1, src, src_len, dst_len);
+}
+
+ssize_t packet_read_till_flush(int fd_in, struct strbuf *sb_out)
+{
+	int len, ret;
+	int options = PACKET_READ_GENTLE_ON_EOF;
+	char linelen[4];
+
+	size_t oldlen = sb_out->len;
+	size_t oldalloc = sb_out->alloc;
+
+	for (;;) {
+		// Read packet header
+		ret = get_packet_data(fd_in, NULL, NULL, linelen, 4, options);
+		if (ret < 0)
+			goto done;
+		len = packet_length(linelen);
+		if (len < 0)
+			die("protocol error: bad line length character: %.4s", linelen);
+		if (!len) {
+			// Found a flush packet - Done!
+			packet_trace("0000", 4, 0);
+			break;
+		}
+		len -= 4;
+
+		// Read packet content
+		strbuf_grow(sb_out, len);
+		ret = get_packet_data(fd_in, NULL, NULL, sb_out->buf + sb_out->len, len, options);
+		if (ret < 0)
+			goto done;
+
+		if (ret != len) {
+			error("protocol error: incomplete read (expected %d, got %d)", len, ret);
+			goto done;
+		}
+
+		packet_trace(sb_out->buf + sb_out->len, len, 0);
+		sb_out->len += len;
+	}
+
+done:
+	if (ret < 0) {
+		if (oldalloc == 0)
+			strbuf_release(sb_out);
+		else
+			strbuf_setlen(sb_out, oldlen);
+		return ret;  // unexpected EOF
+	}
+	return sb_out->len - oldlen;
 }
