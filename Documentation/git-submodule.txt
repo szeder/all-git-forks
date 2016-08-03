@@ -60,6 +60,27 @@ instead of treating the other project as a submodule. Directories
 that come from both projects can be cloned and checked out as a whole
 if you choose to go that route.
 
+STATES
+------
+
+By default a submodule
+
+* non existent submodules (no gitlink recorded, no config set,
+  no repo in place)
+* not initialized submodules (gitlink is recorded, no config set,
+  and an empty repo is put in the working tree as a place holder).
+* initialized submodules (gitlink is recorded, the config
+  submodule .<name>.url is copied from the .gitmodules file to .git/config.
+  an empty dir in the working tree as a place holder)
+  A user may change the configuration before the next step as the url in
+  the .gitmodules file may be wrong and the user doesn't want to
+  rewrite history
+* existing submodules (gitlink is recorded, the config option is set
+  and instead of an empty placeholder dir, we actually have a git
+  repo there.)
+* matching submodules (the recorded git link matches
+  the actual checked out state of the repo!, config option and repo exist)
+
 COMMANDS
 --------
 add::
