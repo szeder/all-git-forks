@@ -163,7 +163,7 @@ git_pager() {
 	for vardef in @@PAGER_ENV@@
 	do
 		var=${vardef%%=*}
-		eval ": \${$vardef} && export $var"
+		eval ": \"\${$vardef}\" && export $var"
 	done
 
 	eval "$GIT_PAGER" '"$@"'

@@ -66,25 +66,22 @@ const char *git_pager(int stdout_is_tty)
 static void setup_pager_env(struct argv_array *env)
 {
 	const char *pager_env = PAGER_ENV;
+	struct strbuf buf = STRBUF_INIT;
 
 	while (*pager_env) {
-		struct strbuf buf = STRBUF_INIT;
 		const char *cp = strchrnul(pager_env, '=');
 
 		if (!*cp)
 			die("malformed build-time PAGER_ENV");
 		strbuf_add(&buf, pager_env, cp - pager_env);
 		cp = strchrnul(pager_env, ' ');
-		if (!getenv(buf.buf)) {
-			strbuf_reset(&buf);
-			strbuf_add(&buf, pager_env, cp - pager_env);
-			argv_array_push(env, strbuf_detach(&buf, NULL));
-		}
+		if (!getenv(buf.buf))
+			argv_array_pushf(env, "%.*s",
+					 (int)(cp - pager_env), pager_env);
+		pager_env = cp + strspn(cp, " ");
 		strbuf_reset(&buf);
-		while (*cp && *cp == ' ')
-			cp++;
-		pager_env = cp;
 	}
+	strbuf_release(&buf);
 }
 
 void prepare_pager_args(struct child_process *pager_process, const char *pager)
