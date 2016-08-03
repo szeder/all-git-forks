@@ -562,6 +562,10 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			       recs_match(recs, start - 1, end - 1, flags)) {
 				rchg[--start] = 1;
 				rchg[--end] = 0;
+
+				io--;
+				while (rchgo[io])
+					io--;
 			}
 		} else if (end_matching_other != -1) {
 			/*
