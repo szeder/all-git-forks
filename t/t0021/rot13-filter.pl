@@ -84,6 +84,13 @@ while (1) {
     print $debug "IN: $command";
     $debug->flush();
 
+    if ( $command eq "shutdown" ) {
+        print $debug " -- [OK]";
+        $debug->flush();
+        packet_write("result=success\n");
+        exit();
+    }
+
     my ($pathname) = packet_read() =~ /^pathname=([^=]+)\n$/;
     print $debug " $pathname";
     $debug->flush();
