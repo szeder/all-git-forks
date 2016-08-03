@@ -400,9 +400,9 @@ static xdchange_t *xdl_add_change(xdchange_t *xscr, long i1, long i2, long chg1,
 }
 
 
-static int is_blank_line(xrecord_t **recs, long ix, long flags)
+static int is_blank_line(xrecord_t *rec, long flags)
 {
-	return xdl_blankline(recs[ix]->ptr, recs[ix]->size, flags);
+	return xdl_blankline(rec->ptr, rec->size, flags);
 }
 
 static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
@@ -525,7 +525,7 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * the current change group.
 			 */
 			while (end < nrec && recs_match(recs, start, end, flags)) {
-				blank_lines += is_blank_line(recs, end, flags);
+				blank_lines += is_blank_line(recs[end], flags);
 
 				rchg[start++] = 0;
 				rchg[end++] = 1;
@@ -564,7 +564,7 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * backward shifts, not forward ones.
 			 */
 			while (start > 0 &&
-			       !is_blank_line(recs, end - 1, flags) &&
+			       !is_blank_line(recs[end - 1], flags) &&
 			       recs_match(recs, start - 1, end - 1, flags)) {
 				rchg[--start] = 1;
 				rchg[--end] = 0;
