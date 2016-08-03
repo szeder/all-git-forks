@@ -414,7 +414,7 @@ static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
 }
 
 int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
-	long i, io, start, ixref, groupsize, nrec = xdf->nrec;
+	long start, end, io, end_matching_other, groupsize, nrec = xdf->nrec;
 	char *rchg = xdf->rchg, *rchgo = xdfo->rchg;
 	unsigned int blank_lines;
 	xrecord_t **recs = xdf->recs;
@@ -424,7 +424,8 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 	 * change groups for a consistent and pretty diff output. This also
 	 * helps in finding joinable change groups and reduce the diff size.
 	 */
-	for (i = io = 0;;) {
+	end = io = 0;
+	while (1) {
 		/*
 		 * Find the first changed line in the to-be-compacted file.
 		 * We need to keep track of both indexes, so if we find a
@@ -434,7 +435,7 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		 * not need index bounding since the array is prepared with
 		 * a zero at position -1 and N.
 		 */
-		for (; i < nrec && !rchg[i]; i++) {
+		for (start = end; start < nrec && !rchg[start]; start++) {
 			/* skip over any changed lines in the other file... */
 			while (rchgo[io])
 				io++;
@@ -442,24 +443,29 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			/* ...plus one non-changed line. */
 			io++;
 		}
-		if (i == nrec)
+		if (start == nrec)
 			break;
 
 		/*
-		 * Record the start of a changed-group in the to-be-compacted file
-		 * and find the end of it, on both to-be-compacted and other file
-		 * indexes (i and io).
+		 * That's the start of a changed-group in the to-be-compacted
+		 * file. Now find its end.
 		 */
-		start = i++;
-
-		while (rchg[i])
-			i++;
+		end = start + 1;
+		while (rchg[end])
+			end++;
 
 		while (rchgo[io])
 		       io++;
 
+		/*
+		 * Now shift the change up and then down as far as possible in
+		 * each direction. If it bumps into any other changes, merge them.
+		 * If there are any changes in the other file that this change
+		 * could line up with, set end_matching_other to the end position
+		 * of this change that would leave them aligned.
+		 */
 		do {
-			groupsize = i - start;
+			groupsize = end - start;
 
 			/*
 			 * Are there any blank lines that could appear as the last
@@ -472,9 +478,9 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * to the last line of the current change group, shift the
 			 * group backward.
 			 */
-			while (start > 0 && recs_match(recs, start - 1, i - 1, flags)) {
+			while (start > 0 && recs_match(recs, start - 1, end - 1, flags)) {
 				rchg[--start] = 1;
-				rchg[--i] = 0;
+				rchg[--end] = 0;
 
 				/*
 				 * This change might have joined two change groups.
@@ -501,13 +507,13 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 				 * the other file. Record the end-of-group
 				 * position:
 				 */
-				ixref = i;
+				end_matching_other = end;
 			} else {
 				/*
 				 * Otherwise, set a value to signify that there
 				 * are no matched changes in the other file:
 				 */
-				ixref = nrec;
+				end_matching_other = -1;
 			}
 
 			/*
@@ -515,11 +521,11 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * of the current change group is equal to the line after
 			 * the current change group.
 			 */
-			while (i < nrec && recs_match(recs, start, i, flags)) {
-				blank_lines += is_blank_line(recs, i, flags);
+			while (end < nrec && recs_match(recs, start, end, flags)) {
+				blank_lines += is_blank_line(recs, end, flags);
 
 				rchg[start++] = 0;
-				rchg[i++] = 1;
+				rchg[end++] = 1;
 
 				/*
 				 * This change might have joined two change
@@ -529,29 +535,31 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 				 * are shifting together with a corresponding
 				 * group of changes in the other file.
 				 */
-				while (rchg[i])
-					i++;
+				while (rchg[end])
+					end++;
 
 				io++;
 				if (rchgo[io]) {
-					ixref = i;
+					end_matching_other = end;
 					while (rchgo[io])
 						io++;
 				}
 			}
-		} while (groupsize != i - start);
+		} while (groupsize != end - start);
 
 		/*
 		 * Try to move back the possibly merged group of changes, to match
 		 * the recorded position in the other file.
 		 */
-		while (ixref < i) {
-			rchg[--start] = 1;
-			rchg[--i] = 0;
+		if (end_matching_other != -1) {
+			while (end_matching_other < end) {
+				rchg[--start] = 1;
+				rchg[--end] = 0;
 
-			io--;
-			while (rchgo[io])
 				io--;
+				while (rchgo[io])
+					io--;
+			}
 		}
 
 		/*
@@ -564,10 +572,10 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		 */
 		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
 			while (start > 0 &&
-			       !is_blank_line(recs, i - 1, flags) &&
-			       recs_match(recs, start - 1, i - 1, flags)) {
+			       !is_blank_line(recs, end - 1, flags) &&
+			       recs_match(recs, start - 1, end - 1, flags)) {
 				rchg[--start] = 1;
-				rchg[--i] = 0;
+				rchg[--end] = 0;
 			}
 		}
 	}
