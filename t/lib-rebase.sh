@@ -47,7 +47,7 @@ set_fake_editor () {
 	action=pick
 	for line in $FAKE_LINES; do
 		case $line in
-		squash|fixup|edit|reword|drop)
+		squash|fixup|edit|reword|sign|drop)
 			action="$line";;
 		exec*)
 			echo "$line" | sed 's/_/ /g' >> "$1";;

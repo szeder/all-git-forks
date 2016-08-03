@@ -690,6 +690,15 @@ test_expect_success 'reword' '
 	git show HEAD~2 | grep "C changed"
 '
 
+test_expect_success 'sign-off' '
+	git checkout -b sign-off-branch master &&
+	set_fake_editor &&
+	FAKE_LINES="1 2 3 sign 4" git rebase -i A &&
+	git show HEAD | grep "Signed-off-by:" &&
+	test $(git rev-parse master) != $(git rev-parse HEAD) &&
+	test $(git rev-parse master^) = $(git rev-parse HEAD^)
+'
+
 test_expect_success 'rebase -i can copy notes' '
 	git config notes.rewrite.rebase true &&
 	git config notes.rewriteRef "refs/notes/*" &&

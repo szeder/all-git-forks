@@ -148,6 +148,7 @@ append_todo_help () {
 Commands:
  p, pick = use commit
  r, reword = use commit, but edit the commit message
+ sign = use commit, add sign-off to the commit message
  e, edit = use commit, but stop for amending
  s, squash = use commit, but meld into previous commit
  f, fixup = like \"squash\", but discard this commit's log message
@@ -594,6 +595,13 @@ you are able to reword the commit.")"
 		}
 		record_in_rewritten $sha1
 		;;
+	sign)
+		comment_for_reflog sign
+		mark_action_done
+		do_pick $sha1 "$rest"
+		git commit --amend -s --no-post-rewrite --no-edit ${gpg_sign_opt:+"$gpg_sign_opt"}
+		record_in_rewritten $sha1
+		;;
 	edit|e)
 		comment_for_reflog edit
 
@@ -959,7 +967,7 @@ check_bad_cmd_and_sha () {
 			# Work around CR left by "read" (e.g. with Git for
 			# Windows' Bash).
 			;;
-		pick|p|drop|d|reword|r|edit|e|squash|s|fixup|f)
+		pick|p|drop|d|reword|r|sign|edit|e|squash|s|fixup|f)
 			if ! check_commit_sha "${rest%%[ 	]*}" "$lineno" "$1"
 			then
 				retval=1
