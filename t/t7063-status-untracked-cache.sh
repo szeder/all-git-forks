@@ -4,12 +4,16 @@ test_description='test untracked cache'
 
 . ./test-lib.sh
 
-# On some filesystems (e.g. FreeBSD's ext2 and ufs) this and that
-# happens when we do blah, which forces the untracked cache code to
-# take the slow path.  A test that wants to make sure the fast path
-# works correctly should call this helper to make mtime of the
-# containing directory in sync with the reality after doing blah and
-# before checking the fast path behaviour
+# On some filesystems (e.g. FreeBSD's ext2 and ufs) directory mtime
+# is updated lazily after contents in the directory changes, which
+# forces the untracked cache code to take the slow path.  A test
+# that wants to make sure that the fast path works correctly should
+# call this helper to make mtime of the containing directory in sync
+# with the reality before checking the fast path behaviour.
+#
+# See <20160803174522.5571-1-pclouds@gmail.com> if you want to know
+# more.
+
 sync_mtime () {
 	find . -type d -ls >/dev/null
 }
