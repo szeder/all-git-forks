@@ -16,6 +16,16 @@ int commit_patch_id(struct commit *commit, struct diff_options *options,
 	return diff_flush_patch_id(options, sha1, diff_header_only);
 }
 
+/*
+ * When we cannot load the full patch-id for both commits for whatever
+ * reason, the function returns -1 (i.e. return error(...)). Despite
+ * the "cmp" in the name of this function, the caller only cares about
+ * the return value being zero (a and b are equivalent) or non-zero (a
+ * and b are different), and returning non-zero would keep both in the
+ * result, even if they actually were equivalent, in order to err on
+ * the side of safety.  The actual value being negative does not have
+ * any significance; only that it is non-zero matters.
+ */
 static int patch_id_cmp(struct patch_id *a,
 			struct patch_id *b,
 			struct diff_options *opt)
