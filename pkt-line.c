@@ -138,6 +138,18 @@ void packet_write_fmt(int fd, const char *fmt, ...)
 	write_or_die(fd, buf.buf, buf.len);
 }
 
+int packet_write_fmt_gently(int fd, const char *fmt, ...)
+{
+	static struct strbuf buf = STRBUF_INIT;
+	va_list args;
+
+	strbuf_reset(&buf);
+	va_start(args, fmt);
+	format_packet(&buf, fmt, args);
+	va_end(args);
+	return (write_in_full(fd, buf.buf, buf.len) == buf.len ? 0 : -1);
+}
+
 int packet_write_gently(const int fd_out, const char *buf, size_t size)
 {
 	if (size > sizeof(packet_write_buffer) - 4)
