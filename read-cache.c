@@ -1183,11 +1183,11 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	const char *added_fmt;
 	const char *unmerged_fmt;
 
-	modified_fmt = (in_porcelain ? "M\t%s\n" : "%s: needs update\n");
-	deleted_fmt = (in_porcelain ? "D\t%s\n" : "%s: needs update\n");
-	typechange_fmt = (in_porcelain ? "T\t%s\n" : "%s needs update\n");
-	added_fmt = (in_porcelain ? "A\t%s\n" : "%s needs update\n");
-	unmerged_fmt = (in_porcelain ? "U\t%s\n" : "%s: needs merge\n");
+	modified_fmt = (in_porcelain ? "M\t%s\n" : "%s: needs updated\n");
+	deleted_fmt = (in_porcelain ? "D\t%s\n" : "%s: needs updated\n");
+	typechange_fmt = (in_porcelain ? "T\t%s\n" : "%s needs updated\n");
+	added_fmt = (in_porcelain ? "A\t%s\n" : "%s needs updated\n");
+	unmerged_fmt = (in_porcelain ? "U\t%s\n" : "%s: needs merged\n");
 	for (i = 0; i < istate->cache_nr; i++) {
 		struct cache_entry *ce, *new;
 		int cache_errno = 0;
