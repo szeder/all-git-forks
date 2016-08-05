@@ -619,8 +619,7 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 			 * code will output the stage values directly and not use the
 			 * values in these fields.
 			 */
-		}
-		else {
+		} else {
 			d->index_status = DIFF_STATUS_ADDED;
 			/* Leave {mode,oid}_head zero for adds. */
 			d->mode_index = ce->ce_mode;
