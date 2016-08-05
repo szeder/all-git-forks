@@ -142,6 +142,19 @@ void packet_write(int fd, const char *fmt, ...)
 	write_or_die(fd, buf.buf, buf.len);
 }
 
+int packet_write_gently_fmt(int fd, const char *fmt, ...)
+{
+	static struct strbuf buf = STRBUF_INIT;
+	va_list args;
+
+	strbuf_reset(&buf);
+	va_start(args, fmt);
+	format_packet(1, &buf, fmt, args);
+	va_end(args);
+	packet_trace(buf.buf + 4, buf.len - 4, 1);
+	return (write_in_full(fd, buf.buf, buf.len) == buf.len ? 0 : -1);
+}
+
 int packet_write_gently(const int fd_out, const char *buf, size_t size)
 {
 	if (size > PKTLINE_DATA_MAXLEN)
