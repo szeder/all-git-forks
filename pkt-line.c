@@ -135,7 +135,7 @@ static int format_packet(int gentle, struct strbuf *out, const char *fmt, va_lis
 	return 0;
 }
 
-void packet_write(int fd, const char *fmt, ...)
+void packet_write_fmt(int fd, const char *fmt, ...)
 {
 	static struct strbuf buf = STRBUF_INIT;
 	va_list args;
