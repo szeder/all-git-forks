@@ -108,7 +108,7 @@ static void set_packet_header(char *buf, const int size)
 	#undef hex
 }
 
-static void format_packet(struct strbuf *out, const char *fmt, va_list args)
+static int format_packet(int gentle, struct strbuf *out, const char *fmt, va_list args)
 {
 	size_t orig_len, n;
 
@@ -117,10 +117,15 @@ static void format_packet(struct strbuf *out, const char *fmt, va_list args)
 	strbuf_vaddf(out, fmt, args);
 	n = out->len - orig_len;
 
-	if (n > LARGE_PACKET_MAX)
-		die("protocol error: impossibly long line");
+	if (n > LARGE_PACKET_MAX) {
+		if (gentle)
+			return -1;
+		else
+			die("protocol error: impossibly long line");
+	}
 
 	set_packet_header(&out->buf[orig_len], n);
+	return 0;
 }
 
 void packet_write(int fd, const char *fmt, ...)
@@ -130,7 +135,7 @@ void packet_write(int fd, const char *fmt, ...)
 
 	strbuf_reset(&buf);
 	va_start(args, fmt);
-	format_packet(&buf, fmt, args);
+	format_packet(0, &buf, fmt, args);
 	va_end(args);
 	packet_trace(buf.buf + 4, buf.len - 4, 1);
 	write_or_die(fd, buf.buf, buf.len);
@@ -141,7 +146,7 @@ void packet_buf_write(struct strbuf *buf, const char *fmt, ...)
 	va_list args;
 
 	va_start(args, fmt);
-	format_packet(buf, fmt, args);
+	format_packet(0, buf, fmt, args);
 	va_end(args);
 }
 
