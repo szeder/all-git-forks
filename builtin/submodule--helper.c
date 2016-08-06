@@ -584,6 +584,7 @@ struct submodule_update_clone {
 	int quiet;
 	int recommend_shallow;
 	struct string_list references;
+	struct string_list super_references;
 	const char *depth;
 	const char *recursive_prefix;
 	const char *prefix;
@@ -600,7 +601,7 @@ struct submodule_update_clone {
 };
 #define SUBMODULE_UPDATE_CLONE_INIT {0, MODULE_LIST_INIT, 0, \
 	SUBMODULE_UPDATE_STRATEGY_INIT, 0, -1, STRING_LIST_INIT_DUP, \
-	NULL, NULL, NULL, \
+	STRING_LIST_INIT_DUP, NULL, NULL, NULL, \
 	STRING_LIST_INIT_DUP, 0, NULL, 0, 0}
 
 
@@ -714,6 +715,15 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 		struct string_list_item *item;
 		for_each_string_list_item(item, &suc->references)
 			argv_array_pushl(&child->args, "--reference", item->string, NULL);
+	}
+	if (suc->super_references.nr) {
+		struct string_list_item *item;
+		for_each_string_list_item(item, &suc->super_references) {
+			strbuf_reset(&sb);
+			argv_array_pushf(&child->args, "--reference=%s/%s",
+					 relative_path(item->string, suc->prefix, &sb),
+					 sub->path);
+		}
 	}
 	if (suc->depth)
 		argv_array_push(&child->args, suc->depth);
@@ -835,6 +845,8 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 			   N_("rebase, merge, checkout or none")),
 		OPT_STRING_LIST(0, "reference", &suc.references, N_("repo"),
 			   N_("reference repository")),
+		OPT_STRING_LIST(0, "super-reference", &suc.super_references, N_("repo"),
+			   N_("superproject of a reference repository")),
 		OPT_STRING(0, "depth", &suc.depth, "<depth>",
 			   N_("Create a shallow clone truncated to the "
 			      "specified number of revisions")),
