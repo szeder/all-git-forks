@@ -41,16 +41,19 @@ except ImportError:
 
 re_ident = re.compile('(author|committer) (?P<ident>.*) (?P<epoch>\d+) (?P<tz>[+-]\d{4})')
 
-def list_to_string(args, skip):
-	count = len(args)
-	i = skip
-	str_arg=" "
-	while (i < count ):
-		str_arg = str_arg + args[i]
-		str_arg = str_arg + " "
-		i = i+1
+# def list_to_string(args, skip):
+# 	count = len(args)
+# 	i = skip
+# 	str_arg=" "
+# 	while (i < count ):
+# 		str_arg = str_arg + args[i]
+# 		str_arg = str_arg + " "
+# 		i = i+1
 
-	return str_arg
+# 	return str_arg
+
+def list_to_string(args, skip):
+	return " "+" ".join(args[skip:])+" "
 
 def show_date(epoch, tz):
 	secs = float(epoch)
