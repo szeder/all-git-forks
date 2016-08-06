@@ -53,7 +53,8 @@ test_expect_success 'submodule add --reference uses alternates' '
 	(
 		cd super &&
 		git submodule add --reference ../B "file://$base_dir/A" sub &&
-		git commit -m B-super-added
+		git commit -m B-super-added &&
+		git repack -ad
 	) &&
 	test_alternate_usage super/.git/modules/sub/objects/info/alternates super/sub
 '
@@ -63,6 +64,34 @@ test_expect_success 'updating superproject keeps alternates' '
 	git clone super super-clone &&
 	git -C super-clone submodule update --init --reference ../B &&
 	test_alternate_usage super-clone/.git/modules/sub/objects/info/alternates super-clone/sub
+'
+
+test_expect_success 'submodules use alternates when cloning a superproject' '
+	test_when_finished "rm -rf super-clone" &&
+	git clone --reference super --recursive super super-clone &&
+	(
+		cd super-clone &&
+		# test superproject has alternates setup correctly
+		test_alternate_usage .git/objects/info/alternates . &&
+		# test submodule has correct setup
+		test_alternate_usage .git/modules/sub/objects/info/alternates sub
+	)
+'
+
+test_expect_success 'cloning superproject, missing submodule alternates' '
+	test_when_finished "rm -rf super-clone" &&
+	git clone super super2 &&
+	test_must_fail git clone --recursive --reference super2 super2 super-clone &&
+	(
+		cd super-clone &&
+		# test superproject has alternates setup correctly
+		test_alternate_usage .git/objects/info/alternates . &&
+		# update of the submodule succeeds
+		git submodule update --init &&
+		# and we have no alternates:
+		test_must_fail test_alternate_usage .git/modules/sub/objects/info/alternates sub &&
+		test_path_is_file sub/file1
+	)
 '
 
 test_done
