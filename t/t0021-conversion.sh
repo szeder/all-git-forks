@@ -214,7 +214,7 @@ test_expect_success 'filter that does not read is fine' '
 	test_cmp expect actual
 '
 
-test_expect_success EXPENSIVE 'filter large file' '
+test_expect_success EXPENSIVE,!MINGW 'filter large file' '
 	git config filter.largefile.smudge cat &&
 	git config filter.largefile.clean cat &&
 	for i in $(test_seq 1 2048); do printf "%1048576d" 1; done >2GB &&
@@ -266,6 +266,17 @@ test_expect_success 'disable filter with empty override' '
 	rm -f test.disable &&
 	git -c filter.disable.smudge= checkout -- test.disable 2>err &&
 	test_must_be_empty err
+'
+
+test_expect_success 'diff does not reuse worktree files that need cleaning' '
+	test_config filter.counter.clean "echo . >>count; sed s/^/clean:/" &&
+	echo "file filter=counter" >.gitattributes &&
+	test_commit one file &&
+	test_commit two file &&
+
+	>count &&
+	git diff-tree -p HEAD &&
+	test_line_count = 0 count
 '
 
 test_done

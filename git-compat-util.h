@@ -348,6 +348,14 @@ static inline int git_skip_dos_drive_prefix(char **path)
 #define skip_dos_drive_prefix git_skip_dos_drive_prefix
 #endif
 
+#ifndef has_unc_prefix
+static inline int git_has_unc_prefix(const char *path)
+{
+	return 0;
+}
+#define has_unc_prefix git_has_unc_prefix
+#endif
+
 #ifndef is_dir_sep
 static inline int git_is_dir_sep(int c)
 {
@@ -374,6 +382,10 @@ static inline char *git_find_last_dir_sep(const char *path)
 
 #ifndef git_program_data_config
 #define git_program_data_config() NULL
+#endif
+
+#ifndef query_user_email
+#define query_user_email() NULL
 #endif
 
 #if defined(__HP_cc) && (__HP_cc >= 61000)
@@ -535,6 +547,7 @@ static inline int ends_with(const char *str, const char *suffix)
 #define PROT_READ 1
 #define PROT_WRITE 2
 #define MAP_PRIVATE 1
+#define MAP_SHARED 2
 #endif
 
 #define mmap git_mmap

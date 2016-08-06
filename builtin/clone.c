@@ -41,9 +41,11 @@ static const char * const builtin_clone_usage[] = {
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
 static int option_shallow_submodules;
-static char *option_template, *option_depth;
+static int deepen;
+static char *option_template, *option_depth, *option_since;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
+static struct string_list option_not = STRING_LIST_INIT_NODUP;
 static const char *real_git_dir;
 static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
@@ -51,8 +53,19 @@ static int option_progress = -1;
 static enum transport_family family;
 static struct string_list option_config = STRING_LIST_INIT_NODUP;
 static struct string_list option_reference = STRING_LIST_INIT_NODUP;
+static struct string_list superreferences = STRING_LIST_INIT_DUP;
 static int option_dissociate;
 static int max_jobs = -1;
+static struct string_list init_submodules;
+
+static int init_submodules_cb(const struct option *opt, const char *arg, int unset)
+{
+	if (unset)
+		return -1;
+
+	string_list_append((struct string_list *)opt->value, arg);
+	return 0;
+}
 
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
@@ -91,6 +104,10 @@ static struct option builtin_clone_options[] = {
 		   N_("path to git-upload-pack on the remote")),
 	OPT_STRING(0, "depth", &option_depth, N_("depth"),
 		    N_("create a shallow clone of that depth")),
+	OPT_STRING(0, "shallow-since", &option_since, N_("time"),
+		    N_("create a shallow clone since a specific time")),
+	OPT_STRING_LIST(0, "shallow-exclude", &option_not, N_("revision"),
+			N_("deepen history of shallow clone by excluding rev")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
 		    N_("clone only one branch, HEAD or --branch")),
 	OPT_BOOL(0, "shallow-submodules", &option_shallow_submodules,
@@ -103,6 +120,9 @@ static struct option builtin_clone_options[] = {
 			TRANSPORT_FAMILY_IPV4),
 	OPT_SET_INT('6', "ipv6", &family, N_("use IPv6 addresses only"),
 			TRANSPORT_FAMILY_IPV6),
+	OPT_CALLBACK(0, "init-submodule", &init_submodules, N_("<pathspec>"),
+			N_("clone specific submodules. Pass multiple times for complex pathspecs"),
+			init_submodules_cb),
 	OPT_END()
 };
 
@@ -280,10 +300,11 @@ static void strip_trailing_slashes(char *dir)
 	*end = '\0';
 }
 
-static int add_one_reference(struct string_list_item *item, void *cb_data)
+static int add_one_reference(struct string_list_item *item, void *cb_dir)
 {
 	char *ref_git;
 	const char *repo;
+	const char *dir = cb_dir;
 	struct strbuf alternate = STRBUF_INIT;
 
 	/* Beware: read_gitfile(), real_path() and mkpath() return static buffer */
@@ -316,6 +337,13 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 	if (!access(mkpath("%s/info/grafts", ref_git), F_OK))
 		die(_("reference repository '%s' is grafted"), item->string);
 
+	if (option_recursive) {
+		struct strbuf sb = STRBUF_INIT;
+		char *rel = xstrdup(relative_path(item->string, dir, &sb));
+		string_list_append(&superreferences, rel);
+		strbuf_reset(&sb);
+	}
+
 	strbuf_addf(&alternate, "%s/objects", ref_git);
 	add_to_alternates_file(alternate.buf);
 	strbuf_release(&alternate);
@@ -323,9 +351,9 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 	return 0;
 }
 
-static void setup_reference(void)
+static void setup_reference(char *dir)
 {
-	for_each_string_list(&option_reference, add_one_reference, NULL);
+	for_each_string_list(&option_reference, add_one_reference, dir);
 }
 
 static void copy_alternates(struct strbuf *src, struct strbuf *dst,
@@ -624,13 +652,13 @@ static void update_remote_refs(const struct ref *refs,
 	const struct ref *rm = mapped_refs;
 
 	if (check_connectivity) {
-		if (transport->progress)
-			fprintf(stderr, _("Checking connectivity... "));
-		if (check_everything_connected_with_transport(iterate_ref_map,
-							      0, &rm, transport))
+		struct check_connected_options opt = CHECK_CONNECTED_INIT;
+
+		opt.transport = transport;
+		opt.progress = transport->progress;
+
+		if (check_connected(iterate_ref_map, &rm, &opt))
 			die(_("remote did not send all necessary objects"));
-		if (transport->progress)
-			fprintf(stderr, _("done.\n"));
 	}
 
 	if (refs) {
@@ -734,15 +762,29 @@ static int checkout(void)
 	err |= run_hook_le(NULL, "post-checkout", sha1_to_hex(null_sha1),
 			   sha1_to_hex(sha1), "1", NULL);
 
-	if (!err && option_recursive) {
+	if (!err && (option_recursive || init_submodules.nr > 0)) {
 		struct argv_array args = ARGV_ARRAY_INIT;
-		argv_array_pushl(&args, "submodule", "update", "--init", "--recursive", NULL);
+		static struct string_list_item *item;
+
+		argv_array_pushl(&args, "submodule", "update", NULL);
+
+		if (init_submodules.nr > 0)
+			argv_array_pushf(&args, "--init-default-path");
+		else
+			argv_array_pushf(&args, "--init");
 
 		if (option_shallow_submodules == 1)
 			argv_array_push(&args, "--depth=1");
 
+		if (option_recursive)
+			argv_array_pushf(&args, "--recursive");
+
 		if (max_jobs != -1)
 			argv_array_pushf(&args, "--jobs=%d", max_jobs);
+
+		if (superreferences.nr)
+			for_each_string_list_item(item, &superreferences)
+				argv_array_pushf(&args, "--super-reference=%s", item->string);
 
 		err = run_command_v_opt(args.argv, RUN_GIT_CMD);
 		argv_array_clear(&args);
@@ -867,8 +909,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		usage_msg_opt(_("You must specify a repository to clone."),
 			builtin_clone_usage, builtin_clone_options);
 
+	if (option_depth || option_since || option_not.nr)
+		deepen = 1;
 	if (option_single_branch == -1)
-		option_single_branch = option_depth ? 1 : 0;
+		option_single_branch = deepen ? 1 : 0;
 
 	if (option_mirror)
 		option_bare = 1;
@@ -880,6 +924,17 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		if (real_git_dir)
 			die(_("--bare and --separate-git-dir are incompatible."));
 		option_no_checkout = 1;
+	}
+
+	if (init_submodules.nr > 0) {
+		struct string_list_item *item;
+		struct strbuf sb = STRBUF_INIT;
+		for_each_string_list_item(item, &init_submodules) {
+			strbuf_addf(&sb, "submodule.defaultUpdatePath=%s",
+				    item->string);
+			string_list_append(&option_config,
+					   strbuf_detach(&sb, NULL));
+		}
 	}
 
 	if (!option_origin)
@@ -978,7 +1033,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	strbuf_reset(&key);
 
 	if (option_reference.nr)
-		setup_reference();
+		setup_reference(dir);
 
 	fetch_pattern = value.buf;
 	refspec = parse_fetch_refspec(1, &fetch_pattern);
@@ -995,6 +1050,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (is_local) {
 		if (option_depth)
 			warning(_("--depth is ignored in local clones; use file:// instead."));
+		if (option_since)
+			warning(_("--shallow-since is ignored in local clones; use file:// instead."));
+		if (option_not.nr)
+			warning(_("--shallow-exclude is ignored in local clones; use file:// instead."));
 		if (!access(mkpath("%s/shallow", path), F_OK)) {
 			if (option_local > 0)
 				warning(_("source repository is shallow, ignoring --local"));
@@ -1013,6 +1072,12 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_depth)
 		transport_set_option(transport, TRANS_OPT_DEPTH,
 				     option_depth);
+	if (option_since)
+		transport_set_option(transport, TRANS_OPT_DEEPEN_SINCE,
+				     option_since);
+	if (option_not.nr)
+		transport_set_option(transport, TRANS_OPT_DEEPEN_NOT,
+				     (const char *)&option_not);
 	if (option_single_branch)
 		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
 
@@ -1020,7 +1085,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
 				     option_upload_pack);
 
-	if (transport->smart_options && !option_depth)
+	if (transport->smart_options && !deepen)
 		transport->smart_options->check_self_contained_and_connected = 1;
 
 	refs = transport_get_remote_refs(transport);
@@ -1044,7 +1109,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			}
 
 		if (!is_local && !complete_refs_before_fetch)
-			transport_fetch_refs(transport, mapped_refs);
+			if (transport_fetch_refs(transport, mapped_refs))
+				die(_("could not fetch refs from %s"),
+				    transport->url);
 
 		remote_head = find_ref_by_name(refs, "HEAD");
 		remote_head_points_at =
