@@ -16,7 +16,7 @@ SYNOPSIS
 'git submodule' [--quiet] deinit [-f|--force] (--all|[--] <path>...)
 'git submodule' [--quiet] update [--init] [--remote] [-N|--no-fetch]
 	      [--[no-]recommend-shallow] [-f|--force] [--rebase|--merge]
-	      [--reference <repository>] [--depth <depth>] [--recursive]
+	      [--[super-]reference <repository>] [--depth <depth>] [--recursive]
 	      [--jobs <n>] [--] [<path>...]
 'git submodule' [--quiet] summary [--cached|--files] [(-n|--summary-limit) <n>]
 	      [commit] [--] [<path>...]
@@ -370,6 +370,12 @@ the submodule itself.
 	This option is only valid for add and update commands.  These
 	commands sometimes need to clone a remote repository. In this case,
 	this option will be passed to the linkgit:git-clone[1] command.
+
+--super-reference <superproject repository>::
+	This option is only valid for the update command. When update needs
+	to clone a repository, a reference will be passed to the clone command
+	that points at the submodule path inside the reference superproject.
+
 +
 *NOTE*: Do *not* use this option unless you have read the note
 for linkgit:git-clone[1]'s `--reference` and `--shared` options carefully.

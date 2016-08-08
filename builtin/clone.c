@@ -51,6 +51,7 @@ static int option_progress = -1;
 static enum transport_family family;
 static struct string_list option_config = STRING_LIST_INIT_NODUP;
 static struct string_list option_reference = STRING_LIST_INIT_NODUP;
+static struct string_list super_references = STRING_LIST_INIT_DUP;
 static int option_dissociate;
 static int max_jobs = -1;
 
@@ -280,10 +281,11 @@ static void strip_trailing_slashes(char *dir)
 	*end = '\0';
 }
 
-static int add_one_reference(struct string_list_item *item, void *cb_data)
+static int add_one_reference(struct string_list_item *item, void *cb_dir)
 {
 	char *ref_git;
 	const char *repo;
+	const char *dir = cb_dir;
 	struct strbuf alternate = STRBUF_INIT;
 
 	/* Beware: read_gitfile(), real_path() and mkpath() return static buffer */
@@ -316,6 +318,13 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 	if (!access(mkpath("%s/info/grafts", ref_git), F_OK))
 		die(_("reference repository '%s' is grafted"), item->string);
 
+	if (option_recursive) {
+		struct strbuf sb = STRBUF_INIT;
+		char *rel = xstrdup(relative_path(item->string, dir, &sb));
+		string_list_append(&super_references, rel);
+		strbuf_reset(&sb);
+	}
+
 	strbuf_addf(&alternate, "%s/objects", ref_git);
 	add_to_alternates_file(alternate.buf);
 	strbuf_release(&alternate);
@@ -323,9 +332,9 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 	return 0;
 }
 
-static void setup_reference(void)
+static void setup_reference(char *dir)
 {
-	for_each_string_list(&option_reference, add_one_reference, NULL);
+	for_each_string_list(&option_reference, add_one_reference, dir);
 }
 
 static void copy_alternates(struct strbuf *src, struct strbuf *dst,
@@ -736,6 +745,7 @@ static int checkout(void)
 
 	if (!err && option_recursive) {
 		struct argv_array args = ARGV_ARRAY_INIT;
+		static struct string_list_item *item;
 		argv_array_pushl(&args, "submodule", "update", "--init", "--recursive", NULL);
 
 		if (option_shallow_submodules == 1)
@@ -743,6 +753,10 @@ static int checkout(void)
 
 		if (max_jobs != -1)
 			argv_array_pushf(&args, "--jobs=%d", max_jobs);
+
+		if (super_references.nr)
+			for_each_string_list_item(item, &super_references)
+				argv_array_pushf(&args, "--super-reference=%s", item->string);
 
 		err = run_command_v_opt(args.argv, RUN_GIT_CMD);
 		argv_array_clear(&args);
@@ -978,7 +992,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	strbuf_reset(&key);
 
 	if (option_reference.nr)
-		setup_reference();
+		setup_reference(dir);
 
 	fetch_pattern = value.buf;
 	refspec = parse_fetch_refspec(1, &fetch_pattern);

@@ -100,6 +100,11 @@ objects from the source repository into a pack in the cloned repository.
 +
 *NOTE*: see the NOTE for the `--shared` option, and also the
 `--dissociate` option.
++
+When `--reference` is given together with `--recursive`,
+the reference repository is assumed to contain the submodules
+as well and the submodules are setup as alternates of the
+submodules in the given reference project.
 
 --dissociate::
 	Borrow the objects from reference repositories specified
