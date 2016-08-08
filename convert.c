@@ -540,6 +540,28 @@ static int packet_write_list(int fd, const char *line, ...)
 	return packet_flush_gently(fd);
 }
 
+void shutdown_multi_file_filter()
+{
+	struct cmd2process *entry;
+	struct hashmap_iter iter;
+
+	if (!cmd_process_map_initialized)
+		return;
+
+	hashmap_iter_init(&cmd_process_map, &iter);
+	while ((entry = hashmap_iter_next(&iter))) {
+		sigchain_push(SIGPIPE, SIG_IGN);
+			close(entry->process.in);
+			close(entry->process.out);
+			sigchain_pop(SIGPIPE);
+	finish_command(&entry->process);
+	child_process_clear(&entry->process);
+
+	}
+	hashmap_free(&cmd_process_map, 1);
+	cmd_process_map_initialized = 0;
+}
+
 static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, const char *cmd)
 {
 	int err;

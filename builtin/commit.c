@@ -1805,6 +1805,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	unlink(git_path_merge_mode());
 	unlink(git_path_squash_msg());
 
+    shutdown_multi_file_filter();
 	if (commit_index_files())
 		die (_("Repository has been updated, but unable to write\n"
 		     "new_index file. Check that disk is not full and quota is\n"
@@ -1825,6 +1826,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	if (!quiet)
 		print_summary(prefix, sha1, !current_head);
 
+    shutdown_multi_file_filter();
 	strbuf_release(&err);
 	return 0;
 }
