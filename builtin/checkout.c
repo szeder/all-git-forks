@@ -378,6 +378,8 @@ static int checkout_paths(const struct checkout_opts *opts,
 	head = lookup_commit_reference_gently(rev, 1);
 
 	errs |= post_checkout_hook(head, head, 0);
+
+	shutdown_multi_file_filter();
 	return errs;
 }
 
@@ -837,6 +839,8 @@ static int switch_branches(const struct checkout_opts *opts,
 
 	ret = post_checkout_hook(old.commit, new->commit, 1);
 	free(path_to_free);
+
+	shutdown_multi_file_filter();
 	return ret || writeout_error;
 }
 

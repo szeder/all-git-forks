@@ -504,6 +504,34 @@ static struct cmd2process *find_multi_file_filter_entry(struct hashmap *hashmap,
 	return hashmap_get(hashmap, &key, NULL);
 }
 
+
+void shutdown_multi_file_filter()
+{
+	int did_fail;
+	struct cmd2process *entry;
+	struct hashmap_iter iter;
+	static const char shutdown[] = "command=shutdown\n";
+	char *result = NULL;
+
+	if (!cmd_process_map_initialized)
+		return;
+
+	hashmap_iter_init(&cmd_process_map, &iter);
+	while ((entry = hashmap_iter_next(&iter))) {
+
+			sigchain_push(SIGPIPE, SIG_IGN);
+			close(entry->process.in);
+			close(entry->process.out);
+			child_process_clear(&entry->process);
+finish_command(&entry->process);
+	child_process_clear(&entry->process);
+
+	}
+
+	hashmap_free(&cmd_process_map, 1);
+	cmd_process_map_initialized = 0;
+}
+
 static void kill_multi_file_filter(struct hashmap *hashmap, struct cmd2process *entry)
 {
 	if (!entry)

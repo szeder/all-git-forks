@@ -31,6 +31,8 @@ enum eol {
 #endif
 };
 
+extern void shutdown_multi_file_filter();
+
 extern enum eol core_eol;
 extern const char *get_cached_convert_stats_ascii(const char *path);
 extern const char *get_wt_convert_stats_ascii(const char *path);
