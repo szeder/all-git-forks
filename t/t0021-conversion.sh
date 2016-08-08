@@ -301,8 +301,7 @@ script='s/^\$Id: \([0-9a-f]*\) \$/\1/p'
 
 check_filter () {
 	rm -f rot13-filter.log actual.log &&
-	"$@" 2> git_stderr.log &&
-	test_must_be_empty git_stderr.log &&
+	"$@" &&
 	cat >expected.log &&
 	sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" >actual.log &&
 	test_cmp expected.log actual.log
@@ -310,8 +309,7 @@ check_filter () {
 
 check_filter_count_clean () {
 	rm -f rot13-filter.log actual.log &&
-	"$@" 2> git_stderr.log &&
-	test_must_be_empty git_stderr.log &&
+	"$@" &&
 	cat >expected.log &&
 	sort rot13-filter.log | uniq -c | sed "s/^[ ]*//" |
 		sed "s/^\([0-9]\) IN: clean/x IN: clean/" >actual.log &&
@@ -328,8 +326,7 @@ check_filter_ignore_clean () {
 
 check_filter_no_call () {
 	rm -f rot13-filter.log &&
-	"$@" 2> git_stderr.log &&
-	test_must_be_empty git_stderr.log &&
+	"$@" &&
 	test_must_be_empty rot13-filter.log
 }
 

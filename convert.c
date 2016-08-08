@@ -758,6 +758,7 @@ static int apply_filter(const char *path, const char *src, size_t len,
                         int fd, struct strbuf *dst, struct convert_driver *drv,
                         const int wanted_capability)
 {
+	warning("filter %s\n", path);
 	const char* cmd = NULL;
 
 	if (!drv)
