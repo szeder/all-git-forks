@@ -102,6 +102,16 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 			return -1;
 		break;
 
+	case 'w':
+		if (!obj_context.path[0])
+			die("git cat-file --filters %s: <object> must be "
+			    "<sha1:path>", obj_name);
+
+		if (filter_object(obj_context.path, obj_context.mode,
+				  sha1, &buf, &size))
+			return -1;
+		break;
+
 	case 'c':
 		if (!path[0])
 			die("git cat-file --textconv %s: <object> must be <sha1:path>",
