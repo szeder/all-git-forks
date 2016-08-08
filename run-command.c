@@ -233,7 +233,7 @@ static int wait_or_whine(pid_t pid, const char *argv0, int in_signal)
 
 	if (waiting < 0) {
 		failed_errno = errno;
-		error("waitpid for %s failed: %s", argv0, strerror(errno));
+		error_errno("waitpid for %s failed", argv0);
 	} else if (waiting != pid) {
 		error("waitpid is confused (%s)", argv0);
 	} else if (WIFSIGNALED(status)) {
@@ -420,8 +420,7 @@ fail_pipe:
 		}
 	}
 	if (cmd->pid < 0)
-		error("cannot fork() for %s: %s", cmd->argv[0],
-			strerror(errno));
+		error_errno("cannot fork() for %s", cmd->argv[0]);
 	else if (cmd->clean_on_exit)
 		mark_child_for_cleanup(cmd->pid);
 
@@ -482,7 +481,7 @@ fail_pipe:
 			cmd->dir, fhin, fhout, fherr);
 	failed_errno = errno;
 	if (cmd->pid < 0 && (!cmd->silent_exec_failure || errno != ENOENT))
-		error("cannot spawn %s: %s", cmd->argv[0], strerror(errno));
+		error_errno("cannot spawn %s", cmd->argv[0]);
 	if (cmd->clean_on_exit && cmd->pid >= 0)
 		mark_child_for_cleanup(cmd->pid);
 
@@ -590,6 +589,16 @@ static void *run_thread(void *data)
 	struct async *async = data;
 	intptr_t ret;
 
+	if (async->isolate_sigpipe) {
+		sigset_t mask;
+		sigemptyset(&mask);
+		sigaddset(&mask, SIGPIPE);
+		if (pthread_sigmask(SIG_BLOCK, &mask, NULL) < 0) {
+			ret = error("unable to block SIGPIPE in async thread");
+			return (void *)ret;
+		}
+	}
+
 	pthread_setspecific(async_key, async);
 	ret = async->proc(async->proc_in, async->proc_out, async->data);
 	return (void *)ret;
@@ -693,7 +702,7 @@ int start_async(struct async *async)
 		if (pipe(fdin) < 0) {
 			if (async->out > 0)
 				close(async->out);
-			return error("cannot create pipe: %s", strerror(errno));
+			return error_errno("cannot create pipe");
 		}
 		async->in = fdin[1];
 	}
@@ -705,7 +714,7 @@ int start_async(struct async *async)
 				close_pair(fdin);
 			else if (async->in)
 				close(async->in);
-			return error("cannot create pipe: %s", strerror(errno));
+			return error_errno("cannot create pipe");
 		}
 		async->out = fdout[0];
 	}
@@ -730,7 +739,7 @@ int start_async(struct async *async)
 
 	async->pid = fork();
 	if (async->pid < 0) {
-		error("fork (async) failed: %s", strerror(errno));
+		error_errno("fork (async) failed");
 		goto error;
 	}
 	if (!async->pid) {
@@ -777,7 +786,7 @@ int start_async(struct async *async)
 	{
 		int err = pthread_create(&async->tid, NULL, run_thread, async);
 		if (err) {
-			error("cannot create thread: %s", strerror(err));
+			error_errno("cannot create thread");
 			goto error;
 		}
 	}
@@ -815,7 +824,10 @@ const char *find_hook(const char *name)
 	static struct strbuf path = STRBUF_INIT;
 
 	strbuf_reset(&path);
-	strbuf_git_path(&path, "hooks/%s", name);
+	if (git_hooks_path)
+		strbuf_addf(&path, "%s/%s", git_hooks_path, name);
+	else
+		strbuf_git_path(&path, "hooks/%s", name);
 	if (access(path.buf, X_OK) < 0)
 		return NULL;
 	return path.buf;
@@ -852,19 +864,161 @@ int run_hook_le(const char *const *env, const char *name, ...)
 	return ret;
 }
 
-int capture_command(struct child_process *cmd, struct strbuf *buf, size_t hint)
+struct io_pump {
+	/* initialized by caller */
+	int fd;
+	int type; /* POLLOUT or POLLIN */
+	union {
+		struct {
+			const char *buf;
+			size_t len;
+		} out;
+		struct {
+			struct strbuf *buf;
+			size_t hint;
+		} in;
+	} u;
+
+	/* returned by pump_io */
+	int error; /* 0 for success, otherwise errno */
+
+	/* internal use */
+	struct pollfd *pfd;
+};
+
+static int pump_io_round(struct io_pump *slots, int nr, struct pollfd *pfd)
 {
-	cmd->out = -1;
+	int pollsize = 0;
+	int i;
+
+	for (i = 0; i < nr; i++) {
+		struct io_pump *io = &slots[i];
+		if (io->fd < 0)
+			continue;
+		pfd[pollsize].fd = io->fd;
+		pfd[pollsize].events = io->type;
+		io->pfd = &pfd[pollsize++];
+	}
+
+	if (!pollsize)
+		return 0;
+
+	if (poll(pfd, pollsize, -1) < 0) {
+		if (errno == EINTR)
+			return 1;
+		die_errno("poll failed");
+	}
+
+	for (i = 0; i < nr; i++) {
+		struct io_pump *io = &slots[i];
+
+		if (io->fd < 0)
+			continue;
+
+		if (!(io->pfd->revents & (POLLOUT|POLLIN|POLLHUP|POLLERR|POLLNVAL)))
+			continue;
+
+		if (io->type == POLLOUT) {
+			ssize_t len = xwrite(io->fd,
+					     io->u.out.buf, io->u.out.len);
+			if (len < 0) {
+				io->error = errno;
+				close(io->fd);
+				io->fd = -1;
+			} else {
+				io->u.out.buf += len;
+				io->u.out.len -= len;
+				if (!io->u.out.len) {
+					close(io->fd);
+					io->fd = -1;
+				}
+			}
+		}
+
+		if (io->type == POLLIN) {
+			ssize_t len = strbuf_read_once(io->u.in.buf,
+						       io->fd, io->u.in.hint);
+			if (len < 0)
+				io->error = errno;
+			if (len <= 0) {
+				close(io->fd);
+				io->fd = -1;
+			}
+		}
+	}
+
+	return 1;
+}
+
+static int pump_io(struct io_pump *slots, int nr)
+{
+	struct pollfd *pfd;
+	int i;
+
+	for (i = 0; i < nr; i++)
+		slots[i].error = 0;
+
+	ALLOC_ARRAY(pfd, nr);
+	while (pump_io_round(slots, nr, pfd))
+		; /* nothing */
+	free(pfd);
+
+	/* There may be multiple errno values, so just pick the first. */
+	for (i = 0; i < nr; i++) {
+		if (slots[i].error) {
+			errno = slots[i].error;
+			return -1;
+		}
+	}
+	return 0;
+}
+
+
+int pipe_command(struct child_process *cmd,
+		 const char *in, size_t in_len,
+		 struct strbuf *out, size_t out_hint,
+		 struct strbuf *err, size_t err_hint)
+{
+	struct io_pump io[3];
+	int nr = 0;
+
+	if (in)
+		cmd->in = -1;
+	if (out)
+		cmd->out = -1;
+	if (err)
+		cmd->err = -1;
+
 	if (start_command(cmd) < 0)
 		return -1;
 
-	if (strbuf_read(buf, cmd->out, hint) < 0) {
-		close(cmd->out);
+	if (in) {
+		io[nr].fd = cmd->in;
+		io[nr].type = POLLOUT;
+		io[nr].u.out.buf = in;
+		io[nr].u.out.len = in_len;
+		nr++;
+	}
+	if (out) {
+		io[nr].fd = cmd->out;
+		io[nr].type = POLLIN;
+		io[nr].u.in.buf = out;
+		io[nr].u.in.hint = out_hint;
+		nr++;
+	}
+	if (err) {
+		io[nr].fd = cmd->err;
+		io[nr].type = POLLIN;
+		io[nr].u.in.buf = err;
+		io[nr].u.in.hint = err_hint;
+		nr++;
+	}
+
+	if (pump_io(io, nr) < 0) {
 		finish_command(cmd); /* throw away exit code */
 		return -1;
 	}
 
-	close(cmd->out);
 	return finish_command(cmd);
 }
 

@@ -179,12 +179,12 @@ static int serve_cache_loop(int fd)
 
 		client = accept(fd, NULL, NULL);
 		if (client < 0) {
-			warning("accept failed: %s", strerror(errno));
+			warning_errno("accept failed");
 			return 1;
 		}
 		client2 = dup(client);
 		if (client2 < 0) {
-			warning("dup failed: %s", strerror(errno));
+			warning_errno("dup failed");
 			close(client);
 			return 1;
 		}
@@ -257,7 +257,7 @@ static void init_socket_directory(const char *path)
 	free(path_copy);
 }
 
-int main(int argc, const char **argv)
+int cmd_main(int argc, const char **argv)
 {
 	const char *socket_path;
 	int ignore_sighup = 0;

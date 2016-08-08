@@ -484,9 +484,9 @@ static int show_head_ref(const char *refname, const struct object_id *oid,
 		const char *target = resolve_ref_unsafe(refname,
 							RESOLVE_REF_READING,
 							unused.hash, NULL);
-		const char *target_nons = strip_namespace(target);
 
-		strbuf_addf(buf, "ref: %s\n", target_nons);
+		if (target)
+			strbuf_addf(buf, "ref: %s\n", strip_namespace(target));
 	} else {
 		strbuf_addf(buf, "%s\n", oid_to_hex(oid));
 	}
@@ -632,7 +632,7 @@ static struct service_cmd {
 	{"POST", "/git-receive-pack$", service_rpc}
 };
 
-int main(int argc, char **argv)
+int cmd_main(int argc, const char **argv)
 {
 	char *method = getenv("REQUEST_METHOD");
 	char *dir;
@@ -640,9 +640,6 @@ int main(int argc, char **argv)
 	char *cmd_arg = NULL;
 	int i;
 
-	git_setup_gettext();
-
-	git_extract_argv0_path(argv[0]);
 	set_die_routine(die_webcgi);
 	set_die_is_recursing_routine(die_webcgi_recursing);
 

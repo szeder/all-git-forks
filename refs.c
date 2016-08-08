@@ -120,25 +120,33 @@ int check_refname_format(const char *refname, int flags)
 
 int refname_is_safe(const char *refname)
 {
-	if (starts_with(refname, "refs/")) {
+	const char *rest;
+
+	if (skip_prefix(refname, "refs/", &rest)) {
 		char *buf;
 		int result;
+		size_t restlen = strlen(rest);
 
-		buf = xmallocz(strlen(refname));
+		/* rest must not be empty, or start or end with "/" */
+		if (!restlen || *rest == '/' || rest[restlen - 1] == '/')
+			return 0;
+
 		/*
 		 * Does the refname try to escape refs/?
 		 * For example: refs/foo/../bar is safe but refs/foo/../../bar
 		 * is not.
 		 */
-		result = !normalize_path_copy(buf, refname + strlen("refs/"));
+		buf = xmallocz(restlen);
+		result = !normalize_path_copy(buf, rest) && !strcmp(buf, rest);
 		free(buf);
 		return result;
 	}
-	while (*refname) {
+
+	do {
 		if (!isupper(*refname) && *refname != '_')
 			return 0;
 		refname++;
-	}
+	} while (*refname);
 	return 1;
 }
 
@@ -496,7 +504,7 @@ static int write_pseudoref(const char *pseudoref, const unsigned char *sha1,
 	filename = git_path("%s", pseudoref);
 	fd = hold_lock_file_for_update(&lock, filename, LOCK_DIE_ON_ERROR);
 	if (fd < 0) {
-		strbuf_addf(err, "Could not open '%s' for writing: %s",
+		strbuf_addf(err, "could not open '%s' for writing: %s",
 			    filename, strerror(errno));
 		return -1;
 	}
@@ -507,14 +515,14 @@ static int write_pseudoref(const char *pseudoref, const unsigned char *sha1,
 		if (read_ref(pseudoref, actual_old_sha1))
 			die("could not read ref '%s'", pseudoref);
 		if (hashcmp(actual_old_sha1, old_sha1)) {
-			strbuf_addf(err, "Unexpected sha1 when writing %s", pseudoref);
+			strbuf_addf(err, "unexpected sha1 when writing '%s'", pseudoref);
 			rollback_lock_file(&lock);
 			goto done;
 		}
 	}
 
 	if (write_in_full(fd, buf.buf, buf.len) != buf.len) {
-		strbuf_addf(err, "Could not write to '%s'", filename);
+		strbuf_addf(err, "could not write to '%s'", filename);
 		rollback_lock_file(&lock);
 		goto done;
 	}
@@ -758,13 +766,33 @@ void ref_transaction_free(struct ref_transaction *transaction)
 	free(transaction);
 }
 
-static struct ref_update *add_update(struct ref_transaction *transaction,
-				     const char *refname)
+struct ref_update *ref_transaction_add_update(
+		struct ref_transaction *transaction,
+		const char *refname, unsigned int flags,
+		const unsigned char *new_sha1,
+		const unsigned char *old_sha1,
+		const char *msg)
 {
 	struct ref_update *update;
+
+	if (transaction->state != REF_TRANSACTION_OPEN)
+		die("BUG: update called for transaction that is not open");
+
+	if ((flags & REF_ISPRUNING) && !(flags & REF_NODEREF))
+		die("BUG: REF_ISPRUNING set without REF_NODEREF");
+
 	FLEX_ALLOC_STR(update, refname, refname);
 	ALLOC_GROW(transaction->updates, transaction->nr + 1, transaction->alloc);
 	transaction->updates[transaction->nr++] = update;
+
+	update->flags = flags;
+
+	if (flags & REF_HAVE_NEW)
+		hashcpy(update->new_sha1, new_sha1);
+	if (flags & REF_HAVE_OLD)
+		hashcpy(update->old_sha1, old_sha1);
+	if (msg)
+		update->msg = xstrdup(msg);
 	return update;
 }
 
@@ -775,32 +803,20 @@ int ref_transaction_update(struct ref_transaction *transaction,
 			   unsigned int flags, const char *msg,
 			   struct strbuf *err)
 {
-	struct ref_update *update;
-
 	assert(err);
 
-	if (transaction->state != REF_TRANSACTION_OPEN)
-		die("BUG: update called for transaction that is not open");
-
-	if (new_sha1 && !is_null_sha1(new_sha1) &&
-	    check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
-		strbuf_addf(err, "refusing to update ref with bad name %s",
+	if ((new_sha1 && !is_null_sha1(new_sha1)) ?
+	    check_refname_format(refname, REFNAME_ALLOW_ONELEVEL) :
+	    !refname_is_safe(refname)) {
+		strbuf_addf(err, "refusing to update ref with bad name '%s'",
 			    refname);
 		return -1;
 	}
 
-	update = add_update(transaction, refname);
-	if (new_sha1) {
-		hashcpy(update->new_sha1, new_sha1);
-		flags |= REF_HAVE_NEW;
-	}
-	if (old_sha1) {
-		hashcpy(update->old_sha1, old_sha1);
-		flags |= REF_HAVE_OLD;
-	}
-	update->flags = flags;
-	if (msg)
-		update->msg = xstrdup(msg);
+	flags |= (new_sha1 ? REF_HAVE_NEW : 0) | (old_sha1 ? REF_HAVE_OLD : 0);
+
+	ref_transaction_add_update(transaction, refname, flags,
+				   new_sha1, old_sha1, msg);
 	return 0;
 }
 
@@ -1079,4 +1095,173 @@ int rename_ref_available(const char *oldname, const char *newname)
 	string_list_clear(&skip, 0);
 	strbuf_release(&err);
 	return ret;
+}
+
+int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
+{
+	struct object_id oid;
+	int flag;
+
+	if (submodule) {
+		if (resolve_gitlink_ref(submodule, "HEAD", oid.hash) == 0)
+			return fn("HEAD", &oid, 0, cb_data);
+
+		return 0;
+	}
+
+	if (!read_ref_full("HEAD", RESOLVE_REF_READING, oid.hash, &flag))
+		return fn("HEAD", &oid, flag, cb_data);
+
+	return 0;
+}
+
+int head_ref(each_ref_fn fn, void *cb_data)
+{
+	return head_ref_submodule(NULL, fn, cb_data);
+}
+
+/*
+ * Call fn for each reference in the specified submodule for which the
+ * refname begins with prefix. If trim is non-zero, then trim that
+ * many characters off the beginning of each refname before passing
+ * the refname to fn. flags can be DO_FOR_EACH_INCLUDE_BROKEN to
+ * include broken references in the iteration. If fn ever returns a
+ * non-zero value, stop the iteration and return that value;
+ * otherwise, return 0.
+ */
+static int do_for_each_ref(const char *submodule, const char *prefix,
+			   each_ref_fn fn, int trim, int flags, void *cb_data)
+{
+	struct ref_iterator *iter;
+
+	iter = files_ref_iterator_begin(submodule, prefix, flags);
+	iter = prefix_ref_iterator_begin(iter, prefix, trim);
+
+	return do_for_each_ref_iterator(iter, fn, cb_data);
+}
+
+int for_each_ref(each_ref_fn fn, void *cb_data)
+{
+	return do_for_each_ref(NULL, "", fn, 0, 0, cb_data);
+}
+
+int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data)
+{
+	return do_for_each_ref(submodule, "", fn, 0, 0, cb_data);
+}
+
+int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data)
+{
+	return do_for_each_ref(NULL, prefix, fn, strlen(prefix), 0, cb_data);
+}
+
+int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data, unsigned int broken)
+{
+	unsigned int flag = 0;
+
+	if (broken)
+		flag = DO_FOR_EACH_INCLUDE_BROKEN;
+	return do_for_each_ref(NULL, prefix, fn, 0, flag, cb_data);
+}
+
+int for_each_ref_in_submodule(const char *submodule, const char *prefix,
+		each_ref_fn fn, void *cb_data)
+{
+	return do_for_each_ref(submodule, prefix, fn, strlen(prefix), 0, cb_data);
+}
+
+int for_each_replace_ref(each_ref_fn fn, void *cb_data)
+{
+	return do_for_each_ref(NULL, git_replace_ref_base, fn,
+			       strlen(git_replace_ref_base), 0, cb_data);
+}
+
+int for_each_namespaced_ref(each_ref_fn fn, void *cb_data)
+{
+	struct strbuf buf = STRBUF_INIT;
+	int ret;
+	strbuf_addf(&buf, "%srefs/", get_git_namespace());
+	ret = do_for_each_ref(NULL, buf.buf, fn, 0, 0, cb_data);
+	strbuf_release(&buf);
+	return ret;
+}
+
+int for_each_rawref(each_ref_fn fn, void *cb_data)
+{
+	return do_for_each_ref(NULL, "", fn, 0,
+			       DO_FOR_EACH_INCLUDE_BROKEN, cb_data);
+}
+
+/* This function needs to return a meaningful errno on failure */
+const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
+			       unsigned char *sha1, int *flags)
+{
+	static struct strbuf sb_refname = STRBUF_INIT;
+	int unused_flags;
+	int symref_count;
+
+	if (!flags)
+		flags = &unused_flags;
+
+	*flags = 0;
+
+	if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
+		if (!(resolve_flags & RESOLVE_REF_ALLOW_BAD_NAME) ||
+		    !refname_is_safe(refname)) {
+			errno = EINVAL;
+			return NULL;
+		}
+
+		/*
+		 * dwim_ref() uses REF_ISBROKEN to distinguish between
+		 * missing refs and refs that were present but invalid,
+		 * to complain about the latter to stderr.
+		 *
+		 * We don't know whether the ref exists, so don't set
+		 * REF_ISBROKEN yet.
+		 */
+		*flags |= REF_BAD_NAME;
+	}
+
+	for (symref_count = 0; symref_count < SYMREF_MAXDEPTH; symref_count++) {
+		unsigned int read_flags = 0;
+
+		if (read_raw_ref(refname, sha1, &sb_refname, &read_flags)) {
+			*flags |= read_flags;
+			if (errno != ENOENT || (resolve_flags & RESOLVE_REF_READING))
+				return NULL;
+			hashclr(sha1);
+			if (*flags & REF_BAD_NAME)
+				*flags |= REF_ISBROKEN;
+			return refname;
+		}
+
+		*flags |= read_flags;
+
+		if (!(read_flags & REF_ISSYMREF)) {
+			if (*flags & REF_BAD_NAME) {
+				hashclr(sha1);
+				*flags |= REF_ISBROKEN;
+			}
+			return refname;
+		}
+
+		refname = sb_refname.buf;
+		if (resolve_flags & RESOLVE_REF_NO_RECURSE) {
+			hashclr(sha1);
+			return refname;
+		}
+		if (check_refname_format(refname, REFNAME_ALLOW_ONELEVEL)) {
+			if (!(resolve_flags & RESOLVE_REF_ALLOW_BAD_NAME) ||
+			    !refname_is_safe(refname)) {
+				errno = EINVAL;
+				return NULL;
+			}
+
+			*flags |= REF_ISBROKEN | REF_BAD_NAME;
+		}
+	}
+
+	errno = ELOOP;
+	return NULL;
 }

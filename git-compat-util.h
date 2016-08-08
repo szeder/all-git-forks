@@ -279,9 +279,6 @@ extern char *gitdirname(char *);
 #endif
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#ifdef NO_HMAC_CTX_CLEANUP
-#define HMAC_CTX_cleanup HMAC_cleanup
-#endif
 #endif
 
 /* On most systems <netdb.h> would have given us this, but
@@ -412,7 +409,9 @@ extern NORETURN void usagef(const char *err, ...) __attribute__((format (printf,
 extern NORETURN void die(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern NORETURN void die_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern int error(const char *err, ...) __attribute__((format (printf, 1, 2)));
+extern int error_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)));
+extern void warning_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 
 #ifndef NO_OPENSSL
 #ifdef APPLE_COMMON_CRYPTO
@@ -471,6 +470,23 @@ static inline int skip_prefix(const char *str, const char *prefix,
 			return 1;
 		}
 	} while (*str++ == *prefix++);
+	return 0;
+}
+
+/*
+ * Like skip_prefix, but promises never to read past "len" bytes of the input
+ * buffer, and returns the remaining number of bytes in "out" via "outlen".
+ */
+static inline int skip_prefix_mem(const char *buf, size_t len,
+				  const char *prefix,
+				  const char **out, size_t *outlen)
+{
+	size_t prefix_len = strlen(prefix);
+	if (prefix_len <= len && !memcmp(buf, prefix, prefix_len)) {
+		*out = buf + prefix_len;
+		*outlen = len - prefix_len;
+		return 1;
+	}
 	return 0;
 }
 
@@ -1046,3 +1062,5 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #endif
 
 #endif
+
+extern int cmd_main(int, const char **);

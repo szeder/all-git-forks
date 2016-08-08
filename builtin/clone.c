@@ -40,6 +40,7 @@ static const char * const builtin_clone_usage[] = {
 
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
+static int option_shallow_submodules;
 static char *option_template, *option_depth;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
@@ -48,8 +49,8 @@ static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
 static int option_progress = -1;
 static enum transport_family family;
-static struct string_list option_config;
-static struct string_list option_reference;
+static struct string_list option_config = STRING_LIST_INIT_NODUP;
+static struct string_list option_reference = STRING_LIST_INIT_NODUP;
 static int option_dissociate;
 static int max_jobs = -1;
 
@@ -92,6 +93,8 @@ static struct option builtin_clone_options[] = {
 		    N_("create a shallow clone of that depth")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
 		    N_("clone only one branch, HEAD or --branch")),
+	OPT_BOOL(0, "shallow-submodules", &option_shallow_submodules,
+		    N_("any cloned submodules will be shallow")),
 	OPT_STRING(0, "separate-git-dir", &real_git_dir, N_("gitdir"),
 		   N_("separate git dir from working tree")),
 	OPT_STRING_LIST('c', "config", &option_config, N_("key=value"),
@@ -621,13 +624,13 @@ static void update_remote_refs(const struct ref *refs,
 	const struct ref *rm = mapped_refs;
 
 	if (check_connectivity) {
-		if (transport->progress)
-			fprintf(stderr, _("Checking connectivity... "));
-		if (check_everything_connected_with_transport(iterate_ref_map,
-							      0, &rm, transport))
+		struct check_connected_options opt = CHECK_CONNECTED_INIT;
+
+		opt.transport = transport;
+		opt.progress = transport->progress;
+
+		if (check_connected(iterate_ref_map, &rm, &opt))
 			die(_("remote did not send all necessary objects"));
-		if (transport->progress)
-			fprintf(stderr, _("done.\n"));
 	}
 
 	if (refs) {
@@ -734,6 +737,9 @@ static int checkout(void)
 	if (!err && option_recursive) {
 		struct argv_array args = ARGV_ARRAY_INIT;
 		argv_array_pushl(&args, "submodule", "update", "--init", "--recursive", NULL);
+
+		if (option_shallow_submodules == 1)
+			argv_array_push(&args, "--depth=1");
 
 		if (max_jobs != -1)
 			argv_array_pushf(&args, "--jobs=%d", max_jobs);

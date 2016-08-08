@@ -13,10 +13,11 @@
 #include "argv-array.h"
 #include "blob.h"
 #include "thread-utils.h"
+#include "quote.h"
 
 static int config_fetch_recurse_submodules = RECURSE_SUBMODULES_ON_DEMAND;
 static int parallel_jobs = 1;
-static struct string_list changed_submodule_paths;
+static struct string_list changed_submodule_paths = STRING_LIST_INIT_NODUP;
 static int initialized_fetch_ref_tips;
 static struct sha1_array ref_tips_before_fetch;
 static struct sha1_array ref_tips_after_fetch;
@@ -237,6 +238,27 @@ int parse_submodule_update_strategy(const char *value,
 	return 0;
 }
 
+const char *submodule_strategy_to_string(const struct submodule_update_strategy *s)
+{
+	struct strbuf sb = STRBUF_INIT;
+	switch (s->type) {
+	case SM_UPDATE_CHECKOUT:
+		return "checkout";
+	case SM_UPDATE_MERGE:
+		return "merge";
+	case SM_UPDATE_REBASE:
+		return "rebase";
+	case SM_UPDATE_NONE:
+		return "none";
+	case SM_UPDATE_UNSPECIFIED:
+		return NULL;
+	case SM_UPDATE_COMMAND:
+		strbuf_addf(&sb, "!%s", s->command);
+		return strbuf_detach(&sb, NULL);
+	}
+	return NULL;
+}
+
 void handle_ignore_submodules_arg(struct diff_options *diffopt,
 				  const char *arg)
 {
@@ -393,7 +415,7 @@ static int submodule_needs_pushing(const char *path, const unsigned char sha1[20
 
 		argv[1] = sha1_to_hex(sha1);
 		cp.argv = argv;
-		cp.env = local_repo_env;
+		prepare_submodule_repo_env(&cp.env_array);
 		cp.git_cmd = 1;
 		cp.no_stdin = 1;
 		cp.out = -1;
@@ -423,7 +445,7 @@ static void collect_submodules_from_diff(struct diff_queue_struct *q,
 		struct diff_filepair *p = q->queue[i];
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
-		if (submodule_needs_pushing(p->two->path, p->two->sha1))
+		if (submodule_needs_pushing(p->two->path, p->two->oid.hash))
 			string_list_insert(needs_pushing, p->two->path);
 	}
 }
@@ -480,7 +502,7 @@ static int push_submodule(const char *path)
 		const char *argv[] = {"push", NULL};
 
 		cp.argv = argv;
-		cp.env = local_repo_env;
+		prepare_submodule_repo_env(&cp.env_array);
 		cp.git_cmd = 1;
 		cp.no_stdin = 1;
 		cp.dir = path;
@@ -526,7 +548,7 @@ static int is_submodule_commit_present(const char *path, unsigned char sha1[20])
 
 		argv[3] = sha1_to_hex(sha1);
 		cp.argv = argv;
-		cp.env = local_repo_env;
+		prepare_submodule_repo_env(&cp.env_array);
 		cp.git_cmd = 1;
 		cp.no_stdin = 1;
 		cp.dir = path;
@@ -555,7 +577,7 @@ static void submodule_collect_changed_cb(struct diff_queue_struct *q,
 			 * being moved around. */
 			struct string_list_item *path;
 			path = unsorted_string_list_lookup(&changed_submodule_paths, p->two->path);
-			if (!path && !is_submodule_commit_present(p->two->path, p->two->sha1))
+			if (!path && !is_submodule_commit_present(p->two->path, p->two->oid.hash))
 				string_list_append(&changed_submodule_paths, xstrdup(p->two->path));
 		} else {
 			/* Submodule is new or was moved here */
@@ -709,7 +731,7 @@ static int get_next_submodule(struct child_process *cp,
 		if (is_directory(git_dir)) {
 			child_process_init(cp);
 			cp->dir = strbuf_detach(&submodule_path, NULL);
-			cp->env = local_repo_env;
+			prepare_submodule_repo_env(&cp->env_array);
 			cp->git_cmd = 1;
 			if (!spf->quiet)
 				strbuf_addf(err, "Fetching submodule %s%s\n",
@@ -824,7 +846,7 @@ unsigned is_submodule_modified(const char *path, int ignore_untracked)
 		argv[2] = "-uno";
 
 	cp.argv = argv;
-	cp.env = local_repo_env;
+	prepare_submodule_repo_env(&cp.env_array);
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
 	cp.out = -1;
@@ -885,7 +907,7 @@ int submodule_uses_gitfile(const char *path)
 
 	/* Now test that all nested submodules use a gitfile too */
 	cp.argv = argv;
-	cp.env = local_repo_env;
+	prepare_submodule_repo_env(&cp.env_array);
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
 	cp.no_stderr = 1;
@@ -918,7 +940,7 @@ int ok_to_remove_submodule(const char *path)
 		return 0;
 
 	cp.argv = argv;
-	cp.env = local_repo_env;
+	prepare_submodule_repo_env(&cp.env_array);
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
 	cp.out = -1;
@@ -1128,4 +1150,14 @@ void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
 int parallel_submodules(void)
 {
 	return parallel_jobs;
+}
+
+void prepare_submodule_repo_env(struct argv_array *out)
+{
+	const char * const *var;
+
+	for (var = local_repo_env; *var; var++) {
+		if (strcmp(*var, CONFIG_DATA_ENVIRONMENT))
+			argv_array_push(out, *var);
+	}
 }
