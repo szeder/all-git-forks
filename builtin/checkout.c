@@ -371,6 +371,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 		}
 	}
  shutdown_multi_file_filter();
+ warning("write new");
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("1unable to write new index file"));
 

@@ -228,6 +228,7 @@ extern char *get_locked_file_path(struct lock_file *lk);
  */
 static inline int close_lock_file(struct lock_file *lk)
 {
+	warning("close");
 	return close_tempfile(&lk->tempfile);
 }
 
