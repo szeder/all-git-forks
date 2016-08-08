@@ -582,6 +582,8 @@ static int merge_working_tree(const struct checkout_opts *opts,
 	if (!cache_tree_fully_valid(active_cache_tree))
 		cache_tree_update(&the_index, WRITE_TREE_SILENT | WRITE_TREE_REPAIR);
 
+	shutdown_multi_file_filter();
+
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("9unable to write new index file"));
 

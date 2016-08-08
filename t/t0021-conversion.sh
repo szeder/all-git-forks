@@ -391,6 +391,8 @@ test_expect_success PERL 'required process filter should filter data' '
 					wrote filter header
 					IN: smudge test2.r 14 [OK] -- OUT: 14 [OK]
 					IN: smudge testsubdir/test3-subdir.r 21 [OK] -- OUT: 21 [OK]
+					start
+					wrote filter header
 				EOF
 
 		check_filter_ignore_clean \
