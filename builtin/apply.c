@@ -4781,7 +4781,7 @@ static int apply_all_patches(struct apply_state *state,
 
 	if (state->update_index) {
 		if (write_locked_index(&the_index, state->lock_file, COMMIT_LOCK))
-			die(_("Unable to write new index file"));
+			die(_("7Unable to write new index file"));
 		state->newfd = -1;
 	}
 

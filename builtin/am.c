@@ -2005,7 +2005,7 @@ static int fast_forward_to(struct tree *head, struct tree *remote, int reset)
 	}
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write new index file"));
+		die(_("5unable to write new index file"));
 
 	return 0;
 }
@@ -2040,7 +2040,7 @@ static int merge_tree(struct tree *tree)
 	}
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write new index file"));
+		die(_("6unable to write new index file"));
 
 	return 0;
 }
