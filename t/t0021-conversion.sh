@@ -378,8 +378,8 @@ test_expect_success PERL 'required process filter should filter data' '
 					x IN: clean test2.r 14 [OK] -- OUT: 14 [OK]
 					x IN: clean test4-empty.r 0 [OK] -- OUT: 0 [OK]
 					x IN: clean testsubdir/test3-subdir.r 21 [OK] -- OUT: 21 [OK]
-					1 start
-					1 wrote filter header
+					2 start
+					2 wrote filter header
 				EOF
 
 		rm -f test?.r testsubdir/test3-subdir.r &&
@@ -491,12 +491,13 @@ test_expect_success PERL 'required process filter should clean only' '
 					1 wrote filter header
 				EOF
 
+		# Hint: twice!
 		check_filter_count_clean \
 			git commit . -m "test commit" \
 				<<-\EOF
 					x IN: clean test.r 57 [OK] -- OUT: 57 [OK]
-					1 start
-					1 wrote filter header
+					2 start
+					2 wrote filter header
 				EOF
 	)
 '
