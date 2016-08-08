@@ -560,6 +560,7 @@ void shutdown_multi_file_filter()
 	}
 	hashmap_free(&cmd_process_map, 1);
 	cmd_process_map_initialized = 0;
+	warning("shutdown complete!");
 }
 
 static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, const char *cmd)
