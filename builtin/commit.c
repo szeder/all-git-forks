@@ -1826,5 +1826,8 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		print_summary(prefix, sha1, !current_head);
 
 	strbuf_release(&err);
+
+	shutdown_multi_file_filter();
+
 	return 0;
 }

@@ -454,5 +454,7 @@ finish:
 			die(_("Unable to write new index file"));
 	}
 
+shutdown_multi_file_filter();
+
 	return exit_status;
 }
