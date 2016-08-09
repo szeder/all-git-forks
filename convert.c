@@ -662,6 +662,9 @@ static int apply_multi_file_filter(const char *path, const char *src, size_t len
 	else
 		die("unexpected filter type");
 
+	if (fd >=0) {
+		die("No fd allowed in my code ;-)").
+	}
 	if (fd >= 0 && !src) {
 		if (fstat(fd, &file_stat) == -1)
 			return 0;
