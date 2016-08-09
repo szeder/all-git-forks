@@ -130,12 +130,18 @@ static int parse_dirstat_params(struct diff_options *options, const char *params
 
 static int parse_submodule_params(struct diff_options *options, const char *value)
 {
-	if (!strcmp(value, "log"))
+	if (!strcmp(value, "log")) {
 		DIFF_OPT_SET(options, SUBMODULE_LOG);
-	else if (!strcmp(value, "short"))
+		DIFF_OPT_CLR(options, SUBMODULE_DIFF);
+	else if (!strcmp(value, "diff")) {
+		DIFF_OPT_SET(options, SUBMODULE_DIFF);
 		DIFF_OPT_CLR(options, SUBMODULE_LOG);
-	else
+	} else if (!strcmp(value, "short")) {
+		DIFF_OPT_CLR(options, SUBMODULE_DIFF);
+		DIFF_OPT_CLR(options, SUBMODULE_LOG);
+	} else {
 		return -1;
+	}
 	return 0;
 }
 
@@ -2309,6 +2315,15 @@ static void builtin_diff(const char *name_a,
 				one->oid.hash, two->oid.hash,
 				two->dirty_submodule,
 				meta, del, add, reset);
+		return;
+	} else if (DIFF_OPT_TST(o, SUBMODULE_DIFF) &&
+			(!one->mode || S_ISGITLINK(one->mode)) &&
+			(!two->mode || S_ISGITLINK(two->mode))) {
+		show_submodule_diff(o->file, one->path ? one->path : two->path,
+				line_prefix,
+				one->oid.hash, two->oid.hash,
+				two->dirty_submodule,
+				meta, reset);
 		return;
 	}
 

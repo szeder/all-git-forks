@@ -333,6 +333,73 @@ static void print_submodule_summary(struct rev_info *rev, FILE *f,
 	strbuf_release(&sb);
 }
 
+static int prepare_submodule_diff(struct strbuf *buf, const char *path,
+		unsigned char one[20], unsigned char two[20])
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	cp.git_cmd = 1;
+	cp.dir = path;
+	cp.out = -1;
+	cp.no_stdin = 1;
+	argv_array_push(&cp.args, "diff");
+	argv_array_push(&cp.args, sha1_to_hex(one));
+	argv_array_push(&cp.args, sha1_to_hex(two));
+
+	if (start_command(&cp))
+		return -1;
+
+	if (strbuf_read(buf, cp.out, 0) < 0)
+		return -1;
+
+	if (finish_command(&cp))
+		return -1;
+
+	return 0;
+}
+
+void show_submodule_diff(FILE *f, const char *path,
+		const char *line_prefix,
+		unsigned char one[20], unsigned char two[20],
+		unsigned dirty_submodule, const char *meta,
+		const char *reset)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct strbuf sb = STRBUF_INIT;
+	const char *message = NULL;
+
+	if (dirty_submodule & DIRTY_SUBMODULE_UNTRACKED)
+		fprintf(f, "%sSubmodule %s contains untracked content\n",
+			line_prefix, path);
+	if (dirty_submodule & DIRTY_SUBMODULE_MODIFIED)
+		fprintf(f, "%sSubmodule %s contains modified content\n",
+			line_prefix, path);
+
+	if (!hashcmp(one, two)) {
+		strbuf_release(&sb);
+		return;
+	}
+
+	if (add_submodule_odb(path))
+		message = "(not checked out)";
+	else if (prepare_submodule_diff(&buf, path, one, two))
+		message = "(diff failed)";
+
+	strbuf_addf(&sb, "%s%sSubmodule %s %s..", line_prefix, meta, path,
+			find_unique_abbrev(one, DEFAULT_ABBREV));
+	strbuf_addf(&sb, "%s", find_unique_abbrev(two, DEFAULT_ABBREV));
+	if (message)
+		strbuf_addf(&sb, " %s%s\n", message, reset);
+	else
+		strbuf_addf(&sb, ":%s\n", reset);
+	fwrite(sb.buf, sb.len, 1, f);
+
+	if (!message) /* only NULL if we succeeded in obtaining a diff */
+		fwrite(buf.buf, buf.len, 1, f);
+
+	strbuf_release(&buf);
+	strbuf_release(&sb);
+}
+
 void show_submodule_summary(FILE *f, const char *path,
 		const char *line_prefix,
 		unsigned char one[20], unsigned char two[20],
