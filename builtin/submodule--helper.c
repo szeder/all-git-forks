@@ -635,6 +635,45 @@ static void next_submodule_warn_missing(struct submodule_update_clone *suc,
 	}
 }
 
+struct submodule_alternate_setup {
+	struct submodule_update_clone *suc;
+	const char *submodule_name;
+	struct child_process *child;
+	struct strbuf *out;
+};
+
+int add_possible_reference(struct alternate_object_database *alt, void *sas_cb)
+{
+	struct submodule_alternate_setup *sas = sas_cb;
+
+	/* directory name, minus trailing slash */
+	size_t namelen = alt->name - alt->base - 1;
+	struct strbuf name = STRBUF_INIT;
+	strbuf_add(&name, alt->base, namelen);
+
+	/*
+	 * If the alternate object store is another repository, try the
+	 * standard layout with .git/modules/<name>/objects
+	 */
+	if (ends_with(name.buf, ".git/objects")) {
+		struct strbuf sb = STRBUF_INIT;
+		strbuf_add(&sb, name.buf, name.len - strlen("objects"));
+		/*
+		 * We need to end the new path with '/' to mark it as a dir,
+		 * otherwise a submodule name containing '/' will be broken
+		 * as the last part of a missing submodule reference would
+		 * be taken as a file name.
+		 */
+		strbuf_addf(&sb, "modules/%s/", sas->submodule_name);
+		argv_array_pushf(&sas->child->args,
+				 "--reference-if-able=%s", sb.buf);
+		strbuf_release(&sb);
+	}
+
+	strbuf_release(&name);
+	return 0;
+}
+
 /**
  * Determine whether 'ce' needs to be cloned. If so, prepare the 'child' to
  * run the clone. Returns 1 if 'ce' needs to be cloned, 0 otherwise.
@@ -650,6 +689,7 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 	const char *displaypath = NULL;
 	char *url = NULL;
 	int needs_cloning = 0;
+	struct submodule_alternate_setup sas;
 
 	if (ce_stage(ce)) {
 		if (suc->recursive_prefix)
@@ -728,6 +768,13 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 		for_each_string_list_item(item, &suc->references)
 			argv_array_pushl(&child->args, "--reference", item->string, NULL);
 	}
+
+	sas.submodule_name = sub->name;
+	sas.suc = suc;
+	sas.child = child;
+	sas.out = out;
+	foreach_alt_odb(add_possible_reference, &sas);
+
 	if (suc->depth)
 		argv_array_push(&child->args, suc->depth);
 
