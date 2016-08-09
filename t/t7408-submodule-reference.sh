@@ -7,7 +7,6 @@ test_description='test clone --reference'
 . ./test-lib.sh
 
 base_dir=$(pwd)
-
 test_alternate_is_used () {
 	alternates_file="$1" &&
 	working_dir="$2" &&
@@ -71,6 +70,34 @@ test_expect_success 'updating superproject keeps alternates' '
 	git clone super super-clone &&
 	git -C super-clone submodule update --init --reference ../B &&
 	test_alternate_is_used super-clone/.git/modules/sub/objects/info/alternates super-clone/sub
+'
+
+test_expect_success 'submodules use alternates when cloning a superproject' '
+	test_when_finished "rm -rf super-clone" &&
+	git clone --reference super --recursive super super-clone &&
+	(
+		cd super-clone &&
+		# test superproject has alternates setup correctly
+		test_alternate_is_used .git/objects/info/alternates . &&
+		# test submodule has correct setup
+		test_alternate_is_used .git/modules/sub/objects/info/alternates sub
+	)
+'
+
+test_expect_success 'cloning superproject, missing submodule alternates' '
+	test_when_finished "rm -rf super-clone" &&
+	git clone super super2 &&
+	git clone --recursive --reference super2 super2 super-clone &&
+	(
+		cd super-clone &&
+		# test superproject has alternates setup correctly
+		test_alternate_is_used .git/objects/info/alternates . &&
+		# update of the submodule succeeds
+		git submodule update --init &&
+		# and we have no alternates:
+		test_must_fail test_alternate_is_used .git/modules/sub/objects/info/alternates sub &&
+		test_path_is_file sub/file1
+	)
 '
 
 test_done
