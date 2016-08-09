@@ -61,7 +61,7 @@ test_expect_success 'submodule add --reference uses alternates' '
 
 # The tests up to this point, and repositories created by them
 # (A, B, super and super/sub), are about setting up the stage
-# forsubsequent tests and meant to be kept throughout the
+# for subsequent tests and meant to be kept throughout the
 # remainder of the test.
 # Tests from here on, if they create their own test repository,
 # are expected to clean after themselves.
