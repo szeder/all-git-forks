@@ -969,11 +969,9 @@ class LargeFileSystem(object):
         contentFile.close()
         return contentFile.name
 
-    def exceedsLargeFileThreshold(self, relPath, contents):
-        if gitConfigInt('git-p4.largeFileThreshold'):
-            contentsSize = sum(len(d) for d in contents)
-            if contentsSize > gitConfigInt('git-p4.largeFileThreshold'):
-                return True
+    def exceedsLargeFileThreshold(self, relPath, contents, contentsSize):
+        if gitConfigInt('git-p4.largeFileThreshold') and contentsSize > gitConfigInt('git-p4.largeFileThreshold'):
+            return True
         if gitConfigInt('git-p4.largeFileCompressedThreshold'):
             contentsSize = sum(len(d) for d in contents)
             if contentsSize <= gitConfigInt('git-p4.largeFileCompressedThreshold'):
@@ -1003,7 +1001,8 @@ class LargeFileSystem(object):
         """Processes the content of git fast import. This method decides if a
            file is stored in the large file system and handles all necessary
            steps."""
-        if self.exceedsLargeFileThreshold(relPath, contents) or self.hasLargeFileExtension(relPath):
+        contentsSize = sum(len(d) for d in contents)
+        if contentsSize > 0 and (self.exceedsLargeFileThreshold(relPath, contents, contentsSize) or self.hasLargeFileExtension(relPath)):
             contentTempFile = self.generateTempFile(contents)
             (git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
 
