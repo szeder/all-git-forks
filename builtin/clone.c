@@ -51,6 +51,7 @@ static int option_progress = -1;
 static enum transport_family family;
 static struct string_list option_config = STRING_LIST_INIT_NODUP;
 static struct string_list option_required_reference = STRING_LIST_INIT_NODUP;
+static struct string_list option_optional_reference = STRING_LIST_INIT_NODUP;
 static int option_dissociate;
 static int max_jobs = -1;
 
@@ -81,6 +82,8 @@ static struct option builtin_clone_options[] = {
 		   N_("directory from which templates will be used")),
 	OPT_STRING_LIST(0, "reference", &option_required_reference, N_("repo"),
 			N_("reference repository")),
+	OPT_STRING_LIST(0, "reference-if-able", &option_optional_reference,
+			N_("repo"), N_("reference repository")),
 	OPT_BOOL(0, "dissociate", &option_dissociate,
 		 N_("use --reference only while cloning")),
 	OPT_STRING('o', "origin", &option_origin, N_("name"),
@@ -283,11 +286,22 @@ static void strip_trailing_slashes(char *dir)
 static int add_one_reference(struct string_list_item *item, void *cb_data)
 {
 	char *ref_git;
-	const char *repo;
+	const char *repo, *ref_git_s;
+	int *required = cb_data;
 	struct strbuf alternate = STRBUF_INIT;
 
-	/* Beware: read_gitfile(), real_path() and mkpath() return static buffer */
-	ref_git = xstrdup(real_path(item->string));
+	ref_git_s = *required ?
+			real_path(item->string) :
+			real_path_if_valid(item->string);
+	if (!ref_git_s) {
+		warning(_("Not using proposed alternate %s"), item->string);
+		return 0;
+	} else
+		/*
+		 * Beware: read_gitfile(), real_path() and mkpath()
+		 * return static buffer
+		 */
+		ref_git = xstrdup(ref_git_s);
 
 	repo = read_gitfile(ref_git);
 	if (!repo)
@@ -304,7 +318,8 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 	} else if (!is_directory(mkpath("%s/objects", ref_git))) {
 		struct strbuf sb = STRBUF_INIT;
 		if (get_common_dir(&sb, ref_git))
-			die(_("reference repository '%s' as a linked checkout is not supported yet."),
+			die(_("reference repository '%s' as a "
+			      "linked checkout is not supported yet."),
 			    item->string);
 		die(_("reference repository '%s' is not a local repository."),
 		    item->string);
@@ -325,7 +340,12 @@ static int add_one_reference(struct string_list_item *item, void *cb_data)
 
 static void setup_reference(void)
 {
-	for_each_string_list(&option_required_reference, add_one_reference, NULL);
+	int required = 1;
+	for_each_string_list(&option_required_reference,
+			     add_one_reference, &required);
+	required = 0;
+	for_each_string_list(&option_optional_reference,
+			     add_one_reference, &required);
 }
 
 static void copy_alternates(struct strbuf *src, struct strbuf *dst,
@@ -977,7 +997,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
 
-	if (option_required_reference.nr)
+	if (option_required_reference.nr || option_optional_reference.nr)
 		setup_reference();
 
 	fetch_pattern = value.buf;
