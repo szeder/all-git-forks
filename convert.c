@@ -706,8 +706,10 @@ static int apply_multi_file_filter(const char *path, const char *src, size_t len
 	if (err)
 		goto done;
 
-	if (fd >= 0)
+	if (fd >= 0) {
 		err = packet_write_stream_with_flush_from_fd(fd, process->in);
+		close(fd);
+	}
 	else
 		err = packet_write_stream_with_flush_from_buf(src, len, process->in);
 	if (err)
