@@ -101,7 +101,11 @@ other objects in that pack they already have locally.
 	advantage of the large window for the smaller objects.  The
 	size can be suffixed with "k", "m", or "g".
 	`--window-memory=0` makes memory usage unlimited, which is the
-	default.
+	default, unless the config variable `pack.windowMemory` is set.
+	Note that the actual memory usage will be multiplied
+	by the number of threads used by linkgit:git-pack-objects[1],
+	which is lacking a corresponding git-repack flag but can be
+	set via the config variable `pack.threads`.
 
 --max-pack-size=<n>::
 	Maximum size of each output pack file. The size can be suffixed with

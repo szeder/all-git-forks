@@ -105,7 +105,7 @@ base-name::
 	advantage of the large window for the smaller objects.  The
 	size can be suffixed with "k", "m", or "g".
 	`--window-memory=0` makes memory usage unlimited, which is the
-	default.
+	default, unless the config variable `pack.windowMemory` is set.
 
 --max-pack-size=<n>::
 	Maximum size of each output pack file. The size can be suffixed with
