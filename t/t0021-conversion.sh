@@ -84,7 +84,7 @@ test_expect_success PERL 'required process filter should filter data' '
 
 		git checkout . &&
 
-		export GIT_TRACE=4 &&
+		export GIT_TRACE=1 &&
 
 		git checkout empty &&
 
