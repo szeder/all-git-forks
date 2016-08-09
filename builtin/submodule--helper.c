@@ -442,7 +442,8 @@ static int module_name(int argc, const char **argv, const char *prefix)
 }
 
 static int clone_submodule(const char *path, const char *gitdir, const char *url,
-			   const char *depth, struct string_list *reference, int quiet)
+			   const char *depth, struct string_list *reference,
+			   struct string_list *reference_if_able, int quiet)
 {
 	struct child_process cp;
 	child_process_init(&cp);
@@ -457,6 +458,12 @@ static int clone_submodule(const char *path, const char *gitdir, const char *url
 		struct string_list_item *item;
 		for_each_string_list_item(item, reference)
 			argv_array_pushl(&cp.args, "--reference",
+					 item->string, NULL);
+	}
+	if (reference_if_able->nr) {
+		struct string_list_item *item;
+		for_each_string_list_item(item, reference_if_able)
+			argv_array_pushl(&cp.args, "--reference-if-able",
 					 item->string, NULL);
 	}
 	if (gitdir && *gitdir)
@@ -481,6 +488,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	struct strbuf rel_path = STRBUF_INIT;
 	struct strbuf sb = STRBUF_INIT;
 	struct string_list reference = STRING_LIST_INIT_NODUP;
+	struct string_list reference_if_able = STRING_LIST_INIT_NODUP;
 
 	struct option module_clone_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
@@ -498,6 +506,9 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 		OPT_STRING_LIST(0, "reference", &reference,
 			   N_("repo"),
 			   N_("reference repository")),
+		OPT_STRING_LIST(0, "reference-if-able", &reference_if_able,
+			   N_("repo"),
+			   N_("reference repository")),
 		OPT_STRING(0, "depth", &depth,
 			   N_("string"),
 			   N_("depth for shallow clones")),
@@ -507,8 +518,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 
 	const char *const git_submodule_helper_usage[] = {
 		N_("git submodule--helper clone [--prefix=<path>] [--quiet] "
-		   "[--reference <repository>] [--name <name>] [--depth <depth>] "
-		   "--url <url> --path <path>"),
+		   "[--reference[-if-able] <repository>] [--name <name>] "
+		   "[--depth <depth>] --url <url> --path <path>"),
 		NULL
 	};
 
@@ -532,7 +543,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	if (!file_exists(sm_gitdir)) {
 		if (safe_create_leading_directories_const(sm_gitdir) < 0)
 			die(_("could not create directory '%s'"), sm_gitdir);
-		if (clone_submodule(path, sm_gitdir, url, depth, &reference, quiet))
+		if (clone_submodule(path, sm_gitdir, url, depth, &reference,
+		    &reference_if_able, quiet))
 			die(_("clone of '%s' into submodule path '%s' failed"),
 			    url, path);
 	} else {
