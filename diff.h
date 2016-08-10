@@ -83,7 +83,7 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_OPT_DIRSTAT_BY_FILE     (1 << 20)
 #define DIFF_OPT_ALLOW_TEXTCONV      (1 << 21)
 #define DIFF_OPT_DIFF_FROM_CONTENTS  (1 << 22)
-#define DIFF_OPT_SUBMODULE_LOG       (1 << 23)
+/* (1 << 23) unused */
 #define DIFF_OPT_DIRTY_SUBMODULES    (1 << 24)
 #define DIFF_OPT_IGNORE_UNTRACKED_IN_SUBMODULES (1 << 25)
 #define DIFF_OPT_IGNORE_DIRTY_SUBMODULES (1 << 26)
@@ -108,6 +108,12 @@ enum diff_words_type {
 	DIFF_WORDS_PORCELAIN,
 	DIFF_WORDS_PLAIN,
 	DIFF_WORDS_COLOR
+};
+
+enum diff_submodule_format {
+	DIFF_SUBMODULE_SHORT = 0,
+	DIFF_SUBMODULE_LOG,
+	DIFF_SUBMODULE_DIFF
 };
 
 struct diff_options {
@@ -156,6 +162,7 @@ struct diff_options {
 	int stat_count;
 	const char *word_regex;
 	enum diff_words_type word_diff;
+	enum diff_submodule_format submodule_format;
 
 	/* this is set by diffcore for DIFF_FORMAT_PATCH */
 	int found_changes;
