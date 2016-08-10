@@ -1190,9 +1190,7 @@ void (*report_garbage)(unsigned seen_bits, const char *path);
 static void report_helper(const struct string_list *list,
 			  int seen_bits, int first, int last)
 {
-	static const int pack_and_index = PACKDIR_FILE_PACK|PACKDIR_FILE_IDX;
-
-	if ((seen_bits & pack_and_index) == pack_and_index)
+	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX))
 		return;
 
 	for (; first < last; first++)
@@ -1226,13 +1224,9 @@ static void report_pack_garbage(struct string_list *list)
 			first = i;
 		}
 		if (!strcmp(path + baselen, "pack"))
-			seen_bits |= PACKDIR_FILE_PACK;
+			seen_bits |= 1;
 		else if (!strcmp(path + baselen, "idx"))
-			seen_bits |= PACKDIR_FILE_IDX;
-		else if (!strcmp(path + baselen, "bitmap"))
-			seen_bits |= PACKDIR_FILE_BITMAP;
-		else if (!strcmp(path + baselen, "keep"))
-			seen_bits |= PACKDIR_FILE_KEEP;
+			seen_bits |= 2;
 	}
 	report_helper(list, seen_bits, first, list->nr);
 }
@@ -1698,7 +1692,7 @@ static int parse_sha1_header_extended(const char *hdr, struct object_info *oi,
 		strbuf_add(oi->typename, type_buf, type_len);
 	/*
 	 * Set type to 0 if its an unknown object and
-	 * we're obtaining the type using '--allow-unknown-type'
+	 * we're obtaining the type using '--allow-unkown-type'
 	 * option.
 	 */
 	if ((flags & LOOKUP_UNKNOWN_OBJECT) && (type < 0))

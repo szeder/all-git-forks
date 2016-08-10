@@ -81,8 +81,7 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 
 	if (data->fd > 0)
 		close(data->fd);
-	init_bundle_header(&data->header, transport->url);
-	data->fd = read_bundle_header(&data->header);
+	data->fd = read_bundle_header(transport->url, &data->header);
 	if (data->fd < 0)
 		die ("Could not read bundle '%s'.", transport->url);
 	for (i = 0; i < data->header.references.nr; i++) {
@@ -108,7 +107,6 @@ static int close_bundle(struct transport *transport)
 	struct bundle_transport_data *data = transport->data;
 	if (data->fd > 0)
 		close(data->fd);
-	release_bundle_header(&data->header);
 	free(data);
 	return 0;
 }
@@ -152,15 +150,6 @@ static int set_git_option(struct git_transport_options *opts,
 			if (*end)
 				die(_("transport: invalid depth option '%s'"), value);
 		}
-		return 0;
-	} else if (!strcmp(name, TRANS_OPT_DEEPEN_SINCE)) {
-		opts->deepen_since = value;
-		return 0;
-	} else if (!strcmp(name, TRANS_OPT_DEEPEN_NOT)) {
-		opts->deepen_not = (const struct string_list *)value;
-		return 0;
-	} else if (!strcmp(name, TRANS_OPT_DEEPEN_RELATIVE)) {
-		opts->deepen_relative = !!value;
 		return 0;
 	}
 	return 1;
@@ -222,9 +211,6 @@ static int fetch_refs_via_pack(struct transport *transport,
 	args.quiet = (transport->verbose < 0);
 	args.no_progress = !transport->progress;
 	args.depth = data->options.depth;
-	args.deepen_since = data->options.deepen_since;
-	args.deepen_not = data->options.deepen_not;
-	args.deepen_relative = data->options.deepen_relative;
 	args.check_self_contained_and_connected =
 		data->options.check_self_contained_and_connected;
 	args.cloning = transport->cloning;
@@ -335,6 +321,11 @@ static void print_ref_status(char flag, const char *summary, struct ref *to, str
 	}
 }
 
+static const char *status_abbrev(unsigned char sha1[20])
+{
+	return find_unique_abbrev(sha1, DEFAULT_ABBREV);
+}
+
 static void print_ok_ref_status(struct ref *ref, int porcelain)
 {
 	if (ref->deletion)
@@ -349,8 +340,7 @@ static void print_ok_ref_status(struct ref *ref, int porcelain)
 		char type;
 		const char *msg;
 
-		strbuf_add_unique_abbrev(&quickref, ref->old_oid.hash,
-					 DEFAULT_ABBREV);
+		strbuf_addstr(&quickref, status_abbrev(ref->old_oid.hash));
 		if (ref->forced_update) {
 			strbuf_addstr(&quickref, "...");
 			type = '+';
@@ -360,8 +350,7 @@ static void print_ok_ref_status(struct ref *ref, int porcelain)
 			type = ' ';
 			msg = NULL;
 		}
-		strbuf_add_unique_abbrev(&quickref, ref->new_oid.hash,
-					 DEFAULT_ABBREV);
+		strbuf_addstr(&quickref, status_abbrev(ref->new_oid.hash));
 
 		print_ref_status(type, quickref.buf, ref, ref->peer_ref, msg, porcelain);
 		strbuf_release(&quickref);
