@@ -9,7 +9,7 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] (--all| [--] <path>...)
-   or: $dashless [--quiet] update [--init[-default-path]] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
@@ -49,7 +49,7 @@ die_if_unmatched ()
 {
 	if test "$1" = "#unmatched"
 	then
-		exit ${2:-1}
+		exit 1
 	fi
 }
 
@@ -312,11 +312,11 @@ cmd_foreach()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		if test -e "$sm_path"/.git
 		then
 			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
@@ -421,11 +421,11 @@ cmd_deinit()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		name=$(git submodule--helper name "$sm_path") || exit
 
 		displaypath=$(git submodule--helper relative-path "$sm_path" "$wt_prefix")
@@ -479,8 +479,7 @@ fetch_in_submodule () (
 	'')
 		git fetch ;;
 	*)
-		shift
-		git fetch $(get_default_remote) "$@" ;;
+		git fetch $(get_default_remote) "$2" ;;
 	esac
 )
 
@@ -499,12 +498,7 @@ cmd_update()
 			GIT_QUIET=1
 			;;
 		-i|--init)
-			test -z $init || test $init = by_args || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_args
-			;;
-		--init-default-path)
-			test -z $init || test $init = by_config || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_config
+			init=1
 			;;
 		--remote)
 			remote=1
@@ -573,17 +567,7 @@ cmd_update()
 
 	if test -n "$init"
 	then
-		if test "$init" = "by_config"
-		then
-			if test $# -gt 0
-			then
-				die "$(gettext "path arguments are incompatible with --init-default-path")"
-			fi
-			cmd_init "--" $(git config --get-all submodule.defaultUpdatePath) || return
-		else
-			cmd_init "--" "$@" || return
-		fi
-
+		cmd_init "--" "$@" || return
 	fi
 
 	{
@@ -591,19 +575,20 @@ cmd_update()
 		${wt_prefix:+--prefix "$wt_prefix"} \
 		${prefix:+--recursive-prefix "$prefix"} \
 		${update:+--update "$update"} \
-		${reference:+"$reference"} \
+		${reference:+--reference "$reference"} \
 		${depth:+--depth "$depth"} \
 		${recommend_shallow:+"$recommend_shallow"} \
 		${jobs:+$jobs} \
-		"$@" || echo "#unmatched" $?
+		"$@" || echo "#unmatched"
 	} | {
 	err=
 	while read mode sha1 stage just_cloned sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
+		branch=$(get_submodule_config "$name" branch master)
 		if ! test -z "$update"
 		then
 			update_module=$update
@@ -629,11 +614,10 @@ cmd_update()
 
 		if test -n "$remote"
 		then
-			branch=$(git submodule--helper remote-branch "$sm_path")
 			if test -z "$nofetch"
 			then
 				# Fetch remote before determining tracking $sha1
-				fetch_in_submodule "$sm_path" $depth ||
+				fetch_in_submodule "$sm_path" ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$sm_path'")"
 			fi
 			remote_name=$(sanitize_submodule_env; cd "$sm_path" && get_default_remote)
@@ -656,13 +640,13 @@ cmd_update()
 				# Run fetch only if $sha1 isn't present or it
 				# is not reachable from a ref.
 				is_tip_reachable "$sm_path" "$sha1" ||
-				fetch_in_submodule "$sm_path" $depth ||
+				fetch_in_submodule "$sm_path" ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$displaypath'")"
 
 				# Now we tried the usual fetch, but $sha1 may
 				# not be reachable from any of the refs
 				is_tip_reachable "$sm_path" "$sha1" ||
-				fetch_in_submodule "$sm_path" $depth "$sha1" ||
+				fetch_in_submodule "$sm_path" "$sha1" ||
 				die "$(eval_gettext "Fetched in submodule path '\$displaypath', but it did not contain \$sha1. Direct fetching of that commit failed.")"
 			fi
 
@@ -1008,11 +992,11 @@ cmd_status()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
@@ -1089,11 +1073,11 @@ cmd_sync()
 	cd_to_toplevel
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		name=$(git submodule--helper name "$sm_path")
 		url=$(git config -f .gitmodules --get submodule."$name".url)
 

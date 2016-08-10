@@ -81,10 +81,6 @@ test_decode_color () {
 	'
 }
 
-lf_to_nul () {
-	perl -pe 'y/\012/\000/'
-}
-
 nul_to_q () {
 	perl -pe 'y/\000/Q/'
 }
@@ -190,10 +186,6 @@ test_commit () {
 		test_tick
 	fi &&
 	git commit $signoff -m "$1" &&
-	if [ "$(git config core.bare)" = false ]
-	then
-	    git update-index --force-untracked-cache
-	fi
 	git tag "${4:-$1}"
 }
 

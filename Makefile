@@ -370,14 +370,6 @@ all::
 # Define HAVE_BSD_SYSCTL if your platform has a BSD-compatible sysctl function.
 #
 # Define HAVE_GETDELIM if your system has the getdelim() function.
-#
-# Define PAGER_ENV to a SP separated VAR=VAL pairs to define
-# default environment variables to be passed when a pager is spawned, e.g.
-#
-#    PAGER_ENV = LESS=FRX LV=-c
-#
-# to say "export LESS=FRX (and LV=-c) if the environment variable
-# LESS (and LV) is not set, respectively".
 
 GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -455,7 +447,6 @@ MSGFMT = msgfmt
 CURL_CONFIG = curl-config
 PTHREAD_LIBS = -lpthread
 PTHREAD_CFLAGS =
-WATCHMAN_LIBS =
 GCOV = gcov
 
 export TCL_PATH TCLTK_PATH
@@ -603,7 +594,6 @@ TEST_PROGRAMS_NEED_X += test-delta
 TEST_PROGRAMS_NEED_X += test-dump-cache-tree
 TEST_PROGRAMS_NEED_X += test-dump-split-index
 TEST_PROGRAMS_NEED_X += test-dump-untracked-cache
-TEST_PROGRAMS_NEED_X += test-dump-watchman
 TEST_PROGRAMS_NEED_X += test-fake-ssh
 TEST_PROGRAMS_NEED_X += test-genrandom
 TEST_PROGRAMS_NEED_X += test-hashmap
@@ -693,7 +683,6 @@ LIB_OBJS += abspath.o
 LIB_OBJS += advice.o
 LIB_OBJS += alias.o
 LIB_OBJS += alloc.o
-LIB_OBJS += apply.o
 LIB_OBJS += archive.o
 LIB_OBJS += archive-tar.o
 LIB_OBJS += archive-zip.o
@@ -766,7 +755,6 @@ LIB_OBJS += merge.o
 LIB_OBJS += merge-blobs.o
 LIB_OBJS += merge-recursive.o
 LIB_OBJS += mergesort.o
-LIB_OBJS += mru.o
 LIB_OBJS += name-hash.o
 LIB_OBJS += notes.o
 LIB_OBJS += notes-cache.o
@@ -1352,8 +1340,6 @@ ifndef NO_UNIX_SOCKETS
 	LIB_OBJS += unix-socket.o
 	PROGRAM_OBJS += credential-cache.o
 	PROGRAM_OBJS += credential-cache--daemon.o
-else
-	BASIC_CFLAGS += -DNO_UNIX_SOCKETS
 endif
 
 ifdef NO_ICONV
@@ -1429,13 +1415,6 @@ else
 	LIB_OBJS += thread-utils.o
 endif
 
-ifdef USE_WATCHMAN
-	LIB_H += watchman-support.h
-	LIB_OBJS += watchman-support.o
-	WATCHMAN_LIBS = -lwatchman
-	BASIC_CFLAGS += -DUSE_WATCHMAN
-endif
-
 ifdef HAVE_PATHS_H
 	BASIC_CFLAGS += -DHAVE_PATHS_H
 endif
@@ -1451,12 +1430,6 @@ endif
 
 ifdef HAVE_DEV_TTY
 	BASIC_CFLAGS += -DHAVE_DEV_TTY
-endif
-
-ifndef NO_MMAP
-ifndef NO_UNIX_SOCKETS
-	PROGRAM_OBJS += index-helper.o
-endif
 endif
 
 ifdef DIR_HAS_BSD_GROUP_SEMANTICS
@@ -1525,10 +1498,6 @@ endif
 
 ifeq ($(PYTHON_PATH),)
 NO_PYTHON = NoThanks
-endif
-
-ifndef PAGER_ENV
-PAGER_ENV = LESS=FRX LV=-c
 endif
 
 QUIET_SUBDIR0  = +$(MAKE) -C # space to separate -C and subdir
@@ -1660,11 +1629,6 @@ ifdef DEFAULT_HELP_FORMAT
 BASIC_CFLAGS += -DDEFAULT_HELP_FORMAT='"$(DEFAULT_HELP_FORMAT)"'
 endif
 
-PAGER_ENV_SQ = $(subst ','\'',$(PAGER_ENV))
-PAGER_ENV_CQ = "$(subst ",\",$(subst \,\\,$(PAGER_ENV)))"
-PAGER_ENV_CQ_SQ = $(subst ','\'',$(PAGER_ENV_CQ))
-BASIC_CFLAGS += -DPAGER_ENV='$(PAGER_ENV_CQ_SQ)'
-
 ALL_CFLAGS += $(BASIC_CFLAGS)
 ALL_LDFLAGS += $(BASIC_LDFLAGS)
 
@@ -1789,7 +1753,7 @@ common-cmds.h: $(wildcard Documentation/git-*.txt)
 
 SCRIPT_DEFINES = $(SHELL_PATH_SQ):$(DIFF_SQ):$(GIT_VERSION):\
 	$(localedir_SQ):$(NO_CURL):$(USE_GETTEXT_SCHEME):$(SANE_TOOL_PATH_SQ):\
-	$(gitwebdir_SQ):$(PERL_PATH_SQ):$(SANE_TEXT_GREP):$(PAGER_ENV)
+	$(gitwebdir_SQ):$(PERL_PATH_SQ):$(SANE_TEXT_GREP)
 define cmd_munge_script
 $(RM) $@ $@+ && \
 sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
@@ -1802,7 +1766,6 @@ sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
     -e 's|@@GITWEBDIR@@|$(gitwebdir_SQ)|g' \
     -e 's|@@PERL@@|$(PERL_PATH_SQ)|g' \
     -e 's|@@SANE_TEXT_GREP@@|$(SANE_TEXT_GREP)|g' \
-    -e 's|@@PAGER_ENV@@|$(PAGER_ENV_SQ)|g' \
     $@.sh >$@+
 endef
 
@@ -2069,9 +2032,6 @@ git-remote-testsvn$X: remote-testsvn.o GIT-LDFLAGS $(GITLIBS) $(VCSSVN_LIB)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) \
 	$(VCSSVN_LIB)
 
-git-index-helper$X: index-helper.o GIT-LDFLAGS $(GITLIBS)
-	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) $(LIBS) $(WATCHMAN_LIBS)
-
 $(REMOTE_CURL_ALIASES): $(REMOTE_CURL_PRIMARY)
 	$(QUIET_LNCP)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
@@ -2213,9 +2173,6 @@ GIT-BUILD-OPTIONS: FORCE
 	@echo NO_PERL=\''$(subst ','\'',$(subst ','\'',$(NO_PERL)))'\' >>$@+
 	@echo NO_PYTHON=\''$(subst ','\'',$(subst ','\'',$(NO_PYTHON)))'\' >>$@+
 	@echo NO_UNIX_SOCKETS=\''$(subst ','\'',$(subst ','\'',$(NO_UNIX_SOCKETS)))'\' >>$@+
-	@echo NO_MMAP=\''$(subst ','\'',$(subst ','\'',$(NO_MMAP)))'\' >>$@+
-	@echo USE_WATCHMAN=\''$(subst ','\'',$(subst ','\'',$(USE_WATCHMAN)))'\' >>$@+
-	@echo PAGER_ENV=\''$(subst ','\'',$(subst ','\'',$(PAGER_ENV)))'\' >>$@+
 ifdef TEST_OUTPUT_DIRECTORY
 	@echo TEST_OUTPUT_DIRECTORY=\''$(subst ','\'',$(subst ','\'',$(TEST_OUTPUT_DIRECTORY)))'\' >>$@+
 endif

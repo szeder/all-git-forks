@@ -24,7 +24,7 @@ struct config_source {
 			size_t pos;
 		} buf;
 	} u;
-	enum config_origin_type origin_type;
+	const char *origin_type;
 	const char *name;
 	const char *path;
 	int die_on_error;
@@ -245,7 +245,6 @@ int git_config_from_parameters(config_fn_t fn, void *data)
 
 	memset(&source, 0, sizeof(source));
 	source.prev = cf;
-	source.origin_type = CONFIG_ORIGIN_CMDLINE;
 	cf = &source;
 
 	/* sq_dequote will write over it */
@@ -454,8 +453,6 @@ static int git_parse_source(config_fn_t fn, void *data)
 	int comment = 0;
 	int baselen = 0;
 	struct strbuf *var = &cf->var;
-	int error_return = 0;
-	char *error_msg = NULL;
 
 	/* U+FEFF Byte Order Mark in UTF8 */
 	const char *bomptr = utf8_bom;
@@ -510,40 +507,10 @@ static int git_parse_source(config_fn_t fn, void *data)
 		if (get_value(fn, data, var) < 0)
 			break;
 	}
-
-	switch (cf->origin_type) {
-	case CONFIG_ORIGIN_BLOB:
-		error_msg = xstrfmt(_("bad config line %d in blob %s"),
-				      cf->linenr, cf->name);
-		break;
-	case CONFIG_ORIGIN_FILE:
-		error_msg = xstrfmt(_("bad config line %d in file %s"),
-				      cf->linenr, cf->name);
-		break;
-	case CONFIG_ORIGIN_STDIN:
-		error_msg = xstrfmt(_("bad config line %d in standard input"),
-				      cf->linenr);
-		break;
-	case CONFIG_ORIGIN_SUBMODULE_BLOB:
-		error_msg = xstrfmt(_("bad config line %d in submodule-blob %s"),
-				       cf->linenr, cf->name);
-		break;
-	case CONFIG_ORIGIN_CMDLINE:
-		error_msg = xstrfmt(_("bad config line %d in command line %s"),
-				       cf->linenr, cf->name);
-		break;
-	default:
-		error_msg = xstrfmt(_("bad config line %d in %s"),
-				      cf->linenr, cf->name);
-	}
-
 	if (cf->die_on_error)
-		die("%s", error_msg);
+		die(_("bad config line %d in %s %s"), cf->linenr, cf->origin_type, cf->name);
 	else
-		error_return = error("%s", error_msg);
-
-	free(error_msg);
-	return error_return;
+		return error(_("bad config line %d in %s %s"), cf->linenr, cf->origin_type, cf->name);
 }
 
 static int parse_unit_factor(const char *end, uintmax_t *val)
@@ -652,47 +619,16 @@ int git_parse_ulong(const char *value, unsigned long *ret)
 NORETURN
 static void die_bad_number(const char *name, const char *value)
 {
+	const char *reason = errno == ERANGE ?
+			     "out of range" :
+			     "invalid unit";
 	if (!value)
 		value = "";
 
-	if (!(cf && cf->name))
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s': out of range")
-		    : _("bad numeric config value '%s' for '%s': invalid unit"),
-		    value, name);
-
-	switch (cf->origin_type) {
-	case CONFIG_ORIGIN_BLOB:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in blob %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in blob %s: invalid unit"),
-		    value, name, cf->name);
-	case CONFIG_ORIGIN_FILE:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in file %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in file %s: invalid unit"),
-		    value, name, cf->name);
-	case CONFIG_ORIGIN_STDIN:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in standard input: out of range")
-		    : _("bad numeric config value '%s' for '%s' in standard input: invalid unit"),
-		    value, name);
-	case CONFIG_ORIGIN_SUBMODULE_BLOB:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in submodule-blob %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in submodule-blob %s: invalid unit"),
-		    value, name, cf->name);
-	case CONFIG_ORIGIN_CMDLINE:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in command line %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in command line %s: invalid unit"),
-		    value, name, cf->name);
-	default:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in %s: invalid unit"),
-		    value, name, cf->name);
-	}
+	if (cf && cf->origin_type && cf->name)
+		die(_("bad numeric config value '%s' for '%s' in %s %s: %s"),
+		    value, name, cf->origin_type, cf->name, reason);
+	die(_("bad numeric config value '%s' for '%s': %s"), value, name, reason);
 }
 
 int git_config_int(const char *name, const char *value)
@@ -981,11 +917,6 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
-	if (!strcmp(var, "core.watchmansynctimeout")) {
-		core_watchman_sync_timeout = git_config_int(var, value);
-		return 0;
-	}
-
 	if (!strcmp(var, "core.createobject")) {
 		if (!strcmp(value, "rename"))
 			object_creation_mode = OBJECT_CREATION_USES_RENAMES;
@@ -1174,8 +1105,7 @@ static int do_config_from(struct config_source *top, config_fn_t fn, void *data)
 }
 
 static int do_config_from_file(config_fn_t fn,
-		const enum config_origin_type origin_type,
-		const char *name, const char *path, FILE *f,
+		const char *origin_type, const char *name, const char *path, FILE *f,
 		void *data)
 {
 	struct config_source top;
@@ -1194,7 +1124,7 @@ static int do_config_from_file(config_fn_t fn,
 
 static int git_config_from_stdin(config_fn_t fn, void *data)
 {
-	return do_config_from_file(fn, CONFIG_ORIGIN_STDIN, "", NULL, stdin, data);
+	return do_config_from_file(fn, "standard input", "", NULL, stdin, data);
 }
 
 int git_config_from_file(config_fn_t fn, const char *filename, void *data)
@@ -1205,14 +1135,14 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 	f = fopen(filename, "r");
 	if (f) {
 		flockfile(f);
-		ret = do_config_from_file(fn, CONFIG_ORIGIN_FILE, filename, filename, f, data);
+		ret = do_config_from_file(fn, "file", filename, filename, f, data);
 		funlockfile(f);
 		fclose(f);
 	}
 	return ret;
 }
 
-int git_config_from_mem(config_fn_t fn, const enum config_origin_type origin_type,
+int git_config_from_mem(config_fn_t fn, const char *origin_type,
 			const char *name, const char *buf, size_t len, void *data)
 {
 	struct config_source top;
@@ -1249,7 +1179,7 @@ static int git_config_from_blob_sha1(config_fn_t fn,
 		return error("reference '%s' does not point to a blob", name);
 	}
 
-	ret = git_config_from_mem(fn, CONFIG_ORIGIN_BLOB, name, buf, size, data);
+	ret = git_config_from_mem(fn, "blob", name, buf, size, data);
 	free(buf);
 
 	return ret;
@@ -1460,12 +1390,12 @@ static int configset_add_value(struct config_set *cs, const char *key, const cha
 	if (cf->name) {
 		kv_info->filename = strintern(cf->name);
 		kv_info->linenr = cf->linenr;
-		kv_info->origin_type = cf->origin_type;
+		kv_info->origin_type = strintern(cf->origin_type);
 	} else {
 		/* for values read from `git_config_from_parameters()` */
 		kv_info->filename = NULL;
 		kv_info->linenr = -1;
-		kv_info->origin_type = CONFIG_ORIGIN_CMDLINE;
+		kv_info->origin_type = NULL;
 	}
 	kv_info->scope = current_parsing_scope;
 	si->util = kv_info;
@@ -2546,28 +2476,14 @@ int parse_config_key(const char *var,
 
 const char *current_config_origin_type(void)
 {
-	int type;
+	const char *type;
 	if (current_config_kvi)
 		type = current_config_kvi->origin_type;
 	else if(cf)
 		type = cf->origin_type;
 	else
 		die("BUG: current_config_origin_type called outside config callback");
-
-	switch (type) {
-	case CONFIG_ORIGIN_BLOB:
-		return "blob";
-	case CONFIG_ORIGIN_FILE:
-		return "file";
-	case CONFIG_ORIGIN_STDIN:
-		return "standard input";
-	case CONFIG_ORIGIN_SUBMODULE_BLOB:
-		return "submodule-blob";
-	case CONFIG_ORIGIN_CMDLINE:
-		return "command line";
-	default:
-		die("BUG: unknown config origin type");
-	}
+	return type ? type : "command line";
 }
 
 const char *current_config_name(void)

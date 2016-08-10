@@ -25,25 +25,15 @@
 #include "cache.h"
 #include "quote.h"
 
-/*
- * "Normalize" a key argument by converting NULL to our trace_default,
- * and otherwise passing through the value. All caller-facing functions
- * should normalize their inputs in this way, though most get it
- * for free by calling get_trace_fd() (directly or indirectly).
- */
-static void normalize_trace_key(struct trace_key **key)
-{
-	static struct trace_key trace_default = { "GIT_TRACE" };
-	if (!*key)
-		*key = &trace_default;
-}
-
 /* Get a trace file descriptor from "key" env variable. */
 static int get_trace_fd(struct trace_key *key)
 {
+	static struct trace_key trace_default = { "GIT_TRACE" };
 	const char *trace;
 
-	normalize_trace_key(&key);
+	/* use default "GIT_TRACE" if NULL */
+	if (!key)
+		key = &trace_default;
 
 	/* don't open twice */
 	if (key->initialized)
@@ -61,19 +51,22 @@ static int get_trace_fd(struct trace_key *key)
 	else if (is_absolute_path(trace)) {
 		int fd = open(trace, O_WRONLY | O_APPEND | O_CREAT, 0666);
 		if (fd == -1) {
-			warning("could not open '%s' for tracing: %s",
+			fprintf(stderr,
+				"Could not open '%s' for tracing: %s\n"
+				"Defaulting to tracing on stderr...\n",
 				trace, strerror(errno));
-			trace_disable(key);
+			key->fd = STDERR_FILENO;
 		} else {
 			key->fd = fd;
 			key->need_close = 1;
 		}
 	} else {
-		warning("unknown trace value for '%s': %s\n"
-			"         If you want to trace into a file, then please set %s\n"
-			"         to an absolute pathname (starting with /)",
-			key->key, trace, key->key);
-		trace_disable(key);
+		fprintf(stderr, "What does '%s' for %s mean?\n"
+			"If you want to trace into a file, then please set "
+			"%s to an absolute pathname (starting with /).\n"
+			"Defaulting to tracing on stderr...\n",
+			trace, key->key, key->key);
+		key->fd = STDERR_FILENO;
 	}
 
 	key->initialized = 1;
@@ -82,14 +75,15 @@ static int get_trace_fd(struct trace_key *key)
 
 void trace_disable(struct trace_key *key)
 {
-	normalize_trace_key(&key);
-
 	if (key->need_close)
 		close(key->fd);
 	key->fd = 0;
 	key->initialized = 1;
 	key->need_close = 0;
 }
+
+static const char err_msg[] = "Could not trace into fd given by "
+	"GIT_TRACE environment variable";
 
 static int prepare_trace_line(const char *file, int line,
 			      struct trace_key *key, struct strbuf *buf)
@@ -126,27 +120,18 @@ static int prepare_trace_line(const char *file, int line,
 	return 1;
 }
 
-static void trace_write(struct trace_key *key, const void *buf, unsigned len)
-{
-	if (write_in_full(get_trace_fd(key), buf, len) < 0) {
-		normalize_trace_key(&key);
-		warning("unable to write trace for %s: %s",
-			key->key, strerror(errno));
-		trace_disable(key);
-	}
-}
-
 void trace_verbatim(struct trace_key *key, const void *buf, unsigned len)
 {
 	if (!trace_want(key))
 		return;
-	trace_write(key, buf, len);
+	write_or_whine_pipe(get_trace_fd(key), buf, len, err_msg);
 }
 
 static void print_trace_line(struct trace_key *key, struct strbuf *buf)
 {
 	strbuf_complete_line(buf);
-	trace_write(key, buf->buf, buf->len);
+
+	write_or_whine_pipe(get_trace_fd(key), buf->buf, buf->len, err_msg);
 	strbuf_release(buf);
 }
 

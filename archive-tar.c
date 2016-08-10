@@ -213,9 +213,9 @@ static void prepare_header(struct archiver_args *args,
 	xsnprintf(header->chksum, sizeof(header->chksum), "%07o", ustar_header_chksum(header));
 }
 
-static void write_extended_header(struct archiver_args *args,
-				  const unsigned char *sha1,
-				  const void *buffer, unsigned long size)
+static int write_extended_header(struct archiver_args *args,
+				 const unsigned char *sha1,
+				 const void *buffer, unsigned long size)
 {
 	struct ustar_header header;
 	unsigned int mode;
@@ -226,6 +226,7 @@ static void write_extended_header(struct archiver_args *args,
 	prepare_header(args, &header, mode, size);
 	write_blocked(&header, sizeof(header));
 	write_blocked(buffer, size);
+	return 0;
 }
 
 static int write_tar_entry(struct archiver_args *args,
@@ -304,8 +305,12 @@ static int write_tar_entry(struct archiver_args *args,
 	prepare_header(args, &header, mode, size_in_header);
 
 	if (ext_header.len > 0) {
-		write_extended_header(args, sha1, ext_header.buf,
-				      ext_header.len);
+		err = write_extended_header(args, sha1, ext_header.buf,
+					    ext_header.len);
+		if (err) {
+			free(buffer);
+			return err;
+		}
 	}
 	strbuf_release(&ext_header);
 	write_blocked(&header, sizeof(header));

@@ -4,20 +4,6 @@ test_description='test untracked cache'
 
 . ./test-lib.sh
 
-# On some filesystems (e.g. FreeBSD's ext2 and ufs) directory mtime
-# is updated lazily after contents in the directory changes, which
-# forces the untracked cache code to take the slow path.  A test
-# that wants to make sure that the fast path works correctly should
-# call this helper to make mtime of the containing directory in sync
-# with the reality before checking the fast path behaviour.
-#
-# See <20160803174522.5571-1-pclouds@gmail.com> if you want to know
-# more.
-
-sync_mtime () {
-	find . -type d -ls >/dev/null
-}
-
 avoid_racy() {
 	sleep 1
 }
@@ -430,8 +416,7 @@ test_expect_success 'create/modify files, some of which are gitignored' '
 	echo four >done/four && # four is gitignored at a higher level
 	echo five >done/five && # five is not gitignored
 	echo test >base && #we need to ensure that the root dir is touched
-	rm base &&
-	sync_mtime
+	rm base
 '
 
 test_expect_success 'test sparse status with untracked cache' '
@@ -659,28 +644,6 @@ test_expect_success 'test ident field is working' '
 	GIT_WORK_TREE=../other_worktree git status 2>../err &&
 	echo "warning: Untracked cache is disabled on this system or location." >../expect &&
 	test_i18ncmp ../expect ../err
-'
-
-test_expect_success 'untracked cache survives a checkout' '
-	git commit --allow-empty -m empty &&
-	test-dump-untracked-cache >../before &&
-	test_when_finished  "git checkout master" &&
-	git checkout -b other_branch &&
-	test-dump-untracked-cache >../after &&
-	test_cmp ../before ../after &&
-	test_commit test &&
-	test-dump-untracked-cache >../before &&
-	git checkout master &&
-	test-dump-untracked-cache >../after &&
-	test_cmp ../before ../after
-'
-
-test_expect_success 'untracked cache survives a commit' '
-	test-dump-untracked-cache >../before &&
-	git add done/two &&
-	git commit -m commit &&
-	test-dump-untracked-cache >../after &&
-	test_cmp ../before ../after
 '
 
 test_done

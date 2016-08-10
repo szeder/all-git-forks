@@ -26,7 +26,6 @@
 #endif
 
 static int diff_detect_rename_default;
-static int diff_indent_heuristic; /* experimental */
 static int diff_compaction_heuristic; /* experimental */
 static int diff_rename_limit_default = 400;
 static int diff_suppress_blank_empty;
@@ -132,11 +131,9 @@ static int parse_dirstat_params(struct diff_options *options, const char *params
 static int parse_submodule_params(struct diff_options *options, const char *value)
 {
 	if (!strcmp(value, "log"))
-		options->submodule_format = DIFF_SUBMODULE_LOG;
-	else if (!strcmp(value, "diff"))
-		options->submodule_format = DIFF_SUBMODULE_DIFF;
+		DIFF_OPT_SET(options, SUBMODULE_LOG);
 	else if (!strcmp(value, "short"))
-		options->submodule_format = DIFF_SUBMODULE_SHORT;
+		DIFF_OPT_CLR(options, SUBMODULE_LOG);
 	else
 		return -1;
 	return 0;
@@ -191,10 +188,6 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp(var, "diff.renames")) {
 		diff_detect_rename_default = git_config_rename(var, value);
-		return 0;
-	}
-	if (!strcmp(var, "diff.indentheuristic")) {
-		diff_indent_heuristic = git_config_bool(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "diff.compactionheuristic")) {
@@ -1174,18 +1167,10 @@ const char *diff_get_color(int diff_use_color, enum color_diff ix)
 const char *diff_line_prefix(struct diff_options *opt)
 {
 	struct strbuf *msgbuf;
-
-	if (!opt->output_prefix) {
-		if (opt->line_prefix)
-			return opt->line_prefix;
-		else
-			return "";
-	}
+	if (!opt->output_prefix)
+		return "";
 
 	msgbuf = opt->output_prefix(opt, opt->output_prefix_data);
-	/* line prefix must be printed before the output_prefix() */
-	if (opt->line_prefix)
-		strbuf_insert(msgbuf, 0, opt->line_prefix, strlen(opt->line_prefix));
 	return msgbuf->buf;
 }
 
@@ -1640,7 +1625,7 @@ static void show_stats(struct diffstat_t *data, struct diff_options *options)
 	 */
 
 	if (options->stat_width == -1)
-		width = term_columns() - strlen(line_prefix);
+		width = term_columns() - options->output_prefix_length;
 	else
 		width = options->stat_width ? options->stat_width : 80;
 	number_width = decimal_width(max_change) > number_width ?
@@ -2314,18 +2299,9 @@ static void builtin_diff(const char *name_a,
 	struct strbuf header = STRBUF_INIT;
 	const char *line_prefix = diff_line_prefix(o);
 
-	diff_set_mnemonic_prefix(o, "a/", "b/");
-	if (DIFF_OPT_TST(o, REVERSE_DIFF)) {
-		a_prefix = o->b_prefix;
-		b_prefix = o->a_prefix;
-	} else {
-		a_prefix = o->a_prefix;
-		b_prefix = o->b_prefix;
-	}
-
-	if (o->submodule_format == DIFF_SUBMODULE_LOG &&
-	    (!one->mode || S_ISGITLINK(one->mode)) &&
-	    (!two->mode || S_ISGITLINK(two->mode))) {
+	if (DIFF_OPT_TST(o, SUBMODULE_LOG) &&
+			(!one->mode || S_ISGITLINK(one->mode)) &&
+			(!two->mode || S_ISGITLINK(two->mode))) {
 		const char *del = diff_get_color_opt(o, DIFF_FILE_OLD);
 		const char *add = diff_get_color_opt(o, DIFF_FILE_NEW);
 		show_submodule_summary(o->file, one->path ? one->path : two->path,
@@ -2334,20 +2310,20 @@ static void builtin_diff(const char *name_a,
 				two->dirty_submodule,
 				meta, del, add, reset);
 		return;
-	} else if (o->submodule_format == DIFF_SUBMODULE_DIFF &&
-		   (!one->mode || S_ISGITLINK(one->mode)) &&
-		   (!two->mode || S_ISGITLINK(two->mode))) {
-		show_submodule_diff(o->file, one->path ? one->path : two->path,
-				line_prefix,
-				one->oid.hash, two->oid.hash,
-				two->dirty_submodule,
-				meta, a_prefix, b_prefix, reset);
-		return;
 	}
 
 	if (DIFF_OPT_TST(o, ALLOW_TEXTCONV)) {
 		textconv_one = get_textconv(one);
 		textconv_two = get_textconv(two);
+	}
+
+	diff_set_mnemonic_prefix(o, "a/", "b/");
+	if (DIFF_OPT_TST(o, REVERSE_DIFF)) {
+		a_prefix = o->b_prefix;
+		b_prefix = o->a_prefix;
+	} else {
+		a_prefix = o->a_prefix;
+		b_prefix = o->b_prefix;
 	}
 
 	/* Never use a non-valid filename anywhere if at all possible */
@@ -2705,13 +2681,6 @@ static int reuse_worktree_file(const char *name, const unsigned char *sha1, int 
 	 * to be individually opened and inflated.
 	 */
 	if (!FAST_WORKING_DIRECTORY && !want_file && has_sha1_pack(sha1))
-		return 0;
-
-	/*
-	 * Similarly, if we'd have to convert the file contents anyway, that
-	 * makes the optimization not worthwhile.
-	 */
-	if (!want_file && would_convert_to_git(name))
 		return 0;
 
 	len = strlen(name);
@@ -3317,8 +3286,6 @@ void diff_setup(struct diff_options *options)
 	options->use_color = diff_use_color_default;
 	options->detect_rename = diff_detect_rename_default;
 	options->xdl_opts |= diff_algorithm;
-	if (diff_indent_heuristic)
-		DIFF_XDL_SET(options, INDENT_HEURISTIC);
 	if (diff_compaction_heuristic)
 		DIFF_XDL_SET(options, COMPACTION_HEURISTIC);
 
@@ -3841,10 +3808,6 @@ int diff_opt_parse(struct diff_options *options,
 		DIFF_XDL_SET(options, IGNORE_WHITESPACE_AT_EOL);
 	else if (!strcmp(arg, "--ignore-blank-lines"))
 		DIFF_XDL_SET(options, IGNORE_BLANK_LINES);
-	else if (!strcmp(arg, "--indent-heuristic"))
-		DIFF_XDL_SET(options, INDENT_HEURISTIC);
-	else if (!strcmp(arg, "--no-indent-heuristic"))
-		DIFF_XDL_CLR(options, INDENT_HEURISTIC);
 	else if (!strcmp(arg, "--compaction-heuristic"))
 		DIFF_XDL_SET(options, COMPACTION_HEURISTIC);
 	else if (!strcmp(arg, "--no-compaction-heuristic"))
@@ -3945,7 +3908,7 @@ int diff_opt_parse(struct diff_options *options,
 		DIFF_OPT_SET(options, OVERRIDE_SUBMODULE_CONFIG);
 		handle_ignore_submodules_arg(options, arg);
 	} else if (!strcmp(arg, "--submodule"))
-		options->submodule_format = DIFF_SUBMODULE_LOG;
+		DIFF_OPT_SET(options, SUBMODULE_LOG);
 	else if (skip_prefix(arg, "--submodule=", &arg))
 		return parse_submodule_opt(options, arg);
 	else if (skip_prefix(arg, "--ws-error-highlight=", &arg))
@@ -3994,10 +3957,6 @@ int diff_opt_parse(struct diff_options *options,
 	}
 	else if ((argcount = parse_long_opt("src-prefix", av, &optarg))) {
 		options->a_prefix = optarg;
-		return argcount;
-	}
-	else if ((argcount = parse_long_opt("line-prefix", av, &optarg))) {
-		options->line_prefix = optarg;
 		return argcount;
 	}
 	else if ((argcount = parse_long_opt("dst-prefix", av, &optarg))) {
@@ -4496,7 +4455,7 @@ static void patch_id_consume(void *priv, char *line, unsigned long len)
 }
 
 /* returns 0 upon success, and writes result into sha1 */
-static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, int diff_header_only)
+static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
 	int i;
@@ -4531,6 +4490,9 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, 
 
 		diff_fill_sha1_info(p->one);
 		diff_fill_sha1_info(p->two);
+		if (fill_mmfile(&mf1, p->one) < 0 ||
+				fill_mmfile(&mf2, p->two) < 0)
+			return error("unable to read files to diff");
 
 		len1 = remove_space(p->one->path, strlen(p->one->path));
 		len2 = remove_space(p->two->path, strlen(p->two->path));
@@ -4565,13 +4527,6 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, 
 					len2, p->two->path);
 		git_SHA1_Update(&ctx, buffer, len1);
 
-		if (diff_header_only)
-			continue;
-
-		if (fill_mmfile(&mf1, p->one) < 0 ||
-		    fill_mmfile(&mf2, p->two) < 0)
-			return error("unable to read files to diff");
-
 		if (diff_filespec_is_binary(p->one) ||
 		    diff_filespec_is_binary(p->two)) {
 			git_SHA1_Update(&ctx, oid_to_hex(&p->one->oid),
@@ -4594,11 +4549,11 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, 
 	return 0;
 }
 
-int diff_flush_patch_id(struct diff_options *options, unsigned char *sha1, int diff_header_only)
+int diff_flush_patch_id(struct diff_options *options, unsigned char *sha1)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
 	int i;
-	int result = diff_get_patch_id(options, sha1, diff_header_only);
+	int result = diff_get_patch_id(options, sha1);
 
 	for (i = 0; i < q->nr; i++)
 		diff_free_filepair(q->queue[i]);

@@ -1249,7 +1249,6 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 						  WRITE_TREE_SILENT |
 						  WRITE_TREE_REPAIR);
 		}
-		move_index_extensions(&o->result, o->dst_index);
 		discard_index(o->dst_index);
 		*o->dst_index = o->result;
 	} else {

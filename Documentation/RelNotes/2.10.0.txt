@@ -91,31 +91,6 @@ UI, Workflows & Features
 
  * A handful of "git svn" updates.
 
- * "git push" learned to accept and pass extra options to the
-   receiving end so that hooks can read and react to them.
-
- * "git status" learned to suggest "merge --abort" during a conflicted
-   merge, just like it already suggests "rebase --abort" during a
-   conflicted rebase.
-
- * "git jump" script (in contrib/) has been updated a bit.
-   (merge a91e692 jk/git-jump later to maint).
-
- * "git push" and "git clone" learned to give better progress meters
-   to the end user who is waiting on the terminal.
-
- * An entry "git log --decorate" for the tip of the current branch is
-   shown as "HEAD -> name" (where "name" is the name of the branch);
-   paint the arrow in the same color as "HEAD", not in the color for
-   commits.
-
- * "git format-patch" learned format.from configuration variable to
-   specify the default settings for its "--from" option.
-
- * "git am -3" calls "git merge-recursive" when it needs to fall back
-   to a three-way merge; this call has been turned into an internal
-   subroutine call instead of spawning a separate subprocess.
-
 
 Performance, Internal Implementation, Development Support etc.
 
@@ -191,6 +166,7 @@ Performance, Internal Implementation, Development Support etc.
 
  * The .c/.h sources are marked as such in our .gitattributes file so
    that "git diff -W" and friends would work better.
+   (merge e82675a rs/help-c-source-with-gitattributes later to maint).
 
  * Code clean-up to avoid using a variable string that compilers may
    feel untrustable as printf-style format given to write_file()
@@ -203,6 +179,7 @@ Performance, Internal Implementation, Development Support etc.
    library did not check all the functions from pthread libraries;
    recent FreeBSD has some functions in libc but not others, and we
    mistakenly thought linking with libc is enough when it is not.
+   (merge a9b02de ew/autoconf-pthread later to maint).
 
  * When "git fsck" reports a broken link (e.g. a tree object contains
    a blob that does not exist), both containing object and the object
@@ -211,6 +188,7 @@ Performance, Internal Implementation, Development Support etc.
    the containing object from existing refs (e.g. "HEAD~24^2:file.txt").
 
  * Allow http daemon tests in Travis CI tests.
+   (merge d9d1426 ls/travis-enable-httpd-tests later to maint).
 
  * Makefile assumed that -lrt is always available on platforms that
    want to use clock_gettime() and CLOCK_MONOTONIC, which is not a
@@ -235,44 +213,6 @@ Performance, Internal Implementation, Development Support etc.
 
  * A few tests that specifically target "git rebase -i" have been
    added.
-
- * Dumb http transport on the client side has been optimized.
-   (merge ecba195 ew/http-walker later to maint).
-
- * Users of the parse_options_concat() API function need to allocate
-   extra slots in advance and fill them with OPT_END() when they want
-   to decide the set of supported options dynamically, which makes the
-   code error-prone and hard to read.  This has been corrected by tweaking
-   the API to allocate and return a new copy of "struct option" array.
-
- * "git fetch" exchanges batched have/ack messages between the sender
-   and the receiver, initially doubling every time and then falling
-   back to enlarge the window size linearly.  The "smart http"
-   transport, being an half-duplex protocol, outgrows the preset limit
-   too quickly and becomes inefficient when interacting with a large
-   repository.  The internal mechanism learned to grow the window size
-   more aggressively when working with the "smart http" transport.
-
- * Tests for "git svn" have been taught to reuse the lib-httpd test
-   infrastructure when testing the subversion integration that
-   interacts with subversion repositories served over the http://
-   protocol.
-   (merge a8a5d25 ew/git-svn-http-tests later to maint).
-
- * "git pack-objects" has a few options that tell it not to pack
-   objects found in certain packfiles, which require it to scan .idx
-   files of all available packs.  The codepaths involved in these
-   operations have been optimized for a common case of not having any
-   non-local pack and/or any .kept pack.
-
- * The t3700 test about "add --chmod=-x" have been made a bit more
-   robust and generally cleaned up.
-   (merge 766cdc4 ib/t3700-add-chmod-x-updates later to maint).
-
- * The build procedure learned PAGER_ENV knob that lists what default
-   environment variable settings to export for popular pagers.  This
-   mechanism is used to tweak the default settings to MORE on FreeBSD.
-   (merge 995bc22 ew/build-time-pager-tweaks later to maint).
 
 
 Also contains various documentation updates and code clean-ups.
@@ -444,13 +384,16 @@ notes for details).
    "file" did not appear in the current commit.  When "file" was
    created by renaming an existing file (but the change has not been
    committed), this restriction was unnecessarily tight.
+   (merge c66b470 mh/blame-worktree later to maint).
 
  * "git add -N dir/file && git write-tree" produced an incorrect tree
    when there are other paths in the same directory that sorts after
    "file".
+   (merge 6d6a782 nd/cache-tree-ita later to maint).
 
  * "git fetch http://user:pass@host/repo..." scrubbed the userinfo
    part, but "git push" didn't.
+   (merge 68f3c07 jk/push-scrub-url later to maint).
 
  * "git merge" with renormalization did not work well with
    merge-recursive, due to "safer crlf" conversion kicking in when it
@@ -459,98 +402,42 @@ notes for details).
 
  * The use of strbuf in "git rm" to build filename to remove was a bit
    suboptimal, which has been fixed.
+   (merge deb8e15 rs/rm-strbuf-optim later to maint).
 
  * An age old bug that caused "git diff --ignore-space-at-eol"
    misbehave has been fixed.
+   (merge 044fb19 js/ignore-space-at-eol later to maint).
 
  * "git notes merge" had a code to see if a path exists (and fails if
    it does) and then open the path for writing (when it doesn't).
    Replace it with open with O_EXCL.
+   (merge deb9c15 rs/notes-merge-no-toctou later to maint).
 
  * "git pack-objects" and "git index-pack" mostly operate with off_t
    when talking about the offset of objects in a packfile, but there
    were a handful of places that used "unsigned long" to hold that
    value, leading to an unintended truncation.
+   (merge ec9d224 nd/pack-ofs-4gb-limit later to maint).
 
  * Recent update to "git daemon" tries to enable the socket-level
    KEEPALIVE, but when it is spawned via inetd, the standard input
    file descriptor may not necessarily be connected to a socket.
    Suppress an ENOTSOCK error from setsockopt().
+   (merge fab6027 ew/daemon-socket-keepalive later to maint).
 
  * Recent FreeBSD stopped making perl available at /usr/bin/perl;
    switch the default the built-in path to /usr/local/bin/perl on not
    too ancient FreeBSD releases.
-
- * "git commit --help" said "--no-verify" is only about skipping the
-   pre-commit hook, and failed to say that it also skipped the
-   commit-msg hook.
-
- * "git merge" in Git v2.9 was taught to forbid merging an unrelated
-   lines of history by default, but that is exactly the kind of thing
-   the "--rejoin" mode of "git subtree" (in contrib/) wants to do.
-   "git subtree" has been taught to use the "--allow-unrelated-histories"
-   option to override the default.
-
- * The build procedure for "git persistent-https" helper (in contrib/)
-   has been updated so that it can be built with more recent versions
-   of Go.
-
- * There is an optimization used in "git diff $treeA $treeB" to borrow
-   an already checked-out copy in the working tree when it is known to
-   be the same as the blob being compared, expecting that open/mmap of
-   such a file is faster than reading it from the object store, which
-   involves inflating and applying delta.  This however kicked in even
-   when the checked-out copy needs to go through the convert-to-git
-   conversion (including the clean filter), which defeats the whole
-   point of the optimization.  The optimization has been disabled when
-   the conversion is necessary.
-
- * "git -c grep.patternType=extended log --basic-regexp" misbehaved
-   because the internal API to access the grep machinery was not
-   designed well.
-
- * Windows port was failing some tests in t4130, due to the lack of
-   inum in the returned values by its lstat(2) emulation.
-
- * The reflog output format is documented better, and a new format
-   --date=unix to report the seconds-since-epoch (without timezone)
-   has been added.
-   (merge 442f6fd jk/reflog-date later to maint).
-
- * "git difftool <paths>..." started in a subdirectory failed to
-   interpret the paths relative to that directory, which has been
-   fixed.
-   (merge 32b8c58 jk/difftool-in-subdir later to maint).
-
- * The characters in the label shown for tags/refs for commits in
-   "gitweb" output are now properly escaped for proper HTML output.
-
- * FreeBSD can lie when asked mtime of a directory, which made the
-   untracked cache code to fall back to a slow-path, which in turn
-   caused tests in t7063 to fail because it wanted to verify the
-   behaviour of the fast-path.
-
- * Squelch compiler warnings for netmalloc (in compat/) library.
-
- * A small memory leak in the command line parsing of "git blame"
-   has been plugged.
-
- * The API documentation for hashmap was unclear if hashmap_entry
-   can be safely discarded without any other consideration.  State
-   that it is safe to do so.
-
- * Not-so-recent rewrite of "git am" that started making internal
-   calls into the commit machinery had an unintended regression, in
-   that no matter how many seconds it took to apply many patches, the
-   resulting committer timestamp for the resulting commits were all
-   the same.
-   (merge 4d9c7e6 jk/reset-ident-time-per-commit later to maint).
-
- * "git push --force-with-lease" already had enough logic to allow
-   ensuring that such a push results in creation of a ref (i.e. the
-   receiving end did not have another push from sideways that would be
-   discarded by our force-pushing), but didn't expose this possibility
-   to the users.  It does so now.
-   (merge 9eed4f3 jk/push-force-with-lease-creation later to maint).
+   (merge 259f22a ew/find-perl-on-freebsd-in-local later to maint).
 
  * Other minor clean-ups and documentation updates
+   (merge e51b0df pb/commit-editmsg-path later to maint).
+   (merge b333d0d jk/send-pack-stdio later to maint).
+   (merge fcf0fe9 lf/sideband-returns-void later to maint).
+   (merge c2691e2 ah/unpack-trees-advice-messages later to maint).
+   (merge c61b2af lf/recv-sideband-cleanup later to maint).
+   (merge 31471ba rs/use-strbuf-addbuf later to maint).
+   (merge 503e224 nd/test-helpers later to maint).
+   (merge 16726cf jc/doc-diff-filter-exclude later to maint).
+   (merge fd2e7da rs/worktree-use-strbuf-absolute-path later to maint).
+   (merge 406621f sb/submodule-deinit-all later to maint).
