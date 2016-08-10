@@ -490,6 +490,19 @@ extern const char *strip_namespace(const char *namespaced_ref);
 extern const char *get_git_work_tree(void);
 
 /*
+ * Hack to temporarily change the index.
+ * Yeah, the libification of 'apply' took a short-circuit by adding
+ * this technical debt.
+ * Please use functions available when
+ * NO_THE_INDEX_COMPATIBILITY_MACROS is defined, instead of this
+ * function.
+ * If you really need to use this function, please save the current
+ * index file using get_index_file() before changing the index
+ * file. And when finished, reset it to the saved value.
+ */
+extern void set_index_file(char *index_file);
+
+/*
  * Return true if the given path is a git directory; note that this _just_
  * looks at the directory itself. If you want to know whether "foo/.git"
  * is a repository, you must feed that path, not just "foo".
@@ -732,10 +745,6 @@ enum hide_dotfiles_type {
 	HIDE_DOTFILES_DOTGITONLY
 };
 extern enum hide_dotfiles_type hide_dotfiles;
-
-extern int core_fscache;
-
-extern int core_long_paths;
 
 enum branch_track {
 	BRANCH_TRACK_UNSPECIFIED = -1,

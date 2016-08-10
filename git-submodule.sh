@@ -34,7 +34,6 @@ command=
 branch=
 force=
 reference=
-superreference=
 cached=
 recursive=
 init=
@@ -527,14 +526,6 @@ cmd_update()
 		--reference=*)
 			reference="$1"
 			;;
-		--super-reference)
-			case "$2" in '') usage ;; esac
-			superreference="--super-reference=$2"
-			shift
-			;;
-		--super-reference=*)
-			superreference="$1"
-			;;
 		-m|--merge)
 			update="merge"
 			;;
@@ -601,7 +592,6 @@ cmd_update()
 		${prefix:+--recursive-prefix "$prefix"} \
 		${update:+--update "$update"} \
 		${reference:+"$reference"} \
-		${superreference:+"$superreference"} \
 		${depth:+--depth "$depth"} \
 		${recommend_shallow:+"$recommend_shallow"} \
 		${jobs:+$jobs} \

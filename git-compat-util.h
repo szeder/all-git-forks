@@ -192,10 +192,8 @@
 #if defined(__MINGW32__)
 /* pull in Windows compatibility stuff */
 #include "compat/mingw.h"
-#include "compat/win32/fscache.h"
 #elif defined(_MSC_VER)
 #include "compat/msvc.h"
-#include "compat/win32/fscache.h"
 #else
 #include <sys/utsname.h>
 #include <sys/wait.h>
@@ -348,14 +346,6 @@ static inline int git_skip_dos_drive_prefix(char **path)
 #define skip_dos_drive_prefix git_skip_dos_drive_prefix
 #endif
 
-#ifndef has_unc_prefix
-static inline int git_has_unc_prefix(const char *path)
-{
-	return 0;
-}
-#define has_unc_prefix git_has_unc_prefix
-#endif
-
 #ifndef is_dir_sep
 static inline int git_is_dir_sep(int c)
 {
@@ -378,14 +368,6 @@ static inline char *git_find_last_dir_sep(const char *path)
 	return strrchr(path, '/');
 }
 #define find_last_dir_sep git_find_last_dir_sep
-#endif
-
-#ifndef git_program_data_config
-#define git_program_data_config() NULL
-#endif
-
-#ifndef query_user_email
-#define query_user_email() NULL
 #endif
 
 #if defined(__HP_cc) && (__HP_cc >= 61000)
@@ -458,6 +440,9 @@ static inline int const_error(void)
 
 extern void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_list params));
 extern void set_error_routine(void (*routine)(const char *err, va_list params));
+extern void (*get_error_routine(void))(const char *err, va_list params);
+extern void set_warn_routine(void (*routine)(const char *warn, va_list params));
+extern void (*get_warn_routine(void))(const char *warn, va_list params);
 extern void set_die_is_recursing_routine(int (*routine)(void));
 extern void set_error_handle(FILE *);
 
@@ -1078,21 +1063,6 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #define flockfile(fh)
 #define funlockfile(fh)
 #define getc_unlocked(fh) getc(fh)
-#endif
-
-/*
- * Enable/disable a read-only cache for file system data on platforms that
- * support it.
- *
- * Implementing a live-cache is complicated and requires special platform
- * support (inotify, ReadDirectoryChangesW...). enable_fscache shall be used
- * to mark sections of git code that extensively read from the file system
- * without modifying anything. Implementations can use this to cache e.g. stat
- * data or even file content without the need to synchronize with the file
- * system.
- */
-#ifndef enable_fscache
-#define enable_fscache(x) /* noop */
 #endif
 
 #endif

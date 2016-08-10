@@ -442,7 +442,8 @@ static int module_name(int argc, const char **argv, const char *prefix)
 }
 
 static int clone_submodule(const char *path, const char *gitdir, const char *url,
-			   const char *depth, struct string_list *reference, int quiet)
+			   const char *depth, struct string_list *reference,
+			   struct string_list *reference_if_able, int quiet)
 {
 	struct child_process cp = CHILD_PROCESS_INIT;
 
@@ -455,7 +456,14 @@ static int clone_submodule(const char *path, const char *gitdir, const char *url
 	if (reference->nr) {
 		struct string_list_item *item;
 		for_each_string_list_item(item, reference)
-			argv_array_pushl(&cp.args, "--reference", item->string, NULL);
+			argv_array_pushl(&cp.args, "--reference",
+					 item->string, NULL);
+	}
+	if (reference_if_able->nr) {
+		struct string_list_item *item;
+		for_each_string_list_item(item, reference_if_able)
+			argv_array_pushl(&cp.args, "--reference-if-able",
+					 item->string, NULL);
 	}
 	if (gitdir && *gitdir)
 		argv_array_pushl(&cp.args, "--separate-git-dir", gitdir, NULL);
@@ -479,6 +487,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	struct strbuf rel_path = STRBUF_INIT;
 	struct strbuf sb = STRBUF_INIT;
 	struct string_list reference = STRING_LIST_INIT_NODUP;
+	struct string_list reference_if_able = STRING_LIST_INIT_NODUP;
 
 	struct option module_clone_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
@@ -496,6 +505,9 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 		OPT_STRING_LIST(0, "reference", &reference,
 			   N_("repo"),
 			   N_("reference repository")),
+		OPT_STRING_LIST(0, "reference-if-able", &reference_if_able,
+			   N_("repo"),
+			   N_("reference repository")),
 		OPT_STRING(0, "depth", &depth,
 			   N_("string"),
 			   N_("depth for shallow clones")),
@@ -505,8 +517,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 
 	const char *const git_submodule_helper_usage[] = {
 		N_("git submodule--helper clone [--prefix=<path>] [--quiet] "
-		   "[--reference <repository>] [--name <name>] [--depth <depth>] "
-		   "--url <url> --path <path>"),
+		   "[--reference[-if-able] <repository>] [--name <name>] "
+		   "[--depth <depth>] --url <url> --path <path>"),
 		NULL
 	};
 
@@ -530,7 +542,8 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	if (!file_exists(sm_gitdir)) {
 		if (safe_create_leading_directories_const(sm_gitdir) < 0)
 			die(_("could not create directory '%s'"), sm_gitdir);
-		if (clone_submodule(path, sm_gitdir, url, depth, &reference, quiet))
+		if (clone_submodule(path, sm_gitdir, url, depth, &reference,
+		    &reference_if_able, quiet))
 			die(_("clone of '%s' into submodule path '%s' failed"),
 			    url, path);
 	} else {
@@ -583,7 +596,6 @@ struct submodule_update_clone {
 	int quiet;
 	int recommend_shallow;
 	struct string_list references;
-	struct string_list superreferences;
 	const char *depth;
 	const char *recursive_prefix;
 	const char *prefix;
@@ -600,7 +612,7 @@ struct submodule_update_clone {
 };
 #define SUBMODULE_UPDATE_CLONE_INIT {0, MODULE_LIST_INIT, 0, \
 	SUBMODULE_UPDATE_STRATEGY_INIT, 0, -1, STRING_LIST_INIT_DUP, \
-	STRING_LIST_INIT_DUP, NULL, NULL, NULL, \
+	NULL, NULL, NULL, \
 	STRING_LIST_INIT_DUP, 0, NULL, 0, 0}
 
 
@@ -622,6 +634,45 @@ static void next_submodule_warn_missing(struct submodule_update_clone *suc,
 	}
 }
 
+struct submodule_alternate_setup {
+	struct submodule_update_clone *suc;
+	const char *submodule_name;
+	struct child_process *child;
+	struct strbuf *out;
+};
+
+int add_possible_reference(struct alternate_object_database *alt, void *sas_cb)
+{
+	struct submodule_alternate_setup *sas = sas_cb;
+
+	/* directory name, minus trailing slash */
+	size_t namelen = alt->name - alt->base - 1;
+	struct strbuf name = STRBUF_INIT;
+	strbuf_add(&name, alt->base, namelen);
+
+	/*
+	 * If the alternate object store is another repository, try the
+	 * standard layout with .git/modules/<name>/objects
+	 */
+	if (ends_with(name.buf, ".git/objects")) {
+		struct strbuf sb = STRBUF_INIT;
+		strbuf_add(&sb, name.buf, name.len - strlen("objects"));
+		/*
+		 * We need to end the new path with '/' to mark it as a dir,
+		 * otherwise a submodule name containing '/' will be broken
+		 * as the last part of a missing submodule reference would
+		 * be taken as a file name.
+		 */
+		strbuf_addf(&sb, "modules/%s/", sas->submodule_name);
+		argv_array_pushf(&sas->child->args,
+				 "--reference-if-able=%s", sb.buf);
+		strbuf_release(&sb);
+	}
+
+	strbuf_release(&name);
+	return 0;
+}
+
 /**
  * Determine whether 'ce' needs to be cloned. If so, prepare the 'child' to
  * run the clone. Returns 1 if 'ce' needs to be cloned, 0 otherwise.
@@ -637,6 +688,7 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 	const char *displaypath = NULL;
 	char *url = NULL;
 	int needs_cloning = 0;
+	struct submodule_alternate_setup sas;
 
 	if (ce_stage(ce)) {
 		if (suc->recursive_prefix)
@@ -715,15 +767,13 @@ static int prepare_to_clone_next_submodule(const struct cache_entry *ce,
 		for_each_string_list_item(item, &suc->references)
 			argv_array_pushl(&child->args, "--reference", item->string, NULL);
 	}
-	if (suc->superreferences.nr) {
-		struct string_list_item *item;
-		for_each_string_list_item(item, &suc->superreferences) {
-			strbuf_reset(&sb);
-			argv_array_pushf(&child->args, "--reference=%s/%s",
-					 relative_path(item->string, suc->prefix, &sb),
-					 sub->path);
-		}
-	}
+
+	sas.submodule_name = sub->name;
+	sas.suc = suc;
+	sas.child = child;
+	sas.out = out;
+	foreach_alt_odb(add_possible_reference, &sas);
+
 	if (suc->depth)
 		argv_array_push(&child->args, suc->depth);
 
@@ -764,8 +814,12 @@ static int update_clone_get_next_task(struct child_process *child,
 	if (index < suc->failed_clones_nr) {
 		int *p;
 		ce = suc->failed_clones[index];
-		if (!prepare_to_clone_next_submodule(ce, child, suc, err))
-			die("BUG: ce was a submodule before?");
+		if (!prepare_to_clone_next_submodule(ce, child, suc, err)) {
+			suc->current ++;
+			strbuf_addf(err, "BUG: submodule considered for cloning,"
+				    "doesn't need cloning any more?\n");
+			return 0;
+		}
 		p = xmalloc(sizeof(*p));
 		*p = suc->current;
 		*idx_task_cb = p;
@@ -844,8 +898,6 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 			   N_("rebase, merge, checkout or none")),
 		OPT_STRING_LIST(0, "reference", &suc.references, N_("repo"),
 			   N_("reference repository")),
-		OPT_STRING_LIST(0, "super-reference", &suc.superreferences, N_("repo"),
-			   N_("superproject of a reference repository")),
 		OPT_STRING(0, "depth", &suc.depth, "<depth>",
 			   N_("Create a shallow clone truncated to the "
 			      "specified number of revisions")),

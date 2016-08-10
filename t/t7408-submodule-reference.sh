@@ -7,17 +7,13 @@ test_description='test clone --reference'
 . ./test-lib.sh
 
 base_dir=$(pwd)
-
-U=$base_dir/UPLOAD_LOG
-
-test_alternate_usage()
-{
-	alternates_file=$1
-	working_dir=$2
-	test_line_count = 1 $alternates_file &&
+test_alternate_is_used () {
+	alternates_file="$1" &&
+	working_dir="$2" &&
+	test_line_count = 1 "$alternates_file" &&
 	echo "0 objects, 0 kilobytes" >expect &&
-	git -C $working_dir count-objects >current &&
-	diff expect current
+	git -C "$working_dir" count-objects >actual &&
+	test_cmp expect actual
 }
 
 test_expect_success 'preparing first repository' '
@@ -59,14 +55,21 @@ test_expect_success 'submodule add --reference uses alternates' '
 		git commit -m B-super-added &&
 		git repack -ad
 	) &&
-	test_alternate_usage super/.git/modules/sub/objects/info/alternates super/sub
+	test_alternate_is_used super/.git/modules/sub/objects/info/alternates super/sub
 '
+
+# The tests up to this point, and repositories created by them
+# (A, B, super and super/sub), are about setting up the stage
+# for subsequent tests and meant to be kept throughout the
+# remainder of the test.
+# Tests from here on, if they create their own test repository,
+# are expected to clean after themselves.
 
 test_expect_success 'updating superproject keeps alternates' '
 	test_when_finished "rm -rf super-clone" &&
 	git clone super super-clone &&
 	git -C super-clone submodule update --init --reference ../B &&
-	test_alternate_usage super-clone/.git/modules/sub/objects/info/alternates super-clone/sub
+	test_alternate_is_used super-clone/.git/modules/sub/objects/info/alternates super-clone/sub
 '
 
 test_expect_success 'submodules use alternates when cloning a superproject' '
@@ -75,24 +78,24 @@ test_expect_success 'submodules use alternates when cloning a superproject' '
 	(
 		cd super-clone &&
 		# test superproject has alternates setup correctly
-		test_alternate_usage .git/objects/info/alternates . &&
+		test_alternate_is_used .git/objects/info/alternates . &&
 		# test submodule has correct setup
-		test_alternate_usage .git/modules/sub/objects/info/alternates sub
+		test_alternate_is_used .git/modules/sub/objects/info/alternates sub
 	)
 '
 
 test_expect_success 'cloning superproject, missing submodule alternates' '
 	test_when_finished "rm -rf super-clone" &&
 	git clone super super2 &&
-	test_must_fail git clone --recursive --reference super2 super2 super-clone &&
+	git clone --recursive --reference super2 super2 super-clone &&
 	(
 		cd super-clone &&
 		# test superproject has alternates setup correctly
-		test_alternate_usage .git/objects/info/alternates . &&
+		test_alternate_is_used .git/objects/info/alternates . &&
 		# update of the submodule succeeds
 		git submodule update --init &&
 		# and we have no alternates:
-		test_must_fail test_alternate_usage .git/modules/sub/objects/info/alternates sub &&
+		test_must_fail test_alternate_is_used .git/modules/sub/objects/info/alternates sub &&
 		test_path_is_file sub/file1
 	)
 '

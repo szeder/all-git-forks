@@ -52,8 +52,8 @@ static int option_verbosity;
 static int option_progress = -1;
 static enum transport_family family;
 static struct string_list option_config = STRING_LIST_INIT_NODUP;
-static struct string_list option_reference = STRING_LIST_INIT_NODUP;
-static struct string_list superreferences = STRING_LIST_INIT_DUP;
+static struct string_list option_required_reference = STRING_LIST_INIT_NODUP;
+static struct string_list option_optional_reference = STRING_LIST_INIT_NODUP;
 static int option_dissociate;
 static int max_jobs = -1;
 static struct string_list init_submodules;
@@ -92,8 +92,10 @@ static struct option builtin_clone_options[] = {
 		    N_("number of submodules cloned in parallel")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
-	OPT_STRING_LIST(0, "reference", &option_reference, N_("repo"),
+	OPT_STRING_LIST(0, "reference", &option_required_reference, N_("repo"),
 			N_("reference repository")),
+	OPT_STRING_LIST(0, "reference-if-able", &option_optional_reference,
+			N_("repo"), N_("reference repository")),
 	OPT_BOOL(0, "dissociate", &option_dissociate,
 		 N_("use --reference only while cloning")),
 	OPT_STRING('o', "origin", &option_origin, N_("name"),
@@ -300,15 +302,25 @@ static void strip_trailing_slashes(char *dir)
 	*end = '\0';
 }
 
-static int add_one_reference(struct string_list_item *item, void *cb_dir)
+static int add_one_reference(struct string_list_item *item, void *cb_data)
 {
 	char *ref_git;
-	const char *repo;
-	const char *dir = cb_dir;
+	const char *repo, *ref_git_s;
+	int *required = cb_data;
 	struct strbuf alternate = STRBUF_INIT;
 
-	/* Beware: read_gitfile(), real_path() and mkpath() return static buffer */
-	ref_git = xstrdup(real_path(item->string));
+	ref_git_s = *required ?
+			real_path(item->string) :
+			real_path_if_valid(item->string);
+	if (!ref_git_s) {
+		warning(_("Not using proposed alternate %s"), item->string);
+		return 0;
+	} else
+		/*
+		 * Beware: read_gitfile(), real_path() and mkpath()
+		 * return static buffer
+		 */
+		ref_git = xstrdup(ref_git_s);
 
 	repo = read_gitfile(ref_git);
 	if (!repo)
@@ -325,7 +337,8 @@ static int add_one_reference(struct string_list_item *item, void *cb_dir)
 	} else if (!is_directory(mkpath("%s/objects", ref_git))) {
 		struct strbuf sb = STRBUF_INIT;
 		if (get_common_dir(&sb, ref_git))
-			die(_("reference repository '%s' as a linked checkout is not supported yet."),
+			die(_("reference repository '%s' as a "
+			      "linked checkout is not supported yet."),
 			    item->string);
 		die(_("reference repository '%s' is not a local repository."),
 		    item->string);
@@ -337,13 +350,6 @@ static int add_one_reference(struct string_list_item *item, void *cb_dir)
 	if (!access(mkpath("%s/info/grafts", ref_git), F_OK))
 		die(_("reference repository '%s' is grafted"), item->string);
 
-	if (option_recursive) {
-		struct strbuf sb = STRBUF_INIT;
-		char *rel = xstrdup(relative_path(item->string, dir, &sb));
-		string_list_append(&superreferences, rel);
-		strbuf_reset(&sb);
-	}
-
 	strbuf_addf(&alternate, "%s/objects", ref_git);
 	add_to_alternates_file(alternate.buf);
 	strbuf_release(&alternate);
@@ -351,9 +357,14 @@ static int add_one_reference(struct string_list_item *item, void *cb_dir)
 	return 0;
 }
 
-static void setup_reference(char *dir)
+static void setup_reference(void)
 {
-	for_each_string_list(&option_reference, add_one_reference, dir);
+	int required = 1;
+	for_each_string_list(&option_required_reference,
+			     add_one_reference, &required);
+	required = 0;
+	for_each_string_list(&option_optional_reference,
+			     add_one_reference, &required);
 }
 
 static void copy_alternates(struct strbuf *src, struct strbuf *dst,
@@ -764,8 +775,6 @@ static int checkout(void)
 
 	if (!err && (option_recursive || init_submodules.nr > 0)) {
 		struct argv_array args = ARGV_ARRAY_INIT;
-		static struct string_list_item *item;
-
 		argv_array_pushl(&args, "submodule", "update", NULL);
 
 		if (init_submodules.nr > 0)
@@ -781,10 +790,6 @@ static int checkout(void)
 
 		if (max_jobs != -1)
 			argv_array_pushf(&args, "--jobs=%d", max_jobs);
-
-		if (superreferences.nr)
-			for_each_string_list_item(item, &superreferences)
-				argv_array_pushf(&args, "--super-reference=%s", item->string);
 
 		err = run_command_v_opt(args.argv, RUN_GIT_CMD);
 		argv_array_clear(&args);
@@ -1032,8 +1037,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
 
-	if (option_reference.nr)
-		setup_reference(dir);
+	if (option_required_reference.nr || option_optional_reference.nr)
+		setup_reference();
 
 	fetch_pattern = value.buf;
 	refspec = parse_fetch_refspec(1, &fetch_pattern);
@@ -1109,9 +1114,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			}
 
 		if (!is_local && !complete_refs_before_fetch)
-			if (transport_fetch_refs(transport, mapped_refs))
-				die(_("could not fetch refs from %s"),
-				    transport->url);
+			transport_fetch_refs(transport, mapped_refs);
 
 		remote_head = find_ref_by_name(refs, "HEAD");
 		remote_head_points_at =

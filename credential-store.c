@@ -3,7 +3,6 @@
 #include "credential.h"
 #include "string-list.h"
 #include "parse-options.h"
-#include "exec_cmd.h"
 
 static struct lock_file credential_lock;
 
@@ -161,7 +160,6 @@ int cmd_main(int argc, const char **argv)
 
 	umask(077);
 
-	git_extract_argv0_path(argv[0]);
 	argc = parse_options(argc, (const char **)argv, NULL, options, usage, 0);
 	if (argc != 1)
 		usage_with_options(usage, options);
