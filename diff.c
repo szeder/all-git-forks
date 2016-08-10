@@ -1167,10 +1167,17 @@ const char *diff_get_color(int diff_use_color, enum color_diff ix)
 const char *diff_line_prefix(struct diff_options *opt)
 {
 	struct strbuf *msgbuf;
+
 	if (!opt->output_prefix)
-		return "";
+		if (opt->line_prefix)
+			return opt->line_prefix;
+		else
+			return "";
 
 	msgbuf = opt->output_prefix(opt, opt->output_prefix_data);
+	/* line prefix must be printed before the output_prefix() */
+	if (opt->line_prefix)
+		strbuf_insert(msgbuf, 0, opt->line_prefix, strlen(opt->line_prefix));
 	return msgbuf->buf;
 }
 
@@ -3964,6 +3971,10 @@ int diff_opt_parse(struct diff_options *options,
 	}
 	else if ((argcount = parse_long_opt("src-prefix", av, &optarg))) {
 		options->a_prefix = optarg;
+		return argcount;
+	}
+	else if ((argcount = parse_long_opt("line-prefix", av, &optarg))) {
+		options->line_prefix = optarg;
 		return argcount;
 	}
 	else if ((argcount = parse_long_opt("dst-prefix", av, &optarg))) {
