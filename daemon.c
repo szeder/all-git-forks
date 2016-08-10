@@ -1,6 +1,5 @@
 #include "cache.h"
 #include "pkt-line.h"
-#include "exec_cmd.h"
 #include "run-command.h"
 #include "strbuf.h"
 #include "string-list.h"
@@ -1204,10 +1203,6 @@ int cmd_main(int argc, const char **argv)
 	struct credentials *cred = NULL;
 	int i;
 
-	git_setup_gettext();
-
-	git_extract_argv0_path(argv[0]);
-
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 		const char *v;
@@ -1381,10 +1376,9 @@ int cmd_main(int argc, const char **argv)
 		return execute();
 
 	if (detach) {
-		if (daemonize())
+		if (daemonize(NULL))
 			die("--detach not supported on this platform");
-	} else
-		sanitize_stdfds();
+	}
 
 	if (pid_file)
 		write_file(pid_file, "%"PRIuMAX, (uintmax_t) getpid());
