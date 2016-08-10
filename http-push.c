@@ -1137,7 +1137,7 @@ static void remote_ls(const char *path, int flags,
 	ls.userData = userData;
 	ls.userFunc = userFunc;
 
-	strbuf_addstr(&out_buffer.buf, PROPFIND_ALL_REQUEST);
+	strbuf_addf(&out_buffer.buf, PROPFIND_ALL_REQUEST);
 
 	dav_headers = curl_slist_append(dav_headers, "Depth: 1");
 	dav_headers = curl_slist_append(dav_headers, "Content-Type: text/xml");
@@ -1708,6 +1708,10 @@ int cmd_main(int argc, const char **argv)
 	int i;
 	int new_refs;
 	struct ref *ref, *local_refs;
+
+	git_setup_gettext();
+
+	git_extract_argv0_path(argv[0]);
 
 	repo = xcalloc(1, sizeof(*repo));
 
