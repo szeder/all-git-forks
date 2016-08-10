@@ -948,9 +948,12 @@ static void show_merge_in_progress(struct wt_status *s,
 {
 	if (has_unmerged(s)) {
 		status_printf_ln(s, color, _("You have unmerged paths."));
-		if (s->hints)
+		if (s->hints) {
 			status_printf_ln(s, color,
-				_("  (fix conflicts and run \"git commit\")"));
+					 _("  (fix conflicts and run \"git commit\")"));
+			status_printf_ln(s, color,
+					 _("  (use \"git merge --abort\" to abort the merge)"));
+		}
 	} else {
 		s-> commitable = 1;
 		status_printf_ln(s, color,
@@ -1063,7 +1066,7 @@ static void abbrev_sha1_in_line(struct strbuf *line)
 			strbuf_addf(split[1], "%s ", abbrev);
 			strbuf_reset(line);
 			for (i = 0; split[i]; i++)
-				strbuf_addf(line, "%s", split[i]->buf);
+				strbuf_addbuf(line, split[i]);
 		}
 	}
 	strbuf_list_free(split);

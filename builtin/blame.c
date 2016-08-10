@@ -2229,6 +2229,7 @@ static int git_blame_config(const char *var, const char *value, void *cb)
 static void verify_working_tree_path(struct commit *work_tree, const char *path)
 {
 	struct commit_list *parents;
+	int pos;
 
 	for (parents = work_tree->parents; parents; parents = parents->next) {
 		const unsigned char *commit_sha1 = parents->item->object.oid.hash;
@@ -2239,7 +2240,14 @@ static void verify_working_tree_path(struct commit *work_tree, const char *path)
 		    sha1_object_info(blob_sha1, NULL) == OBJ_BLOB)
 			return;
 	}
-	die("no such path '%s' in HEAD", path);
+
+	pos = cache_name_pos(path, strlen(path));
+	if (pos >= 0)
+		; /* path is in the index */
+	else if (!strcmp(active_cache[-1 - pos]->name, path))
+		; /* path is in the index, unmerged */
+	else
+		die("no such path '%s' in HEAD", path);
 }
 
 static struct commit_list **append_parent(struct commit_list **tail, const unsigned char *sha1)
@@ -2625,6 +2633,9 @@ parse_done:
 	case DATE_RAW:
 		blame_date_width = sizeof("1161298804 -0700");
 		break;
+	case DATE_UNIX:
+		blame_date_width = sizeof("1161298804");
+		break;
 	case DATE_SHORT:
 		blame_date_width = sizeof("2006-10-19");
 		break;
@@ -2797,7 +2808,7 @@ parse_done:
 	lno = prepare_lines(&sb);
 
 	if (lno && !range_list.nr)
-		string_list_append(&range_list, xstrdup("1"));
+		string_list_append(&range_list, "1");
 
 	anchor = 1;
 	range_set_init(&ranges, range_list.nr);

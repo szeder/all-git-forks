@@ -49,7 +49,7 @@ die_if_unmatched ()
 {
 	if test "$1" = "#unmatched"
 	then
-		exit 1
+		exit ${2:-1}
 	fi
 }
 
@@ -312,11 +312,11 @@ cmd_foreach()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" ||
-		echo "#unmatched"
+		echo "#unmatched" $?
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		if test -e "$sm_path"/.git
 		then
 			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
@@ -379,8 +379,6 @@ cmd_init()
 #
 # Unregister submodules from .git/config and remove their work tree
 #
-# $@ = requested paths (use '.' to deinit all submodules)
-#
 cmd_deinit()
 {
 	# parse $args after "submodule ... deinit".
@@ -423,11 +421,11 @@ cmd_deinit()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched"
+		echo "#unmatched" $?
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		name=$(git submodule--helper name "$sm_path") || exit
 
 		displaypath=$(git submodule--helper relative-path "$sm_path" "$wt_prefix")
@@ -581,12 +579,12 @@ cmd_update()
 		${depth:+--depth "$depth"} \
 		${recommend_shallow:+"$recommend_shallow"} \
 		${jobs:+$jobs} \
-		"$@" || echo "#unmatched"
+		"$@" || echo "#unmatched" $?
 	} | {
 	err=
 	while read mode sha1 stage just_cloned sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
@@ -994,11 +992,11 @@ cmd_status()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched"
+		echo "#unmatched" $?
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
@@ -1075,11 +1073,11 @@ cmd_sync()
 	cd_to_toplevel
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched"
+		echo "#unmatched" $?
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		name=$(git submodule--helper name "$sm_path")
 		url=$(git config -f .gitmodules --get submodule."$name".url)
 
