@@ -46,7 +46,7 @@ two blob objects, or changes between two files on disk.
 	do not give <commit>, it defaults to HEAD.
 	If HEAD does not exist (e.g. unborn branches) and
 	<commit> is not given, it shows all staged changes.
-	--staged is a synonym of --cached.
+	--staged and --indexed are synonyms of --cached.
 
 'git diff' [--options] <commit> [--] [<path>...]::
 

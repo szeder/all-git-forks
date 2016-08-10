@@ -131,7 +131,7 @@ static int builtin_diff_index(struct rev_info *revs,
 	int cached = 0;
 	while (1 < argc) {
 		const char *arg = argv[1];
-		if (!strcmp(arg, "--cached") || !strcmp(arg, "--staged"))
+		if (!strcmp(arg, "--cached") || !strcmp(arg, "--staged") || !strcmp(arg, "--indexed"))
 			cached = 1;
 		else
 			usage(builtin_diff_usage);
@@ -379,7 +379,8 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 			if (!strcmp(arg, "--"))
 				break;
 			else if (!strcmp(arg, "--cached") ||
-				 !strcmp(arg, "--staged")) {
+				 !strcmp(arg, "--staged") ||
+				 !strcmp(arg, "--indexed")) {
 				add_head_to_pending(&rev);
 				if (!rev.pending.nr) {
 					struct tree *tree;
