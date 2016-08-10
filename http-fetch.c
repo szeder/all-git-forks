@@ -6,7 +6,7 @@
 static const char http_fetch_usage[] = "git http-fetch "
 "[-c] [-t] [-a] [-v] [--recover] [-w ref] [--stdin] commit-id url";
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, const char **argv)
 {
 	struct walker *walker;
 	int commits_on_stdin = 0;
@@ -21,6 +21,10 @@ int cmd_main(int argc, const char **argv)
 	int get_all = 0;
 	int get_verbosely = 0;
 	int get_recover = 0;
+
+	git_setup_gettext();
+
+	git_extract_argv0_path(argv[0]);
 
 	while (arg < argc && argv[arg][0] == '-') {
 		if (argv[arg][1] == 't') {

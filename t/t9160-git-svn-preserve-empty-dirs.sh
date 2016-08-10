@@ -11,6 +11,7 @@ local Git repository with placeholder files.'
 
 . ./lib-git-svn.sh
 
+say 'define NO_SVN_TESTS to skip git svn tests'
 GIT_REPO=git-svn-repo
 
 test_expect_success 'initialize source svn repo containing empty dirs' '

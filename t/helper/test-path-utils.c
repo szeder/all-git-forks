@@ -156,7 +156,7 @@ static struct test_data dirname_data[] = {
 	{ NULL,              NULL     }
 };
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	if (argc == 3 && !strcmp(argv[1], "normalize_path_copy")) {
 		char *buf = xmallocz(strlen(argv[2]));
@@ -213,7 +213,7 @@ int cmd_main(int argc, const char **argv)
 	}
 
 	if (argc >= 4 && !strcmp(argv[1], "prefix_path")) {
-		const char *prefix = argv[2];
+		char *prefix = argv[2];
 		int prefix_len = strlen(prefix);
 		int nongit_ok;
 		setup_git_directory_gently(&nongit_ok);

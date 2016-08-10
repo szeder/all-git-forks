@@ -658,19 +658,6 @@ static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
 
 static struct child_process no_fork = CHILD_PROCESS_INIT;
 
-static const char *get_ssh_command(void)
-{
-	const char *ssh;
-
-	if ((ssh = getenv("GIT_SSH_COMMAND")))
-		return ssh;
-
-	if (!git_config_get_string_const("core.sshcommand", &ssh))
-		return ssh;
-
-	return NULL;
-}
-
 /*
  * This returns a dummy child_process if the transport protocol does not
  * need fork(2), or a struct child_process object if it does.  Once done,
@@ -771,7 +758,7 @@ struct child_process *git_connect(int fd[2], const char *url,
 				return NULL;
 			}
 
-			ssh = get_ssh_command();
+			ssh = getenv("GIT_SSH_COMMAND");
 			if (!ssh) {
 				const char *base;
 				char *ssh_dup;

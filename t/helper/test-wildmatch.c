@@ -1,6 +1,6 @@
 #include "cache.h"
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	int i;
 	for (i = 2; i < argc; i++) {

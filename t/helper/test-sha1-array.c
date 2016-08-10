@@ -6,7 +6,7 @@ static void print_sha1(const unsigned char sha1[20], void *data)
 	puts(sha1_to_hex(sha1));
 }
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	struct sha1_array array = SHA1_ARRAY_INIT;
 	struct strbuf line = STRBUF_INIT;

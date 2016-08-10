@@ -24,7 +24,7 @@
 #    LIB_HTTPD_MODULE_PATH       web server modules path
 #    LIB_HTTPD_PORT              listening port
 #    LIB_HTTPD_DAV               enable DAV
-#    LIB_HTTPD_SVN               enable SVN at given location (e.g. "svn")
+#    LIB_HTTPD_SVN               enable SVN
 #    LIB_HTTPD_SSL               enable SSL
 #
 # Copyright (c) 2008 Clemens Buchacher <drizzd@aon.at>
@@ -162,10 +162,8 @@ prepare_httpd() {
 		if test -n "$LIB_HTTPD_SVN"
 		then
 			HTTPD_PARA="$HTTPD_PARA -DSVN"
-			LIB_HTTPD_SVNPATH="$rawsvnrepo"
-			svnrepo="http://127.0.0.1:$LIB_HTTPD_PORT/"
-			svnrepo="$svnrepo$LIB_HTTPD_SVN"
-			export LIB_HTTPD_SVN LIB_HTTPD_SVNPATH
+			rawsvnrepo="$HTTPD_ROOT_PATH/svnrepo"
+			svnrepo="http://127.0.0.1:$LIB_HTTPD_PORT/svn"
 		fi
 	fi
 }
@@ -182,7 +180,6 @@ start_httpd() {
 	if test $? -ne 0
 	then
 		trap 'die' EXIT
-		cat "$HTTPD_ROOT_PATH"/error.log >&4 2>/dev/null
 		test_skip_or_die $GIT_TEST_HTTPD "web server setup failed"
 	fi
 }

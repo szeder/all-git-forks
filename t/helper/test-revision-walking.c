@@ -45,7 +45,7 @@ static int run_revision_walk(void)
 	return got_revision;
 }
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	if (argc < 2)
 		return 1;

@@ -19,8 +19,7 @@ struct walker {
 };
 
 /* Report what we got under get_verbosely */
-__attribute__((format (printf, 2, 3)))
-void walker_say(struct walker *walker, const char *fmt, ...);
+void walker_say(struct walker *walker, const char *, const char *);
 
 /* Load pull targets from stdin */
 int walker_targets_stdin(char ***target, const char ***write_ref);

@@ -149,7 +149,7 @@ int parse_opt_string_list(const struct option *opt, const char *arg, int unset)
 	if (!arg)
 		return -1;
 
-	string_list_append(v, arg);
+	string_list_append(v, xstrdup(arg));
 	return 0;
 }
 

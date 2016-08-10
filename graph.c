@@ -17,8 +17,8 @@
 static void graph_padding_line(struct git_graph *graph, struct strbuf *sb);
 
 /*
- * Print a strbuf.  If the graph is non-NULL, all lines but the first will be
- * prefixed with the graph output.
+ * Print a strbuf to stdout.  If the graph is non-NULL, all lines but the
+ * first will be prefixed with the graph output.
  *
  * If the strbuf ends with a newline, the output will end after this
  * newline.  A new graph line will not be printed after the final newline.
@@ -1200,10 +1200,9 @@ void graph_show_commit(struct git_graph *graph)
 
 	while (!shown_commit_line && !graph_is_commit_finished(graph)) {
 		shown_commit_line = graph_next_line(graph, &msgbuf);
-		fwrite(msgbuf.buf, sizeof(char), msgbuf.len,
-			graph->revs->diffopt.file);
+		fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
 		if (!shown_commit_line)
-			putc('\n', graph->revs->diffopt.file);
+			putchar('\n');
 		strbuf_setlen(&msgbuf, 0);
 	}
 
@@ -1218,7 +1217,7 @@ void graph_show_oneline(struct git_graph *graph)
 		return;
 
 	graph_next_line(graph, &msgbuf);
-	fwrite(msgbuf.buf, sizeof(char), msgbuf.len, graph->revs->diffopt.file);
+	fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
 	strbuf_release(&msgbuf);
 }
 
@@ -1230,7 +1229,7 @@ void graph_show_padding(struct git_graph *graph)
 		return;
 
 	graph_padding_line(graph, &msgbuf);
-	fwrite(msgbuf.buf, sizeof(char), msgbuf.len, graph->revs->diffopt.file);
+	fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
 	strbuf_release(&msgbuf);
 }
 
@@ -1247,13 +1246,12 @@ int graph_show_remainder(struct git_graph *graph)
 
 	for (;;) {
 		graph_next_line(graph, &msgbuf);
-		fwrite(msgbuf.buf, sizeof(char), msgbuf.len,
-			graph->revs->diffopt.file);
+		fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
 		strbuf_setlen(&msgbuf, 0);
 		shown = 1;
 
 		if (!graph_is_commit_finished(graph))
-			putc('\n', graph->revs->diffopt.file);
+			putchar('\n');
 		else
 			break;
 	}
@@ -1268,8 +1266,7 @@ static void graph_show_strbuf(struct git_graph *graph, struct strbuf const *sb)
 	char *p;
 
 	if (!graph) {
-		fwrite(sb->buf, sizeof(char), sb->len,
-			graph->revs->diffopt.file);
+		fwrite(sb->buf, sizeof(char), sb->len, stdout);
 		return;
 	}
 
@@ -1287,7 +1284,7 @@ static void graph_show_strbuf(struct git_graph *graph, struct strbuf const *sb)
 		} else {
 			len = (sb->buf + sb->len) - p;
 		}
-		fwrite(p, sizeof(char), len, graph->revs->diffopt.file);
+		fwrite(p, sizeof(char), len, stdout);
 		if (next_p && *next_p != '\0')
 			graph_show_oneline(graph);
 		p = next_p;
@@ -1307,8 +1304,7 @@ void graph_show_commit_msg(struct git_graph *graph,
 		 * CMIT_FMT_USERFORMAT are already missing a terminating
 		 * newline.  All of the other formats should have it.
 		 */
-		fwrite(sb->buf, sizeof(char), sb->len,
-			graph->revs->diffopt.file);
+		fwrite(sb->buf, sizeof(char), sb->len, stdout);
 		return;
 	}
 
@@ -1329,7 +1325,7 @@ void graph_show_commit_msg(struct git_graph *graph,
 		 * new line.
 		 */
 		if (!newline_terminated)
-			putc('\n', graph->revs->diffopt.file);
+			putchar('\n');
 
 		graph_show_remainder(graph);
 
@@ -1337,6 +1333,6 @@ void graph_show_commit_msg(struct git_graph *graph,
 		 * If sb ends with a newline, our output should too.
 		 */
 		if (newline_terminated)
-			putc('\n', graph->revs->diffopt.file);
+			putchar('\n');
 	}
 }
