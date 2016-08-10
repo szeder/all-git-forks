@@ -263,7 +263,7 @@ static const char *wt_status_unmerged_status_string(int stagemask)
 	case 7:
 		return _("both modified:");
 	default:
-		die("bug: unhandled unmerged status %x", stagemask);
+		die("BUG: unhandled unmerged status %x", stagemask);
 	}
 }
 
@@ -388,7 +388,7 @@ static void wt_longstatus_print_change_data(struct wt_status *s,
 	status_printf(s, color(WT_STATUS_HEADER, s), "\t");
 	what = wt_status_diff_status_string(status);
 	if (!what)
-		die("bug: unhandled diff status %c", status);
+		die("BUG: unhandled diff status %c", status);
 	len = label_width - utf8_strwidth(what);
 	assert(len >= 0);
 	if (status == DIFF_STATUS_COPIED || status == DIFF_STATUS_RENAMED)
@@ -434,31 +434,6 @@ static void wt_status_collect_changed_cb(struct diff_queue_struct *q,
 		if (S_ISGITLINK(p->two->mode))
 			d->new_submodule_commits = !!oidcmp(&p->one->oid,
 							    &p->two->oid);
-
-		switch (p->status) {
-		case DIFF_STATUS_ADDED:
-			die("BUG: worktree status add???");
-			break;
-
-		case DIFF_STATUS_DELETED:
-			d->mode_index = p->one->mode;
-			oidcpy(&d->oid_index, &p->one->oid);
-			/* mode_worktree is zero for a delete. */
-			break;
-
-		case DIFF_STATUS_MODIFIED:
-		case DIFF_STATUS_TYPE_CHANGED:
-		case DIFF_STATUS_UNMERGED:
-			d->mode_index = p->one->mode;
-			d->mode_worktree = p->two->mode;
-			oidcpy(&d->oid_index, &p->one->oid);
-			break;
-
-		case DIFF_STATUS_UNKNOWN:
-			die("BUG: worktree status unknown???");
-			break;
-		}
-
 	}
 }
 
@@ -504,36 +479,12 @@ static void wt_status_collect_updated_cb(struct diff_queue_struct *q,
 		if (!d->index_status)
 			d->index_status = p->status;
 		switch (p->status) {
-		case DIFF_STATUS_ADDED:
-			/* Leave {mode,oid}_head zero for an add. */
-			d->mode_index = p->two->mode;
-			oidcpy(&d->oid_index, &p->two->oid);
-			break;
-		case DIFF_STATUS_DELETED:
-			d->mode_head = p->one->mode;
-			oidcpy(&d->oid_head, &p->one->oid);
-			/* Leave {mode,oid}_index zero for a delete. */
-			break;
-
 		case DIFF_STATUS_COPIED:
 		case DIFF_STATUS_RENAMED:
 			d->head_path = xstrdup(p->one->path);
-			d->score = p->score * 100 / MAX_SCORE;
-			/* fallthru */
-		case DIFF_STATUS_MODIFIED:
-		case DIFF_STATUS_TYPE_CHANGED:
-			d->mode_head = p->one->mode;
-			d->mode_index = p->two->mode;
-			oidcpy(&d->oid_head, &p->one->oid);
-			oidcpy(&d->oid_index, &p->two->oid);
 			break;
 		case DIFF_STATUS_UNMERGED:
 			d->stagemask = unmerged_mask(p->two->path);
-			/*
-			 * Don't bother setting {mode,oid}_{head,index} since the print
-			 * code will output the stage values directly and not use the
-			 * values in these fields.
-			 */
 			break;
 		}
 	}
@@ -614,17 +565,9 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 		if (ce_stage(ce)) {
 			d->index_status = DIFF_STATUS_UNMERGED;
 			d->stagemask |= (1 << (ce_stage(ce) - 1));
-			/*
-			 * Don't bother setting {mode,oid}_{head,index} since the print
-			 * code will output the stage values directly and not use the
-			 * values in these fields.
-			 */
-		} else {
-			d->index_status = DIFF_STATUS_ADDED;
-			/* Leave {mode,oid}_head zero for adds. */
-			d->mode_index = ce->ce_mode;
-			hashcpy(d->oid_index.hash, ce->sha1);
 		}
+		else
+			d->index_status = DIFF_STATUS_ADDED;
 	}
 }
 
@@ -1005,9 +948,12 @@ static void show_merge_in_progress(struct wt_status *s,
 {
 	if (has_unmerged(s)) {
 		status_printf_ln(s, color, _("You have unmerged paths."));
-		if (s->hints)
+		if (s->hints) {
 			status_printf_ln(s, color,
-				_("  (fix conflicts and run \"git commit\")"));
+					 _("  (fix conflicts and run \"git commit\")"));
+			status_printf_ln(s, color,
+					 _("  (use \"git merge --abort\" to abort the merge)"));
+		}
 	} else {
 		s-> commitable = 1;
 		status_printf_ln(s, color,
@@ -1820,9 +1766,6 @@ void wt_status_print(struct wt_status *s)
 		break;
 	case STATUS_FORMAT_PORCELAIN:
 		wt_porcelain_print(s);
-		break;
-	case STATUS_FORMAT_PORCELAIN_V2:
-		/* TODO */
 		break;
 	case STATUS_FORMAT_UNSPECIFIED:
 		die("BUG: finalize_deferred_config() should have been called");

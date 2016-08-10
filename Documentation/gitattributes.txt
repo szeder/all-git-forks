@@ -133,7 +133,7 @@ Set to string value "auto"::
 	When `text` is set to "auto", the path is marked for automatic
 	end-of-line conversion.  If Git decides that the content is
 	text, its line endings are converted to LF on checkin.
-	When the file has been commited with CRLF, no conversion is done.
+	When the file has been committed with CRLF, no conversion is done.
 
 Unspecified::
 
@@ -377,6 +377,11 @@ substitution.  For example:
 	smudge = git-p4-filter --smudge %f
 ------------------------
 
+Note that "%f" is the name of the path that is being worked on. Depending
+on the version that is being filtered, the corresponding file on disk may
+not exist, or may have different contents. So, smudge and clean commands
+should not try to access the file on disk, but only act as filters on the
+content provided to them on standard input.
 
 Interaction between checkin/checkout attributes
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

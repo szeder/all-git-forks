@@ -2633,6 +2633,9 @@ parse_done:
 	case DATE_RAW:
 		blame_date_width = sizeof("1161298804 -0700");
 		break;
+	case DATE_UNIX:
+		blame_date_width = sizeof("1161298804");
+		break;
 	case DATE_SHORT:
 		blame_date_width = sizeof("2006-10-19");
 		break;
@@ -2805,7 +2808,7 @@ parse_done:
 	lno = prepare_lines(&sb);
 
 	if (lno && !range_list.nr)
-		string_list_append(&range_list, xstrdup("1"));
+		string_list_append(&range_list, "1");
 
 	anchor = 1;
 	range_set_init(&ranges, range_list.nr);

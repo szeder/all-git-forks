@@ -444,8 +444,7 @@ static int module_name(int argc, const char **argv, const char *prefix)
 static int clone_submodule(const char *path, const char *gitdir, const char *url,
 			   const char *depth, const char *reference, int quiet)
 {
-	struct child_process cp;
-	child_process_init(&cp);
+	struct child_process cp = CHILD_PROCESS_INIT;
 
 	argv_array_push(&cp.args, "clone");
 	argv_array_push(&cp.args, "--no-checkout");
@@ -748,8 +747,12 @@ static int update_clone_get_next_task(struct child_process *child,
 	if (index < suc->failed_clones_nr) {
 		int *p;
 		ce = suc->failed_clones[index];
-		if (!prepare_to_clone_next_submodule(ce, child, suc, err))
-			die("BUG: ce was a submodule before?");
+		if (!prepare_to_clone_next_submodule(ce, child, suc, err)) {
+			suc->current ++;
+			strbuf_addf(err, "BUG: submodule considered for cloning,"
+				    "doesn't need cloning any more?\n");
+			return 0;
+		}
 		p = xmalloc(sizeof(*p));
 		*p = suc->current;
 		*idx_task_cb = p;
@@ -795,7 +798,7 @@ static int update_clone_task_finished(int result,
 		suc->failed_clones[suc->failed_clones_nr++] = ce;
 		return 0;
 	} else {
-		idx = suc->current - suc->list.nr;
+		idx -= suc->list.nr;
 		ce  = suc->failed_clones[idx];
 		strbuf_addf(err, _("Failed to clone '%s' a second time, aborting"),
 			    ce->name);
@@ -892,9 +895,60 @@ static int resolve_relative_path(int argc, const char **argv, const char *prefix
 {
 	struct strbuf sb = STRBUF_INIT;
 	if (argc != 3)
-		die("submodule--helper relative_path takes exactly 2 arguments, got %d", argc);
+		die("submodule--helper relative-path takes exactly 2 arguments, got %d", argc);
 
 	printf("%s", relative_path(argv[1], argv[2], &sb));
+	strbuf_release(&sb);
+	return 0;
+}
+
+static const char *remote_submodule_branch(const char *path)
+{
+	const struct submodule *sub;
+	gitmodules_config();
+	git_config(submodule_config, NULL);
+
+	sub = submodule_from_path(null_sha1, path);
+	if (!sub)
+		return NULL;
+
+	if (!sub->branch)
+		return "master";
+
+	if (!strcmp(sub->branch, ".")) {
+		unsigned char sha1[20];
+		const char *refname = resolve_ref_unsafe("HEAD", 0, sha1, NULL);
+
+		if (!refname)
+			die(_("No such ref: %s"), "HEAD");
+
+		/* detached HEAD */
+		if (!strcmp(refname, "HEAD"))
+			die(_("Submodule (%s) branch configured to inherit "
+			      "branch from superproject, but the superproject "
+			      "is not on any branch"), sub->name);
+
+		if (!skip_prefix(refname, "refs/heads/", &refname))
+			die(_("Expecting a full ref name, got %s"), refname);
+		return refname;
+	}
+
+	return sub->branch;
+}
+
+static int resolve_remote_submodule_branch(int argc, const char **argv,
+		const char *prefix)
+{
+	const char *ret;
+	struct strbuf sb = STRBUF_INIT;
+	if (argc != 2)
+		die("submodule--helper remote-branch takes exactly one arguments, got %d", argc);
+
+	ret = remote_submodule_branch(argv[1]);
+	if (!ret)
+		die("submodule %s doesn't exist", argv[1]);
+
+	printf("%s", ret);
 	strbuf_release(&sb);
 	return 0;
 }
@@ -912,7 +966,8 @@ static struct cmd_struct commands[] = {
 	{"relative-path", resolve_relative_path},
 	{"resolve-relative-url", resolve_relative_url},
 	{"resolve-relative-url-test", resolve_relative_url_test},
-	{"init", module_init}
+	{"init", module_init},
+	{"remote-branch", resolve_remote_submodule_branch}
 };
 
 int cmd_submodule__helper(int argc, const char **argv, const char *prefix)
