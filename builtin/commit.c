@@ -144,23 +144,6 @@ static struct strbuf message = STRBUF_INIT;
 
 static enum wt_status_format status_format = STATUS_FORMAT_UNSPECIFIED;
 
-static int opt_parse_porcelain(const struct option *opt, const char *arg, int unset)
-{
-	enum wt_status_format *value = (enum wt_status_format *)opt->value;
-	if (unset)
-		*value = STATUS_FORMAT_NONE;
-	else if (!arg)
-		*value = STATUS_FORMAT_PORCELAIN;
-	else if (!strcmp(arg, "v1") || !strcmp(arg, "1"))
-		*value = STATUS_FORMAT_PORCELAIN;
-	else if (!strcmp(arg, "v2") || !strcmp(arg, "2"))
-		*value = STATUS_FORMAT_PORCELAIN_V2;
-	else
-		die("unsupported porcelain version '%s'", arg);
-
-	return 0;
-}
-
 static int opt_parse_m(const struct option *opt, const char *arg, int unset)
 {
 	struct strbuf *buf = opt->value;
@@ -510,8 +493,6 @@ static int run_status(FILE *fp, const char *index_file, const char *prefix, int 
 	s->fp = fp;
 	s->nowarn = nowarn;
 	s->is_initial = get_sha1(s->reference, sha1) ? 1 : 0;
-	if (!s->is_initial)
-		hashcpy(s->sha1_commit, sha1);
 	s->status_format = status_format;
 	s->ignore_submodule_arg = ignore_submodule_arg;
 
@@ -1108,7 +1089,6 @@ static struct status_deferred_config {
 static void finalize_deferred_config(struct wt_status *s)
 {
 	int use_deferred_config = (status_format != STATUS_FORMAT_PORCELAIN &&
-				   status_format != STATUS_FORMAT_PORCELAIN_V2 &&
 				   !s->null_termination);
 
 	if (s->null_termination) {
@@ -1336,9 +1316,9 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 			    N_("show status concisely"), STATUS_FORMAT_SHORT),
 		OPT_BOOL('b', "branch", &s.show_branch,
 			 N_("show branch information")),
-		{ OPTION_CALLBACK, 0, "porcelain", &status_format,
-		  N_("version"), N_("machine-readable output"),
-		  PARSE_OPT_OPTARG, opt_parse_porcelain },
+		OPT_SET_INT(0, "porcelain", &status_format,
+			    N_("machine-readable output"),
+			    STATUS_FORMAT_PORCELAIN),
 		OPT_SET_INT(0, "long", &status_format,
 			    N_("show status in long format (default)"),
 			    STATUS_FORMAT_LONG),
@@ -1380,9 +1360,6 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	fd = hold_locked_index(&index_lock, 0);
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
-	if (!s.is_initial)
-		hashcpy(s.sha1_commit, sha1);
-
 	s.ignore_submodule_arg = ignore_submodule_arg;
 	s.status_format = status_format;
 	s.verbose = verbose;
@@ -1607,7 +1584,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 		OPT_BOOL(0, "interactive", &interactive, N_("interactively add files")),
 		OPT_BOOL('p', "patch", &patch_interactive, N_("interactively add changes")),
 		OPT_BOOL('o', "only", &only, N_("commit only specified files")),
-		OPT_BOOL('n', "no-verify", &no_verify, N_("bypass pre-commit and commit-msg hooks")),
+		OPT_BOOL('n', "no-verify", &no_verify, N_("bypass pre-commit hook")),
 		OPT_BOOL(0, "dry-run", &dry_run, N_("show what would be committed")),
 		OPT_SET_INT(0, "short", &status_format, N_("show status concisely"),
 			    STATUS_FORMAT_SHORT),
