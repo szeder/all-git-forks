@@ -400,9 +400,9 @@ static xdchange_t *xdl_add_change(xdchange_t *xscr, long i1, long i2, long chg1,
 }
 
 
-static int is_blank_line(xrecord_t **recs, long ix, long flags)
+static int is_blank_line(xrecord_t *rec, long flags)
 {
-	return xdl_blankline(recs[ix]->ptr, recs[ix]->size, flags);
+	return xdl_blankline(rec->ptr, rec->size, flags);
 }
 
 static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
@@ -413,8 +413,231 @@ static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
 			     flags));
 }
 
+/*
+ * If a line is indented more than this, get_indent() just returns this value.
+ * This avoids having to do absurd amounts of work for data that are not
+ * human-readable text, and also ensures that the output of get_indent fits within
+ * an int.
+ */
+#define MAX_INDENT 200
+
+/*
+ * Return the amount of indentation of the specified line, treating TAB as 8
+ * columns. Return -1 if line is empty or contains only whitespace. Clamp the
+ * output value at MAX_INDENT.
+ */
+static int get_indent(xrecord_t *rec)
+{
+	long i;
+	int ret = 0;
+
+	for (i = 0; i < rec->size; i++) {
+		char c = rec->ptr[i];
+
+		if (!XDL_ISSPACE(c))
+			return ret;
+		else if (c == ' ')
+			ret += 1;
+		else if (c == '\t')
+			ret += 8 - ret % 8;
+		/* ignore other whitespace characters */
+
+		if (ret >= MAX_INDENT)
+			return MAX_INDENT;
+	}
+	/*
+	 * We have reached the end of the line without finding any non-space
+	 * characters; i.e., the whole line consists of trailing spaces, which we
+	 * are not interested in.
+	 */
+	return -1;
+}
+
+/*
+ * If more than this number of consecutive blank rows are found, just return this
+ * value. This avoids requiring O(N^2) work for pathological cases, and also
+ * ensures that the output of score_split fits in an int.
+ */
+#define MAX_BLANKS 20
+
+/* Characteristics measured about a hypothetical split position. */
+struct split_measurement {
+	/*
+	 * Is the split at the end of the file (aside from any blank lines)?
+	 */
+	int end_of_file;
+
+	/*
+	 * How much is the line immediately following the split indented (or -1 if
+	 * the line is blank):
+	 */
+	int indent;
+
+	/*
+	 * How many consecutive lines above the split are blank?
+	 */
+	int pre_blank;
+
+	/*
+	 * How much is the nearest non-blank line above the split indented (or -1
+	 * if there is no such line)?
+	 */
+	int pre_indent;
+
+	/*
+	 * How many lines after the line following the split are blank?
+	 */
+	int post_blank;
+
+	/*
+	 * How much is the nearest non-blank line after the line following the
+	 * split indented (or -1 if there is no such line)?
+	 */
+	int post_indent;
+};
+
+/*
+ * Fill m with information about a hypothetical split of xdf above line split.
+ */
+void measure_split(const xdfile_t *xdf, long split, struct split_measurement *m)
+{
+	long i;
+
+	if (split >= xdf->nrec) {
+		m->end_of_file = 1;
+		m->indent = -1;
+	} else {
+		m->end_of_file = 0;
+		m->indent = get_indent(xdf->recs[split]);
+	}
+
+	m->pre_blank = 0;
+	for (i = split - 1; i >= 0; i--) {
+		m->pre_indent = get_indent(xdf->recs[i]);
+		if (m->pre_indent != -1)
+			break;
+		m->pre_blank += 1;
+		if (m->pre_blank == MAX_BLANKS) {
+			m->pre_indent = 0;
+			break;
+		}
+	}
+
+	m->post_blank = 0;
+	for (i = split + 1; i < xdf->nrec; i++) {
+		m->post_indent = get_indent(xdf->recs[i]);
+		if (m->post_indent != -1)
+			break;
+		m->post_blank += 1;
+		if (m->post_blank == MAX_BLANKS) {
+			m->post_indent = 0;
+			break;
+		}
+	}
+}
+
+#define START_OF_FILE_BONUS 9
+#define END_OF_FILE_BONUS 46
+#define TOTAL_BLANK_WEIGHT 4
+#define PRE_BLANK_WEIGHT 16
+#define RELATIVE_INDENT_BONUS -1
+#define RELATIVE_INDENT_HAS_BLANK_BONUS 15
+#define RELATIVE_OUTDENT_BONUS -19
+#define RELATIVE_OUTDENT_HAS_BLANK_BONUS 2
+#define RELATIVE_DEDENT_BONUS -63
+#define RELATIVE_DEDENT_HAS_BLANK_BONUS 50
+
+/*
+ * Compute a badness score for the hypothetical split whose measurements are
+ * stored in m. The weight factors were determined empirically using the tools and
+ * corpus described in
+ *
+ *     https://github.com/mhagger/diff-slider-tools
+ *
+ * Also see that project if you want to improve the weights based on, for example,
+ * a larger or more diverse corpus.
+ */
+int score_split(const struct split_measurement *m)
+{
+	/*
+	 * A place to accumulate bonus factors (positive makes this index more
+	 * favored):
+	 */
+	int bonus = 0, score, total_blanks, indent, any_blanks;
+
+	if (m->pre_indent == -1 && m->pre_blank == 0)
+		bonus += START_OF_FILE_BONUS;
+
+	if (m->end_of_file)
+		bonus += END_OF_FILE_BONUS;
+
+	total_blanks = m->pre_blank;
+	if (m->indent == -1)
+		total_blanks += 1 + m->post_blank;
+
+	/* Bonuses based on the location of blank lines: */
+	bonus += TOTAL_BLANK_WEIGHT * total_blanks;
+	bonus += PRE_BLANK_WEIGHT * m->pre_blank;
+
+	if (m->indent != -1)
+		indent = m->indent;
+	else
+		indent = m->post_indent;
+
+	any_blanks = (total_blanks != 0);
+
+	if (indent == -1) {
+		score = 0;
+	} else if (m->pre_indent == -1) {
+		score = indent;
+	} else if (indent > m->pre_indent) {
+		/*
+		 * The line is indented more than its predecessor. Score it based
+		 * on the larger indent:
+		 */
+		score = indent;
+		bonus += RELATIVE_INDENT_BONUS;
+		bonus += RELATIVE_INDENT_HAS_BLANK_BONUS * any_blanks;
+	} else if (indent < m->pre_indent) {
+		/*
+		 * The line is indented less than its predecessor. It could be
+		 * that this line is the start of a new block (e.g., of an "else"
+		 * block, or of a block without a block terminator) or it could be
+		 * the end of the previous block.
+		 */
+		if (m->post_indent == -1 || indent >= m->post_indent) {
+			/*
+			 * That was probably the end of a block. Score based on
+			 * the line's own indent:
+			 */
+			score = indent;
+			bonus += RELATIVE_DEDENT_BONUS;
+			bonus += RELATIVE_DEDENT_HAS_BLANK_BONUS * any_blanks;
+		} else {
+			/*
+			 * The following line is indented more. So it is likely
+			 * that this line is the start of a block. It's a pretty
+			 * good place to split, so score it based on its own
+			 * indent:
+			 */
+			score = indent;
+			bonus += RELATIVE_OUTDENT_BONUS;
+			bonus += RELATIVE_OUTDENT_HAS_BLANK_BONUS * any_blanks;
+		}
+	} else {
+		/*
+		 * The line has the same indentation level as its predecessor. We
+		 * score it based on its own indent:
+		 */
+		score = indent;
+	}
+
+	return 10 * score - bonus;
+}
+
 int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
-	long ix, ixo, ixs, ixref, grpsiz, nrec = xdf->nrec;
+	long start, end, earliest_end, end_matching_other;
+	long io, groupsize, nrec = xdf->nrec;
 	char *rchg = xdf->rchg, *rchgo = xdfo->rchg;
 	unsigned int blank_lines;
 	xrecord_t **recs = xdf->recs;
@@ -424,7 +647,8 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 	 * change groups for a consistent and pretty diff output. This also
 	 * helps in finding joinable change groups and reduce the diff size.
 	 */
-	for (ix = ixo = 0;;) {
+	end = io = 0;
+	while (1) {
 		/*
 		 * Find the first changed line in the to-be-compacted file.
 		 * We need to keep track of both indexes, so if we find a
@@ -434,100 +658,196 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 		 * not need index bounding since the array is prepared with
 		 * a zero at position -1 and N.
 		 */
-		for (; ix < nrec && !rchg[ix]; ix++)
-			while (rchgo[ixo++]);
-		if (ix == nrec)
+		for (start = end; start < nrec && !rchg[start]; start++) {
+			/* skip over any changed lines in the other file... */
+			while (rchgo[io])
+				io++;
+
+			/* ...plus one non-changed line. */
+			io++;
+		}
+		if (start == nrec)
 			break;
 
 		/*
-		 * Record the start of a changed-group in the to-be-compacted file
-		 * and find the end of it, on both to-be-compacted and other file
-		 * indexes (ix and ixo).
+		 * That's the start of a changed-group in the to-be-compacted
+		 * file. Now find its end.
 		 */
-		ixs = ix;
-		for (ix++; rchg[ix]; ix++);
-		for (; rchgo[ixo]; ixo++);
+		end = start + 1;
+		while (rchg[end])
+			end++;
 
+		while (rchgo[io])
+		       io++;
+
+		/*
+		 * Now shift the change up and then down as far as possible in
+		 * each direction. If it bumps into any other changes, merge them.
+		 * If there are any changes in the other file that this change
+		 * could line up with, set end_matching_other to the end position
+		 * of this change that would leave them aligned.
+		 */
 		do {
-			grpsiz = ix - ixs;
+			groupsize = end - start;
+
+			/*
+			 * Are there any blank lines that could appear as the last
+			 * line of this group?
+			 */
 			blank_lines = 0;
 
 			/*
-			 * If the line before the current change group, is equal to
-			 * the last line of the current change group, shift backward
-			 * the group.
+			 * While the line before the current change group is equal
+			 * to the last line of the current change group, shift the
+			 * group backward.
 			 */
-			while (ixs > 0 && recs_match(recs, ixs - 1, ix - 1, flags)) {
-				rchg[--ixs] = 1;
-				rchg[--ix] = 0;
+			while (start > 0 && recs_match(recs, start - 1, end - 1, flags)) {
+				rchg[--start] = 1;
+				rchg[--end] = 0;
 
 				/*
-				 * This change might have joined two change groups,
-				 * so we try to take this scenario in account by moving
-				 * the start index accordingly (and so the other-file
-				 * end-of-group index).
+				 * This change might have joined two change groups.
+				 * If so, move the start index to the beginning of
+				 * the combined group:
 				 */
-				for (; rchg[ixs - 1]; ixs--);
-				while (rchgo[--ixo]);
-			}
-
-			/*
-			 * Record the end-of-group position in case we are matched
-			 * with a group of changes in the other file (that is, the
-			 * change record before the end-of-group index in the other
-			 * file is set).
-			 */
-			ixref = rchgo[ixo - 1] ? ix: nrec;
-
-			/*
-			 * If the first line of the current change group, is equal to
-			 * the line next of the current change group, shift forward
-			 * the group.
-			 */
-			while (ix < nrec && recs_match(recs, ixs, ix, flags)) {
-				blank_lines += is_blank_line(recs, ix, flags);
-
-				rchg[ixs++] = 0;
-				rchg[ix++] = 1;
+				while (rchg[start - 1])
+					start--;
 
 				/*
-				 * This change might have joined two change groups,
-				 * so we try to take this scenario in account by moving
-				 * the start index accordingly (and so the other-file
-				 * end-of-group index). Keep tracking the reference
-				 * index in case we are shifting together with a
-				 * corresponding group of changes in the other file.
+				 * Move the other file index past a non-changed
+				 * line...
 				 */
-				for (; rchg[ix]; ix++);
-				while (rchgo[++ixo])
-					ixref = ix;
+				io--;
+
+				/* ...and also past any changed lines: */
+				while (rchgo[io])
+					io--;
 			}
-		} while (grpsiz != ix - ixs);
+
+			if (rchgo[io - 1]) {
+				/*
+				 * This change is matched to a group of changes in
+				 * the other file. Record the end-of-group
+				 * position:
+				 */
+				end_matching_other = end;
+			} else {
+				/*
+				 * Otherwise, set a value to signify that there
+				 * are no matched changes in the other file:
+				 */
+				end_matching_other = -1;
+			}
+
+			earliest_end = end;
+
+			/*
+			 * Now shift the group forward as long as the first line
+			 * of the current change group is equal to the line after
+			 * the current change group.
+			 */
+			while (end < nrec && recs_match(recs, start, end, flags)) {
+				blank_lines += is_blank_line(recs[end], flags);
+
+				rchg[start++] = 0;
+				rchg[end++] = 1;
+
+				/*
+				 * This change might have joined two change
+				 * groups. If so, move the start index accordingly
+				 * (and so the other-file end-of-group index).
+				 * Keep tracking the reference index in case we
+				 * are shifting together with a corresponding
+				 * group of changes in the other file.
+				 */
+				while (rchg[end])
+					end++;
+
+				io++;
+				if (rchgo[io]) {
+					end_matching_other = end;
+					while (rchgo[io])
+						io++;
+				}
+			}
+		} while (groupsize != end - start);
+
+		if (end == earliest_end)
+			continue; /* no shifting is possible */
 
 		/*
-		 * Try to move back the possibly merged group of changes, to match
-		 * the recorded position in the other file.
-		 */
-		while (ixref < ix) {
-			rchg[--ixs] = 1;
-			rchg[--ix] = 0;
-			while (rchgo[--ixo]);
-		}
-
-		/*
-		 * If a group can be moved back and forth, see if there is a
-		 * blank line in the moving space. If there is a blank line,
-		 * make sure the last blank line is the end of the group.
+		 * The group can be shifted. Possibly use this freedom to produce
+		 * a more intuitive diff.
 		 *
-		 * As we already shifted the group forward as far as possible
-		 * in the earlier loop, we need to shift it back only if at all.
+		 * The group is currently shifted as far down as possible, so the
+		 * heuristics below only have to handle upwards shifts.
 		 */
+
 		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
-			while (ixs > 0 &&
-			       !is_blank_line(recs, ix - 1, flags) &&
-			       recs_match(recs, ixs - 1, ix - 1, flags)) {
-				rchg[--ixs] = 1;
-				rchg[--ix] = 0;
+			/*
+			 * Compaction heuristic: if possible, shift the group to
+			 * make its bottom line a blank line.
+			 */
+			while (start > 0 &&
+			       !is_blank_line(recs[end - 1], flags) &&
+			       recs_match(recs, start - 1, end - 1, flags)) {
+				rchg[--start] = 1;
+				rchg[--end] = 0;
+
+				io--;
+				while (rchgo[io])
+					io--;
+			}
+		} else if (end_matching_other != -1) {
+			/*
+			 * Move the possibly merged group of changes back to line
+			 * up with the last group of changes from the other file
+			 * that it can align with.
+			 */
+			while (end_matching_other < end) {
+				rchg[--start] = 1;
+				rchg[--end] = 0;
+
+				io--;
+				while (rchgo[io])
+					io--;
+			}
+		} else if (flags & XDF_INDENT_HEURISTIC) {
+			/*
+			 * Indent heuristic: a group of pure add/delete lines
+			 * implies two splits, one between the end of the "before"
+			 * context and the start of the group, and another between
+			 * the end of the group and the beginning of the "after"
+			 * context. Some splits are aesthetically better and some
+			 * are worse. We compute a badness "score" for each split,
+			 * and add the scores for the two splits to define a
+			 * "score" for each position that the group can be shifted
+			 * to. Then we pick the shift with the lowest score.
+			 */
+			long shift, best_shift = -1;
+			int best_score = 0;
+
+			for (shift = earliest_end; shift <= end; shift++) {
+				struct split_measurement m;
+				int score;
+
+				measure_split(xdf, shift, &m);
+				score = score_split(&m);
+				measure_split(xdf, shift - groupsize, &m);
+				score += score_split(&m);
+				if (best_shift == -1 || score <= best_score) {
+					best_score = score;
+					best_shift = shift;
+				}
+			}
+
+			while (end > best_shift) {
+				rchg[--start] = 1;
+				rchg[--end] = 0;
+
+				io--;
+				while (rchgo[io])
+					io--;
 			}
 		}
 	}
