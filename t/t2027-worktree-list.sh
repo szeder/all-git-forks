@@ -27,6 +27,15 @@ test_expect_success '"list" all worktrees from main' '
 	test_cmp expect actual
 '
 
+test_expect_success '"list" all worktrees --no-pager from main' '
+	echo "$(git rev-parse --show-toplevel) $(git rev-parse --short HEAD) [$(git symbolic-ref --short HEAD)]" >expect &&
+	test_when_finished "rm -rf here && git worktree prune" &&
+	git worktree add --detach here master &&
+	echo "$(git -C here rev-parse --show-toplevel) $(git rev-parse --short HEAD) (detached HEAD)" >>expect &&
+	git --no-pager worktree list | sed "s/  */ /g" >actual &&
+	test_cmp expect actual
+'
+
 test_expect_success '"list" all worktrees from linked' '
 	echo "$(git rev-parse --show-toplevel) $(git rev-parse --short HEAD) [$(git symbolic-ref --short HEAD)]" >expect &&
 	test_when_finished "rm -rf here && git worktree prune" &&
