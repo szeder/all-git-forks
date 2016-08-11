@@ -343,10 +343,8 @@ void show_submodule_diff(FILE *f, const char *path,
 	struct child_process cp = CHILD_PROCESS_INIT;
 	struct strbuf sb = STRBUF_INIT;
 	struct strbuf submodule_git_dir = STRBUF_INIT;
-	const char *git_dir, *message = NULL;
+	const char *git_dir;
 	int create_dirty_diff = 0;
-	FILE *diff;
-	char c;
 
 	if ((dirty_submodule & DIRTY_SUBMODULE_UNTRACKED) ||
 	    (dirty_submodule & DIRTY_SUBMODULE_MODIFIED))
