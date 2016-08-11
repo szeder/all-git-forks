@@ -1170,11 +1170,12 @@ const char *diff_line_prefix(struct diff_options *opt)
 {
 	struct strbuf *msgbuf;
 
-	if (!opt->output_prefix)
+	if (!opt->output_prefix) {
 		if (opt->line_prefix)
 			return opt->line_prefix;
 		else
 			return "";
+	}
 
 	msgbuf = opt->output_prefix(opt, opt->output_prefix_data);
 	/* line prefix must be printed before the output_prefix() */
