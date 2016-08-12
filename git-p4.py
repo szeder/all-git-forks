@@ -2274,7 +2274,7 @@ class P4Sync(Command, P4UserMap):
         self.useClientSpec_from_options = False
         self.clientSpecDirs = None
         self.tempBranches = []
-        self.tempBranchLocation = "git-p4-tmp"
+        self.tempBranchLocation = "refs/git-p4-tmp"
         self.largeFileSystem = None
 
         if gitConfig('git-p4.largeFileSystem'):
@@ -2674,7 +2674,7 @@ class P4Sync(Command, P4UserMap):
             return True
         hasPrefix = [p for p in self.branchPrefixes
                         if p4PathStartsWith(path, p)]
-        if hasPrefix and self.verbose:
+        if not hasPrefix and self.verbose:
             print('Ignoring file outside of prefix: {0}'.format(path))
         return hasPrefix
 

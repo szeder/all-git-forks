@@ -262,16 +262,39 @@ extern int is_empty_dir(const char *dir);
 
 extern void setup_standard_excludes(struct dir_struct *dir);
 
+
+/* Constants for remove_dir_recursively: */
+
+/*
+ * If a non-directory is found within path, stop and return an error.
+ * (In this case some empty directories might already have been
+ * removed.)
+ */
 #define REMOVE_DIR_EMPTY_ONLY 01
+
+/*
+ * If any Git work trees are found within path, skip them without
+ * considering it an error.
+ */
 #define REMOVE_DIR_KEEP_NESTED_GIT 02
+
+/* Remove the contents of path, but leave path itself. */
 #define REMOVE_DIR_KEEP_TOPLEVEL 04
+
+/*
+ * Remove path and its contents, recursively. flags is a combination
+ * of the above REMOVE_DIR_* constants. Return 0 on success.
+ *
+ * This function uses path as temporary scratch space, but restores it
+ * before returning.
+ */
 extern int remove_dir_recursively(struct strbuf *path, int flag);
 
 /* tries to remove the path with empty directories along it, ignores ENOENT */
 extern int remove_path(const char *path);
 
-extern int strcmp_icase(const char *a, const char *b);
-extern int strncmp_icase(const char *a, const char *b, size_t count);
+extern int fspathcmp(const char *a, const char *b);
+extern int fspathncmp(const char *a, const char *b, size_t count);
 
 /*
  * The prefix part of pattern must not contains wildcards.

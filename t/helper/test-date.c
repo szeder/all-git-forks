@@ -1,11 +1,12 @@
 #include "cache.h"
 
 static const char *usage_msg = "\n"
-"  test-date show [time_t]...\n"
+"  test-date relative [time_t]...\n"
+"  test-date show:<format> [time_t]...\n"
 "  test-date parse [date]...\n"
 "  test-date approxidate [date]...\n";
 
-static void show_dates(char **argv, struct timeval *now)
+static void show_relative_dates(const char **argv, struct timeval *now)
 {
 	struct strbuf buf = STRBUF_INIT;
 
@@ -17,7 +18,30 @@ static void show_dates(char **argv, struct timeval *now)
 	strbuf_release(&buf);
 }
 
-static void parse_dates(char **argv, struct timeval *now)
+static void show_dates(const char **argv, const char *format)
+{
+	struct date_mode mode;
+
+	parse_date_format(format, &mode);
+	for (; *argv; argv++) {
+		char *arg;
+		time_t t;
+		int tz;
+
+		/*
+		 * Do not use our normal timestamp parsing here, as the point
+		 * is to test the formatting code in isolation.
+		 */
+		t = strtol(*argv, &arg, 10);
+		while (*arg == ' ')
+			arg++;
+		tz = atoi(arg);
+
+		printf("%s -> %s\n", *argv, show_date(t, tz, &mode));
+	}
+}
+
+static void parse_dates(const char **argv, struct timeval *now)
 {
 	struct strbuf result = STRBUF_INIT;
 
@@ -36,7 +60,7 @@ static void parse_dates(char **argv, struct timeval *now)
 	strbuf_release(&result);
 }
 
-static void parse_approxidate(char **argv, struct timeval *now)
+static void parse_approxidate(const char **argv, struct timeval *now)
 {
 	for (; *argv; argv++) {
 		time_t t;
@@ -45,7 +69,7 @@ static void parse_approxidate(char **argv, struct timeval *now)
 	}
 }
 
-int main(int argc, char **argv)
+int cmd_main(int argc, const char **argv)
 {
 	struct timeval now;
 	const char *x;
@@ -61,8 +85,10 @@ int main(int argc, char **argv)
 	argv++;
 	if (!*argv)
 		usage(usage_msg);
-	if (!strcmp(*argv, "show"))
-		show_dates(argv+1, &now);
+	if (!strcmp(*argv, "relative"))
+		show_relative_dates(argv+1, &now);
+	else if (skip_prefix(*argv, "show:", &x))
+		show_dates(argv+1, x);
 	else if (!strcmp(*argv, "parse"))
 		parse_dates(argv+1, &now);
 	else if (!strcmp(*argv, "approxidate"))

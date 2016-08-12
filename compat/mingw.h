@@ -73,6 +73,9 @@ typedef int pid_t;
 #ifndef ECONNABORTED
 #define ECONNABORTED WSAECONNABORTED
 #endif
+#ifndef ENOTSOCK
+#define ENOTSOCK WSAENOTSOCK
+#endif
 
 struct passwd {
 	char *pw_name;
@@ -142,6 +145,7 @@ static inline int fcntl(int fd, int cmd, ...)
 #define sigemptyset(x) (void)0
 static inline int sigaddset(sigset_t *set, int signum)
 { return 0; }
+#define SIG_BLOCK 0
 #define SIG_UNBLOCK 0
 static inline int sigprocmask(int how, const sigset_t *set, sigset_t *oldset)
 { return 0; }
@@ -531,10 +535,10 @@ extern CRITICAL_SECTION pinfo_cs;
  * A replacement of main() that adds win32 specific initialization.
  */
 
-void mingw_startup();
-#define main(c,v) dummy_decl_mingw_main(); \
+void mingw_startup(void);
+#define main(c,v) dummy_decl_mingw_main(void); \
 static int mingw_main(c,v); \
-int main(int argc, char **argv) \
+int main(int argc, const char **argv) \
 { \
 	mingw_startup(); \
 	return mingw_main(__argc, (void *)__argv); \

@@ -9,14 +9,13 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] (--all| [--] <path>...)
-   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--reference <repository>] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
 OPTIONS_SPEC=
 SUBDIRECTORY_OK=Yes
 . git-sh-setup
-. git-sh-i18n
 . git-parse-remote
 require_work_tree
 wt_prefix=$(git rev-parse --show-prefix)
@@ -46,46 +45,11 @@ prefix=
 custom_name=
 depth=
 
-# Resolve a path to be relative to another path.  This is intended for
-# converting submodule paths when git-submodule is run in a subdirectory
-# and only handles paths where the directory separator is '/'.
-#
-# The output is the first argument as a path relative to the second argument,
-# which defaults to $wt_prefix if it is omitted.
-relative_path ()
-{
-	local target curdir result
-	target=$1
-	curdir=${2-$wt_prefix}
-	curdir=${curdir%/}
-	result=
-
-	while test -n "$curdir"
-	do
-		case "$target" in
-		"$curdir/"*)
-			target=${target#"$curdir"/}
-			break
-			;;
-		esac
-
-		result="${result}../"
-		if test "$curdir" = "${curdir%/*}"
-		then
-			curdir=
-		else
-			curdir="${curdir%/*}"
-		fi
-	done
-
-	echo "$result$target"
-}
-
 die_if_unmatched ()
 {
 	if test "$1" = "#unmatched"
 	then
-		exit 1
+		exit ${2:-1}
 	fi
 }
 
@@ -275,14 +239,15 @@ Use -f if you really want to add it." >&2
 		then
 			if test -z "$force"
 			then
-				echo >&2 "$(eval_gettext "A git directory for '\$sm_name' is found locally with remote(s):")"
+				eval_gettextln >&2 "A git directory for '\$sm_name' is found locally with remote(s):"
 				GIT_DIR=".git/modules/$sm_name" GIT_WORK_TREE=. git remote -v | grep '(fetch)' | sed -e s,^,"  ", -e s,' (fetch)',, >&2
-				echo >&2 "$(eval_gettext "If you want to reuse this local git directory instead of cloning again from")"
-				echo >&2 "  $realrepo"
-				echo >&2 "$(eval_gettext "use the '--force' option. If the local git directory is not the correct repo")"
-				die "$(eval_gettext "or you are unsure what this means choose another name with the '--name' option.")"
+				die "$(eval_gettextln "\
+If you want to reuse this local git directory instead of cloning again from
+  \$realrepo
+use the '--force' option. If the local git directory is not the correct repo
+or you are unsure what this means choose another name with the '--name' option.")"
 			else
-				echo "$(eval_gettext "Reactivating local git directory for submodule '\$sm_name'.")"
+				eval_gettextln "Reactivating local git directory for submodule '\$sm_name'."
 			fi
 		fi
 		git submodule--helper clone ${GIT_QUIET:+--quiet} --prefix "$wt_prefix" --path "$sm_path" --name "$sm_name" --url "$realrepo" ${reference:+"$reference"} ${depth:+"$depth"} || exit
@@ -345,20 +310,23 @@ cmd_foreach()
 	# command in the subshell (and a recursive call to this function)
 	exec 3<&0
 
-	git submodule--helper list --prefix "$wt_prefix"|
+	{
+		git submodule--helper list --prefix "$wt_prefix" ||
+		echo "#unmatched" $?
+	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		if test -e "$sm_path"/.git
 		then
-			displaypath=$(relative_path "$prefix$sm_path")
+			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
 			say "$(eval_gettext "Entering '\$displaypath'")"
 			name=$(git submodule--helper name "$sm_path")
 			(
 				prefix="$prefix$sm_path/"
 				sanitize_submodule_env
 				cd "$sm_path" &&
-				sm_path=$(relative_path "$sm_path") &&
+				sm_path=$(git submodule--helper relative-path "$sm_path" "$wt_prefix") &&
 				# we make $path available to scripts ...
 				path=$sm_path &&
 				if test $# -eq 1
@@ -411,8 +379,6 @@ cmd_init()
 #
 # Unregister submodules from .git/config and remove their work tree
 #
-# $@ = requested paths (use '.' to deinit all submodules)
-#
 cmd_deinit()
 {
 	# parse $args after "submodule ... deinit".
@@ -453,13 +419,16 @@ cmd_deinit()
 		die "$(eval_gettext "Use '--all' if you really want to deinitialize all submodules")"
 	fi
 
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	{
+		git submodule--helper list --prefix "$wt_prefix" "$@" ||
+		echo "#unmatched" $?
+	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		name=$(git submodule--helper name "$sm_path") || exit
 
-		displaypath=$(relative_path "$sm_path")
+		displaypath=$(git submodule--helper relative-path "$sm_path" "$wt_prefix")
 
 		# Remove the submodule work tree (unless the user already did it)
 		if test -d "$sm_path"
@@ -467,8 +436,9 @@ cmd_deinit()
 			# Protect submodules containing a .git directory
 			if test -d "$sm_path/.git"
 			then
-				echo >&2 "$(eval_gettext "Submodule work tree '\$displaypath' contains a .git directory")"
-				die "$(eval_gettext "(use 'rm -rf' if you really want to remove it including all of its history)")"
+				die "$(eval_gettext "\
+Submodule work tree '\$displaypath' contains a .git directory
+(use 'rm -rf' if you really want to remove it including all of its history)")"
 			fi
 
 			if test -z "$force"
@@ -509,7 +479,8 @@ fetch_in_submodule () (
 	'')
 		git fetch ;;
 	*)
-		git fetch $(get_default_remote) "$2" ;;
+		shift
+		git fetch $(get_default_remote) "$@" ;;
 	esac
 )
 
@@ -559,6 +530,12 @@ cmd_update()
 		--checkout)
 			update="checkout"
 			;;
+		--recommend-shallow)
+			recommend_shallow="--recommend-shallow"
+			;;
+		--no-recommend-shallow)
+			recommend_shallow="--no-recommend-shallow"
+			;;
 		--depth)
 			case "$2" in '') usage ;; esac
 			depth="--depth=$2"
@@ -601,17 +578,17 @@ cmd_update()
 		${update:+--update "$update"} \
 		${reference:+--reference "$reference"} \
 		${depth:+--depth "$depth"} \
+		${recommend_shallow:+"$recommend_shallow"} \
 		${jobs:+$jobs} \
-		"$@" || echo "#unmatched"
+		"$@" || echo "#unmatched" $?
 	} | {
 	err=
 	while read mode sha1 stage just_cloned sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
-		branch=$(get_submodule_config "$name" branch master)
 		if ! test -z "$update"
 		then
 			update_module=$update
@@ -623,7 +600,7 @@ cmd_update()
 			fi
 		fi
 
-		displaypath=$(relative_path "$prefix$sm_path")
+		displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
 
 		if test $just_cloned -eq 1
 		then
@@ -637,16 +614,17 @@ cmd_update()
 
 		if test -n "$remote"
 		then
+			branch=$(git submodule--helper remote-branch "$sm_path")
 			if test -z "$nofetch"
 			then
 				# Fetch remote before determining tracking $sha1
-				(sanitize_submodule_env; cd "$sm_path" && git-fetch) ||
+				fetch_in_submodule "$sm_path" $depth ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$sm_path'")"
 			fi
 			remote_name=$(sanitize_submodule_env; cd "$sm_path" && get_default_remote)
 			sha1=$(sanitize_submodule_env; cd "$sm_path" &&
 				git rev-parse --verify "${remote_name}/${branch}") ||
-			die "$(eval_gettext "Unable to find current ${remote_name}/${branch} revision in submodule path '\$sm_path'")"
+			die "$(eval_gettext "Unable to find current \${remote_name}/\${branch} revision in submodule path '\$sm_path'")"
 		fi
 
 		if test "$subsha1" != "$sha1" || test -n "$force"
@@ -663,14 +641,14 @@ cmd_update()
 				# Run fetch only if $sha1 isn't present or it
 				# is not reachable from a ref.
 				is_tip_reachable "$sm_path" "$sha1" ||
-				fetch_in_submodule "$sm_path" ||
+				fetch_in_submodule "$sm_path" $depth ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$displaypath'")"
 
 				# Now we tried the usual fetch, but $sha1 may
 				# not be reachable from any of the refs
 				is_tip_reachable "$sm_path" "$sha1" ||
-				fetch_in_submodule "$sm_path" "$sha1" ||
-				die "$(eval_gettext "Fetched in submodule path '\$displaypath', but it did not contain $sha1. Direct fetching of that commit failed.")"
+				fetch_in_submodule "$sm_path" $depth "$sha1" ||
+				die "$(eval_gettext "Fetched in submodule path '\$displaypath', but it did not contain \$sha1. Direct fetching of that commit failed.")"
 			fi
 
 			must_die_on_failure=
@@ -717,7 +695,7 @@ cmd_update()
 		if test -n "$recursive"
 		then
 			(
-				prefix=$(relative_path "$prefix$sm_path/")
+				prefix=$(git submodule--helper relative-path "$prefix$sm_path/" "$wt_prefix")
 				wt_prefix=
 				sanitize_submodule_env
 				cd "$sm_path" &&
@@ -727,7 +705,7 @@ cmd_update()
 			if test $res -gt 0
 			then
 				die_msg="$(eval_gettext "Failed to recurse into submodule path '\$displaypath'")"
-				if test $res -eq 1
+				if test $res -ne 2
 				then
 					err="${err};$die_msg"
 					continue
@@ -901,7 +879,7 @@ cmd_summary() {
 		! GIT_DIR="$name/.git" git-rev-parse -q --verify $sha1_dst^0 >/dev/null &&
 		missing_dst=t
 
-		display_name=$(relative_path "$name")
+		display_name=$(git submodule--helper relative-path "$name" "$wt_prefix")
 
 		total_commits=
 		case "$missing_src,$missing_dst" in
@@ -1013,13 +991,16 @@ cmd_status()
 		shift
 	done
 
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	{
+		git submodule--helper list --prefix "$wt_prefix" "$@" ||
+		echo "#unmatched" $?
+	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
-		displaypath=$(relative_path "$prefix$sm_path")
+		displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
 		if test "$stage" = U
 		then
 			say "U$sha1 $displaypath"
@@ -1091,10 +1072,13 @@ cmd_sync()
 		esac
 	done
 	cd_to_toplevel
-	git submodule--helper list --prefix "$wt_prefix" "$@" |
+	{
+		git submodule--helper list --prefix "$wt_prefix" "$@" ||
+		echo "#unmatched" $?
+	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode"
+		die_if_unmatched "$mode" "$sha1"
 		name=$(git submodule--helper name "$sm_path")
 		url=$(git config -f .gitmodules --get submodule."$name".url)
 
@@ -1119,7 +1103,7 @@ cmd_sync()
 
 		if git config "submodule.$name.url" >/dev/null 2>/dev/null
 		then
-			displaypath=$(relative_path "$prefix$sm_path")
+			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
 			say "$(eval_gettext "Synchronizing submodule url for '\$displaypath'")"
 			git config submodule."$name".url "$super_config_url"
 

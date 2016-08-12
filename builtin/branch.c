@@ -212,7 +212,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 			die(_("Couldn't look up commit object for HEAD"));
 	}
 	for (i = 0; i < argc; i++, strbuf_release(&bname)) {
-		const char *target;
+		char *target = NULL;
 		int flags = 0;
 
 		strbuf_branchname(&bname, argv[i]);
@@ -220,22 +220,22 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 		name = mkpathdup(fmt, bname.buf);
 
 		if (kinds == FILTER_REFS_BRANCHES) {
-			char *worktree = find_shared_symref("HEAD", name);
-			if (worktree) {
+			const struct worktree *wt =
+				find_shared_symref("HEAD", name);
+			if (wt) {
 				error(_("Cannot delete branch '%s' "
 					"checked out at '%s'"),
-				      bname.buf, worktree);
-				free(worktree);
+				      bname.buf, wt->path);
 				ret = 1;
 				continue;
 			}
 		}
 
-		target = resolve_ref_unsafe(name,
-					    RESOLVE_REF_READING
-					    | RESOLVE_REF_NO_RECURSE
-					    | RESOLVE_REF_ALLOW_BAD_NAME,
-					    sha1, &flags);
+		target = resolve_refdup(name,
+					RESOLVE_REF_READING
+					| RESOLVE_REF_NO_RECURSE
+					| RESOLVE_REF_ALLOW_BAD_NAME,
+					sha1, &flags);
 		if (!target) {
 			error(remote_branch
 			      ? _("remote-tracking branch '%s' not found.")
@@ -248,7 +248,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 		    check_branch_commit(bname.buf, name, sha1, head_rev, kinds,
 					force)) {
 			ret = 1;
-			continue;
+			goto next;
 		}
 
 		if (delete_ref(name, is_null_sha1(sha1) ? NULL : sha1,
@@ -258,7 +258,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 			      : _("Error deleting branch '%s'"),
 			      bname.buf);
 			ret = 1;
-			continue;
+			goto next;
 		}
 		if (!quiet) {
 			printf(remote_branch
@@ -270,6 +270,9 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 			       : find_unique_abbrev(sha1, DEFAULT_ABBREV));
 		}
 		delete_branch_config(bname.buf);
+
+	next:
+		free(target);
 	}
 
 	free(name);
@@ -526,6 +529,29 @@ static void print_ref_list(struct ref_filter *filter, struct ref_sorting *sortin
 	ref_array_clear(&array);
 }
 
+static void reject_rebase_or_bisect_branch(const char *target)
+{
+	struct worktree **worktrees = get_worktrees();
+	int i;
+
+	for (i = 0; worktrees[i]; i++) {
+		struct worktree *wt = worktrees[i];
+
+		if (!wt->is_detached)
+			continue;
+
+		if (is_worktree_being_rebased(wt, target))
+			die(_("Branch %s is being rebased at %s"),
+			    target, wt->path);
+
+		if (is_worktree_being_bisected(wt, target))
+			die(_("Branch %s is being bisected at %s"),
+			    target, wt->path);
+	}
+
+	free_worktrees(worktrees);
+}
+
 static void rename_branch(const char *oldname, const char *newname, int force)
 {
 	struct strbuf oldref = STRBUF_INIT, newref = STRBUF_INIT, logmsg = STRBUF_INIT;
@@ -554,6 +580,8 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 	clobber_head_ok = !strcmp(oldname, newname);
 
 	validate_new_branchname(newname, &newref, force, clobber_head_ok);
+
+	reject_rebase_or_bisect_branch(oldref.buf);
 
 	strbuf_addf(&logmsg, "Branch: renamed %s to %s",
 		 oldref.buf, newref.buf);
@@ -589,14 +617,11 @@ static int edit_branch_description(const char *branch_name)
 	if (!buf.len || buf.buf[buf.len-1] != '\n')
 		strbuf_addch(&buf, '\n');
 	strbuf_commented_addf(&buf,
-		    "Please edit the description for the branch\n"
-		    "  %s\n"
-		    "Lines starting with '%c' will be stripped.\n",
+		    _("Please edit the description for the branch\n"
+		      "  %s\n"
+		      "Lines starting with '%c' will be stripped.\n"),
 		    branch_name, comment_line_char);
-	if (write_file_gently(git_path(edit_description), "%s", buf.buf)) {
-		strbuf_release(&buf);
-		return error_errno(_("could not write branch description template"));
-	}
+	write_file_buf(git_path(edit_description), buf.buf, buf.len);
 	strbuf_reset(&buf);
 	if (launch_editor(git_path(edit_description), &buf, NULL)) {
 		strbuf_release(&buf);
