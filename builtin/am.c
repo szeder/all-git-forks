@@ -1527,15 +1527,9 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	struct argv_array apply_opts = ARGV_ARRAY_INIT;
 	struct apply_state apply_state;
 	int res, opts_left;
-	char *save_index_file;
 	static struct lock_file lock_file;
 	int force_apply = 0;
 	int options = 0;
-
-	if (index_file) {
-		save_index_file = get_index_file();
-		set_index_file((char *)index_file);
-	}
 
 	if (init_apply_state(&apply_state, NULL, &lock_file))
 		die("BUG: init_apply_state() failed");
@@ -1550,9 +1544,10 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	if (opts_left != 0)
 		die("unknown option passed thru to git apply");
 
-	if (index_file)
+	if (index_file) {
+		apply_state.index_file = index_file;
 		apply_state.cached = 1;
-	else
+	} else
 		apply_state.check_index = 1;
 
 	/*
@@ -1568,9 +1563,6 @@ static int run_apply(const struct am_state *state, const char *index_file)
 	argv_array_push(&apply_paths, am_path(state, "patch"));
 
 	res = apply_all_patches(&apply_state, apply_paths.argc, apply_paths.argv, options);
-
-	if (index_file)
-		set_index_file(save_index_file);
 
 	argv_array_clear(&apply_paths);
 	argv_array_clear(&apply_opts);

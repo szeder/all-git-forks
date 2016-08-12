@@ -490,19 +490,6 @@ extern const char *strip_namespace(const char *namespaced_ref);
 extern const char *get_git_work_tree(void);
 
 /*
- * Hack to temporarily change the index.
- * Yeah, the libification of 'apply' took a short-circuit by adding
- * this technical debt.
- * Please use functions available when
- * NO_THE_INDEX_COMPATIBILITY_MACROS is defined, instead of this
- * function.
- * If you really need to use this function, please save the current
- * index file using get_index_file() before changing the index
- * file. And when finished, reset it to the saved value.
- */
-extern void set_index_file(char *index_file);
-
-/*
  * Return true if the given path is a git directory; note that this _just_
  * looks at the directory itself. If you want to know whether "foo/.git"
  * is a repository, you must feed that path, not just "foo".
@@ -1588,7 +1575,15 @@ struct object_info {
 		} packed;
 	} u;
 };
+
+/*
+ * Initializer for a "struct object_info" that wants no items. You may
+ * also memset() the memory to all-zeroes.
+ */
+#define OBJECT_INFO_INIT {NULL}
+
 extern int sha1_object_info_extended(const unsigned char *, struct object_info *, unsigned flags);
+extern int packed_object_info(struct packed_git *pack, off_t offset, struct object_info *);
 
 /* Dumb servers support */
 extern int update_server_info(int);

@@ -63,13 +63,13 @@ immediately after the lookup for "dummy".
 # Note that the two variants of "file" must be similar enough to convince git
 # to create the delta.
 make_pack () {
-	 {
-		 echo "-$(git rev-parse $2)"
-		 echo "$(git rev-parse $1:dummy) dummy"
-		 echo "$(git rev-parse $1:file) file"
-	 } |
-	 git pack-objects --stdout |
-	 git index-pack --stdin --fix-thin
+	{
+		printf '%s\n' "-$(git rev-parse $2)"
+		printf '%s dummy\n' "$(git rev-parse $1:dummy)"
+		printf '%s file\n' "$(git rev-parse $1:file)"
+	} |
+	git pack-objects --stdout |
+	git index-pack --stdin --fix-thin
 }
 
 test_expect_success 'setup' '
