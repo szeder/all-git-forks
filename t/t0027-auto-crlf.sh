@@ -393,11 +393,11 @@ test_expect_success 'commit files attr=crlf' '
 
 #                 attr                    LF        CRLF      CRLFmixLF   LF_mix_CR   CRLFNUL
 commit_chk_wrnNNO ""      ""      false   ""        ""        ""          ""          ""
-commit_chk_wrnNNO ""      ""      true    ""        ""        ""          ""          ""
+commit_chk_wrnNNO ""      ""      true    LF_CRLF   ""        ""          ""          ""
 commit_chk_wrnNNO ""      ""      input   ""        ""        ""          ""          ""
 
 commit_chk_wrnNNO "auto"  ""      false   ""        ""        ""          ""          ""
-commit_chk_wrnNNO "auto"  ""      true    ""        ""        ""          ""          ""
+commit_chk_wrnNNO "auto"  ""      true    LF_CRLF   ""        ""          ""          ""
 commit_chk_wrnNNO "auto"  ""      input   ""        ""        ""          ""          ""
 for crlf in true false input
 do
@@ -407,7 +407,7 @@ do
 	commit_chk_wrnNNO ""    lf      $crlf   ""       CRLF_LF    CRLF_LF      ""         CRLF_LF
 	commit_chk_wrnNNO ""    crlf    $crlf   LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
 	commit_chk_wrnNNO auto  lf    	$crlf   ""        ""        ""          ""          ""
-	commit_chk_wrnNNO auto  crlf  	$crlf   ""        ""        ""          ""          ""
+	commit_chk_wrnNNO auto  crlf  	$crlf   LF_CRLF  ""        ""          ""          ""
 	commit_chk_wrnNNO text  lf    	$crlf   ""       CRLF_LF    CRLF_LF     ""          CRLF_LF
 	commit_chk_wrnNNO text  crlf  	$crlf   LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
 done
