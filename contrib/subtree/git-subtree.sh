@@ -397,7 +397,7 @@ subtree_for_commit()
 	dir="$2"
 	git ls-tree "$commit" -- "$dir" |
 	while read mode type tree name; do
-		assert [ "$name" = "$dir" ]
+		assert [ "$(readlink -f $name)" = "$(readlink -f $dir)" ]
 		assert [ "$type" = "tree" -o "$type" = "commit" ]
 		[ "$type" = "commit" ] && continue  # ignore submodules
 		echo $tree
