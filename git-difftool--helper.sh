@@ -86,11 +86,21 @@ else
 	do
 		launch_merge_tool "$1" "$2" "$5"
 		status=$?
-		if test "$status" != 0 &&
-			test "$GIT_DIFFTOOL_TRUST_EXIT_CODE" = true
-		then
+		case "$status" in
+		0)
+			: OK
+			;;
+		126|127)
+			# Command not found or not executable
 			exit $status
-		fi
+			;;
+		*)
+			if test "$GIT_DIFFTOOL_TRUST_EXIT_CODE" = true
+			then
+				exit $status
+			fi
+			;;
+		esac
 		shift 7
 	done
 fi
