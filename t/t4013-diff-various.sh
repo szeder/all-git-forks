@@ -115,7 +115,7 @@ do
 	case "$cmd" in
 	'' | '#'*) continue ;;
 	esac
-	test=$(echo "$cmd" | sed -e 's|[/ ][/ ]*|_|g')
+	test=$(echo "$cmd" | sed -e 's|[/ ][/ ]*|_|g' -e 'y/>/_/')
 	pfx=$(printf "%04d" $test_count)
 	expect="$TEST_DIRECTORY/t4013/diff.$test"
 	actual="$pfx-diff.$test"
