@@ -2,7 +2,7 @@
 
 have() {
 	for i in $HOME/local/bin/git.*; do
-		echo ${i#$HOME/local/bin/git.}
+		echo "${i#$HOME/local/bin/git.}"
 	done
 }
 
@@ -14,7 +14,7 @@ want() {
 
 comm -23 <(have) <(want) |
 while read version; do
-	rm -vf $HOME/local/bin/git.$version
+	rm -vf "$HOME/local/bin/git.$version"
 done
 
 comm -13 <(have) <(want) |
