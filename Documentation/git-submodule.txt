@@ -212,11 +212,13 @@ information too.
 
 foreach::
 	Evaluates an arbitrary shell command in each checked out submodule.
-	The command has access to the variables $name, $path, $sha1 and
-	$toplevel:
+	The command has access to the variables $name, $path, $sha1, $branch,
+	$url, $remote_name and $toplevel:
 	$name is the name of the relevant submodule section in .gitmodules,
 	$path is the name of the submodule directory relative to the
 	superproject, $sha1 is the commit as recorded in the superproject,
+	$branch is the saved branch the submodule was taken from,
+	$url and $remote_name are referencing the remote location
 	and $toplevel is the absolute path to the top-level of the superproject.
 	Any submodules defined in the superproject but not checked out are
 	ignored by this command. Unless given `--quiet`, foreach prints the name
