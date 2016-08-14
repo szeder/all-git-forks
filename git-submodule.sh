@@ -322,6 +322,9 @@ cmd_foreach()
 			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
 			say "$(eval_gettext "Entering '\$displaypath'")"
 			name=$(git submodule--helper name "$sm_path")
+			url=$(git config submodule."$name".url)
+			branch=$(git submodule--helper remote-branch "$sm_path")
+			remote_name=$(sanitize_submodule_env; cd "$sm_path" && get_default_remote)
 			(
 				prefix="$prefix$sm_path/"
 				sanitize_submodule_env
