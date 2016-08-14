@@ -4,6 +4,7 @@
 #
 
 PERL='@@PERL@@'
+SHELL_PATH='@SHELL_PATH@'
 OPTIONS_KEEPDASHDASH=
 OPTIONS_STUCKLONG=
 OPTIONS_SPEC="\
@@ -205,7 +206,7 @@ webrick_conf () {
 	# actual gitweb.cgi using a shell script to force it
   wrapper="$fqgitdir/gitweb/$httpd/wrapper.sh"
 	cat > "$wrapper" <<EOF
-#!@SHELL_PATH@
+#!$SHELL_PATH
 # we use this shell script wrapper around the real gitweb.cgi since
 # there appears to be no other way to pass arbitrary environment variables
 # into the CGI process
