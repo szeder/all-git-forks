@@ -52,7 +52,8 @@ clean-except-prove-cache:
 clean: clean-except-prove-cache
 	$(RM) .prove
 
-test-lint: test-lint-duplicates test-lint-executable test-lint-shell-syntax
+test-lint: test-lint-duplicates test-lint-executable test-lint-shell-syntax \
+	test-lint-filenames
 
 test-lint-duplicates:
 	@dups=`echo $(T) | tr ' ' '\n' | sed 's/-.*//' | sort | uniq -d` && \
@@ -66,6 +67,11 @@ test-lint-executable:
 
 test-lint-shell-syntax:
 	@'$(PERL_PATH_SQ)' check-non-portable-shell.pl $(T) $(THELPERS)
+
+test-lint-filenames:
+	@bad=$$(git ls-files '*[	"*:<>?\\|]*'); \
+		test -z "$$bad" || { \
+		echo >&2 "do not use non-portable file name(s): $$bad"; exit 1; }
 
 aggregate-results-and-cleanup: $(T)
 	$(MAKE) aggregate-results
