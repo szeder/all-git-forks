@@ -52,7 +52,8 @@ clean-except-prove-cache:
 clean: clean-except-prove-cache
 	$(RM) .prove
 
-test-lint: test-lint-duplicates test-lint-executable test-lint-shell-syntax
+test-lint: test-lint-duplicates test-lint-executable test-lint-shell-syntax \
+	test-lint-filenames
 
 test-lint-duplicates:
 	@dups=`echo $(T) | tr ' ' '\n' | sed 's/-.*//' | sort | uniq -d` && \
@@ -66,6 +67,11 @@ test-lint-executable:
 
 test-lint-shell-syntax:
 	@'$(PERL_PATH_SQ)' check-non-portable-shell.pl $(T) $(THELPERS)
+
+test-lint-filenames:
+	@illegal="$$(git ls-files | grep '["*:<>?\\|]')"; \
+		test -z "$$illegal" || { \
+		echo >&2 "illegal file name(s): " $$illegal; exit 1; }
 
 aggregate-results-and-cleanup: $(T)
 	$(MAKE) aggregate-results
