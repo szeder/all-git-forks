@@ -333,6 +333,136 @@ static void print_submodule_summary(struct rev_info *rev, FILE *f,
 	strbuf_release(&sb);
 }
 
+void show_submodule_diff(FILE *f, const char *path,
+		const char *line_prefix,
+		unsigned char one[20], unsigned char two[20],
+		unsigned dirty_submodule, const char *meta,
+		const char *a_prefix, const char *b_prefix,
+		const char *reset)
+{
+	struct strbuf submodule_git_dir = STRBUF_INIT, sb = STRBUF_INIT;
+	struct child_process cp = CHILD_PROCESS_INIT;
+	const char *git_dir;
+
+	if (dirty_submodule & DIRTY_SUBMODULE_UNTRACKED) {
+		fprintf(f, "%sSubmodule %s contains untracked content\n",
+			line_prefix, path);
+	}
+	if (dirty_submodule & DIRTY_SUBMODULE_MODIFIED) {
+		fprintf(f, "%sSubmodule %s contains modified content\n",
+			line_prefix, path);
+	}
+
+	strbuf_addf(&sb, "%s%sSubmodule %s %s..",
+		    line_prefix, meta, path,
+		    find_unique_abbrev(one, DEFAULT_ABBREV));
+	strbuf_addf(&sb, "%s:%s",
+		    find_unique_abbrev(two, DEFAULT_ABBREV),
+		    reset);
+	fwrite(sb.buf, sb.len, 1, f);
+
+	if (is_null_sha1(one))
+		fprintf(f, " (new submodule)");
+	if (is_null_sha1(two))
+		fprintf(f, " (submodule deleted)");
+
+	/*
+	 * We need to determine the most accurate location to call the sub
+	 * command, and handle the various corner cases involved. We'll first
+	 * attempt to use the path directly if the submodule is checked out.
+	 * Then, if that fails, we'll check the standard module location in
+	 * the git directory. If even this fails, it means we can't do the
+	 * lookup because the module has not been initialized.
+	 */
+	strbuf_addf(&submodule_git_dir, "%s/.git", path);
+	git_dir = resolve_gitdir(submodule_git_dir.buf);
+	if (git_dir) {
+		/*
+		 * If we can resolve a git dir, this means that the submodule
+		 * has been checked out. In this case, just use the original
+		 * path since we want access to the work tree
+		 */
+		git_dir = path;
+	} else {
+		/*
+		 * If we can't resolve a git dir, this means that the
+		 * submodule has not been checked out. In this case, try the
+		 * standard location for modules
+		 */
+		strbuf_reset(&submodule_git_dir);
+		strbuf_addf(&submodule_git_dir, "%s/modules/%s", get_git_dir(), path);
+		git_dir = resolve_gitdir(submodule_git_dir.buf);
+		if (!git_dir) {
+			/*
+			 * If we failed to find a git directory here, then the
+			 * submodule must not have been initialized. Without
+			 * the initialized contents of the submodule, we won't
+			 * be able to perform the difference.
+			 */
+			fprintf(f, " (submodule not initialized)\n");
+			goto out;
+		}
+	}
+
+	/*
+	 * print a newline and flush the file so that the diff output appears
+	 * starting on its own line
+	 */
+	fprintf(f, "\n");
+	fflush(f);
+
+	cp.git_cmd = 1;
+	cp.dir = git_dir;
+	cp.out = dup(fileno(f));
+	cp.no_stdin = 1;
+
+	argv_array_push(&cp.args, "diff");
+	argv_array_pushf(&cp.args, "--line-prefix=%s", line_prefix);
+	argv_array_pushf(&cp.args, "--src-prefix=%s%s/", a_prefix, path);
+	argv_array_pushf(&cp.args, "--dst-prefix=%s%s/", b_prefix, path);
+
+	if (is_null_sha1(one)) {
+		/*
+		 * If the origin commit is null, we want to use the empty tree
+		 * so that we see a diff of all the new contents added.
+		 */
+		argv_array_push(&cp.args, EMPTY_TREE_SHA1_HEX);
+	} else {
+		/* Use the old commit as the diff base */
+		argv_array_push(&cp.args, sha1_to_hex(one));
+	}
+
+	if (dirty_submodule & DIRTY_SUBMODULE_MODIFIED) {
+		/*
+		 * If the submodule has modified contents we want to diff
+		 * against the work tree, so don't add a second parameter.
+		 * This is essentially equivalent of using diff-index instead.
+		 * Note that we can't (easily) show the diff of any untracked
+		 * files.
+		 */
+	} else if (is_null_sha1(two)) {
+		/*
+		 * If new commit is null, we should diff against the empty
+		 * tree, so that we see a diff of all submodule contents
+		 * removed.
+		 */
+		argv_array_push(&cp.args, EMPTY_TREE_SHA1_HEX);
+	} else {
+		/*
+		 * Finally, in other cases use the new commit as the end
+		 * result.
+		 */
+		argv_array_push(&cp.args, sha1_to_hex(two));
+	}
+
+	if (run_command(&cp))
+		fprintf(f, "(diff failed)\n");
+
+out:
+	strbuf_release(&submodule_git_dir);
+	strbuf_release(&sb);
+}
+
 void show_submodule_summary(FILE *f, const char *path,
 		const char *line_prefix,
 		unsigned char one[20], unsigned char two[20],
