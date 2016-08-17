@@ -9,6 +9,7 @@
 #include "transport.h"
 #include "parse-options.h"
 #include "submodule.h"
+#include "wt-status.h"
 #include "submodule-config.h"
 #include "send-pack.h"
 
@@ -360,6 +361,7 @@ static int do_push(const char *repo, int flags,
 	struct remote *remote = pushremote_get(repo);
 	const char **url;
 	int url_nr;
+	struct wt_status_state state;
 
 	if (!remote) {
 		if (repo)
@@ -403,6 +405,13 @@ static int do_push(const char *repo, int flags,
 			refspec_nr = remote->push_refspec_nr;
 		} else if (!(flags & TRANSPORT_PUSH_MIRROR))
 			setup_default_push_refspecs(remote);
+	}
+
+	memset(&state, 0, sizeof(state));
+	wt_status_get_state(&state, 1);
+	if (state.rebase_in_progress ||
+	    state.rebase_interactive_in_progress) {
+		return error(_("branch push disallowed when rebase in progress"));
 	}
 	errs = 0;
 	url_nr = push_url_of_remote(remote, &url);
