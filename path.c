@@ -477,8 +477,8 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 	strbuf_complete(buf, '/');
 	strbuf_addstr(buf, ".git");
 
-	git_dir = read_gitfile(buf->buf);
-	if (git_dir) {
+	git_dir = resolve_gitdir(buf->buf);
+	if (git_dir && git_dir != buf->buf) {
 		strbuf_reset(buf);
 		strbuf_addstr(buf, git_dir);
 	}
