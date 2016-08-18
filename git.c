@@ -528,10 +528,23 @@ static void handle_builtin(int argc, const char **argv)
 	strip_extension(argv);
 	cmd = argv[0];
 
-	/* Turn "git cmd --help" into "git help cmd" */
+	/* Turn "git cmd --help" into "git help --command-only cmd" */
 	if (argc > 1 && !strcmp(argv[1], "--help")) {
+		struct argv_array args;
+		int i;
+
 		argv[1] = argv[0];
 		argv[0] = cmd = "help";
+
+		argv_array_init(&args);
+		for (i = 0; i < argc; i++) {
+			argv_array_push(&args, argv[i]);
+			if (!i)
+				argv_array_push(&args, "--command-only");
+		}
+
+		argc++;
+		argv = argv_array_detach(&args);
 	}
 
 	builtin = get_builtin(cmd);

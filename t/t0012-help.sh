@@ -18,4 +18,12 @@ test_expect_success "--command-only does not work for guides" "
 	test_i18ncmp expected actual
 "
 
+test_expect_success "--help does not work for guides" "
+	cat <<-EOF >expected &&
+		git: 'revisions' is not a git command. See 'git --help'.
+	EOF
+	(git revisions --help 2>actual || true) &&
+	test_i18ncmp expected actual
+"
+
 test_done
