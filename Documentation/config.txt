@@ -1366,7 +1366,7 @@ fsck.skipList::
 gc.aggressiveDepth::
 	The depth parameter used in the delta compression
 	algorithm used by 'git gc --aggressive'.  This defaults
-	to 250.
+	to 50.
 
 gc.aggressiveWindow::
 	The window size parameter used in the delta compression
@@ -2846,6 +2846,23 @@ submodule.fetchJobs::
 	A positive integer allows up to that number of submodules fetched
 	in parallel. A value of 0 will give some reasonable default.
 	If unset, it defaults to 1.
+
+submodule.alternateLocation::
+	Specifies how the submodules obtain alternates when submodules are
+	cloned. Possible values are `no`, `superproject`.
+	By default `no` is assumed, which doesn't add references. When the
+	value is set to `superproject` the submodule to be cloned computes
+	its alternates location relative to the superprojects alternate.
+
+submodule.alternateErrorStrategy
+	Specifies how to treat errors with the alternates for a submodule
+	as computed via `submodule.alternateLocation`. Possible values are
+	`ignore`, `info`, `die`. Default is `die`.
+
+submodule.defaultUpdatePath::
+	Specifies a set of submodules to initialize when calling
+	`git submodule --init-default-group` by using the pathspec
+	syntax.
 
 tag.forceSignAnnotated::
 	A boolean to specify whether annotated tags created should be GPG signed.

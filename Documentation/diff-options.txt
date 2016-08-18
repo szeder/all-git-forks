@@ -63,10 +63,12 @@ ifndef::git-format-patch[]
 	Synonym for `-p --raw`.
 endif::git-format-patch[]
 
+--indent-heuristic::
+--no-indent-heuristic::
 --compaction-heuristic::
 --no-compaction-heuristic::
-	These are to help debugging and tuning an experimental
-	heuristic (which is off by default) that shifts the hunk
+	These are to help debugging and tuning experimental
+	heuristics (which are off by default) that shift the hunk
 	boundary in an attempt to make the resulting patch easier
 	to read.
 
@@ -215,8 +217,11 @@ any of those replacements occurred.
 	the commits in the range like linkgit:git-submodule[1] `summary` does.
 	Omitting the `--submodule` option or specifying `--submodule=short`,
 	uses the 'short' format. This format just shows the names of the commits
-	at the beginning and end of the range.  Can be tweaked via the
-	`diff.submodule` configuration variable.
+	at the beginning and end of the range. When `--submodule=diff` is
+	given, the 'diff' format is used. This format shows the diff between
+	the old and new submodule commmit from the perspective of the
+	submodule.  Defaults to `diff.submodule` or 'short' if the config
+	option is unset.
 
 --color[=<when>]::
 	Show colored diff.
@@ -568,6 +573,9 @@ endif::git-format-patch[]
 
 --no-prefix::
 	Do not show any source or destination prefix.
+
+--line-prefix=<prefix>::
+	Prepend an additional prefix to every line of output.
 
 For more detailed explanation on these common options, see also
 linkgit:gitdiffcore[7].

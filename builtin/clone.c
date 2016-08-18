@@ -41,18 +41,31 @@ static const char * const builtin_clone_usage[] = {
 static int option_no_checkout, option_bare, option_mirror, option_single_branch = -1;
 static int option_local = -1, option_no_hardlinks, option_shared, option_recursive;
 static int option_shallow_submodules;
-static char *option_template, *option_depth;
+static int deepen;
+static char *option_template, *option_depth, *option_since;
 static char *option_origin = NULL;
 static char *option_branch = NULL;
+static struct string_list option_not = STRING_LIST_INIT_NODUP;
 static const char *real_git_dir;
 static char *option_upload_pack = "git-upload-pack";
 static int option_verbosity;
 static int option_progress = -1;
 static enum transport_family family;
 static struct string_list option_config = STRING_LIST_INIT_NODUP;
-static struct string_list option_reference = STRING_LIST_INIT_NODUP;
+static struct string_list option_required_reference = STRING_LIST_INIT_NODUP;
+static struct string_list option_optional_reference = STRING_LIST_INIT_NODUP;
 static int option_dissociate;
 static int max_jobs = -1;
+static struct string_list init_submodules;
+
+static int init_submodules_cb(const struct option *opt, const char *arg, int unset)
+{
+	if (unset)
+		return -1;
+
+	string_list_append((struct string_list *)opt->value, arg);
+	return 0;
+}
 
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
@@ -79,8 +92,10 @@ static struct option builtin_clone_options[] = {
 		    N_("number of submodules cloned in parallel")),
 	OPT_STRING(0, "template", &option_template, N_("template-directory"),
 		   N_("directory from which templates will be used")),
-	OPT_STRING_LIST(0, "reference", &option_reference, N_("repo"),
+	OPT_STRING_LIST(0, "reference", &option_required_reference, N_("repo"),
 			N_("reference repository")),
+	OPT_STRING_LIST(0, "reference-if-able", &option_optional_reference,
+			N_("repo"), N_("reference repository")),
 	OPT_BOOL(0, "dissociate", &option_dissociate,
 		 N_("use --reference only while cloning")),
 	OPT_STRING('o', "origin", &option_origin, N_("name"),
@@ -91,6 +106,10 @@ static struct option builtin_clone_options[] = {
 		   N_("path to git-upload-pack on the remote")),
 	OPT_STRING(0, "depth", &option_depth, N_("depth"),
 		    N_("create a shallow clone of that depth")),
+	OPT_STRING(0, "shallow-since", &option_since, N_("time"),
+		    N_("create a shallow clone since a specific time")),
+	OPT_STRING_LIST(0, "shallow-exclude", &option_not, N_("revision"),
+			N_("deepen history of shallow clone by excluding rev")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
 		    N_("clone only one branch, HEAD or --branch")),
 	OPT_BOOL(0, "shallow-submodules", &option_shallow_submodules,
@@ -103,6 +122,9 @@ static struct option builtin_clone_options[] = {
 			TRANSPORT_FAMILY_IPV4),
 	OPT_SET_INT('6', "ipv6", &family, N_("use IPv6 addresses only"),
 			TRANSPORT_FAMILY_IPV6),
+	OPT_CALLBACK(0, "init-submodule", &init_submodules, N_("<pathspec>"),
+			N_("clone specific submodules. Pass multiple times for complex pathspecs"),
+			init_submodules_cb),
 	OPT_END()
 };
 
@@ -282,50 +304,37 @@ static void strip_trailing_slashes(char *dir)
 
 static int add_one_reference(struct string_list_item *item, void *cb_data)
 {
-	char *ref_git;
-	const char *repo;
-	struct strbuf alternate = STRBUF_INIT;
+	struct strbuf err = STRBUF_INIT;
+	int *required = cb_data;
+	char *ref_git = compute_alternate_path(item->string, &err);
 
-	/* Beware: read_gitfile(), real_path() and mkpath() return static buffer */
-	ref_git = xstrdup(real_path(item->string));
-
-	repo = read_gitfile(ref_git);
-	if (!repo)
-		repo = read_gitfile(mkpath("%s/.git", ref_git));
-	if (repo) {
-		free(ref_git);
-		ref_git = xstrdup(repo);
-	}
-
-	if (!repo && is_directory(mkpath("%s/.git/objects", ref_git))) {
-		char *ref_git_git = mkpathdup("%s/.git", ref_git);
-		free(ref_git);
-		ref_git = ref_git_git;
-	} else if (!is_directory(mkpath("%s/objects", ref_git))) {
+	if (!ref_git) {
+		if (*required)
+			die("%s", err.buf);
+		else
+			fprintf(stderr,
+				_("info: Could not add alternate for '%s': %s\n"),
+				item->string, err.buf);
+	} else {
 		struct strbuf sb = STRBUF_INIT;
-		if (get_common_dir(&sb, ref_git))
-			die(_("reference repository '%s' as a linked checkout is not supported yet."),
-			    item->string);
-		die(_("reference repository '%s' is not a local repository."),
-		    item->string);
+		strbuf_addf(&sb, "%s/objects", ref_git);
+		add_to_alternates_file(sb.buf);
+		strbuf_release(&sb);
 	}
 
-	if (!access(mkpath("%s/shallow", ref_git), F_OK))
-		die(_("reference repository '%s' is shallow"), item->string);
-
-	if (!access(mkpath("%s/info/grafts", ref_git), F_OK))
-		die(_("reference repository '%s' is grafted"), item->string);
-
-	strbuf_addf(&alternate, "%s/objects", ref_git);
-	add_to_alternates_file(alternate.buf);
-	strbuf_release(&alternate);
+	strbuf_release(&err);
 	free(ref_git);
 	return 0;
 }
 
 static void setup_reference(void)
 {
-	for_each_string_list(&option_reference, add_one_reference, NULL);
+	int required = 1;
+	for_each_string_list(&option_required_reference,
+			     add_one_reference, &required);
+	required = 0;
+	for_each_string_list(&option_optional_reference,
+			     add_one_reference, &required);
 }
 
 static void copy_alternates(struct strbuf *src, struct strbuf *dst,
@@ -734,12 +743,20 @@ static int checkout(void)
 	err |= run_hook_le(NULL, "post-checkout", sha1_to_hex(null_sha1),
 			   sha1_to_hex(sha1), "1", NULL);
 
-	if (!err && option_recursive) {
+	if (!err && (option_recursive || init_submodules.nr > 0)) {
 		struct argv_array args = ARGV_ARRAY_INIT;
-		argv_array_pushl(&args, "submodule", "update", "--init", "--recursive", NULL);
+		argv_array_pushl(&args, "submodule", "update", NULL);
+
+		if (init_submodules.nr > 0)
+			argv_array_pushf(&args, "--init-default-path");
+		else
+			argv_array_pushf(&args, "--init");
 
 		if (option_shallow_submodules == 1)
 			argv_array_push(&args, "--depth=1");
+
+		if (option_recursive)
+			argv_array_pushf(&args, "--recursive");
 
 		if (max_jobs != -1)
 			argv_array_pushf(&args, "--jobs=%d", max_jobs);
@@ -867,8 +884,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		usage_msg_opt(_("You must specify a repository to clone."),
 			builtin_clone_usage, builtin_clone_options);
 
+	if (option_depth || option_since || option_not.nr)
+		deepen = 1;
 	if (option_single_branch == -1)
-		option_single_branch = option_depth ? 1 : 0;
+		option_single_branch = deepen ? 1 : 0;
 
 	if (option_mirror)
 		option_bare = 1;
@@ -880,6 +899,17 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		if (real_git_dir)
 			die(_("--bare and --separate-git-dir are incompatible."));
 		option_no_checkout = 1;
+	}
+
+	if (init_submodules.nr > 0) {
+		struct string_list_item *item;
+		struct strbuf sb = STRBUF_INIT;
+		for_each_string_list_item(item, &init_submodules) {
+			strbuf_addf(&sb, "submodule.defaultUpdatePath=%s",
+				    item->string);
+			string_list_append(&option_config,
+					   strbuf_detach(&sb, NULL));
+		}
 	}
 
 	if (!option_origin)
@@ -957,6 +987,25 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		else
 			fprintf(stderr, _("Cloning into '%s'...\n"), dir);
 	}
+
+	if (option_recursive) {
+		if (option_required_reference.nr &&
+		    option_optional_reference.nr)
+			die(_("clone --recursive is not compatible with "
+			      "both --reference and --reference-if-able"));
+		else if (option_required_reference.nr) {
+			string_list_append(&option_config,
+				"submodule.alternateLocation=superproject");
+			string_list_append(&option_config,
+				"submodule.alternateErrorStrategy=die");
+		} else if (option_optional_reference.nr) {
+			string_list_append(&option_config,
+				"submodule.alternateLocation=superproject");
+			string_list_append(&option_config,
+				"submodule.alternateErrorStrategy=info");
+		}
+	}
+
 	init_db(option_template, INIT_DB_QUIET);
 	write_config(&option_config);
 
@@ -977,7 +1026,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	git_config_set(key.buf, repo);
 	strbuf_reset(&key);
 
-	if (option_reference.nr)
+	if (option_required_reference.nr || option_optional_reference.nr)
 		setup_reference();
 
 	fetch_pattern = value.buf;
@@ -995,6 +1044,10 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (is_local) {
 		if (option_depth)
 			warning(_("--depth is ignored in local clones; use file:// instead."));
+		if (option_since)
+			warning(_("--shallow-since is ignored in local clones; use file:// instead."));
+		if (option_not.nr)
+			warning(_("--shallow-exclude is ignored in local clones; use file:// instead."));
 		if (!access(mkpath("%s/shallow", path), F_OK)) {
 			if (option_local > 0)
 				warning(_("source repository is shallow, ignoring --local"));
@@ -1013,6 +1066,12 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_depth)
 		transport_set_option(transport, TRANS_OPT_DEPTH,
 				     option_depth);
+	if (option_since)
+		transport_set_option(transport, TRANS_OPT_DEEPEN_SINCE,
+				     option_since);
+	if (option_not.nr)
+		transport_set_option(transport, TRANS_OPT_DEEPEN_NOT,
+				     (const char *)&option_not);
 	if (option_single_branch)
 		transport_set_option(transport, TRANS_OPT_FOLLOWTAGS, "1");
 
@@ -1020,7 +1079,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 		transport_set_option(transport, TRANS_OPT_UPLOADPACK,
 				     option_upload_pack);
 
-	if (transport->smart_options && !option_depth)
+	if (transport->smart_options && !deepen)
 		transport->smart_options->check_self_contained_and_connected = 1;
 
 	refs = transport_get_remote_refs(transport);
