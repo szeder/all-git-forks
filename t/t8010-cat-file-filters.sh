@@ -31,4 +31,17 @@ test_expect_success 'cat-file --filters converts to worktree version' '
 	has_cr actual
 '
 
+test_expect_success 'cat-file --filters --use-path=<path> works' '
+	sha1=$(git rev-parse -q --verify HEAD:world.txt) &&
+	git cat-file --filters --use-path=world.txt $sha1 >actual &&
+	has_cr actual
+'
+
+test_expect_success 'cat-file --textconv --use-path=<path> works' '
+	sha1=$(git rev-parse -q --verify HEAD:world.txt) &&
+	test_config diff.txt.textconv "tr A-Za-z N-ZA-Mn-za-m <" &&
+	git cat-file --textconv --use-path=hello.txt $sha1 >rot13 &&
+	test uryyb = "$(cat rot13 | remove_cr)"
+'
+
 test_done
