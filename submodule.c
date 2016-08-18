@@ -436,6 +436,67 @@ void show_submodule_summary(FILE *f, const char *path,
 		clear_commit_marks(right, ~0);
 }
 
+void show_submodule_inline_diff(FILE *f, const char *path,
+		const char *line_prefix,
+		unsigned char one[20], unsigned char two[20],
+		unsigned dirty_submodule, const char *meta,
+		const char *del, const char *add, const char *reset,
+		const struct diff_options *o)
+{
+	const char *old = EMPTY_TREE_SHA1_BIN, *new = EMPTY_TREE_SHA1_BIN;
+	struct commit *left = NULL, *right = NULL;
+	struct strbuf submodule_dir = STRBUF_INIT;
+	struct child_process cp = CHILD_PROCESS_INIT;
+
+	show_submodule_header(f, path, line_prefix, one, two, dirty_submodule,
+			      meta, reset, &left, &right);
+
+	/* We need a valid left and right commit to display a difference */
+	if (!(left || is_null_sha1(one)) ||
+	    !(right || is_null_sha1(two)))
+		goto done;
+
+	if (left)
+		old = one;
+	if (right)
+		new = two;
+
+	fflush(f);
+	cp.git_cmd = 1;
+	cp.dir = path;
+	cp.out = dup(fileno(f));
+	cp.no_stdin = 1;
+
+	/* TODO: other options may need to be passed here. */
+	argv_array_pushl(&cp.args, "diff");
+	argv_array_pushf(&cp.args, "--line-prefix=%s", line_prefix);
+	if (DIFF_OPT_TST(o, REVERSE_DIFF)) {
+		argv_array_pushf(&cp.args, "--src-prefix=%s%s/",
+				 o->b_prefix, path);
+		argv_array_pushf(&cp.args, "--dst-prefix=%s%s/",
+				 o->a_prefix, path);
+	} else {
+		argv_array_pushf(&cp.args, "--src-prefix=%s%s/",
+				 o->a_prefix, path);
+		argv_array_pushf(&cp.args, "--dst-prefix=%s%s/",
+				 o->b_prefix, path);
+	}
+	argv_array_push(&cp.args, sha1_to_hex(old));
+	/* If the submodule has modified content, we will diff against the
+	 * work tree, under the assumption that the user has asked for the
+	 * diff format and wishes to actually see all differences even if they
+	 * haven't yet been committed to the submodule yet.
+	 */
+	if (!(dirty_submodule & DIRTY_SUBMODULE_MODIFIED))
+		argv_array_push(&cp.args, sha1_to_hex(new));
+
+	if (run_command(&cp))
+		fprintf(f, "(diff failed)\n");
+
+done:
+	strbuf_release(&submodule_dir);
+}
+
 void set_config_fetch_recurse_submodules(int value)
 {
 	config_fetch_recurse_submodules = value;
