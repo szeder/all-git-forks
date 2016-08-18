@@ -530,7 +530,7 @@ static struct string_list *get_renames(struct merge_options *o,
 	opts.rename_score = o->rename_score;
 	opts.show_rename_progress = o->show_rename_progress;
 	opts.output_format = DIFF_FORMAT_NO_OUTPUT;
-	diff_setup_done(&opts);
+	diff_setup_done(&opts, o->index_file);
 	diff_tree_sha1(o_tree->object.oid.hash, tree->object.oid.hash, "", &opts);
 	diffcore_std(&opts);
 	if (opts.needed_rename_limit > o->needed_rename_limit)
@@ -2157,6 +2157,7 @@ void init_merge_options(struct merge_options *o)
 	o->merge_rename_limit = -1;
 	o->renormalize = 0;
 	o->detect_rename = 1;
+	o->index_file = get_index_file();
 	merge_recursive_config(o);
 	if (getenv("GIT_MERGE_VERBOSITY"))
 		o->verbosity =

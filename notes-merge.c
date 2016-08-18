@@ -20,6 +20,7 @@ void init_notes_merge_options(struct notes_merge_options *o)
 	memset(o, 0, sizeof(struct notes_merge_options));
 	strbuf_init(&(o->commit_msg), 0);
 	o->verbosity = NOTES_MERGE_VERBOSITY_DEFAULT;
+	o->index_file = get_index_file();
 }
 
 static int path_to_sha1(const char *path, unsigned char *sha1)
@@ -127,7 +128,7 @@ static struct notes_merge_pair *diff_tree_remote(struct notes_merge_options *o,
 	diff_setup(&opt);
 	DIFF_OPT_SET(&opt, RECURSIVE);
 	opt.output_format = DIFF_FORMAT_NO_OUTPUT;
-	diff_setup_done(&opt);
+	diff_setup_done(&opt, o->index_file);
 	diff_tree_sha1(base, remote, "", &opt);
 	diffcore_std(&opt);
 
@@ -190,7 +191,7 @@ static void diff_tree_local(struct notes_merge_options *o,
 	diff_setup(&opt);
 	DIFF_OPT_SET(&opt, RECURSIVE);
 	opt.output_format = DIFF_FORMAT_NO_OUTPUT;
-	diff_setup_done(&opt);
+	diff_setup_done(&opt, o->index_file);
 	diff_tree_sha1(base, local, "", &opt);
 	diffcore_std(&opt);
 

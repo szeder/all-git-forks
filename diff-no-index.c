@@ -236,7 +236,8 @@ static void fixup_paths(const char **path, struct strbuf *replacement)
 }
 
 void diff_no_index(struct rev_info *revs,
-		   int argc, const char **argv)
+		   int argc, const char **argv,
+		   const char *index_file)
 {
 	int i, prefixlen;
 	const char *paths[2];
@@ -282,7 +283,7 @@ void diff_no_index(struct rev_info *revs,
 	DIFF_OPT_SET(&revs->diffopt, NO_INDEX);
 
 	revs->max_count = -2;
-	diff_setup_done(&revs->diffopt);
+	diff_setup_done(&revs->diffopt, index_file);
 
 	setup_diff_pager(&revs->diffopt);
 	DIFF_OPT_SET(&revs->diffopt, EXIT_WITH_STATUS);

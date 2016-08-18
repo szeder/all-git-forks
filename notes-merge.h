@@ -17,6 +17,7 @@ struct notes_merge_options {
 	int verbosity;
 	enum notes_merge_strategy strategy;
 	unsigned has_worktree:1;
+	const char *index_file;
 };
 
 void init_notes_merge_options(struct notes_merge_options *o);

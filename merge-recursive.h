@@ -28,6 +28,7 @@ struct merge_options {
 	struct string_list current_file_set;
 	struct string_list current_directory_set;
 	struct string_list df_conflict_file_set;
+	const char *index_file;
 };
 
 /* merge_trees() but with recursive ancestor consolidation */
