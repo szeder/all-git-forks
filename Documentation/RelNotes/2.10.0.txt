@@ -71,8 +71,6 @@ UI, Workflows & Features
    command line option "--no-show-signature" to countermand it.
    (merge fce04c3 mj/log-show-signature-conf later to maint).
 
- * A couple of "git svn" updates.
-
  * More markings of messages for i18n, with updates to various tests
    to pass GETTEXT_POISON tests.
 
@@ -106,8 +104,8 @@ UI, Workflows & Features
 
  * An entry "git log --decorate" for the tip of the current branch is
    shown as "HEAD -> name" (where "name" is the name of the branch);
-   paint the arrow in the same color as "HEAD", not in the color for
-   commits.
+   the arrow is now painted in the same color as "HEAD", not in the
+   color for commits.
 
  * "git format-patch" learned format.from configuration variable to
    specify the default settings for its "--from" option.
@@ -115,6 +113,10 @@ UI, Workflows & Features
  * "git am -3" calls "git merge-recursive" when it needs to fall back
    to a three-way merge; this call has been turned into an internal
    subroutine call instead of spawning a separate subprocess.
+
+ * The command line completion scripts (in contrib/) now knows about
+   "git branch --delete/--move [--remote]".
+   (merge 2703c22 vs/completion-branch-fully-spelled-d-m-r later to maint).
 
 
 Performance, Internal Implementation, Development Support etc.
@@ -131,19 +133,19 @@ Performance, Internal Implementation, Development Support etc.
  * "git upload-pack" command has been updated to use the parse-options
    API.
 
- * The "git apply" standalone program is being libified; this is the
-   first step to move many state variables into a structure that can
-   be explicitly (re)initialized to make the machinery callable more
-   than once.
+ * The "git apply" standalone program is being libified; the first
+   step to move many state variables into a structure that can be
+   explicitly (re)initialized to make the machinery callable more
+   than once has been merged.
 
  * HTTP transport gained an option to produce more detailed debugging
    trace.
    (merge 73e57aa ep/http-curl-trace later to maint).
 
- * Instead of taking advantage of a struct string_list that is
-   allocated with all NULs happens to be STRING_LIST_INIT_NODUP kind,
-   initialize them explicitly as such, to document their behaviour
-   better.
+ * Instead of taking advantage of the fact that a struct string_list
+   that is allocated with all NULs happens to be the INIT_NODUP kind,
+   the users of string_list structures are taught to initialize them
+   explicitly as such, to document their behaviour better.
    (merge 2721ce2 jk/string-list-static-init later to maint).
 
  * HTTPd tests learned to show the server error log to help diagnosing
@@ -233,6 +235,14 @@ Performance, Internal Implementation, Development Support etc.
  * The API to iterate over all the refs (i.e. for_each_ref(), etc.)
    has been revamped.
 
+ * The handling of the "text=auto" attribute has been corrected.
+   $ echo "* text=auto eol=crlf" >.gitattributes
+   used to have the same effect as
+   $ echo "* text eol=crlf" >.gitattributes
+   i.e. declaring all files are text (ignoring "auto").  The
+   combination has been fixed to be equivalent to doing
+   $ git config core.autocrlf true
+
  * A few tests that specifically target "git rebase -i" have been
    added.
 
@@ -273,6 +283,21 @@ Performance, Internal Implementation, Development Support etc.
    environment variable settings to export for popular pagers.  This
    mechanism is used to tweak the default settings to MORE on FreeBSD.
    (merge 995bc22 ew/build-time-pager-tweaks later to maint).
+
+ * The http-backend (the server-side component of smart-http
+   transport) used to trickle the HTTP header one at a time.  Now
+   these write(2)s are batched.
+   (merge b36045c ew/http-backend-batch-headers later to maint).
+
+ * When "git rebase" tries to compare set of changes on the updated
+   upstream and our own branch, it computes patch-id for all of these
+   changes and attempts to find matches. This has been optimized by
+   lazily computing the full patch-id (which is expensive) to be
+   compared only for changes that touch the same set of paths.
+   (merge b3dfeeb kw/patch-ids-optim later to maint).
+
+ * A handful of tests that were broken under gettext-poison build have
+   been fixed.
 
 
 Also contains various documentation updates and code clean-ups.
@@ -520,7 +545,6 @@ notes for details).
  * "git difftool <paths>..." started in a subdirectory failed to
    interpret the paths relative to that directory, which has been
    fixed.
-   (merge 32b8c58 jk/difftool-in-subdir later to maint).
 
  * The characters in the label shown for tags/refs for commits in
    "gitweb" output are now properly escaped for proper HTML output.
@@ -544,7 +568,6 @@ notes for details).
    that no matter how many seconds it took to apply many patches, the
    resulting committer timestamp for the resulting commits were all
    the same.
-   (merge 4d9c7e6 jk/reset-ident-time-per-commit later to maint).
 
  * "git push --force-with-lease" already had enough logic to allow
    ensuring that such a push results in creation of a ref (i.e. the
@@ -553,4 +576,34 @@ notes for details).
    to the users.  It does so now.
    (merge 9eed4f3 jk/push-force-with-lease-creation later to maint).
 
+ * The mechanism to limit the pack window memory size, when packing is
+   done using multiple threads (which is the default), is per-thread,
+   but this was not documented clearly.
+   (merge 954176c ms/document-pack-window-memory-is-per-thread later to maint).
+
+ * "import-tars" fast-import script (in contrib/) used to ignore a
+   hardlink target and replaced it with an empty file, which has been
+   corrected to record the same blob as the other file the hardlink is
+   shared with.
+   (merge 04e0869 js/import-tars-hardlinks later to maint).
+
+ * "git mv dir non-existing-dir/" did not work in some environments
+   the same way as existing mainstream platforms.  The code now moves
+   "dir" to "non-existing-dir", without relying on rename("A", "B/")
+   that strips the trailing slash of '/'.
+   (merge 189d035 js/mv-dir-to-new-directory later to maint).
+
+ * The "t/" hierarchy is prone to get an unusual pathname; "make test"
+   has been taught to make sure they do not contain paths that cannot
+   be checked out on Windows (and the mechanism can be reusable to
+   catch pathnames that are not portable to other platforms as need
+   arises).
+   (merge c2cafd3 js/test-lint-pathname later to maint).
+
  * Other minor clean-ups and documentation updates
+   (merge 02a8cfa rs/merge-add-strategies-simplification later to maint).
+   (merge af4941d rs/merge-recursive-string-list-init later to maint).
+   (merge 1eb47f1 rs/use-strbuf-add-unique-abbrev later to maint).
+   (merge ddd0bfa jk/tighten-alloc later to maint).
+   (merge ecf30b2 rs/mailinfo-lib later to maint).
+   (merge 0eb75ce sg/reflog-past-root later to maint).
