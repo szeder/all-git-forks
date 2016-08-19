@@ -964,6 +964,8 @@ static inline void oidclr(struct object_id *oid)
 #define EMPTY_BLOB_SHA1_BIN \
 	((const unsigned char *) EMPTY_BLOB_SHA1_BIN_LITERAL)
 
+extern const struct object_id empty_tree_oid;
+
 static inline int is_empty_blob_sha1(const unsigned char *sha1)
 {
 	return !hashcmp(sha1, EMPTY_BLOB_SHA1_BIN);
