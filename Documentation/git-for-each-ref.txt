@@ -114,8 +114,9 @@ upstream::
 	`refname` above.  Additionally respects `:track` to show
 	"[ahead N, behind M]" and `:trackshort` to show the terse
 	version: ">" (ahead), "<" (behind), "<>" (ahead and behind),
-	or "=" (in sync).  Has no effect if the ref does not have
-	tracking information associated with it.
+	or "=" (in sync) and `:gone` to show "gone" if the remote ref
+	does not exist, or an empty string if it does. Has no effect if
+	the ref does not have tracking information associated with it.
 
 push::
 	The name of a local ref which represents the `@{push}` location
