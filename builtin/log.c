@@ -1676,7 +1676,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		/* nothing to do */
 		return 0;
 	total = nr;
-	if (!keep_subject && auto_number && total > 1)
+	if (!keep_subject && auto_number && (total > 1 || cover_letter))
 		numbered = 1;
 	if (numbered)
 		rev.total = total + start_number - 1;
