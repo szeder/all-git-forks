@@ -38,6 +38,9 @@ static inline uintmax_t sz_fmt(size_t s) { return s; }
 
 const unsigned char null_sha1[20];
 const struct object_id null_oid;
+const struct object_id empty_tree_oid = {
+	.hash = EMPTY_TREE_SHA1_BIN_LITERAL
+};
 
 /*
  * This is meant to hold a *small* number of objects that you would
