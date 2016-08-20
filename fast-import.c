@@ -1820,10 +1820,18 @@ static void dump_tags(void)
 		strbuf_reset(&ref_name);
 		strbuf_addf(&ref_name, "refs/tags/%s", item->string);
 
-		if (ref_transaction_update(transaction, ref_name.buf,
-					   t->sha1, NULL, 0, msg, &err)) {
-			failure |= error("%s", err.buf);
-			goto cleanup;
+		if (is_null_sha1(t->sha1)) {
+			if (ref_transaction_delete(transaction, ref_name.buf,
+						   NULL, 0, msg, &err)) {
+				failure |= error("%s", err.buf);
+				goto cleanup;
+			}
+		} else {
+			if (ref_transaction_update(transaction, ref_name.buf,
+						   t->sha1, NULL, 0, msg, &err)) {
+				failure |= error("%s", err.buf);
+				goto cleanup;
+			}
 		}
 	}
 	if (ref_transaction_commit(transaction, &err))
@@ -2959,6 +2967,52 @@ static void parse_new_tag(const char *arg)
 		t->pack_id = pack_id;
 }
 
+static int parse_from_tag(struct tag *t)
+{
+	const char *from;
+	const struct tag *s;
+	struct branch *b;
+
+	if (!skip_prefix(command_buf.buf, "from ", &from))
+		return 0;
+
+	b = lookup_branch(from);
+	s = lookup_tag(from);
+	if (t == s)
+		die("Can't create a tag from itself: %s", b->name);
+	else if (b) {
+		hashcpy(t->sha1, b->sha1);
+	} else if (*from == ':') {
+		uintmax_t idnum = parse_mark_ref_eol(from);
+		struct object_entry *oe = find_mark(idnum);
+		if (oe->type != OBJ_COMMIT)
+			die("Mark :%" PRIuMAX " not a commit", idnum);
+		hashcpy(t->sha1, oe->idx.sha1);
+	} else if (s) {
+		hashcpy(t->sha1, s->sha1);
+	} else if (get_sha1(from, t->sha1))
+		die("Invalid ref name or SHA1 expression: %s", from);
+
+	read_next_command();
+	return 1;
+}
+
+static void parse_reset_tag(const char *name)
+{
+	struct tag *t = lookup_tag(name);
+
+	if (!t) {
+		t = pool_alloc(sizeof(struct tag));
+		memset(t, 0, sizeof(struct tag));
+		string_list_insert(&tags, name)->util = t;
+	}
+
+	read_next_command();
+	parse_from_tag(t);
+	if (command_buf.len > 0)
+		unread_command_buf = 1;
+}
+
 static void parse_reset_branch(const char *arg)
 {
 	struct branch *b;
@@ -2979,6 +3033,15 @@ static void parse_reset_branch(const char *arg)
 	parse_from(b);
 	if (command_buf.len > 0)
 		unread_command_buf = 1;
+}
+
+static void parse_reset(const char *arg)
+{
+	const char *tag;
+	if (skip_prefix(arg, "refs/tags/", &tag))
+		parse_reset_tag(tag);
+	else
+		parse_reset_branch(arg);
 }
 
 static void cat_blob_write(const char *buf, unsigned long size)
@@ -3529,7 +3592,7 @@ int cmd_main(int argc, const char **argv)
 		else if (skip_prefix(command_buf.buf, "tag ", &v))
 			parse_new_tag(v);
 		else if (skip_prefix(command_buf.buf, "reset ", &v))
-			parse_reset_branch(v);
+			parse_reset(v);
 		else if (!strcmp("checkpoint", command_buf.buf))
 			parse_checkpoint();
 		else if (!strcmp("done", command_buf.buf))
