@@ -2653,9 +2653,40 @@ static void parse_from_existing(struct branch *b)
 	}
 }
 
+static struct tag *lookup_tag(const char *ref)
+{
+	const char *name;
+	struct string_list_item *item;
+
+	if (!skip_prefix(ref, "refs/tags/", &name))
+		return NULL;
+
+	item = string_list_lookup(&tags, name);
+
+	if (!item)
+		return NULL;
+
+	return item->util;
+}
+
+static struct object_entry *dereference(struct object_entry *oe,
+					unsigned char sha1[20]);
+
+static struct object_entry *deref_tag(const struct tag *tag)
+{
+	unsigned char sha1[20];
+	struct object_entry *oe;
+	hashcpy(sha1, tag->sha1);
+	oe = find_object(sha1);
+	while (oe && oe->type == OBJ_TAG)
+		oe = dereference(oe, sha1);
+	return oe;
+}
+
 static int parse_from(struct branch *b)
 {
 	const char *from;
+	const struct tag *t;
 	struct branch *s;
 	unsigned char sha1[20];
 
@@ -2665,6 +2696,7 @@ static int parse_from(struct branch *b)
 	hashcpy(sha1, b->branch_tree.versions[1].sha1);
 
 	s = lookup_branch(from);
+	t = lookup_tag(from);
 	if (b == s)
 		die("Can't create a branch from itself: %s", b->name);
 	else if (s) {
@@ -2687,6 +2719,18 @@ static int parse_from(struct branch *b)
 			} else
 				parse_from_existing(b);
 		}
+	} else if (t) {
+		struct object_entry *oe = deref_tag(t);
+		if (!oe || oe->type != OBJ_COMMIT)
+			die("Ref does not resolve to commit: %s", from);
+		hashcpy(b->sha1, oe->idx.sha1);
+		if (oe->pack_id != MAX_PACK_ID) {
+			unsigned long size;
+			char *buf = gfi_unpack_entry(oe, &size);
+			parse_from_commit(b, buf, size);
+			free(buf);
+		} else
+			parse_from_existing(b);
 	} else if (!get_sha1(from, b->sha1)) {
 		parse_from_existing(b);
 		if (is_null_sha1(b->sha1))
