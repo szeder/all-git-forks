@@ -166,6 +166,7 @@ Format of STDIN stream:
 #include "quote.h"
 #include "dir.h"
 #include "run-command.h"
+#include "string-list.h"
 
 #define PACK_ID_BITS 16
 #define MAX_PACK_ID ((1<<PACK_ID_BITS)-1)
@@ -256,8 +257,6 @@ struct branch {
 };
 
 struct tag {
-	struct tag *next_tag;
-	const char *name;
 	unsigned int pack_id;
 	unsigned char sha1[20];
 };
@@ -352,8 +351,7 @@ static struct branch **branch_table;
 static struct branch *active_branches;
 
 /* Tag data */
-static struct tag *first_tag;
-static struct tag *last_tag;
+static struct string_list tags = STRING_LIST_INIT_DUP;
 
 /* Input stream parsing */
 static whenspec_type whenspec = WHENSPEC_RAW;
@@ -466,15 +464,16 @@ static void write_crash_report(const char *err)
 			write_branch_report(rpt, b);
 	}
 
-	if (first_tag) {
-		struct tag *tg;
+	if (tags.nr > 0) {
+		struct string_list_item *item;
 		fputc('\n', rpt);
 		fputs("Annotated Tags\n", rpt);
 		fputs("--------------\n", rpt);
-		for (tg = first_tag; tg; tg = tg->next_tag) {
+		for_each_string_list_item(item, &tags) {
+			struct tag *tg = item->util;
 			fputs(sha1_to_hex(tg->sha1), rpt);
 			fputc(' ', rpt);
-			fputs(tg->name, rpt);
+			fputs(item->string, rpt);
 			fputc('\n', rpt);
 		}
 	}
@@ -601,7 +600,7 @@ static void invalidate_pack_id(unsigned int id)
 {
 	unsigned int h;
 	unsigned long lu;
-	struct tag *t;
+	struct string_list_item *item;
 
 	for (h = 0; h < ARRAY_SIZE(object_table); h++) {
 		struct object_entry *e;
@@ -619,9 +618,11 @@ static void invalidate_pack_id(unsigned int id)
 				b->pack_id = MAX_PACK_ID;
 	}
 
-	for (t = first_tag; t; t = t->next_tag)
+	for_each_string_list_item(item, &tags) {
+		struct tag *t = item->util;
 		if (t->pack_id == id)
 			t->pack_id = MAX_PACK_ID;
+	}
 }
 
 static unsigned int hc_str(const char *s, size_t len)
@@ -1011,7 +1012,7 @@ static void end_packfile(void)
 		char *idx_name;
 		int i;
 		struct branch *b;
-		struct tag *t;
+		struct string_list_item *item;
 
 		close_pack_windows(pack_data);
 		sha1close(pack_file, cur_pack_sha1, 0);
@@ -1045,7 +1046,8 @@ static void end_packfile(void)
 						fprintf(pack_edges, " %s", sha1_to_hex(b->sha1));
 				}
 			}
-			for (t = first_tag; t; t = t->next_tag) {
+			for_each_string_list_item(item, &tags) {
+				struct tag *t = item->util;
 				if (t->pack_id == pack_id)
 					fprintf(pack_edges, " %s", sha1_to_hex(t->sha1));
 			}
@@ -1803,7 +1805,7 @@ static void dump_branches(void)
 static void dump_tags(void)
 {
 	static const char *msg = "fast-import";
-	struct tag *t;
+	struct string_list_item *item;
 	struct strbuf ref_name = STRBUF_INIT;
 	struct strbuf err = STRBUF_INIT;
 	struct ref_transaction *transaction;
@@ -1813,9 +1815,10 @@ static void dump_tags(void)
 		failure |= error("%s", err.buf);
 		goto cleanup;
 	}
-	for (t = first_tag; t; t = t->next_tag) {
+	for_each_string_list_item(item, &tags) {
+		struct tag *t = item->util;
 		strbuf_reset(&ref_name);
-		strbuf_addf(&ref_name, "refs/tags/%s", t->name);
+		strbuf_addf(&ref_name, "refs/tags/%s", item->string);
 
 		if (ref_transaction_update(transaction, ref_name.buf,
 					   t->sha1, NULL, 0, msg, &err)) {
@@ -2851,12 +2854,7 @@ static void parse_new_tag(const char *arg)
 
 	t = pool_alloc(sizeof(struct tag));
 	memset(t, 0, sizeof(struct tag));
-	t->name = pool_strdup(arg);
-	if (last_tag)
-		last_tag->next_tag = t;
-	else
-		first_tag = t;
-	last_tag = t;
+	string_list_append(&tags, arg)->util = t;
 	read_next_command();
 
 	/* from ... */
@@ -2903,7 +2901,7 @@ static void parse_new_tag(const char *arg)
 		    "object %s\n"
 		    "type %s\n"
 		    "tag %s\n",
-		    sha1_to_hex(sha1), typename(type), t->name);
+		    sha1_to_hex(sha1), typename(type), arg);
 	if (tagger)
 		strbuf_addf(&new_data,
 			    "tagger %s\n", tagger);
