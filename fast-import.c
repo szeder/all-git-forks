@@ -2677,6 +2677,14 @@ static struct tag *lookup_tag(const char *ref)
 	return item->util;
 }
 
+static struct tag *new_tag(const char *name)
+{
+	struct tag *t = pool_alloc(sizeof(struct tag));
+	memset(t, 0, sizeof(struct tag));
+	string_list_insert(&tags, name)->util = t;
+	return t;
+}
+
 static struct object_entry *dereference(struct object_entry *oe,
 					unsigned char sha1[20]);
 
@@ -2904,9 +2912,7 @@ static void parse_new_tag(const char *arg)
 	enum object_type type;
 	const char *v;
 
-	t = pool_alloc(sizeof(struct tag));
-	memset(t, 0, sizeof(struct tag));
-	string_list_insert(&tags, arg)->util = t;
+	t = new_tag(arg);
 	read_next_command();
 
 	/* from ... */
@@ -3001,11 +3007,8 @@ static void parse_reset_tag(const char *name)
 {
 	struct tag *t = lookup_tag(name);
 
-	if (!t) {
-		t = pool_alloc(sizeof(struct tag));
-		memset(t, 0, sizeof(struct tag));
-		string_list_insert(&tags, name)->util = t;
-	}
+	if (!t)
+		t = new_tag(name);
 
 	read_next_command();
 	parse_from_tag(t);
