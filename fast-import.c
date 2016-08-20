@@ -3007,11 +3007,14 @@ static void parse_reset_tag(const char *name)
 {
 	struct tag *t = lookup_tag(name);
 
-	if (!t)
-		t = new_tag(name);
-
 	read_next_command();
-	parse_from_tag(t);
+
+	if (starts_with(command_buf.buf, "from ")) {
+		if (!t)
+			t = new_tag(name);
+		parse_from_tag(t);
+	}
+
 	if (command_buf.len > 0)
 		unread_command_buf = 1;
 }
