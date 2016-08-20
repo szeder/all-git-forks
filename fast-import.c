@@ -2854,7 +2854,7 @@ static void parse_new_tag(const char *arg)
 
 	t = pool_alloc(sizeof(struct tag));
 	memset(t, 0, sizeof(struct tag));
-	string_list_append(&tags, arg)->util = t;
+	string_list_insert(&tags, arg)->util = t;
 	read_next_command();
 
 	/* from ... */
