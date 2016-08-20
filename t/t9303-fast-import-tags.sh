@@ -78,4 +78,63 @@ test_expect_success 'can reset branch from tag' '
 	test_line_count = 1 output
 '
 
+test_expect_success 'can reset tag from tag' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	reset refs/tags/tag2
+	from refs/tags/tag1
+	INPUT_END
+	git fast-import --export-marks=marks.out <input &&
+	echo "tag2" >expected &&
+	git tag -l tag2 >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'can replace tag with lightweight tag' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	tag lwtag
+	from refs/heads/master
+	data <<EOF
+	Tag to be replaced
+	EOF
+	reset refs/tags/lwtag
+	from refs/heads/master
+	INPUT_END
+	git fast-import <input &&
+	echo "commit" >expected &&
+	git cat-file -t refs/tags/lwtag >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'can delete tag' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	reset refs/tags/tag1
+	from 0000000000000000000000000000000000000000
+
+	INPUT_END
+	git fast-import --export-marks=marks.out <input &&
+	git tag -l tag1 >output &&
+	test_must_be_empty output
+'
+
+test_expect_success 'can create and delete tag in same run' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	tag tag2
+	from refs/heads/master
+	data <<EOF
+	a second tag
+	EOF
+
+	reset refs/tags/tag2
+	from 0000000000000000000000000000000000000000
+
+	INPUT_END
+	git fast-import --export-marks=marks.out <input &&
+	git tag -l tag2 >output &&
+	test_must_be_empty output
+'
+
 test_done
