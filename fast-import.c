@@ -3003,20 +3003,18 @@ static int parse_from_tag(struct tag *t)
 	return 1;
 }
 
-static void parse_reset_tag(const char *name)
+static int parse_reset_tag(const char *arg)
 {
-	struct tag *t = lookup_tag(name);
+	struct tag *t = lookup_tag(arg);
+	if (!t)
+		return 0;
 
 	read_next_command();
-
-	if (starts_with(command_buf.buf, "from ")) {
-		if (!t)
-			t = new_tag(name);
-		parse_from_tag(t);
-	}
-
+	parse_from_tag(t);
 	if (command_buf.len > 0)
 		unread_command_buf = 1;
+
+	return 1;
 }
 
 static void parse_reset_branch(const char *arg)
@@ -3043,10 +3041,7 @@ static void parse_reset_branch(const char *arg)
 
 static void parse_reset(const char *arg)
 {
-	const char *tag;
-	if (skip_prefix(arg, "refs/tags/", &tag))
-		parse_reset_tag(tag);
-	else
+	if (!parse_reset_tag(arg))
 		parse_reset_branch(arg);
 }
 
