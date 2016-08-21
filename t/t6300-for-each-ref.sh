@@ -375,7 +375,7 @@ test_expect_success 'Check that :track[short] works when upstream is invalid' '
 
 
 	EOF
-	test_when_finished "git config branch.master.merge refs/heads/master" &&
+	test_config branch.master.merge refs/heads/master &&
 	git config branch.master.merge refs/heads/does-not-exist &&
 	git for-each-ref \
 		--format="%(upstream:track)$LF%(upstream:trackshort)" \
