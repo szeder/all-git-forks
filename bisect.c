@@ -760,7 +760,7 @@ static void handle_skipped_merge_base(const unsigned char *mb)
 	char *bad_hex = oid_to_hex(current_bad_oid);
 	char *good_hex = join_sha1_array_hex(&good_revs, ' ');
 
-	warning(_("the merge base between %s and [%s] "
+	warning(_("The merge base between %s and [%s] "
 		"must be skipped.\n"
 		"So we cannot be sure the first %s commit is "
 		"between %s and %s.\n"
@@ -846,7 +846,7 @@ static void check_good_are_ancestors_of_bad(const char *prefix, int no_checkout)
 	int fd;
 
 	if (!current_bad_oid)
-		die(_("a %s revision is needed"), term_bad);
+		die(_("A %s revision is needed"), term_bad);
 
 	/* Check if file BISECT_ANCESTORS_OK exists. */
 	if (!stat(filename, &st) && S_ISREG(st.st_mode))
@@ -863,7 +863,7 @@ static void check_good_are_ancestors_of_bad(const char *prefix, int no_checkout)
 	/* Create file BISECT_ANCESTORS_OK. */
 	fd = open(filename, O_CREAT | O_TRUNC | O_WRONLY, 0600);
 	if (fd < 0)
-		warning_errno(_("could not create file '%s'"),
+		warning_errno(_("Could not create file '%s'"),
 			      filename);
 	else
 		close(fd);
@@ -914,7 +914,7 @@ void read_bisect_terms(const char **read_bad, const char **read_good)
 			*read_good = "good";
 			return;
 		} else {
-			die_errno(_("could not read file '%s'"), filename);
+			die_errno(_("Could not read file '%s'"), filename);
 		}
 	} else {
 		strbuf_getline_lf(&str, fp);
@@ -944,7 +944,7 @@ int bisect_next_all(const char *prefix, int no_checkout)
 
 	read_bisect_terms(&term_bad, &term_good);
 	if (read_bisect_refs())
-		die(_("reading bisect refs failed"));
+		die(_("Reading bisect refs failed"));
 
 	check_good_are_ancestors_of_bad(prefix, no_checkout);
 
