@@ -54,6 +54,13 @@ http.receivepack::
 	disabled by setting this item to `false`, or enabled for all
 	users, including anonymous users, by setting it to `true`.
 
+http.primeclone::
+	This serves 'git prime-clone' service to clients, allowing
+	'git clone' clients to get the location of a static resource
+	to download and integrate before performing an incremental
+	fetch. It is 'false' by default, but can be enabled by setting
+	it to `true`.
+
 URL TRANSLATION
 ---------------
 To determine the location of the repository on disk, 'git http-backend'

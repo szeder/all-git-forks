@@ -231,6 +231,13 @@ receive-pack::
 	enabled by setting `daemon.receivepack` configuration item to
 	`true`.
 
+primeclone::
+	This serves 'git prime-clone' service to clients, allowing
+	'git clone' clients to get the location of a static resource
+	to download and integrate before performing an incremental
+	fetch. It is 'false' by default, but can be enabled by setting
+	it to `true`.
+
 EXAMPLES
 --------
 We assume the following in /etc/services::

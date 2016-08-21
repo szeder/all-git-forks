@@ -27,6 +27,7 @@ struct rpc_service {
 static struct rpc_service rpc_service[] = {
 	{ "upload-pack", "uploadpack", 1, 1 },
 	{ "receive-pack", "receivepack", 0, -1 },
+	{ "prime-clone", "primeclone", 0, -1 },
 };
 
 static struct string_list *get_parameters(void)
@@ -450,11 +451,22 @@ static void get_info_refs(char *arg)
 	hdr_nocache();
 
 	if (service_name) {
-		const char *argv[] = {NULL /* service name */,
-			"--stateless-rpc", "--advertise-refs",
-			".", NULL};
+		struct argv_array argv;
 		struct rpc_service *svc = select_service(service_name);
 
+		argv_array_init(&argv);
+		argv_array_push(&argv, svc->name);
+
+		// prime-clone does not need --stateless-rpc and
+		// --advertise-refs options. Maybe it will in the future, but
+		// until then it seems best to do this instead of adding
+		// "dummy" options.
+		if (strcmp(svc->name, "prime-clone") != 0) {
+			argv_array_pushl(&argv, "--stateless-rpc",
+					 "--advertise-refs", NULL);
+		}
+
+		argv_array_pushl(&argv, ".", NULL);
 		strbuf_addf(&buf, "application/x-git-%s-advertisement",
 			svc->name);
 		hdr_str(content_type, buf.buf);
@@ -463,8 +475,8 @@ static void get_info_refs(char *arg)
 		packet_write(1, "# service=git-%s\n", svc->name);
 		packet_flush(1);
 
-		argv[0] = svc->name;
-		run_service(argv, 0);
+		run_service(argv.argv, 0);
+		argv_array_clear(&argv);
 
 	} else {
 		select_getanyfile();
