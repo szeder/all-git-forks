@@ -1,0 +1,39 @@
+git-prime-clone(1)
+============
+
+NAME
+----
+git-prime-clone - Get the location of an alternate resource
+to fetch before clone
+
+
+SYNOPSIS
+--------
+[verse]
+'git prime-clone' [--strict] <dir>
+
+DESCRIPTION
+-----------
+
+Outputs the resource, if configured to do so. Otherwise, returns
+nothing (packet flush 0000).
+
+CONFIGURE
+---------
+
+primeclone.url::
+	The full url of the resource (e.g.
+	http://examplehost/pack-$NAME.pack).
+
+primeclone.filetype::
+	The type of the resource (e.g. pack).
+
+primeclone.enabled::
+	When 'false', git-prime-clone will return an empty response,
+	regardless of what the rest of the configuration specifies;
+	otherwise, it will return the configured response. Is 'true'
+	by default.
+
+GIT
+---
+Part of the linkgit:git[1] suite

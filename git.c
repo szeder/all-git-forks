@@ -447,6 +447,7 @@ static struct cmd_struct commands[] = {
 	{ "pack-refs", cmd_pack_refs, RUN_SETUP },
 	{ "patch-id", cmd_patch_id },
 	{ "pickaxe", cmd_blame, RUN_SETUP },
+	{ "prime-clone", cmd_prime_clone },
 	{ "prune", cmd_prune, RUN_SETUP },
 	{ "prune-packed", cmd_prune_packed, RUN_SETUP },
 	{ "pull", cmd_pull, RUN_SETUP | NEED_WORK_TREE },

@@ -106,6 +106,7 @@
 /git-pack-refs
 /git-parse-remote
 /git-patch-id
+/git-prime-clone
 /git-prune
 /git-prune-packed
 /git-pull
