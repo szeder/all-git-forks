@@ -415,14 +415,6 @@ this_nth_commit_message () {
 	8) gettext "This is the 8th commit message:";;
 	9) gettext "This is the 9th commit message:";;
 	10) gettext "This is the 10th commit message:";;
-	# TRANSLATORS: if the language you are translating into
-	# doesn't allow you to compose a sentence in this fashion,
-	# consider translating as if this and the following few strings
-	# were "This is the commit message ${n}:"
-	*1[0-9]|*[04-9]) eval_gettext "This is the \${n}th commit message:";;
-	*1) eval_gettext "This is the \${n}st commit message:";;
-	*2) eval_gettext "This is the \${n}nd commit message:";;
-	*3) eval_gettext "This is the \${n}rd commit message:";;
 	*) eval_gettext "This is the commit message \${n}:";;
 	esac
 }
@@ -439,14 +431,6 @@ skip_nth_commit_message () {
 	8) gettext "The 8th commit message will be skipped:";;
 	9) gettext "The 9th commit message will be skipped:";;
 	10) gettext "The 10th commit message will be skipped:";;
-	# TRANSLATORS: if the language you are translating into
-	# doesn't allow you to compose a sentence in this fashion,
-	# consider translating as if this and the following few strings
-	# were "The commit message ${n} will be skipped:"
-	*1[0-9]|*[04-9]) eval_gettext "The \${n}th commit message will be skipped:";;
-	*1) eval_gettext "The \${n}st commit message will be skipped:";;
-	*2) eval_gettext "The \${n}nd commit message will be skipped:";;
-	*3) eval_gettext "The \${n}rd commit message will be skipped:";;
 	*) eval_gettext "The commit message \${n} will be skipped:";;
 	esac
 }
