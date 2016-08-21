@@ -383,6 +383,17 @@ test_expect_success 'Check that :track[short] works when upstream is invalid' '
 	test_cmp expected actual
 '
 
+test_expect_success 'Check that :gone produces expected results' '
+	cat >expected <<-\EOF &&
+gone
+	EOF
+	test_config branch.master.merge refs/heads/does-not-exist &&
+	git for-each-ref \
+		--format="%(upstream:gone)" \
+		refs/heads >actual &&
+	test_cmp expected actual
+'
+
 test_expect_success 'Check for invalid refname format' '
 	test_must_fail git for-each-ref --format="%(refname:INVALID)"
 '

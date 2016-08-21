@@ -37,7 +37,7 @@ static struct used_atom {
 	union {
 		char color[COLOR_MAXLEN];
 		struct align align;
-		enum { RR_NORMAL, RR_SHORTEN, RR_TRACK, RR_TRACKSHORT }
+		enum { RR_NORMAL, RR_SHORTEN, RR_TRACK, RR_TRACKSHORT, RR_GONE }
 			remote_ref;
 		struct {
 			enum { C_BARE, C_BODY, C_BODY_DEP, C_LINES, C_SIG, C_SUB } option;
@@ -67,6 +67,8 @@ static void remote_ref_atom_parser(struct used_atom *atom, const char *arg)
 		atom->u.remote_ref = RR_TRACK;
 	else if (!strcmp(arg, "trackshort"))
 		atom->u.remote_ref = RR_TRACKSHORT;
+	else if (!strcmp(arg, "gone"))
+		atom->u.remote_ref = RR_GONE;
 	else
 		die(_("unrecognized format: %%(%s)"), atom->name);
 }
@@ -923,6 +925,11 @@ static void fill_remote_ref_details(struct used_atom *atom, const char *refname,
 			*s = ">";
 		else
 			*s = "<>";
+	} else if (atom->u.remote_ref == RR_GONE) {
+		if (stat_tracking_info(branch, &num_ours, &num_theirs, NULL) < 0)
+			*s = "gone";
+		else
+			*s = "";
 	} else /* RR_NORMAL */
 		*s = refname;
 }
