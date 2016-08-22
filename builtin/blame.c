@@ -48,10 +48,11 @@ static int show_root;
 static int reverse;
 static int blank_boundary;
 static int incremental;
-static int xdl_opts;
 static int abbrev = -1;
 static int no_whole_file_rename;
 static int show_progress;
+
+static struct rev_info revs;
 
 static struct date_mode blame_date_mode = { DATE_ISO8601 };
 static size_t blame_date_width;
@@ -137,11 +138,12 @@ struct progress_info {
 static int diff_hunks(mmfile_t *file_a, mmfile_t *file_b,
 		      xdl_emit_hunk_consume_func_t hunk_func, void *cb_data)
 {
-	xpparam_t xpp = {0};
+	xpparam_t xpp;
 	xdemitconf_t xecfg = {0};
 	xdemitcb_t ecb = {NULL};
 
-	xpp.flags = xdl_opts;
+	memset(&xpp, 0, sizeof(xpp));
+	xpp.flags = revs.diffopt.xdl_opts;
 	xecfg.hunk_func = hunk_func;
 	ecb.priv = cb_data;
 	return xdi_diff(file_a, file_b, &xpp, &xecfg, &ecb);
@@ -2517,7 +2519,6 @@ static int blame_move_callback(const struct option *option, const char *arg, int
 
 int cmd_blame(int argc, const char **argv, const char *prefix)
 {
-	struct rev_info revs;
 	const char *path;
 	struct scoreboard sb;
 	struct origin *o;
@@ -2548,8 +2549,6 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		OPT_BIT('l', NULL, &output_option, N_("Show long commit SHA1 (Default: off)"), OUTPUT_LONG_OBJECT_NAME),
 		OPT_BIT('s', NULL, &output_option, N_("Suppress author name and timestamp (Default: off)"), OUTPUT_NO_AUTHOR),
 		OPT_BIT('e', "show-email", &output_option, N_("Show author email instead of name (Default: off)"), OUTPUT_SHOW_EMAIL),
-		OPT_BIT('w', NULL, &xdl_opts, N_("Ignore whitespace differences"), XDF_IGNORE_WHITESPACE),
-		OPT_BIT(0, "minimal", &xdl_opts, N_("Spend extra cycles to find better match"), XDF_NEED_MINIMAL),
 		OPT_STRING('S', NULL, &revs_file, N_("file"), N_("Use revisions from <file> instead of calling git-rev-list")),
 		OPT_STRING(0, "contents", &contents_from, N_("file"), N_("Use <file>'s contents as the final image")),
 		{ OPTION_CALLBACK, 'C', NULL, &opt, N_("score"), N_("Find line copies within and across files"), PARSE_OPT_OPTARG, blame_copy_callback },
