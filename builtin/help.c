@@ -37,8 +37,10 @@ static int show_all = 0;
 static int show_guides = 0;
 static unsigned int colopts;
 static enum help_format help_format = HELP_FORMAT_NONE;
+static int cmd_only;
 static struct option builtin_help_options[] = {
 	OPT_BOOL('a', "all", &show_all, N_("print all available commands")),
+	OPT_BOOL('c', "command-only", &cmd_only, N_("show help only for commands")),
 	OPT_BOOL('g', "guides", &show_guides, N_("print list of useful guides")),
 	OPT_SET_INT('m', "man", &help_format, N_("show man page"), HELP_FORMAT_MAN),
 	OPT_SET_INT('w', "web", &help_format, N_("show manual in web browser"),
@@ -379,17 +381,10 @@ static void get_html_page_path(struct strbuf *page_path, const char *page)
 	free(to_free);
 }
 
-/*
- * If open_html is not defined in a platform-specific way (see for
- * example compat/mingw.h), we use the script web--browse to display
- * HTML.
- */
-#ifndef open_html
 static void open_html(const char *path)
 {
 	execl_git_cmd("web--browse", "-c", "help.browser", path, (char *)NULL);
 }
-#endif
 
 static void show_html_page(const char *git_cmd)
 {
@@ -433,17 +428,24 @@ static void list_common_guides_help(void)
 	putchar('\n');
 }
 
-static void check_git_cmd(const char* cmd) {
-	char *alias = alias_lookup(cmd);
+static const char *check_git_cmd(const char* cmd)
+{
+	char *alias;
 
-	if (!is_git_command(cmd)) {
-		if (alias) {
-			printf_ln(_("`git %s' is aliased to `%s'"), cmd, alias);
-			free(alias);
-			exit(0);
-		} else
-			help_unknown_cmd(cmd);
+	if (is_git_command(cmd))
+		return cmd;
+
+	alias = alias_lookup(cmd);
+	if (alias) {
+		printf_ln(_("`git %s' is aliased to `%s'"), cmd, alias);
+		free(alias);
+		exit(0);
 	}
+
+	if (cmd_only)
+		return help_unknown_cmd(cmd);
+
+	return cmd;
 }
 
 int cmd_help(int argc, const char **argv, const char *prefix)
@@ -488,7 +490,7 @@ int cmd_help(int argc, const char **argv, const char *prefix)
 	if (help_format == HELP_FORMAT_NONE)
 		help_format = parse_help_format(DEFAULT_HELP_FORMAT);
 
-	check_git_cmd(argv[0]);
+	argv[0] = check_git_cmd(argv[0]);
 
 	switch (help_format) {
 	case HELP_FORMAT_NONE:

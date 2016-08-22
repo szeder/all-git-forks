@@ -129,20 +129,20 @@ static void show_commit(struct commit *commit, void *data)
 			graph_show_commit_msg(revs->graph, stdout, &buf);
 
 			/*
-				* Add a newline after the commit message.
-				*
-				* Usually, this newline produces a blank
-				* padding line between entries, in which case
-				* we need to add graph padding on this line.
-				*
-				* However, the commit message may not end in a
-				* newline.  In this case the newline simply
-				* ends the last line of the commit message,
-				* and we don't need any graph output.  (This
-				* always happens with CMIT_FMT_ONELINE, and it
-				* happens with CMIT_FMT_USERFORMAT when the
-				* format doesn't explicitly end in a newline.)
-				*/
+			 * Add a newline after the commit message.
+			 *
+			 * Usually, this newline produces a blank
+			 * padding line between entries, in which case
+			 * we need to add graph padding on this line.
+			 *
+			 * However, the commit message may not end in a
+			 * newline.  In this case the newline simply
+			 * ends the last line of the commit message,
+			 * and we don't need any graph output.  (This
+			 * always happens with CMIT_FMT_ONELINE, and it
+			 * happens with CMIT_FMT_USERFORMAT when the
+			 * format doesn't explicitly end in a newline.)
+			 */
 			if (buf.len && buf.buf[buf.len - 1] == '\n')
 				graph_show_padding(revs->graph);
 			putchar('\n');

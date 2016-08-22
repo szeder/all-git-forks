@@ -72,7 +72,7 @@ static void graph_show_line_prefix(const struct diff_options *diffopt)
 
 	fwrite(diffopt->line_prefix,
 	       sizeof(char),
-	       strlen(diffopt->line_prefix),
+	       diffopt->line_prefix_length,
 	       diffopt->file);
 }
 
@@ -215,13 +215,14 @@ static struct strbuf *diff_output_prefix_callback(struct diff_options *opt, void
 
 	strbuf_reset(&msgbuf);
 	if (opt->line_prefix)
-		strbuf_addstr(&msgbuf, opt->line_prefix);
+		strbuf_add(&msgbuf, opt->line_prefix,
+			   opt->line_prefix_length);
 	if (graph)
 		graph_padding_line(graph, &msgbuf);
 	return &msgbuf;
 }
 
-static const struct diff_options *default_diffopt = NULL;
+static const struct diff_options *default_diffopt;
 
 void graph_setup_line_prefix(struct diff_options *diffopt)
 {
@@ -1214,10 +1215,10 @@ void graph_show_commit(struct git_graph *graph)
 	struct strbuf msgbuf = STRBUF_INIT;
 	int shown_commit_line = 0;
 
-	if (!graph) {
-		graph_show_line_prefix(default_diffopt);
+	graph_show_line_prefix(default_diffopt);
+
+	if (!graph)
 		return;
-	}
 
 	/*
 	 * When showing a diff of a merge against each of its parents, we
@@ -1231,11 +1232,12 @@ void graph_show_commit(struct git_graph *graph)
 
 	while (!shown_commit_line && !graph_is_commit_finished(graph)) {
 		shown_commit_line = graph_next_line(graph, &msgbuf);
-		graph_show_line_prefix(&graph->revs->diffopt);
 		fwrite(msgbuf.buf, sizeof(char), msgbuf.len,
 			graph->revs->diffopt.file);
-		if (!shown_commit_line)
+		if (!shown_commit_line) {
 			putc('\n', graph->revs->diffopt.file);
+			graph_show_line_prefix(&graph->revs->diffopt);
+		}
 		strbuf_setlen(&msgbuf, 0);
 	}
 
@@ -1246,13 +1248,12 @@ void graph_show_oneline(struct git_graph *graph)
 {
 	struct strbuf msgbuf = STRBUF_INIT;
 
-	if (!graph) {
-		graph_show_line_prefix(default_diffopt);
+	graph_show_line_prefix(default_diffopt);
+
+	if (!graph)
 		return;
-	}
 
 	graph_next_line(graph, &msgbuf);
-	graph_show_line_prefix(&graph->revs->diffopt);
 	fwrite(msgbuf.buf, sizeof(char), msgbuf.len, graph->revs->diffopt.file);
 	strbuf_release(&msgbuf);
 }
@@ -1261,13 +1262,12 @@ void graph_show_padding(struct git_graph *graph)
 {
 	struct strbuf msgbuf = STRBUF_INIT;
 
-	if (!graph) {
-		graph_show_line_prefix(default_diffopt);
+	graph_show_line_prefix(default_diffopt);
+
+	if (!graph)
 		return;
-	}
 
 	graph_padding_line(graph, &msgbuf);
-	graph_show_line_prefix(&graph->revs->diffopt);
 	fwrite(msgbuf.buf, sizeof(char), msgbuf.len, graph->revs->diffopt.file);
 	strbuf_release(&msgbuf);
 }
@@ -1277,28 +1277,27 @@ int graph_show_remainder(struct git_graph *graph)
 	struct strbuf msgbuf = STRBUF_INIT;
 	int shown = 0;
 
-	if (!graph) {
-		graph_show_line_prefix(default_diffopt);
-		return 0;
-	}
+	graph_show_line_prefix(default_diffopt);
 
-	if (graph_is_commit_finished(graph)) {
-		graph_show_line_prefix(&graph->revs->diffopt);
+	if (!graph)
 		return 0;
-	}
+
+	if (graph_is_commit_finished(graph))
+		return 0;
 
 	for (;;) {
 		graph_next_line(graph, &msgbuf);
-		graph_show_line_prefix(&graph->revs->diffopt);
 		fwrite(msgbuf.buf, sizeof(char), msgbuf.len,
 			graph->revs->diffopt.file);
 		strbuf_setlen(&msgbuf, 0);
 		shown = 1;
 
-		if (!graph_is_commit_finished(graph))
+		if (!graph_is_commit_finished(graph)) {
 			putc('\n', graph->revs->diffopt.file);
-		else
+			graph_show_line_prefix(&graph->revs->diffopt);
+		} else {
 			break;
+		}
 	}
 	strbuf_release(&msgbuf);
 

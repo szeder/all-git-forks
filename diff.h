@@ -83,7 +83,6 @@ typedef struct strbuf *(*diff_prefix_fn_t)(struct diff_options *opt, void *data)
 #define DIFF_OPT_DIRSTAT_BY_FILE     (1 << 20)
 #define DIFF_OPT_ALLOW_TEXTCONV      (1 << 21)
 #define DIFF_OPT_DIFF_FROM_CONTENTS  (1 << 22)
-/* (1 << 23) unused */
 #define DIFF_OPT_DIRTY_SUBMODULES    (1 << 24)
 #define DIFF_OPT_IGNORE_UNTRACKED_IN_SUBMODULES (1 << 25)
 #define DIFF_OPT_IGNORE_DIRTY_SUBMODULES (1 << 26)
@@ -113,7 +112,7 @@ enum diff_words_type {
 enum diff_submodule_format {
 	DIFF_SUBMODULE_SHORT = 0,
 	DIFF_SUBMODULE_LOG,
-	DIFF_SUBMODULE_DIFF
+	DIFF_SUBMODULE_INLINE_DIFF
 };
 
 struct diff_options {
@@ -122,6 +121,7 @@ struct diff_options {
 	const char *single_follow;
 	const char *a_prefix, *b_prefix;
 	const char *line_prefix;
+	size_t line_prefix_length;
 	unsigned flags;
 	unsigned touched_flags;
 

@@ -134,10 +134,10 @@ static int parse_submodule_params(struct diff_options *options, const char *valu
 {
 	if (!strcmp(value, "log"))
 		options->submodule_format = DIFF_SUBMODULE_LOG;
-	else if (!strcmp(value, "diff"))
-		options->submodule_format = DIFF_SUBMODULE_DIFF;
 	else if (!strcmp(value, "short"))
 		options->submodule_format = DIFF_SUBMODULE_SHORT;
+	else if (!strcmp(value, "diff"))
+		options->submodule_format = DIFF_SUBMODULE_INLINE_DIFF;
 	else
 		return -1;
 	return 0;
@@ -2323,18 +2323,20 @@ static void builtin_diff(const char *name_a,
 		const char *add = diff_get_color_opt(o, DIFF_FILE_NEW);
 		show_submodule_summary(o->file, one->path ? one->path : two->path,
 				line_prefix,
-				one->oid.hash, two->oid.hash,
+				&one->oid, &two->oid,
 				two->dirty_submodule,
 				meta, del, add, reset);
 		return;
-	} else if (o->submodule_format == DIFF_SUBMODULE_DIFF &&
+	} else if (o->submodule_format == DIFF_SUBMODULE_INLINE_DIFF &&
 		   (!one->mode || S_ISGITLINK(one->mode)) &&
 		   (!two->mode || S_ISGITLINK(two->mode))) {
-		show_submodule_diff(o->file, one->path ? one->path : two->path,
+		const char *del = diff_get_color_opt(o, DIFF_FILE_OLD);
+		const char *add = diff_get_color_opt(o, DIFF_FILE_NEW);
+		show_submodule_inline_diff(o->file, one->path ? one->path : two->path,
 				line_prefix,
-				one->oid.hash, two->oid.hash,
+				&one->oid, &two->oid,
 				two->dirty_submodule,
-				meta, a_prefix, b_prefix, reset);
+				meta, del, add, reset, o);
 		return;
 	}
 
@@ -3991,6 +3993,7 @@ int diff_opt_parse(struct diff_options *options,
 	}
 	else if ((argcount = parse_long_opt("line-prefix", av, &optarg))) {
 		options->line_prefix = optarg;
+		options->line_prefix_length = strlen(options->line_prefix);
 		graph_setup_line_prefix(options);
 		return argcount;
 	}
