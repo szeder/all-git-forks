@@ -969,6 +969,10 @@ static int parse_branchname_arg(int argc, const char **argv,
 		has_dash_dash = 1; /* case (3) or (1) */
 	else if (dash_dash_pos >= 2)
 		die(_("only one reference expected, %d given."), dash_dash_pos);
+	else if (starts_with(arg, ":/") &&
+		 check_filename(opts->prefix, arg)) {
+		return 0; /* (3) or (4) -> (2) */
+	}
 
 	if (!strcmp(arg, "-"))
 		arg = "@{-1}";
