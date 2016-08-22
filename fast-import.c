@@ -3003,7 +3003,7 @@ static int parse_from_tag(struct tag *t)
 	return 1;
 }
 
-static int parse_reset_tag(const char *arg)
+static int reset_tag(const char *arg)
 {
 	struct tag *t = lookup_tag(arg);
 	if (!t)
@@ -3017,7 +3017,7 @@ static int parse_reset_tag(const char *arg)
 	return 1;
 }
 
-static void parse_reset_branch(const char *arg)
+static void reset_branch(const char *arg)
 {
 	struct branch *b;
 
@@ -3039,10 +3039,10 @@ static void parse_reset_branch(const char *arg)
 		unread_command_buf = 1;
 }
 
-static void parse_reset(const char *arg)
+static void parse_reset_branch(const char *arg)
 {
-	if (!parse_reset_tag(arg))
-		parse_reset_branch(arg);
+	if (!reset_tag(arg))
+		reset_branch(arg);
 }
 
 static void cat_blob_write(const char *buf, unsigned long size)
@@ -3593,7 +3593,7 @@ int cmd_main(int argc, const char **argv)
 		else if (skip_prefix(command_buf.buf, "tag ", &v))
 			parse_new_tag(v);
 		else if (skip_prefix(command_buf.buf, "reset ", &v))
-			parse_reset(v);
+			parse_reset_branch(v);
 		else if (!strcmp("checkpoint", command_buf.buf))
 			parse_checkpoint();
 		else if (!strcmp("done", command_buf.buf))
