@@ -386,7 +386,9 @@ static void write_branch_report(FILE *rpt, struct branch *b)
 		fputs(" active", rpt);
 	if (b->branch_tree.tree)
 		fputs(" loaded", rpt);
-	if (is_null_sha1(b->branch_tree.versions[1].sha1))
+	if (b->delete)
+		fputs(" delete", rpt);
+	else if (is_null_sha1(b->branch_tree.versions[1].sha1))
 		fputs(" dirty", rpt);
 	fputc('\n', rpt);
 
