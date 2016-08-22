@@ -13,6 +13,8 @@
 #include "sha1-array.h"
 #include "send-pack.h"
 
+#define HTTP_ERROR_GENTLE (1u << 0)
+
 static struct remote *remote;
 /* always ends with a trailing slash */
 static struct strbuf url = STRBUF_INIT;
@@ -244,7 +246,31 @@ static int show_http_message(struct strbuf *type, struct strbuf *charset,
 	return 0;
 }
 
-static struct discovery *discover_refs(const char *service, int for_push)
+static char *http_handle_result(int http_return)
+{
+	struct strbuf error = STRBUF_INIT;
+
+	switch (http_return) {
+	case HTTP_OK:
+		return NULL;
+	case HTTP_MISSING_TARGET:
+		strbuf_addf(&error, "repository '%s' not found", url.buf);
+		break;
+	case HTTP_NOAUTH:
+		strbuf_addf(&error, "Authentication failed for '%s'",
+			    url.buf);
+		break;
+	default:
+		strbuf_addf(&error, "unable to access '%s': %s", url.buf,
+			    curl_errorstr);
+		break;
+	}
+
+	return strbuf_detach(&error, NULL);
+}
+
+static int request_service(char const *const service, char **buffer_full,
+			    char **buffer_msg, size_t *buffer_len, int flags)
 {
 	struct strbuf exp = STRBUF_INIT;
 	struct strbuf type = STRBUF_INIT;
@@ -252,13 +278,9 @@ static struct discovery *discover_refs(const char *service, int for_push)
 	struct strbuf buffer = STRBUF_INIT;
 	struct strbuf refs_url = STRBUF_INIT;
 	struct strbuf effective_url = STRBUF_INIT;
-	struct discovery *last = last_discovery;
-	int http_ret, maybe_smart = 0;
-	struct http_get_options options;
-
-	if (last && !strcmp(service, last->service))
-		return last;
-	free_discovery(last);
+	int http_ret, maybe_smart = 0, ran_smart = 0;
+	struct http_get_options get_options;
+	const char *error_string;
 
 	strbuf_addf(&refs_url, "%sinfo/refs", url.buf);
 	if ((starts_with(url.buf, "http://") || starts_with(url.buf, "https://")) &&
@@ -271,45 +293,41 @@ static struct discovery *discover_refs(const char *service, int for_push)
 		strbuf_addf(&refs_url, "service=%s", service);
 	}
 
-	memset(&options, 0, sizeof(options));
-	options.content_type = &type;
-	options.charset = &charset;
-	options.effective_url = &effective_url;
-	options.base_url = &url;
-	options.no_cache = 1;
-	options.keep_error = 1;
+	memset(&get_options, 0, sizeof(get_options));
+	get_options.content_type = &type;
+	get_options.charset = &charset;
+	get_options.effective_url = &effective_url;
+	get_options.base_url = &url;
+	get_options.no_cache = 1;
+	get_options.keep_error = 1;
 
-	http_ret = http_get_strbuf(refs_url.buf, &buffer, &options);
-	switch (http_ret) {
-	case HTTP_OK:
-		break;
-	case HTTP_MISSING_TARGET:
-		show_http_message(&type, &charset, &buffer);
-		die("repository '%s' not found", url.buf);
-	case HTTP_NOAUTH:
-		show_http_message(&type, &charset, &buffer);
-		die("Authentication failed for '%s'", url.buf);
-	default:
-		show_http_message(&type, &charset, &buffer);
-		die("unable to access '%s': %s", url.buf, curl_errorstr);
+	http_ret = http_get_strbuf(refs_url.buf, &buffer, &get_options);
+	error_string = http_handle_result(http_ret);
+	if (error_string) {
+		if (!(flags & HTTP_ERROR_GENTLE)) {
+			show_http_message(&type, &charset, &buffer);
+			die("%s", error_string);
+		}
+		else if (options.verbosity > 1) {
+			show_http_message(&type, &charset, &buffer);
+			fprintf(stderr, "%s\n", error_string);
+		}
 	}
 
-	last= xcalloc(1, sizeof(*last_discovery));
-	last->service = service;
-	last->buf_alloc = strbuf_detach(&buffer, &last->len);
-	last->buf = last->buf_alloc;
+	*buffer_full = strbuf_detach(&buffer, buffer_len);
+	*buffer_msg = *buffer_full;
 
 	strbuf_addf(&exp, "application/x-%s-advertisement", service);
 	if (maybe_smart &&
-	    (5 <= last->len && last->buf[4] == '#') &&
-	    !strbuf_cmp(&exp, &type)) {
+	    (5 <= *buffer_len && (*buffer_msg)[4] == '#') &&
+	    !strbuf_cmp(&exp, &type) && http_ret == HTTP_OK) {
 		char *line;
 
 		/*
 		 * smart HTTP response; validate that the service
 		 * pkt-line matches our request.
 		 */
-		line = packet_read_line_buf(&last->buf, &last->len, NULL);
+		line = packet_read_line_buf(buffer_msg, buffer_len, NULL);
 
 		strbuf_reset(&exp);
 		strbuf_addf(&exp, "# service=%s", service);
@@ -321,16 +339,11 @@ static struct discovery *discover_refs(const char *service, int for_push)
 		 * until a packet flush marker.  Ignore these now, but
 		 * in the future we might start to scan them.
 		 */
-		while (packet_read_line_buf(&last->buf, &last->len, NULL))
+		while (packet_read_line_buf(buffer_msg, buffer_len, NULL))
 			;
 
-		last->proto_git = 1;
+		ran_smart = 1;
 	}
-
-	if (last->proto_git)
-		last->refs = parse_git_refs(last, for_push);
-	else
-		last->refs = parse_info_refs(last);
 
 	strbuf_release(&refs_url);
 	strbuf_release(&exp);
@@ -338,6 +351,68 @@ static struct discovery *discover_refs(const char *service, int for_push)
 	strbuf_release(&charset);
 	strbuf_release(&effective_url);
 	strbuf_release(&buffer);
+
+	return ran_smart;
+}
+
+static void prime_clone(void)
+{
+	char *result, *result_full, *line;
+	size_t result_len;
+	int err = 0, one_successful = 0;
+
+	if (request_service("git-prime-clone", &result_full, &result,
+			&result_len, HTTP_ERROR_GENTLE)) {
+		while (line = packet_read_line_buf_gentle(&result, &result_len,
+							  NULL)) {
+			char *space = strchr(line ,' ');
+
+			// We will eventually support multiple resources, so
+			// always parse the whole message
+			if (err)
+				continue;
+			if (!space || strchr(space + 1, ' ')) {
+				if (options.verbosity > 1)
+					fprintf(stderr, "prime clone "
+						"protocol error: got '%s'\n",
+						line);
+				printf("error\n");
+				err = 1;
+				continue;
+			}
+
+			one_successful = 1;
+			printf("%s\n", line);
+		}
+		if (!one_successful && options.verbosity > 1)
+			fprintf(stderr, "did not get required components for "
+				"alternate resource\n");
+	}
+
+	printf("\n");
+	fflush(stdout);
+	free(result_full);
+}
+
+
+static struct discovery *discover_refs(const char *service, int for_push)
+{
+	struct discovery *last = last_discovery;
+
+	if (last && !strcmp(service, last->service))
+		return last;
+	free_discovery(last);
+
+	last= xcalloc(1, sizeof(*last_discovery));
+	last->service = service;
+	last->proto_git = request_service(service, &last->buf_alloc,
+					  &last->buf, &last->len, 0);
+
+	if (last->proto_git)
+		last->refs = parse_git_refs(last, for_push);
+	else
+		last->refs = parse_info_refs(last);
+
 	last_discovery = last;
 	return last;
 }
@@ -1030,7 +1105,8 @@ int main(int argc, const char **argv)
 		} else if (!strcmp(buf.buf, "list") || starts_with(buf.buf, "list ")) {
 			int for_push = !!strstr(buf.buf + 4, "for-push");
 			output_refs(get_refs(for_push));
-
+		} else if (!strcmp(buf.buf, "prime-clone")) {
+			prime_clone();
 		} else if (starts_with(buf.buf, "push ")) {
 			parse_push(&buf);
 
@@ -1056,6 +1132,7 @@ int main(int argc, const char **argv)
 			printf("fetch\n");
 			printf("option\n");
 			printf("push\n");
+			printf("prime-clone\n");
 			printf("check-connectivity\n");
 			printf("\n");
 			fflush(stdout);
