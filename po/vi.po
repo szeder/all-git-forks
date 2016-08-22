@@ -4626,7 +4626,7 @@ msgstr "tham chiếu không hợp lệ: %s"
 #: builtin/checkout.c:1037
 #, c-format
 msgid "reference is not a tree: %s"
-msgstr "tham chiếu không phải là một cây:%s"
+msgstr "tham chiếu không phải là một cây: %s"
 
 #: builtin/checkout.c:1076
 msgid "paths cannot be used with switching branches"
