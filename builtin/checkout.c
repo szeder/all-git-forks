@@ -973,6 +973,22 @@ static int parse_branchname_arg(int argc, const char **argv,
 	if (!strcmp(arg, "-"))
 		arg = "@{-1}";
 
+	if (dash_dash_pos < 0 && starts_with(arg, ":/") &&
+	    check_filename(opts->prefix, arg)) {
+		/*
+		 * Normally if the first argument is ambiguous, we
+		 * choose to believe the user specifies an extended
+		 * SHA-1 syntax unless it turns out not true, then we
+		 * see if it's a pathspec.
+		 *
+		 * :/ here is an exception because resolving :/abc may
+		 * involve walking through the entire commit
+		 * graph. Expensive and slow. If :/abc points to an
+		 * existing file, ignore ambiguity and go with
+		 * pathspec (i.e. skip get_sha1_mb()).
+		 */
+		return 0;	/* case (2) */
+	}
 	if (get_sha1_mb(arg, rev)) {
 		/*
 		 * Either case (3) or (4), with <something> not being
