@@ -32,6 +32,7 @@ static const char * const git_bisect_helper_usage[] = {
 	N_("git bisect--helper --bisect-autostart"),
 	N_("git bisect--helper --bisect-state (bad|new) [<rev>]"),
 	N_("git bisect--helper --bisect-state (good|old) [<rev>...]"),
+	N_("git bisect--helper --bisect-replay <filename>"),
 	NULL
 };
 
@@ -879,6 +880,93 @@ static int bisect_log(void)
 	return 0;
 }
 
+static int get_next_word(struct strbuf *line, struct strbuf *word)
+{
+	int i;
+	for (i = 0; line->buf[i] != ' ' && line->buf[i] != '\0'; i++)
+		strbuf_addch(word, line->buf[i]);
+
+	return 0;
+}
+
+static int bisect_replay(struct bisect_terms *terms, const char *filename)
+{
+	struct strbuf line = STRBUF_INIT;
+	FILE *fp;
+
+	if (is_empty_or_missing_file(filename))
+		die(_("no such file with name '%s' exists"), filename);
+
+	if (bisect_reset(NULL))
+		return -1;
+
+	fp = fopen(filename, "r");
+
+	while (strbuf_getline(&line, fp) != EOF) {
+		struct strbuf command = STRBUF_INIT;
+		if (starts_with(line.buf, "git bisect ") ||
+		    starts_with(line.buf, "git-bisect "))
+			strbuf_remove(&line, 0, 11);
+		else
+			continue;
+
+		get_terms(terms);
+		get_next_word(&line, &command);
+		if (check_and_set_terms(terms, command.buf)) {
+			strbuf_release(&line);
+			strbuf_release(&command);
+		}
+
+		if (line.buf[command.len] != '\0')
+			strbuf_remove(&line, 0, command.len + 1);
+		else
+			strbuf_remove(&line, 0, command.len);
+
+		if (!strcmp(command.buf, "start")) {
+			struct argv_array argv = ARGV_ARRAY_INIT;
+			sq_dequote_to_argv_array(line.buf, &argv);
+			if (bisect_start(terms, 0, argv.argv, argv.argc)) {
+				strbuf_release(&command);
+				strbuf_release(&line);
+				argv_array_clear(&argv);
+				return -1;
+			}
+			argv_array_clear(&argv);
+			continue;
+		}
+
+		if (one_of(command.buf, terms->term_good.buf,
+		    terms->term_bad.buf, "skip", NULL)) {
+			if (bisect_write(command.buf, line.buf, terms, 0)) {
+				strbuf_release(&command);
+				strbuf_release(&line);
+				return -1;
+			}
+			continue;
+		}
+
+		if (!strcmp(command.buf, "terms")) {
+			struct argv_array argv = ARGV_ARRAY_INIT;
+			sq_dequote_to_argv_array(line. buf, &argv);
+			if (bisect_terms(terms, argv.argv, argv.argc)) {
+				strbuf_release(&command);
+				strbuf_release(&line);
+				argv_array_clear(&argv);
+				return -1;
+			}
+			argv_array_clear(&argv);
+			continue;
+		}
+
+		strbuf_release(&command);
+		strbuf_release(&line);
+		die(_("?? what are you talking about?"));
+	}
+	strbuf_release(&line);
+
+	return bisect_auto_next(terms, NULL);
+}
+
 int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 {
 	enum {
@@ -892,7 +980,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 		BISECT_AUTO_NEXT,
 		BISECT_AUTOSTART,
 		BISECT_STATE,
-		BISECT_LOG
+		BISECT_LOG,
+		BISECT_REPLAY
 	} cmdmode = 0;
 	int no_checkout = 0, res = 0;
 	struct option options[] = {
@@ -918,6 +1007,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 			 N_("mark the state of ref (or refs)"), BISECT_STATE),
 		OPT_CMDMODE(0, "bisect-log", &cmdmode,
 			 N_("output the contents of BISECT_LOG"), BISECT_LOG),
+		OPT_CMDMODE(0, "bisect-replay", &cmdmode,
+			 N_("replay the bisection process from the given file"), BISECT_REPLAY),
 		OPT_BOOL(0, "no-checkout", &no_checkout,
 			 N_("update BISECT_HEAD instead of checking out the current commit")),
 		OPT_END()
@@ -1000,6 +1091,13 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 		if (argc > 1)
 			die(_("--bisect-log requires 0 arguments"));
 		res = bisect_log();
+		break;
+	case BISECT_REPLAY:
+		if (argc != 1)
+			die(_("--bisect-replay requires 1 argument"));
+		strbuf_addstr(&terms.term_good, "good");
+		strbuf_addstr(&terms.term_bad, "bad");
+		res = bisect_replay(&terms, argv[0]);
 		break;
 	default:
 		die("BUG: unknown subcommand '%d'", cmdmode);
