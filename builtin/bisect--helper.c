@@ -30,6 +30,7 @@ static const char * const git_bisect_helper_usage[] = {
 					      "[--no-checkout] [<bad> [<good>...]] [--] [<paths>...]"),
 	N_("git bisect--helper --bisect-next"),
 	N_("git bisect--helper --bisect-auto-next"),
+	N_("git bisect--helper --bisect-autostart"),
 	NULL
 };
 
@@ -37,6 +38,8 @@ struct bisect_terms {
 	struct strbuf term_good;
 	struct strbuf term_bad;
 };
+
+static int bisect_autostart(struct bisect_terms *terms);
 
 static void bisect_terms_init(struct bisect_terms *terms)
 {
@@ -410,6 +413,7 @@ static int bisect_next(struct bisect_terms *terms, const char *prefix)
 {
 	int res, no_checkout;
 
+	bisect_autostart(terms);
 	/* In case of mistaken revs or checkout error, or signals received,
 	 * "bisect_auto_next" below may exit or misbehave.
 	 * We have to trap this to be able to clean up using
@@ -760,6 +764,32 @@ static int bisect_start(struct bisect_terms *terms, int no_checkout,
 	return bisect_auto_next(terms, NULL);
 }
 
+static int bisect_autostart(struct bisect_terms *terms)
+{
+	if (is_empty_or_missing_file(git_path_bisect_start())) {
+		const char *yesno;
+		const char *argv[] = {NULL};
+		fprintf(stderr, _("You need to start by \"git bisect "
+				  "start\"\n"));
+
+		if (!isatty(0))
+			return 1;
+
+		/*
+		 * TRANSLATORS: Make sure to include [Y] and [n] in your
+		 * translation. THe program will only accept English input
+		 * at this point.
+		 */
+		yesno = git_prompt(_("Do you want me to do it for you "
+				     "[Y/n]? "), PROMPT_ECHO);
+		if (starts_with(yesno, "n") || starts_with(yesno, "N"))
+			exit(0);
+
+		return bisect_start(terms, 0, argv, 0);
+	}
+	return 0;
+}
+
 int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 {
 	enum {
@@ -773,6 +803,7 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 		BISECT_START,
 		BISECT_NEXT,
 		BISECT_AUTO_NEXT,
+		BISECT_AUTOSTART,
 	} cmdmode = 0;
 	int no_checkout = 0, res = 0;
 	struct option options[] = {
@@ -796,6 +827,8 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 			 N_("find the next bisection commit"), BISECT_NEXT),
 		OPT_CMDMODE(0, "bisect-auto-next", &cmdmode,
 			 N_("verify the next bisection state then find the next bisection state"), BISECT_AUTO_NEXT),
+		OPT_CMDMODE(0, "bisect-autostart", &cmdmode,
+			 N_("start the bisection if BISECT_START empty or missing"), BISECT_AUTOSTART),
 		OPT_BOOL(0, "no-checkout", &no_checkout,
 			 N_("update BISECT_HEAD instead of checking out the current commit")),
 		OPT_END()
@@ -868,6 +901,13 @@ int cmd_bisect__helper(int argc, const char **argv, const char *prefix)
 			die(_("--bisect-auto-next requires 0 arguments"));
 		get_terms(&terms);
 		res = bisect_auto_next(&terms, prefix);
+		break;
+	case BISECT_AUTOSTART:
+		if (argc)
+			die(_("--bisect-autostart requires 0 arguments"));
+		strbuf_addstr(&terms.term_good, "good");
+		strbuf_addstr(&terms.term_bad, "bad");
+		res = bisect_autostart(&terms);
 		break;
 	default:
 		die("BUG: unknown subcommand '%d'", cmdmode);
