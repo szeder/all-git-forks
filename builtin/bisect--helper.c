@@ -541,67 +541,48 @@ static int bisect_start(struct bisect_terms *terms, int no_checkout,
 		no_checkout = 1;
 
 	for (i = 0; i < argc; i++) {
-		const char *arg;
-		if (starts_with(argv[i], "'"))
-			arg = sq_dequote(xstrdup(argv[i]));
-		else
-			arg = argv[i];
-		if (!strcmp(arg, "--")) {
+		if (!strcmp(argv[i], "--")) {
 			has_double_dash = 1;
 			break;
 		}
 	}
 
 	for (i = 0; i < argc; i++) {
-		const char *arg, *commit_id;
-		if (starts_with(argv[i], "'"))
-			arg = sq_dequote(xstrdup(argv[i]));
-		else
-			arg = argv[i];
-		commit_id = xstrfmt("%s^{commit}", arg);
+		const char  *commit_id;
+		commit_id = xstrfmt("%s^{commit}", argv[i]);
 		if (!strcmp(argv[i], "--")) {
 			has_double_dash = 1;
 			break;
-		} else if (!strcmp(arg, "--no-checkout"))
+		} else if (!strcmp(argv[i], "--no-checkout"))
 			no_checkout = 1;
-		else if (!strcmp(arg, "--term-good") ||
-			 !strcmp(arg, "--term-old")) {
-			const char *next_arg;
-			if (starts_with(argv[++i], "'"))
-				next_arg = sq_dequote(xstrdup(argv[i]));
-			else
-				next_arg = argv[i];
+		else if (!strcmp(argv[i], "--term-good") ||
+			 !strcmp(argv[i], "--term-old")) {
 			must_write_terms = 1;
 			strbuf_reset(&terms->term_good);
-			strbuf_addstr(&terms->term_good, next_arg);
-		} else if (skip_prefix(arg, "--term-good=", &arg)) {
+			strbuf_addstr(&terms->term_good, argv[++i]);
+		} else if (skip_prefix(argv[i], "--term-good=", &argv[i])) {
 			must_write_terms = 1;
 			strbuf_reset(&terms->term_good);
-			strbuf_addstr(&terms->term_good, arg);
-		} else if (skip_prefix(arg, "--term-old=", &arg)) {
+			strbuf_addstr(&terms->term_good, argv[i]);
+		} else if (skip_prefix(argv[i], "--term-old=", &argv[i])) {
 			must_write_terms = 1;
 			strbuf_reset(&terms->term_good);
-			strbuf_addstr(&terms->term_good, arg);
-		} else if (!strcmp(arg, "--term-bad") ||
-			 !strcmp(arg, "--term-new")) {
-			const char *next_arg;
-			if (starts_with(argv[++i], "'"))
-				next_arg = sq_dequote(xstrdup(argv[i]));
-			else
-				next_arg = argv[i];
+			strbuf_addstr(&terms->term_good, argv[i]);
+		} else if (!strcmp(argv[i], "--term-bad") ||
+			 !strcmp(argv[i], "--term-new")) {
 			must_write_terms = 1;
 			strbuf_reset(&terms->term_bad);
-			strbuf_addstr(&terms->term_bad, next_arg);
-		} else if (skip_prefix(arg, "--term-bad=", &arg)) {
+			strbuf_addstr(&terms->term_bad, argv[++i]);
+		} else if (skip_prefix(argv[i], "--term-bad=", &argv[i])) {
 			must_write_terms = 1;
 			strbuf_reset(&terms->term_bad);
-			strbuf_addstr(&terms->term_bad, arg);
-		} else if (skip_prefix(arg, "--term-new=", &arg)) {
+			strbuf_addstr(&terms->term_bad, argv[i]);
+		} else if (skip_prefix(argv[i], "--term-new=", &argv[i])) {
 			must_write_terms = 1;
 			strbuf_reset(&terms->term_good);
-			strbuf_addstr(&terms->term_good, arg);
-		} else if (starts_with(arg, "--") &&
-			 !one_of(arg, "--term-good", "--term-bad", NULL)) {
+			strbuf_addstr(&terms->term_good, argv[i]);
+		} else if (starts_with(argv[i], "--") &&
+			 !one_of(argv[i], "--term-good", "--term-bad", NULL)) {
 			string_list_clear(&revs, 0);
 			string_list_clear(&states, 0);
 			die(_("unrecognised option: '%s'"), argv[i]);
