@@ -1804,6 +1804,13 @@ int require_clean_work_tree(const char *action, const char *hint, int gently)
 	struct lock_file *lock_file = xcalloc(1, sizeof(*lock_file));
 	int err = 0;
 
+	if (read_cache() < 0) {
+		error(_("Could not read index"));
+		if (gently)
+			return -1;
+		exit(1);
+	}
+
 	hold_locked_index(lock_file, 0);
 	refresh_cache(REFRESH_QUIET);
 	update_index_if_able(&the_index, lock_file);
