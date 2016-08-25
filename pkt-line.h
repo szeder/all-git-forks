@@ -52,11 +52,15 @@ void packet_buf_write(struct strbuf *buf, const char *fmt, ...) __attribute__((f
  * condition 4 (truncated input), but instead return -1. However, we will still
  * die for the other 3 conditions.
  *
+ * If options contains PACKET_READ_GENTLE_ALL, we will not die on any of the
+ * conditions, but return -1 instead.
+ *
  * If options contains PACKET_READ_CHOMP_NEWLINE, a trailing newline (if
  * present) is removed from the buffer before returning.
  */
 #define PACKET_READ_GENTLE_ON_EOF (1u<<0)
 #define PACKET_READ_CHOMP_NEWLINE (1u<<1)
+#define PACKET_READ_GENTLE_ALL    (1u<<2)
 int packet_read(int fd, char **src_buffer, size_t *src_len, char
 		*buffer, unsigned size, int options);
 
@@ -74,6 +78,18 @@ char *packet_read_line(int fd, int *size);
  * see packet_read for details on how src_* is used.
  */
 char *packet_read_line_buf(char **src_buf, size_t *src_len, int *size);
+
+/*
+ * Same as packet_read_line, but does not die on any errors (uses
+ * PACKET_READ_GENTLE_ALL).
+ */
+char *packet_read_line_gentle(int fd, int *len_p);
+
+/*
+ * Same as packet_read_line_buf, but does not die on any errors (uses
+ * PACKET_READ_GENTLE_ALL).
+ */
+char *packet_read_line_buf_gentle(char **src_buf, size_t *src_len, int *size);
 
 #define DEFAULT_PACKET_MAX 1000
 #define LARGE_PACKET_MAX 65520

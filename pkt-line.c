@@ -155,13 +155,17 @@ static int get_packet_data(int fd, char **src_buf, size_t *src_size,
 		*src_size -= ret;
 	} else {
 		ret = read_in_full(fd, dst, size);
-		if (ret < 0)
+		if (ret < 0) {
+			if (options & PACKET_READ_GENTLE_ALL)
+				return -1;
+
 			die_errno("read error");
+		}
 	}
 
 	/* And complain if we didn't get enough bytes to satisfy the read. */
 	if (ret < size) {
-		if (options & PACKET_READ_GENTLE_ON_EOF)
+		if (options & (PACKET_READ_GENTLE_ON_EOF | PACKET_READ_GENTLE_ALL))
 			return -1;
 
 		die("The remote end hung up unexpectedly");
@@ -205,15 +209,23 @@ int packet_read(int fd, char **src_buf, size_t *src_len,
 	if (ret < 0)
 		return ret;
 	len = packet_length(linelen);
-	if (len < 0)
+	if (len < 0) {
+		if (options & PACKET_READ_GENTLE_ALL)
+			return -1;
+
 		die("protocol error: bad line length character: %.4s", linelen);
+	}
 	if (!len) {
 		packet_trace("0000", 4, 0);
 		return 0;
 	}
 	len -= 4;
-	if (len >= size)
+	if (len >= size) {
+		if (options & PACKET_READ_GENTLE_ALL)
+			return -1;
+
 		die("protocol error: bad line length %d", len);
+	}
 	ret = get_packet_data(fd, src_buf, src_len, buffer, len, options);
 	if (ret < 0)
 		return ret;
@@ -229,22 +241,39 @@ int packet_read(int fd, char **src_buf, size_t *src_len,
 
 static char *packet_read_line_generic(int fd,
 				      char **src, size_t *src_len,
-				      int *dst_len)
+				      int *dst_len, int flags)
 {
 	int len = packet_read(fd, src, src_len,
 			      packet_buffer, sizeof(packet_buffer),
-			      PACKET_READ_CHOMP_NEWLINE);
+			      flags);
 	if (dst_len)
 		*dst_len = len;
-	return len ? packet_buffer : NULL;
+	return len > 0 ? packet_buffer : NULL;
 }
 
 char *packet_read_line(int fd, int *len_p)
 {
-	return packet_read_line_generic(fd, NULL, NULL, len_p);
+	return packet_read_line_generic(fd, NULL, NULL, len_p,
+			PACKET_READ_CHOMP_NEWLINE);
 }
 
 char *packet_read_line_buf(char **src, size_t *src_len, int *dst_len)
 {
-	return packet_read_line_generic(-1, src, src_len, dst_len);
+	return packet_read_line_generic(-1, src, src_len, dst_len,
+			PACKET_READ_CHOMP_NEWLINE);
+}
+
+char *packet_read_line_gentle(int fd, int *len_p)
+{
+	return packet_read_line_generic(fd, NULL, NULL, len_p,
+			PACKET_READ_CHOMP_NEWLINE |
+			PACKET_READ_GENTLE_ALL);
+}
+
+
+char *packet_read_line_buf_gentle(char **src, size_t *src_len, int *dst_len)
+{
+	return packet_read_line_generic(-1, src, src_len, dst_len,
+			PACKET_READ_CHOMP_NEWLINE |
+			PACKET_READ_GENTLE_ALL);
 }
