@@ -11,20 +11,20 @@ rm -f "$fail"
 trap 'echo aborted >"$fail"' TERM INT HUP
 for i in $(seq $GIT_STRESS_LOAD); do
 	(
+		root=$GIT_STRESS_ROOT/root-$i &&
+		mkdir -p "$root" &&
 		cd t &&
 		while ! test -e "$GIT_STRESS_ROOT/fail"
 		do
-			if ./$test \
-			   --root="$GIT_STRESS_ROOT/trash-$i" \
-			   -v -i >"$GIT_STRESS_ROOT/output-$i" 2>&1
+			if ./$test --root="$root" -v -i >"$root/output" 2>&1
 			then
 				echo >&2 "OK $i"
 			else
 				echo >&2 "FAIL $i"
-				cp "$GIT_STRESS_ROOT/output-$i" "$fail"
+				ln -sfT "root-$i" "$fail"
 			fi
 		done
 	) &
 done
 wait
-cat "$fail"
+cat "$fail/output"
