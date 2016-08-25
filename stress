@@ -6,8 +6,9 @@ test=$(cd t && echo $test*.sh)
 : ${GIT_STRESS_ROOT:=/var/ram/git-stress}
 
 mkdir -p "$GIT_STRESS_ROOT" || exit 1
-rm -f "$GIT_STRESS_ROOT/fail"
-trap 'echo aborted >"$GIT_STRESS_ROOT/fail"' TERM INT HUP
+fail="$GIT_STRESS_ROOT/fail"
+rm -f "$fail"
+trap 'echo aborted >"$fail"' TERM INT HUP
 for i in $(seq $GIT_STRESS_LOAD); do
 	(
 		cd t &&
@@ -20,10 +21,10 @@ for i in $(seq $GIT_STRESS_LOAD); do
 				echo >&2 "OK $i"
 			else
 				echo >&2 "FAIL $i"
-				cp "$GIT_STRESS_ROOT/output-$i" "$GIT_STRESS_ROOT/fail"
+				cp "$GIT_STRESS_ROOT/output-$i" "$fail"
 			fi
 		done
 	) &
 done
 wait
-cat "$GIT_STRESS_ROOT/fail"
+cat "$fail"
