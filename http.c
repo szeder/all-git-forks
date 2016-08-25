@@ -10,6 +10,8 @@
 #include "pkt-line.h"
 #include "gettext.h"
 #include "transport.h"
+#include "progress.h"
+#include "dir.h"
 
 #if LIBCURL_VERSION_NUM >= 0x070a08
 long int git_curl_ipresolve = CURL_IPRESOLVE_WHATEVER;
@@ -1136,7 +1138,10 @@ static int handle_curl_result(struct slot_results *results)
 				curl_easy_strerror(results->curl_result),
 				sizeof(curl_errorstr));
 #endif
-		return HTTP_ERROR;
+		if (results->http_code >= 400)
+			return HTTP_ERROR;
+		else
+			return HTTP_ERROR_RESUMABLE;
 	}
 }
 
@@ -1365,6 +1370,40 @@ static void http_opt_request_remainder(CURL *curl, off_t pos)
 #define HTTP_REQUEST_STRBUF	0
 #define HTTP_REQUEST_FILE	1
 
+static int bytes_to_rounded_kb(double bytes)
+{
+	return (int) (bytes + 512)/1024;
+}
+
+int progress_func(void *data, double total_to_download, double now_downloaded,
+		  double total_to_upload, double now_uploadeded)
+{
+	struct progress **progress = data;
+	int kilobytes = total_to_download >= 1024;
+
+	if (total_to_download <= 0.0) {
+		return 0;
+	}
+	if (kilobytes) {
+		now_downloaded = bytes_to_rounded_kb(now_downloaded);
+		total_to_download = bytes_to_rounded_kb(total_to_download);
+	}
+	if (!*progress && now_downloaded < total_to_download) {
+		if (total_to_download > 1024)
+			*progress = start_progress("Downloading (KB)",
+						   total_to_download);
+		else
+			*progress = start_progress("Downloading (B)",
+						   total_to_download);
+	}
+	display_progress(*progress, now_downloaded);
+	if (now_downloaded == total_to_download) {
+		stop_progress(progress);
+	}
+	return 0;
+}
+
+
 static int http_request(const char *url,
 			void *result, int target,
 			const struct http_get_options *options)
@@ -1373,6 +1412,7 @@ static int http_request(const char *url,
 	struct slot_results results;
 	struct curl_slist *headers = NULL;
 	struct strbuf buf = STRBUF_INIT;
+	struct progress *progress = NULL;
 	const char *accept_language;
 	int ret;
 
@@ -1389,6 +1429,16 @@ static int http_request(const char *url,
 			off_t posn = ftello(result);
 			curl_easy_setopt(slot->curl, CURLOPT_WRITEFUNCTION,
 					 fwrite);
+			if (options && options->progress) {
+				curl_easy_setopt(slot->curl,
+						 CURLOPT_NOPROGRESS, 0);
+				curl_easy_setopt(slot->curl,
+						 CURLOPT_PROGRESSFUNCTION,
+						 progress_func);
+				curl_easy_setopt(slot->curl,
+						 CURLOPT_PROGRESSDATA,
+						 &progress);
+			}
 			if (posn > 0)
 				http_opt_request_remainder(slot->curl, posn);
 		} else
@@ -1558,6 +1608,40 @@ cleanup:
 	strbuf_release(&tmpfile);
 	return ret;
 }
+
+int http_download_primer(const char *url, const char *out_file)
+{
+	int ret = 0, try_count = HTTP_TRY_COUNT;
+	struct http_get_options options = {0};
+	options.progress = 1;
+
+	if (file_exists(out_file)) {
+		fprintf(stderr,
+			"File already downloaded: '%s', skipping...\n",
+			out_file);
+		return ret;
+	}
+
+	do {
+		if (try_count != HTTP_TRY_COUNT) {
+			fprintf(stderr, "Connection interrupted for some "
+				"reason, retrying (%d attempts left)\n",
+				try_count);
+			struct timeval time = {10, 0}; // 1s
+			select(0, NULL, NULL, NULL, &time);
+		}
+		ret = http_get_file(url, out_file, &options);
+		try_count--;
+	} while (try_count > 0 && ret == HTTP_ERROR_RESUMABLE);
+
+	if (ret != HTTP_OK) {
+		error("Unable to get resource: %s", url);
+		ret = -1;
+	}
+
+	return ret;
+}
+
 
 int http_fetch_ref(const char *base, struct ref *ref)
 {

@@ -394,6 +394,30 @@ static void prime_clone(void)
 	free(result_full);
 }
 
+static void download_primer(const char *url, const char *base_dir)
+{
+	char *slash_ptr = strchr(url, '/'), *out_file;
+	struct strbuf out_path = STRBUF_INIT;
+	do {
+		out_file = slash_ptr + 1;
+	} while (slash_ptr = strchr(out_file, '/'));
+	strbuf_addf(&out_path, "%s/%s", base_dir, out_file);
+	if (!http_download_primer(url, out_path.buf))
+		printf("%s\n", out_path.buf);
+	printf("\n");
+	fflush(stdout);
+}
+
+static void parse_download_primer(struct strbuf *buf)
+{
+	const char *remote_url;
+	if (skip_prefix(buf->buf, "download-primer ", &remote_url)) {
+		char *base_path;
+		base_path = strchr(remote_url, ' ');
+		*base_path++ = '\0';
+		download_primer(remote_url, base_path);
+	}
+}
 
 static struct discovery *discover_refs(const char *service, int for_push)
 {
@@ -1105,6 +1129,8 @@ int main(int argc, const char **argv)
 		} else if (!strcmp(buf.buf, "list") || starts_with(buf.buf, "list ")) {
 			int for_push = !!strstr(buf.buf + 4, "for-push");
 			output_refs(get_refs(for_push));
+		} else if (starts_with(buf.buf, "download-primer")) {
+			parse_download_primer(&buf);
 		} else if (!strcmp(buf.buf, "prime-clone")) {
 			prime_clone();
 		} else if (starts_with(buf.buf, "push ")) {
@@ -1132,6 +1158,7 @@ int main(int argc, const char **argv)
 			printf("fetch\n");
 			printf("option\n");
 			printf("push\n");
+			printf("download-primer\n");
 			printf("prime-clone\n");
 			printf("check-connectivity\n");
 			printf("\n");
