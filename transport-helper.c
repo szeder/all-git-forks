@@ -28,7 +28,8 @@ struct helper_data {
 		signed_tags : 1,
 		check_connectivity : 1,
 		no_disconnect_req : 1,
-		no_private_update : 1;
+		no_private_update : 1,
+		prime_clone : 1;
 	char *export_marks;
 	char *import_marks;
 	/* These go from remote name (as in "list") to private name */
@@ -180,6 +181,8 @@ static struct child_process *get_helper(struct transport *transport)
 			data->export = 1;
 		else if (!strcmp(capname, "check-connectivity"))
 			data->check_connectivity = 1;
+		else if (!strcmp(capname, "prime-clone"))
+			data->prime_clone = 1;
 		else if (!data->refspecs && skip_prefix(capname, "refspec ", &arg)) {
 			ALLOC_GROW(refspecs,
 				   refspec_nr + 1,
@@ -248,6 +251,7 @@ static int disconnect_helper(struct transport *transport)
 }
 
 static const char *unsupported_options[] = {
+	TRANS_OPT_PRIMECLONE,
 	TRANS_OPT_UPLOADPACK,
 	TRANS_OPT_RECEIVEPACK,
 	TRANS_OPT_THIN,
@@ -1054,6 +1058,50 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	return ret;
 }
 
+static const struct alt_resource *const get_alt_res_helper(struct transport *transport)
+{
+	struct helper_data *data = transport->data;
+	char *url = NULL, *filetype = NULL;
+	struct alt_resource *ret = NULL;
+	struct strbuf out = STRBUF_INIT;
+	struct child_process *helper = get_helper(transport);
+	int err = 0;
+
+	helper = get_helper(transport);
+	write_constant(helper->in, "prime-clone\n");
+
+	while (!recvline(data, &out)) {
+		char *space = strchr(out.buf, ' ');
+
+		if (!*out.buf)
+			break;
+
+		if (starts_with(out.buf, "error")) {
+			err = 1;
+			continue;
+		}
+
+		if (!space || strchr(space + 1, ' '))
+			die("malformed alternate resource response: %s\n",
+			    out.buf);
+
+		if ((filetype && url) || err)
+			continue;
+
+		filetype = xstrndup(out.buf, (space - out.buf));
+		url = xstrdup(space + 1);
+	}
+
+	if (filetype && url && !err) {
+		ret = xcalloc(1, sizeof(*ret));
+		ret->filetype = filetype;
+		ret->url = url;
+	}
+
+	strbuf_release(&out);
+	return ret;
+}
+
 int transport_helper_init(struct transport *transport, const char *name)
 {
 	struct helper_data *data = xcalloc(1, sizeof(*data));
@@ -1067,6 +1115,7 @@ int transport_helper_init(struct transport *transport, const char *name)
 	transport->data = data;
 	transport->set_option = set_helper_option;
 	transport->get_refs_list = get_refs_list;
+	transport->prime_clone = get_alt_res_helper;
 	transport->fetch = fetch;
 	transport->push_refs = push_refs;
 	transport->disconnect = release_helper;

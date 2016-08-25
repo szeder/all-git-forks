@@ -131,6 +131,9 @@ static int set_git_option(struct git_transport_options *opts,
 	} else if (!strcmp(name, TRANS_OPT_RECEIVEPACK)) {
 		opts->receivepack = value;
 		return 0;
+	} else if (!strcmp(name, TRANS_OPT_PRIMECLONE)) {
+		opts->primeclone = value;
+		return 0;
 	} else if (!strcmp(name, TRANS_OPT_THIN)) {
 		opts->thin = !!value;
 		return 0;
@@ -533,6 +536,42 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	return ret;
 }
 
+const struct alt_resource *const get_alt_res_via_connect(struct transport *transport)
+{
+	struct git_transport_data *data = transport->data;
+	const struct alt_resource *res = NULL;
+	int flags = transport->verbose > 0 ? 0 : CONNECT_SUPPRESS_ERRORS;
+
+	data->conn = git_connect(data->fd, transport->url,
+				 transport->smart_options->primeclone, flags);
+	res = get_alt_res_connect(data->fd[0], flags);
+
+	close(data->fd[0]);
+	close(data->fd[1]);
+	finish_connect(data->conn);
+	data->conn = NULL;
+
+	return res;
+}
+
+const struct alt_resource *const transport_prime_clone(struct transport *transport)
+{
+	if (transport->prime_clone && !transport->alt_res)
+		transport->alt_res = transport->prime_clone(transport);
+	if (transport->verbose > 0) {
+		if (transport->alt_res)
+			// redundant at this point, but will be
+			// more useful in future iterations with
+			// lists of potential resources
+			fprintf(stderr, "alt resource found: %s (%s)\n",
+				transport->alt_res->url,
+				transport->alt_res->filetype);
+		else
+			fprintf(stderr, "alt res not found\n");
+	}
+	return transport->alt_res;
+}
+
 static int connect_git(struct transport *transport, const char *name,
 		       const char *executable, int fd[2])
 {
@@ -691,6 +730,7 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->set_option = NULL;
 		ret->get_refs_list = get_refs_via_connect;
 		ret->fetch = fetch_refs_via_pack;
+		ret->prime_clone = get_alt_res_via_connect;
 		ret->push_refs = git_transport_push;
 		ret->connect = connect_git;
 		ret->disconnect = disconnect_git;
@@ -713,6 +753,10 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		ret->smart_options->receivepack = "git-receive-pack";
 		if (remote->receivepack)
 			ret->smart_options->receivepack = remote->receivepack;
+		// No remote.*.primeclone config because prime-clone only
+		// applies to clone. After that, it is never used the repo
+		// again.
+		ret->smart_options->primeclone = "git-prime-clone";
 	}
 
 	return ret;

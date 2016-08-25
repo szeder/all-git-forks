@@ -15,6 +15,7 @@ struct git_transport_options {
 	int depth;
 	const char *uploadpack;
 	const char *receivepack;
+	const char *primeclone;
 	struct push_cas_option *cas;
 };
 
@@ -24,11 +25,17 @@ enum transport_family {
 	TRANSPORT_FAMILY_IPV6
 };
 
+struct alt_resource {
+	char *url;
+	char *filetype;
+};
+
 struct transport {
 	struct remote *remote;
 	const char *url;
 	void *data;
 	const struct ref *remote_refs;
+	const struct alt_resource *alt_res;
 
 	/**
 	 * Indicates whether we already called get_refs_list(); set by
@@ -66,6 +73,15 @@ struct transport {
 	 * in the ref's old_sha1 field; otherwise it should be all 0.
 	 **/
 	struct ref *(*get_refs_list)(struct transport *transport, int for_push);
+
+	/**
+	 * Returns the location of an alternate resource to fetch before
+	 * cloning.
+	 *
+	 * If the transport cannot determine an alternate resource, then
+	 * NULL is returned.
+	 **/
+	const struct alt_resource *const (*prime_clone)(struct transport *transport);
 
 	/**
 	 * Fetch the objects for the given refs. Note that this gets
@@ -164,6 +180,9 @@ int transport_restrict_protocols(void);
 /* The program to use on the remote side to send a pack */
 #define TRANS_OPT_UPLOADPACK "uploadpack"
 
+/* The program to use on the remote side to check for alternate resource */
+#define TRANS_OPT_PRIMECLONE "primeclone"
+
 /* The program to use on the remote side to receive a pack */
 #define TRANS_OPT_RECEIVEPACK "receivepack"
 
@@ -208,6 +227,7 @@ int transport_push(struct transport *connection,
 		   unsigned int * reject_reasons);
 
 const struct ref *transport_get_remote_refs(struct transport *transport);
+const struct alt_resource *const transport_prime_clone(struct transport *transport);
 
 int transport_fetch_refs(struct transport *transport, struct ref *refs);
 void transport_unlock_pack(struct transport *transport);
