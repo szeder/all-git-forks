@@ -213,27 +213,35 @@ that text files that you introduce to the repository have their line
 endings normalized to LF when they are added, and that files that are
 already normalized in the repository stay normalized.
 
-If you want to interoperate with a source code management system that
-enforces end-of-line normalization, or you simply want all text files
-in your repository to be normalized, you should instead set the `text`
-attribute to "auto" for _all_ files.
+If you want to ensure that text files that any contributor introduces to
+the repository have their line endings normalized, you could set the
+`text` attribute to "auto" for _all_ files.
 
 ------------------------
 *	text=auto
 ------------------------
 
-This ensures that all files that Git considers to be text will have
+If you want to interoperate with a source code management system that
+enforces end-of-line normalization, or you simply want all text files
+in your repository to be normalized, you should instead set the `text`
+attribute to "text" for text files.
+
+------------------------
+*.txt	text
+------------------------
+
+This ensures that all files marked as text will have
 normalized (LF) line endings in the repository.  The `core.eol`
 configuration variable controls which line endings Git will use for
 normalized files in your working directory; the default is to use the
 native line ending for your platform, or CRLF if `core.autocrlf` is
 set.
 
-NOTE: When `text=auto` normalization is enabled in an existing
-repository, any text files containing CRLFs should be normalized.  If
-they are not they will be normalized the next time someone tries to
-change them, causing unfortunate misattribution.  From a clean working
-directory:
+NOTE: When you have a cross-platform project using push and pull
+to a central repository the text files containing CRLFs should be
+normalized. All text files should have a text attribute, either
+`text` or `text=auto`.
+From a clean working directory:
 
 -------------------------------------------------
 $ echo "* text=auto" >>.gitattributes
