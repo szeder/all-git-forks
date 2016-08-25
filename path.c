@@ -6,6 +6,7 @@
 #include "string-list.h"
 #include "dir.h"
 #include "worktree.h"
+#include "submodule-config.h"
 
 static int get_st_mode_bits(const char *path, int *mode)
 {
@@ -380,6 +381,8 @@ static void adjust_git_path(struct strbuf *buf, int git_dir_len)
 			      get_index_file(), strlen(get_index_file()));
 	else if (git_db_env && dir_prefix(base, "objects"))
 		replace_dir(buf, git_dir_len + 7, get_object_directory());
+	else if (git_hooks_path && dir_prefix(base, "hooks"))
+		replace_dir(buf, git_dir_len + 5, git_hooks_path);
 	else if (git_common_dir_env)
 		update_common_dir(buf, git_dir_len, NULL);
 }
@@ -472,6 +475,7 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 	const char *git_dir;
 	struct strbuf git_submodule_common_dir = STRBUF_INIT;
 	struct strbuf git_submodule_dir = STRBUF_INIT;
+	const struct submodule *sub;
 
 	strbuf_addstr(buf, path);
 	strbuf_complete(buf, '/');
@@ -482,6 +486,15 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 		strbuf_reset(buf);
 		strbuf_addstr(buf, git_dir);
 	}
+	if (!is_git_directory(buf->buf)) {
+		sub = submodule_from_path(null_sha1, path);
+		if (sub) {
+			strbuf_reset(buf);
+			strbuf_git_path(buf, "%s/%s", "modules",
+					sub->name);
+		}
+	}
+
 	strbuf_addch(buf, '/');
 	strbuf_addbuf(&git_submodule_dir, buf);
 
