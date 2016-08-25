@@ -1759,11 +1759,17 @@ version.sp version.s version.o: EXTRA_CPPFLAGS = \
 	'-DGIT_VERSION="$(GIT_VERSION)"' \
 	'-DGIT_USER_AGENT=$(GIT_USER_AGENT_CQ_SQ)'
 
+ifeq (,$(BUILT_IN_WRAPPER))
 $(BUILT_INS): git$X
 	$(QUIET_BUILT_IN)$(RM) $@ && \
 	ln $< $@ 2>/dev/null || \
 	ln -s $< $@ 2>/dev/null || \
 	cp $< $@
+else
+$(BUILT_INS): $(BUILT_IN_WRAPPER)
+	$(QUIET_BUILT_IN)$(RM) $@ && \
+	cp $< $@
+endif
 
 common-cmds.h: generate-cmdlist.sh command-list.txt
 
@@ -1806,9 +1812,14 @@ $(SCRIPT_LIB) : % : %.sh GIT-SCRIPT-DEFINES
 	$(QUIET_GEN)$(cmd_munge_script) && \
 	mv $@+ $@
 
-git.res: git.rc GIT-VERSION-FILE
-	$(QUIET_RC)$(RC) \
-	  $(join -DMAJOR= -DMINOR=, $(wordlist 1,2,$(subst -, ,$(subst ., ,$(GIT_VERSION))))) \
+ifeq (,$(findstring .windows.,$(GIT_VERSION)))
+RC_VERSION_DEFS := $(join -DMAJOR= -DMINOR= -DMICRO=, $(wordlist 1,3,$(subst -, ,$(subst ., ,$(subst .windows., ,$(GIT_VERSION)))))) -DPATCHLEVEL=0
+else
+RC_VERSION_DEFS := $(join -DMAJOR= -DMINOR= -DMICRO= -DPATCHLEVEL=, $(wordlist 1,4,$(subst -, ,$(subst ., ,$(subst .windows., ,$(GIT_VERSION))))))
+endif
+
+git.res: git.rc GIT-VERSION-FILE GIT-PREFIX
+	$(QUIET_RC)$(RC) $(RC_VERSION_DEFS) \
 	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
 
 # This makes sure we depend on the NO_PERL setting itself.
@@ -2330,6 +2341,24 @@ profile-install: profile
 profile-fast-install: profile-fast
 	$(MAKE) install
 
+ifeq (,$(BUILT_IN_WRAPPER))
+LN_OR_CP_BUILT_IN_BINDIR = \
+	test -z "$(NO_INSTALL_HARDLINKS)" && \
+	ln "$$bindir/git$X" "$$bindir/$$p" 2>/dev/null || \
+	ln -s "git$X" "$$bindir/$$p" 2>/dev/null || \
+	cp "$$bindir/git$X" "$$bindir/$$p" || exit;
+LN_OR_CP_BUILT_IN_EXECDIR = \
+	test -z "$(NO_INSTALL_HARDLINKS)" && \
+	ln "$$execdir/git$X" "$$execdir/$$p" 2>/dev/null || \
+	ln -s "git$X" "$$execdir/$$p" 2>/dev/null || \
+	cp "$$execdir/git$X" "$$execdir/$$p" || exit;
+else
+LN_OR_CP_BUILT_IN_BINDIR = \
+	cp "$(BUILT_IN_WRAPPER)" "$$bindir/$$p" || exit;
+LN_OR_CP_BUILT_IN_EXECDIR = \
+	cp "$(BUILT_IN_WRAPPER)" "$$execdir/$$p" || exit;
+endif
+
 install: all
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(bindir_SQ)'
 	$(INSTALL) -d -m 755 '$(DESTDIR_SQ)$(gitexec_instdir_SQ)'
@@ -2368,17 +2397,11 @@ endif
 	} && \
 	for p in $(filter $(install_bindir_programs),$(BUILT_INS)); do \
 		$(RM) "$$bindir/$$p" && \
-		test -z "$(NO_INSTALL_HARDLINKS)" && \
-		ln "$$bindir/git$X" "$$bindir/$$p" 2>/dev/null || \
-		ln -s "git$X" "$$bindir/$$p" 2>/dev/null || \
-		cp "$$bindir/git$X" "$$bindir/$$p" || exit; \
+		$(LN_OR_CP_BUILT_IN_BINDIR) \
 	done && \
 	for p in $(BUILT_INS); do \
 		$(RM) "$$execdir/$$p" && \
-		test -z "$(NO_INSTALL_HARDLINKS)" && \
-		ln "$$execdir/git$X" "$$execdir/$$p" 2>/dev/null || \
-		ln -s "git$X" "$$execdir/$$p" 2>/dev/null || \
-		cp "$$execdir/git$X" "$$execdir/$$p" || exit; \
+		$(LN_OR_CP_BUILT_IN_EXECDIR) \
 	done && \
 	remote_curl_aliases="$(REMOTE_CURL_ALIASES)" && \
 	for p in $$remote_curl_aliases; do \

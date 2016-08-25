@@ -7,6 +7,7 @@
 #include "dir.h"
 #include "worktree.h"
 #include "submodule-config.h"
+#include "exec_cmd.h"
 
 static int get_st_mode_bits(const char *path, int *mode)
 {
@@ -629,6 +630,10 @@ char *expand_user_path(const char *path)
 
 	if (path == NULL)
 		goto return_null;
+#ifdef __MINGW32__
+	if (path[0] == '/')
+		return system_path(path + 1);
+#endif
 	if (path[0] == '~') {
 		const char *first_slash = strchrnul(path, '/');
 		const char *username = path + 1;
@@ -997,9 +1002,9 @@ const char *remove_leading_path(const char *in, const char *prefix)
 int normalize_path_copy_len(char *dst, const char *src, int *prefix_len)
 {
 	char *dst0;
-	int i;
+	int i = has_unc_prefix(src);
 
-	for (i = has_dos_drive_prefix(src); i > 0; i--)
+	for (i = i ? i : has_dos_drive_prefix(src); i > 0; i--)
 		*dst++ = *src++;
 	dst0 = dst;
 

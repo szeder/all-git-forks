@@ -6,6 +6,7 @@
 #include "../git-compat-util.h"
 #include <wingdi.h>
 #include <winreg.h>
+#include "win32.h"
 
 /*
  ANSI codes used by git: m, K
@@ -35,26 +36,21 @@ typedef struct _CONSOLE_FONT_INFOEX {
 #endif
 #endif
 
-typedef BOOL (WINAPI *PGETCURRENTCONSOLEFONTEX)(HANDLE, BOOL,
-		PCONSOLE_FONT_INFOEX);
-
 static void warn_if_raster_font(void)
 {
 	DWORD fontFamily = 0;
-	PGETCURRENTCONSOLEFONTEX pGetCurrentConsoleFontEx;
+	DECLARE_PROC_ADDR(kernel32.dll, BOOL, GetCurrentConsoleFontEx,
+			HANDLE, BOOL, PCONSOLE_FONT_INFOEX);
 
 	/* don't bother if output was ascii only */
 	if (!non_ascii_used)
 		return;
 
 	/* GetCurrentConsoleFontEx is available since Vista */
-	pGetCurrentConsoleFontEx = (PGETCURRENTCONSOLEFONTEX) GetProcAddress(
-			GetModuleHandle("kernel32.dll"),
-			"GetCurrentConsoleFontEx");
-	if (pGetCurrentConsoleFontEx) {
+	if (INIT_PROC_ADDR(GetCurrentConsoleFontEx)) {
 		CONSOLE_FONT_INFOEX cfi;
 		cfi.cbSize = sizeof(cfi);
-		if (pGetCurrentConsoleFontEx(console, 0, &cfi))
+		if (GetCurrentConsoleFontEx(console, 0, &cfi))
 			fontFamily = cfi.FontFamily;
 	} else {
 		/* pre-Vista: check default console font in registry */
@@ -555,8 +551,12 @@ static void detect_msys_tty(int fd)
 	name = nameinfo->Name.Buffer;
 	name[nameinfo->Name.Length] = 0;
 
-	/* check if this could be a MSYS2 pty pipe ('msys-XXXX-ptyN-XX') */
-	if (!wcsstr(name, L"msys-") || !wcsstr(name, L"-pty"))
+	/*
+	 * Check if this could be a MSYS2 pty pipe ('msys-XXXX-ptyN-XX')
+	 * or a cygwin pty pipe ('cygwin-XXXX-ptyN-XX')
+	 */
+	if ((!wcsstr(name, L"msys-") && !wcsstr(name, L"cygwin-")) ||
+			!wcsstr(name, L"-pty"))
 		return;
 
 	/* init ioinfo size if we haven't done so */

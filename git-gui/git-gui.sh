@@ -270,12 +270,10 @@ proc is_Windows {} {
 proc is_Cygwin {} {
 	global _iscygwin
 	if {$_iscygwin eq {}} {
-		if {$::tcl_platform(platform) eq {windows}} {
-			if {[catch {set p [exec cygpath --windir]} err]} {
-				set _iscygwin 0
-			} else {
-				set _iscygwin 1
-			}
+		if {$::tcl_platform(platform) eq {windows} &&
+				(![info exists ::env(MSYSTEM)] ||
+				 $::env(MSYSTEM) eq {MSYS})} {
+			set _iscygwin 1
 		} else {
 			set _iscygwin 0
 		}
@@ -530,28 +528,10 @@ proc _lappend_nice {cmd_var} {
 }
 
 proc git {args} {
-	set opt [list]
-
-	while {1} {
-		switch -- [lindex $args 0] {
-		--nice {
-			_lappend_nice opt
-		}
-
-		default {
-			break
-		}
-
-		}
-
-		set args [lrange $args 1 end]
-	}
-
-	set cmdp [_git_cmd [lindex $args 0]]
-	set args [lrange $args 1 end]
-
-	_trace_exec [concat $opt $cmdp $args]
-	set result [eval exec $opt $cmdp $args]
+	set fd [eval [list git_read] $args]
+	fconfigure $fd -translation binary -encoding utf-8
+	set result [string trimright [read $fd] "\n"]
+	close $fd
 	if {$::_trace} {
 		puts stderr "< $result"
 	}
@@ -1107,7 +1087,7 @@ git-version proc _parse_config {arr_name args} {
 				[list git_read config] \
 				$args \
 				[list --null --list]]
-			fconfigure $fd_rc -translation binary
+			fconfigure $fd_rc -translation binary -encoding utf-8
 			set buf [read $fd_rc]
 			close $fd_rc
 		}
@@ -1244,6 +1224,12 @@ set have_tk85 [expr {[package vcompare $tk_version "8.5"] >= 0}]
 if {![info exists env(SSH_ASKPASS)]} {
 	set env(SSH_ASKPASS) [gitexec git-gui--askpass]
 }
+if {![info exists env(GIT_ASKPASS)]} {
+	set env(GIT_ASKPASS) [gitexec git-gui--askpass]
+}
+if {![info exists env(GIT_ASK_YESNO)]} {
+	set env(GIT_ASK_YESNO) [gitexec git-gui--askyesno]
+}
 
 ######################################################################
 ##
@@ -1339,9 +1325,6 @@ if {[lindex $_reponame end] eq {.git}} {
 } else {
 	set _reponame [lindex $_reponame end]
 }
-
-set env(GIT_DIR) $_gitdir
-set env(GIT_WORK_TREE) $_gitworktree
 
 ######################################################################
 ##
@@ -1616,11 +1599,13 @@ proc run_prepare_commit_msg_hook {} {
 	if {[file isfile [gitdir MERGE_MSG]]} {
 		set pcm_source "merge"
 		set fd_mm [open [gitdir MERGE_MSG] r]
+		fconfigure $fd_mm -encoding utf-8
 		puts -nonewline $fd_pcm [read $fd_mm]
 		close $fd_mm
 	} elseif {[file isfile [gitdir SQUASH_MSG]]} {
 		set pcm_source "squash"
 		set fd_sm [open [gitdir SQUASH_MSG] r]
+		fconfigure $fd_sm -encoding utf-8
 		puts -nonewline $fd_pcm [read $fd_sm]
 		close $fd_sm
 	} else {
@@ -1685,7 +1670,7 @@ proc read_diff_index {fd after} {
 		set i [split [string range $buf_rdi $c [expr {$z1 - 2}]] { }]
 		set p [string range $buf_rdi $z1 [expr {$z2 - 1}]]
 		merge_state \
-			[encoding convertfrom $p] \
+			[encoding convertfrom utf-8 $p] \
 			[lindex $i 4]? \
 			[list [lindex $i 0] [lindex $i 2]] \
 			[list]
@@ -1718,7 +1703,7 @@ proc read_diff_files {fd after} {
 		set i [split [string range $buf_rdf $c [expr {$z1 - 2}]] { }]
 		set p [string range $buf_rdf $z1 [expr {$z2 - 1}]]
 		merge_state \
-			[encoding convertfrom $p] \
+			[encoding convertfrom utf-8 $p] \
 			?[lindex $i 4] \
 			[list] \
 			[list [lindex $i 0] [lindex $i 2]]
@@ -1741,7 +1726,7 @@ proc read_ls_others {fd after} {
 	set pck [split $buf_rlo "\0"]
 	set buf_rlo [lindex $pck end]
 	foreach p [lrange $pck 0 end-1] {
-		set p [encoding convertfrom $p]
+		set p [encoding convertfrom utf-8 $p]
 		if {[string index $p end] eq {/}} {
 			set p [string range $p 0 end-1]
 		}
@@ -2165,7 +2150,7 @@ set starting_gitk_msg [mc "Starting gitk... please wait..."]
 
 proc do_gitk {revs {is_submodule false}} {
 	global current_diff_path file_states current_diff_side ui_index
-	global _gitdir _gitworktree
+	global _gitworktree
 
 	# -- Always start gitk through whatever we were loaded with.  This
 	#    lets us bypass using shell process on Windows systems.
@@ -2177,12 +2162,19 @@ proc do_gitk {revs {is_submodule false}} {
 	} else {
 		global env
 
+		if {[info exists env(GIT_DIR)]} {
+			set old_GIT_DIR $env(GIT_DIR)
+		} else {
+			set old_GIT_DIR {}
+		}
+
 		set pwd [pwd]
 
 		if {!$is_submodule} {
 			if {![is_bare]} {
 				cd $_gitworktree
 			}
+			set env(GIT_DIR) [file normalize [gitdir]]
 		} else {
 			cd $current_diff_path
 			if {$revs eq {--}} {
@@ -2203,18 +2195,15 @@ proc do_gitk {revs {is_submodule false}} {
 				}
 				set revs $old_sha1...$new_sha1
 			}
-			# GIT_DIR and GIT_WORK_TREE for the submodule are not the ones
-			# we've been using for the main repository, so unset them.
-			# TODO we could make life easier (start up faster?) for gitk
-			# by setting these to the appropriate values to allow gitk
-			# to skip the heuristics to find their proper value
-			unset env(GIT_DIR)
-			unset env(GIT_WORK_TREE)
+			if {[info exists env(GIT_DIR)]} {
+				unset env(GIT_DIR)
+			}
 		}
 		eval exec $cmd $revs "--" "--" &
 
-		set env(GIT_DIR) $_gitdir
-		set env(GIT_WORK_TREE) $_gitworktree
+		if {$old_GIT_DIR ne {}} {
+			set env(GIT_DIR) $old_GIT_DIR
+		}
 		cd $pwd
 
 		ui_status $::starting_gitk_msg
@@ -2235,20 +2224,22 @@ proc do_git_gui {} {
 		error_popup [mc "Couldn't find git gui in PATH"]
 	} else {
 		global env
-		global _gitdir _gitworktree
 
-		# see note in do_gitk about unsetting these vars when
-		# running tools in a submodule
-		unset env(GIT_DIR)
-		unset env(GIT_WORK_TREE)
+		if {[info exists env(GIT_DIR)]} {
+			set old_GIT_DIR $env(GIT_DIR)
+			unset env(GIT_DIR)
+		} else {
+			set old_GIT_DIR {}
+		}
 
 		set pwd [pwd]
 		cd $current_diff_path
 
 		eval exec $exe gui &
 
-		set env(GIT_DIR) $_gitdir
-		set env(GIT_WORK_TREE) $_gitworktree
+		if {$old_GIT_DIR ne {}} {
+			set env(GIT_DIR) $old_GIT_DIR
+		}
 		cd $pwd
 
 		ui_status $::starting_gitk_msg
@@ -2678,10 +2669,18 @@ if {![is_bare]} {
 }
 
 if {[is_Windows]} {
+	# Use /git-bash.exe if available
+	set normalized [file normalize $::argv0]
+	regsub "/mingw../libexec/git-core/git-gui$" \
+		$normalized "/git-bash.exe" cmdLine
+	if {$cmdLine != $normalized && [file exists $cmdLine]} {
+		set cmdLine [list "Git Bash" $cmdLine &]
+	} else {
+		set cmdLine [list "Git Bash" bash --login -l &]
+	}
 	.mbar.repository add command \
 		-label [mc "Git Bash"] \
-		-command {eval exec [auto_execok start] \
-					  [list "Git Bash" bash --login -l &]}
+		-command {eval exec [auto_execok start] $cmdLine}
 }
 
 if {[is_Windows] || ![is_bare]} {

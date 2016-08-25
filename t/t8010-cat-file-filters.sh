@@ -11,7 +11,7 @@ test_expect_success 'setup ' '
 	git commit -m "Initial commit"
 '
 
-has_cr () {
+has_cr() {
 	tr '\015' Q <"$1" | grep Q >/dev/null
 }
 
@@ -26,39 +26,22 @@ test_expect_success 'no filters with cat-file' '
 	! has_cr actual
 '
 
-test_expect_success 'cat-file --filters converts to worktree version' '
-	git cat-file --filters HEAD:world.txt >actual &&
+test_expect_success 'cat-file --smudge converts to worktree version' '
+	git cat-file --smudge HEAD:world.txt >actual &&
 	has_cr actual
 '
 
-test_expect_success 'cat-file --filters --path=<path> works' '
+test_expect_success 'cat-file --smudge --use-path=<path> works' '
 	sha1=$(git rev-parse -q --verify HEAD:world.txt) &&
-	git cat-file --filters --path=world.txt $sha1 >actual &&
+	git cat-file --smudge --use-path=world.txt $sha1 >actual &&
 	has_cr actual
 '
 
-test_expect_success 'cat-file --textconv --path=<path> works' '
+test_expect_success 'cat-file --textconv --use-path=<path> works' '
 	sha1=$(git rev-parse -q --verify HEAD:world.txt) &&
 	test_config diff.txt.textconv "tr A-Za-z N-ZA-Mn-za-m <" &&
-	git cat-file --textconv --path=hello.txt $sha1 >rot13 &&
-	test uryyb = "$(cat rot13 | remove_cr)"
-'
-
-test_expect_success '--path=<path> complains without --textconv/--filters' '
-	sha1=$(git rev-parse -q --verify HEAD:world.txt) &&
-	test_must_fail git cat-file --path=hello.txt blob $sha1 >actual 2>err &&
-	test ! -s actual &&
-	grep "path.*needs.*filters" err
-'
-
-test_expect_success 'cat-file --textconv --batch works' '
-	sha1=$(git rev-parse -q --verify HEAD:world.txt) &&
-	test_config diff.txt.textconv "tr A-Za-z N-ZA-Mn-za-m <" &&
-	printf "%s hello.txt\n%s hello\n" $sha1 $sha1 |
-	git cat-file --textconv --batch >actual &&
-	printf "%s blob 6\nuryyb\r\n\n%s blob 6\nhello\n\n" \
-		$sha1 $sha1 >expect &&
-	test_cmp expect actual
+	git cat-file --textconv --use-path=hello.txt $sha1 >rot13 &&
+	test uryyb = "$(cat rot13)"
 '
 
 test_done
