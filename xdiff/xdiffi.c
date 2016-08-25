@@ -405,11 +405,11 @@ static int is_blank_line(xrecord_t *rec, long flags)
 	return xdl_blankline(rec->ptr, rec->size, flags);
 }
 
-static int recs_match(xrecord_t **recs, long ixs, long ix, long flags)
+static int recs_match(xrecord_t *rec1, xrecord_t *rec2, long flags)
 {
-	return (recs[ixs]->ha == recs[ix]->ha &&
-		xdl_recmatch(recs[ixs]->ptr, recs[ixs]->size,
-			     recs[ix]->ptr, recs[ix]->size,
+	return (rec1->ha == rec2->ha &&
+		xdl_recmatch(rec1->ptr, rec1->size,
+			     rec2->ptr, rec2->size,
 			     flags));
 }
 
@@ -445,11 +445,8 @@ static int get_indent(xrecord_t *rec)
 		if (ret >= MAX_INDENT)
 			return MAX_INDENT;
 	}
-	/*
-	 * We have reached the end of the line without finding any non-space
-	 * characters; i.e., the whole line consists of trailing spaces, which we
-	 * are not interested in.
-	 */
+
+	/* The line contains only whitespace. */
 	return -1;
 }
 
@@ -496,10 +493,19 @@ struct split_measurement {
 	int post_indent;
 };
 
+struct split_score {
+	/* The effective indent of this split (smaller is preferred). */
+	int effective_indent;
+
+	/* Penalty for this split (smaller is preferred). */
+	int penalty;
+};
+
 /*
  * Fill m with information about a hypothetical split of xdf above line split.
  */
-void measure_split(const xdfile_t *xdf, long split, struct split_measurement *m)
+static void measure_split(const xdfile_t *xdf, long split,
+			  struct split_measurement *m)
 {
 	long i;
 
@@ -512,6 +518,7 @@ void measure_split(const xdfile_t *xdf, long split, struct split_measurement *m)
 	}
 
 	m->pre_blank = 0;
+	m->pre_indent = -1;
 	for (i = split - 1; i >= 0; i--) {
 		m->pre_indent = get_indent(xdf->recs[i]);
 		if (m->pre_indent != -1)
@@ -524,6 +531,7 @@ void measure_split(const xdfile_t *xdf, long split, struct split_measurement *m)
 	}
 
 	m->post_blank = 0;
+	m->post_indent = -1;
 	for (i = split + 1; i < xdf->nrec; i++) {
 		m->post_indent = get_indent(xdf->recs[i]);
 		if (m->post_indent != -1)
@@ -536,16 +544,57 @@ void measure_split(const xdfile_t *xdf, long split, struct split_measurement *m)
 	}
 }
 
-#define START_OF_FILE_BONUS 9
-#define END_OF_FILE_BONUS 46
-#define TOTAL_BLANK_WEIGHT 4
-#define PRE_BLANK_WEIGHT 16
-#define RELATIVE_INDENT_BONUS -1
-#define RELATIVE_INDENT_HAS_BLANK_BONUS 15
-#define RELATIVE_OUTDENT_BONUS -19
-#define RELATIVE_OUTDENT_HAS_BLANK_BONUS 2
-#define RELATIVE_DEDENT_BONUS -63
-#define RELATIVE_DEDENT_HAS_BLANK_BONUS 50
+/*
+ * The empirically-determined weight factors used by score_split() below.
+ * Larger values means that the position is a less favorable place to split.
+ *
+ * Note that scores are only ever compared against each other, so multiplying
+ * all of these weight/penalty values by the same factor wouldn't change the
+ * heuristic's behavior. Still, we need to set that arbitrary scale *somehow*.
+ * In practice, these numbers are chosen to be large enough that they can be
+ * adjusted relative to each other with sufficient precision despite using
+ * integer math.
+ */
+
+/* Penalty if there are no non-blank lines before the split */
+#define START_OF_FILE_PENALTY 1
+
+/* Penalty if there are no non-blank lines after the split */
+#define END_OF_FILE_PENALTY 21
+
+/* Multiplier for the number of blank lines around the split */
+#define TOTAL_BLANK_WEIGHT (-30)
+
+/* Multiplier for the number of blank lines after the split */
+#define POST_BLANK_WEIGHT 6
+
+/*
+ * Penalties applied if the line is indented more than its predecessor
+ */
+#define RELATIVE_INDENT_PENALTY (-4)
+#define RELATIVE_INDENT_WITH_BLANK_PENALTY 10
+
+/*
+ * Penalties applied if the line is indented less than both its predecessor and
+ * its successor
+ */
+#define RELATIVE_OUTDENT_PENALTY 24
+#define RELATIVE_OUTDENT_WITH_BLANK_PENALTY 17
+
+/*
+ * Penalties applied if the line is indented less than its predecessor but not
+ * less than its successor
+ */
+#define RELATIVE_DEDENT_PENALTY 23
+#define RELATIVE_DEDENT_WITH_BLANK_PENALTY 17
+
+/*
+ * We only consider whether the sum of the effective indents for splits are
+ * less than (-1), equal to (0), or greater than (+1) each other. The resulting
+ * value is multiplied by the following weight and combined with the penalty to
+ * determine the better of two scores.
+ */
+#define INDENT_WEIGHT 60
 
 /*
  * Compute a badness score for the hypothetical split whose measurements are
@@ -557,260 +606,320 @@ void measure_split(const xdfile_t *xdf, long split, struct split_measurement *m)
  * Also see that project if you want to improve the weights based on, for example,
  * a larger or more diverse corpus.
  */
-int score_split(const struct split_measurement *m)
+static void score_add_split(const struct split_measurement *m, struct split_score *s)
 {
 	/*
-	 * A place to accumulate bonus factors (positive makes this index more
+	 * A place to accumulate penalty factors (positive makes this index more
 	 * favored):
 	 */
-	int bonus = 0, score, total_blanks, indent, any_blanks;
+	int post_blank, total_blank, indent, any_blanks;
 
 	if (m->pre_indent == -1 && m->pre_blank == 0)
-		bonus += START_OF_FILE_BONUS;
+		s->penalty += START_OF_FILE_PENALTY;
 
 	if (m->end_of_file)
-		bonus += END_OF_FILE_BONUS;
+		s->penalty += END_OF_FILE_PENALTY;
 
-	total_blanks = m->pre_blank;
-	if (m->indent == -1)
-		total_blanks += 1 + m->post_blank;
+	/*
+	 * Set post_blank to the number of blank lines following the split,
+	 * including the line immediately after the split:
+	 */
+	post_blank = (m->indent == -1) ? 1 + m->post_blank : 0;
+	total_blank = m->pre_blank + post_blank;
 
-	/* Bonuses based on the location of blank lines: */
-	bonus += TOTAL_BLANK_WEIGHT * total_blanks;
-	bonus += PRE_BLANK_WEIGHT * m->pre_blank;
+	/* Penalties based on nearby blank lines: */
+	s->penalty += TOTAL_BLANK_WEIGHT * total_blank;
+	s->penalty += POST_BLANK_WEIGHT * post_blank;
 
 	if (m->indent != -1)
 		indent = m->indent;
 	else
 		indent = m->post_indent;
 
-	any_blanks = (total_blanks != 0);
+	any_blanks = (total_blank != 0);
+
+	/* Note that the effective indent is -1 at the end of the file: */
+	s->effective_indent += indent;
 
 	if (indent == -1) {
-		score = 0;
+		/* No additional adjustments needed. */
 	} else if (m->pre_indent == -1) {
-		score = indent;
+		/* No additional adjustments needed. */
 	} else if (indent > m->pre_indent) {
 		/*
-		 * The line is indented more than its predecessor. Score it based
-		 * on the larger indent:
+		 * The line is indented more than its predecessor.
 		 */
-		score = indent;
-		bonus += RELATIVE_INDENT_BONUS;
-		bonus += RELATIVE_INDENT_HAS_BLANK_BONUS * any_blanks;
-	} else if (indent < m->pre_indent) {
+		s->penalty += any_blanks ?
+			RELATIVE_INDENT_WITH_BLANK_PENALTY :
+			RELATIVE_INDENT_PENALTY;
+	} else if (indent == m->pre_indent) {
 		/*
-		 * The line is indented less than its predecessor. It could be
-		 * that this line is the start of a new block (e.g., of an "else"
-		 * block, or of a block without a block terminator) or it could be
-		 * the end of the previous block.
+		 * The line has the same indentation level as its predecessor.
+		 * No additional adjustments needed.
 		 */
-		if (m->post_indent == -1 || indent >= m->post_indent) {
-			/*
-			 * That was probably the end of a block. Score based on
-			 * the line's own indent:
-			 */
-			score = indent;
-			bonus += RELATIVE_DEDENT_BONUS;
-			bonus += RELATIVE_DEDENT_HAS_BLANK_BONUS * any_blanks;
-		} else {
-			/*
-			 * The following line is indented more. So it is likely
-			 * that this line is the start of a block. It's a pretty
-			 * good place to split, so score it based on its own
-			 * indent:
-			 */
-			score = indent;
-			bonus += RELATIVE_OUTDENT_BONUS;
-			bonus += RELATIVE_OUTDENT_HAS_BLANK_BONUS * any_blanks;
-		}
 	} else {
 		/*
-		 * The line has the same indentation level as its predecessor. We
-		 * score it based on its own indent:
+		 * The line is indented less than its predecessor. It could be
+		 * the block terminator of the previous block, but it could
+		 * also be the start of a new block (e.g., an "else" block, or
+		 * maybe the previous block didn't have a block terminator).
+		 * Try to distinguish those cases based on what comes next:
 		 */
-		score = indent;
+		if (m->post_indent != -1 && m->post_indent > indent) {
+			/*
+			 * The following line is indented more. So it is likely
+			 * that this line is the start of a block.
+			 */
+			s->penalty += any_blanks ?
+				RELATIVE_OUTDENT_WITH_BLANK_PENALTY :
+				RELATIVE_OUTDENT_PENALTY;
+		} else {
+			/*
+			 * That was probably the end of a block.
+			 */
+			s->penalty += any_blanks ?
+				RELATIVE_DEDENT_WITH_BLANK_PENALTY :
+				RELATIVE_DEDENT_PENALTY;
+		}
 	}
-
-	return 10 * score - bonus;
 }
 
-int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
-	long start, end, earliest_end, end_matching_other;
-	long io, groupsize, nrec = xdf->nrec;
-	char *rchg = xdf->rchg, *rchgo = xdfo->rchg;
-	unsigned int blank_lines;
-	xrecord_t **recs = xdf->recs;
+int score_cmp(struct split_score *s1, struct split_score *s2)
+{
+	/* -1 if s1.effective_indent < s2->effective_indent, etc. */
+	int cmp_indents = ((s1->effective_indent > s2->effective_indent) -
+			   (s1->effective_indent < s2->effective_indent));
+
+	return INDENT_WEIGHT * cmp_indents + (s1->penalty - s2->penalty);
+}
+
+/*
+ * Represent a group of changed lines in an xdfile_t (i.e., a contiguous group
+ * of lines that was inserted or deleted from the corresponding version of the
+ * file). We consider there to be such a group at the beginning of the file, at
+ * the end of the file, and between any two unchanged lines, though most such
+ * groups will usually be empty.
+ *
+ * If the first line in a group is equal to the line following the group, then
+ * the group can be slid down. Similarly, if the last line in a group is equal
+ * to the line preceding the group, then the group can be slid up. See
+ * group_slide_down() and group_slide_up().
+ *
+ * Note that loops that are testing for changed lines in xdf->rchg do not need
+ * index bounding since the array is prepared with a zero at position -1 and N.
+ */
+struct group {
+	/*
+	 * The index of the first changed line in the group, or the index of
+	 * the unchanged line above which the (empty) group is located.
+	 */
+	long start;
 
 	/*
-	 * This is the same of what GNU diff does. Move back and forward
-	 * change groups for a consistent and pretty diff output. This also
-	 * helps in finding joinable change groups and reduce the diff size.
+	 * The index of the first unchanged line after the group. For an empty
+	 * group, end is equal to start.
 	 */
-	end = io = 0;
+	long end;
+};
+
+/*
+ * Initialize g to point at the first group in xdf.
+ */
+static void group_init(xdfile_t *xdf, struct group *g)
+{
+	g->start = g->end = 0;
+	while (xdf->rchg[g->end])
+		g->end++;
+}
+
+/*
+ * Move g to describe the next (possibly empty) group in xdf and return 0. If g
+ * is already at the end of the file, do nothing and return -1.
+ */
+static inline int group_next(xdfile_t *xdf, struct group *g)
+{
+	if (g->end == xdf->nrec)
+		return -1;
+
+	g->start = g->end + 1;
+	for (g->end = g->start; xdf->rchg[g->end]; g->end++)
+		;
+
+	return 0;
+}
+
+/*
+ * Move g to describe the previous (possibly empty) group in xdf and return 0.
+ * If g is already at the beginning of the file, do nothing and return -1.
+ */
+static inline int group_previous(xdfile_t *xdf, struct group *g)
+{
+	if (g->start == 0)
+		return -1;
+
+	g->end = g->start - 1;
+	for (g->start = g->end; xdf->rchg[g->start - 1]; g->start--)
+		;
+
+	return 0;
+}
+
+/*
+ * If g can be slid toward the end of the file, do so, and if it bumps into a
+ * following group, expand this group to include it. Return 0 on success or -1
+ * if g cannot be slid down.
+ */
+static int group_slide_down(xdfile_t *xdf, struct group *g, long flags)
+{
+	if (g->end < xdf->nrec &&
+	    recs_match(xdf->recs[g->start], xdf->recs[g->end], flags)) {
+		xdf->rchg[g->start++] = 0;
+		xdf->rchg[g->end++] = 1;
+
+		while (xdf->rchg[g->end])
+			g->end++;
+
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+/*
+ * If g can be slid toward the beginning of the file, do so, and if it bumps
+ * into a previous group, expand this group to include it. Return 0 on success
+ * or -1 if g cannot be slid up.
+ */
+static int group_slide_up(xdfile_t *xdf, struct group *g, long flags)
+{
+	if (g->start > 0 &&
+	    recs_match(xdf->recs[g->start - 1], xdf->recs[g->end - 1], flags)) {
+		xdf->rchg[--g->start] = 1;
+		xdf->rchg[--g->end] = 0;
+
+		while (xdf->rchg[g->start - 1])
+			g->start--;
+
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+static void xdl_bug(const char *msg)
+{
+	fprintf(stderr, "BUG: %s\n", msg);
+	exit(1);
+}
+
+/*
+ * Move back and forward change groups for a consistent and pretty diff output.
+ * This also helps in finding joinable change groups and reducing the diff
+ * size.
+ */
+int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
+	struct group g, go;
+	long earliest_end, end_matching_other;
+	long groupsize;
+	unsigned int blank_lines;
+
+	group_init(xdf, &g);
+	group_init(xdfo, &go);
+
 	while (1) {
-		/*
-		 * Find the first changed line in the to-be-compacted file.
-		 * We need to keep track of both indexes, so if we find a
-		 * changed lines group on the other file, while scanning the
-		 * to-be-compacted file, we need to skip it properly. Note
-		 * that loops that are testing for changed lines on rchg* do
-		 * not need index bounding since the array is prepared with
-		 * a zero at position -1 and N.
-		 */
-		for (start = end; start < nrec && !rchg[start]; start++) {
-			/* skip over any changed lines in the other file... */
-			while (rchgo[io])
-				io++;
-
-			/* ...plus one non-changed line. */
-			io++;
-		}
-		if (start == nrec)
-			break;
-
-		/*
-		 * That's the start of a changed-group in the to-be-compacted
-		 * file. Now find its end.
-		 */
-		end = start + 1;
-		while (rchg[end])
-			end++;
-
-		while (rchgo[io])
-		       io++;
+		/* If the group is empty in the to-be-compacted file, skip it: */
+		if (g.end == g.start)
+			goto next;
 
 		/*
 		 * Now shift the change up and then down as far as possible in
 		 * each direction. If it bumps into any other changes, merge them.
-		 * If there are any changes in the other file that this change
-		 * could line up with, set end_matching_other to the end position
-		 * of this change that would leave them aligned.
 		 */
 		do {
-			groupsize = end - start;
+			groupsize = g.end - g.start;
 
 			/*
-			 * Are there any blank lines that could appear as the last
-			 * line of this group?
+			 * Keep track of the last "end" index that causes this
+			 * group to align with a group of changed lines in the
+			 * other file. -1 indicates that we haven't found such
+			 * a match yet:
+			 */
+			end_matching_other = -1;
+
+			/*
+			 * Boolean value that records whether there are any blank
+			 * lines that could be made to be the last line of this
+			 * group.
 			 */
 			blank_lines = 0;
 
-			/*
-			 * While the line before the current change group is equal
-			 * to the last line of the current change group, shift the
-			 * group backward.
-			 */
-			while (start > 0 && recs_match(recs, start - 1, end - 1, flags)) {
-				rchg[--start] = 1;
-				rchg[--end] = 0;
-
-				/*
-				 * This change might have joined two change groups.
-				 * If so, move the start index to the beginning of
-				 * the combined group:
-				 */
-				while (rchg[start - 1])
-					start--;
-
-				/*
-				 * Move the other file index past a non-changed
-				 * line...
-				 */
-				io--;
-
-				/* ...and also past any changed lines: */
-				while (rchgo[io])
-					io--;
-			}
-
-			if (rchgo[io - 1]) {
-				/*
-				 * This change is matched to a group of changes in
-				 * the other file. Record the end-of-group
-				 * position:
-				 */
-				end_matching_other = end;
-			} else {
-				/*
-				 * Otherwise, set a value to signify that there
-				 * are no matched changes in the other file:
-				 */
-				end_matching_other = -1;
-			}
-
-			earliest_end = end;
+			/* Shift the group backward as much as possible: */
+			while (!group_slide_up(xdf, &g, flags))
+				if (group_previous(xdfo, &go))
+					xdl_bug("group sync broken sliding up");
 
 			/*
-			 * Now shift the group forward as long as the first line
-			 * of the current change group is equal to the line after
-			 * the current change group.
+			 * This is this highest that this group can be shifted.
+			 * Record its end index:
 			 */
-			while (end < nrec && recs_match(recs, start, end, flags)) {
-				blank_lines += is_blank_line(recs[end], flags);
+			earliest_end = g.end;
 
-				rchg[start++] = 0;
-				rchg[end++] = 1;
+			if (go.end > go.start)
+				end_matching_other = g.end;
 
-				/*
-				 * This change might have joined two change
-				 * groups. If so, move the start index accordingly
-				 * (and so the other-file end-of-group index).
-				 * Keep tracking the reference index in case we
-				 * are shifting together with a corresponding
-				 * group of changes in the other file.
-				 */
-				while (rchg[end])
-					end++;
+			/* Now shift the group forward as far as possible: */
+			while (1) {
+				if (!blank_lines)
+					blank_lines = is_blank_line(
+							xdf->recs[g.end - 1],
+							flags);
 
-				io++;
-				if (rchgo[io]) {
-					end_matching_other = end;
-					while (rchgo[io])
-						io++;
-				}
+				if (group_slide_down(xdf, &g, flags))
+					break;
+				if (group_next(xdfo, &go))
+					xdl_bug("group sync broken sliding down");
+
+				if (go.end > go.start)
+					end_matching_other = g.end;
 			}
-		} while (groupsize != end - start);
-
-		if (end == earliest_end)
-			continue; /* no shifting is possible */
+		} while (groupsize != g.end - g.start);
 
 		/*
-		 * The group can be shifted. Possibly use this freedom to produce
-		 * a more intuitive diff.
+		 * If the group can be shifted, then we can possibly use this
+		 * freedom to produce a more intuitive diff.
 		 *
 		 * The group is currently shifted as far down as possible, so the
 		 * heuristics below only have to handle upwards shifts.
 		 */
 
-		if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
-			/*
-			 * Compaction heuristic: if possible, shift the group to
-			 * make its bottom line a blank line.
-			 */
-			while (start > 0 &&
-			       !is_blank_line(recs[end - 1], flags) &&
-			       recs_match(recs, start - 1, end - 1, flags)) {
-				rchg[--start] = 1;
-				rchg[--end] = 0;
-
-				io--;
-				while (rchgo[io])
-					io--;
-			}
+		if (g.end == earliest_end) {
+			/* no shifting was possible */
 		} else if (end_matching_other != -1) {
 			/*
 			 * Move the possibly merged group of changes back to line
 			 * up with the last group of changes from the other file
 			 * that it can align with.
 			 */
-			while (end_matching_other < end) {
-				rchg[--start] = 1;
-				rchg[--end] = 0;
-
-				io--;
-				while (rchgo[io])
-					io--;
+			while (go.end == go.start) {
+				if (group_slide_up(xdf, &g, flags))
+					xdl_bug("match disappeared");
+				if (group_previous(xdfo, &go))
+					xdl_bug("group sync broken sliding to match");
+			}
+		} else if ((flags & XDF_COMPACTION_HEURISTIC) && blank_lines) {
+			/*
+			 * Compaction heuristic: if it is possible to shift the
+			 * group to make its bottom line a blank line, do so.
+			 *
+			 * As we already shifted the group forward as far as
+			 * possible in the earlier loop, we only need to handle
+			 * backward shifts, not forward ones.
+			 */
+			while (!is_blank_line(xdf->recs[g.end - 1], flags)) {
+				if (group_slide_up(xdf, &g, flags))
+					xdl_bug("blank line disappeared");
+				if (group_previous(xdfo, &go))
+					xdl_bug("group sync broken sliding to blank line");
 			}
 		} else if (flags & XDF_INDENT_HEURISTIC) {
 			/*
@@ -825,32 +934,42 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 			 * to. Then we pick the shift with the lowest score.
 			 */
 			long shift, best_shift = -1;
-			int best_score = 0;
+			struct split_score best_score;
 
-			for (shift = earliest_end; shift <= end; shift++) {
+			for (shift = earliest_end; shift <= g.end; shift++) {
 				struct split_measurement m;
-				int score;
+				struct split_score score = {0, 0};
 
 				measure_split(xdf, shift, &m);
-				score = score_split(&m);
+				score_add_split(&m, &score);
 				measure_split(xdf, shift - groupsize, &m);
-				score += score_split(&m);
-				if (best_shift == -1 || score <= best_score) {
-					best_score = score;
+				score_add_split(&m, &score);
+				if (best_shift == -1 ||
+				    score_cmp(&score, &best_score) <= 0) {
+					best_score.effective_indent = score.effective_indent;
+					best_score.penalty = score.penalty;
 					best_shift = shift;
 				}
 			}
 
-			while (end > best_shift) {
-				rchg[--start] = 1;
-				rchg[--end] = 0;
-
-				io--;
-				while (rchgo[io])
-					io--;
+			while (g.end > best_shift) {
+				if (group_slide_up(xdf, &g, flags))
+					xdl_bug("best shift unreached");
+				if (group_previous(xdfo, &go))
+					xdl_bug("group sync broken sliding to blank line");
 			}
 		}
+
+	next:
+		/* Move past the just-processed group: */
+		if (group_next(xdf, &g))
+			break;
+		if (group_next(xdfo, &go))
+			xdl_bug("group sync broken moving to next group");
 	}
+
+	if (!group_next(xdfo, &go))
+		xdl_bug("group sync broken at end of file");
 
 	return 0;
 }

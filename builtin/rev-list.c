@@ -148,10 +148,10 @@ static void show_commit(struct commit *commit, void *data)
 			putchar('\n');
 		} else {
 			/*
-				* If the message buffer is empty, just show
-				* the rest of the graph output for this
-				* commit.
-				*/
+			 * If the message buffer is empty, just show
+			 * the rest of the graph output for this
+			 * commit.
+			 */
 			if (graph_show_remainder(revs->graph))
 				putchar('\n');
 			if (revs->commit_format == CMIT_FMT_ONELINE)

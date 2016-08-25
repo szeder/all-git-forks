@@ -45,8 +45,8 @@ my ($diff_new_color) =
 my $normal_color = $repo->get_color("", "reset");
 
 my $diff_algorithm = $repo->config('diff.algorithm');
-my $diff_compaction_heuristic = $repo->config_bool('diff.compactionheuristic');
 my $diff_indent_heuristic = $repo->config_bool('diff.indentheuristic');
+my $diff_compaction_heuristic = $repo->config_bool('diff.compactionheuristic');
 my $diff_filter = $repo->config('interactive.difffilter');
 
 my $use_readkey = 0;

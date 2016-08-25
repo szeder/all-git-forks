@@ -9,7 +9,6 @@ This test tries to verify that add_submodule_odb works when the submodule was
 initialized previously but the checkout has since been removed.
 '
 
-TEST_NO_CREATE_REPO=1
 . ./test-lib.sh
 
 # Tested non-UTF-8 encoding
@@ -18,6 +17,7 @@ test_encoding="ISO8859-1"
 # String "added" in German (translated with Google Translate), encoded in UTF-8,
 # used in sample commit log messages in add_file() function below.
 added=$(printf "hinzugef\303\274gt")
+
 add_file () {
 	(
 		cd "$1" &&
@@ -35,44 +35,45 @@ add_file () {
 		git rev-parse --short --verify HEAD
 	)
 }
+
 commit_file () {
 	test_tick &&
 	git commit "$@" -m "Commit $*" >/dev/null
 }
 
-test_create_repo sm1 &&
-test_create_repo sm2 &&
-add_file sm1 foo >/dev/null &&
-add_file sm2 foo1 foo2 >/dev/null &&
-smhead1=$(cd sm2; git rev-parse --short --verify HEAD) &&
-cd sm1
+test_expect_success 'setup - submodules' '
+	test_create_repo sm2 &&
+	add_file . foo &&
+	add_file sm2 foo1 foo2 &&
+	smhead1=$(git -C sm2 rev-parse --short --verify HEAD)
+'
 
-test_expect_success 'setup - submodule directory' '
-	git submodule add ../sm2 sm2 &&
-	commit_file sm2 &&
+test_expect_success 'setup - git submodule add' '
+	git submodule add ./sm2 sm1 &&
+	commit_file sm1 &&
 	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
 	cat >expected <<-EOF &&
-	Submodule sm2 0000000...$smhead1 (new submodule)
+	Submodule sm1 0000000...$smhead1 (new submodule)
 	EOF
 	test_cmp expected actual
 '
 
 test_expect_success 'submodule directory removed' '
-	rm -rf sm2 &&
+	rm -rf sm1 &&
 	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
 	cat >expected <<-EOF &&
-	Submodule sm2 0000000...$smhead1 (new submodule)
+	Submodule sm1 0000000...$smhead1 (new submodule)
 	EOF
 	test_cmp expected actual
 '
 
 test_expect_success 'setup - submodule multiple commits' '
-	git submodule update --checkout sm2 &&
-	smhead2=$(add_file sm2 foo3 foo4) &&
-	commit_file sm2 &&
+	git submodule update --checkout sm1 &&
+	smhead2=$(add_file sm1 foo3 foo4) &&
+	commit_file sm1 &&
 	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
 	cat >expected <<-EOF &&
-	Submodule sm2 $smhead1..$smhead2:
+	Submodule sm1 $smhead1..$smhead2:
 	  > Add foo4 ($added foo4)
 	  > Add foo3 ($added foo3)
 	EOF
@@ -80,26 +81,47 @@ test_expect_success 'setup - submodule multiple commits' '
 '
 
 test_expect_success 'submodule removed multiple commits' '
-	rm -rf sm2 &&
+	rm -rf sm1 &&
 	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
 	cat >expected <<-EOF &&
-	Submodule sm2 $smhead1..$smhead2:
+	Submodule sm1 $smhead1..$smhead2:
 	  > Add foo4 ($added foo4)
 	  > Add foo3 ($added foo3)
 	EOF
 	test_cmp expected actual
 '
 
-cd ..
-
 test_expect_success 'submodule not initialized in new clone' '
-	git clone sm1 sm3 &&
+	git clone . sm3 &&
 	git -C sm3 diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
 	cat >expected <<-EOF &&
-	Submodule sm2 $smhead1...$smhead2 (not initialized)
+	Submodule sm1 $smhead1...$smhead2 (not initialized)
 	EOF
 	test_cmp expected actual
+'
 
+test_expect_success 'setup submodule moved' '
+	git submodule update --checkout sm1 &&
+	git mv sm1 sm4 &&
+	commit_file sm4 &&
+	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
+	cat >expected <<-EOF &&
+	Submodule sm4 0000000...$smhead2 (new submodule)
+	EOF
+	test_cmp expected actual
+'
+
+test_expect_success 'submodule moved then removed' '
+	smhead3=$(add_file sm4 foo6 foo7) &&
+	commit_file sm4 &&
+	rm -rf sm4 &&
+	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
+	cat >expected <<-EOF &&
+	Submodule sm4 $smhead2..$smhead3:
+	  > Add foo7 ($added foo7)
+	  > Add foo6 ($added foo6)
+	EOF
+	test_cmp expected actual
 '
 
 test_done

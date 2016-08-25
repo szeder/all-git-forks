@@ -213,7 +213,7 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
-	if (strcmp(var, "receive.maxsize") == 0) {
+	if (strcmp(var, "receive.maxinputsize") == 0) {
 		max_input_size = git_config_int64(var, value);
 		return 0;
 	}

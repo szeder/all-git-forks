@@ -192,8 +192,10 @@
 #if defined(__MINGW32__)
 /* pull in Windows compatibility stuff */
 #include "compat/mingw.h"
+#include "compat/win32/fscache.h"
 #elif defined(_MSC_VER)
 #include "compat/msvc.h"
+#include "compat/win32/fscache.h"
 #else
 #include <sys/utsname.h>
 #include <sys/wait.h>
@@ -670,6 +672,10 @@ void *gitmemmem(const void *haystack, size_t haystacklen,
 #define getpagesize() sysconf(_SC_PAGESIZE)
 #endif
 
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
+#endif
+
 #ifdef FREAD_READS_DIRECTORIES
 #ifdef fopen
 #undef fopen
@@ -1062,6 +1068,21 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #define flockfile(fh)
 #define funlockfile(fh)
 #define getc_unlocked(fh) getc(fh)
+#endif
+
+/*
+ * Enable/disable a read-only cache for file system data on platforms that
+ * support it.
+ *
+ * Implementing a live-cache is complicated and requires special platform
+ * support (inotify, ReadDirectoryChangesW...). enable_fscache shall be used
+ * to mark sections of git code that extensively read from the file system
+ * without modifying anything. Implementations can use this to cache e.g. stat
+ * data or even file content without the need to synchronize with the file
+ * system.
+ */
+#ifndef enable_fscache
+#define enable_fscache(x) /* noop */
 #endif
 
 #endif

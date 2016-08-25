@@ -277,9 +277,10 @@ void handle_ignore_submodules_arg(struct diff_options *diffopt,
 }
 
 static int prepare_submodule_summary(struct rev_info *rev, const char *path,
-		struct commit *left, struct commit *right)
+		struct commit *left, struct commit *right,
+		struct commit_list *merge_bases)
 {
-	struct commit_list *merge_bases, *list;
+	struct commit_list *list;
 
 	init_revisions(rev, NULL);
 	setup_revisions(0, NULL, rev, NULL);
@@ -288,7 +289,6 @@ static int prepare_submodule_summary(struct rev_info *rev, const char *path,
 	left->object.flags |= SYMMETRIC_LEFT;
 	add_pending_object(rev, &left->object, path);
 	add_pending_object(rev, &right->object, path);
-	merge_bases = get_merge_bases(left, right);
 	for (list = merge_bases; list; list = list->next) {
 		list->item->object.flags |= UNINTERESTING;
 		add_pending_object(rev, &list->item->object,
@@ -336,9 +336,9 @@ static void show_submodule_header(FILE *f, const char *path,
 		struct object_id *one, struct object_id *two,
 		unsigned dirty_submodule, const char *meta,
 		const char *reset,
-		struct commit **left, struct commit **right)
+		struct commit **left, struct commit **right,
+		struct commit_list **merge_bases)
 {
-	struct commit_list *merge_bases;
 	const char *message = NULL;
 	struct strbuf sb = STRBUF_INIT;
 	int fast_forward = 0, fast_backward = 0;
@@ -376,11 +376,11 @@ static void show_submodule_header(FILE *f, const char *path,
 	     (!is_null_oid(two) && !*right))
 		message = "(commits not present)";
 
-	merge_bases = get_merge_bases(*left, *right);
-	if (merge_bases) {
-		if (merge_bases->item == *left)
+	*merge_bases = get_merge_bases(*left, *right);
+	if (*merge_bases) {
+		if ((*merge_bases)->item == *left)
 			fast_forward = 1;
-		else if (merge_bases->item == *right)
+		else if ((*merge_bases)->item == *right)
 			fast_backward = 1;
 	}
 
@@ -412,9 +412,10 @@ void show_submodule_summary(FILE *f, const char *path,
 {
 	struct rev_info rev;
 	struct commit *left = NULL, *right = NULL;
+	struct commit_list *merge_bases = NULL;
 
 	show_submodule_header(f, path, line_prefix, one, two, dirty_submodule,
-			      meta, reset, &left, &right);
+			      meta, reset, &left, &right, &merge_bases);
 
 	/*
 	 * If we don't have both a left and a right pointer, there is no
@@ -422,15 +423,19 @@ void show_submodule_summary(FILE *f, const char *path,
 	 * all the information the user needs.
 	 */
 	if (!left || !right)
-		return;
+		goto out;
 
 	/* Treat revision walker failure the same as missing commits */
-	if (prepare_submodule_summary(&rev, path, left, right)) {
+	if (prepare_submodule_summary(&rev, path, left, right, merge_bases)) {
 		fprintf(f, "%s(revision walker failed)\n", line_prefix);
-		return;
+		goto out;
 	}
 
 	print_submodule_summary(&rev, f, line_prefix, del, add, reset);
+
+out:
+	if (merge_bases)
+		free_commit_list(merge_bases);
 	clear_commit_marks(left, ~0);
 	clear_commit_marks(right, ~0);
 }
@@ -444,11 +449,12 @@ void show_submodule_inline_diff(FILE *f, const char *path,
 {
 	const struct object_id *old = &empty_tree_oid, *new = &empty_tree_oid;
 	struct commit *left = NULL, *right = NULL;
+	struct commit_list *merge_bases = NULL;
 	struct strbuf submodule_dir = STRBUF_INIT;
 	struct child_process cp = CHILD_PROCESS_INIT;
 
 	show_submodule_header(f, path, line_prefix, one, two, dirty_submodule,
-			      meta, reset, &left, &right);
+			      meta, reset, &left, &right, &merge_bases);
 
 	/* We need a valid left and right commit to display a difference */
 	if (!(left || is_null_oid(one)) ||
@@ -495,6 +501,12 @@ void show_submodule_inline_diff(FILE *f, const char *path,
 
 done:
 	strbuf_release(&submodule_dir);
+	if (merge_bases)
+		free_commit_list(merge_bases);
+	if (left)
+		clear_commit_marks(left, ~0);
+	if (right)
+		clear_commit_marks(right, ~0);
 }
 
 void set_config_fetch_recurse_submodules(int value)

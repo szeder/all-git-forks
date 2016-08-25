@@ -18,6 +18,7 @@ test_encoding="ISO8859-1"
 # String "added" in German (translated with Google Translate), encoded in UTF-8,
 # used in sample commit log messages in add_file() function below.
 added=$(printf "hinzugef\303\274gt")
+
 add_file () {
 	(
 		cd "$1" &&
@@ -35,16 +36,18 @@ add_file () {
 		git rev-parse --short --verify HEAD
 	)
 }
+
 commit_file () {
 	test_tick &&
 	git commit "$@" -m "Commit $*" >/dev/null
 }
 
-test_create_repo sm1 &&
-add_file . foo >/dev/null
-
-head1=$(add_file sm1 foo1 foo2)
-fullhead1=$(cd sm1; git rev-parse --verify HEAD)
+test_expect_success 'setup repository' '
+	test_create_repo sm1 &&
+	add_file . foo &&
+	head1=$(add_file sm1 foo1 foo2) &&
+	fullhead1=$(git -C sm1 rev-parse --verify HEAD)
+'
 
 test_expect_success 'added submodule' '
 	git add sm1 &&
