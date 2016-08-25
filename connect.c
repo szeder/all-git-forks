@@ -804,6 +804,10 @@ struct child_process *git_connect(int fd[2], const char *url,
 		}
 		argv_array_push(&conn->args, cmd.buf);
 
+		if (flags & CONNECT_SUPPRESS_ERRORS) {
+			conn->no_stderr = 1;
+		}
+
 		if (start_command(conn))
 			die("unable to fork");
 
@@ -830,4 +834,47 @@ int finish_connect(struct child_process *conn)
 	code = finish_command(conn);
 	free(conn);
 	return code;
+}
+
+const struct alt_resource *const get_alt_res_connect(int fd, int flags)
+{
+	struct alt_resource *res = NULL;
+	const char *line;
+	char *url = NULL, *filetype = NULL;
+	char *error_string = NULL;
+
+	while (line = packet_read_line_gentle(fd, NULL)) {
+		const char *space = strchr(line, ' ');
+
+		// We will eventually support multiple resources, so always
+		// parse the whole message
+		if ((filetype && url) || error_string) {
+			continue;
+		}
+		if (skip_prefix(line, "ERR ", &line) || !space ||
+				strchr(space + 1, ' ')) {
+			error_string = xstrdup(line);
+			continue;
+		}
+		filetype = xstrndup(line, (space - line));
+		url = xstrdup(space + 1);
+	}
+
+	if (filetype && url && !error_string){
+		res = xcalloc(1, sizeof(*res));
+		res->filetype = filetype;
+		res->url = url;
+	}
+	else {
+		if (!(flags & CONNECT_SUPPRESS_ERRORS)) {
+			if (error_string)
+				fprintf(stderr, "prime clone protocol error: "
+					"got '%s'\n", error_string);
+			else
+				fprintf(stderr, "did not get required "
+					"components for alternate resource\n");
+		}
+	}
+
+	return res;
 }
