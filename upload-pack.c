@@ -56,26 +56,28 @@ static int keepalive = 5;
 static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
+static const char *pack_objects_hook;
 
 static void reset_timeout(void)
 {
 	alarm(timeout);
 }
 
-static ssize_t send_client_data(int fd, const char *data, ssize_t sz)
+static void send_client_data(int fd, const char *data, ssize_t sz)
 {
-	if (use_sideband)
-		return send_sideband(1, fd, data, sz, use_sideband);
+	if (use_sideband) {
+		send_sideband(1, fd, data, sz, use_sideband);
+		return;
+	}
 	if (fd == 3)
 		/* emergency quit */
 		fd = 2;
 	if (fd == 2) {
 		/* XXX: are we happy to lose stuff here? */
 		xwrite(fd, data, sz);
-		return sz;
+		return;
 	}
 	write_or_die(fd, data, sz);
-	return sz;
 }
 
 static int write_one_shallow(const struct commit_graft *graft, void *cb_data)
@@ -96,6 +98,14 @@ static void create_pack_file(void)
 	ssize_t sz;
 	int i;
 	FILE *pipe_fd;
+
+	if (!pack_objects_hook)
+		pack_objects.git_cmd = 1;
+	else {
+		argv_array_push(&pack_objects.args, pack_objects_hook);
+		argv_array_push(&pack_objects.args, "git");
+		pack_objects.use_shell = 1;
+	}
 
 	if (shallow_nr) {
 		argv_array_push(&pack_objects.args, "--shallow-file");
@@ -119,7 +129,6 @@ static void create_pack_file(void)
 	pack_objects.in = -1;
 	pack_objects.out = -1;
 	pack_objects.err = -1;
-	pack_objects.git_cmd = 1;
 
 	if (start_command(&pack_objects))
 		die("git upload-pack: unable to fork git-pack-objects");
@@ -233,9 +242,7 @@ static void create_pack_file(void)
 			}
 			else
 				buffered = -1;
-			sz = send_client_data(1, data, sz);
-			if (sz < 0)
-				goto fail;
+			send_client_data(1, data, sz);
 		}
 
 		/*
@@ -262,9 +269,7 @@ static void create_pack_file(void)
 	/* flush the data */
 	if (0 <= buffered) {
 		data[0] = buffered;
-		sz = send_client_data(1, data, 1);
-		if (sz < 0)
-			goto fail;
+		send_client_data(1, data, 1);
 		fprintf(stderr, "flushed.\n");
 	}
 	if (use_sideband)
@@ -816,11 +821,14 @@ static int upload_pack_config(const char *var, const char *value, void *unused)
 		keepalive = git_config_int(var, value);
 		if (!keepalive)
 			keepalive = -1;
+	} else if (current_config_scope() != CONFIG_SCOPE_REPO) {
+		if (!strcmp("uploadpack.packobjectshook", var))
+			return git_config_string(&pack_objects_hook, var, value);
 	}
 	return parse_hide_refs_config(var, value, "uploadpack");
 }
 
-int main(int argc, const char **argv)
+int cmd_main(int argc, const char **argv)
 {
 	const char *dir;
 	int strict = 0;
@@ -828,7 +836,7 @@ int main(int argc, const char **argv)
 		OPT_BOOL(0, "stateless-rpc", &stateless_rpc,
 			 N_("quit after a single request/response exchange")),
 		OPT_BOOL(0, "advertise-refs", &advertise_refs,
-			 N_("exit immediately after intial ref advertisement")),
+			 N_("exit immediately after initial ref advertisement")),
 		OPT_BOOL(0, "strict", &strict,
 			 N_("do not try <directory>/.git/ if <directory> is no Git directory")),
 		OPT_INTEGER(0, "timeout", &timeout,
@@ -836,10 +844,7 @@ int main(int argc, const char **argv)
 		OPT_END()
 	};
 
-	git_setup_gettext();
-
 	packet_trace_identity("upload-pack");
-	git_extract_argv0_path(argv[0]);
 	check_replace_refs = 0;
 
 	argc = parse_options(argc, argv, NULL, options, upload_pack_usage, 0);

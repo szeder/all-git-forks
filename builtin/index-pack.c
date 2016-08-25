@@ -77,6 +77,7 @@ static int strict;
 static int do_fsck_object;
 static struct fsck_options fsck_options = FSCK_OPTIONS_STRICT;
 static int verbose;
+static int show_resolving_progress;
 static int show_stat;
 static int check_self_contained_and_connected;
 
@@ -338,10 +339,10 @@ static void parse_pack_header(void)
 	use(sizeof(struct pack_header));
 }
 
-static NORETURN void bad_object(unsigned long offset, const char *format,
+static NORETURN void bad_object(off_t offset, const char *format,
 		       ...) __attribute__((format (printf, 2, 3)));
 
-static NORETURN void bad_object(unsigned long offset, const char *format, ...)
+static NORETURN void bad_object(off_t offset, const char *format, ...)
 {
 	va_list params;
 	char buf[1024];
@@ -349,7 +350,8 @@ static NORETURN void bad_object(unsigned long offset, const char *format, ...)
 	va_start(params, format);
 	vsnprintf(buf, sizeof(buf), format, params);
 	va_end(params);
-	die(_("pack has bad object at offset %lu: %s"), offset, buf);
+	die(_("pack has bad object at offset %"PRIuMAX": %s"),
+	    (uintmax_t)offset, buf);
 }
 
 static inline struct thread_local *get_thread_data(void)
@@ -429,7 +431,7 @@ static int is_delta_type(enum object_type type)
 	return (type == OBJ_REF_DELTA || type == OBJ_OFS_DELTA);
 }
 
-static void *unpack_entry_data(unsigned long offset, unsigned long size,
+static void *unpack_entry_data(off_t offset, unsigned long size,
 			       enum object_type type, unsigned char *sha1)
 {
 	static char fixed_buf[8192];
@@ -549,13 +551,13 @@ static void *unpack_data(struct object_entry *obj,
 			 void *cb_data)
 {
 	off_t from = obj[0].idx.offset + obj[0].hdr_size;
-	unsigned long len = obj[1].idx.offset - from;
+	off_t len = obj[1].idx.offset - from;
 	unsigned char *data, *inbuf;
 	git_zstream stream;
 	int status;
 
 	data = xmallocz(consume ? 64*1024 : obj->size);
-	inbuf = xmalloc((len < 64*1024) ? len : 64*1024);
+	inbuf = xmalloc((len < 64*1024) ? (int)len : 64*1024);
 
 	memset(&stream, 0, sizeof(stream));
 	git_inflate_init(&stream);
@@ -563,15 +565,15 @@ static void *unpack_data(struct object_entry *obj,
 	stream.avail_out = consume ? 64*1024 : obj->size;
 
 	do {
-		ssize_t n = (len < 64*1024) ? len : 64*1024;
+		ssize_t n = (len < 64*1024) ? (ssize_t)len : 64*1024;
 		n = xpread(get_thread_data()->pack_fd, inbuf, n, from);
 		if (n < 0)
 			die_errno(_("cannot pread pack file"));
 		if (!n)
-			die(Q_("premature end of pack file, %lu byte missing",
-			       "premature end of pack file, %lu bytes missing",
-			       len),
-			    len);
+			die(Q_("premature end of pack file, %"PRIuMAX" byte missing",
+			       "premature end of pack file, %"PRIuMAX" bytes missing",
+			       (unsigned int)len),
+			    (uintmax_t)len);
 		from += n;
 		len -= n;
 		stream.next_in = inbuf;
@@ -1190,7 +1192,7 @@ static void resolve_deltas(void)
 	qsort(ref_deltas, nr_ref_deltas, sizeof(struct ref_delta_entry),
 	      compare_ref_delta_entry);
 
-	if (verbose)
+	if (verbose || show_resolving_progress)
 		progress = start_progress(_("Resolving deltas"),
 					  nr_ref_deltas + nr_ofs_deltas);
 
@@ -1625,6 +1627,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	struct pack_idx_option opts;
 	unsigned char pack_sha1[20];
 	unsigned foreign_nr = 1;	/* zero is a "good" value, assume bad */
+	int report_end_of_input = 0;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(index_pack_usage);
@@ -1694,6 +1697,10 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				input_len = sizeof(*hdr);
 			} else if (!strcmp(arg, "-v")) {
 				verbose = 1;
+			} else if (!strcmp(arg, "--show-resolving-progress")) {
+				show_resolving_progress = 1;
+			} else if (!strcmp(arg, "--report-end-of-input")) {
+				report_end_of_input = 1;
 			} else if (!strcmp(arg, "-o")) {
 				if (index_name || (i+1) >= argc)
 					usage(index_pack_usage);
@@ -1751,6 +1758,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 		obj_stat = xcalloc(st_add(nr_objects, 1), sizeof(struct object_stat));
 	ofs_deltas = xcalloc(nr_objects, sizeof(struct ofs_delta_entry));
 	parse_pack_objects(pack_sha1);
+	if (report_end_of_input)
+		write_in_full(2, "\0", 1);
 	resolve_deltas();
 	conclude_pack(fix_thin_pack, curr_pack, pack_sha1);
 	free(ofs_deltas);

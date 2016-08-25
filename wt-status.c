@@ -263,7 +263,7 @@ static const char *wt_status_unmerged_status_string(int stagemask)
 	case 7:
 		return _("both modified:");
 	default:
-		die(_("bug: unhandled unmerged status %x"), stagemask);
+		die("BUG: unhandled unmerged status %x", stagemask);
 	}
 }
 
@@ -388,7 +388,7 @@ static void wt_status_print_change_data(struct wt_status *s,
 	status_printf(s, color(WT_STATUS_HEADER, s), "\t");
 	what = wt_status_diff_status_string(status);
 	if (!what)
-		die(_("bug: unhandled diff status %c"), status);
+		die("BUG: unhandled diff status %c", status);
 	len = label_width - utf8_strwidth(what);
 	assert(len >= 0);
 	if (status == DIFF_STATUS_COPIED || status == DIFF_STATUS_RENAMED)
@@ -432,7 +432,8 @@ static void wt_status_collect_changed_cb(struct diff_queue_struct *q,
 			d->worktree_status = p->status;
 		d->dirty_submodule = p->two->dirty_submodule;
 		if (S_ISGITLINK(p->two->mode))
-			d->new_submodule_commits = !!hashcmp(p->one->sha1, p->two->sha1);
+			d->new_submodule_commits = !!oidcmp(&p->one->oid,
+							    &p->two->oid);
 	}
 }
 
@@ -947,9 +948,12 @@ static void show_merge_in_progress(struct wt_status *s,
 {
 	if (has_unmerged(s)) {
 		status_printf_ln(s, color, _("You have unmerged paths."));
-		if (s->hints)
+		if (s->hints) {
 			status_printf_ln(s, color,
-				_("  (fix conflicts and run \"git commit\")"));
+					 _("  (fix conflicts and run \"git commit\")"));
+			status_printf_ln(s, color,
+					 _("  (use \"git merge --abort\" to abort the merge)"));
+		}
 	} else {
 		s-> commitable = 1;
 		status_printf_ln(s, color,
@@ -1062,7 +1066,7 @@ static void abbrev_sha1_in_line(struct strbuf *line)
 			strbuf_addf(split[1], "%s ", abbrev);
 			strbuf_reset(line);
 			for (i = 0; split[i]; i++)
-				strbuf_addf(line, "%s", split[i]->buf);
+				strbuf_addbuf(line, split[i]);
 		}
 	}
 	strbuf_list_free(split);
@@ -1554,7 +1558,7 @@ void wt_status_print(struct wt_status *s)
 			else
 				printf(_("nothing to commit\n"));
 		} else
-			printf(_("nothing to commit, working directory clean\n"));
+			printf(_("nothing to commit, working tree clean\n"));
 	}
 }
 
