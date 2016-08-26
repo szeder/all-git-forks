@@ -1340,7 +1340,7 @@ _git_help ()
 {
 	case "$cur" in
 	--*)
-		__gitcomp "--all --guides --info --man --web"
+		__gitcomp "--all --exclude-guides --guides --info --man --web"
 		return
 		;;
 	esac
