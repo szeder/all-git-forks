@@ -1,0 +1,60 @@
+package tr.com.bmd.bip.webapp.event.output;
+
+import java.util.LinkedList;
+
+public class FibonacciAsalBul {
+	
+	public static int fibRecursive(int n){
+		if(n<2){
+			return 1;
+		}else{
+			return fibRecursive(n-1)+ fibRecursive(n-2);
+		}
+	}
+	
+	public static boolean asalmi(int checkNumber){
+		  for(int j=2; j<=checkNumber; j++){ 
+			  if (j == checkNumber) {
+                  return true;
+			  } else if (checkNumber%j==0){
+                  return false;
+			  } else if (j == checkNumber- 1) {
+                  return true;
+			  }
+		  }
+          return false;
+	}
+	
+	private static void fibonacciAsalBul (int sayiKriteri ) {
+		LinkedList<String> primeNumberList= new LinkedList<String>();
+		long sayidanKucukEnBuyukAsal=0;
+		long sayidanBuyukEnKucukAsal=0;
+		int sayi=0;
+		while (true){
+			if (fibRecursive(sayi)<sayiKriteri) {
+				if (asalmi(fibRecursive(sayi))){
+					primeNumberList.add(""+fibRecursive(sayi));
+					sayidanKucukEnBuyukAsal=fibRecursive(sayi);
+				}
+			} else {
+				if (asalmi(fibRecursive(sayi))){
+					primeNumberList.add(""+fibRecursive(sayi));
+					sayidanBuyukEnKucukAsal=fibRecursive(sayi);
+					break;
+				}
+			}
+			sayi++;
+		}
+
+		System.out.println("500000'den küçük en büyük asal sayı: "+(sayidanKucukEnBuyukAsal==0?"Bulunamadı":sayidanKucukEnBuyukAsal));
+		System.out.println("500000'den büyük en küçük asal sayı: "+(sayidanBuyukEnKucukAsal==0?"Bulunamadı":sayidanBuyukEnKucukAsal));
+		System.out.println("Tüm asal sayılar: "+primeNumberList.toString());
+	}
+	
+	
+	
+	public static void main(String[] args) {
+			fibonacciAsalBul(500000);
+	}
+
+}
