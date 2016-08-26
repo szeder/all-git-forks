@@ -123,7 +123,7 @@ archive, summarize the relevant points of the discussion.
 
 If you want to reference a previous commit in the history of a stable
 branch use the format "abbreviated sha1 (subject, date)". So for example
-like this: "Commit f86a374 (pack-bitmap.c: fix a memleak, 2015-03-30)
+like this: "Commit f86a374 ("pack-bitmap.c: fix a memleak", 2015-03-30)
 noticed [...]".
 
 
