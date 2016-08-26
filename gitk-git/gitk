@@ -9382,7 +9382,7 @@ proc mktaggo {} {
 proc copysummary {} {
     global rowmenuid autosellen
 
-    set format "%h (\"%s\", %ad)"
+    set format "%h (%s, %ad)"
     set cmd [list git show -s --pretty=format:$format --date=short]
     if {$autosellen < 40} {
         lappend cmd --abbrev=$autosellen
