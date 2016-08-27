@@ -6,6 +6,13 @@ test_description='git blame'
 PROG='git blame -c'
 . "$TEST_DIRECTORY"/annotate-tests.sh
 
+test_expect_success 'blame untracked file in empty repo' '
+	touch untracked &&
+	test_must_fail git blame untracked 2>actual.err &&
+	echo "fatal: no such path '\''untracked'\'' in HEAD" >expected.err &&
+	test_cmp expected.err actual.err
+'
+
 PROG='git blame -c -e'
 test_expect_success 'blame --show-email' '
 	check_count \
