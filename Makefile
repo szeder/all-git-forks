@@ -378,6 +378,9 @@ all::
 #
 # to say "export LESS=FRX (and LV=-c) if the environment variable
 # LESS (and LV) is not set, respectively".
+#
+# Define USE_INSTALLED_GIT_ARCHIVE if you don't want to build git-archive as
+# part of 'make dist', but are happy to rely on a git version on you $PATH
 
 GIT-VERSION-FILE: FORCE
 	@$(SHELL_PATH) ./GIT-VERSION-GEN
@@ -2423,8 +2426,15 @@ quick-install-html:
 ### Maintainer's dist rules
 
 GIT_TARNAME = git-$(GIT_VERSION)
-dist: git-archive$(X) configure
-	./git-archive --format=tar \
+ifndef USE_INSTALLED_GIT_ARCHIVE
+	GIT_ARCHIVE = ./git-archive$(X)
+	GIT_ARCHIVE_DEP = git-archive$(X)
+else
+	GIT_ARCHIVE = git archive
+	GIT_ARCHIVE_DEP =
+endif
+dist: $(GIT_ARCHIVE_DEP) configure
+	$(GIT_ARCHIVE) --format=tar \
 		--prefix=$(GIT_TARNAME)/ HEAD^{tree} > $(GIT_TARNAME).tar
 	@mkdir -p $(GIT_TARNAME)
 	@cp configure $(GIT_TARNAME)
