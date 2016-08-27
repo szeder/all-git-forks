@@ -8,7 +8,7 @@ msgstr ""
 "Project-Id-Version: git 2.8.0\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2016-08-15 22:43+0800\n"
-"PO-Revision-Date: 2016-08-26 14:26+0100\n"
+"PO-Revision-Date: 2016-08-26 14:52+0100\n"
 "Last-Translator: Peter Krefting <peter@softwolves.pp.se>\n"
 "Language-Team: Svenska <tp-sv@listor.tp-sv.se>\n"
 "Language: sv\n"
@@ -2257,16 +2257,16 @@ msgid "could not rename temporary file to %s"
 msgstr "kunde inte byta nman på temporära file till %s"
 
 #: transport.c:62
-#, fuzzy, c-format
+#, c-format
 #| msgid "Could not rename config section '%s' to '%s'"
 msgid "Would set upstream of '%s' to '%s' of '%s'\n"
-msgstr "Kunde inte byta namn på konfigurationssektionen \"%s\" till \"%s\""
+msgstr "Skulle sätta uppströms för \"%s\" till \"%s\" från \"%s\"\n"
 
 #: transport.c:151
-#, fuzzy, c-format
+#, c-format
 #| msgid "invalid --decorate option: %s"
 msgid "transport: invalid depth option '%s'"
-msgstr "ogiltig flagga för --decorate: %s"
+msgstr "transport: ogiltig flagga för depth: %s"
 
 #: transport.c:771
 #, c-format
@@ -2274,6 +2274,8 @@ msgid ""
 "The following submodule paths contain changes that can\n"
 "not be found on any remote:\n"
 msgstr ""
+"Följande undermodulsökvägar innehåller ändringar som\n"
+"inte kan hittas av fjärrarna:\n"
 
 #: transport.c:775
 #, c-format
@@ -2290,12 +2292,22 @@ msgid ""
 "to push them to a remote.\n"
 "\n"
 msgstr ""
+"\n"
+"Testa\n"
+"\n"
+"\tgit push --recurse-submodules=on-demand\n"
+"\n"
+"eller cd till sökvägen och använd\n"
+"\n"
+"\tgit push\n"
+"\n"
+"för att sända dem till fjärren.\n"
+"\n"
 
 #: transport.c:783
-#, fuzzy
 #| msgid "Aborting\n"
 msgid "Aborting."
-msgstr "Avbryter\n"
+msgstr "Avbryter."
 
 #: transport-helper.c:1041
 #, c-format
@@ -2303,7 +2315,7 @@ msgid "Could not read ref %s"
 msgstr "Kunde inte läsa referensen %s"
 
 #: unpack-trees.c:64
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "Your local changes to the following files would be overwritten by "
 #| "checkout:\n"
@@ -2326,7 +2338,7 @@ msgstr ""
 "%%s"
 
 #: unpack-trees.c:69
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "Your local changes to the following files would be overwritten by merge:\n"
 #| "%%sPlease commit your changes or stash them before you can merge."
@@ -2349,7 +2361,7 @@ msgstr ""
 "%%s"
 
 #: unpack-trees.c:74
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "Your local changes to the following files would be overwritten by %s:\n"
 #| "%%sPlease commit your changes or stash them before you can %s."
@@ -2358,8 +2370,7 @@ msgid ""
 "%%sPlease commit your changes or stash them before you %s."
 msgstr ""
 "Dina lokala ändringar av följande filer skulle skrivas över av \"%s\":\n"
-"%%sChecka in dina ändringar eller använd \"stash\" innan du kan utföra \"%s"
-"\"."
+"%%sChecka in dina ändringar eller använd \"stash\" innan du \"%s\"."
 
 #: unpack-trees.c:76
 #, c-format
@@ -2381,7 +2392,7 @@ msgstr ""
 "%s"
 
 #: unpack-trees.c:85
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "The following untracked working tree files would be removed by checkout:\n"
 #| "%%sPlease move or remove them before you can switch branches."
@@ -2402,7 +2413,7 @@ msgstr ""
 "%%s"
 
 #: unpack-trees.c:90
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "The following untracked working tree files would be removed by merge:\n"
 #| "%%sPlease move or remove them before you can merge."
@@ -2412,7 +2423,7 @@ msgid ""
 msgstr ""
 "Följande ospårade filer i arbetskatalogen skulle tas bort av "
 "sammanslagningen:\n"
-"%%sFlytta eller ta bort dem innan du byter gren."
+"%%sFlytta eller ta bort dem innan du slår samman."
 
 #: unpack-trees.c:92
 #, c-format
@@ -2425,7 +2436,7 @@ msgstr ""
 "%%s"
 
 #: unpack-trees.c:95
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "The following untracked working tree files would be removed by %s:\n"
 #| "%%sPlease move or remove them before you can %s."
@@ -2434,7 +2445,7 @@ msgid ""
 "%%sPlease move or remove them before you %s."
 msgstr ""
 "Följande ospårade filer i arbetskatalogen skulle tas bort av \"%s\":\n"
-"%%sFlytta eller ta bort dem innan du kan utföra \"%s\"."
+"%%sFlytta eller ta bort dem innan du \"%s\"."
 
 #: unpack-trees.c:97
 #, c-format
@@ -2446,7 +2457,7 @@ msgstr ""
 "%%s"
 
 #: unpack-trees.c:102
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "The following untracked working tree files would be overwritten by "
 #| "checkout:\n"
@@ -2472,7 +2483,7 @@ msgstr ""
 "%%s"
 
 #: unpack-trees.c:107
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "The following untracked working tree files would be overwritten by "
 #| "merge:\n"
@@ -2496,7 +2507,7 @@ msgstr ""
 "%%s"
 
 #: unpack-trees.c:112
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "The following untracked working tree files would be overwritten by %s:\n"
 #| "%%sPlease move or remove them before you can %s."
@@ -2505,7 +2516,7 @@ msgid ""
 "%%sPlease move or remove them before you %s."
 msgstr ""
 "Följande ospårade filer i arbetskatalogen skulle skrivas över av \"%s\":\n"
-"%%sFlytta eller ta bort dem innan du kan \"%s\"."
+"%%sFlytta eller ta bort dem innan du \"%s\"."
 
 #: unpack-trees.c:114
 #, c-format
@@ -2591,10 +2602,10 @@ msgid "invalid '..' path segment"
 msgstr "felaktigt \"..\"-sökvägssegment"
 
 #: worktree.c:282
-#, fuzzy, c-format
+#, c-format
 #| msgid "failed to read %s"
 msgid "failed to read '%s'"
-msgstr "misslyckades läsa %s"
+msgstr "misslyckades läsa \"%s\""
 
 #: wrapper.c:222 wrapper.c:392
 #, c-format
@@ -2790,10 +2801,9 @@ msgid "  (fix conflicts and run \"git commit\")"
 msgstr "  (rätta konflikter och kör \"git commit\")"
 
 #: wt-status.c:955
-#, fuzzy
 #| msgid "  (use \"git am --abort\" to restore the original branch)"
 msgid "  (use \"git merge --abort\" to abort the merge)"
-msgstr "  (använd \"git am --abort\" för att återställa ursprungsgrenen)"
+msgstr "  (använd \"git merge --abort\" för att avbryta sammanslagningen)"
 
 #: wt-status.c:960
 msgid "All conflicts fixed but you are still merging."
@@ -3069,7 +3079,7 @@ msgid "nothing to commit (use -u to show untracked files)\n"
 msgstr "inget att checka in (använd -u för att visa ospårade filer)\n"
 
 #: wt-status.c:1561
-#, fuzzy, c-format
+#, c-format
 #| msgid "nothing to commit, working directory clean\n"
 msgid "nothing to commit, working tree clean\n"
 msgstr "inget att checka in, arbetskatalogen ren\n"
@@ -3240,7 +3250,7 @@ msgstr "Flaggan --ignore-missing kan endast användas tillsammans med --dry-run"
 #: builtin/add.c:352
 #, c-format
 msgid "--chmod param '%s' must be either -x or +x"
-msgstr ""
+msgstr "--chmod-parametern \"%s\" måste antingen vara -x eller +x"
 
 #: builtin/add.c:367
 #, c-format
@@ -4511,7 +4521,7 @@ msgid "Branch is renamed, but update of config-file failed"
 msgstr "Grenen namnbytt, men misslyckades uppdatera konfigurationsfilen"
 
 #: builtin/branch.c:620
-#, fuzzy, c-format
+#, c-format
 #| msgid ""
 #| "\n"
 #| "Write a message for tag:\n"
@@ -4523,7 +4533,7 @@ msgid ""
 "Lines starting with '%c' will be stripped.\n"
 msgstr ""
 "\n"
-"Skriv ett meddelande för taggen:\n"
+"Redigera beskrivningen för grenen\n"
 "  %s\n"
 "Rader som inleds med \"%c\" ignoreras.\n"
 
@@ -6317,10 +6327,9 @@ msgid "commit only specified files"
 msgstr "checka endast in angivna filer"
 
 #: builtin/commit.c:1620
-#, fuzzy
 #| msgid "bypass pre-commit hook"
 msgid "bypass pre-commit and commit-msg hooks"
-msgstr "förbigå pre-commit-krok"
+msgstr "förbigå pre-commit- och commit-msg-krokar"
 
 #: builtin/commit.c:1621
 msgid "show what would be committed"
@@ -6873,7 +6882,7 @@ msgstr "Kunde inte hitta fjärr-referensen HEAD"
 #: builtin/fetch.c:503
 #, c-format
 msgid "configuration fetch.output contains invalid value %s"
-msgstr ""
+msgstr "konfigurationen för fetch.output innehåller ogiltigt värde %s"
 
 #: builtin/fetch.c:592
 #, c-format
@@ -6889,10 +6898,9 @@ msgid "[rejected]"
 msgstr "[refuserad]"
 
 #: builtin/fetch.c:610
-#, fuzzy
 #| msgid "! %-*s %-*s -> %s  (can't fetch in current branch)"
 msgid "can't fetch in current branch"
-msgstr "! %-*s %-*s -> %s  (kan inte hämta i aktuell gren)"
+msgstr "kan inte hämta i aktuell gren"
 
 #: builtin/fetch.c:619
 msgid "[tag update]"
@@ -6920,10 +6928,9 @@ msgid "forced update"
 msgstr "tvingad uppdatering"
 
 #: builtin/fetch.c:689
-#, fuzzy
 #| msgid "(non-fast-forward)"
 msgid "non-fast-forward"
-msgstr "(ej snabbspolad)"
+msgstr "ej snabbspolad"
 
 #: builtin/fetch.c:733
 #, c-format
@@ -7171,10 +7178,9 @@ msgid "show progress"
 msgstr "visa förlopp"
 
 #: builtin/fsck.c:606
-#, fuzzy
 #| msgid "show unreachable objects"
 msgid "show verbose names for reachable objects"
-msgstr "visa onåbara objekt"
+msgstr "visa ordrika namn för nåbara objekt"
 
 #: builtin/fsck.c:671
 msgid "Checking objects"
@@ -7719,10 +7725,10 @@ msgid "pack version %<PRIu32> unsupported"
 msgstr "paketversion %<PRIu32> stöds ej"
 
 #: builtin/index-pack.c:353
-#, fuzzy, c-format
+#, c-format
 #| msgid "pack has bad object at offset %lu: %s"
 msgid "pack has bad object at offset %<PRIuMAX>: %s"
-msgstr "paketet har felaktigt objekt vid index %lu: %s"
+msgstr "paketet har felaktigt objekt vid index %<PRIuMAX>: %s"
 
 #: builtin/index-pack.c:475
 #, c-format
@@ -7747,13 +7753,13 @@ msgid "cannot pread pack file"
 msgstr "kan inte utföra \"pread\" på paketfil"
 
 #: builtin/index-pack.c:573
-#, fuzzy, c-format
+#, c-format
 #| msgid "premature end of pack file, %lu byte missing"
 #| msgid_plural "premature end of pack file, %lu bytes missing"
 msgid "premature end of pack file, %<PRIuMAX> byte missing"
 msgid_plural "premature end of pack file, %<PRIuMAX> bytes missing"
-msgstr[0] "för tidigt slut på paketfilen, %lu byte saknas"
-msgstr[1] "för tidigt slut på paketfilen, %lu byte saknas"
+msgstr[0] "för tidigt slut på paketfilen, %<PRIuMAX> byte saknas"
+msgstr[1] "för tidigt slut på paketfilen, %<PRIuMAX> byte saknas"
 
 #: builtin/index-pack.c:599
 msgid "serious inflate inconsistency"
@@ -8001,28 +8007,28 @@ msgid "unable to move %s to %s"
 msgstr "kan inte flytta %s till %s"
 
 #: builtin/init-db.c:402
-#, fuzzy, c-format
+#, c-format
 #| msgid "%s%s Git repository in %s%s\n"
 msgid "Reinitialized existing shared Git repository in %s%s\n"
-msgstr "%s%s Git-arkiv i %s%s\n"
+msgstr "Ominitierade befintligt delat Git-arkiv i %s%s\n"
 
 #: builtin/init-db.c:403
-#, fuzzy, c-format
+#, c-format
 #| msgid "%s%s Git repository in %s%s\n"
 msgid "Reinitialized existing Git repository in %s%s\n"
-msgstr "%s%s Git-arkiv i %s%s\n"
+msgstr "Ominitierade befintligt Git-arkiv i %s%s\n"
 
 #: builtin/init-db.c:407
-#, fuzzy, c-format
+#, c-format
 #| msgid "%s%s Git repository in %s%s\n"
 msgid "Initialized empty shared Git repository in %s%s\n"
-msgstr "%s%s Git-arkiv i %s%s\n"
+msgstr "Initierade tomt delat Git-arkiv i %s%s\n"
 
 #: builtin/init-db.c:408
-#, fuzzy, c-format
+#, c-format
 #| msgid "%s%s Git repository in %s%s\n"
 msgid "Initialized empty Git repository in %s%s\n"
-msgstr "%s%s Git-arkiv i %s%s\n"
+msgstr "Initierade tomt Git-arkiv i %s%s\n"
 
 #: builtin/init-db.c:455
 msgid ""
@@ -8821,7 +8827,7 @@ msgstr "Ingen fjärrspårande gren för %s från %s"
 #: builtin/merge.c:960
 #, c-format
 msgid "Bad value '%s' in environment '%s'"
-msgstr ""
+msgstr "Felaktigt värde \"%s\" i miljövariabeln \"%s\""
 
 #: builtin/merge.c:1034
 #, c-format
@@ -8829,16 +8835,15 @@ msgid "could not close '%s'"
 msgstr "kunde inte stänga \"%s\""
 
 #: builtin/merge.c:1061
-#, fuzzy, c-format
+#, c-format
 #| msgid "%s - not something we can merge"
 msgid "not something we can merge in %s: %s"
-msgstr "%s - inte något vi kan slå ihop"
+msgstr "inte något vi kan slå ihop med %s: %s"
 
 #: builtin/merge.c:1095
-#, fuzzy
 #| msgid "%s - not something we can merge"
 msgid "not something we can merge"
-msgstr "%s - inte något vi kan slå ihop"
+msgstr "inte något vi kan slå ihop"
 
 #: builtin/merge.c:1162
 msgid "There is no merge to abort (MERGE_HEAD missing)."
@@ -8916,10 +8921,9 @@ msgid "refusing to merge unrelated histories"
 msgstr "vägrar slå samman orelaterad historik"
 
 #: builtin/merge.c:1367
-#, fuzzy
 #| msgid "Already up-to-date!"
 msgid "Already up-to-date."
-msgstr "Redan à jour!"
+msgstr "Redan à jour."
 
 #: builtin/merge.c:1382
 #, c-format
@@ -8937,10 +8941,9 @@ msgid "Nope.\n"
 msgstr "Nej.\n"
 
 #: builtin/merge.c:1451
-#, fuzzy
 #| msgid "Already up-to-date!"
 msgid "Already up-to-date. Yeeah!"
-msgstr "Redan à jour!"
+msgstr "Redan à jour. Toppen!"
 
 #: builtin/merge.c:1457
 msgid "Not possible to fast-forward, aborting."
@@ -9320,7 +9323,7 @@ msgstr "git notes get-ref"
 
 #: builtin/notes.c:94
 msgid "Write/edit the notes for the following object:"
-msgstr ""
+msgstr "Skriv/redigera anteckningar för följande objekt:"
 
 #: builtin/notes.c:147
 #, c-format
@@ -9459,10 +9462,10 @@ msgstr ""
 "Använd \"git notes add -f -m/-F/-c/-C\" istället.\n"
 
 #: builtin/notes.c:753
-#, fuzzy, c-format
+#, c-format
 #| msgid "Could not find merge strategy '%s'.\n"
 msgid "unknown notes merge strategy %s"
-msgstr "Kunde inte hitta sammanslagningsstrategin \"%s\".\n"
+msgstr "okänd sammanslagningsstrategi för anteckningar: %s"
 
 #: builtin/notes.c:769
 msgid "General options"
@@ -9500,19 +9503,18 @@ msgstr "avbryt sammanslagning av anteckningar"
 
 #: builtin/notes.c:792
 msgid "cannot mix --commit, --abort or -s/--strategy"
-msgstr ""
+msgstr "kan inte blanda --commit, --abort eller -s/--strategy"
 
 #: builtin/notes.c:797
-#, fuzzy
 #| msgid "You must specify a directory."
 msgid "Must specify a notes ref to merge"
-msgstr "Du måste ange en katalog."
+msgstr "Måste ange en antecknings-referens att slå ihop"
 
 #: builtin/notes.c:821
-#, fuzzy, c-format
+#, c-format
 #| msgid "Unknown type: %d"
 msgid "Unknown -s/--strategy: %s"
-msgstr "Okänd typ: %d"
+msgstr "Okänd -s/--strategy: %s"
 
 #: builtin/notes.c:858
 #, c-format
@@ -9520,10 +9522,10 @@ msgid "A notes merge into %s is already in-progress at %s"
 msgstr "Sammanslagning av anteckningar till %s är redan igångsatt på %s"
 
 #: builtin/notes.c:861
-#, fuzzy, c-format
+#, c-format
 #| msgid "Failed to write current notes tree to database"
 msgid "Failed to store link to current notes ref (%s)"
-msgstr "Kunde inte skriva aktuellt anteckningsträd till databasen"
+msgstr "Kunde inte lagra länk till aktuell anteckningsreferens (%s)"
 
 #: builtin/notes.c:863
 #, c-format
@@ -9532,6 +9534,9 @@ msgid ""
 "'git notes merge --commit', or abort the merge with 'git notes merge --"
 "abort'.\n"
 msgstr ""
+"Automatisk sammanslagning av anteckningar misslyckades. Rätta konflikter i "
+"%s och checka in resultatet med \"git notes merge --commit\", eller avbryt "
+"sammanslagningen med \"git notes merge --abort\".\n"
 
 #: builtin/notes.c:885
 #, c-format
@@ -9551,10 +9556,9 @@ msgid "do not remove, show only"
 msgstr "ta inte bort, bara visa"
 
 #: builtin/notes.c:939
-#, fuzzy
 #| msgid "report pruned objects"
 msgid "report pruned notes"
-msgstr "rapportera borttagna objekt"
+msgstr "rapportera borttagna anteckningar"
 
 #: builtin/notes.c:981
 msgid "notes-ref"
@@ -9714,10 +9718,9 @@ msgid "keep unreachable objects"
 msgstr "behåll onåbara objekt"
 
 #: builtin/pack-objects.c:2699
-#, fuzzy
 #| msgid "keep unreachable objects"
 msgid "pack loose unreachable objects"
-msgstr "behåll onåbara objekt"
+msgstr "packa lösa onåbara objekt"
 
 #: builtin/pack-objects.c:2700 parse-options.h:142
 msgid "time"
@@ -9921,7 +9924,7 @@ msgstr ""
 
 #: builtin/pull.c:820
 msgid "ignoring --verify-signatures for rebase"
-msgstr ""
+msgstr "ignorera --verify-signatures för ombasering"
 
 #: builtin/pull.c:867
 msgid "--[no-]autostash option is only valid with --rebase."
@@ -10244,13 +10247,14 @@ msgstr "begär atomiska transaktioner på fjärrsidan"
 
 #: builtin/push.c:546
 msgid "server-specific"
-msgstr ""
+msgstr "serverspecifik"
 
 #: builtin/push.c:546
-#, fuzzy
 #| msgid "nothing to commit\n"
 msgid "option to transmit"
-msgstr "inget att checka in\n"
+msgstr ""
+"inget att checka in\n"
+"flagga att sända"
 
 #: builtin/push.c:560
 msgid "--delete is incompatible with --all, --mirror and --tags"
@@ -10262,7 +10266,7 @@ msgstr "--delete kan inte användas utan referenser"
 
 #: builtin/push.c:579
 msgid "push options must not have new line characters"
-msgstr ""
+msgstr "push-flaggor kan inte innehålla radbrytning"
 
 #: builtin/read-tree.c:37
 msgid ""
@@ -10602,10 +10606,10 @@ msgid "rebases interactively onto remote %s"
 msgstr "ombaseras interaktivt på fjärren %s"
 
 #: builtin/remote.c:964
-#, fuzzy, c-format
+#, c-format
 #| msgid "rebases interactively onto remote %s"
 msgid "rebases onto remote %s"
-msgstr "ombaseras interaktivt på fjärren %s"
+msgstr "ombaseras på fjärren %s"
 
 #: builtin/remote.c:967
 #, c-format
@@ -10618,10 +10622,10 @@ msgid "merges with remote %s"
 msgstr "sammanslås med fjärren %s"
 
 #: builtin/remote.c:973
-#, fuzzy, c-format
+#, c-format
 #| msgid "    and with remote"
 msgid "%-*s    and with remote %s\n"
-msgstr "    och med fjärren"
+msgstr "%-*s    och med fjärren %s\n"
 
 #: builtin/remote.c:1016
 msgid "create"
@@ -10694,16 +10698,14 @@ msgid "  HEAD branch: %s"
 msgstr "  HEAD-gren: %s"
 
 #: builtin/remote.c:1158
-#, fuzzy
 #| msgid " (status not queried)"
 msgid "(not queried)"
-msgstr " (status inte förfrågad)"
+msgstr "(inte förfrågad)"
 
 #: builtin/remote.c:1160
-#, fuzzy
 #| msgid "unknown:"
 msgid "(unknown)"
-msgstr "okänd:"
+msgstr "(okänd)"
 
 #: builtin/remote.c:1164
 #, c-format
@@ -10909,10 +10911,9 @@ msgid "with -A, do not loosen objects older than this"
 msgstr "med -A, lös inte upp objekt äldre än detta"
 
 #: builtin/repack.c:180
-#, fuzzy
 #| msgid "keep unreachable objects"
 msgid "with -a, repack unreachable objects"
-msgstr "behåll onåbara objekt"
+msgstr "med -a, packa om onåbara objekt"
 
 #: builtin/repack.c:182
 msgid "size of the window used for delta compression"
@@ -10943,10 +10944,9 @@ msgid "cannot delete packs in a precious-objects repo"
 msgstr "kan inte ta bort paket i ett \"precious-objects\"-arkiv"
 
 #: builtin/repack.c:204
-#, fuzzy
 #| msgid "--column and -n are incompatible"
 msgid "--keep-unreachable and -A are incompatible"
-msgstr "--column och -n är inkompatibla"
+msgstr "--keep-unreachable och -A kan inte användas samtidigt"
 
 #: builtin/repack.c:391 builtin/worktree.c:115
 #, c-format
@@ -11713,15 +11713,15 @@ msgid "Skipping submodule '%s'"
 msgstr "Hoppar över undermodulen \"%s\""
 
 #: builtin/submodule--helper.c:792
-#, fuzzy, c-format
+#, c-format
 #| msgid "Failed to copy notes from '%s' to '%s'"
 msgid "Failed to clone '%s'. Retry scheduled"
-msgstr "Misslyckades kopiera anteckningar från \"%s\" till \"%s\""
+msgstr "Misslyckades klona \"%s\". Nytt försök planlagt"
 
 #: builtin/submodule--helper.c:803
 #, c-format
 msgid "Failed to clone '%s' a second time, aborting"
-msgstr ""
+msgstr "Misslyckades klona \"%s\" för andra gången, avbryter"
 
 #: builtin/submodule--helper.c:824
 msgid "path into the working tree"
@@ -11745,7 +11745,7 @@ msgstr "parallella jobb"
 
 #: builtin/submodule--helper.c:840
 msgid "whether the initial clone should follow the shallow recommendation"
-msgstr ""
+msgstr "om den första klonen skall följa rekommendation för grund kloning"
 
 #: builtin/submodule--helper.c:841
 msgid "don't print cloning progress"
@@ -11765,6 +11765,8 @@ msgid ""
 "Submodule (%s) branch configured to inherit branch from superproject, but "
 "the superproject is not on any branch"
 msgstr ""
+"Undermodulens (%s) gren inställd på att ärva gren från huvudprojektet, men "
+"huvudprojektet är inte på någon gren"
 
 #: builtin/submodule--helper.c:977
 msgid "submodule--helper subcommand must be called with a subcommand"
@@ -12278,20 +12280,18 @@ msgid "git worktree list [<options>]"
 msgstr "git worktree list [<flaggor>]"
 
 #: builtin/worktree.c:17
-#, fuzzy
 #| msgid "git worktree list [<options>]"
 msgid "git worktree lock [<options>] <path>"
-msgstr "git worktree list [<flaggor>]"
+msgstr "git worktree lock [<flaggor>] <sökväg>"
 
 #: builtin/worktree.c:18
 msgid "git worktree prune [<options>]"
 msgstr "git worktree prune [<flaggor>]"
 
 #: builtin/worktree.c:19
-#, fuzzy
 #| msgid "git worktree prune [<options>]"
 msgid "git worktree unlock <path>"
-msgstr "git worktree prune [<flaggor>]"
+msgstr "git worktree unlock <sökväg>"
 
 #: builtin/worktree.c:42
 #, c-format
@@ -12356,35 +12356,35 @@ msgstr "-b, -B och --detach är ömsesidigt uteslutande"
 
 #: builtin/worktree.c:470
 msgid "reason for locking"
-msgstr ""
+msgstr "orsak till lås"
 
 #: builtin/worktree.c:482 builtin/worktree.c:515
-#, fuzzy, c-format
+#, c-format
 #| msgid "'%s' is not a commit"
 msgid "'%s' is not a working tree"
-msgstr "\"%s\" är inte en incheckning"
+msgstr "\"%s\" är inte en arbetskatalog"
 
 #: builtin/worktree.c:484 builtin/worktree.c:517
 msgid "The main working tree cannot be locked or unlocked"
-msgstr ""
+msgstr "Huvudarbetskatalogen kan inte låsas eller låsas upp"
 
 #: builtin/worktree.c:489
-#, fuzzy, c-format
+#, c-format
 #| msgid "'%s' is already checked out at '%s'"
 msgid "'%s' is already locked, reason: %s"
-msgstr "\"%s\" är redan utcheckad på \"%s\""
+msgstr "\"%s\" är redan låst, orsak: %s"
 
 #: builtin/worktree.c:491
-#, fuzzy, c-format
+#, c-format
 #| msgid "'%s' is already checked out at '%s'"
 msgid "'%s' is already locked"
-msgstr "\"%s\" är redan utcheckad på \"%s\""
+msgstr "\"%s\" är redan låst"
 
 #: builtin/worktree.c:519
-#, fuzzy, c-format
+#, c-format
 #| msgid "'%s' is not a commit"
 msgid "'%s' is not locked"
-msgstr "\"%s\" är inte en incheckning"
+msgstr "\"%s\" är inte låst"
 
 #: builtin/write-tree.c:13
 msgid "git write-tree [--missing-ok] [--prefix=<prefix>/]"
@@ -12403,26 +12403,25 @@ msgid "only useful for debugging"
 msgstr "endast användbart vid felsökning"
 
 #: upload-pack.c:20
-#, fuzzy
 #| msgid "git repack [<options>]"
 msgid "git upload-pack [<options>] <dir>"
-msgstr "git repack [<flaggor>]"
+msgstr "git upload-pack [<flaggor>] <katalog>"
 
 #: upload-pack.c:837
 msgid "quit after a single request/response exchange"
-msgstr ""
+msgstr "avsluta omedelbart efter första anrop/svar-utväxling"
 
 #: upload-pack.c:839
 msgid "exit immediately after initial ref advertisement"
-msgstr ""
+msgstr "avsluta omedelbart efter inledande kungörelse av referenser"
 
 #: upload-pack.c:841
 msgid "do not try <directory>/.git/ if <directory> is no Git directory"
-msgstr ""
+msgstr "testa inte <katalog>/.git/ om <katalog> inte är en Git-katalog"
 
 #: upload-pack.c:843
 msgid "interrupt transfer after <n> seconds of inactivity"
-msgstr ""
+msgstr "avbryt överföringen efter <n> sekunders inaktivitet"
 
 #: credential-cache--daemon.c:271
 msgid "print debugging messages to stderr"
@@ -12623,10 +12622,10 @@ msgid "Bad rev input: $arg"
 msgstr "Felaktig rev-indata: $arg"
 
 #: git-bisect.sh:281
-#, fuzzy, sh-format
+#, sh-format
 #| msgid "Bad rev input: $arg"
 msgid "Bad rev input: $bisected_head"
-msgstr "Felaktig rev-indata: $arg"
+msgstr "Felaktig rev-indata: $bisected_head"
 
 #: git-bisect.sh:290
 #, sh-format
@@ -12776,7 +12775,6 @@ msgstr ""
 "Flaggor som stöds är: --term-good|--term-old och --term-bad|--term-new."
 
 #: git-merge-octopus.sh:46
-#, fuzzy
 #| msgid ""
 #| "Your local changes to the following files would be overwritten by merge:\n"
 #| "%%s"
@@ -12784,45 +12782,43 @@ msgid ""
 "Error: Your local changes to the following files would be overwritten by "
 "merge"
 msgstr ""
-"Dina lokala ändringar av följande filer skulle skrivas över av "
-"sammanslagning:\n"
-"%%s"
+"Fel: Dina lokala ändringar av följande filer skulle skrivas över av "
+"sammanslagning"
 
 #: git-merge-octopus.sh:61
 msgid "Automated merge did not work."
-msgstr ""
+msgstr "Automatisk sammanslagning misslyckades."
 
 #: git-merge-octopus.sh:62
-#, fuzzy
 #| msgid "could not redirect output"
 msgid "Should not be doing an Octopus."
-msgstr "kunde inte omdirigera utdata"
+msgstr "Borde inte använda Octopus."
 
 #: git-merge-octopus.sh:73
 #, sh-format
 msgid "Unable to find common commit with $pretty_name"
-msgstr ""
+msgstr "Kunde inte hitta gemensam incheckning med $pretty_name"
 
 #: git-merge-octopus.sh:77
-#, fuzzy, sh-format
+#, sh-format
 #| msgid "Already up-to-date!"
 msgid "Already up-to-date with $pretty_name"
-msgstr "Redan à jour!"
+msgstr "Redan à jour med $pretty_name"
 
 #: git-merge-octopus.sh:89
-#, fuzzy, sh-format
+#, sh-format
 #| msgid "Fast-forwarded $branch_name to $onto_name."
 msgid "Fast-forwarding to: $pretty_name"
-msgstr "Snabbspolade $branch_name till $onto_name."
+msgstr "Snabbspolar till: $pretty_name"
 
 #: git-merge-octopus.sh:97
 #, sh-format
 msgid "Trying simple merge with $pretty_name"
-msgstr ""
+msgstr "Försök enkel sammanslagning med $pretty_name"
 
 #: git-merge-octopus.sh:102
 msgid "Simple merge did not work, trying automatic merge."
-msgstr ""
+msgstr "Enkel sammanslagning misslyckades, försöker automatisk sammanslagning."
 
 #: git-rebase.sh:56
 msgid ""
@@ -13038,7 +13034,7 @@ msgstr "Kan inte spara aktuell status"
 #: git-stash.sh:268
 #, sh-format
 msgid "Saved working directory and index state $stash_msg"
-msgstr ""
+msgstr "Sparade arbetskatalogen och indexstatus $stash_msg"
 
 #: git-stash.sh:285
 msgid "Cannot remove worktree changes"
@@ -13099,7 +13095,7 @@ msgstr "Indexet har inte tagits ur kön."
 
 #: git-stash.sh:551
 msgid "The stash is kept in case you need it again."
-msgstr ""
+msgstr "\"Stash\":en behålls ifall du behöver den igen."
 
 #: git-stash.sh:560
 #, sh-format
