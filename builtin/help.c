@@ -37,10 +37,10 @@ static int show_all = 0;
 static int show_guides = 0;
 static unsigned int colopts;
 static enum help_format help_format = HELP_FORMAT_NONE;
-static int cmd_only;
+static int exclude_guides;
 static struct option builtin_help_options[] = {
 	OPT_BOOL('a', "all", &show_all, N_("print all available commands")),
-	OPT_BOOL('c', "command-only", &cmd_only, N_("show help only for commands")),
+	OPT_HIDDEN_BOOL(0, "exclude-guides", &exclude_guides, N_("exclude guides")),
 	OPT_BOOL('g', "guides", &show_guides, N_("print list of useful guides")),
 	OPT_SET_INT('m', "man", &help_format, N_("show man page"), HELP_FORMAT_MAN),
 	OPT_SET_INT('w', "web", &help_format, N_("show manual in web browser"),
@@ -442,7 +442,7 @@ static const char *check_git_cmd(const char* cmd)
 		exit(0);
 	}
 
-	if (cmd_only)
+	if (exclude_guides)
 		return help_unknown_cmd(cmd);
 
 	return cmd;

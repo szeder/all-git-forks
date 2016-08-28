@@ -50,8 +50,8 @@ test_expect_success 'setup - submodules' '
 
 test_expect_success 'setup - git submodule add' '
 	git submodule add ./sm2 sm1 &&
-	commit_file sm1 &&
-	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
+	commit_file sm1 .gitmodules &&
+	git diff-tree -p --no-commit-id --submodule=log HEAD -- sm1 >actual &&
 	cat >expected <<-EOF &&
 	Submodule sm1 0000000...$smhead1 (new submodule)
 	EOF
@@ -60,7 +60,7 @@ test_expect_success 'setup - git submodule add' '
 
 test_expect_success 'submodule directory removed' '
 	rm -rf sm1 &&
-	git diff-tree -p --no-commit-id --submodule=log HEAD >actual &&
+	git diff-tree -p --no-commit-id --submodule=log HEAD -- sm1 >actual &&
 	cat >expected <<-EOF &&
 	Submodule sm1 0000000...$smhead1 (new submodule)
 	EOF

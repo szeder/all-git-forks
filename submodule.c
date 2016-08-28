@@ -127,7 +127,9 @@ static int add_submodule_odb(const char *path)
 	int ret = 0;
 	size_t alloc;
 
-	strbuf_git_path_submodule(&objects_directory, path, "objects/");
+	ret = strbuf_git_path_submodule(&objects_directory, path, "objects/");
+	if (ret)
+		goto done;
 	if (!is_directory(objects_directory.buf)) {
 		ret = -1;
 		goto done;

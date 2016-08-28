@@ -522,34 +522,34 @@ static void strip_extension(const char **argv)
 
 static void handle_builtin(int argc, const char **argv)
 {
+	struct argv_array args = ARGV_ARRAY_INIT;
 	const char *cmd;
 	struct cmd_struct *builtin;
 
 	strip_extension(argv);
 	cmd = argv[0];
 
-	/* Turn "git cmd --help" into "git help --command-only cmd" */
+	/* Turn "git cmd --help" into "git help --exclude-guides cmd" */
 	if (argc > 1 && !strcmp(argv[1], "--help")) {
-		struct argv_array args;
 		int i;
 
 		argv[1] = argv[0];
 		argv[0] = cmd = "help";
 
-		argv_array_init(&args);
 		for (i = 0; i < argc; i++) {
 			argv_array_push(&args, argv[i]);
 			if (!i)
-				argv_array_push(&args, "--command-only");
+				argv_array_push(&args, "--exclude-guides");
 		}
 
 		argc++;
-		argv = argv_array_detach(&args);
+		argv = args.argv;
 	}
 
 	builtin = get_builtin(cmd);
 	if (builtin)
 		exit(run_builtin(builtin, argc, argv));
+	argv_array_clear(&args);
 }
 
 static void execv_dashed_external(const char **argv)

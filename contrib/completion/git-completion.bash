@@ -1395,7 +1395,7 @@ _git_help ()
 {
 	case "$cur" in
 	--*)
-		__gitcomp "--all --command-only --guides --info --man --web"
+		__gitcomp "--all --guides --info --man --web"
 		return
 		;;
 	esac
