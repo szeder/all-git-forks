@@ -419,6 +419,15 @@ $ git reflog -2 HEAD # or
 $ git log -g -2 HEAD
 ------------
 
+ARGUMENT AMBIGUATION
+--------------------
+
+When there is only one argument given and it is not `--` (e.g. "git
+checkout abc"), "abc" could be seen as either a `<tree-ish>` or a
+`<pathspec>`, Git will assume the argument is a `<tree-ish>`, which is
+a common case for switching branches. Use `git checkout -- <pathspec>`
+form if you mean it to be a pathspec.
+
 EXAMPLES
 --------
 
