@@ -40,7 +40,10 @@ test_expect_success 'can update tag' '
 	EOF
 
 	INPUT_END
-	git fast-import --export-marks=marks.out <input
+	git fast-import --export-marks=marks.out <input &&
+	echo "tag1" >expected &&
+	git tag -l >actual &&
+	test_cmp expected actual
 '
 
 test_expect_success 'can branch from tag' '
