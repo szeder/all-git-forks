@@ -62,4 +62,22 @@ test_expect_success 'can branch from tag' '
 	git fast-import --export-marks=marks.out <input
 '
 
+test_expect_success 'can create and delete tag in same run' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	tag tag2
+	from refs/heads/master
+	data <<EOF
+	a second tag
+	EOF
+
+	reset refs/tags/tag2
+	from 0000000000000000000000000000000000000000
+
+	INPUT_END
+	git fast-import --export-marks=marks.out <input &&
+	git tag -l tag2 >output &&
+	test_must_be_empty output
+'
+
 test_done
