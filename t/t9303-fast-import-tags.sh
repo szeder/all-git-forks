@@ -80,4 +80,34 @@ test_expect_success 'can create and delete tag in same run' '
 	test_must_be_empty output
 '
 
+test_expect_failure 'commit works with tags' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	tag tag3
+	from refs/heads/master
+	data <<EOF
+	a third tag
+	EOF
+
+	reset refs/tags/tag3
+	from 0000000000000000000000000000000000000000
+
+	commit refs/tags/tag3
+	committer $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL> $GIT_COMMITTER_DATE
+	data <<COMMIT
+	commit direct to tag
+	COMMIT
+
+	M 644 inline file
+	data <<EOF
+	file content
+	EOF
+
+	INPUT_END
+	git fast-import --export-marks=marks.out <input &&
+	echo "tag3" >expected &&
+	git tag -l tag3 >actual &&
+	test_cmp expected actual
+'
+
 test_done
