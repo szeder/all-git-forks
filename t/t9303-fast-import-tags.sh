@@ -62,7 +62,9 @@ test_expect_success 'can branch from tag' '
 	EOF
 
 	INPUT_END
-	git fast-import --export-marks=marks.out <input
+	git fast-import --export-marks=marks.out <input &&
+	git show-ref --heads maint1 >output &&
+	test_line_count = 1 output
 '
 
 test_expect_success 'can delete tag' '
