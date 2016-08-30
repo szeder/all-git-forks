@@ -278,9 +278,10 @@ Automating
 	the value of `sendemail.identity`.
 
 --[no-]signed-off-by-cc::
-	If this is set, add emails found in Signed-off-by: or Cc: lines to the
-	cc list. Default is the value of `sendemail.signedoffbycc` configuration
-	value; if that is unspecified, default to --signed-off-by-cc.
+	If this is set, add emails found in Signed-off-by: or Cc: or any other
+	trailer <foo>-by: lines to the cc list. Default is the value of
+	`sendemail.signedoffbycc` configuration value; if that is unspecified,
+	default to --signed-off-by-cc.
 
 --[no-]cc-cover::
 	If this is set, emails found in Cc: headers in the first patch of
@@ -307,8 +308,9 @@ Automating
   patch body (commit message) except for self (use 'self' for that).
 - 'sob' will avoid including anyone mentioned in Signed-off-by lines except
    for self (use 'self' for that).
+- 'trailers' will avoid including anyone mentioned in any "<foo>-by:" lines.
 - 'cccmd' will avoid running the --cc-cmd.
-- 'body' is equivalent to 'sob' + 'bodycc'
+- 'body' is equivalent to 'sob' + 'bodycc' + 'trailers'
 - 'all' will suppress all auto cc values.
 --
 +
