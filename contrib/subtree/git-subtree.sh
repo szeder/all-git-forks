@@ -485,8 +485,12 @@ subtree_for_commit () {
 	while read mode type tree name
 	do
 		assert test "$name" = "$dir"
-		assert test "$type" = "tree" -o "$type" = "commit"
+		assert test "$type" = "tree" -o "$type" = "commit" -o "$type" = "blob"
 		test "$type" = "commit" && continue  # ignore submodules
+		test "$type" = "blob" && { # handle if $dir is a file
+			printf "%s %s %s\t%s\0" "$mode" "$type" "$tree" "${file##*/}" | git mktree
+			break
+		}
 		echo $tree
 		break
 	done
