@@ -28,7 +28,6 @@
 #include "rerere.h"
 #include "prompt.h"
 #include "mailinfo.h"
-#include "apply.h"
 
 /**
  * Returns 1 if the file is empty or does not exist, 0 otherwise.
@@ -71,8 +70,7 @@ enum patch_format {
 	PATCH_FORMAT_MBOX,
 	PATCH_FORMAT_STGIT,
 	PATCH_FORMAT_STGIT_SERIES,
-	PATCH_FORMAT_HG,
-	PATCH_FORMAT_MBOXRD
+	PATCH_FORMAT_HG
 };
 
 enum keep_type {
@@ -185,22 +183,22 @@ static inline const char *am_path(const struct am_state *state, const char *path
 /**
  * For convenience to call write_file()
  */
-static void write_state_text(const struct am_state *state,
-			     const char *name, const char *string)
+static int write_state_text(const struct am_state *state,
+			    const char *name, const char *string)
 {
-	write_file(am_path(state, name), "%s", string);
+	return write_file(am_path(state, name), "%s", string);
 }
 
-static void write_state_count(const struct am_state *state,
-			      const char *name, int value)
-{
-	write_file(am_path(state, name), "%d", value);
-}
-
-static void write_state_bool(const struct am_state *state,
+static int write_state_count(const struct am_state *state,
 			     const char *name, int value)
 {
-	write_state_text(state, name, value ? "t" : "f");
+	return write_file(am_path(state, name), "%d", value);
+}
+
+static int write_state_bool(const struct am_state *state,
+			    const char *name, int value)
+{
+	return write_state_text(state, name, value ? "t" : "f");
 }
 
 /**
@@ -404,8 +402,13 @@ static int read_commit_msg(struct am_state *state)
  */
 static void write_commit_msg(const struct am_state *state)
 {
+	int fd;
 	const char *filename = am_path(state, "final-commit");
-	write_file_buf(filename, state->msg, state->msg_len);
+
+	fd = xopen(filename, O_WRONLY | O_CREAT, 0666);
+	if (write_in_full(fd, state->msg, state->msg_len) < 0)
+		die_errno(_("could not write to %s"), filename);
+	close(fd);
 }
 
 /**
@@ -709,8 +712,7 @@ done:
  * Splits out individual email patches from `paths`, where each path is either
  * a mbox file or a Maildir. Returns 0 on success, -1 on failure.
  */
-static int split_mail_mbox(struct am_state *state, const char **paths,
-				int keep_cr, int mboxrd)
+static int split_mail_mbox(struct am_state *state, const char **paths, int keep_cr)
 {
 	struct child_process cp = CHILD_PROCESS_INIT;
 	struct strbuf last = STRBUF_INIT;
@@ -722,8 +724,6 @@ static int split_mail_mbox(struct am_state *state, const char **paths,
 	argv_array_push(&cp.args, "-b");
 	if (keep_cr)
 		argv_array_push(&cp.args, "--keep-cr");
-	if (mboxrd)
-		argv_array_push(&cp.args, "--mboxrd");
 	argv_array_push(&cp.args, "--");
 	argv_array_pushv(&cp.args, paths);
 
@@ -965,15 +965,13 @@ static int split_mail(struct am_state *state, enum patch_format patch_format,
 
 	switch (patch_format) {
 	case PATCH_FORMAT_MBOX:
-		return split_mail_mbox(state, paths, keep_cr, 0);
+		return split_mail_mbox(state, paths, keep_cr);
 	case PATCH_FORMAT_STGIT:
 		return split_mail_conv(stgit_patch_to_mail, state, paths, keep_cr);
 	case PATCH_FORMAT_STGIT_SERIES:
 		return split_mail_stgit_series(state, paths, keep_cr);
 	case PATCH_FORMAT_HG:
 		return split_mail_conv(hg_patch_to_mail, state, paths, keep_cr);
-	case PATCH_FORMAT_MBOXRD:
-		return split_mail_mbox(state, paths, keep_cr, 1);
 	default:
 		die("BUG: invalid patch_format");
 	}
@@ -1523,59 +1521,39 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
  */
 static int run_apply(const struct am_state *state, const char *index_file)
 {
-	struct argv_array apply_paths = ARGV_ARRAY_INIT;
-	struct argv_array apply_opts = ARGV_ARRAY_INIT;
-	struct apply_state apply_state;
-	int res, opts_left;
-	static struct lock_file lock_file;
-	int force_apply = 0;
-	int options = 0;
+	struct child_process cp = CHILD_PROCESS_INIT;
 
-	if (init_apply_state(&apply_state, NULL, &lock_file))
-		die("BUG: init_apply_state() failed");
+	cp.git_cmd = 1;
 
-	argv_array_push(&apply_opts, "apply");
-	argv_array_pushv(&apply_opts, state->git_apply_opts.argv);
-
-	opts_left = apply_parse_options(apply_opts.argc, apply_opts.argv,
-					&apply_state, &force_apply, &options,
-					NULL);
-
-	if (opts_left != 0)
-		die("unknown option passed thru to git apply");
-
-	if (index_file) {
-		apply_state.index_file = index_file;
-		apply_state.cached = 1;
-	} else
-		apply_state.check_index = 1;
+	if (index_file)
+		argv_array_pushf(&cp.env_array, "GIT_INDEX_FILE=%s", index_file);
 
 	/*
 	 * If we are allowed to fall back on 3-way merge, don't give false
 	 * errors during the initial attempt.
 	 */
-	if (state->threeway && !index_file)
-		apply_state.apply_verbosity = verbosity_silent;
-
-	if (check_apply_state(&apply_state, force_apply))
-		die("BUG: check_apply_state() failed");
-
-	argv_array_push(&apply_paths, am_path(state, "patch"));
-
-	res = apply_all_patches(&apply_state, apply_paths.argc, apply_paths.argv, options);
-
-	argv_array_clear(&apply_paths);
-	argv_array_clear(&apply_opts);
-	clear_apply_state(&apply_state);
-
-	if (res)
-		return res;
-
-	if (index_file) {
-		/* Reload index as apply_all_patches() will have modified it. */
-		discard_cache();
-		read_cache_from(index_file);
+	if (state->threeway && !index_file) {
+		cp.no_stdout = 1;
+		cp.no_stderr = 1;
 	}
+
+	argv_array_push(&cp.args, "apply");
+
+	argv_array_pushv(&cp.args, state->git_apply_opts.argv);
+
+	if (index_file)
+		argv_array_push(&cp.args, "--cached");
+	else
+		argv_array_push(&cp.args, "--index");
+
+	argv_array_push(&cp.args, am_path(state, "patch"));
+
+	if (run_command(&cp))
+		return -1;
+
+	/* Reload index as git-apply will have modified it. */
+	discard_cache();
+	read_cache_from(index_file ? index_file : get_index_file());
 
 	return 0;
 }
@@ -1600,18 +1578,47 @@ static int build_fake_ancestor(const struct am_state *state, const char *index_f
 }
 
 /**
+ * Do the three-way merge using fake ancestor, their tree constructed
+ * from the fake ancestor and the postimage of the patch, and our
+ * state.
+ */
+static int run_fallback_merge_recursive(const struct am_state *state,
+					unsigned char *orig_tree,
+					unsigned char *our_tree,
+					unsigned char *their_tree)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	int status;
+
+	cp.git_cmd = 1;
+
+	argv_array_pushf(&cp.env_array, "GITHEAD_%s=%.*s",
+			 sha1_to_hex(their_tree), linelen(state->msg), state->msg);
+	if (state->quiet)
+		argv_array_push(&cp.env_array, "GIT_MERGE_VERBOSITY=0");
+
+	argv_array_push(&cp.args, "merge-recursive");
+	argv_array_push(&cp.args, sha1_to_hex(orig_tree));
+	argv_array_push(&cp.args, "--");
+	argv_array_push(&cp.args, sha1_to_hex(our_tree));
+	argv_array_push(&cp.args, sha1_to_hex(their_tree));
+
+	status = run_command(&cp) ? (-1) : 0;
+	discard_cache();
+	read_cache();
+	return status;
+}
+
+/**
  * Attempt a threeway merge, using index_path as the temporary index.
  */
 static int fall_back_threeway(const struct am_state *state, const char *index_path)
 {
-	struct object_id orig_tree, their_tree, our_tree;
-	const struct object_id *bases[1] = { &orig_tree };
-	struct merge_options o;
-	struct commit *result;
-	char *their_tree_name;
+	unsigned char orig_tree[GIT_SHA1_RAWSZ], their_tree[GIT_SHA1_RAWSZ],
+		      our_tree[GIT_SHA1_RAWSZ];
 
-	if (get_oid("HEAD", &our_tree) < 0)
-		hashcpy(our_tree.hash, EMPTY_TREE_SHA1_BIN);
+	if (get_sha1("HEAD", our_tree) < 0)
+		hashcpy(our_tree, EMPTY_TREE_SHA1_BIN);
 
 	if (build_fake_ancestor(state, index_path))
 		return error("could not build fake ancestor");
@@ -1619,7 +1626,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 	discard_cache();
 	read_cache_from(index_path);
 
-	if (write_index_as_tree(orig_tree.hash, &the_index, index_path, 0, NULL))
+	if (write_index_as_tree(orig_tree, &the_index, index_path, 0, NULL))
 		return error(_("Repository lacks necessary blobs to fall back on 3-way merge."));
 
 	say(state, stdout, _("Using index info to reconstruct a base tree..."));
@@ -1635,7 +1642,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 		init_revisions(&rev_info, NULL);
 		rev_info.diffopt.output_format = DIFF_FORMAT_NAME_STATUS;
 		diff_opt_parse(&rev_info.diffopt, &diff_filter_str, 1, rev_info.prefix);
-		add_pending_sha1(&rev_info, "HEAD", our_tree.hash, 0);
+		add_pending_sha1(&rev_info, "HEAD", our_tree, 0);
 		diff_setup_done(&rev_info.diffopt);
 		run_diff_index(&rev_info, 1);
 	}
@@ -1644,7 +1651,7 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 		return error(_("Did you hand edit your patch?\n"
 				"It does not apply to blobs recorded in its index."));
 
-	if (write_index_as_tree(their_tree.hash, &the_index, index_path, 0, NULL))
+	if (write_index_as_tree(their_tree, &the_index, index_path, 0, NULL))
 		return error("could not write tree");
 
 	say(state, stdout, _("Falling back to patching base and 3-way merge..."));
@@ -1660,22 +1667,11 @@ static int fall_back_threeway(const struct am_state *state, const char *index_pa
 	 * changes.
 	 */
 
-	init_merge_options(&o);
-
-	o.branch1 = "HEAD";
-	their_tree_name = xstrfmt("%.*s", linelen(state->msg), state->msg);
-	o.branch2 = their_tree_name;
-
-	if (state->quiet)
-		o.verbosity = 0;
-
-	if (merge_recursive_generic(&o, &our_tree, &their_tree, 1, bases, &result)) {
+	if (run_fallback_merge_recursive(state, orig_tree, our_tree, their_tree)) {
 		rerere(state->allow_rerere_autoupdate);
-		free(their_tree_name);
 		return error(_("Failed to merge in the changes."));
 	}
 
-	free(their_tree_name);
 	return 0;
 }
 
@@ -2207,8 +2203,6 @@ static int parse_opt_patchformat(const struct option *opt, const char *arg, int 
 		*opt_value = PATCH_FORMAT_STGIT_SERIES;
 	else if (!strcmp(arg, "hg"))
 		*opt_value = PATCH_FORMAT_HG;
-	else if (!strcmp(arg, "mboxrd"))
-		*opt_value = PATCH_FORMAT_MBOXRD;
 	else
 		return error(_("Invalid value for --patch-format: %s"), arg);
 	return 0;

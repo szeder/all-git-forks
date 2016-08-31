@@ -52,21 +52,19 @@
 #define RESOLVE_REF_NO_RECURSE 0x02
 #define RESOLVE_REF_ALLOW_BAD_NAME 0x04
 
-const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
-			       unsigned char *sha1, int *flags);
+extern const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
+				      unsigned char *sha1, int *flags);
 
-char *resolve_refdup(const char *refname, int resolve_flags,
-		     unsigned char *sha1, int *flags);
+extern char *resolve_refdup(const char *refname, int resolve_flags,
+			    unsigned char *sha1, int *flags);
 
-int read_ref_full(const char *refname, int resolve_flags,
-		  unsigned char *sha1, int *flags);
-int read_ref(const char *refname, unsigned char *sha1);
+extern int read_ref_full(const char *refname, int resolve_flags,
+			 unsigned char *sha1, int *flags);
+extern int read_ref(const char *refname, unsigned char *sha1);
 
-int ref_exists(const char *refname);
+extern int ref_exists(const char *refname);
 
-int is_branch(const char *refname);
-
-extern int refs_init_db(struct strbuf *err);
+extern int is_branch(const char *refname);
 
 /*
  * If refname is a non-symbolic reference that refers to a tag object,
@@ -76,27 +74,24 @@ extern int refs_init_db(struct strbuf *err);
  * Symbolic references are considered unpeelable, even if they
  * ultimately resolve to a peelable tag.
  */
-int peel_ref(const char *refname, unsigned char *sha1);
+extern int peel_ref(const char *refname, unsigned char *sha1);
 
 /**
- * Resolve refname in the nested "gitlink" repository in the specified
- * submodule (which must be non-NULL). If the resolution is
- * successful, return 0 and set sha1 to the name of the object;
- * otherwise, return a non-zero value.
+ * Resolve refname in the nested "gitlink" repository that is located
+ * at path.  If the resolution is successful, return 0 and set sha1 to
+ * the name of the object; otherwise, return a non-zero value.
  */
-int resolve_gitlink_ref(const char *submodule, const char *refname,
-			unsigned char *sha1);
+extern int resolve_gitlink_ref(const char *path, const char *refname, unsigned char *sha1);
 
 /*
  * Return true iff abbrev_name is a possible abbreviation for
  * full_name according to the rules defined by ref_rev_parse_rules in
  * refs.c.
  */
-int refname_match(const char *abbrev_name, const char *full_name);
+extern int refname_match(const char *abbrev_name, const char *full_name);
 
-int expand_ref(const char *str, int len, unsigned char *sha1, char **ref);
-int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref);
-int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
+extern int dwim_ref(const char *str, int len, unsigned char *sha1, char **ref);
+extern int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
 
 /*
  * A ref_transaction represents a collection of ref updates
@@ -145,9 +140,7 @@ int dwim_log(const char *str, int len, unsigned char *sha1, char **ref);
 struct ref_transaction;
 
 /*
- * Bit values set in the flags argument passed to each_ref_fn() and
- * stored in ref_iterator::flags. Other bits are for internal use
- * only:
+ * Bit values set in the flags argument passed to each_ref_fn():
  */
 
 /* Reference is a symbolic reference. */
@@ -189,45 +182,38 @@ typedef int each_ref_fn(const char *refname,
  * modifies the reference also returns a nonzero value to immediately
  * stop the iteration.
  */
-int head_ref(each_ref_fn fn, void *cb_data);
-int for_each_ref(each_ref_fn fn, void *cb_data);
-int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data);
-int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data,
-			unsigned int broken);
-int for_each_tag_ref(each_ref_fn fn, void *cb_data);
-int for_each_branch_ref(each_ref_fn fn, void *cb_data);
-int for_each_remote_ref(each_ref_fn fn, void *cb_data);
-int for_each_replace_ref(each_ref_fn fn, void *cb_data);
-int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data);
-int for_each_glob_ref_in(each_ref_fn fn, const char *pattern,
-			 const char *prefix, void *cb_data);
+extern int head_ref(each_ref_fn fn, void *cb_data);
+extern int for_each_ref(each_ref_fn fn, void *cb_data);
+extern int for_each_ref_in(const char *prefix, each_ref_fn fn, void *cb_data);
+extern int for_each_fullref_in(const char *prefix, each_ref_fn fn, void *cb_data, unsigned int broken);
+extern int for_each_tag_ref(each_ref_fn fn, void *cb_data);
+extern int for_each_branch_ref(each_ref_fn fn, void *cb_data);
+extern int for_each_remote_ref(each_ref_fn fn, void *cb_data);
+extern int for_each_replace_ref(each_ref_fn fn, void *cb_data);
+extern int for_each_glob_ref(each_ref_fn fn, const char *pattern, void *cb_data);
+extern int for_each_glob_ref_in(each_ref_fn fn, const char *pattern, const char *prefix, void *cb_data);
 
-int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data);
-int for_each_ref_submodule(const char *submodule,
-			   each_ref_fn fn, void *cb_data);
-int for_each_ref_in_submodule(const char *submodule, const char *prefix,
+extern int head_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data);
+extern int for_each_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data);
+extern int for_each_ref_in_submodule(const char *submodule, const char *prefix,
 		each_ref_fn fn, void *cb_data);
-int for_each_tag_ref_submodule(const char *submodule,
-			       each_ref_fn fn, void *cb_data);
-int for_each_branch_ref_submodule(const char *submodule,
-				  each_ref_fn fn, void *cb_data);
-int for_each_remote_ref_submodule(const char *submodule,
-				  each_ref_fn fn, void *cb_data);
+extern int for_each_tag_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data);
+extern int for_each_branch_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data);
+extern int for_each_remote_ref_submodule(const char *submodule, each_ref_fn fn, void *cb_data);
 
-int head_ref_namespaced(each_ref_fn fn, void *cb_data);
-int for_each_namespaced_ref(each_ref_fn fn, void *cb_data);
+extern int head_ref_namespaced(each_ref_fn fn, void *cb_data);
+extern int for_each_namespaced_ref(each_ref_fn fn, void *cb_data);
 
 /* can be used to learn about broken ref and symref */
-int for_each_rawref(each_ref_fn fn, void *cb_data);
+extern int for_each_rawref(each_ref_fn fn, void *cb_data);
 
 static inline const char *has_glob_specials(const char *pattern)
 {
 	return strpbrk(pattern, "?*[");
 }
 
-void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname);
-void warn_dangling_symrefs(FILE *fp, const char *msg_fmt,
-			   const struct string_list *refnames);
+extern void warn_dangling_symref(FILE *fp, const char *msg_fmt, const char *refname);
+extern void warn_dangling_symrefs(FILE *fp, const char *msg_fmt, const struct string_list *refnames);
 
 /*
  * Flags for controlling behaviour of pack_refs()
@@ -259,13 +245,13 @@ int pack_refs(unsigned int flags);
 int safe_create_reflog(const char *refname, int force_create, struct strbuf *err);
 
 /** Reads log for the value of ref during at_time. **/
-int read_ref_at(const char *refname, unsigned int flags,
-		unsigned long at_time, int cnt,
-		unsigned char *sha1, char **msg,
-		unsigned long *cutoff_time, int *cutoff_tz, int *cutoff_cnt);
+extern int read_ref_at(const char *refname, unsigned int flags,
+		       unsigned long at_time, int cnt,
+		       unsigned char *sha1, char **msg,
+		       unsigned long *cutoff_time, int *cutoff_tz, int *cutoff_cnt);
 
 /** Check if a particular reflog exists */
-int reflog_exists(const char *refname);
+extern int reflog_exists(const char *refname);
 
 /*
  * Delete the specified reference. If old_sha1 is non-NULL, then
@@ -274,26 +260,21 @@ int reflog_exists(const char *refname);
  * exists, regardless of its old value. It is an error for old_sha1 to
  * be NULL_SHA1. flags is passed through to ref_transaction_delete().
  */
-int delete_ref(const char *refname, const unsigned char *old_sha1,
-	       unsigned int flags);
+extern int delete_ref(const char *refname, const unsigned char *old_sha1,
+		      unsigned int flags);
 
 /*
  * Delete the specified references. If there are any problems, emit
  * errors but attempt to keep going (i.e., the deletes are not done in
- * an all-or-nothing transaction). flags is passed through to
- * ref_transaction_delete().
+ * an all-or-nothing transaction).
  */
-int delete_refs(struct string_list *refnames, unsigned int flags);
+extern int delete_refs(struct string_list *refnames);
 
 /** Delete a reflog */
-int delete_reflog(const char *refname);
+extern int delete_reflog(const char *refname);
 
 /* iterate over reflog entries */
-typedef int each_reflog_ent_fn(
-		unsigned char *old_sha1, unsigned char *new_sha1,
-		const char *committer, unsigned long timestamp,
-		int tz, const char *msg, void *cb_data);
-
+typedef int each_reflog_ent_fn(unsigned char *osha1, unsigned char *nsha1, const char *, unsigned long, int, const char *, void *);
 int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_data);
 int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void *cb_data);
 
@@ -301,7 +282,7 @@ int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void
  * Calls the specified function for each reflog file until it returns nonzero,
  * and returns the value
  */
-int for_each_reflog(each_ref_fn fn, void *cb_data);
+extern int for_each_reflog(each_ref_fn, void *);
 
 #define REFNAME_ALLOW_ONELEVEL 1
 #define REFNAME_REFSPEC_PATTERN 2
@@ -314,16 +295,16 @@ int for_each_reflog(each_ref_fn fn, void *cb_data);
  * allow a single "*" wildcard character in the refspec. No leading or
  * repeated slashes are accepted.
  */
-int check_refname_format(const char *refname, int flags);
+extern int check_refname_format(const char *refname, int flags);
 
-const char *prettify_refname(const char *refname);
+extern const char *prettify_refname(const char *refname);
 
-char *shorten_unambiguous_ref(const char *refname, int strict);
+extern char *shorten_unambiguous_ref(const char *refname, int strict);
 
 /** rename ref, return 0 on success **/
-int rename_ref(const char *oldref, const char *newref, const char *logmsg);
+extern int rename_ref(const char *oldref, const char *newref, const char *logmsg);
 
-int create_symref(const char *refname, const char *target, const char *logmsg);
+extern int create_symref(const char *refname, const char *target, const char *logmsg);
 
 /*
  * Update HEAD of the specified gitdir.
@@ -332,7 +313,7 @@ int create_symref(const char *refname, const char *target, const char *logmsg);
  * $GIT_DIR points to.
  * Return 0 if successful, non-zero otherwise.
  * */
-int set_worktree_head_symref(const char *gitdir, const char *target);
+extern int set_worktree_head_symref(const char *gitdir, const char *target);
 
 enum action_on_err {
 	UPDATE_REFS_MSG_ON_ERR,
@@ -482,7 +463,7 @@ int update_ref(const char *msg, const char *refname,
 	       const unsigned char *new_sha1, const unsigned char *old_sha1,
 	       unsigned int flags, enum action_on_err onerr);
 
-int parse_hide_refs_config(const char *var, const char *value, const char *);
+extern int parse_hide_refs_config(const char *var, const char *value, const char *);
 
 /*
  * Check whether a ref is hidden. If no namespace is set, both the first and
@@ -492,7 +473,7 @@ int parse_hide_refs_config(const char *var, const char *value, const char *);
  * the ref is outside that namespace, the first parameter is NULL. The second
  * parameter always points to the full ref name.
  */
-int ref_is_hidden(const char *, const char *);
+extern int ref_is_hidden(const char *, const char *);
 
 enum ref_type {
 	REF_TYPE_PER_WORKTREE,
@@ -541,13 +522,11 @@ typedef void reflog_expiry_cleanup_fn(void *cb_data);
  * enum expire_reflog_flags. The three function pointers are described
  * above. On success, return zero.
  */
-int reflog_expire(const char *refname, const unsigned char *sha1,
-		  unsigned int flags,
-		  reflog_expiry_prepare_fn prepare_fn,
-		  reflog_expiry_should_prune_fn should_prune_fn,
-		  reflog_expiry_cleanup_fn cleanup_fn,
-		  void *policy_cb_data);
-
-int ref_storage_backend_exists(const char *name);
+extern int reflog_expire(const char *refname, const unsigned char *sha1,
+			 unsigned int flags,
+			 reflog_expiry_prepare_fn prepare_fn,
+			 reflog_expiry_should_prune_fn should_prune_fn,
+			 reflog_expiry_cleanup_fn cleanup_fn,
+			 void *policy_cb_data);
 
 #endif /* REFS_H */

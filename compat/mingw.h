@@ -67,10 +67,6 @@ typedef int pid_t;
 #define F_SETFD 2
 #define FD_CLOEXEC 0x1
 
-#if !defined O_CLOEXEC && defined O_NOINHERIT
-#define O_CLOEXEC	O_NOINHERIT
-#endif
-
 #ifndef EAFNOSUPPORT
 #define EAFNOSUPPORT WSAEAFNOSUPPORT
 #endif
@@ -117,6 +113,10 @@ struct utsname {
  * trivial stubs
  */
 
+static inline int readlink(const char *path, char *buf, size_t bufsiz)
+{ errno = ENOSYS; return -1; }
+static inline int symlink(const char *oldpath, const char *newpath)
+{ errno = ENOSYS; return -1; }
 static inline int fchmod(int fildes, mode_t mode)
 { errno = ENOSYS; return -1; }
 #ifndef __MINGW64_VERSION_MAJOR
@@ -208,8 +208,6 @@ int setitimer(int type, struct itimerval *in, struct itimerval *out);
 int sigaction(int sig, struct sigaction *in, struct sigaction *out);
 int link(const char *oldpath, const char *newpath);
 int uname(struct utsname *buf);
-int symlink(const char *target, const char *link);
-int readlink(const char *path, char *buf, size_t bufsiz);
 
 /*
  * replacements of existing functions
@@ -339,49 +337,24 @@ static inline long long filetime_to_hnsec(const FILETIME *ft)
 	return winTime - 116444736000000000LL;
 }
 
+static inline time_t filetime_to_time_t(const FILETIME *ft)
+{
+	return (time_t)(filetime_to_hnsec(ft) / 10000000);
+}
+
 /*
- * Use mingw specific stat()/lstat()/fstat() implementations on Windows,
- * including our own struct stat with 64 bit st_size and nanosecond-precision
- * file times.
+ * Use mingw specific stat()/lstat()/fstat() implementations on Windows.
  */
 #ifndef __MINGW64_VERSION_MAJOR
 #define off_t off64_t
 #define lseek _lseeki64
-struct timespec {
-	time_t tv_sec;
-	long tv_nsec;
-};
 #endif
 
-static inline void filetime_to_timespec(const FILETIME *ft, struct timespec *ts)
-{
-	long long hnsec = filetime_to_hnsec(ft);
-	ts->tv_sec = (time_t)(hnsec / 10000000);
-	ts->tv_nsec = (hnsec % 10000000) * 100;
-}
-
-struct mingw_stat {
-    _dev_t st_dev;
-    _ino_t st_ino;
-    _mode_t st_mode;
-    short st_nlink;
-    short st_uid;
-    short st_gid;
-    _dev_t st_rdev;
-    off64_t st_size;
-    struct timespec st_atim;
-    struct timespec st_mtim;
-    struct timespec st_ctim;
-};
-
-#define st_atime st_atim.tv_sec
-#define st_mtime st_mtim.tv_sec
-#define st_ctime st_ctim.tv_sec
-
+/* use struct stat with 64 bit st_size */
 #ifdef stat
 #undef stat
 #endif
-#define stat mingw_stat
+#define stat _stati64
 int mingw_lstat(const char *file_name, struct stat *buf);
 int mingw_stat(const char *file_name, struct stat *buf);
 int mingw_fstat(int fd, struct stat *buf);
@@ -394,6 +367,13 @@ int mingw_fstat(int fd, struct stat *buf);
 #endif
 extern int (*lstat)(const char *file_name, struct stat *buf);
 
+#ifndef _stati64
+# define _stati64(x,y) mingw_stat(x,y)
+#elif defined (_USE_32BIT_TIME_T)
+# define _stat32i64(x,y) mingw_stat(x,y)
+#else
+# define _stat64(x,y) mingw_stat(x,y)
+#endif
 
 int mingw_utime(const char *file_name, const struct utimbuf *times);
 #define utime mingw_utime
@@ -431,7 +411,6 @@ HANDLE winansi_get_osfhandle(int fd);
 	(isalpha(*(path)) && (path)[1] == ':' ? 2 : 0)
 int mingw_skip_dos_drive_prefix(char **path);
 #define skip_dos_drive_prefix mingw_skip_dos_drive_prefix
-#define has_unc_prefix(path) (*(path) == '\\' && (path)[1] == '\\' ? 2 : 0)
 #define is_dir_sep(c) ((c) == '/' || (c) == '\\')
 static inline char *mingw_find_last_dir_sep(const char *path)
 {
@@ -453,14 +432,15 @@ int mingw_offset_1st_component(const char *path);
 #define PATH_SEP ';'
 extern const char *program_data_config(void);
 #define git_program_data_config program_data_config
-extern char *mingw_query_user_email(void);
-#define query_user_email mingw_query_user_email
 #if !defined(__MINGW64_VERSION_MAJOR) && (!defined(_MSC_VER) || _MSC_VER < 1800)
 #define PRIuMAX "I64u"
 #define PRId64 "I64d"
 #else
 #include <inttypes.h>
 #endif
+
+void mingw_open_html(const char *path);
+#define open_html mingw_open_html
 
 /**
  * Max length of long paths (exceeding MAX_PATH). The actual maximum supported
@@ -647,7 +627,7 @@ extern CRITICAL_SECTION pinfo_cs;
 void mingw_startup(void);
 #define main(c,v) dummy_decl_mingw_main(void); \
 static int mingw_main(c,v); \
-int main(int argc, const char **argv) \
+int main(int argc, char **argv) \
 { \
 	mingw_startup(); \
 	return mingw_main(__argc, (void *)__argv); \

@@ -1377,7 +1377,7 @@ EOF
 	git config --add -f .gitmodules submodule.subname.ignore all &&
 	git config --add -f .gitmodules submodule.subname.path sm &&
 	git status > output &&
-	test_i18ncmp expect output &&
+	test_cmp expect output &&
 	git config -f .gitmodules  --remove-section submodule.subname
 '
 
@@ -1387,7 +1387,7 @@ test_expect_success '.git/config ignore=all suppresses unstaged submodule summar
 	git config --add submodule.subname.ignore all &&
 	git config --add submodule.subname.path sm &&
 	git status > output &&
-	test_i18ncmp expect output &&
+	test_cmp expect output &&
 	git config --remove-section submodule.subname &&
 	git config -f .gitmodules  --remove-section submodule.subname
 '
@@ -1497,17 +1497,6 @@ test_expect_success 'git commit -m will commit a staged but ignored submodule' '
 	 test_i18ngrep ! "^M. sm" output &&
 	git config --remove-section submodule.subname &&
 	git config -f .gitmodules  --remove-section submodule.subname
-'
-
-test_expect_success '--no-lock-index' '
-	test_commit some-file &&
-	test-chmtime =1234567890 .git/index &&
-	git status --no-lock-index &&
-	test-chmtime -v +0 .git/index >out &&
-	grep ^1234567890 out &&
-	git status &&
-	test-chmtime -v +0 .git/index >out &&
-	! grep ^1234567890 out
 '
 
 test_done

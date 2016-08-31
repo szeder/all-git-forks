@@ -815,9 +815,6 @@ static int run_rebase(const unsigned char *curr_head,
 		argv_array_push(&args, "--no-autostash");
 	else if (opt_autostash == 1)
 		argv_array_push(&args, "--autostash");
-	if (opt_verify_signatures &&
-	    !strcmp(opt_verify_signatures, "--verify-signatures"))
-		warning(_("ignoring --verify-signatures for rebase"));
 
 	argv_array_push(&args, "--onto");
 	argv_array_push(&args, sha1_to_hex(merge_head));
@@ -855,7 +852,7 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 	git_config(git_pull_config, NULL);
 
 	if (read_cache_unmerged())
-		die_resolve_conflict("pull");
+		die_resolve_conflict("Pull");
 
 	if (file_exists(git_path("MERGE_HEAD")))
 		die_conclude_merge();
@@ -922,24 +919,10 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 		if (merge_heads.nr > 1)
 			die(_("Cannot merge multiple branches into empty head."));
 		return pull_into_void(*merge_heads.sha1, curr_head);
-	}
-	if (opt_rebase && merge_heads.nr > 1)
-		die(_("Cannot rebase onto multiple branches."));
-
-	if (opt_rebase) {
-		struct commit_list *list = NULL;
-		struct commit *merge_head, *head;
-
-		head = lookup_commit_reference(orig_head);
-		commit_list_insert(head, &list);
-		merge_head = lookup_commit_reference(merge_heads.sha1[0]);
-		if (is_descendant_of(merge_head, list)) {
-			/* we can fast-forward this without invoking rebase */
-			opt_ff = "--ff-only";
-			return run_merge();
-		}
+	} else if (opt_rebase) {
+		if (merge_heads.nr > 1)
+			die(_("Cannot rebase onto multiple branches."));
 		return run_rebase(curr_head, *merge_heads.sha1, rebase_fork_point);
-	} else {
+	} else
 		return run_merge();
-	}
 }

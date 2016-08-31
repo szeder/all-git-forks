@@ -6,7 +6,6 @@
 #include "../git-compat-util.h"
 #include <wingdi.h>
 #include <winreg.h>
-#include "win32.h"
 
 /*
  ANSI codes used by git: m, K
@@ -36,21 +35,26 @@ typedef struct _CONSOLE_FONT_INFOEX {
 #endif
 #endif
 
+typedef BOOL (WINAPI *PGETCURRENTCONSOLEFONTEX)(HANDLE, BOOL,
+		PCONSOLE_FONT_INFOEX);
+
 static void warn_if_raster_font(void)
 {
 	DWORD fontFamily = 0;
-	DECLARE_PROC_ADDR(kernel32.dll, BOOL, GetCurrentConsoleFontEx,
-			HANDLE, BOOL, PCONSOLE_FONT_INFOEX);
+	PGETCURRENTCONSOLEFONTEX pGetCurrentConsoleFontEx;
 
 	/* don't bother if output was ascii only */
 	if (!non_ascii_used)
 		return;
 
 	/* GetCurrentConsoleFontEx is available since Vista */
-	if (INIT_PROC_ADDR(GetCurrentConsoleFontEx)) {
+	pGetCurrentConsoleFontEx = (PGETCURRENTCONSOLEFONTEX) GetProcAddress(
+			GetModuleHandle("kernel32.dll"),
+			"GetCurrentConsoleFontEx");
+	if (pGetCurrentConsoleFontEx) {
 		CONSOLE_FONT_INFOEX cfi;
 		cfi.cbSize = sizeof(cfi);
-		if (GetCurrentConsoleFontEx(console, 0, &cfi))
+		if (pGetCurrentConsoleFontEx(console, 0, &cfi))
 			fontFamily = cfi.FontFamily;
 	} else {
 		/* pre-Vista: check default console font in registry */

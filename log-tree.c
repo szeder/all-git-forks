@@ -159,12 +159,12 @@ void load_ref_decorations(int flags)
 	}
 }
 
-static void show_parents(struct commit *commit, int abbrev, FILE *file)
+static void show_parents(struct commit *commit, int abbrev)
 {
 	struct commit_list *p;
 	for (p = commit->parents; p ; p = p->next) {
 		struct commit *parent = p->item;
-		fprintf(file, " %s", find_unique_abbrev(parent->object.oid.hash, abbrev));
+		printf(" %s", find_unique_abbrev(parent->object.oid.hash, abbrev));
 	}
 }
 
@@ -172,7 +172,7 @@ static void show_children(struct rev_info *opt, struct commit *commit, int abbre
 {
 	struct commit_list *p = lookup_decoration(&opt->children, &commit->object);
 	for ( ; p; p = p->next) {
-		fprintf(opt->diffopt.file, " %s", find_unique_abbrev(p->item->object.oid.hash, abbrev));
+		printf(" %s", find_unique_abbrev(p->item->object.oid.hash, abbrev));
 	}
 }
 
@@ -263,6 +263,8 @@ void format_decorations_extended(struct strbuf *sb,
 
 			if (current_and_HEAD &&
 			    decoration->type == DECORATION_REF_HEAD) {
+				strbuf_addstr(sb, color_reset);
+				strbuf_addstr(sb, color_commit);
 				strbuf_addstr(sb, " -> ");
 				strbuf_addstr(sb, color_reset);
 				strbuf_addstr(sb, decorate_get_color(use_color, current_and_HEAD->type));
@@ -284,11 +286,11 @@ void show_decorations(struct rev_info *opt, struct commit *commit)
 	struct strbuf sb = STRBUF_INIT;
 
 	if (opt->show_source && commit->util)
-		fprintf(opt->diffopt.file, "\t%s", (char *) commit->util);
+		printf("\t%s", (char *) commit->util);
 	if (!opt->show_decorations)
 		return;
 	format_decorations(&sb, commit, opt->diffopt.use_color);
-	fputs(sb.buf, opt->diffopt.file);
+	fputs(sb.buf, stdout);
 	strbuf_release(&sb);
 }
 
@@ -362,18 +364,18 @@ void log_write_email_headers(struct rev_info *opt, struct commit *commit,
 		subject = "Subject: ";
 	}
 
-	fprintf(opt->diffopt.file, "From %s Mon Sep 17 00:00:00 2001\n", name);
+	printf("From %s Mon Sep 17 00:00:00 2001\n", name);
 	graph_show_oneline(opt->graph);
 	if (opt->message_id) {
-		fprintf(opt->diffopt.file, "Message-Id: <%s>\n", opt->message_id);
+		printf("Message-Id: <%s>\n", opt->message_id);
 		graph_show_oneline(opt->graph);
 	}
 	if (opt->ref_message_ids && opt->ref_message_ids->nr > 0) {
 		int i, n;
 		n = opt->ref_message_ids->nr;
-		fprintf(opt->diffopt.file, "In-Reply-To: <%s>\n", opt->ref_message_ids->items[n-1].string);
+		printf("In-Reply-To: <%s>\n", opt->ref_message_ids->items[n-1].string);
 		for (i = 0; i < n; i++)
-			fprintf(opt->diffopt.file, "%s<%s>\n", (i > 0 ? "\t" : "References: "),
+			printf("%s<%s>\n", (i > 0 ? "\t" : "References: "),
 			       opt->ref_message_ids->items[i].string);
 		graph_show_oneline(opt->graph);
 	}
@@ -430,7 +432,7 @@ static void show_sig_lines(struct rev_info *opt, int status, const char *bol)
 	reset = diff_get_color_opt(&opt->diffopt, DIFF_RESET);
 	while (*bol) {
 		eol = strchrnul(bol, '\n');
-		fprintf(opt->diffopt.file, "%s%.*s%s%s", color, (int)(eol - bol), bol, reset,
+		printf("%s%.*s%s%s", color, (int)(eol - bol), bol, reset,
 		       *eol ? "\n" : "");
 		graph_show_oneline(opt->graph);
 		bol = (*eol) ? (eol + 1) : eol;
@@ -551,17 +553,17 @@ void show_log(struct rev_info *opt)
 
 		if (!opt->graph)
 			put_revision_mark(opt, commit);
-		fputs(find_unique_abbrev(commit->object.oid.hash, abbrev_commit), opt->diffopt.file);
+		fputs(find_unique_abbrev(commit->object.oid.hash, abbrev_commit), stdout);
 		if (opt->print_parents)
-			show_parents(commit, abbrev_commit, opt->diffopt.file);
+			show_parents(commit, abbrev_commit);
 		if (opt->children.name)
 			show_children(opt, commit, abbrev_commit);
 		show_decorations(opt, commit);
 		if (opt->graph && !graph_is_commit_finished(opt->graph)) {
-			putc('\n', opt->diffopt.file);
+			putchar('\n');
 			graph_show_remainder(opt->graph);
 		}
-		putc(opt->diffopt.line_termination, opt->diffopt.file);
+		putchar(opt->diffopt.line_termination);
 		return;
 	}
 
@@ -587,7 +589,7 @@ void show_log(struct rev_info *opt)
 		if (opt->diffopt.line_termination == '\n' &&
 		    !opt->missing_newline)
 			graph_show_padding(opt->graph);
-		putc(opt->diffopt.line_termination, opt->diffopt.file);
+		putchar(opt->diffopt.line_termination);
 	}
 	opt->shown_one = 1;
 
@@ -601,32 +603,32 @@ void show_log(struct rev_info *opt)
 	 * Print header line of header..
 	 */
 
-	if (cmit_fmt_is_mail(opt->commit_format)) {
+	if (opt->commit_format == CMIT_FMT_EMAIL) {
 		log_write_email_headers(opt, commit, &ctx.subject, &extra_headers,
 					&ctx.need_8bit_cte);
 	} else if (opt->commit_format != CMIT_FMT_USERFORMAT) {
-		fputs(diff_get_color_opt(&opt->diffopt, DIFF_COMMIT), opt->diffopt.file);
+		fputs(diff_get_color_opt(&opt->diffopt, DIFF_COMMIT), stdout);
 		if (opt->commit_format != CMIT_FMT_ONELINE)
-			fputs("commit ", opt->diffopt.file);
+			fputs("commit ", stdout);
 
 		if (!opt->graph)
 			put_revision_mark(opt, commit);
 		fputs(find_unique_abbrev(commit->object.oid.hash, abbrev_commit),
-		      opt->diffopt.file);
+		      stdout);
 		if (opt->print_parents)
-			show_parents(commit, abbrev_commit, opt->diffopt.file);
+			show_parents(commit, abbrev_commit);
 		if (opt->children.name)
 			show_children(opt, commit, abbrev_commit);
 		if (parent)
-			fprintf(opt->diffopt.file, " (from %s)",
+			printf(" (from %s)",
 			       find_unique_abbrev(parent->object.oid.hash,
 						  abbrev_commit));
-		fputs(diff_get_color_opt(&opt->diffopt, DIFF_RESET), opt->diffopt.file);
+		fputs(diff_get_color_opt(&opt->diffopt, DIFF_RESET), stdout);
 		show_decorations(opt, commit);
 		if (opt->commit_format == CMIT_FMT_ONELINE) {
-			putc(' ', opt->diffopt.file);
+			putchar(' ');
 		} else {
-			putc('\n', opt->diffopt.file);
+			putchar('\n');
 			graph_show_oneline(opt->graph);
 		}
 		if (opt->reflog_info) {
@@ -694,7 +696,7 @@ void show_log(struct rev_info *opt)
 
 	if ((ctx.fmt != CMIT_FMT_USERFORMAT) &&
 	    ctx.notes_message && *ctx.notes_message) {
-		if (cmit_fmt_is_mail(ctx.fmt)) {
+		if (ctx.fmt == CMIT_FMT_EMAIL) {
 			strbuf_addstr(&msgbuf, "---\n");
 			opt->shown_dashes = 1;
 		}
@@ -702,7 +704,7 @@ void show_log(struct rev_info *opt)
 	}
 
 	if (opt->show_log_size) {
-		fprintf(opt->diffopt.file, "log size %i\n", (int)msgbuf.len);
+		printf("log size %i\n", (int)msgbuf.len);
 		graph_show_oneline(opt->graph);
 	}
 
@@ -715,11 +717,14 @@ void show_log(struct rev_info *opt)
 	else
 		opt->missing_newline = 0;
 
-	graph_show_commit_msg(opt->graph, opt->diffopt.file, &msgbuf);
+	if (opt->graph)
+		graph_show_commit_msg(opt->graph, &msgbuf);
+	else
+		fwrite(msgbuf.buf, sizeof(char), msgbuf.len, stdout);
 	if (opt->use_terminator && !commit_format_is_empty(opt->commit_format)) {
 		if (!opt->missing_newline)
 			graph_show_padding(opt->graph);
-		putc(opt->diffopt.line_termination, opt->diffopt.file);
+		putchar(opt->diffopt.line_termination);
 	}
 
 	strbuf_release(&msgbuf);
@@ -756,7 +761,7 @@ int log_tree_diff_flush(struct rev_info *opt)
 				struct strbuf *msg = NULL;
 				msg = opt->diffopt.output_prefix(&opt->diffopt,
 					opt->diffopt.output_prefix_data);
-				fwrite(msg->buf, msg->len, 1, opt->diffopt.file);
+				fwrite(msg->buf, msg->len, 1, stdout);
 			}
 
 			/*
@@ -771,8 +776,8 @@ int log_tree_diff_flush(struct rev_info *opt)
 			 */
 			if (!opt->shown_dashes &&
 			    (pch & opt->diffopt.output_format) == pch)
-				fprintf(opt->diffopt.file, "---");
-			putc('\n', opt->diffopt.file);
+				printf("---");
+			putchar('\n');
 		}
 	}
 	diff_flush(&opt->diffopt);
@@ -859,18 +864,17 @@ static int log_tree_diff(struct rev_info *opt, struct commit *commit, struct log
 int log_tree_commit(struct rev_info *opt, struct commit *commit)
 {
 	struct log_info log;
-	int shown, close_file = opt->diffopt.close_file;
+	int shown;
 
 	log.commit = commit;
 	log.parent = NULL;
 	opt->loginfo = &log;
-	opt->diffopt.close_file = 0;
 
 	if (opt->line_level_traverse)
 		return line_log_print(opt, commit);
 
 	if (opt->track_linear && !opt->linear && !opt->reverse_output_stage)
-		fprintf(opt->diffopt.file, "\n%s\n", opt->break_bar);
+		printf("\n%s\n", opt->break_bar);
 	shown = log_tree_diff(opt, commit, &log);
 	if (!shown && opt->loginfo && opt->always_show_header) {
 		log.parent = NULL;
@@ -878,10 +882,8 @@ int log_tree_commit(struct rev_info *opt, struct commit *commit)
 		shown = 1;
 	}
 	if (opt->track_linear && !opt->linear && opt->reverse_output_stage)
-		fprintf(opt->diffopt.file, "\n%s\n", opt->break_bar);
+		printf("\n%s\n", opt->break_bar);
 	opt->loginfo = NULL;
-	maybe_flush_or_die(opt->diffopt.file, "stdout");
-	if (close_file)
-		fclose(opt->diffopt.file);
+	maybe_flush_or_die(stdout, "stdout");
 	return shown;
 }

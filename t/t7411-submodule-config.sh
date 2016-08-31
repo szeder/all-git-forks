@@ -89,7 +89,7 @@ test_expect_success 'error message contains blob reference' '
 			HEAD b \
 			HEAD submodule \
 				2>actual_err &&
-		test_i18ngrep "submodule-blob $sha1:.gitmodules" actual_err >/dev/null
+		grep "submodule-blob $sha1:.gitmodules" actual_err >/dev/null
 	)
 '
 

@@ -23,11 +23,11 @@ test_perf 'git log --follow (baseline for -M)' '
 	git log --oneline --follow -- "$file" >/dev/null
 '
 
-test_perf 'git log -L (renames off)' '
-	git log --no-renames -L 1:"$file" >/dev/null
+test_perf 'git log -L' '
+	git log -L 1:"$file" >/dev/null
 '
 
-test_perf 'git log -L (renames on)' '
+test_perf 'git log -M -L' '
 	git log -M -L 1:"$file" >/dev/null
 '
 

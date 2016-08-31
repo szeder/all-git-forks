@@ -254,12 +254,9 @@ $GIT_DIR/config::
 	Repository specific configuration file.
 
 On Windows, as there is no central `/etc/` directory, there is yet another
-config file (located at `$PROGRAMDATA/Git/config`), intended to contain
-settings for *all* Git-related software running on the machine. Consequently,
-this config file takes an even lower precedence than the
-`$(prefix)/etc/gitconfig` file. Typically `$PROGRAMDATA` points to
-`C:\ProgramData` (on Windows XP the equivalent in `$ALLUSERSPROFILE` is used,
-i.e. `C:\Documents and Settings\All Users\Application Data\Git\config`).
+config file, intended to contain settings for *all* Git-related software
+running on the machine. Consequently, this config file takes an even lower
+precedence than the `$(prefix)/etc/gitconfig` file.
 
 If no further options are given, all reading options will read all of these
 files that are available. If the global or the system-wide configuration
@@ -270,9 +267,6 @@ error code. However, in neither case will an error message be issued.
 The files are read in the order given above, with last value found taking
 precedence over values read earlier.  When multiple values are taken then all
 values of a key from all files will be used.
-
-You may override individual configuration parameters when running any git
-command by using the `-c` option. See linkgit:git[1] for details.
 
 All writing options will per default write to the repository specific
 configuration file. Note that this also affects options like `--replace-all`

@@ -1,7 +1,7 @@
 #include "cache.h"
 #include "run-command.h"
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	struct child_process cp = CHILD_PROCESS_INIT;
 	int nogit = 0;

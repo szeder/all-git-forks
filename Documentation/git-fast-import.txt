@@ -136,8 +136,6 @@ Performance and Compression Tuning
 	Maximum size of each output packfile.
 	The default is unlimited.
 
-fastimport.unpackLimit::
-	See linkgit:git-config[1]
 
 Performance
 -----------

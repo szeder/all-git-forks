@@ -44,13 +44,10 @@ static struct strbuf fsck_msg_types = STRBUF_INIT;
 static int receive_unpack_limit = -1;
 static int transfer_unpack_limit = -1;
 static int advertise_atomic_push = 1;
-static int advertise_push_options;
 static int unpack_limit = 100;
-static off_t max_input_size;
 static int report_status;
 static int use_sideband;
 static int use_atomic;
-static int use_push_options;
 static int quiet;
 static int prefer_ofs_delta = 1;
 static int auto_update_server_info;
@@ -78,13 +75,6 @@ static const char *nonce_status;
 static long nonce_stamp_slop;
 static unsigned long nonce_stamp_slop_limit;
 static struct ref_transaction *transaction;
-
-static enum {
-	KEEPALIVE_NEVER = 0,
-	KEEPALIVE_AFTER_NUL,
-	KEEPALIVE_ALWAYS
-} use_keepalive;
-static int keepalive_in_sec = 5;
 
 static enum deny_action parse_deny_action(const char *var, const char *value)
 {
@@ -203,21 +193,6 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
-	if (strcmp(var, "receive.advertisepushoptions") == 0) {
-		advertise_push_options = git_config_bool(var, value);
-		return 0;
-	}
-
-	if (strcmp(var, "receive.keepalive") == 0) {
-		keepalive_in_sec = git_config_int(var, value);
-		return 0;
-	}
-
-	if (strcmp(var, "receive.maxinputsize") == 0) {
-		max_input_size = git_config_int64(var, value);
-		return 0;
-	}
-
 	return git_default_config(var, value, cb);
 }
 
@@ -236,8 +211,6 @@ static void show_ref(const char *path, const unsigned char *sha1)
 			strbuf_addstr(&cap, " ofs-delta");
 		if (push_cert_nonce)
 			strbuf_addf(&cap, " push-cert=%s", push_cert_nonce);
-		if (advertise_push_options)
-			strbuf_addstr(&cap, " push-options");
 		strbuf_addf(&cap, " agent=%s", git_user_agent_sanitized());
 		packet_write(1, "%s %s%c%s\n",
 			     sha1_to_hex(sha1), path, 0, cap.buf);
@@ -346,60 +319,10 @@ static void rp_error(const char *err, ...)
 static int copy_to_sideband(int in, int out, void *arg)
 {
 	char data[128];
-	int keepalive_active = 0;
-
-	if (keepalive_in_sec <= 0)
-		use_keepalive = KEEPALIVE_NEVER;
-	if (use_keepalive == KEEPALIVE_ALWAYS)
-		keepalive_active = 1;
-
 	while (1) {
-		ssize_t sz;
-
-		if (keepalive_active) {
-			struct pollfd pfd;
-			int ret;
-
-			pfd.fd = in;
-			pfd.events = POLLIN;
-			ret = poll(&pfd, 1, 1000 * keepalive_in_sec);
-
-			if (ret < 0) {
-				if (errno == EINTR)
-					continue;
-				else
-					break;
-			} else if (ret == 0) {
-				/* no data; send a keepalive packet */
-				static const char buf[] = "0005\1";
-				write_or_die(1, buf, sizeof(buf) - 1);
-				continue;
-			} /* else there is actual data to read */
-		}
-
-		sz = xread(in, data, sizeof(data));
+		ssize_t sz = xread(in, data, sizeof(data));
 		if (sz <= 0)
 			break;
-
-		if (use_keepalive == KEEPALIVE_AFTER_NUL && !keepalive_active) {
-			const char *p = memchr(data, '\0', sz);
-			if (p) {
-				/*
-				 * The NUL tells us to start sending keepalives. Make
-				 * sure we send any other data we read along
-				 * with it.
-				 */
-				keepalive_active = 1;
-				send_sideband(1, 2, data, p - data, use_sideband);
-				send_sideband(1, 2, p + 1, sz - (p - data + 1), use_sideband);
-				continue;
-			}
-		}
-
-		/*
-		 * Either we're not looking for a NUL signal, or we didn't see
-		 * it yet; just pass along the data.
-		 */
 		send_sideband(1, 2, data, sz, use_sideband);
 	}
 	close(in);
@@ -627,16 +550,8 @@ static void prepare_push_cert_sha1(struct child_process *proc)
 	}
 }
 
-struct receive_hook_feed_state {
-	struct command *cmd;
-	int skip_broken;
-	struct strbuf buf;
-	const struct string_list *push_options;
-};
-
 typedef int (*feed_fn)(void *, const char **, size_t *);
-static int run_and_feed_hook(const char *hook_name, feed_fn feed,
-			     struct receive_hook_feed_state *feed_state)
+static int run_and_feed_hook(const char *hook_name, feed_fn feed, void *feed_state)
 {
 	struct child_process proc = CHILD_PROCESS_INIT;
 	struct async muxer;
@@ -652,16 +567,6 @@ static int run_and_feed_hook(const char *hook_name, feed_fn feed,
 	proc.argv = argv;
 	proc.in = -1;
 	proc.stdout_to_stderr = 1;
-	if (feed_state->push_options) {
-		int i;
-		for (i = 0; i < feed_state->push_options->nr; i++)
-			argv_array_pushf(&proc.env_array,
-				"GIT_PUSH_OPTION_%d=%s", i,
-				feed_state->push_options->items[i].string);
-		argv_array_pushf(&proc.env_array, "GIT_PUSH_OPTION_COUNT=%d",
-				 feed_state->push_options->nr);
-	} else
-		argv_array_pushf(&proc.env_array, "GIT_PUSH_OPTION_COUNT");
 
 	if (use_sideband) {
 		memset(&muxer, 0, sizeof(muxer));
@@ -701,6 +606,12 @@ static int run_and_feed_hook(const char *hook_name, feed_fn feed,
 	return finish_command(&proc);
 }
 
+struct receive_hook_feed_state {
+	struct command *cmd;
+	int skip_broken;
+	struct strbuf buf;
+};
+
 static int feed_receive_hook(void *state_, const char **bufp, size_t *sizep)
 {
 	struct receive_hook_feed_state *state = state_;
@@ -723,10 +634,8 @@ static int feed_receive_hook(void *state_, const char **bufp, size_t *sizep)
 	return 0;
 }
 
-static int run_receive_hook(struct command *commands,
-			    const char *hook_name,
-			    int skip_broken,
-			    const struct string_list *push_options)
+static int run_receive_hook(struct command *commands, const char *hook_name,
+			    int skip_broken)
 {
 	struct receive_hook_feed_state state;
 	int status;
@@ -737,7 +646,6 @@ static int run_receive_hook(struct command *commands,
 	if (feed_receive_hook(&state, NULL, NULL))
 		return 0;
 	state.cmd = commands;
-	state.push_options = push_options;
 	status = run_and_feed_hook(hook_name, feed_receive_hook, &state);
 	strbuf_release(&state.buf);
 	return status;
@@ -829,7 +737,7 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 {
 	static struct lock_file shallow_lock;
 	struct sha1_array extra = SHA1_ARRAY_INIT;
-	struct check_connected_options opt = CHECK_CONNECTED_INIT;
+	const char *alt_file;
 	uint32_t mask = 1 << (cmd->index % 32);
 	int i;
 
@@ -841,8 +749,9 @@ static int update_shallow_ref(struct command *cmd, struct shallow_info *si)
 		    !delayed_reachability_test(si, i))
 			sha1_array_append(&extra, si->shallow->sha1[i]);
 
-	setup_alternate_shallow(&shallow_lock, &opt.shallow_file, &extra);
-	if (check_connected(command_singleton_iterator, cmd, &opt)) {
+	setup_alternate_shallow(&shallow_lock, &alt_file, &extra);
+	if (check_shallow_connected(command_singleton_iterator,
+				    0, cmd, alt_file)) {
 		rollback_lock_file(&shallow_lock);
 		sha1_array_clear(&extra);
 		return -1;
@@ -1251,8 +1160,8 @@ static void set_connectivity_errors(struct command *commands,
 		if (shallow_update && si->shallow_ref[cmd->index])
 			/* to be checked in update_shallow_ref() */
 			continue;
-		if (!check_connected(command_singleton_iterator, &singleton,
-				     NULL))
+		if (!check_everything_connected(command_singleton_iterator,
+						0, &singleton))
 			continue;
 		cmd->error_string = "missing necessary objects";
 	}
@@ -1407,15 +1316,11 @@ cleanup:
 
 static void execute_commands(struct command *commands,
 			     const char *unpacker_error,
-			     struct shallow_info *si,
-			     const struct string_list *push_options)
+			     struct shallow_info *si)
 {
-	struct check_connected_options opt = CHECK_CONNECTED_INIT;
 	struct command *cmd;
 	unsigned char sha1[20];
 	struct iterate_data data;
-	struct async muxer;
-	int err_fd = 0;
 
 	if (unpacker_error) {
 		for (cmd = commands; cmd; cmd = cmd->next)
@@ -1423,28 +1328,14 @@ static void execute_commands(struct command *commands,
 		return;
 	}
 
-	if (use_sideband) {
-		memset(&muxer, 0, sizeof(muxer));
-		muxer.proc = copy_to_sideband;
-		muxer.in = -1;
-		if (!start_async(&muxer))
-			err_fd = muxer.in;
-		/* ...else, continue without relaying sideband */
-	}
-
 	data.cmds = commands;
 	data.si = si;
-	opt.err_fd = err_fd;
-	opt.progress = err_fd && !quiet;
-	if (check_connected(iterate_receive_command_list, &data, &opt))
+	if (check_everything_connected(iterate_receive_command_list, 0, &data))
 		set_connectivity_errors(commands, si);
-
-	if (use_sideband)
-		finish_async(&muxer);
 
 	reject_updates_to_hidden(commands);
 
-	if (run_receive_hook(commands, "pre-receive", 0, push_options)) {
+	if (run_receive_hook(commands, "pre-receive", 0)) {
 		for (cmd = commands; cmd; cmd = cmd->next) {
 			if (!cmd->error_string)
 				cmd->error_string = "pre-receive hook declined";
@@ -1484,9 +1375,11 @@ static struct command **queue_command(struct command **tail,
 
 	refname = line + 82;
 	reflen = linelen - 82;
-	FLEX_ALLOC_MEM(cmd, ref_name, refname, reflen);
+	cmd = xcalloc(1, st_add3(sizeof(struct command), reflen, 1));
 	hashcpy(cmd->old_sha1, old_sha1);
 	hashcpy(cmd->new_sha1, new_sha1);
+	memcpy(cmd->ref_name, refname, reflen);
+	cmd->ref_name[reflen] = '\0';
 	*tail = cmd;
 	return &cmd->next;
 }
@@ -1546,9 +1439,6 @@ static struct command *read_head_info(struct sha1_array *shallow)
 			if (advertise_atomic_push
 			    && parse_feature_request(feature_list, "atomic"))
 				use_atomic = 1;
-			if (advertise_push_options
-			    && parse_feature_request(feature_list, "push-options"))
-				use_push_options = 1;
 		}
 
 		if (!strcmp(line, "push-cert")) {
@@ -1579,21 +1469,6 @@ static struct command *read_head_info(struct sha1_array *shallow)
 		queue_commands_from_cert(p, &push_cert);
 
 	return commands;
-}
-
-static void read_push_options(struct string_list *options)
-{
-	while (1) {
-		char *line;
-		int len;
-
-		line = packet_read_line(0, &len);
-
-		if (!line)
-			break;
-
-		string_list_append(options, line);
-	}
 }
 
 static const char *parse_pack_header(struct pack_header *hdr)
@@ -1654,9 +1529,6 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 		if (fsck_objects)
 			argv_array_pushf(&child.args, "--strict%s",
 				fsck_msg_types.buf);
-		if (max_input_size)
-			argv_array_pushf(&child.args, "--max-input-size=%"PRIuMAX,
-				(uintmax_t)max_input_size);
 		child.no_stdout = 1;
 		child.err = err_fd;
 		child.git_cmd = 1;
@@ -1676,18 +1548,11 @@ static const char *unpack(int err_fd, struct shallow_info *si)
 				 (uintmax_t)getpid(),
 				 hostname);
 
-		if (!quiet && err_fd)
-			argv_array_push(&child.args, "--show-resolving-progress");
-		if (use_sideband)
-			argv_array_push(&child.args, "--report-end-of-input");
 		if (fsck_objects)
 			argv_array_pushf(&child.args, "--strict%s",
 				fsck_msg_types.buf);
 		if (!reject_thin)
 			argv_array_push(&child.args, "--fix-thin");
-		if (max_input_size)
-			argv_array_pushf(&child.args, "--max-input-size=%"PRIuMAX,
-				(uintmax_t)max_input_size);
 		child.out = -1;
 		child.err = err_fd;
 		child.git_cmd = 1;
@@ -1712,7 +1577,6 @@ static const char *unpack_with_sideband(struct shallow_info *si)
 	if (!use_sideband)
 		return unpack(0, si);
 
-	use_keepalive = KEEPALIVE_AFTER_NUL;
 	memset(&muxer, 0, sizeof(muxer));
 	muxer.proc = copy_to_sideband;
 	muxer.in = -1;
@@ -1892,10 +1756,6 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 
 	if ((commands = read_head_info(&shallow)) != NULL) {
 		const char *unpack_status = NULL;
-		struct string_list push_options = STRING_LIST_INIT_DUP;
-
-		if (use_push_options)
-			read_push_options(&push_options);
 
 		prepare_shallow_info(&si, &shallow);
 		if (!si.nr_ours && !si.nr_theirs)
@@ -1904,36 +1764,20 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 			unpack_status = unpack_with_sideband(&si);
 			update_shallow_info(commands, &si, &ref);
 		}
-		use_keepalive = KEEPALIVE_ALWAYS;
-		execute_commands(commands, unpack_status, &si,
-				 &push_options);
+		execute_commands(commands, unpack_status, &si);
 		if (pack_lockfile)
 			unlink_or_warn(pack_lockfile);
 		if (report_status)
 			report(commands, unpack_status);
-		run_receive_hook(commands, "post-receive", 1,
-				 &push_options);
+		run_receive_hook(commands, "post-receive", 1);
 		run_update_post_hook(commands);
-		if (push_options.nr)
-			string_list_clear(&push_options, 0);
 		if (auto_gc) {
 			const char *argv_gc_auto[] = {
 				"gc", "--auto", "--quiet", NULL,
 			};
-			struct child_process proc = CHILD_PROCESS_INIT;
-
-			proc.no_stdin = 1;
-			proc.stdout_to_stderr = 1;
-			proc.err = use_sideband ? -1 : 0;
-			proc.git_cmd = 1;
-			proc.argv = argv_gc_auto;
-
+			int opt = RUN_GIT_CMD | RUN_COMMAND_STDOUT_TO_STDERR;
 			close_all_packs();
-			if (!start_command(&proc)) {
-				if (use_sideband)
-					copy_to_sideband(proc.err, -1, NULL);
-				finish_command(&proc);
-			}
+			run_command_v_opt(argv_gc_auto, opt);
 		}
 		if (auto_update_server_info)
 			update_server_info(0);

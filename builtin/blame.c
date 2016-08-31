@@ -56,7 +56,7 @@ static int show_progress;
 static struct date_mode blame_date_mode = { DATE_ISO8601 };
 static size_t blame_date_width;
 
-static struct string_list mailmap = STRING_LIST_INIT_NODUP;
+static struct string_list mailmap;
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -598,7 +598,7 @@ static struct origin *find_origin(struct scoreboard *sb,
 			    p->status);
 		case 'M':
 			porigin = get_origin(sb, parent, origin->path);
-			hashcpy(porigin->blob_sha1, p->one->oid.hash);
+			hashcpy(porigin->blob_sha1, p->one->sha1);
 			porigin->mode = p->one->mode;
 			break;
 		case 'A':
@@ -608,7 +608,7 @@ static struct origin *find_origin(struct scoreboard *sb,
 		}
 	}
 	diff_flush(&diff_opts);
-	clear_pathspec(&diff_opts.pathspec);
+	free_pathspec(&diff_opts.pathspec);
 	return porigin;
 }
 
@@ -644,13 +644,13 @@ static struct origin *find_rename(struct scoreboard *sb,
 		if ((p->status == 'R' || p->status == 'C') &&
 		    !strcmp(p->two->path, origin->path)) {
 			porigin = get_origin(sb, parent, p->one->path);
-			hashcpy(porigin->blob_sha1, p->one->oid.hash);
+			hashcpy(porigin->blob_sha1, p->one->sha1);
 			porigin->mode = p->one->mode;
 			break;
 		}
 	}
 	diff_flush(&diff_opts);
-	clear_pathspec(&diff_opts.pathspec);
+	free_pathspec(&diff_opts.pathspec);
 	return porigin;
 }
 
@@ -1308,7 +1308,7 @@ static void find_copy_in_parent(struct scoreboard *sb,
 				continue;
 
 			norigin = get_origin(sb, parent, p->one->path);
-			hashcpy(norigin->blob_sha1, p->one->oid.hash);
+			hashcpy(norigin->blob_sha1, p->one->sha1);
 			norigin->mode = p->one->mode;
 			fill_origin_blob(&sb->revs->diffopt, norigin, &file_p);
 			if (!file_p.ptr)
@@ -1342,7 +1342,7 @@ static void find_copy_in_parent(struct scoreboard *sb,
 	} while (unblamed);
 	target->suspects = reverse_blame(leftover, NULL);
 	diff_flush(&diff_opts);
-	clear_pathspec(&diff_opts.pathspec);
+	free_pathspec(&diff_opts.pathspec);
 }
 
 /*
@@ -2453,41 +2453,6 @@ static char *prepare_final(struct scoreboard *sb)
 	return xstrdup_or_null(name);
 }
 
-static const char *dwim_reverse_initial(struct scoreboard *sb)
-{
-	/*
-	 * DWIM "git blame --reverse ONE -- PATH" as
-	 * "git blame --reverse ONE..HEAD -- PATH" but only do so
-	 * when it makes sense.
-	 */
-	struct object *obj;
-	struct commit *head_commit;
-	unsigned char head_sha1[20];
-
-	if (sb->revs->pending.nr != 1)
-		return NULL;
-
-	/* Is that sole rev a committish? */
-	obj = sb->revs->pending.objects[0].item;
-	obj = deref_tag(obj, NULL, 0);
-	if (obj->type != OBJ_COMMIT)
-		return NULL;
-
-	/* Do we have HEAD? */
-	if (!resolve_ref_unsafe("HEAD", RESOLVE_REF_READING, head_sha1, NULL))
-		return NULL;
-	head_commit = lookup_commit_reference_gently(head_sha1, 1);
-	if (!head_commit)
-		return NULL;
-
-	/* Turn "ONE" into "ONE..HEAD" then */
-	obj->flags |= UNINTERESTING;
-	add_pending_object(sb->revs, &head_commit->object, "HEAD");
-
-	sb->final = (struct commit *)obj;
-	return sb->revs->pending.objects[0].name;
-}
-
 static char *prepare_initial(struct scoreboard *sb)
 {
 	int i;
@@ -2506,17 +2471,14 @@ static char *prepare_initial(struct scoreboard *sb)
 		if (obj->type != OBJ_COMMIT)
 			die("Non commit %s?", revs->pending.objects[i].name);
 		if (sb->final)
-			die("More than one commit to dig up from, %s and %s?",
+			die("More than one commit to dig down to %s and %s?",
 			    revs->pending.objects[i].name,
 			    final_commit_name);
 		sb->final = (struct commit *) obj;
 		final_commit_name = revs->pending.objects[i].name;
 	}
-
 	if (!final_commit_name)
-		final_commit_name = dwim_reverse_initial(sb);
-	if (!final_commit_name)
-		die("No commit to dig up from?");
+		die("No commit to dig down to?");
 	return xstrdup(final_commit_name);
 }
 
@@ -2565,12 +2527,12 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	enum object_type type;
 	struct commit *final_commit = NULL;
 
-	struct string_list range_list = STRING_LIST_INIT_NODUP;
-	int output_option = 0, opt = 0;
-	int show_stats = 0;
-	const char *revs_file = NULL;
-	const char *contents_from = NULL;
-	const struct option options[] = {
+	static struct string_list range_list;
+	static int output_option = 0, opt = 0;
+	static int show_stats = 0;
+	static const char *revs_file = NULL;
+	static const char *contents_from = NULL;
+	static const struct option options[] = {
 		OPT_BOOL(0, "incremental", &incremental, N_("Show blame entries as we find them, incrementally")),
 		OPT_BOOL('b', NULL, &blank_boundary, N_("Show blank SHA-1 for boundary commits (Default: off)")),
 		OPT_BOOL(0, "root", &show_root, N_("Do not treat root commits as boundaries (Default: off)")),
@@ -2671,9 +2633,6 @@ parse_done:
 	case DATE_RAW:
 		blame_date_width = sizeof("1161298804 -0700");
 		break;
-	case DATE_UNIX:
-		blame_date_width = sizeof("1161298804");
-		break;
 	case DATE_SHORT:
 		blame_date_width = sizeof("2006-10-19");
 		break;
@@ -2750,13 +2709,12 @@ parse_done:
 		argv[argc - 1] = "--";
 
 		setup_work_tree();
+		if (!file_exists(path))
+			die_errno("cannot stat path '%s'", path);
 	}
 
 	revs.disable_stdin = 1;
 	setup_revisions(argc, argv, &revs, NULL);
-	if (!revs.pending.nr && !file_exists(path))
-		die_errno("cannot stat path '%s'", path);
-
 	memset(&sb, 0, sizeof(sb));
 
 	sb.revs = &revs;
@@ -2847,7 +2805,7 @@ parse_done:
 	lno = prepare_lines(&sb);
 
 	if (lno && !range_list.nr)
-		string_list_append(&range_list, "1");
+		string_list_append(&range_list, xstrdup("1"));
 
 	anchor = 1;
 	range_set_init(&ranges, range_list.nr);

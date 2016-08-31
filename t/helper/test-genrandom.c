@@ -6,7 +6,7 @@
 
 #include "git-compat-util.h"
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char *argv[])
 {
 	unsigned long count, next = 0;
 	unsigned char *c;

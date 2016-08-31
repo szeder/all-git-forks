@@ -4,9 +4,9 @@ test_description='CRLF conversion all combinations'
 
 . ./test-lib.sh
 
-if ! test_have_prereq EXPENSIVE && ! test_have_prereq MINGW
+if ! test_have_prereq EXPENSIVE
 then
-	skip_all="Neither EXPENSIVE nor MINGW set"
+	skip_all="EXPENSIVE not set"
 	test_done
 fi
 
@@ -119,7 +119,8 @@ commit_chk_wrnNNO () {
 		fname=${pfx}_$f.txt &&
 		cp $f $fname &&
 		printf Z >>"$fname" &&
-		git -c core.autocrlf=$crlf add $fname 2>"${pfx}_$f.err"
+		git -c core.autocrlf=$crlf add $fname 2>/dev/null &&
+		git -c core.autocrlf=$crlf commit -m "commit_$fname" $fname >"${pfx}_$f.err" 2>&1
 	done
 
 	test_expect_success "commit NNO files crlf=$crlf attr=$attr LF" '
@@ -174,8 +175,8 @@ attr_ascii () {
 	text,lf)   echo "text eol=lf" ;;
 	text,crlf) echo "text eol=crlf" ;;
 	auto,)     echo "text=auto" ;;
-	auto,lf)   echo "text=auto eol=lf" ;;
-	auto,crlf) echo "text=auto eol=crlf" ;;
+	auto,lf)   echo "text eol=lf" ;;
+	auto,crlf) echo "text eol=crlf" ;;
 	lf,)       echo "text eol=lf" ;;
 	crlf,)     echo "text eol=crlf" ;;
 	,) echo "" ;;
@@ -396,9 +397,10 @@ commit_chk_wrnNNO ""      ""      false   ""        ""        ""          ""    
 commit_chk_wrnNNO ""      ""      true    LF_CRLF   ""        ""          ""          ""
 commit_chk_wrnNNO ""      ""      input   ""        ""        ""          ""          ""
 
-commit_chk_wrnNNO "auto"  ""      false   "$WILC"   ""        ""          ""          ""
-commit_chk_wrnNNO "auto"  ""      true    LF_CRLF   ""        ""          ""          ""
-commit_chk_wrnNNO "auto"  ""      input   ""        ""        ""          ""          ""
+commit_chk_wrnNNO "auto"  ""      false   "$WILC"   "$WICL"   "$WAMIX"    ""          ""
+commit_chk_wrnNNO "auto"  ""      true    LF_CRLF   ""        LF_CRLF     ""          ""
+commit_chk_wrnNNO "auto"  ""      input   ""        CRLF_LF   CRLF_LF     ""          ""
+
 for crlf in true false input
 do
 	commit_chk_wrnNNO -text ""      $crlf   ""        ""        ""          ""          ""
@@ -406,8 +408,8 @@ do
 	commit_chk_wrnNNO -text crlf    $crlf   ""        ""        ""          ""          ""
 	commit_chk_wrnNNO ""    lf      $crlf   ""       CRLF_LF    CRLF_LF      ""         CRLF_LF
 	commit_chk_wrnNNO ""    crlf    $crlf   LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
-	commit_chk_wrnNNO auto  lf    	$crlf   ""        ""        ""          ""          ""
-	commit_chk_wrnNNO auto  crlf  	$crlf   LF_CRLF   ""        ""          ""          ""
+	commit_chk_wrnNNO auto  lf    	$crlf   ""       CRLF_LF    CRLF_LF     ""          CRLF_LF
+	commit_chk_wrnNNO auto  crlf  	$crlf   LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
 	commit_chk_wrnNNO text  lf    	$crlf   ""       CRLF_LF    CRLF_LF     ""          CRLF_LF
 	commit_chk_wrnNNO text  crlf  	$crlf   LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
 done
@@ -416,8 +418,7 @@ commit_chk_wrnNNO "text"  ""      false   "$WILC"   "$WICL"   "$WAMIX"    "$WILC
 commit_chk_wrnNNO "text"  ""      true    LF_CRLF   ""        LF_CRLF     LF_CRLF     ""
 commit_chk_wrnNNO "text"  ""      input   ""        CRLF_LF   CRLF_LF     ""          CRLF_LF
 
-test_expect_success 'commit NNO and cleanup' '
-	git commit -m "commit files on top of NNO" &&
+test_expect_success 'create files cleanup' '
 	rm -f *.txt &&
 	git -c core.autocrlf=false reset --hard
 '
@@ -453,9 +454,9 @@ do
 	check_in_repo_NNO -text ""     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
 	check_in_repo_NNO -text lf     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
 	check_in_repo_NNO -text crlf   $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
-	check_in_repo_NNO auto  ""     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
-	check_in_repo_NNO auto  lf     $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
-	check_in_repo_NNO auto  crlf   $crlf   LF  CRLF  CRLF_mix_LF  LF_mix_CR  CRLF_nul
+	check_in_repo_NNO auto  ""     $crlf   LF  LF    LF           LF_mix_CR  CRLF_nul
+	check_in_repo_NNO auto  lf     $crlf   LF  LF    LF           LF_mix_CR  LF_nul
+	check_in_repo_NNO auto  crlf   $crlf   LF  LF    LF           LF_mix_CR  LF_nul
 	check_in_repo_NNO text  ""     $crlf   LF  LF    LF           LF_mix_CR  LF_nul
 	check_in_repo_NNO text  lf     $crlf   LF  LF    LF           LF_mix_CR  LF_nul
 	check_in_repo_NNO text  crlf   $crlf   LF  LF    LF           LF_mix_CR  LF_nul
@@ -508,7 +509,7 @@ do
 			checkout_files text  "$id" "crlf" "$crlf" "$ceol"  CRLF  CRLF  CRLF         CRLF_mix_CR  CRLF_nul
 			# currently the same as text, eol=XXX
 			checkout_files auto  "$id" "lf"   "$crlf" "$ceol"  LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
-			checkout_files auto  "$id" "crlf" "$crlf" "$ceol"  CRLF  CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
+			checkout_files auto  "$id" "crlf" "$crlf" "$ceol"  CRLF  CRLF  CRLF         CRLF_mix_CR  CRLF_nul
 		done
 
 		# core.autocrlf false, different core.eol
@@ -516,7 +517,7 @@ do
 		# core.autocrlf true
 		checkout_files   ""    "$id" ""     true    "$ceol"  CRLF  CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
 		# text: core.autocrlf = true overrides core.eol
-		checkout_files   auto  "$id" ""     true    "$ceol"  CRLF  CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
+		checkout_files   auto  "$id" ""     true    "$ceol"  CRLF  CRLF  CRLF         LF_mix_CR    LF_nul
 		checkout_files   text  "$id" ""     true    "$ceol"  CRLF  CRLF  CRLF         CRLF_mix_CR  CRLF_nul
 		# text: core.autocrlf = input overrides core.eol
 		checkout_files   text  "$id" ""     input   "$ceol"  LF    CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
@@ -530,8 +531,8 @@ do
 	checkout_files     text  "$id" ""     false   ""       $NL   CRLF  $MIX_CRLF_LF $MIX_LF_CR   $LFNUL
 	checkout_files     text  "$id" ""     false   native   $NL   CRLF  $MIX_CRLF_LF $MIX_LF_CR   $LFNUL
 	# auto: core.autocrlf=false and core.eol unset(or native) uses native eol
-	checkout_files     auto  "$id" ""     false   ""       $NL   CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
-	checkout_files     auto  "$id" ""     false   native   $NL   CRLF  CRLF_mix_LF  LF_mix_CR    LF_nul
+	checkout_files     auto  "$id" ""     false   ""       $NL   CRLF  $MIX_CRLF_LF LF_mix_CR    LF_nul
+	checkout_files     auto  "$id" ""     false   native   $NL   CRLF  $MIX_CRLF_LF LF_mix_CR    LF_nul
 done
 
 # Should be the last test case: remove some files from the worktree

@@ -49,7 +49,7 @@ static int task_finished(int result,
 	return 1;
 }
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	struct child_process proc = CHILD_PROCESS_INIT;
 	int jobs;

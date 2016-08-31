@@ -368,7 +368,7 @@ static void show_filemodify(struct diff_queue_struct *q,
 			print_path(spec->path);
 			putchar('\n');
 
-			if (!oidcmp(&ospec->oid, &spec->oid) &&
+			if (!hashcmp(ospec->sha1, spec->sha1) &&
 			    ospec->mode == spec->mode)
 				break;
 			/* fallthrough */
@@ -383,10 +383,10 @@ static void show_filemodify(struct diff_queue_struct *q,
 			if (no_data || S_ISGITLINK(spec->mode))
 				printf("M %06o %s ", spec->mode,
 				       sha1_to_hex(anonymize ?
-						   anonymize_sha1(spec->oid.hash) :
-						   spec->oid.hash));
+						   anonymize_sha1(spec->sha1) :
+						   spec->sha1));
 			else {
-				struct object *object = lookup_object(spec->oid.hash);
+				struct object *object = lookup_object(spec->sha1);
 				printf("M %06o :%d ", spec->mode,
 				       get_object_mark(object));
 			}
@@ -572,7 +572,7 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 	/* Export the referenced blobs, and remember the marks. */
 	for (i = 0; i < diff_queued_diff.nr; i++)
 		if (!S_ISGITLINK(diff_queued_diff.queue[i]->two->mode))
-			export_blob(diff_queued_diff.queue[i]->two->oid.hash);
+			export_blob(diff_queued_diff.queue[i]->two->sha1);
 
 	refname = commit->util;
 	if (anonymize) {
@@ -847,20 +847,9 @@ static void get_tags_and_duplicates(struct rev_cmdline_info *info)
 	}
 }
 
-static void handle_reset(const char *name, struct object *object)
-{
-	int mark = get_object_mark(object);
-
-	if (mark)
-		printf("reset %s\nfrom :%d\n\n", name,
-		       get_object_mark(object));
-	else
-		printf("reset %s\nfrom %s\n\n", name,
-		       oid_to_hex(&object->oid));
-}
-
 static void handle_tags_and_duplicates(void)
 {
+	struct commit *commit;
 	int i;
 
 	for (i = extra_refs.nr - 1; i >= 0; i--) {
@@ -874,7 +863,9 @@ static void handle_tags_and_duplicates(void)
 			if (anonymize)
 				name = anonymize_refname(name);
 			/* create refs pointing to already seen commits */
-			handle_reset(name, object);
+			commit = (struct commit *)object;
+			printf("reset %s\nfrom :%d\n\n", name,
+			       get_object_mark(&commit->object));
 			show_progress();
 			break;
 		}

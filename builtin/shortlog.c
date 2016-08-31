@@ -233,11 +233,11 @@ void shortlog_init(struct shortlog *log)
 
 int cmd_shortlog(int argc, const char **argv, const char *prefix)
 {
-	struct shortlog log = { STRING_LIST_INIT_NODUP };
-	struct rev_info rev;
+	static struct shortlog log;
+	static struct rev_info rev;
 	int nongit = !startup_info->have_repository;
 
-	const struct option options[] = {
+	static const struct option options[] = {
 		OPT_BOOL('n', "numbered", &log.sort_by_number,
 			 N_("sort output according to the number of commits per author")),
 		OPT_BOOL('s', "summary", &log.summary,
@@ -276,7 +276,6 @@ parse_done:
 
 	log.user_format = rev.commit_format == CMIT_FMT_USERFORMAT;
 	log.abbrev = rev.abbrev;
-	log.file = rev.diffopt.file;
 
 	/* assume HEAD if from a tty */
 	if (!nongit && !rev.pending.nr && isatty(0))
@@ -290,8 +289,6 @@ parse_done:
 		get_from_rev(&rev, &log);
 
 	shortlog_output(&log);
-	if (log.file != stdout)
-		fclose(log.file);
 	return 0;
 }
 
@@ -313,24 +310,22 @@ void shortlog_output(struct shortlog *log)
 	for (i = 0; i < log->list.nr; i++) {
 		const struct string_list_item *item = &log->list.items[i];
 		if (log->summary) {
-			fprintf(log->file, "%6d\t%s\n",
-				(int)UTIL_TO_INT(item), item->string);
+			printf("%6d\t%s\n", (int)UTIL_TO_INT(item), item->string);
 		} else {
 			struct string_list *onelines = item->util;
-			fprintf(log->file, "%s (%d):\n",
-				item->string, onelines->nr);
+			printf("%s (%d):\n", item->string, onelines->nr);
 			for (j = onelines->nr - 1; j >= 0; j--) {
 				const char *msg = onelines->items[j].string;
 
 				if (log->wrap_lines) {
 					strbuf_reset(&sb);
 					add_wrapped_shortlog_msg(&sb, msg, log);
-					fwrite(sb.buf, sb.len, 1, log->file);
+					fwrite(sb.buf, sb.len, 1, stdout);
 				}
 				else
-					fprintf(log->file, "      %s\n", msg);
+					printf("      %s\n", msg);
 			}
-			putc('\n', log->file);
+			putchar('\n');
 			onelines->strdup_strings = 1;
 			string_list_clear(onelines, 0);
 			free(onelines);

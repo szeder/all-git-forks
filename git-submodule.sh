@@ -9,13 +9,14 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] (--all| [--] <path>...)
-   or: $dashless [--quiet] update [--init[-default-path]] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--reference <repository>] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
 OPTIONS_SPEC=
 SUBDIRECTORY_OK=Yes
 . git-sh-setup
+. git-sh-i18n
 . git-parse-remote
 require_work_tree
 wt_prefix=$(git rev-parse --show-prefix)
@@ -49,7 +50,7 @@ die_if_unmatched ()
 {
 	if test "$1" = "#unmatched"
 	then
-		exit ${2:-1}
+		exit 1
 	fi
 }
 
@@ -239,15 +240,14 @@ Use -f if you really want to add it." >&2
 		then
 			if test -z "$force"
 			then
-				eval_gettextln >&2 "A git directory for '\$sm_name' is found locally with remote(s):"
+				echo >&2 "$(eval_gettext "A git directory for '\$sm_name' is found locally with remote(s):")"
 				GIT_DIR=".git/modules/$sm_name" GIT_WORK_TREE=. git remote -v | grep '(fetch)' | sed -e s,^,"  ", -e s,' (fetch)',, >&2
-				die "$(eval_gettextln "\
-If you want to reuse this local git directory instead of cloning again from
-  \$realrepo
-use the '--force' option. If the local git directory is not the correct repo
-or you are unsure what this means choose another name with the '--name' option.")"
+				echo >&2 "$(eval_gettext "If you want to reuse this local git directory instead of cloning again from")"
+				echo >&2 "  $realrepo"
+				echo >&2 "$(eval_gettext "use the '--force' option. If the local git directory is not the correct repo")"
+				die "$(eval_gettext "or you are unsure what this means choose another name with the '--name' option.")"
 			else
-				eval_gettextln "Reactivating local git directory for submodule '\$sm_name'."
+				echo "$(eval_gettext "Reactivating local git directory for submodule '\$sm_name'.")"
 			fi
 		fi
 		git submodule--helper clone ${GIT_QUIET:+--quiet} --prefix "$wt_prefix" --path "$sm_path" --name "$sm_name" --url "$realrepo" ${reference:+"$reference"} ${depth:+"$depth"} || exit
@@ -312,11 +312,11 @@ cmd_foreach()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		if test -e "$sm_path"/.git
 		then
 			displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
@@ -421,11 +421,11 @@ cmd_deinit()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		name=$(git submodule--helper name "$sm_path") || exit
 
 		displaypath=$(git submodule--helper relative-path "$sm_path" "$wt_prefix")
@@ -436,9 +436,8 @@ cmd_deinit()
 			# Protect submodules containing a .git directory
 			if test -d "$sm_path/.git"
 			then
-				die "$(eval_gettext "\
-Submodule work tree '\$displaypath' contains a .git directory
-(use 'rm -rf' if you really want to remove it including all of its history)")"
+				echo >&2 "$(eval_gettext "Submodule work tree '\$displaypath' contains a .git directory")"
+				die "$(eval_gettext "(use 'rm -rf' if you really want to remove it including all of its history)")"
 			fi
 
 			if test -z "$force"
@@ -479,8 +478,7 @@ fetch_in_submodule () (
 	'')
 		git fetch ;;
 	*)
-		shift
-		git fetch $(get_default_remote) "$@" ;;
+		git fetch $(get_default_remote) "$2" ;;
 	esac
 )
 
@@ -499,12 +497,7 @@ cmd_update()
 			GIT_QUIET=1
 			;;
 		-i|--init)
-			test -z $init || test $init = by_args || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_args
-			;;
-		--init-default-path)
-			test -z $init || test $init = by_config || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_config
+			init=1
 			;;
 		--remote)
 			remote=1
@@ -534,12 +527,6 @@ cmd_update()
 			;;
 		--checkout)
 			update="checkout"
-			;;
-		--recommend-shallow)
-			recommend_shallow="--recommend-shallow"
-			;;
-		--no-recommend-shallow)
-			recommend_shallow="--no-recommend-shallow"
 			;;
 		--depth)
 			case "$2" in '') usage ;; esac
@@ -573,17 +560,7 @@ cmd_update()
 
 	if test -n "$init"
 	then
-		if test "$init" = "by_config"
-		then
-			if test $# -gt 0
-			then
-				die "$(gettext "path arguments are incompatible with --init-default-path")"
-			fi
-			cmd_init "--" $(git config --get-all submodule.defaultUpdatePath) || return
-		else
-			cmd_init "--" "$@" || return
-		fi
-
+		cmd_init "--" "$@" || return
 	fi
 
 	{
@@ -591,19 +568,19 @@ cmd_update()
 		${wt_prefix:+--prefix "$wt_prefix"} \
 		${prefix:+--recursive-prefix "$prefix"} \
 		${update:+--update "$update"} \
-		${reference:+"$reference"} \
+		${reference:+--reference "$reference"} \
 		${depth:+--depth "$depth"} \
-		${recommend_shallow:+"$recommend_shallow"} \
 		${jobs:+$jobs} \
-		"$@" || echo "#unmatched" $?
+		"$@" || echo "#unmatched"
 	} | {
 	err=
 	while read mode sha1 stage just_cloned sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
+		branch=$(get_submodule_config "$name" branch master)
 		if ! test -z "$update"
 		then
 			update_module=$update
@@ -629,17 +606,16 @@ cmd_update()
 
 		if test -n "$remote"
 		then
-			branch=$(git submodule--helper remote-branch "$sm_path")
 			if test -z "$nofetch"
 			then
 				# Fetch remote before determining tracking $sha1
-				fetch_in_submodule "$sm_path" $depth ||
+				(sanitize_submodule_env; cd "$sm_path" && git-fetch) ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$sm_path'")"
 			fi
 			remote_name=$(sanitize_submodule_env; cd "$sm_path" && get_default_remote)
 			sha1=$(sanitize_submodule_env; cd "$sm_path" &&
 				git rev-parse --verify "${remote_name}/${branch}") ||
-			die "$(eval_gettext "Unable to find current \${remote_name}/\${branch} revision in submodule path '\$sm_path'")"
+			die "$(eval_gettext "Unable to find current ${remote_name}/${branch} revision in submodule path '\$sm_path'")"
 		fi
 
 		if test "$subsha1" != "$sha1" || test -n "$force"
@@ -656,14 +632,14 @@ cmd_update()
 				# Run fetch only if $sha1 isn't present or it
 				# is not reachable from a ref.
 				is_tip_reachable "$sm_path" "$sha1" ||
-				fetch_in_submodule "$sm_path" $depth ||
+				fetch_in_submodule "$sm_path" ||
 				die "$(eval_gettext "Unable to fetch in submodule path '\$displaypath'")"
 
 				# Now we tried the usual fetch, but $sha1 may
 				# not be reachable from any of the refs
 				is_tip_reachable "$sm_path" "$sha1" ||
-				fetch_in_submodule "$sm_path" $depth "$sha1" ||
-				die "$(eval_gettext "Fetched in submodule path '\$displaypath', but it did not contain \$sha1. Direct fetching of that commit failed.")"
+				fetch_in_submodule "$sm_path" "$sha1" ||
+				die "$(eval_gettext "Fetched in submodule path '\$displaypath', but it did not contain $sha1. Direct fetching of that commit failed.")"
 			fi
 
 			must_die_on_failure=
@@ -720,7 +696,7 @@ cmd_update()
 			if test $res -gt 0
 			then
 				die_msg="$(eval_gettext "Failed to recurse into submodule path '\$displaypath'")"
-				if test $res -ne 2
+				if test $res -eq 1
 				then
 					err="${err};$die_msg"
 					continue
@@ -1008,11 +984,11 @@ cmd_status()
 
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		name=$(git submodule--helper name "$sm_path") || exit
 		url=$(git config submodule."$name".url)
 		displaypath=$(git submodule--helper relative-path "$prefix$sm_path" "$wt_prefix")
@@ -1089,11 +1065,11 @@ cmd_sync()
 	cd_to_toplevel
 	{
 		git submodule--helper list --prefix "$wt_prefix" "$@" ||
-		echo "#unmatched" $?
+		echo "#unmatched"
 	} |
 	while read mode sha1 stage sm_path
 	do
-		die_if_unmatched "$mode" "$sha1"
+		die_if_unmatched "$mode"
 		name=$(git submodule--helper name "$sm_path")
 		url=$(git config -f .gitmodules --get submodule."$name".url)
 

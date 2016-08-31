@@ -154,14 +154,6 @@ static int git_init_db_config(const char *k, const char *v, void *cb)
 	if (!strcmp(k, "init.templatedir"))
 		return git_config_pathname(&init_db_template_dir, k, v);
 
-	if (!strcmp(k, "core.hidedotfiles")) {
-		if (v && !strcasecmp(v, "dotgitonly"))
-			hide_dotfiles = HIDE_DOTFILES_DOTGITONLY;
-		else
-			hide_dotfiles = git_config_bool(k, v);
-		return 0;
-	}
-
 	return 0;
 }
 
@@ -188,7 +180,16 @@ static int create_default_files(const char *template_path)
 	char junk[2];
 	int reinit;
 	int filemode;
-	struct strbuf err = STRBUF_INIT;
+
+	/*
+	 * Create .git/refs/{heads,tags}
+	 */
+	safe_create_dir(git_path_buf(&buf, "refs"), 1);
+	safe_create_dir(git_path_buf(&buf, "refs/heads"), 1);
+	safe_create_dir(git_path_buf(&buf, "refs/tags"), 1);
+
+	/* Just look for `init.templatedir` */
+	git_config(git_init_db_config, NULL);
 
 	/* First copy the templates -- we might have the default
 	 * config file there, in which case we would want to read
@@ -209,17 +210,10 @@ static int create_default_files(const char *template_path)
 	 */
 	if (get_shared_repository()) {
 		adjust_shared_perm(get_git_dir());
+		adjust_shared_perm(git_path_buf(&buf, "refs"));
+		adjust_shared_perm(git_path_buf(&buf, "refs/heads"));
+		adjust_shared_perm(git_path_buf(&buf, "refs/tags"));
 	}
-
-	/*
-	 * We need to create a "refs" dir in any case so that older
-	 * versions of git can tell that this is a repository.
-	 */
-	safe_create_dir(git_path("refs"), 1);
-	adjust_shared_perm(git_path("refs"));
-
-	if (refs_init_db(&err))
-		die("failed to set up refs db: %s", err.buf);
 
 	/*
 	 * Create the default symlink from ".git/HEAD" to the "master"
@@ -364,9 +358,6 @@ int init_db(const char *template_dir, unsigned int flags)
 	if (git_link)
 		separate_git_dir(git_dir);
 
-	/* Just look for `init.templatedir` and `core.hidedotfiles` */
-	git_config(git_init_db_config, NULL);
-
 	safe_create_dir(git_dir, 0);
 
 	init_is_bare_repository = is_bare_repository();
@@ -406,16 +397,13 @@ int init_db(const char *template_dir, unsigned int flags)
 	if (!(flags & INIT_DB_QUIET)) {
 		int len = strlen(git_dir);
 
-		if (reinit)
-			printf(get_shared_repository()
-			       ? _("Reinitialized existing shared Git repository in %s%s\n")
-			       : _("Reinitialized existing Git repository in %s%s\n"),
-			       git_dir, len && git_dir[len-1] != '/' ? "/" : "");
-		else
-			printf(get_shared_repository()
-			       ? _("Initialized empty shared Git repository in %s%s\n")
-			       : _("Initialized empty Git repository in %s%s\n"),
-			       git_dir, len && git_dir[len-1] != '/' ? "/" : "");
+		/* TRANSLATORS: The first '%s' is either "Reinitialized
+		   existing" or "Initialized empty", the second " shared" or
+		   "", and the last '%s%s' is the verbatim directory name. */
+		printf(_("%s%s Git repository in %s%s\n"),
+		       reinit ? _("Reinitialized existing") : _("Initialized empty"),
+		       get_shared_repository() ? _(" shared") : "",
+		       git_dir, len && git_dir[len-1] != '/' ? "/" : "");
 	}
 
 	return 0;

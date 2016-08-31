@@ -348,14 +348,6 @@ static inline int git_skip_dos_drive_prefix(char **path)
 #define skip_dos_drive_prefix git_skip_dos_drive_prefix
 #endif
 
-#ifndef has_unc_prefix
-static inline int git_has_unc_prefix(const char *path)
-{
-	return 0;
-}
-#define has_unc_prefix git_has_unc_prefix
-#endif
-
 #ifndef is_dir_sep
 static inline int git_is_dir_sep(int c)
 {
@@ -382,10 +374,6 @@ static inline char *git_find_last_dir_sep(const char *path)
 
 #ifndef git_program_data_config
 #define git_program_data_config() NULL
-#endif
-
-#ifndef query_user_email
-#define query_user_email() NULL
 #endif
 
 #if defined(__HP_cc) && (__HP_cc >= 61000)
@@ -458,9 +446,6 @@ static inline int const_error(void)
 
 extern void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_list params));
 extern void set_error_routine(void (*routine)(const char *err, va_list params));
-extern void (*get_error_routine(void))(const char *err, va_list params);
-extern void set_warn_routine(void (*routine)(const char *warn, va_list params));
-extern void (*get_warn_routine(void))(const char *warn, va_list params);
 extern void set_die_is_recursing_routine(int (*routine)(void));
 extern void set_error_handle(FILE *);
 
@@ -491,23 +476,6 @@ static inline int skip_prefix(const char *str, const char *prefix,
 			return 1;
 		}
 	} while (*str++ == *prefix++);
-	return 0;
-}
-
-/*
- * Like skip_prefix, but promises never to read past "len" bytes of the input
- * buffer, and returns the remaining number of bytes in "out" via "outlen".
- */
-static inline int skip_prefix_mem(const char *buf, size_t len,
-				  const char *prefix,
-				  const char **out, size_t *outlen)
-{
-	size_t prefix_len = strlen(prefix);
-	if (prefix_len <= len && !memcmp(buf, prefix, prefix_len)) {
-		*out = buf + prefix_len;
-		*outlen = len - prefix_len;
-		return 1;
-	}
 	return 0;
 }
 
@@ -688,10 +656,6 @@ void *gitmemmem(const void *haystack, size_t haystacklen,
 #define getpagesize() sysconf(_SC_PAGESIZE)
 #endif
 
-#ifndef O_CLOEXEC
-#define O_CLOEXEC 0
-#endif
-
 #ifdef FREAD_READS_DIRECTORIES
 #ifdef fopen
 #undef fopen
@@ -840,7 +804,7 @@ extern FILE *fopen_for_writing(const char *path);
  * you can do:
  *
  *   struct foo *f;
- *   FLEXPTR_ALLOC_STR(f, name, src);
+ *   FLEX_ALLOC_STR(f, name, src);
  *
  * and "name" will point to a block of memory after the struct, which will be
  * freed along with the struct (but the pointer can be repointed anywhere).
@@ -1102,5 +1066,3 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #endif
 
 #endif
-
-extern int cmd_main(int, const char **);

@@ -21,8 +21,6 @@ static int fetch_unpack_limit = -1;
 static int unpack_limit = 100;
 static int prefer_ofs_delta = 1;
 static int no_done;
-static int deepen_since_ok;
-static int deepen_not_ok;
 static int fetch_fsck_objects = -1;
 static int transfer_fsck_objects = -1;
 static int agent_supported;
@@ -51,21 +49,6 @@ static int non_common_revs, multi_ack, use_sideband;
 /* Allow request of a sha1 if it is reachable from a ref (possibly hidden ref). */
 #define ALLOW_REACHABLE_SHA1	02
 static unsigned int allow_unadvertised_object_request;
-
-__attribute__((format (printf, 2, 3)))
-static inline void print_verbose(const struct fetch_pack_args *args,
-				 const char *fmt, ...)
-{
-	va_list params;
-
-	if (!args->verbose)
-		return;
-
-	va_start(params, fmt);
-	vfprintf(stderr, fmt, params);
-	va_end(params);
-	fputc('\n', stderr);
-}
 
 static void rev_list_push(struct commit *commit, int mark)
 {
@@ -199,7 +182,7 @@ enum ack_type {
 
 static void consume_shallow_list(struct fetch_pack_args *args, int fd)
 {
-	if (args->stateless_rpc && args->deepen) {
+	if (args->stateless_rpc && args->depth > 0) {
 		/* If we sent a depth we will get back "duplicate"
 		 * shallow and unshallow commands every time there
 		 * is a block of have lines exchanged.
@@ -210,7 +193,7 @@ static void consume_shallow_list(struct fetch_pack_args *args, int fd)
 				continue;
 			if (starts_with(line, "unshallow "))
 				continue;
-			die(_("git fetch-pack: expected shallow list"));
+			die("git fetch-pack: expected shallow list");
 		}
 	}
 }
@@ -222,7 +205,7 @@ static enum ack_type get_ack(int fd, unsigned char *result_sha1)
 	const char *arg;
 
 	if (!len)
-		die(_("git fetch-pack: expected ACK/NAK, got EOF"));
+		die("git fetch-pack: expected ACK/NAK, got EOF");
 	if (!strcmp(line, "NAK"))
 		return NAK;
 	if (skip_prefix(line, "ACK ", &arg)) {
@@ -240,7 +223,7 @@ static enum ack_type get_ack(int fd, unsigned char *result_sha1)
 			return ACK;
 		}
 	}
-	die(_("git fetch_pack: expected ACK/NAK, got '%s'"), line);
+	die("git fetch_pack: expected ACK/NAK, got '%s'", line);
 }
 
 static void send_request(struct fetch_pack_args *args,
@@ -260,21 +243,16 @@ static void insert_one_alternate_ref(const struct ref *ref, void *unused)
 
 #define INITIAL_FLUSH 16
 #define PIPESAFE_FLUSH 32
-#define LARGE_FLUSH 16384
+#define LARGE_FLUSH 1024
 
 static int next_flush(struct fetch_pack_args *args, int count)
 {
-	if (args->stateless_rpc) {
-		if (count < LARGE_FLUSH)
-			count <<= 1;
-		else
-			count = count * 11 / 10;
-	} else {
-		if (count < PIPESAFE_FLUSH)
-			count <<= 1;
-		else
-			count += PIPESAFE_FLUSH;
-	}
+	int flush_limit = args->stateless_rpc ? LARGE_FLUSH : PIPESAFE_FLUSH;
+
+	if (count < flush_limit)
+		count <<= 1;
+	else
+		count += flush_limit;
 	return count;
 }
 
@@ -292,7 +270,7 @@ static int find_common(struct fetch_pack_args *args,
 	size_t state_len = 0;
 
 	if (args->stateless_rpc && multi_ack == 1)
-		die(_("--stateless-rpc requires multi_ack_detailed"));
+		die("--stateless-rpc requires multi_ack_detailed");
 	if (marked)
 		for_each_ref(clear_marks, NULL);
 	marked = 1;
@@ -329,13 +307,10 @@ static int find_common(struct fetch_pack_args *args,
 			if (no_done)            strbuf_addstr(&c, " no-done");
 			if (use_sideband == 2)  strbuf_addstr(&c, " side-band-64k");
 			if (use_sideband == 1)  strbuf_addstr(&c, " side-band");
-			if (args->deepen_relative) strbuf_addstr(&c, " deepen-relative");
 			if (args->use_thin_pack) strbuf_addstr(&c, " thin-pack");
 			if (args->no_progress)   strbuf_addstr(&c, " no-progress");
 			if (args->include_tag)   strbuf_addstr(&c, " include-tag");
 			if (prefer_ofs_delta)   strbuf_addstr(&c, " ofs-delta");
-			if (deepen_since_ok)    strbuf_addstr(&c, " deepen-since");
-			if (deepen_not_ok)      strbuf_addstr(&c, " deepen-not");
 			if (agent_supported)    strbuf_addf(&c, " agent=%s",
 							    git_user_agent_sanitized());
 			packet_buf_write(&req_buf, "want %s%s\n", remote_hex, c.buf);
@@ -355,21 +330,10 @@ static int find_common(struct fetch_pack_args *args,
 		write_shallow_commits(&req_buf, 1, NULL);
 	if (args->depth > 0)
 		packet_buf_write(&req_buf, "deepen %d", args->depth);
-	if (args->deepen_since) {
-		unsigned long max_age = approxidate(args->deepen_since);
-		packet_buf_write(&req_buf, "deepen-since %lu", max_age);
-	}
-	if (args->deepen_not) {
-		int i;
-		for (i = 0; i < args->deepen_not->nr; i++) {
-			struct string_list_item *s = args->deepen_not->items + i;
-			packet_buf_write(&req_buf, "deepen-not %s", s->string);
-		}
-	}
 	packet_buf_flush(&req_buf);
 	state_len = req_buf.len;
 
-	if (args->deepen) {
+	if (args->depth > 0) {
 		char *line;
 		const char *arg;
 		unsigned char sha1[20];
@@ -378,23 +342,23 @@ static int find_common(struct fetch_pack_args *args,
 		while ((line = packet_read_line(fd[0], NULL))) {
 			if (skip_prefix(line, "shallow ", &arg)) {
 				if (get_sha1_hex(arg, sha1))
-					die(_("invalid shallow line: %s"), line);
+					die("invalid shallow line: %s", line);
 				register_shallow(sha1);
 				continue;
 			}
 			if (skip_prefix(line, "unshallow ", &arg)) {
 				if (get_sha1_hex(arg, sha1))
-					die(_("invalid unshallow line: %s"), line);
+					die("invalid unshallow line: %s", line);
 				if (!lookup_object(sha1))
-					die(_("object not found: %s"), line);
+					die("object not found: %s", line);
 				/* make sure that it is parsed as shallow */
 				if (!parse_object(sha1))
-					die(_("error in object: %s"), line);
+					die("error in object: %s", line);
 				if (unregister_shallow(sha1))
-					die(_("no shallow found: %s"), line);
+					die("no shallow found: %s", line);
 				continue;
 			}
-			die(_("expected shallow/unshallow, got %s"), line);
+			die("expected shallow/unshallow, got %s", line);
 		}
 	} else if (!args->stateless_rpc)
 		send_request(args, fd[1], &req_buf);
@@ -411,7 +375,8 @@ static int find_common(struct fetch_pack_args *args,
 	retval = -1;
 	while ((sha1 = get_rev())) {
 		packet_buf_write(&req_buf, "have %s\n", sha1_to_hex(sha1));
-		print_verbose(args, "have %s", sha1_to_hex(sha1));
+		if (args->verbose)
+			fprintf(stderr, "have %s\n", sha1_to_hex(sha1));
 		in_vain++;
 		if (flush_at <= ++count) {
 			int ack;
@@ -432,9 +397,9 @@ static int find_common(struct fetch_pack_args *args,
 			consume_shallow_list(args, fd[0]);
 			do {
 				ack = get_ack(fd[0], result_sha1);
-				if (ack)
-					print_verbose(args, _("got %s %d %s"), "ack",
-						      ack, sha1_to_hex(result_sha1));
+				if (args->verbose && ack)
+					fprintf(stderr, "got ack %d %s\n", ack,
+							sha1_to_hex(result_sha1));
 				switch (ack) {
 				case ACK:
 					flushes = 0;
@@ -447,7 +412,7 @@ static int find_common(struct fetch_pack_args *args,
 					struct commit *commit =
 						lookup_commit(result_sha1);
 					if (!commit)
-						die(_("invalid commit %s"), sha1_to_hex(result_sha1));
+						die("invalid commit %s", sha1_to_hex(result_sha1));
 					if (args->stateless_rpc
 					 && ack == ACK_common
 					 && !(commit->object.flags & COMMON)) {
@@ -473,7 +438,8 @@ static int find_common(struct fetch_pack_args *args,
 			} while (ack);
 			flushes--;
 			if (got_continue && MAX_IN_VAIN < in_vain) {
-				print_verbose(args, _("giving up"));
+				if (args->verbose)
+					fprintf(stderr, "giving up\n");
 				break; /* give up */
 			}
 		}
@@ -483,7 +449,8 @@ done:
 		packet_buf_write(&req_buf, "done\n");
 		send_request(args, fd[1], &req_buf);
 	}
-	print_verbose(args, _("done"));
+	if (args->verbose)
+		fprintf(stderr, "done\n");
 	if (retval != 0) {
 		multi_ack = 0;
 		flushes++;
@@ -495,8 +462,9 @@ done:
 	while (flushes || multi_ack) {
 		int ack = get_ack(fd[0], result_sha1);
 		if (ack) {
-			print_verbose(args, _("got %s (%d) %s"), "ack",
-				      ack, sha1_to_hex(result_sha1));
+			if (args->verbose)
+				fprintf(stderr, "got ack (%d) %s\n", ack,
+					sha1_to_hex(result_sha1));
 			if (ack == ACK)
 				return 0;
 			multi_ack = 1;
@@ -541,8 +509,9 @@ static void mark_recent_complete_commits(struct fetch_pack_args *args,
 					 unsigned long cutoff)
 {
 	while (complete && cutoff <= complete->item->date) {
-		print_verbose(args, _("Marking %s as complete"),
-			      oid_to_hex(&complete->item->object.oid));
+		if (args->verbose)
+			fprintf(stderr, "Marking %s as complete\n",
+				oid_to_hex(&complete->item->object.oid));
 		pop_most_recent_commit(&complete, COMPLETE);
 	}
 }
@@ -578,7 +547,7 @@ static void filter_refs(struct fetch_pack_args *args,
 		}
 
 		if (!keep && args->fetch_all &&
-		    (!args->deepen || !starts_with(ref->name, "refs/tags/")))
+		    (!args->depth || !starts_with(ref->name, "refs/tags/")))
 			keep = 1;
 
 		if (keep) {
@@ -648,7 +617,7 @@ static int everything_local(struct fetch_pack_args *args,
 		}
 	}
 
-	if (!args->deepen) {
+	if (!args->depth) {
 		for_each_ref(mark_complete_oid, NULL);
 		for_each_alternate_ref(mark_alternate_complete, NULL);
 		commit_list_sort_by_date(&complete);
@@ -683,12 +652,18 @@ static int everything_local(struct fetch_pack_args *args,
 		o = lookup_object(remote);
 		if (!o || !(o->flags & COMPLETE)) {
 			retval = 0;
-			print_verbose(args, "want %s (%s)", sha1_to_hex(remote),
-				      ref->name);
+			if (!args->verbose)
+				continue;
+			fprintf(stderr,
+				"want %s (%s)\n", sha1_to_hex(remote),
+				ref->name);
 			continue;
 		}
-		print_verbose(args, _("already have %s (%s)"), sha1_to_hex(remote),
-			      ref->name);
+		if (!args->verbose)
+			continue;
+		fprintf(stderr,
+			"already have %s (%s)\n", sha1_to_hex(remote),
+			ref->name);
 	}
 	return retval;
 }
@@ -725,7 +700,8 @@ static int get_pack(struct fetch_pack_args *args,
 		demux.out = -1;
 		demux.isolate_sigpipe = 1;
 		if (start_async(&demux))
-			die(_("fetch-pack: unable to fork off sideband demultiplexer"));
+			die("fetch-pack: unable to fork off sideband"
+			    " demultiplexer");
 	}
 	else
 		demux.out = xd[0];
@@ -733,7 +709,7 @@ static int get_pack(struct fetch_pack_args *args,
 	if (!args->keep_pack && unpack_limit) {
 
 		if (read_pack_header(demux.out, &header))
-			die(_("protocol error: bad pack header"));
+			die("protocol error: bad pack header");
 		pass_header = 1;
 		if (ntohl(header.hdr_entries) < unpack_limit)
 			do_keep = 0;
@@ -789,7 +765,7 @@ static int get_pack(struct fetch_pack_args *args,
 	cmd.in = demux.out;
 	cmd.git_cmd = 1;
 	if (start_command(&cmd))
-		die(_("fetch-pack: unable to fork off %s"), cmd_name);
+		die("fetch-pack: unable to fork off %s", cmd_name);
 	if (do_keep && pack_lockfile) {
 		*pack_lockfile = index_pack_lockfile(cmd.out);
 		close(cmd.out);
@@ -805,9 +781,9 @@ static int get_pack(struct fetch_pack_args *args,
 			args->check_self_contained_and_connected &&
 			ret == 0;
 	else
-		die(_("%s failed"), cmd_name);
+		die("%s failed", cmd_name);
 	if (use_sideband && finish_async(&demux))
-		die(_("error in sideband demultiplexer"));
+		die("error in sideband demultiplexer");
 	return 0;
 }
 
@@ -834,36 +810,41 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	qsort(sought, nr_sought, sizeof(*sought), cmp_ref_by_name);
 
 	if ((args->depth > 0 || is_repository_shallow()) && !server_supports("shallow"))
-		die(_("Server does not support shallow clients"));
-	if (args->depth > 0 || args->deepen_since || args->deepen_not)
-		args->deepen = 1;
+		die("Server does not support shallow clients");
 	if (server_supports("multi_ack_detailed")) {
-		print_verbose(args, _("Server supports multi_ack_detailed"));
+		if (args->verbose)
+			fprintf(stderr, "Server supports multi_ack_detailed\n");
 		multi_ack = 2;
 		if (server_supports("no-done")) {
-			print_verbose(args, _("Server supports no-done"));
+			if (args->verbose)
+				fprintf(stderr, "Server supports no-done\n");
 			if (args->stateless_rpc)
 				no_done = 1;
 		}
 	}
 	else if (server_supports("multi_ack")) {
-		print_verbose(args, _("Server supports multi_ack"));
+		if (args->verbose)
+			fprintf(stderr, "Server supports multi_ack\n");
 		multi_ack = 1;
 	}
 	if (server_supports("side-band-64k")) {
-		print_verbose(args, _("Server supports side-band-64k"));
+		if (args->verbose)
+			fprintf(stderr, "Server supports side-band-64k\n");
 		use_sideband = 2;
 	}
 	else if (server_supports("side-band")) {
-		print_verbose(args, _("Server supports side-band"));
+		if (args->verbose)
+			fprintf(stderr, "Server supports side-band\n");
 		use_sideband = 1;
 	}
 	if (server_supports("allow-tip-sha1-in-want")) {
-		print_verbose(args, _("Server supports allow-tip-sha1-in-want"));
+		if (args->verbose)
+			fprintf(stderr, "Server supports allow-tip-sha1-in-want\n");
 		allow_unadvertised_object_request |= ALLOW_TIP_SHA1;
 	}
 	if (server_supports("allow-reachable-sha1-in-want")) {
-		print_verbose(args, _("Server supports allow-reachable-sha1-in-want"));
+		if (args->verbose)
+			fprintf(stderr, "Server supports allow-reachable-sha1-in-want\n");
 		allow_unadvertised_object_request |= ALLOW_REACHABLE_SHA1;
 	}
 	if (!server_supports("thin-pack"))
@@ -872,27 +853,18 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 		args->no_progress = 0;
 	if (!server_supports("include-tag"))
 		args->include_tag = 0;
-	if (server_supports("ofs-delta"))
-		print_verbose(args, _("Server supports ofs-delta"));
-	else
+	if (server_supports("ofs-delta")) {
+		if (args->verbose)
+			fprintf(stderr, "Server supports ofs-delta\n");
+	} else
 		prefer_ofs_delta = 0;
 
 	if ((agent_feature = server_feature_value("agent", &agent_len))) {
 		agent_supported = 1;
-		if (agent_len)
-			print_verbose(args, _("Server version is %.*s"),
-				      agent_len, agent_feature);
+		if (args->verbose && agent_len)
+			fprintf(stderr, "Server version is %.*s\n",
+				agent_len, agent_feature);
 	}
-	if (server_supports("deepen-since"))
-		deepen_since_ok = 1;
-	else if (args->deepen_since)
-		die(_("Server does not support --shallow-since"));
-	if (server_supports("deepen-not"))
-		deepen_not_ok = 1;
-	else if (args->deepen_not)
-		die(_("Server does not support --shallow-exclude"));
-	if (!server_supports("deepen-relative") && args->deepen_relative)
-		die(_("Server does not support --deepen"));
 
 	if (everything_local(args, &ref, sought, nr_sought)) {
 		packet_flush(fd[1]);
@@ -903,11 +875,11 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 			/* When cloning, it is not unusual to have
 			 * no common commit.
 			 */
-			warning(_("no common commits"));
+			warning("no common commits");
 
 	if (args->stateless_rpc)
 		packet_flush(fd[1]);
-	if (args->deepen)
+	if (args->depth > 0)
 		setup_alternate_shallow(&shallow_lock, &alternate_shallow_file,
 					NULL);
 	else if (si->nr_ours || si->nr_theirs)
@@ -915,7 +887,7 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	else
 		alternate_shallow_file = NULL;
 	if (get_pack(args, fd, pack_lockfile))
-		die(_("git fetch-pack: fetch failed."));
+		die("git fetch-pack: fetch failed.");
 
  all_done:
 	return ref;
@@ -974,7 +946,7 @@ static void update_shallow(struct fetch_pack_args *args,
 	int *status;
 	int i;
 
-	if (args->deepen && alternate_shallow_file) {
+	if (args->depth > 0 && alternate_shallow_file) {
 		if (*alternate_shallow_file == '\0') { /* --unshallow */
 			unlink_or_warn(git_path_shallow());
 			rollback_lock_file(&shallow_lock);
@@ -1077,7 +1049,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 
 	if (!ref) {
 		packet_flush(fd[1]);
-		die(_("no matching remote head"));
+		die("no matching remote head");
 	}
 	prepare_shallow_info(&si, shallow);
 	ref_cpy = do_fetch_pack(args, fd, ref, sought, nr_sought,

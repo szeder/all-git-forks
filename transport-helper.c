@@ -13,8 +13,6 @@
 #include "refs.h"
 
 static int debug;
-/* TODO: put somewhere sensible, e.g. git_transport_options? */
-static int auto_gc = 1;
 
 struct helper_data {
 	const char *name;
@@ -260,50 +258,7 @@ static const char *boolean_options[] = {
 	TRANS_OPT_THIN,
 	TRANS_OPT_KEEP,
 	TRANS_OPT_FOLLOWTAGS,
-	TRANS_OPT_DEEPEN_RELATIVE
 	};
-
-static int strbuf_set_helper_option(struct helper_data *data,
-				    struct strbuf *buf)
-{
-	int ret;
-
-	sendline(data, buf);
-	if (recvline(data, buf))
-		exit(128);
-
-	if (!strcmp(buf->buf, "ok"))
-		ret = 0;
-	else if (starts_with(buf->buf, "error"))
-		ret = -1;
-	else if (!strcmp(buf->buf, "unsupported"))
-		ret = 1;
-	else {
-		warning("%s unexpectedly said: '%s'", data->name, buf->buf);
-		ret = 1;
-	}
-	return ret;
-}
-
-static int string_list_set_helper_option(struct helper_data *data,
-					 const char *name,
-					 struct string_list *list)
-{
-	struct strbuf buf = STRBUF_INIT;
-	int i, ret = 0;
-
-	for (i = 0; i < list->nr; i++) {
-		strbuf_addf(&buf, "option %s ", name);
-		quote_c_style(list->items[i].string, &buf, NULL, 0);
-		strbuf_addch(&buf, '\n');
-
-		if ((ret = strbuf_set_helper_option(data, &buf)))
-			break;
-		strbuf_reset(&buf);
-	}
-	strbuf_release(&buf);
-	return ret;
-}
 
 static int set_helper_option(struct transport *transport,
 			  const char *name, const char *value)
@@ -316,10 +271,6 @@ static int set_helper_option(struct transport *transport,
 
 	if (!data->option)
 		return 1;
-
-	if (!strcmp(name, "deepen-not"))
-		return string_list_set_helper_option(data, name,
-						     (struct string_list *)value);
 
 	for (i = 0; i < ARRAY_SIZE(unsupported_options); i++) {
 		if (!strcmp(name, unsupported_options[i]))
@@ -340,7 +291,20 @@ static int set_helper_option(struct transport *transport,
 		quote_c_style(value, &buf, NULL, 0);
 	strbuf_addch(&buf, '\n');
 
-	ret = strbuf_set_helper_option(data, &buf);
+	sendline(data, &buf);
+	if (recvline(data, &buf))
+		exit(128);
+
+	if (!strcmp(buf.buf, "ok"))
+		ret = 0;
+	else if (starts_with(buf.buf, "error")) {
+		ret = -1;
+	} else if (!strcmp(buf.buf, "unsupported"))
+		ret = 1;
+	else {
+		warning("%s unexpectedly said: '%s'", data->name, buf.buf);
+		ret = 1;
+	}
 	strbuf_release(&buf);
 	return ret;
 }
@@ -474,23 +438,8 @@ static int get_exporter(struct transport *transport,
 	for (i = 0; i < revlist_args->nr; i++)
 		argv_array_push(&fastexport->args, revlist_args->items[i].string);
 
-	argv_array_push(&fastexport->args, "--");
-
 	fastexport->git_cmd = 1;
 	return start_command(fastexport);
-}
-
-static void check_helper_status(struct helper_data *data)
-{
-	int pid, status;
-
-	pid = waitpid(data->helper->pid, &status, WNOHANG);
-	if (pid < 0)
-		die("Could not retrieve status of remote helper '%s'",
-		    data->name);
-	if (pid > 0 && WIFEXITED(status))
-		die("Remote helper '%s' died with %d",
-		    data->name, WEXITSTATUS(status));
 }
 
 static int fetch_with_import(struct transport *transport,
@@ -529,7 +478,6 @@ static int fetch_with_import(struct transport *transport,
 
 	if (finish_command(&fastimport))
 		die("Error while running fast-import");
-	check_helper_status(data);
 
 	/*
 	 * The fast-import stream of a remote helper that advertises
@@ -563,12 +511,6 @@ static int fetch_with_import(struct transport *transport,
 		}
 	}
 	strbuf_release(&buf);
-	if (auto_gc) {
-		const char *argv_gc_auto[] = {
-			"gc", "--auto", "--quiet", NULL,
-		};
-		run_command_v_opt(argv_gc_auto, RUN_GIT_CMD);
-	}
 	return 0;
 }
 
@@ -996,7 +938,6 @@ static int push_refs_with_export(struct transport *transport,
 
 	if (finish_command(&exporter))
 		die("Error while running fast-export");
-	check_helper_status(data);
 	if (push_update_refs_status(data, remote_refs, flags))
 		return 1;
 
@@ -1097,7 +1038,7 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 				(*tail)->status |= REF_STATUS_UPTODATE;
 				if (read_ref((*tail)->name,
 					     (*tail)->old_oid.hash) < 0)
-					die(_("Could not read ref %s"),
+					die(N_("Could not read ref %s"),
 					    (*tail)->name);
 			}
 		}
@@ -1162,7 +1103,7 @@ static void transfer_debug(const char *fmt, ...)
 }
 
 /* Stream state: More data may be coming in this direction. */
-#define SSTATE_TRANSFERRING 0
+#define SSTATE_TRANSFERING 0
 /*
  * Stream state: No more data coming in this direction, flushing rest of
  * data.
@@ -1171,7 +1112,7 @@ static void transfer_debug(const char *fmt, ...)
 /* Stream state: Transfer in this direction finished. */
 #define SSTATE_FINISHED 2
 
-#define STATE_NEEDS_READING(state) ((state) <= SSTATE_TRANSFERRING)
+#define STATE_NEEDS_READING(state) ((state) <= SSTATE_TRANSFERING)
 #define STATE_NEEDS_WRITING(state) ((state) <= SSTATE_FLUSHING)
 #define STATE_NEEDS_CLOSING(state) ((state) == SSTATE_FLUSHING)
 
@@ -1428,7 +1369,7 @@ int bidirectional_transfer_loop(int input, int output)
 	state.ptg.dest = 1;
 	state.ptg.src_is_sock = (input == output);
 	state.ptg.dest_is_sock = 0;
-	state.ptg.state = SSTATE_TRANSFERRING;
+	state.ptg.state = SSTATE_TRANSFERING;
 	state.ptg.bufuse = 0;
 	state.ptg.src_name = "remote input";
 	state.ptg.dest_name = "stdout";
@@ -1437,7 +1378,7 @@ int bidirectional_transfer_loop(int input, int output)
 	state.gtp.dest = output;
 	state.gtp.src_is_sock = 0;
 	state.gtp.dest_is_sock = (input == output);
-	state.gtp.state = SSTATE_TRANSFERRING;
+	state.gtp.state = SSTATE_TRANSFERING;
 	state.gtp.bufuse = 0;
 	state.gtp.src_name = "stdin";
 	state.gtp.dest_name = "remote output";

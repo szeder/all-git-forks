@@ -41,7 +41,7 @@ static int prefix_cb(struct string_list_item *item, void *cb_data)
 	return starts_with(item->string, prefix);
 }
 
-int cmd_main(int argc, const char **argv)
+int main(int argc, char **argv)
 {
 	if (argc == 5 && !strcmp(argv[1], "split")) {
 		struct string_list list = STRING_LIST_INIT_DUP;

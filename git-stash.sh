@@ -15,6 +15,7 @@ SUBDIRECTORY_OK=Yes
 OPTIONS_SPEC=
 START_DIR=$(pwd)
 . git-sh-setup
+. git-sh-i18n
 require_work_tree
 cd_to_toplevel
 
@@ -265,7 +266,7 @@ save_stash () {
 	create_stash "$stash_msg" $untracked
 	store_stash -m "$stash_msg" -q $w_commit ||
 	die "$(gettext "Cannot save the current status")"
-	say "$(eval_gettext "Saved working directory and index state \$stash_msg")"
+	say Saved working directory and index state "$stash_msg"
 
 	if test -z "$patch_mode"
 	then
@@ -548,7 +549,7 @@ pop_stash() {
 		drop_stash "$@"
 	else
 		status=$?
-		say "$(gettext "The stash is kept in case you need it again.")"
+		say "The stash is kept in case you need it again."
 		exit $status
 	fi
 }

@@ -45,7 +45,6 @@ my ($diff_new_color) =
 my $normal_color = $repo->get_color("", "reset");
 
 my $diff_algorithm = $repo->config('diff.algorithm');
-my $diff_indent_heuristic = $repo->config_bool('diff.indentheuristic');
 my $diff_compaction_heuristic = $repo->config_bool('diff.compactionheuristic');
 my $diff_filter = $repo->config('interactive.difffilter');
 
@@ -180,24 +179,6 @@ sub run_cmd_pipe {
 		die "$^O does not support: @invalid\n" if @invalid;
 		my @args = map { m/ /o ? "\"$_\"": $_ } @_;
 		return qx{@args};
-	} elsif (($^O eq 'MSWin32' || $^O eq 'msys') && (scalar @_ > 200) &&
-			grep $_ eq '--', @_) {
-		use File::Temp qw(tempfile);
-		my ($fhargs, $filename) =
-			tempfile('git-args-XXXXXX', UNLINK => 1);
-
-		my $cmd = 'cat '.$filename.' | xargs -0 -s 20000 ';
-		while ($_[0] ne '--') {
-			$cmd = $cmd . shift(@_) . ' ';
-		}
-
-		shift(@_);
-		print $fhargs join("\0", @_);
-		close($fhargs);
-
-		my $fh = undef;
-		open($fh, '-|', $cmd) or die;
-		return <$fh>;
 	} else {
 		my $fh = undef;
 		open($fh, '-|', @_) or die;
@@ -769,9 +750,7 @@ sub parse_diff {
 	if (defined $diff_algorithm) {
 		splice @diff_cmd, 1, 0, "--diff-algorithm=${diff_algorithm}";
 	}
-	if ($diff_indent_heuristic) {
-		splice @diff_cmd, 1, 0, "--indent-heuristic";
-	} elsif ($diff_compaction_heuristic) {
+	if ($diff_compaction_heuristic) {
 		splice @diff_cmd, 1, 0, "--compaction-heuristic";
 	}
 	if (defined $patch_mode_revision) {
