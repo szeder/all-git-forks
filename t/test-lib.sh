@@ -571,20 +571,6 @@ test_eval_ () {
 	#
 	# The test itself is run with stderr put back to &4 (so either to
 	# /dev/null, or to the original stderr if --verbose was used).
-	if test -n "$TEST_NO_REDIRECT"
-	then
-		test_eval_inner_ "$@"
-		test_eval_ret_=$?
-		if test "$trace" = t
-		then
-			set +x
-			if test "$test_eval_ret_" != 0
-			then
-				say_color error >&4 "error: last command exited with \$?=$test_eval_ret_"
-			fi
-		fi
-		return $test_eval_ret_
-	fi
 	{
 		test_eval_inner_ "$@" </dev/null >&3 2>&4
 		test_eval_ret_=$?
@@ -701,9 +687,9 @@ test_done () {
 		test_results_dir="$TEST_OUTPUT_DIRECTORY/test-results"
 		mkdir -p "$test_results_dir"
 		base=${0##*/}
-		test_results_path="$test_results_dir/${base%.sh}-$$.counts"
+		test_results_path="$test_results_dir/${base%.sh}.counts"
 
-		cat >>"$test_results_path" <<-EOF
+		cat >"$test_results_path" <<-EOF
 		total $test_count
 		success $test_success
 		fixed $test_fixed

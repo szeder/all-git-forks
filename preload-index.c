@@ -76,6 +76,10 @@ static void preload_index(struct index_state *index,
 	if (!core_preload_index)
 		return;
 
+	/* Do not preload when pathspec uses non-threadable subsystems */
+	if (pathspec && pathspec_is_non_threadable(pathspec))
+		return; /* for now ... */
+
 	threads = index->cache_nr / THREAD_COST;
 	if (threads < 2)
 		return;
@@ -84,7 +88,6 @@ static void preload_index(struct index_state *index,
 	offset = 0;
 	work = DIV_ROUND_UP(index->cache_nr, threads);
 	memset(&data, 0, sizeof(data));
-	enable_fscache(1);
 	for (i = 0; i < threads; i++) {
 		struct thread_data *p = data+i;
 		p->index = index;
@@ -101,7 +104,6 @@ static void preload_index(struct index_state *index,
 		if (pthread_join(p->pthread, NULL))
 			die("unable to join threaded lstat");
 	}
-	enable_fscache(0);
 }
 #endif
 

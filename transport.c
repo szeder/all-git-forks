@@ -59,7 +59,7 @@ static void set_upstreams(struct transport *transport, struct ref *refs,
 				localname + 11, transport->remote->name,
 				remotename);
 		else
-			printf("Would set upstream of '%s' to '%s' of '%s'\n",
+			printf(_("Would set upstream of '%s' to '%s' of '%s'\n"),
 				localname + 11, remotename + 11,
 				transport->remote->name);
 	}
@@ -81,7 +81,8 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 
 	if (data->fd > 0)
 		close(data->fd);
-	data->fd = read_bundle_header(transport->url, &data->header);
+	init_bundle_header(&data->header, transport->url);
+	data->fd = read_bundle_header(&data->header);
 	if (data->fd < 0)
 		die ("Could not read bundle '%s'.", transport->url);
 	for (i = 0; i < data->header.references.nr; i++) {
@@ -107,6 +108,7 @@ static int close_bundle(struct transport *transport)
 	struct bundle_transport_data *data = transport->data;
 	if (data->fd > 0)
 		close(data->fd);
+	release_bundle_header(&data->header);
 	free(data);
 	return 0;
 }
@@ -148,8 +150,17 @@ static int set_git_option(struct git_transport_options *opts,
 			char *end;
 			opts->depth = strtol(value, &end, 0);
 			if (*end)
-				die("transport: invalid depth option '%s'", value);
+				die(_("transport: invalid depth option '%s'"), value);
 		}
+		return 0;
+	} else if (!strcmp(name, TRANS_OPT_DEEPEN_SINCE)) {
+		opts->deepen_since = value;
+		return 0;
+	} else if (!strcmp(name, TRANS_OPT_DEEPEN_NOT)) {
+		opts->deepen_not = (const struct string_list *)value;
+		return 0;
+	} else if (!strcmp(name, TRANS_OPT_DEEPEN_RELATIVE)) {
+		opts->deepen_relative = !!value;
 		return 0;
 	}
 	return 1;
@@ -211,6 +222,9 @@ static int fetch_refs_via_pack(struct transport *transport,
 	args.quiet = (transport->verbose < 0);
 	args.no_progress = !transport->progress;
 	args.depth = data->options.depth;
+	args.deepen_since = data->options.deepen_since;
+	args.deepen_not = data->options.deepen_not;
+	args.deepen_relative = data->options.deepen_relative;
 	args.check_self_contained_and_connected =
 		data->options.check_self_contained_and_connected;
 	args.cloning = transport->cloning;
@@ -321,11 +335,6 @@ static void print_ref_status(char flag, const char *summary, struct ref *to, str
 	}
 }
 
-static const char *status_abbrev(unsigned char sha1[20])
-{
-	return find_unique_abbrev(sha1, DEFAULT_ABBREV);
-}
-
 static void print_ok_ref_status(struct ref *ref, int porcelain)
 {
 	if (ref->deletion)
@@ -340,7 +349,8 @@ static void print_ok_ref_status(struct ref *ref, int porcelain)
 		char type;
 		const char *msg;
 
-		strbuf_addstr(&quickref, status_abbrev(ref->old_oid.hash));
+		strbuf_add_unique_abbrev(&quickref, ref->old_oid.hash,
+					 DEFAULT_ABBREV);
 		if (ref->forced_update) {
 			strbuf_addstr(&quickref, "...");
 			type = '+';
@@ -350,7 +360,8 @@ static void print_ok_ref_status(struct ref *ref, int porcelain)
 			type = ' ';
 			msg = NULL;
 		}
-		strbuf_addstr(&quickref, status_abbrev(ref->new_oid.hash));
+		strbuf_add_unique_abbrev(&quickref, ref->new_oid.hash,
+					 DEFAULT_ABBREV);
 
 		print_ref_status(type, quickref.buf, ref, ref->peer_ref, msg, porcelain);
 		strbuf_release(&quickref);
@@ -513,6 +524,7 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 	args.dry_run = !!(flags & TRANSPORT_PUSH_DRY_RUN);
 	args.porcelain = !!(flags & TRANSPORT_PUSH_PORCELAIN);
 	args.atomic = !!(flags & TRANSPORT_PUSH_ATOMIC);
+	args.push_options = transport->push_options;
 	args.url = transport->url;
 
 	if (flags & TRANSPORT_PUSH_CERT_ALWAYS)
@@ -566,7 +578,7 @@ void transport_take_over(struct transport *transport,
 	struct git_transport_data *data;
 
 	if (!transport->smart_options)
-		die("Bug detected: Taking over transport requires non-NULL "
+		die("BUG: taking over transport requires non-NULL "
 		    "smart_options field.");
 
 	data = xcalloc(1, sizeof(*data));
@@ -770,19 +782,19 @@ static void die_with_unpushed_submodules(struct string_list *needs_pushing)
 {
 	int i;
 
-	fprintf(stderr, "The following submodule paths contain changes that can\n"
-			"not be found on any remote:\n");
+	fprintf(stderr, _("The following submodule paths contain changes that can\n"
+			"not be found on any remote:\n"));
 	for (i = 0; i < needs_pushing->nr; i++)
 		printf("  %s\n", needs_pushing->items[i].string);
-	fprintf(stderr, "\nPlease try\n\n"
-			"	git push --recurse-submodules=on-demand\n\n"
-			"or cd to the path and use\n\n"
-			"	git push\n\n"
-			"to push them to a remote.\n\n");
+	fprintf(stderr, _("\nPlease try\n\n"
+			  "	git push --recurse-submodules=on-demand\n\n"
+			  "or cd to the path and use\n\n"
+			  "	git push\n\n"
+			  "to push them to a remote.\n\n"));
 
 	string_list_clear(needs_pushing, 0);
 
-	die("Aborting.");
+	die(_("Aborting."));
 }
 
 static int run_pre_push_hook(struct transport *transport,
