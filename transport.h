@@ -83,6 +83,10 @@ struct transport {
 	 **/
 	const struct alt_resource *const (*prime_clone)(struct transport *transport);
 
+	const char *(*download_primer)(struct transport *transport,
+			const struct alt_resource *alt_res,
+			const char *base_path);
+
 	/**
 	 * Fetch the objects for the given refs. Note that this gets
 	 * an array, and should ignore the list structure.
@@ -228,6 +232,9 @@ int transport_push(struct transport *connection,
 
 const struct ref *transport_get_remote_refs(struct transport *transport);
 const struct alt_resource *const transport_prime_clone(struct transport *transport);
+const char *transport_download_primer(struct transport *transport,
+		const struct alt_resource *alt_res,
+		const char *base_path);
 
 int transport_fetch_refs(struct transport *transport, struct ref *refs);
 void transport_unlock_pack(struct transport *transport);

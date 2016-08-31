@@ -29,6 +29,7 @@ struct helper_data {
 		check_connectivity : 1,
 		no_disconnect_req : 1,
 		no_private_update : 1,
+		download_primer : 1,
 		prime_clone : 1;
 	char *export_marks;
 	char *import_marks;
@@ -183,6 +184,8 @@ static struct child_process *get_helper(struct transport *transport)
 			data->check_connectivity = 1;
 		else if (!strcmp(capname, "prime-clone"))
 			data->prime_clone = 1;
+		else if (!strcmp(capname, "download-primer"))
+			data->download_primer = 1;
 		else if (!data->refspecs && skip_prefix(capname, "refspec ", &arg)) {
 			ALLOC_GROW(refspecs,
 				   refspec_nr + 1,
@@ -1058,6 +1061,26 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	return ret;
 }
 
+static const char *download_primer(struct transport *transport,
+				   const struct alt_resource *res,
+				   const char *base_path)
+{
+	struct helper_data *data = transport->data;
+	struct child_process *helper;
+	struct strbuf buf = STRBUF_INIT, out = STRBUF_INIT;
+	char *ret = NULL;
+
+	helper = get_helper(transport);
+
+	strbuf_addf(&buf, "download-primer %s %s\n", res->url, base_path);
+	sendline(data, &buf);
+	recvline(data, &out);
+	strbuf_release(&buf);
+	if (out.len > 0)
+		ret = strbuf_detach(&out, NULL);
+	return ret;
+}
+
 static const struct alt_resource *const get_alt_res_helper(struct transport *transport)
 {
 	struct helper_data *data = transport->data;
@@ -1115,6 +1138,7 @@ int transport_helper_init(struct transport *transport, const char *name)
 	transport->data = data;
 	transport->set_option = set_helper_option;
 	transport->get_refs_list = get_refs_list;
+	transport->download_primer = download_primer;
 	transport->prime_clone = get_alt_res_helper;
 	transport->fetch = fetch;
 	transport->push_refs = push_refs;

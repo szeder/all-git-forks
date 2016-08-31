@@ -572,6 +572,15 @@ const struct alt_resource *const transport_prime_clone(struct transport *transpo
 	return transport->alt_res;
 }
 
+const char *transport_download_primer(struct transport *transport,
+				      const struct alt_resource *alt_res,
+				      const char *base_dir)
+{
+	if (transport->download_primer)
+		return transport->download_primer(transport, alt_res, base_dir);
+	return NULL;
+}
+
 static int connect_git(struct transport *transport, const char *name,
 		       const char *executable, int fd[2])
 {
