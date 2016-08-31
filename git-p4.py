@@ -26,6 +26,8 @@ import zipfile
 import zlib
 import ctypes
 import fnmatch
+import threading
+import Queue
 
 try:
     from subprocess import CalledProcessError
@@ -965,6 +967,9 @@ class LargeFileSystem(object):
            a server."""
         assert False, "Method 'pushFile' required in " + self.__class__.__name__
 
+    def waitForPushes(self):
+        pass
+
     def matchesLargeFileGlob(self, relPath):
         return reduce(
             lambda a, b: a or b,
@@ -1063,6 +1068,22 @@ class MockLFS(LargeFileSystem):
             os.makedirs(remotePath)
         shutil.copyfile(localLargeFile, os.path.join(remotePath, os.path.basename(localLargeFile)))
 
+gitLFSPushQueue = Queue.Queue()
+def uploadWorker():
+    while True:
+        localLargeFile = gitLFSPushQueue.get()
+        for i in range(3):
+            if verbose:
+                sys.stdout.write('Pushing file to Git LFS: %s\n' % localLargeFile)
+            uploadProcess = subprocess.Popen(
+                ['git', 'lfs', 'push', '--object-id', 'origin', os.path.basename(localLargeFile)]
+            )
+            if uploadProcess.wait():
+                sys.stderr.write('Git LFS upload failed for %s\n' % localLargeFile)
+            else:
+                break
+        gitLFSPushQueue.task_done()
+
 class GitLFS(LargeFileSystem):
     """Git LFS as backend for the git-p4 large file system.
        See https://git-lfs.github.com/ for details."""
@@ -1070,6 +1091,9 @@ class GitLFS(LargeFileSystem):
     def __init__(self, *args):
         LargeFileSystem.__init__(self, *args)
         self.baseGitAttributes = []
+        self.pushThread = threading.Thread(target=uploadWorker)
+        self.pushThread.daemon = True
+        self.pushThread.start()
 
     def generatePointer(self, contentFile):
         """Generate a Git LFS pointer for the content. Return LFS Pointer file
@@ -1106,14 +1130,13 @@ class GitLFS(LargeFileSystem):
         gitMode = '100644'
         return (gitMode, pointerFile, localLargeFile)
 
-    def pushFile(self, localLargeFile, attempts=3):
-        for i in range(3):
-            uploadProcess = subprocess.Popen(
-                ['git', 'lfs', 'push', '--object-id', 'origin', os.path.basename(localLargeFile)]
-            )
-            if not uploadProcess.wait():
-                return
-        die('git-lfs push command failed. Did you define a remote?')
+    def pushFile(self, localLargeFile):
+        gitLFSPushQueue.put(localLargeFile)
+
+    def waitForPushes(self):
+        while gitLFSPushQueue.qsize() > 0:
+            time.sleep(0.1)
+        gitLFSPushQueue.join()
 
     def escapeGitAttributePath(self, path):
         return path.replace('[', '\[').replace(']', '\]').replace(' ', '[[:space:]]')
@@ -3585,6 +3608,9 @@ class P4Sync(Command, P4UserMap):
             head_ref = self.refPrefix + "HEAD"
             if not gitBranchExists(head_ref) and gitBranchExists(self.branch):
                 system(["git", "symbolic-ref", head_ref, self.branch])
+
+        if self.largeFileSystem:
+            self.largeFileSystem.waitForPushes()
 
         return True
 
