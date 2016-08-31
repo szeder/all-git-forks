@@ -1226,7 +1226,6 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 			found += 1;
 		}
 	}
-	}
 
 	if (xdg_config && !access_or_die(xdg_config, R_OK, ACCESS_EACCES_OK)) {
 		ret += git_config_from_file(fn, xdg_config, data);
