@@ -67,6 +67,29 @@ test_expect_success 'can branch from tag' '
 	test_line_count = 1 output
 '
 
+test_expect_success 'can reset head from tag' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	reset refs/heads/maint2
+	from refs/tags/tag1
+	INPUT_END
+	git fast-import --export-marks=marks.out <input &&
+	git show-ref --heads maint2 >output &&
+	test_line_count = 1 output
+'
+
+test_expect_success 'can reset tag from tag' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	reset refs/tags/tag2
+	from refs/tags/tag1
+	INPUT_END
+	git fast-import --export-marks=marks.out <input &&
+	echo "tag2" >expected &&
+	git tag -l tag2 >actual &&
+	test_cmp expected actual
+'
+
 test_expect_success 'can delete tag' '
 	test_tick &&
 	cat >input <<-INPUT_END &&
@@ -75,7 +98,7 @@ test_expect_success 'can delete tag' '
 
 	INPUT_END
 	git fast-import --export-marks=marks.out <input &&
-	git tag -l >output &&
+	git tag -l tag1 >output &&
 	test_must_be_empty output
 '
 
