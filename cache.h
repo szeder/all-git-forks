@@ -811,6 +811,7 @@ const char *git_path_merge_mode(void);
 const char *git_path_merge_head(void);
 const char *git_path_fetch_head(void);
 const char *git_path_shallow(void);
+const char *git_path_resumable(void);
 
 /*
  * Return the name of the file in the local object database that would
