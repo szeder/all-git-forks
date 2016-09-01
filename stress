@@ -27,4 +27,4 @@ for i in $(seq $GIT_STRESS_LOAD); do
 	) &
 done
 wait
-cat "$fail/output"
+test -d "$fail" && cat "$fail/output"
