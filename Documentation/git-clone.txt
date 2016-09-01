@@ -16,6 +16,7 @@ SYNOPSIS
 	  [--depth <depth>] [--[no-]single-branch]
 	  [--recursive | --recurse-submodules] [--] <repository>
 	  [<directory>]
+'git clone --resume <resumable_dir>'
 
 DESCRIPTION
 -----------
@@ -172,6 +173,12 @@ objects from the source repository into a pack in the cloned repository.
 	via ssh, this specifies a non-default path for the command
 	run on the other end.
 
+--prime-clone <prime-clone>::
+-p <prime-clone>::
+	When given and the repository to clone from is accessed
+	via ssh, this specifies a non-default path for the command
+	run on the other end.
+
 --template=<template_directory>::
 	Specify the directory from which templates will be used;
 	(See the "TEMPLATE DIRECTORY" section of linkgit:git-init[1].)
@@ -231,6 +238,15 @@ objects from the source repository into a pack in the cloned repository.
 	explicitly given (`repo` for `/path/to/repo.git` and `foo`
 	for `host.xz:foo/.git`).  Cloning into an existing directory
 	is only allowed if the directory is empty.
+
+--resume::
+	Resume a partially cloned repo in a "resumable" state. This
+	can only be specified with a single local directory (<resumable
+	dir>). This is incompatible with all other options.
+
+<resumable_dir>::
+	The directory of the partial clone. This could be either the
+	work directory or the git directory.
 
 :git-clone: 1
 include::urls.txt[]
