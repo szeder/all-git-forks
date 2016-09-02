@@ -165,6 +165,13 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			continue;
 		}
 
+		if (is_null_oid(&old_oid)) {
+			if (strcmp(name, "capabilities^{}"))
+				warning("zero object ID received that is not accompanied by a "
+				        "capability declaration, ignoring and continuing anyway");
+			continue;
+		}
+
 		if (!check_ref(name, flags))
 			continue;
 		ref = alloc_ref(buffer + GIT_SHA1_HEXSZ + 1);
