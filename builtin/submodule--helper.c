@@ -953,6 +953,50 @@ static int resolve_remote_submodule_branch(int argc, const char **argv,
 	return 0;
 }
 
+static int submodule_should_exist(const char *path)
+{
+	int ret;
+	const struct string_list *sl;
+
+	sl = git_config_get_value_multi("submodule.checkout");
+
+	if (!sl) {
+		struct strbuf sb = STRBUF_INIT;
+		const struct submodule *sub;
+		char *url;
+
+		gitmodules_config();
+		sub = submodule_from_path(null_sha1, path);
+		if (sub) {
+			strbuf_addf(&sb, "submodule.%s.url", sub->name);
+			ret = !git_config_get_string(sb.buf, &url);
+		} else {
+			ret = 0;
+		}
+		strbuf_release(&sb);
+	} else {
+		struct pathspec ps;
+		struct string_list_item *item;
+		struct argv_array args = ARGV_ARRAY_INIT;
+
+		for_each_string_list_item(item, sl)
+			argv_array_push(&args, item->string);
+		parse_pathspec(&ps, 0, 0, 0, args.argv);
+		ret = match_pathspec(&ps, path, strlen(path), 0, NULL, 1);
+
+		argv_array_clear(&args);
+	}
+	return ret;
+}
+
+static int should_exist_in_workingtree(int argc, const char **argv, const char *prefix)
+{
+	if (argc != 2)
+		die("submodule--helper existsInWorkingtree takes exactly 1 arguments, got %d", argc);
+
+	return !submodule_should_exist(argv[1]);
+}
+
 struct cmd_struct {
 	const char *cmd;
 	int (*fn)(int, const char **, const char *);
@@ -967,7 +1011,8 @@ static struct cmd_struct commands[] = {
 	{"resolve-relative-url", resolve_relative_url},
 	{"resolve-relative-url-test", resolve_relative_url_test},
 	{"init", module_init},
-	{"remote-branch", resolve_remote_submodule_branch}
+	{"remote-branch", resolve_remote_submodule_branch},
+	{"should-exist", should_exist_in_workingtree}
 };
 
 int cmd_submodule__helper(int argc, const char **argv, const char *prefix)
