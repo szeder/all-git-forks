@@ -26,9 +26,19 @@ static GIT_PATH_FUNC(git_path_opts_file, SEQ_OPTS_FILE)
 static GIT_PATH_FUNC(git_path_seq_dir, SEQ_DIR)
 static GIT_PATH_FUNC(git_path_head_file, SEQ_HEAD_FILE)
 
-static int is_rfc2822_line(const char *buf, int len)
+static int is_rfc2822_line(const char *buf, int len,
+			   int allow_folding_continuation)
 {
 	int i;
+
+	/*
+	 * Section 2.2.3 of RFC 2822 allows field bodies to continue onto
+	 * multiple lines, referred to as "folding". Such continuation lines
+	 * start with whitespace.
+	 */
+	if (allow_folding_continuation)
+		if (len && (buf[0] == ' ' || buf[0] == '\t'))
+			return 1;
 
 	for (i = 0; i < len; i++) {
 		int ch = buf[i];
@@ -64,6 +74,7 @@ static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	int len = sb->len - ignore_footer;
 	const char *buf = sb->buf;
 	int found_sob = 0;
+	int allow_folding_continuation = 0;
 
 	/* footer must end with newline */
 	if (!len || buf[len - 1] != '\n')
@@ -92,7 +103,11 @@ static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 			; /* do nothing */
 		k++;
 
-		found_rfc2822 = is_rfc2822_line(buf + i, k - i - 1);
+		found_rfc2822 = is_rfc2822_line(buf + i,
+				                k - i - 1,
+				                allow_folding_continuation);
+		allow_folding_continuation = 1;
+
 		if (found_rfc2822 && sob &&
 		    !strncmp(buf + i, sob->buf, sob->len))
 			found_sob = k;

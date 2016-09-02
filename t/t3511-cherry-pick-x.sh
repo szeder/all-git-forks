@@ -36,6 +36,11 @@ mesg_with_cherry_footer="$mesg_with_footer_sob
 (cherry picked from commit da39a3ee5e6b4b0d3255bfef95601890afd80709)
 Tested-by: C.U. Thor <cuthor@example.com>"
 
+mesg_with_folding_footer="$mesg_no_footer
+
+Field: This is a very long field body
+ that is continued onto another line"
+
 mesg_unclean="$mesg_one_line
 
 
@@ -67,6 +72,8 @@ test_expect_success setup '
 	test_commit "$mesg_with_footer_sob" foo b mesg-with-footer-sob &&
 	git reset --hard initial &&
 	test_commit "$mesg_with_cherry_footer" foo b mesg-with-cherry-footer &&
+	git reset --hard initial &&
+	test_commit "$mesg_with_folding_footer" foo b mesg-with-folding-footer &&
 	git reset --hard initial &&
 	test_config commit.cleanup verbatim &&
 	test_commit "$mesg_unclean" foo b mesg-unclean &&
@@ -229,6 +236,18 @@ test_expect_success 'cherry-pick -x -s treats "(cherry picked from..." line as p
 		$mesg_with_cherry_footer
 		(cherry picked from commit $sha1)
 		Signed-off-by: $GIT_COMMITTER_NAME <$GIT_COMMITTER_EMAIL>
+	EOF
+	git log -1 --pretty=format:%B >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'cherry-pick -x does not insert blank line when folding footer is found' '
+	pristine_detach initial &&
+	sha1=$(git rev-parse mesg-with-folding-footer^0) &&
+	git cherry-pick -x mesg-with-folding-footer &&
+	cat <<-EOF >expect &&
+		$mesg_with_folding_footer
+		(cherry picked from commit $sha1)
 	EOF
 	git log -1 --pretty=format:%B >actual &&
 	test_cmp expect actual
