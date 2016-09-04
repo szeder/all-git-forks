@@ -953,8 +953,7 @@ int bisect_next_all(const char *prefix, int no_checkout)
 
 	bisect_common(&revs);
 
-	revs.commits = find_bisection(revs.commits, &reaches, &all,
-				       !!skipped_revs.nr);
+	revs.commits = find_bisection(revs.commits, &reaches, &all, skipped_revs.nr != 0);
 	revs.commits = managed_skipped(revs.commits, &tried);
 
 	if (!revs.commits) {
