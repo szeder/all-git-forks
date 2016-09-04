@@ -419,11 +419,12 @@ static int add_cacheinfo(unsigned int mode, const unsigned char *sha1,
 	return 0;
 }
 
-static void chmod_path(int flip, const char *path)
+static void chmod_path(int force_mode, const char *path)
 {
 	int pos;
 	struct cache_entry *ce;
 	unsigned int mode;
+	char flip = force_mode == 0777 ? '+' : '-';
 
 	pos = cache_name_pos(path, strlen(path));
 	if (pos < 0)
@@ -432,17 +433,11 @@ static void chmod_path(int flip, const char *path)
 	mode = ce->ce_mode;
 	if (!S_ISREG(mode))
 		goto fail;
-	switch (flip) {
-	case '+':
-		ce->ce_mode |= 0111; break;
-	case '-':
-		ce->ce_mode &= ~0111; break;
-	default:
-		goto fail;
-	}
+	ce->ce_mode = create_ce_mode(force_mode);
 	cache_tree_invalidate_path(&the_index, path);
 	ce->ce_flags |= CE_UPDATE_IN_BASE;
 	active_cache_changed |= CE_ENTRY_CHANGED;
+
 	report("chmod %cx '%s'", flip, path);
 	return;
  fail:
@@ -788,16 +783,6 @@ static int really_refresh_callback(const struct option *opt,
 	return refresh(opt->value, REFRESH_REALLY);
 }
 
-static int chmod_callback(const struct option *opt,
-				const char *arg, int unset)
-{
-	char *flip = opt->value;
-	if ((arg[0] != '-' && arg[0] != '+') || arg[1] != 'x' || arg[2])
-		return error("option 'chmod' expects \"+x\" or \"-x\"");
-	*flip = arg[0];
-	return 0;
-}
-
 static int resolve_undo_clear_callback(const struct option *opt,
 				const char *arg, int unset)
 {
@@ -917,7 +902,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	int read_from_stdin = 0;
 	int prefix_length = prefix ? strlen(prefix) : 0;
 	int preferred_index_format = 0;
-	char set_executable_bit = 0;
+	char *chmod_arg = 0;
+	int force_mode = 0;
 	struct refresh_params refresh_args = {0, &has_errors};
 	int lock_error = 0;
 	int split_index = -1;
@@ -955,10 +941,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			PARSE_OPT_NOARG | /* disallow --cacheinfo=<mode> form */
 			PARSE_OPT_NONEG | PARSE_OPT_LITERAL_ARGHELP,
 			(parse_opt_cb *) cacheinfo_callback},
-		{OPTION_CALLBACK, 0, "chmod", &set_executable_bit, N_("(+/-)x"),
-			N_("override the executable bit of the listed files"),
-			PARSE_OPT_NONEG | PARSE_OPT_LITERAL_ARGHELP,
-			chmod_callback},
+		OPT_STRING( 0, "chmod", &chmod_arg, N_("(+/-)x"),
+			N_("override the executable bit of the listed files")),
 		{OPTION_SET_INT, 0, "assume-unchanged", &mark_valid_only, NULL,
 			N_("mark files as \"not changing\""),
 			PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL, MARK_FLAG},
@@ -1018,6 +1002,15 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(update_index_usage, options);
 
+	if (!chmod_arg)
+		force_mode = 0;
+	else if (!strcmp(chmod_arg, "-x"))
+		force_mode = 0666;
+	else if (!strcmp(chmod_arg, "+x"))
+		force_mode = 0777;
+	else
+		die(_("option 'chmod' expects \"+x\" or \"-x\""));
+
 	git_config(git_default_config, NULL);
 
 	/* We can't free this memory, it becomes part of a linked list parsed atexit() */
@@ -1055,8 +1048,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			setup_work_tree();
 			p = prefix_path(prefix, prefix_length, path);
 			update_one(p);
-			if (set_executable_bit)
-				chmod_path(set_executable_bit, p);
+			if (force_mode)
+				chmod_path(force_mode, p);
 			free(p);
 			ctx.argc--;
 			ctx.argv++;
@@ -1100,8 +1093,8 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			}
 			p = prefix_path(prefix, prefix_length, buf.buf);
 			update_one(p);
-			if (set_executable_bit)
-				chmod_path(set_executable_bit, p);
+			if (force_mode)
+				chmod_path(force_mode, p);
 			free(p);
 		}
 		strbuf_release(&unquoted);
