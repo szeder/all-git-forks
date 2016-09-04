@@ -756,6 +756,25 @@ struct cache_entry *make_cache_entry(unsigned int mode,
 	return ret;
 }
 
+/*
+ * Change the mode of an index entry to force_mode, where force_mode can
+ * either be 0777 or 0666.
+ * Returns -1 if the chmod for the particular cache entry failed (if it's
+ * not a regular file), 0 otherwise.
+ */
+int chmod_index_entry(struct index_state *istate, struct cache_entry *ce,
+		       int force_mode)
+{
+	if (!S_ISREG(ce->ce_mode))
+		return -1;
+	ce->ce_mode = create_ce_mode(force_mode);
+	cache_tree_invalidate_path(istate, ce->name);
+	ce->ce_flags |= CE_UPDATE_IN_BASE;
+	istate->cache_changed |= CE_ENTRY_CHANGED;
+
+	return 0;
+}
+
 int ce_same_name(const struct cache_entry *a, const struct cache_entry *b)
 {
 	int len = ce_namelen(a);
