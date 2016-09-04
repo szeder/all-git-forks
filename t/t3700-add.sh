@@ -349,4 +349,25 @@ test_expect_success POSIXPERM,SYMLINKS 'git add --chmod=+x with symlinks' '
 	test_mode_in_index 100755 foo2
 '
 
+test_expect_success 'git add --chmod=[+-]x changes index with already added file' '
+	echo foo >foo3 &&
+	git add foo3 &&
+	git add --chmod=+x foo3 &&
+	test_mode_in_index 100755 foo3 &&
+	echo foo >xfoo3 &&
+	chmod 755 xfoo3 &&
+	git add xfoo3 &&
+	git add --chmod=-x xfoo3 &&
+	test_mode_in_index 100644 xfoo3
+'
+
+test_expect_success 'file status is changed after git add --chmod=+x' '
+	echo "AM foo4" >expected &&
+	echo foo >foo4 &&
+	git add foo4 &&
+	git add --chmod=+x foo4 &&
+	git status -s foo4 >actual &&
+	test_cmp expected actual
+'
+
 test_done
