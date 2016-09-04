@@ -18,6 +18,7 @@
 #include "ll-merge.h"
 #include "string-list.h"
 #include "argv-array.h"
+#include "git-compat-util.h"
 
 #ifdef NO_FAST_WORKING_DIRECTORY
 #define FAST_WORKING_DIRECTORY 0
@@ -42,6 +43,11 @@ static int diff_dirstat_permille_default = 30;
 static struct diff_options default_diff_options;
 static long diff_algorithm;
 
+static struct hashmap *duplicates_added;
+static struct hashmap *duplicates_removed;
+static int hash_previous_line_added;
+static int hash_previous_line_removed;
+
 static char diff_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_RESET,
 	GIT_COLOR_NORMAL,	/* CONTEXT */
@@ -52,6 +58,8 @@ static char diff_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_YELLOW,	/* COMMIT */
 	GIT_COLOR_BG_RED,	/* WHITESPACE */
 	GIT_COLOR_NORMAL,	/* FUNCINFO */
+	GIT_COLOR_BLUE,		/* NEW MOVED */
+	GIT_COLOR_MAGENTA,	/* OLD MOVED */
 };
 
 static int parse_diff_color_slot(const char *var)
@@ -72,6 +80,10 @@ static int parse_diff_color_slot(const char *var)
 		return DIFF_WHITESPACE;
 	if (!strcasecmp(var, "func"))
 		return DIFF_FUNCINFO;
+	if (!strcasecmp(var, "moved-old"))
+		return DIFF_FILE_MOVED_OLD;
+	if (!strcasecmp(var, "moved-new"))
+		return DIFF_FILE_MOVED_NEW;
 	return -1;
 }
 
@@ -285,6 +297,30 @@ int git_diff_basic_config(const char *var, const char *value, void *cb)
 		return parse_submodule_config_option(var, value);
 
 	return git_default_config(var, value, cb);
+}
+
+struct dup_entry {
+	struct hashmap_entry ent;
+	char *line;
+	int previous_hash;
+};
+
+static int dup_entry_cmp(const struct dup_entry *a,
+			 const struct dup_entry *b,
+			 const void *unused)
+{
+	return strcmp(a->line, b->line) && a->previous_hash == b->previous_hash;
+}
+
+static struct dup_entry *prepare_entry(const char *line,
+					unsigned long len,
+					int previous_hash)
+{
+	struct dup_entry *ret = xmalloc(sizeof(*ret));
+	ret->ent.hash = memhash(line, len) ^ previous_hash;
+	ret->line = xmemdupz(line, len);
+	ret->previous_hash = previous_hash;
+	return ret;
 }
 
 static char *quote_two(const char *one, const char *two)
@@ -537,16 +573,46 @@ static void emit_add_line(const char *reset,
 			  struct emit_callback *ecbdata,
 			  const char *line, int len)
 {
-	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_FILE_NEW, WSEH_NEW, '+');
+	if (!duplicates_removed) {
+		emit_line_checked(reset, ecbdata, line, len,
+				  DIFF_FILE_NEW, WSEH_NEW, '+');
+	} else {
+		int hash = memhash(line, len);
+		struct dup_entry *keydata = prepare_entry(line, len, hash_previous_line_added);
+		enum color_diff color = DIFF_FILE_NEW;
+		unsigned ws_error_highlight = WSEH_NEW;
+
+		if (hashmap_get(duplicates_removed, keydata, keydata))
+			color = DIFF_FILE_MOVED_NEW;
+
+		emit_line_checked(reset, ecbdata, line, len,
+				  color, ws_error_highlight, '+');
+
+		hash_previous_line_added = hash;
+	}
 }
 
 static void emit_del_line(const char *reset,
 			  struct emit_callback *ecbdata,
 			  const char *line, int len)
 {
-	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_FILE_OLD, WSEH_OLD, '-');
+	if (!duplicates_added) {
+		emit_line_checked(reset, ecbdata, line, len,
+				  DIFF_FILE_OLD, WSEH_OLD, '-');
+	} else {
+		int hash = memhash(line, len);
+		struct dup_entry *keydata = prepare_entry(line, len, hash_previous_line_removed);
+		enum color_diff color = DIFF_FILE_OLD;
+		unsigned ws_error_highlight = WSEH_OLD;
+
+		if (hashmap_get(duplicates_added, keydata, keydata))
+			color = DIFF_FILE_MOVED_OLD;
+
+		emit_line_checked(reset, ecbdata, line, len,
+				  color, ws_error_highlight, '-');
+
+		hash_previous_line_removed = hash;
+	}
 }
 
 static void emit_context_line(const char *reset,
@@ -555,6 +621,11 @@ static void emit_context_line(const char *reset,
 {
 	emit_line_checked(reset, ecbdata, line, len,
 			  DIFF_CONTEXT, WSEH_CONTEXT, ' ');
+	if (duplicates_added) {
+		int hash = memhash(line, len);
+		hash_previous_line_removed = hash;
+		hash_previous_line_added = hash;
+	}
 }
 
 static void emit_hunk_header(struct emit_callback *ecbdata,
@@ -1319,6 +1390,59 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 		emit_line(ecbdata->opt,
 			  diff_get_color(ecbdata->color_diff, DIFF_CONTEXT),
 			  reset, line, len);
+		break;
+	}
+}
+
+static void fn_prepare_consume(void *priv, char *line, unsigned long len)
+{
+	int hash;
+	struct dup_entry *d;
+
+	if (!duplicates_added) {
+		duplicates_added = xmalloc(sizeof(*duplicates_added));
+		duplicates_removed = xmalloc(sizeof(*duplicates_removed));
+		hashmap_init(duplicates_added, (hashmap_cmp_fn)dup_entry_cmp, 0);
+		hashmap_init(duplicates_removed, (hashmap_cmp_fn)dup_entry_cmp, 0);
+	}
+
+	switch (line[0]) {
+	case ' ':
+		d = prepare_entry(line + 1, len - 1, 0);
+		hashmap_add(duplicates_removed, d);
+		hashmap_add(duplicates_added, d);
+		break;
+	case '+':
+		if (hash_previous_line_added)
+			hashmap_add(duplicates_added,
+				prepare_entry(line + 1, len - 1,
+					      hash_previous_line_added));
+		break;
+	case '-':
+		if (hash_previous_line_removed)
+			hashmap_add(duplicates_removed,
+				prepare_entry(line + 1, len - 1,
+					      hash_previous_line_removed));
+		break;
+	}
+
+	hash = memhash(line + 1, len - 1);
+	switch (line[0]) {
+	case ' ':
+		hash_previous_line_added = hash;
+		hash_previous_line_removed = hash;
+		break;
+	case '+':
+		hash_previous_line_added = hash;
+		hash_previous_line_removed = 0;
+		break;
+	case '-':
+		hash_previous_line_added = 0;
+		hash_previous_line_removed = hash;
+		break;
+	default:
+		hash_previous_line_added = 0;
+		hash_previous_line_removed = 0;
 		break;
 	}
 }
@@ -2277,6 +2401,50 @@ struct userdiff_driver *get_textconv(struct diff_filespec *one)
 
 	diff_filespec_load_driver(one);
 	return userdiff_get_textconv(one->driver);
+}
+
+
+static void prepare_moved_lines(struct diff_filepair *p, struct diff_options *o)
+{
+	struct diff_filespec *one = p->one;
+	struct diff_filespec *two = p->two;
+	struct userdiff_driver *textconv_one = NULL;
+	struct userdiff_driver *textconv_two = NULL;
+
+	if (DIFF_OPT_TST(o, ALLOW_TEXTCONV)) {
+		textconv_one = get_textconv(one);
+		textconv_two = get_textconv(two);
+	}
+
+	{
+		mmfile_t mf1, mf2;
+		xpparam_t xpp;
+		xdemitconf_t xecfg;
+		struct emit_callback ecbdata;
+
+		mf1.size = fill_textconv(textconv_one, one, &mf1.ptr);
+		mf2.size = fill_textconv(textconv_two, two, &mf2.ptr);
+
+		memset(&xpp, 0, sizeof(xpp));
+		memset(&xecfg, 0, sizeof(xecfg));
+		memset(&ecbdata, 0, sizeof(ecbdata));
+
+		xpp.flags = o->xdl_opts;
+		xecfg.ctxlen = 1;
+
+		if (o->word_diff)
+			init_diff_words_data(&ecbdata, o, one, two);
+		if (xdi_diff_outf(&mf1, &mf2, fn_prepare_consume, &ecbdata,
+				  &xpp, &xecfg))
+			die("unable to generate diff for %s", one->path);
+		if (o->word_diff)
+			free_diff_words_data(&ecbdata);
+		if (textconv_one)
+			free(mf1.ptr);
+		if (textconv_two)
+			free(mf2.ptr);
+		xdiff_clear_find_func(&xecfg);
+	}
 }
 
 static void builtin_diff(const char *name_a,
@@ -3295,6 +3463,7 @@ void diff_setup(struct diff_options *options)
 	options->xdl_opts |= diff_algorithm;
 	if (diff_compaction_heuristic)
 		DIFF_XDL_SET(options, COMPACTION_HEURISTIC);
+	options->highlight_moved = options->use_color;
 
 	options->orderfile = diff_order_file_cfg;
 
@@ -3413,6 +3582,9 @@ void diff_setup_done(struct diff_options *options)
 
 	if (DIFF_OPT_TST(options, FOLLOW_RENAMES) && options->pathspec.nr != 1)
 		die(_("--follow requires exactly one pathspec"));
+
+	if (!options->use_color)
+		options->highlight_moved = 0;
 }
 
 static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *val)
@@ -4622,6 +4794,24 @@ void diff_warn_rename_limit(const char *varname, int needed, int degraded_cc)
 		warning(rename_limit_advice, varname, needed);
 }
 
+static void diff_flush_maybe_prepare_moved_lines(struct diff_options *o)
+{
+	int i;
+	struct diff_queue_struct *q = &diff_queued_diff;
+	if (0
+	    /* TODO
+	     * internal diff and colored options, i.e.
+	     * only when we actually run into the emit_line_...
+	     * eventually */)
+		return;
+
+	for (i = 0; i < q->nr; i++) {
+		struct diff_filepair *p = q->queue[i];
+		if (check_pair_status(p))
+			prepare_moved_lines(p, o);
+	}
+}
+
 void diff_flush(struct diff_options *options)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
@@ -4716,6 +4906,8 @@ void diff_flush(struct diff_options *options)
 			}
 		}
 
+
+		diff_flush_maybe_prepare_moved_lines(options);
 		for (i = 0; i < q->nr; i++) {
 			struct diff_filepair *p = q->queue[i];
 			if (check_pair_status(p))
