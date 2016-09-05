@@ -226,7 +226,7 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 
 	read_cache();
 	if (checkout_fast_forward(from, to, 1))
-		exit(128); /* the callee should have complained already */
+		return -1; /* the callee should have complained already */
 
 	strbuf_addf(&sb, _("%s: fast-forward"), action_name(opts));
 
@@ -852,18 +852,22 @@ static int create_seq_dir(void)
 	return 0;
 }
 
-static void save_head(const char *head)
+static int save_head(const char *head)
 {
 	static struct lock_file head_lock;
 	struct strbuf buf = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(&head_lock, git_path_head_file(), LOCK_DIE_ON_ERROR);
+	fd = hold_lock_file_for_update(&head_lock, git_path_head_file(), 0);
+	if (fd < 0)
+		return error_errno(_("Could not lock HEAD"));
 	strbuf_addf(&buf, "%s\n", head);
 	if (write_in_full(fd, buf.buf, buf.len) < 0)
-		die_errno(_("Could not write to %s"), git_path_head_file());
+		return error_errno(_("Could not write to %s"),
+				   git_path_head_file());
 	if (commit_lock_file(&head_lock) < 0)
-		die(_("Error wrapping up %s."), git_path_head_file());
+		return error(_("Error wrapping up %s."), git_path_head_file());
+	return 0;
 }
 
 static int reset_for_rollback(const unsigned char *sha1)
@@ -933,57 +937,66 @@ fail:
 	return -1;
 }
 
-static void save_todo(struct commit_list *todo_list, struct replay_opts *opts)
+static int save_todo(struct commit_list *todo_list, struct replay_opts *opts)
 {
 	static struct lock_file todo_lock;
 	struct strbuf buf = STRBUF_INIT;
 	int fd;
 
-	fd = hold_lock_file_for_update(&todo_lock, git_path_todo_file(), LOCK_DIE_ON_ERROR);
-	if (format_todo(&buf, todo_list, opts) < 0)
-		die(_("Could not format %s."), git_path_todo_file());
+	fd = hold_lock_file_for_update(&todo_lock, git_path_todo_file(), 0);
+	if (fd < 0)
+		return error_errno(_("Could not lock '%s'"),
+				   git_path_todo_file());
+	if (format_todo(&buf, todo_list, opts) < 0) {
+		strbuf_release(&buf);
+		return error(_("Could not format %s."), git_path_todo_file());
+	}
 	if (write_in_full(fd, buf.buf, buf.len) < 0) {
 		strbuf_release(&buf);
-		die_errno(_("Could not write to %s"), git_path_todo_file());
+		return error_errno(_("Could not write to %s"),
+				   git_path_todo_file());
 	}
 	if (commit_lock_file(&todo_lock) < 0) {
 		strbuf_release(&buf);
-		die(_("Error wrapping up %s."), git_path_todo_file());
+		return error(_("Error wrapping up %s."), git_path_todo_file());
 	}
 	strbuf_release(&buf);
+	return 0;
 }
 
-static void save_opts(struct replay_opts *opts)
+static int save_opts(struct replay_opts *opts)
 {
 	const char *opts_file = git_path_opts_file();
+	int res = 0;
 
 	if (opts->no_commit)
-		git_config_set_in_file(opts_file, "options.no-commit", "true");
+		res |= git_config_set_in_file_gently(opts_file, "options.no-commit", "true");
 	if (opts->edit)
-		git_config_set_in_file(opts_file, "options.edit", "true");
+		res |= git_config_set_in_file_gently(opts_file, "options.edit", "true");
 	if (opts->signoff)
-		git_config_set_in_file(opts_file, "options.signoff", "true");
+		res |= git_config_set_in_file_gently(opts_file, "options.signoff", "true");
 	if (opts->record_origin)
-		git_config_set_in_file(opts_file, "options.record-origin", "true");
+		res |= git_config_set_in_file_gently(opts_file, "options.record-origin", "true");
 	if (opts->allow_ff)
-		git_config_set_in_file(opts_file, "options.allow-ff", "true");
+		res |= git_config_set_in_file_gently(opts_file, "options.allow-ff", "true");
 	if (opts->mainline) {
 		struct strbuf buf = STRBUF_INIT;
 		strbuf_addf(&buf, "%d", opts->mainline);
-		git_config_set_in_file(opts_file, "options.mainline", buf.buf);
+		res |= git_config_set_in_file_gently(opts_file, "options.mainline", buf.buf);
 		strbuf_release(&buf);
 	}
 	if (opts->strategy)
-		git_config_set_in_file(opts_file, "options.strategy", opts->strategy);
+		res |= git_config_set_in_file_gently(opts_file, "options.strategy", opts->strategy);
 	if (opts->gpg_sign)
-		git_config_set_in_file(opts_file, "options.gpg-sign", opts->gpg_sign);
+		res |= git_config_set_in_file_gently(opts_file, "options.gpg-sign", opts->gpg_sign);
 	if (opts->xopts) {
 		int i;
 		for (i = 0; i < opts->xopts_nr; i++)
-			git_config_set_multivar_in_file(opts_file,
+			res |= git_config_set_multivar_in_file_gently(opts_file,
 							"options.strategy-option",
 							opts->xopts[i], "^$", 0);
 	}
+	return res;
 }
 
 static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
@@ -999,7 +1012,8 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 		return -1;
 
 	for (cur = todo_list; cur; cur = cur->next) {
-		save_todo(cur, opts);
+		if (save_todo(cur, opts))
+			return -1;
 		res = do_pick_commit(cur->item, opts);
 		if (res)
 			return res;
@@ -1127,8 +1141,9 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 		return -1;
 	if (get_sha1("HEAD", sha1) && (opts->action == REPLAY_REVERT))
 		return error(_("Can't revert as initial commit"));
-	save_head(sha1_to_hex(sha1));
-	save_opts(opts);
+	if (save_head(sha1_to_hex(sha1)) ||
+			save_opts(opts))
+		return -1;
 	return pick_commits(todo_list, opts);
 }
 
