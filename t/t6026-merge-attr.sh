@@ -191,7 +191,10 @@ test_expect_success 'custom merge does not lock index' '
 		"* merge=ours" "text merge=sleep-one-second" &&
 	test_config merge.ours.driver true &&
 	test_config merge.sleep-one-second.driver ./sleep-one-second.sh &&
-	git merge master
+	git merge master &&
+	# the trash directory cannot be removed on Windows until the hook
+	# does not occupy it for its CWD anymore; wait for it to quit:
+	sleep 1
 '
 
 test_done
