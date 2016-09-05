@@ -207,7 +207,41 @@ test_expect_failure 'diff-highlight highlights mismatched hunk size' '
 	EOF
 '
 
-# TODO add multi-byte test
+# These two code points share the same leading byte in UTF-8 representation;
+# a naive byte-wise diff would highlight only the second byte.
+#
+#   - U+00f3 ("o" with acute)
+o_accent=$(printf '\303\263')
+#   - U+00f8 ("o" with stroke)
+o_stroke=$(printf '\303\270')
+
+test_expect_success 'diff-highlight treats multibyte utf-8 as a unit' '
+	echo "unic${o_accent}de" >a &&
+	echo "unic${o_stroke}de" >b &&
+	dh_test a b <<-EOF
+		@@ -1 +1 @@
+		-unic${CW}${o_accent}${CR}de
+		+unic${CW}${o_stroke}${CR}de
+	EOF
+'
+
+# Unlike the UTF-8 above, these are combining code points which are meant
+# to modify the character preceding them:
+#
+#   - U+0301 (combining acute accent)
+combine_accent=$(printf '\314\201')
+#   - U+0302 (combining circumflex)
+combine_circum=$(printf '\314\202')
+
+test_expect_failure 'diff-highlight treats combining code points as a unit' '
+	echo "unico${combine_accent}de" >a &&
+	echo "unico${combine_circum}de" >b &&
+	dh_test a b <<-EOF
+		@@ -1 +1 @@
+		-unic${CW}o${combine_accent}${CR}de
+		+unic${CW}o${combine_circum}${CR}de
+	EOF
+'
 
 test_expect_success 'diff-highlight works with the --graph option' '
 	dh_test_setup_history &&
@@ -220,6 +254,43 @@ test_expect_success 'diff-highlight works with the --graph option' '
 	git log --branches -p --graph |
 		"$DIFF_HIGHLIGHT" | trim_graph | left_trim >graph.act &&
 	test_cmp graph.exp graph.act
+'
+
+# Most combined diffs won't meet diff-highlight's line-number filter. So we
+# create one here where one side drops a line and the other modifies it. That
+# should result in a diff like:
+#
+#    - modified content
+#    ++resolved content
+#
+# which naively looks like one side added "+resolved".
+test_expect_success 'diff-highlight ignores combined diffs' '
+	echo "content" >file &&
+	git add file &&
+	git commit -m base &&
+
+	>file &&
+	git commit -am master &&
+
+	git checkout -b other HEAD^ &&
+	echo "modified content" >file &&
+	git commit -am other &&
+
+	test_must_fail git merge master &&
+	echo "resolved content" >file &&
+	git commit -am resolved &&
+
+	cat >expect <<-\EOF &&
+	--- a/file
+	+++ b/file
+	@@@ -1,1 -1,0 +1,1 @@@
+	- modified content
+	++resolved content
+	EOF
+
+	git show -c | "$DIFF_HIGHLIGHT" >actual.raw &&
+	sed -n "/^---/,\$p" <actual.raw >actual &&
+	test_cmp expect actual
 '
 
 test_done
