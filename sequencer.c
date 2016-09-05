@@ -812,12 +812,6 @@ static int read_populate_opts(struct replay_opts **opts)
 {
 	if (!file_exists(git_path_opts_file()))
 		return 0;
-	/*
-	 * The function git_parse_source(), called from git_config_from_file(),
-	 * may die() in case of a syntactically incorrect file. We do not care
-	 * about this case, though, because we wrote that file ourselves, so we
-	 * are pretty certain that it is syntactically correct.
-	 */
 	if (git_config_from_file(populate_opts_cb, git_path_opts_file(), *opts) < 0)
 		return error(_("Malformed options sheet: %s"),
 			git_path_opts_file());
@@ -859,20 +853,14 @@ static int save_head(const char *head)
 	int fd;
 
 	fd = hold_lock_file_for_update(&head_lock, git_path_head_file(), 0);
-	if (fd < 0) {
-		rollback_lock_file(&head_lock);
+	if (fd < 0)
 		return error_errno(_("Could not lock HEAD"));
-	}
 	strbuf_addf(&buf, "%s\n", head);
-	if (write_in_full(fd, buf.buf, buf.len) < 0) {
-		rollback_lock_file(&head_lock);
+	if (write_in_full(fd, buf.buf, buf.len) < 0)
 		return error_errno(_("Could not write to %s"),
 				   git_path_head_file());
-	}
-	if (commit_lock_file(&head_lock) < 0) {
-		rollback_lock_file(&head_lock);
+	if (commit_lock_file(&head_lock) < 0)
 		return error(_("Error wrapping up %s."), git_path_head_file());
-	}
 	return 0;
 }
 
@@ -1147,9 +1135,8 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 		return -1;
 	if (get_sha1("HEAD", sha1) && (opts->action == REPLAY_REVERT))
 		return error(_("Can't revert as initial commit"));
-	if (save_head(sha1_to_hex(sha1)))
-		return -1;
-	if (save_opts(opts))
+	if (save_head(sha1_to_hex(sha1)) ||
+			save_opts(opts))
 		return -1;
 	return pick_commits(todo_list, opts);
 }
