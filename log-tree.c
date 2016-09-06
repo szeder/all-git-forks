@@ -715,7 +715,10 @@ void show_log(struct rev_info *opt)
 	else
 		opt->missing_newline = 0;
 
-	graph_show_commit_msg(opt->graph, opt->diffopt.file, &msgbuf);
+	if (opt->graph)
+		graph_show_commit_msg(opt->graph, &msgbuf);
+	else
+		fwrite(msgbuf.buf, sizeof(char), msgbuf.len, opt->diffopt.file);
 	if (opt->use_terminator && !commit_format_is_empty(opt->commit_format)) {
 		if (!opt->missing_newline)
 			graph_show_padding(opt->graph);
