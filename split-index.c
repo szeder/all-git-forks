@@ -186,7 +186,8 @@ int prepare_to_write_split_index(struct index_state *istate,
 {
 	struct split_index *si = init_split_index(istate);
 	struct cache_entry **entries = NULL, *ce;
-	int i, nr_entries = 0, nr_alloc = 0;
+	int i, nr_entries = 0, nr_alloc = 0, nr_changes = 0;
+	int max_changes = 1 + si->base->cache_nr * max_percent_changes / 100;
 
 	si->delete_bitmap = ewah_new();
 	si->replace_bitmap = ewah_new();
@@ -199,9 +200,6 @@ int prepare_to_write_split_index(struct index_state *istate,
 		 * CE_UPDATE_IN_BASE. If istate->cache[i] is a
 		 * duplicate, deduplicate it.
 		 */
-
-		int nr_changes = 0;
-		int max_changes = 1 + si->base->cache_nr * max_percent_changes / 100;
 
 		for (i = 0; i < istate->cache_nr; i++) {
 			struct cache_entry *base;
@@ -254,8 +252,6 @@ int prepare_to_write_split_index(struct index_state *istate,
 				nr_changes++;
 			}
 		}
-		if (nr_changes > max_changes)
-			return 1;
 	}
 
 	for (i = 0; i < istate->cache_nr; i++) {
@@ -264,9 +260,13 @@ int prepare_to_write_split_index(struct index_state *istate,
 			assert(!(ce->ce_flags & CE_STRIP_NAME));
 			ALLOC_GROW(entries, nr_entries+1, nr_alloc);
 			entries[nr_entries++] = ce;
+			nr_changes++;
 		}
 		ce->ce_flags &= ~CE_MATCHED;
 	}
+
+	if (nr_changes > max_changes)
+		return 1;
 
 	/*
 	 * take cache[] out temporarily, put entries[] in its place
