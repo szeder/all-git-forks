@@ -28,8 +28,6 @@
 #include "rerere.h"
 #include "prompt.h"
 #include "mailinfo.h"
-#include "apply.h"
-#include "string-list.h"
 
 /**
  * Returns 1 if the file is empty or does not exist, 0 otherwise.
@@ -260,29 +258,38 @@ static int read_state_file(struct strbuf *sb, const struct am_state *state,
 }
 
 /**
- * Take a series of KEY='VALUE' lines where VALUE part is
- * sq-quoted, and append <KEY, VALUE> at the end of the string list
+ * Reads a KEY=VALUE shell variable assignment from `fp`, returning the VALUE
+ * as a newly-allocated string. VALUE must be a quoted string, and the KEY must
+ * match `key`. Returns NULL on failure.
+ *
+ * This is used by read_author_script() to read the GIT_AUTHOR_* variables from
+ * the author-script.
  */
-static int parse_key_value_squoted(char *buf, struct string_list *list)
+static char *read_shell_var(FILE *fp, const char *key)
 {
-	while (*buf) {
-		struct string_list_item *item;
-		char *np;
-		char *cp = strchr(buf, '=');
-		if (!cp)
-			return -1;
-		np = strchrnul(cp, '\n');
-		*cp++ = '\0';
-		item = string_list_append(list, buf);
+	struct strbuf sb = STRBUF_INIT;
+	const char *str;
 
-		buf = np + (*np == '\n');
-		*np = '\0';
-		cp = sq_dequote(cp);
-		if (!cp)
-			return -1;
-		item->util = xstrdup(cp);
-	}
-	return 0;
+	if (strbuf_getline_lf(&sb, fp))
+		goto fail;
+
+	if (!skip_prefix(sb.buf, key, &str))
+		goto fail;
+
+	if (!skip_prefix(str, "=", &str))
+		goto fail;
+
+	strbuf_remove(&sb, 0, str - sb.buf);
+
+	str = sq_dequote(sb.buf);
+	if (!str)
+		goto fail;
+
+	return strbuf_detach(&sb, NULL);
+
+fail:
+	strbuf_release(&sb);
+	return NULL;
 }
 
 /**
@@ -304,39 +311,44 @@ static int parse_key_value_squoted(char *buf, struct string_list *list)
 static int read_author_script(struct am_state *state)
 {
 	const char *filename = am_path(state, "author-script");
-	struct strbuf buf = STRBUF_INIT;
-	struct string_list kv = STRING_LIST_INIT_DUP;
-	int retval = -1; /* assume failure */
-	int fd;
+	FILE *fp;
 
 	assert(!state->author_name);
 	assert(!state->author_email);
 	assert(!state->author_date);
 
-	fd = open(filename, O_RDONLY);
-	if (fd < 0) {
+	fp = fopen(filename, "r");
+	if (!fp) {
 		if (errno == ENOENT)
 			return 0;
 		die_errno(_("could not open '%s' for reading"), filename);
 	}
-	strbuf_read(&buf, fd, 0);
-	close(fd);
-	if (parse_key_value_squoted(buf.buf, &kv))
-		goto finish;
 
-	if (kv.nr != 3 ||
-	    strcmp(kv.items[0].string, "GIT_AUTHOR_NAME") ||
-	    strcmp(kv.items[1].string, "GIT_AUTHOR_EMAIL") ||
-	    strcmp(kv.items[2].string, "GIT_AUTHOR_DATE"))
-		goto finish;
-	state->author_name = kv.items[0].util;
-	state->author_email = kv.items[1].util;
-	state->author_date = kv.items[2].util;
-	retval = 0;
-finish:
-	string_list_clear(&kv, !!retval);
-	strbuf_release(&buf);
-	return retval;
+	state->author_name = read_shell_var(fp, "GIT_AUTHOR_NAME");
+	if (!state->author_name) {
+		fclose(fp);
+		return -1;
+	}
+
+	state->author_email = read_shell_var(fp, "GIT_AUTHOR_EMAIL");
+	if (!state->author_email) {
+		fclose(fp);
+		return -1;
+	}
+
+	state->author_date = read_shell_var(fp, "GIT_AUTHOR_DATE");
+	if (!state->author_date) {
+		fclose(fp);
+		return -1;
+	}
+
+	if (fgetc(fp) != EOF) {
+		fclose(fp);
+		return -1;
+	}
+
+	fclose(fp);
+	return 0;
 }
 
 /**
@@ -1510,59 +1522,39 @@ static int parse_mail_rebase(struct am_state *state, const char *mail)
  */
 static int run_apply(const struct am_state *state, const char *index_file)
 {
-	struct argv_array apply_paths = ARGV_ARRAY_INIT;
-	struct argv_array apply_opts = ARGV_ARRAY_INIT;
-	struct apply_state apply_state;
-	int res, opts_left;
-	static struct lock_file lock_file;
-	int force_apply = 0;
-	int options = 0;
+	struct child_process cp = CHILD_PROCESS_INIT;
 
-	if (init_apply_state(&apply_state, NULL, &lock_file))
-		die("BUG: init_apply_state() failed");
+	cp.git_cmd = 1;
 
-	argv_array_push(&apply_opts, "apply");
-	argv_array_pushv(&apply_opts, state->git_apply_opts.argv);
-
-	opts_left = apply_parse_options(apply_opts.argc, apply_opts.argv,
-					&apply_state, &force_apply, &options,
-					NULL);
-
-	if (opts_left != 0)
-		die("unknown option passed thru to git apply");
-
-	if (index_file) {
-		apply_state.index_file = index_file;
-		apply_state.cached = 1;
-	} else
-		apply_state.check_index = 1;
+	if (index_file)
+		argv_array_pushf(&cp.env_array, "GIT_INDEX_FILE=%s", index_file);
 
 	/*
 	 * If we are allowed to fall back on 3-way merge, don't give false
 	 * errors during the initial attempt.
 	 */
-	if (state->threeway && !index_file)
-		apply_state.apply_verbosity = verbosity_silent;
-
-	if (check_apply_state(&apply_state, force_apply))
-		die("BUG: check_apply_state() failed");
-
-	argv_array_push(&apply_paths, am_path(state, "patch"));
-
-	res = apply_all_patches(&apply_state, apply_paths.argc, apply_paths.argv, options);
-
-	argv_array_clear(&apply_paths);
-	argv_array_clear(&apply_opts);
-	clear_apply_state(&apply_state);
-
-	if (res)
-		return res;
-
-	if (index_file) {
-		/* Reload index as apply_all_patches() will have modified it. */
-		discard_cache();
-		read_cache_from(index_file);
+	if (state->threeway && !index_file) {
+		cp.no_stdout = 1;
+		cp.no_stderr = 1;
 	}
+
+	argv_array_push(&cp.args, "apply");
+
+	argv_array_pushv(&cp.args, state->git_apply_opts.argv);
+
+	if (index_file)
+		argv_array_push(&cp.args, "--cached");
+	else
+		argv_array_push(&cp.args, "--index");
+
+	argv_array_push(&cp.args, am_path(state, "patch"));
+
+	if (run_command(&cp))
+		return -1;
+
+	/* Reload index as git-apply will have modified it. */
+	discard_cache();
+	read_cache_from(index_file ? index_file : get_index_file());
 
 	return 0;
 }

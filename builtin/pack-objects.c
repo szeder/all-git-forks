@@ -68,8 +68,7 @@ static struct packed_git *reuse_packfile;
 static uint32_t reuse_packfile_objects;
 static off_t reuse_packfile_offset;
 
-static int use_bitmap_index_default = 1;
-static int use_bitmap_index = -1;
+static int use_bitmap_index = 1;
 static int write_bitmap_index;
 static uint16_t write_bitmap_options;
 
@@ -896,15 +895,24 @@ static void write_pack_file(void)
 			written, nr_result);
 }
 
+static void setup_delta_attr_check(struct git_attr_check *check)
+{
+	static struct git_attr *attr_delta;
+
+	if (!attr_delta)
+		attr_delta = git_attr("delta");
+
+	check[0].attr = attr_delta;
+}
+
 static int no_try_delta(const char *path)
 {
-	static struct git_attr_check *check;
+	struct git_attr_check check[1];
 
-	if (!check)
-		check = git_attr_check_initl("delta", NULL);
-	if (git_check_attr(path, check))
+	setup_delta_attr_check(check);
+	if (git_check_attr(path, ARRAY_SIZE(check), check))
 		return 0;
-	if (ATTR_FALSE(check->check[0].value))
+	if (ATTR_FALSE(check->value))
 		return 1;
 	return 0;
 }
@@ -938,44 +946,13 @@ static int have_duplicate_entry(const unsigned char *sha1,
 	return 1;
 }
 
-static int want_found_object(int exclude, struct packed_git *p)
-{
-	if (exclude)
-		return 1;
-	if (incremental)
-		return 0;
-
-	/*
-	 * When asked to do --local (do not include an object that appears in a
-	 * pack we borrow from elsewhere) or --honor-pack-keep (do not include
-	 * an object that appears in a pack marked with .keep), finding a pack
-	 * that matches the criteria is sufficient for us to decide to omit it.
-	 * However, even if this pack does not satisfy the criteria, we need to
-	 * make sure no copy of this object appears in _any_ pack that makes us
-	 * to omit the object, so we need to check all the packs. Signal that by
-	 * returning -1 to the caller.
-	 */
-	if (!ignore_packed_keep &&
-	    (!local || !have_non_local_packs))
-		return 1;
-
-	if (local && !p->pack_local)
-		return 0;
-	if (ignore_packed_keep && p->pack_local && p->pack_keep)
-		return 0;
-
-	/* we don't know yet; keep looking for more packs */
-	return -1;
-}
-
 /*
  * Check whether we want the object in the pack (e.g., we do not want
  * objects found in non-local stores if the "--local" option was used).
  *
- * If the caller already knows an existing pack it wants to take the object
- * from, that is passed in *found_pack and *found_offset; otherwise this
- * function finds if there is any pack that has the object and returns the pack
- * and its offset in these variables.
+ * As a side effect of this check, we will find the packed version of this
+ * object, if any. We therefore pass out the pack information to avoid having
+ * to look it up again later.
  */
 static int want_object_in_pack(const unsigned char *sha1,
 			       int exclude,
@@ -983,31 +960,16 @@ static int want_object_in_pack(const unsigned char *sha1,
 			       off_t *found_offset)
 {
 	struct mru_entry *entry;
-	int want;
 
 	if (!exclude && local && has_loose_object_nonlocal(sha1))
 		return 0;
 
-	/*
-	 * If we already know the pack object lives in, start checks from that
-	 * pack - in the usual case when neither --local was given nor .keep files
-	 * are present we will determine the answer right now.
-	 */
-	if (*found_pack) {
-		want = want_found_object(exclude, *found_pack);
-		if (want != -1)
-			return want;
-	}
+	*found_pack = NULL;
+	*found_offset = 0;
 
 	for (entry = packed_git_mru->head; entry; entry = entry->next) {
 		struct packed_git *p = entry->item;
-		off_t offset;
-
-		if (p == *found_pack)
-			offset = *found_offset;
-		else
-			offset = find_pack_entry_one(sha1, p);
-
+		off_t offset = find_pack_entry_one(sha1, p);
 		if (offset) {
 			if (!*found_pack) {
 				if (!is_pack_valid(p))
@@ -1015,12 +977,33 @@ static int want_object_in_pack(const unsigned char *sha1,
 				*found_offset = offset;
 				*found_pack = p;
 			}
-			want = want_found_object(exclude, p);
-			if (want != -1) {
-				if (want && !exclude)
-					mru_mark(packed_git_mru, entry);
-				return want;
+			if (exclude)
+				return 1;
+			if (incremental)
+				return 0;
+
+			/*
+			 * When asked to do --local (do not include an
+			 * object that appears in a pack we borrow
+			 * from elsewhere) or --honor-pack-keep (do not
+			 * include an object that appears in a pack marked
+			 * with .keep), we need to make sure no copy of this
+			 * object come from in _any_ pack that causes us to
+			 * omit it, and need to complete this loop.  When
+			 * neither option is in effect, we know the object
+			 * we just found is going to be packed, so break
+			 * out of the loop to return 1 now.
+			 */
+			if (!ignore_packed_keep &&
+			    (!local || !have_non_local_packs)) {
+				mru_mark(packed_git_mru, entry);
+				break;
 			}
+
+			if (local && !p->pack_local)
+				return 0;
+			if (ignore_packed_keep && p->pack_local && p->pack_keep)
+				return 0;
 		}
 	}
 
@@ -1061,8 +1044,8 @@ static const char no_closure_warning[] = N_(
 static int add_object_entry(const unsigned char *sha1, enum object_type type,
 			    const char *name, int exclude)
 {
-	struct packed_git *found_pack = NULL;
-	off_t found_offset = 0;
+	struct packed_git *found_pack;
+	off_t found_offset;
 	uint32_t index_pos;
 
 	if (have_duplicate_entry(sha1, exclude, &index_pos))
@@ -1093,9 +1076,6 @@ static int add_object_entry_from_bitmap(const unsigned char *sha1,
 	uint32_t index_pos;
 
 	if (have_duplicate_entry(sha1, 0, &index_pos))
-		return 0;
-
-	if (!want_object_in_pack(sha1, 0, &pack, &offset))
 		return 0;
 
 	create_object_entry(sha1, type, name_hash, 0, 0, index_pos, pack, offset);
@@ -2352,7 +2332,7 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 			write_bitmap_options &= ~BITMAP_OPT_HASH_CACHE;
 	}
 	if (!strcmp(k, "pack.usebitmaps")) {
-		use_bitmap_index_default = git_config_bool(k, v);
+		use_bitmap_index = git_config_bool(k, v);
 		return 0;
 	}
 	if (!strcmp(k, "pack.threads")) {
@@ -2601,13 +2581,13 @@ static void loosen_unused_packed_objects(struct rev_info *revs)
 }
 
 /*
- * This tracks any options which pack-reuse code expects to be on, or which a
- * reader of the pack might not understand, and which would therefore prevent
- * blind reuse of what we have on disk.
+ * This tracks any options which a reader of the pack might
+ * not understand, and which would therefore prevent blind reuse
+ * of what we have on disk.
  */
 static int pack_options_allow_reuse(void)
 {
-	return pack_to_stdout && allow_ofs_delta;
+	return allow_ofs_delta;
 }
 
 static int get_object_list_from_bitmap(struct rev_info *revs)
@@ -2900,23 +2880,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 	if (!rev_list_all || !rev_list_reflog || !rev_list_index)
 		unpack_unreachable_expiration = 0;
 
-	/*
-	 * "soft" reasons not to use bitmaps - for on-disk repack by default we want
-	 *
-	 * - to produce good pack (with bitmap index not-yet-packed objects are
-	 *   packed in suboptimal order).
-	 *
-	 * - to use more robust pack-generation codepath (avoiding possible
-	 *   bugs in bitmap code and possible bitmap index corruption).
-	 */
-	if (!pack_to_stdout)
-		use_bitmap_index_default = 0;
-
-	if (use_bitmap_index < 0)
-		use_bitmap_index = use_bitmap_index_default;
-
-	/* "hard" reasons not to use bitmaps; these just won't work at all */
-	if (!use_internal_rev_list || (!pack_to_stdout && write_bitmap_index) || is_repository_shallow())
+	if (!use_internal_rev_list || !pack_to_stdout || is_repository_shallow())
 		use_bitmap_index = 0;
 
 	if (pack_to_stdout || !rev_list_all)
