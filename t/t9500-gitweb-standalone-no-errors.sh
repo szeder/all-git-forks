@@ -702,12 +702,20 @@ test_expect_success HIGHLIGHT \
 	 gitweb_run "p=.git;a=blob;f=file"'
 
 test_expect_success HIGHLIGHT \
-	'syntax highlighting (highlighted, shell script)' \
+	'syntax highlighting (highlighted, shell script shebang)' \
 	'git config gitweb.highlight yes &&
-	 echo "#!/usr/bin/sh" > test.sh &&
-	 git add test.sh &&
-	 git commit -m "Add test.sh" &&
-	 gitweb_run "p=.git;a=blob;f=test.sh"'
+	 echo "#!/usr/bin/sh" > test &&
+	 git add test &&
+	 git commit -m "Add test" &&
+	 gitweb_run "p=.git;a=blob;f=test"'
+
+test_expect_success HIGHLIGHT \
+	'syntax highlighting (highlighted, header file)' \
+	'git config gitweb.highlight yes &&
+	 echo "#define ANSWER 42" > test.h &&
+	 git add test.h &&
+	 git commit -m "Add test.h" &&
+	 gitweb_run "p=.git;a=blob;f=test.h"'
 
 # ----------------------------------------------------------------------
 # forks of projects
