@@ -173,9 +173,12 @@ int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *sig
 	sigchain_pop(SIGPIPE);
 
 	ret |= !strstr(gpg_status.buf, "\n[GNUPG:] SIG_CREATED ");
-	strbuf_release(&gpg_status);
-	if (ret)
+	if (ret) {
+		fputs(gpg_status.buf, stderr);
+		strbuf_release(&gpg_status);
 		return error(_("gpg failed to sign the data"));
+	}
+	strbuf_release(&gpg_status);
 
 	/* Strip CR from the line endings, in case we are on Windows. */
 	for (i = j = bottom; i < signature->len; i++)
