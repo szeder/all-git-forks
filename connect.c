@@ -165,6 +165,9 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			continue;
 		}
 
+		if (!strcmp(name, "capabilities^{}"))
+			continue;
+
 		if (!check_ref(name, flags))
 			continue;
 		ref = alloc_ref(buffer + GIT_SHA1_HEXSZ + 1);
