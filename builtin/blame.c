@@ -2601,7 +2601,7 @@ parse_done:
 
 	if (incremental || (output_option & OUTPUT_PORCELAIN)) {
 		if (show_progress > 0)
-			die("--progress can't be used with --incremental or porcelain formats");
+			die(_("--progress can't be used with --incremental or porcelain formats"));
 		show_progress = 0;
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
@@ -2727,7 +2727,7 @@ parse_done:
 		sb.commits.compare = compare_commits_by_commit_date;
 	}
 	else if (contents_from)
-		die("--contents and --reverse do not blend well.");
+		die(_("--contents and --reverse do not blend well."));
 	else {
 		final_commit_name = prepare_initial(&sb);
 		sb.commits.compare = compare_commits_by_reverse_commit_date;
@@ -2747,12 +2747,12 @@ parse_done:
 		add_pending_object(&revs, &(sb.final->object), ":");
 	}
 	else if (contents_from)
-		die("Cannot use --contents with final commit object name");
+		die(_("cannot use --contents with final commit object name"));
 
 	if (reverse && revs.first_parent_only) {
 		final_commit = find_single_final(sb.revs, NULL);
 		if (!final_commit)
-			die("--reverse and --first-parent together require specified latest commit");
+			die(_("--reverse and --first-parent together require specified latest commit"));
 	}
 
 	/*
@@ -2779,7 +2779,7 @@ parse_done:
 		}
 
 		if (oidcmp(&c->object.oid, &sb.final->object.oid))
-			die("--reverse --first-parent together require range along first-parent chain");
+			die(_("--reverse --first-parent together require range along first-parent chain"));
 	}
 
 	if (is_null_oid(&sb.final->object.oid)) {
@@ -2820,7 +2820,7 @@ parse_done:
 				    &bottom, &top, sb.path))
 			usage(blame_usage);
 		if (lno < top || ((lno || bottom) && lno < bottom))
-			die("file %s has only %lu lines", path, lno);
+			die(_("file %s has only %lu lines"), path, lno);
 		if (bottom < 1)
 			bottom = 1;
 		if (top < 1)
