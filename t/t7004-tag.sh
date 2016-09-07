@@ -1511,14 +1511,14 @@ test_expect_success 'invalid sort parameter in configuratoin' '
 '
 
 test_expect_success 'version sort with prerelease reordering' '
-	test_config versionsort.prereleaseSuffix -rc &&
-	git tag foo1.6-rc1 &&
-	git tag foo1.6-rc2 &&
+	test_config versionsort.prereleaseSuffix -beta &&
+	git tag foo1.6-beta1 &&
+	git tag foo1.6-beta2 &&
 	git tag -l --sort=version:refname "foo*" >actual &&
 	cat >expect <<-\EOF &&
 	foo1.3
-	foo1.6-rc1
-	foo1.6-rc2
+	foo1.6-beta1
+	foo1.6-beta2
 	foo1.6
 	foo1.10
 	EOF
@@ -1526,14 +1526,50 @@ test_expect_success 'version sort with prerelease reordering' '
 '
 
 test_expect_success 'reverse version sort with prerelease reordering' '
-	test_config versionsort.prereleaseSuffix -rc &&
+	test_config versionsort.prereleaseSuffix -beta &&
 	git tag -l --sort=-version:refname "foo*" >actual &&
 	cat >expect <<-\EOF &&
 	foo1.10
 	foo1.6
-	foo1.6-rc2
-	foo1.6-rc1
+	foo1.6-beta2
+	foo1.6-beta1
 	foo1.3
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_failure 'version sort with prerelease reordering and common leading character' '
+	test_config versionsort.prereleaseSuffix -beta &&
+	git tag foo1.6-after1 &&
+	git tag -l --sort=version:refname "foo*" >actual &&
+	cat >expect <<-\EOF &&
+	foo1.3
+	foo1.6-beta1
+	foo1.6-beta2
+	foo1.6
+	foo1.6-after1
+	foo1.10
+	EOF
+	test_cmp expect actual
+'
+
+# Capitalization of suffixes is important here, because "-RC" would normally
+# be sorted before "-beta" and the config settings should override that.
+test_expect_failure 'version sort with prerelease reordering, multiple suffixes and common leading character' '
+	test_config versionsort.prereleaseSuffix -beta &&
+	git config --add versionsort.prereleaseSuffix -RC &&
+	git tag foo1.6-RC1 &&
+	git tag foo1.6-RC2 &&
+	git tag -l --sort=version:refname "foo*" >actual &&
+	cat >expect <<-\EOF &&
+	foo1.3
+	foo1.6-beta1
+	foo1.6-beta2
+	foo1.6-RC1
+	foo1.6-RC2
+	foo1.6
+	foo1.6-after1
+	foo1.10
 	EOF
 	test_cmp expect actual
 '
@@ -1566,13 +1602,11 @@ EOF"
 
 test_expect_success '--format should list tags as per format given' '
 	cat >expect <<-\EOF &&
-	refname : refs/tags/foo1.10
-	refname : refs/tags/foo1.3
-	refname : refs/tags/foo1.6
-	refname : refs/tags/foo1.6-rc1
-	refname : refs/tags/foo1.6-rc2
+	refname : refs/tags/v1.0
+	refname : refs/tags/v1.0.1
+	refname : refs/tags/v1.1.3
 	EOF
-	git tag -l --format="refname : %(refname)" "foo*" >actual &&
+	git tag -l --format="refname : %(refname)" "v1*" >actual &&
 	test_cmp expect actual
 '
 
