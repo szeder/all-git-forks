@@ -1538,7 +1538,7 @@ test_expect_success 'reverse version sort with prerelease reordering' '
 	test_cmp expect actual
 '
 
-test_expect_failure 'version sort with prerelease reordering and common leading character' '
+test_expect_success 'version sort with prerelease reordering and common leading character' '
 	test_config versionsort.prereleaseSuffix -beta &&
 	git tag foo1.6-after1 &&
 	git tag -l --sort=version:refname "foo*" >actual &&
@@ -1555,7 +1555,7 @@ test_expect_failure 'version sort with prerelease reordering and common leading 
 
 # Capitalization of suffixes is important here, because "-RC" would normally
 # be sorted before "-beta" and the config settings should override that.
-test_expect_failure 'version sort with prerelease reordering, multiple suffixes and common leading character' '
+test_expect_success 'version sort with prerelease reordering, multiple suffixes and common leading character' '
 	test_config versionsort.prereleaseSuffix -beta &&
 	git config --add versionsort.prereleaseSuffix -RC &&
 	git tag foo1.6-RC1 &&
