@@ -3525,7 +3525,7 @@ static int try_threeway(struct apply_state *state,
 		 read_blob_object(&buf, pre_sha1, patch->old_mode))
 		return error(_("repository lacks the necessary blob to fall back on 3-way merge."));
 
-	fprintf(stderr, "Falling back to three-way merge...\n");
+	fprintf(stderr, _("Falling back to three-way merge...\n"));
 
 	img = strbuf_detach(&buf, &len);
 	prepare_image(&tmp_image, img, len, 1);
@@ -3555,7 +3555,7 @@ static int try_threeway(struct apply_state *state,
 	status = three_way_merge(image, patch->new_name,
 				 pre_sha1, our_sha1, post_sha1);
 	if (status < 0) {
-		fprintf(stderr, "Failed to fall back on three-way merge...\n");
+		fprintf(stderr, _("Failed to fall back on three-way merge...\n"));
 		return status;
 	}
 
@@ -3567,9 +3567,9 @@ static int try_threeway(struct apply_state *state,
 			hashcpy(patch->threeway_stage[0].hash, pre_sha1);
 		hashcpy(patch->threeway_stage[1].hash, our_sha1);
 		hashcpy(patch->threeway_stage[2].hash, post_sha1);
-		fprintf(stderr, "Applied patch to '%s' with conflicts.\n", patch->new_name);
+		fprintf(stderr, _("Applied patch to '%s' with conflicts.\n"), patch->new_name);
 	} else {
-		fprintf(stderr, "Applied patch to '%s' cleanly.\n", patch->new_name);
+		fprintf(stderr, _("Applied patch to '%s' cleanly.\n"), patch->new_name);
 	}
 	return 0;
 }
