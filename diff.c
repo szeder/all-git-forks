@@ -4462,7 +4462,7 @@ static void patch_id_consume(void *priv, char *line, unsigned long len)
 }
 
 /* returns 0 upon success, and writes result into sha1 */
-static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, int diff_header_only)
+static void diff_get_patch_id(struct diff_options *options, unsigned char *sha1, int diff_header_only)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
 	int i;
@@ -4484,7 +4484,7 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, 
 		memset(&xpp, 0, sizeof(xpp));
 		memset(&xecfg, 0, sizeof(xecfg));
 		if (p->status == 0)
-			return error("internal diff status error");
+			die("BUG: diff status unset while computing patch_id");
 		if (p->status == DIFF_STATUS_UNKNOWN)
 			continue;
 		if (diff_unmodified_pair(p))
@@ -4536,7 +4536,7 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, 
 
 		if (fill_mmfile(&mf1, p->one) < 0 ||
 		    fill_mmfile(&mf2, p->two) < 0)
-			return error("unable to read files to diff");
+			die("unable to read files to diff");
 
 		if (diff_filespec_is_binary(p->one) ||
 		    diff_filespec_is_binary(p->two)) {
@@ -4552,27 +4552,25 @@ static int diff_get_patch_id(struct diff_options *options, unsigned char *sha1, 
 		xecfg.flags = 0;
 		if (xdi_diff_outf(&mf1, &mf2, patch_id_consume, &data,
 				  &xpp, &xecfg))
-			return error("unable to generate patch-id diff for %s",
-				     p->one->path);
+			die("unable to generate patch-id diff for %s",
+			    p->one->path);
 	}
 
 	git_SHA1_Final(sha1, &ctx);
-	return 0;
 }
 
-int diff_flush_patch_id(struct diff_options *options, unsigned char *sha1, int diff_header_only)
+void diff_flush_patch_id(struct diff_options *options, unsigned char *sha1, int diff_header_only)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
 	int i;
-	int result = diff_get_patch_id(options, sha1, diff_header_only);
+
+	diff_get_patch_id(options, sha1, diff_header_only);
 
 	for (i = 0; i < q->nr; i++)
 		diff_free_filepair(q->queue[i]);
 
 	free(q->queue);
 	DIFF_QUEUE_CLEAR(q);
-
-	return result;
 }
 
 static int is_summary_empty(const struct diff_queue_struct *q)
