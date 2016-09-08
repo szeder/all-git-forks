@@ -385,7 +385,9 @@ test_expect_success MINGW 'bare git dir not hidden' '
 '
 
 test_expect_success 're-init from a linked worktree' '
+	mv .git/config work-around-init-reading-wrong-file &&
 	git init main-worktree &&
+	mv work-around-init-reading-wrong-file .git/config &&
 	(
 		cd main-worktree &&
 		test_commit first &&
