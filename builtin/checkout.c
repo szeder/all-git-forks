@@ -827,10 +827,25 @@ static int switch_branches(const struct checkout_opts *opts,
 		parse_commit_or_die(new->commit);
 	}
 
-	ret = merge_working_tree(opts, &old, new, &writeout_error);
-	if (ret) {
-		free(path_to_free);
-		return ret;
+	/*
+	 * Optimize the performance of checkout when the current and
+	 * new branch have the same OID and avoid the trivial merge.
+	 * For example, a "git checkout -b foo" just needs to create
+	 * the new ref and report the stats.
+	 */
+	if (!old.commit || !new->commit
+		|| oidcmp(&old.commit->object.oid, &new->commit->object.oid)
+		|| !opts->new_branch || opts->new_branch_force || opts->new_orphan_branch
+		|| opts->patch_mode || opts->merge || opts->force || opts->force_detach
+		|| opts->writeout_stage || !opts->overwrite_ignore
+		|| opts->ignore_skipworktree || opts->ignore_other_worktrees
+		|| opts->new_branch_log || opts->branch_exists || opts->prefix
+		|| opts->source_tree) {
+		ret = merge_working_tree(opts, &old, new, &writeout_error);
+		if (ret) {
+			free(path_to_free);
+			return ret;
+		}
 	}
 
 	if (!opts->quiet && !old.path && old.commit && new->commit != old.commit)
