@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Copyright (c) 2007, Nanako Shiraishi
 
 dashless=$(basename "$0" | sed -e 's/-/ /')
@@ -370,14 +370,6 @@ parse_flags_and_rev()
 {
 	test "$PARSE_CACHE" = "$*" && return 0 # optimisation
 	PARSE_CACHE="$*"
-
-	args=()
-	for arg
-	do
-		[[ $arg =~ ^[0-9]+$ ]] && arg="stash@{$arg}"
-		args+=("$arg")
-	done
-	set -- "${args[@]}"
 
 	IS_STASH_LIKE=
 	IS_STASH_REF=
