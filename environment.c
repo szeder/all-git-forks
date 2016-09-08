@@ -100,7 +100,7 @@ static char *work_tree;
 static const char *namespace;
 static size_t namespace_len;
 
-static const char *git_dir, *git_common_dir;
+static const char *git_dir, *git_common_dir, *first_git_dir;
 static char *git_object_dir, *git_index_file, *git_graft_file;
 int git_db_env, git_index_env, git_graft_env, git_common_dir_env;
 
@@ -168,6 +168,8 @@ static void setup_git_env(void)
 	if (!git_dir)
 		git_dir = DEFAULT_GIT_DIR_ENVIRONMENT;
 	gitfile = read_gitfile(git_dir);
+	if (gitfile && !first_git_dir)
+		first_git_dir = xstrdup(git_dir);
 	git_dir = xstrdup(gitfile ? gitfile : git_dir);
 	if (get_common_dir(&sb, git_dir))
 		git_common_dir_env = 1;
@@ -201,6 +203,18 @@ const char *get_git_dir(void)
 	if (!git_dir)
 		setup_git_env();
 	return git_dir;
+}
+
+/*
+ * Return the first ".git" that we have encountered.
+ * FIXME this function for not entirely correct because
+ * setup_git_directory() and enter_repo() do not update first_git_dir
+ * when they follow .git files. The function in its current state is
+ * only suitable for "git init".
+ */
+const char *get_first_git_dir(void)
+{
+	return first_git_dir ? first_git_dir : git_dir;
 }
 
 const char *get_git_common_dir(void)
