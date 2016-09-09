@@ -33,12 +33,7 @@ static int filter_object(const char *path, unsigned mode,
 	if (!*buf)
 		return error(_("cannot read object %s '%s'"),
 			sha1_to_hex(sha1), path);
-	if (type != OBJ_BLOB) {
-		free(*buf);
-		return error(_("blob expected for %s '%s'"),
-			sha1_to_hex(sha1), path);
-	}
-	if (S_ISREG(mode)) {
+	if ((type == OBJ_BLOB) && S_ISREG(mode)) {
 		struct strbuf strbuf = STRBUF_INIT;
 		if (convert_to_working_tree(path, *buf, *size, &strbuf)) {
 			free(*buf);
