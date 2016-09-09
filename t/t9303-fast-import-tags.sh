@@ -90,6 +90,23 @@ test_expect_success 'can reset tag from tag' '
 	test_cmp expected actual
 '
 
+test_expect_success 'can replace tag with lightweight tag' '
+	test_tick &&
+	cat >input <<-INPUT_END &&
+	tag lwtag
+	from refs/heads/master
+	data <<EOF
+	Tag to be replaced
+	EOF
+	reset refs/tags/lwtag
+	from refs/heads/master
+	INPUT_END
+	git fast-import <input &&
+	echo "commit" >expected &&
+	git cat-file -t refs/tags/lwtag >actual &&
+	test_cmp expected actual
+'
+
 test_expect_success 'can delete tag' '
 	test_tick &&
 	cat >input <<-INPUT_END &&
