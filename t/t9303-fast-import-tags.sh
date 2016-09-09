@@ -67,7 +67,7 @@ test_expect_success 'can branch from tag' '
 	test_line_count = 1 output
 '
 
-test_expect_success 'can reset head from tag' '
+test_expect_success 'can reset branch from tag' '
 	test_tick &&
 	cat >input <<-INPUT_END &&
 	reset refs/heads/maint2
