@@ -12,8 +12,15 @@ struct patch_ids {
 	struct diff_options diffopts;
 };
 
-int commit_patch_id(struct commit *commit, struct diff_options *options,
-		    unsigned char *sha1, int);
+enum patch_id_result {
+	PATCH_ID_ERROR = -1,
+	PATCH_ID_OK = 0,
+	PATCH_ID_NONE
+};
+
+enum patch_id_result commit_patch_id(struct commit *commit,
+				     struct diff_options *options,
+				     unsigned char *sha1, int);
 int init_patch_ids(struct patch_ids *);
 int free_patch_ids(struct patch_ids *);
 struct patch_id *add_commit_patch_id(struct commit *, struct patch_ids *);

@@ -1343,8 +1343,16 @@ static void prepare_bases(struct base_tree_info *bases,
 		struct object_id *patch_id;
 		if (commit->util)
 			continue;
-		if (commit_patch_id(commit, &diffopt, sha1, 0))
+
+		switch (commit_patch_id(commit, &diffopt, sha1, 0)) {
+		case PATCH_ID_OK:
+			break;
+		case PATCH_ID_NONE:
+			continue;
+		case PATCH_ID_ERROR:
 			die(_("cannot get patch id"));
+		}
+
 		ALLOC_GROW(bases->patch_id, bases->nr_patch_id + 1, bases->alloc_patch_id);
 		patch_id = bases->patch_id + bases->nr_patch_id;
 		hashcpy(patch_id->hash, sha1);
