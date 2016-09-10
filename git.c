@@ -451,7 +451,6 @@ static struct cmd_struct commands[] = {
 	{ "pull", cmd_pull, RUN_SETUP | NEED_WORK_TREE },
 	{ "push", cmd_push, RUN_SETUP },
 	{ "read-tree", cmd_read_tree, RUN_SETUP },
-	{ "rebase--helper", cmd_rebase__helper, RUN_SETUP | NEED_WORK_TREE },
 	{ "receive-pack", cmd_receive_pack },
 	{ "reflog", cmd_reflog, RUN_SETUP },
 	{ "remote", cmd_remote, RUN_SETUP },
@@ -523,21 +522,34 @@ static void strip_extension(const char **argv)
 
 static void handle_builtin(int argc, const char **argv)
 {
+	struct argv_array args = ARGV_ARRAY_INIT;
 	const char *cmd;
 	struct cmd_struct *builtin;
 
 	strip_extension(argv);
 	cmd = argv[0];
 
-	/* Turn "git cmd --help" into "git help cmd" */
+	/* Turn "git cmd --help" into "git help --exclude-guides cmd" */
 	if (argc > 1 && !strcmp(argv[1], "--help")) {
+		int i;
+
 		argv[1] = argv[0];
 		argv[0] = cmd = "help";
+
+		for (i = 0; i < argc; i++) {
+			argv_array_push(&args, argv[i]);
+			if (!i)
+				argv_array_push(&args, "--exclude-guides");
+		}
+
+		argc++;
+		argv = args.argv;
 	}
 
 	builtin = get_builtin(cmd);
 	if (builtin)
 		exit(run_builtin(builtin, argc, argv));
+	argv_array_clear(&args);
 }
 
 static void execv_dashed_external(const char **argv)

@@ -24,6 +24,7 @@
 #include "streaming.h"
 #include "dir.h"
 #include "mru.h"
+#include "list.h"
 
 #ifndef O_NOATIME
 #if defined(__linux__) && (defined(__i386__) || defined(__PPC__))
@@ -416,6 +417,82 @@ void add_to_alternates_file(const char *reference)
 			link_alt_odb_entries(reference, strlen(reference), '\n', NULL, 0);
 	}
 	free(alts);
+}
+
+/*
+ * Compute the exact path an alternate is at and returns it. In case of
+ * error NULL is returned and the human readable error is added to `err`
+ * `path` may be relative and should point to $GITDIR.
+ * `err` must not be null.
+ */
+char *compute_alternate_path(const char *path, struct strbuf *err)
+{
+	char *ref_git = NULL;
+	const char *repo, *ref_git_s;
+	int seen_error = 0;
+
+	ref_git_s = real_path_if_valid(path);
+	if (!ref_git_s) {
+		seen_error = 1;
+		strbuf_addf(err, _("path '%s' does not exist"), path);
+		goto out;
+	} else
+		/*
+		 * Beware: read_gitfile(), real_path() and mkpath()
+		 * return static buffer
+		 */
+		ref_git = xstrdup(ref_git_s);
+
+	repo = read_gitfile(ref_git);
+	if (!repo)
+		repo = read_gitfile(mkpath("%s/.git", ref_git));
+	if (repo) {
+		free(ref_git);
+		ref_git = xstrdup(repo);
+	}
+
+	if (!repo && is_directory(mkpath("%s/.git/objects", ref_git))) {
+		char *ref_git_git = mkpathdup("%s/.git", ref_git);
+		free(ref_git);
+		ref_git = ref_git_git;
+	} else if (!is_directory(mkpath("%s/objects", ref_git))) {
+		struct strbuf sb = STRBUF_INIT;
+		seen_error = 1;
+		if (get_common_dir(&sb, ref_git)) {
+			strbuf_addf(err,
+				    _("reference repository '%s' as a linked "
+				      "checkout is not supported yet."),
+				    path);
+			goto out;
+		}
+
+		strbuf_addf(err, _("reference repository '%s' is not a "
+					"local repository."), path);
+		goto out;
+	}
+
+	if (!access(mkpath("%s/shallow", ref_git), F_OK)) {
+		strbuf_addf(err, _("reference repository '%s' is shallow"),
+			    path);
+		seen_error = 1;
+		goto out;
+	}
+
+	if (!access(mkpath("%s/info/grafts", ref_git), F_OK)) {
+		strbuf_addf(err,
+			    _("reference repository '%s' is grafted"),
+			    path);
+		seen_error = 1;
+		goto out;
+	}
+
+out:
+	if (seen_error) {
+		free(ref_git);
+		ref_git = NULL;
+	}
+
+	return ref_git;
 }
 
 int foreach_alt_odb(alt_odb_fn fn, void *cb)
@@ -2073,136 +2150,142 @@ static void *unpack_compressed_entry(struct packed_git *p,
 	return buffer;
 }
 
-#define MAX_DELTA_CACHE (256)
-
+static struct hashmap delta_base_cache;
 static size_t delta_base_cached;
 
-static struct delta_base_cache_lru_list {
-	struct delta_base_cache_lru_list *prev;
-	struct delta_base_cache_lru_list *next;
-} delta_base_cache_lru = { &delta_base_cache_lru, &delta_base_cache_lru };
+static LIST_HEAD(delta_base_cache_lru);
 
-static struct delta_base_cache_entry {
-	struct delta_base_cache_lru_list lru;
-	void *data;
+struct delta_base_cache_key {
 	struct packed_git *p;
 	off_t base_offset;
+};
+
+struct delta_base_cache_entry {
+	struct hashmap hash;
+	struct delta_base_cache_key key;
+	struct list_head lru;
+	void *data;
 	unsigned long size;
 	enum object_type type;
-} delta_base_cache[MAX_DELTA_CACHE];
+};
 
-static unsigned long pack_entry_hash(struct packed_git *p, off_t base_offset)
+static unsigned int pack_entry_hash(struct packed_git *p, off_t base_offset)
 {
-	unsigned long hash;
+	unsigned int hash;
 
-	hash = (unsigned long)(intptr_t)p + (unsigned long)base_offset;
+	hash = (unsigned int)(intptr_t)p + (unsigned int)base_offset;
 	hash += (hash >> 8) + (hash >> 16);
-	return hash % MAX_DELTA_CACHE;
+	return hash;
 }
 
 static struct delta_base_cache_entry *
 get_delta_base_cache_entry(struct packed_git *p, off_t base_offset)
 {
-	unsigned long hash = pack_entry_hash(p, base_offset);
-	return delta_base_cache + hash;
+	struct hashmap_entry entry;
+	struct delta_base_cache_key key;
+
+	if (!delta_base_cache.cmpfn)
+		return NULL;
+
+	hashmap_entry_init(&entry, pack_entry_hash(p, base_offset));
+	key.p = p;
+	key.base_offset = base_offset;
+	return hashmap_get(&delta_base_cache, &entry, &key);
 }
 
-static int eq_delta_base_cache_entry(struct delta_base_cache_entry *ent,
-				     struct packed_git *p, off_t base_offset)
+static int delta_base_cache_key_eq(const struct delta_base_cache_key *a,
+				   const struct delta_base_cache_key *b)
 {
-	return (ent->data && ent->p == p && ent->base_offset == base_offset);
+	return a->p == b->p && a->base_offset == b->base_offset;
+}
+
+static int delta_base_cache_hash_cmp(const void *va, const void *vb,
+				     const void *vkey)
+{
+	const struct delta_base_cache_entry *a = va, *b = vb;
+	const struct delta_base_cache_key *key = vkey;
+	if (key)
+		return !delta_base_cache_key_eq(&a->key, key);
+	else
+		return !delta_base_cache_key_eq(&a->key, &b->key);
 }
 
 static int in_delta_base_cache(struct packed_git *p, off_t base_offset)
 {
-	struct delta_base_cache_entry *ent;
-	ent = get_delta_base_cache_entry(p, base_offset);
-	return eq_delta_base_cache_entry(ent, p, base_offset);
+	return !!get_delta_base_cache_entry(p, base_offset);
 }
 
-static void clear_delta_base_cache_entry(struct delta_base_cache_entry *ent)
+/*
+ * Remove the entry from the cache, but do _not_ free the associated
+ * entry data. The caller takes ownership of the "data" buffer, and
+ * should copy out any fields it wants before detaching.
+ */
+static void detach_delta_base_cache_entry(struct delta_base_cache_entry *ent)
 {
-	ent->data = NULL;
-	ent->lru.next->prev = ent->lru.prev;
-	ent->lru.prev->next = ent->lru.next;
+	hashmap_remove(&delta_base_cache, ent, &ent->key);
+	list_del(&ent->lru);
 	delta_base_cached -= ent->size;
+	free(ent);
 }
 
 static void *cache_or_unpack_entry(struct packed_git *p, off_t base_offset,
-	unsigned long *base_size, enum object_type *type, int keep_cache)
+	unsigned long *base_size, enum object_type *type)
 {
 	struct delta_base_cache_entry *ent;
-	void *ret;
 
 	ent = get_delta_base_cache_entry(p, base_offset);
-
-	if (!eq_delta_base_cache_entry(ent, p, base_offset))
+	if (!ent)
 		return unpack_entry(p, base_offset, type, base_size);
 
-	ret = ent->data;
-
-	if (!keep_cache)
-		clear_delta_base_cache_entry(ent);
-	else
-		ret = xmemdupz(ent->data, ent->size);
 	*type = ent->type;
 	*base_size = ent->size;
-	return ret;
+	return xmemdupz(ent->data, ent->size);
 }
 
 static inline void release_delta_base_cache(struct delta_base_cache_entry *ent)
 {
-	if (ent->data) {
-		free(ent->data);
-		ent->data = NULL;
-		ent->lru.next->prev = ent->lru.prev;
-		ent->lru.prev->next = ent->lru.next;
-		delta_base_cached -= ent->size;
-	}
+	free(ent->data);
+	detach_delta_base_cache_entry(ent);
 }
 
 void clear_delta_base_cache(void)
 {
-	unsigned long p;
-	for (p = 0; p < MAX_DELTA_CACHE; p++)
-		release_delta_base_cache(&delta_base_cache[p]);
+	struct hashmap_iter iter;
+	struct delta_base_cache_entry *entry;
+	for (entry = hashmap_iter_first(&delta_base_cache, &iter);
+	     entry;
+	     entry = hashmap_iter_next(&iter)) {
+		release_delta_base_cache(entry);
+	}
 }
 
 static void add_delta_base_cache(struct packed_git *p, off_t base_offset,
 	void *base, unsigned long base_size, enum object_type type)
 {
-	unsigned long hash = pack_entry_hash(p, base_offset);
-	struct delta_base_cache_entry *ent = delta_base_cache + hash;
-	struct delta_base_cache_lru_list *lru;
+	struct delta_base_cache_entry *ent = xmalloc(sizeof(*ent));
+	struct list_head *lru;
 
-	release_delta_base_cache(ent);
 	delta_base_cached += base_size;
 
-	for (lru = delta_base_cache_lru.next;
-	     delta_base_cached > delta_base_cache_limit
-	     && lru != &delta_base_cache_lru;
-	     lru = lru->next) {
-		struct delta_base_cache_entry *f = (void *)lru;
-		if (f->type == OBJ_BLOB)
-			release_delta_base_cache(f);
-	}
-	for (lru = delta_base_cache_lru.next;
-	     delta_base_cached > delta_base_cache_limit
-	     && lru != &delta_base_cache_lru;
-	     lru = lru->next) {
-		struct delta_base_cache_entry *f = (void *)lru;
+	list_for_each(lru, &delta_base_cache_lru) {
+		struct delta_base_cache_entry *f =
+			list_entry(lru, struct delta_base_cache_entry, lru);
+		if (delta_base_cached <= delta_base_cache_limit)
+			break;
 		release_delta_base_cache(f);
 	}
 
-	ent->p = p;
-	ent->base_offset = base_offset;
+	ent->key.p = p;
+	ent->key.base_offset = base_offset;
 	ent->type = type;
 	ent->data = base;
 	ent->size = base_size;
-	ent->lru.next = &delta_base_cache_lru;
-	ent->lru.prev = delta_base_cache_lru.prev;
-	delta_base_cache_lru.prev->next = &ent->lru;
-	delta_base_cache_lru.prev = &ent->lru;
+	list_add_tail(&ent->lru, &delta_base_cache_lru);
+
+	if (!delta_base_cache.cmpfn)
+		hashmap_init(&delta_base_cache, delta_base_cache_hash_cmp, 0);
+	hashmap_entry_init(ent, pack_entry_hash(p, base_offset));
+	hashmap_add(&delta_base_cache, ent);
 }
 
 static void *read_object(const unsigned char *sha1, enum object_type *type,
@@ -2246,11 +2329,11 @@ void *unpack_entry(struct packed_git *p, off_t obj_offset,
 		struct delta_base_cache_entry *ent;
 
 		ent = get_delta_base_cache_entry(p, curpos);
-		if (eq_delta_base_cache_entry(ent, p, curpos)) {
+		if (ent) {
 			type = ent->type;
 			data = ent->data;
 			size = ent->size;
-			clear_delta_base_cache_entry(ent);
+			detach_delta_base_cache_entry(ent);
 			base_from_cache = 1;
 			break;
 		}
@@ -2755,7 +2838,7 @@ static void *read_packed_sha1(const unsigned char *sha1,
 
 	if (!find_pack_entry(sha1, &e))
 		return NULL;
-	data = cache_or_unpack_entry(e.p, e.offset, size, type, 1);
+	data = cache_or_unpack_entry(e.p, e.offset, size, type);
 	if (!data) {
 		/*
 		 * We're probably in deep shit, but let's try to fetch

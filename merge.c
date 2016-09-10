@@ -57,8 +57,7 @@ int checkout_fast_forward(const unsigned char *head,
 
 	refresh_cache(REFRESH_QUIET);
 
-	if (hold_locked_index(lock_file, 0) < 0)
-		return -1;
+	hold_locked_index(lock_file, 1);
 
 	memset(&trees, 0, sizeof(trees));
 	memset(&opts, 0, sizeof(opts));
@@ -91,9 +90,7 @@ int checkout_fast_forward(const unsigned char *head,
 	}
 	if (unpack_trees(nr_trees, t, &opts))
 		return -1;
-	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK)) {
-		rollback_lock_file(lock_file);
-		return error(_("unable to write new index file"));
-	}
+	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
+		die(_("unable to write new index file"));
 	return 0;
 }

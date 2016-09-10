@@ -7,9 +7,10 @@ This test exercises porcelain V2 output for git status.'
 
 . ./test-lib.sh
 
+
 test_expect_success setup '
 	test_tick &&
-	git config --local core.autocrlf false &&
+	git config core.autocrlf false &&
 	echo x >file_x &&
 	echo y >file_y &&
 	echo z >file_z &&
@@ -18,12 +19,7 @@ test_expect_success setup '
 	echo b >dir1/file_b
 '
 
-
-##################################################################
-## Confirm output prior to initial commit.
-##################################################################
-
-test_expect_success pre_initial_commit_0 '
+test_expect_success 'before initial commit, nothing added, only untracked' '
 	cat >expect <<-EOF &&
 	# branch.oid (initial)
 	# branch.head master
@@ -39,8 +35,7 @@ test_expect_success pre_initial_commit_0 '
 	test_cmp expect actual
 '
 
-
-test_expect_success pre_initial_commit_1 '
+test_expect_success 'before initial commit, things added' '
 	git add file_x file_y file_z dir1 &&
 	OID_A=$(git hash-object -t blob -- dir1/file_a) &&
 	OID_B=$(git hash-object -t blob -- dir1/file_b) &&
@@ -64,8 +59,7 @@ test_expect_success pre_initial_commit_1 '
 	test_cmp expect actual
 '
 
-## Try -z on the above
-test_expect_success pre_initial_commit_2 '
+test_expect_success 'before initial commit, things added (-z)' '
 	lf_to_nul >expect <<-EOF &&
 	# branch.oid (initial)
 	# branch.head master
@@ -82,12 +76,7 @@ test_expect_success pre_initial_commit_2 '
 	test_cmp expect actual
 '
 
-##################################################################
-## Create first commit. Confirm commit oid in new track header.
-## Then make some changes on top of it.
-##################################################################
-
-test_expect_success initial_commit_0 '
+test_expect_success 'make first commit, comfirm HEAD oid and branch' '
 	git commit -m initial &&
 	H0=$(git rev-parse HEAD) &&
 	cat >expect <<-EOF &&
@@ -101,8 +90,7 @@ test_expect_success initial_commit_0 '
 	test_cmp expect actual
 '
 
-
-test_expect_success initial_commit_1 '
+test_expect_success 'after first commit, create unstaged changes' '
 	echo x >>file_x &&
 	OID_X1=$(git hash-object -t blob -- file_x) &&
 	rm file_z &&
@@ -121,8 +109,17 @@ test_expect_success initial_commit_1 '
 	test_cmp expect actual
 '
 
+test_expect_success 'after first commit but omit untracked files and branch' '
+	cat >expect <<-EOF &&
+	1 .M N... 100644 100644 100644 $OID_X $OID_X file_x
+	1 .D N... 100644 100644 000000 $OID_Z $OID_Z file_z
+	EOF
 
-test_expect_success initial_commit_2 '
+	git status --porcelain=v2 --untracked-files=no >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'after first commit, stage existing changes' '
 	git add file_x &&
 	git rm file_z &&
 	H0=$(git rev-parse HEAD) &&
@@ -140,8 +137,7 @@ test_expect_success initial_commit_2 '
 	test_cmp expect actual
 '
 
-
-test_expect_success initial_commit_3 '
+test_expect_success 'rename causes 2 path lines' '
 	git mv file_y renamed_y &&
 	H0=$(git rev-parse HEAD) &&
 
@@ -159,12 +155,25 @@ test_expect_success initial_commit_3 '
 	test_cmp expect actual
 '
 
+test_expect_success 'rename causes 2 path lines (-z)' '
+	H0=$(git rev-parse HEAD) &&
 
-##################################################################
-## Create second commit.
-##################################################################
+	## Lines use NUL path separator and line terminator, so double transform here.
+	q_to_nul <<-EOF | lf_to_nul >expect &&
+	# branch.oid $H0
+	# branch.head master
+	1 M. N... 100644 100644 100644 $OID_X $OID_X1 file_x
+	1 D. N... 100644 000000 000000 $OID_Z $_z40 file_z
+	2 R. N... 100644 100644 100644 $OID_Y $OID_Y R100 renamed_yQfile_y
+	? actual
+	? expect
+	EOF
 
-test_expect_success second_commit_0 '
+	git status --porcelain=v2 --branch --untracked-files=all -z >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'make second commit, confirm clean and new HEAD oid' '
 	git commit -m second &&
 	H1=$(git rev-parse HEAD) &&
 
@@ -179,50 +188,38 @@ test_expect_success second_commit_0 '
 	test_cmp expect actual
 '
 
-
-##################################################################
-## Ignore a file
-##################################################################
-
-test_expect_success ignore_file_0 '
+test_expect_success 'confirm ignored files are not printed' '
+	test_when_finished "rm -f x.ign .gitignore" &&
 	echo x.ign >.gitignore &&
 	echo "ignore me" >x.ign &&
-	H1=$(git rev-parse HEAD) &&
 
-	## ignored file SHOULD NOT appear in output when --ignored is not used.
 	cat >expect <<-EOF &&
-	# branch.oid $H1
-	# branch.head master
 	? .gitignore
 	? actual
 	? expect
 	EOF
 
-	git status --porcelain=v2 --branch --untracked-files=all >actual &&
-	test_cmp expect actual &&
+	git status --porcelain=v2 --untracked-files=all >actual &&
+	test_cmp expect actual
+'
 
-	## ignored file SHOULD appear in output when --ignored is used.
+test_expect_success 'ignored files are printed with --ignored' '
+	test_when_finished "rm -f x.ign .gitignore" &&
+	echo x.ign >.gitignore &&
+	echo "ignore me" >x.ign &&
+
 	cat >expect <<-EOF &&
-	# branch.oid $H1
-	# branch.head master
 	? .gitignore
 	? actual
 	? expect
 	! x.ign
 	EOF
 
-	git status --porcelain=v2 --branch --ignored --untracked-files=all >actual &&
-	rm x.ign &&
-	rm .gitignore &&
+	git status --porcelain=v2 --ignored --untracked-files=all >actual &&
 	test_cmp expect actual
 '
 
-##################################################################
-## Create a permanent .gitignore file so we can stop worrying
-## about test trash in subsequent tests.
-##################################################################
-
-test_expect_success ignore_trash '
+test_expect_success 'create and commit permanent ignore file' '
 	cat >.gitignore <<-EOF &&
 	actual*
 	expect*
@@ -241,11 +238,25 @@ test_expect_success ignore_trash '
 	test_cmp expect actual
 '
 
-##################################################################
-## Create some conflicts.
-##################################################################
+test_expect_success 'verify --intent-to-add output' '
+	test_when_finished "git rm -f intent1.add intent2.add" &&
+	touch intent1.add &&
+	echo test >intent2.add &&
 
-test_expect_success conflict_AA '
+	git add --intent-to-add intent1.add intent2.add &&
+
+	cat >expect <<-EOF &&
+	1 AM N... 000000 100644 100644 $_z40 $EMPTY_BLOB intent1.add
+	1 AM N... 000000 100644 100644 $_z40 $EMPTY_BLOB intent2.add
+	EOF
+
+	git status --porcelain=v2 >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'verify AA (add-add) conflict' '
+	test_when_finished "git reset --hard" &&
+
 	git branch AA_A master &&
 	git checkout AA_A &&
 	echo "Branch AA_A" >conflict.txt &&
@@ -273,12 +284,12 @@ test_expect_success conflict_AA '
 	EOF
 
 	git status --porcelain=v2 --branch --untracked-files=all >actual &&
-	git reset --hard &&
 	test_cmp expect actual
 '
 
+test_expect_success 'verify UU (edit-edit) conflict' '
+	test_when_finished "git reset --hard" &&
 
-test_expect_success conflict_UU '
 	git branch UU_ANC master &&
 	git checkout UU_ANC &&
 	echo "Ancestor" >conflict.txt &&
@@ -313,18 +324,12 @@ test_expect_success conflict_UU '
 	EOF
 
 	git status --porcelain=v2 --branch --untracked-files=all >actual &&
-	git reset --hard &&
 	test_cmp expect actual
 '
 
-
-##################################################################
-## Test upstream fields in branch header
-##################################################################
-
-test_expect_success 'upstream_fields_0' '
+test_expect_success 'verify upstream fields in branch header' '
 	git checkout master &&
-	test_when_finished rm -rf sub_repo &&
+	test_when_finished "rm -rf sub_repo" &&
 	git clone . sub_repo &&
 	(
 		## Confirm local master tracks remote master.
@@ -385,12 +390,7 @@ test_expect_success 'upstream_fields_0' '
 	)
 '
 
-
-##################################################################
-## Test submodule status flags.
-##################################################################
-
-test_expect_success 'submodule_flags_0' '
+test_expect_success 'create and add submodule, submodule appears clean (A. S...)' '
 	git checkout master &&
 	git clone . sub_repo &&
 	git clone . super_repo &&
@@ -416,11 +416,11 @@ test_expect_success 'submodule_flags_0' '
 	)
 '
 
-test_expect_success 'submodule_flags_1' '
+test_expect_success 'untracked changes in added submodule (AM S..U)' '
 	(	cd super_repo &&
-		## Make some untracked dirt in the submodule.
+		## create untracked file in the submodule.
 		(	cd sub1 &&
-			echo "dirt" >file_in_sub
+			echo "xxxx" >file_in_sub
 		) &&
 
 		HMOD=$(git hash-object -t blob -- .gitmodules) &&
@@ -441,9 +441,9 @@ test_expect_success 'submodule_flags_1' '
 	)
 '
 
-test_expect_success 'submodule_flags_2' '
+test_expect_success 'staged changes in added submodule (AM S.M.)' '
 	(	cd super_repo &&
-		## Make some staged dirt in the submodule.
+		## stage the changes in the submodule.
 		(	cd sub1 &&
 			git add file_in_sub
 		) &&
@@ -466,13 +466,13 @@ test_expect_success 'submodule_flags_2' '
 	)
 '
 
-test_expect_success 'submodule_flags_3' '
+test_expect_success 'staged and unstaged changes in added (AM S.M.)' '
 	(	cd super_repo &&
-		## Make some staged and unstaged dirt (on the same file) in the submodule.
-		## This does not cause us to get S.MU (because the submodule does not report
-		## a "?" line for the unstaged changes).
 		(	cd sub1 &&
-			echo "more dirt" >>file_in_sub
+			## make additional unstaged changes (on the same file) in the submodule.
+			## This does not cause us to get S.MU (because the submodule does not report
+			## a "?" line for the unstaged changes).
+			echo "more changes" >>file_in_sub
 		) &&
 
 		HMOD=$(git hash-object -t blob -- .gitmodules) &&
@@ -493,12 +493,13 @@ test_expect_success 'submodule_flags_3' '
 	)
 '
 
-test_expect_success 'submodule_flags_4' '
+test_expect_success 'staged and untracked changes in added submodule (AM S.MU)' '
 	(	cd super_repo &&
-		## Make some staged and untracked dirt (on different files) in the submodule.
 		(	cd sub1 &&
+			## stage new changes in tracked file.
 			git add file_in_sub &&
-			echo "dirt" >>another_file_in_sub
+			## create new untracked file.
+			echo "yyyy" >>another_file_in_sub
 		) &&
 
 		HMOD=$(git hash-object -t blob -- .gitmodules) &&
@@ -519,10 +520,10 @@ test_expect_success 'submodule_flags_4' '
 	)
 '
 
-test_expect_success 'submodule_flags_5' '
+test_expect_success 'commit within the submodule appears as new commit in super (AM SC..)' '
 	(	cd super_repo &&
-		## Make a new commit in the submodule.
 		(	cd sub1 &&
+			## Make a new commit in the submodule.
 			git add file_in_sub &&
 			rm -f another_file_in_sub &&
 			git commit -m "new commit"
@@ -546,10 +547,11 @@ test_expect_success 'submodule_flags_5' '
 	)
 '
 
-test_expect_success 'submodule_flags_6' '
+test_expect_success 'stage submodule in super and commit' '
 	(	cd super_repo &&
-		## Commit the new submodule commit in the super.
+		## Stage the new submodule commit in the super.
 		git add sub1 &&
+		## Commit the super so that the sub no longer appears as added.
 		git commit -m "super commit" &&
 
 		HSUP=$(git rev-parse HEAD) &&
@@ -566,14 +568,12 @@ test_expect_success 'submodule_flags_6' '
 	)
 '
 
-test_expect_success 'submodule_flags_7' '
+test_expect_success 'make unstaged changes in existing submodule (.M S.M.)' '
 	(	cd super_repo &&
-		## Make some untracked dirt in the submodule.
 		(	cd sub1 &&
-			echo "yet more dirt" >>file_in_sub
+			echo "zzzz" >>file_in_sub
 		) &&
 
-		HMOD=$(git hash-object -t blob -- .gitmodules) &&
 		HSUP=$(git rev-parse HEAD) &&
 		HSUB=$(cd sub1 && git rev-parse HEAD) &&
 
@@ -589,9 +589,5 @@ test_expect_success 'submodule_flags_7' '
 		test_cmp expect actual
 	)
 '
-
-##################################################################
-## The end.
-##################################################################
 
 test_done

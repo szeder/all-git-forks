@@ -4395,10 +4395,6 @@ itself!
 Git Glossary
 ============
 
-[[git-explained]]
-Git explained
--------------
-
 include::glossary-content.txt[]
 
 [[git-quick-start]]
@@ -4639,10 +4635,6 @@ $ git gc
 [[todo]]
 Appendix B: Notes and todo list for this manual
 ===============================================
-
-[[todo-list]]
-Todo list
----------
 
 This is a work in progress.
 
