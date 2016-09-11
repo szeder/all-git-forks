@@ -22,7 +22,7 @@ static int deleterefs;
 static const char *receivepack;
 static int verbosity;
 static int progress = -1;
-static int recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
+static int recurse_submodules = RECURSE_SUBMODULES_CHECK;
 static enum transport_family family;
 
 static struct push_cas_option cas;
