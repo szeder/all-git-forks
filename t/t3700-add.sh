@@ -349,4 +349,9 @@ test_expect_success POSIXPERM,SYMLINKS 'git add --chmod=+x with symlinks' '
 	test_mode_in_index 100755 foo2
 '
 
+test_expect_success 'git add empty string should invoke warning' '
+	git add "" 2>output &&
+	test_i18ngrep "warning: empty strings" output
+'
+
 test_done
