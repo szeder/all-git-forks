@@ -2244,6 +2244,7 @@ class P4Sync(Command, P4UserMap):
                 optparse.make_option("-/", dest="cloneExclude",
                                      action="append", type="string",
                                      help="exclude depot path"),
+                optparse.make_option("--checkpoint-period", dest="checkpointPeriod", type="int", help="Period in seconds between explict git fast-import checkpoints (by default, no explicit checkpoints are performed)"),
         ]
         self.description = """Imports from Perforce into a git repository.\n
     example:
@@ -2276,6 +2277,7 @@ class P4Sync(Command, P4UserMap):
         self.tempBranches = []
         self.tempBranchLocation = "refs/git-p4-tmp"
         self.largeFileSystem = None
+        self.checkpointPeriod = -1
 
         if gitConfig('git-p4.largeFileSystem'):
             largeFileSystemConstructor = globals()[gitConfig('git-p4.largeFileSystem')]
@@ -3031,6 +3033,8 @@ class P4Sync(Command, P4UserMap):
 
     def importChanges(self, changes):
         cnt = 1
+        if self.checkpointPeriod > -1:
+            self.lastCheckpointTime = time.time()
         for change in changes:
             description = p4_describe(change)
             self.updateOptionDict(description)
@@ -3107,6 +3111,10 @@ class P4Sync(Command, P4UserMap):
                                 self.initialParent)
                     # only needed once, to connect to the previous commit
                     self.initialParent = ""
+
+                    if self.checkpointPeriod > -1 and time.time() - self.lastCheckpointTime > self.checkpointPeriod:
+                        self.checkpoint()
+                        self.lastCheckpointTime = time.time()
             except IOError:
                 print self.gitError.read()
                 sys.exit(1)
