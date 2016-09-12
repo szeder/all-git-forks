@@ -4854,12 +4854,13 @@ void diff_flush(struct diff_options *options)
 
 	if (output_format & DIFF_FORMAT_PATCH) {
 		if (separator) {
-			fprintf(options->file, "%s%c",
-				diff_line_prefix(options),
-				options->line_termination);
+			emit_line_0(options, NULL, NULL,
+				    options->line_termination, "", 0);
 			if (options->stat_sep) {
 				/* attach patch instead of inline */
-				fputs(options->stat_sep, options->file);
+				emit_line(options, NULL, NULL,
+					  options->stat_sep,
+					  strlen(options->stat_sep));
 			}
 		}
 
