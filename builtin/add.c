@@ -26,9 +26,24 @@ static int patch_interactive, add_interactive, edit_interactive;
 static int take_worktree_changes;
 
 struct update_callback_data {
-	int flags, force_mode;
+	int flags;
 	int add_errors;
 };
+
+static void chmod_pathspec(struct pathspec *pathspec, int force_mode)
+{
+	int i;
+
+	for (i = 0; i < active_nr; i++) {
+		struct cache_entry *ce = active_cache[i];
+
+		if (pathspec && !ce_path_match(ce, pathspec, NULL))
+			continue;
+
+		if (chmod_cache_entry(ce, force_mode) < 0)
+			fprintf(stderr, "cannot chmod '%s'", ce->name);
+	}
+}
 
 static int fix_unmerged_status(struct diff_filepair *p,
 			       struct update_callback_data *data)
@@ -65,8 +80,7 @@ static void update_callback(struct diff_queue_struct *q,
 			die(_("unexpected diff status %c"), p->status);
 		case DIFF_STATUS_MODIFIED:
 		case DIFF_STATUS_TYPE_CHANGED:
-			if (add_file_to_index(&the_index, path,
-					data->flags, data->force_mode)) {
+			if (add_file_to_index(&the_index, path,	data->flags)) {
 				if (!(data->flags & ADD_CACHE_IGNORE_ERRORS))
 					die(_("updating files failed"));
 				data->add_errors++;
@@ -84,15 +98,14 @@ static void update_callback(struct diff_queue_struct *q,
 	}
 }
 
-int add_files_to_cache(const char *prefix, const struct pathspec *pathspec,
-	int flags, int force_mode)
+int add_files_to_cache(const char *prefix,
+		       const struct pathspec *pathspec, int flags)
 {
 	struct update_callback_data data;
 	struct rev_info rev;
 
 	memset(&data, 0, sizeof(data));
 	data.flags = flags;
-	data.force_mode = force_mode;
 
 	init_revisions(&rev, prefix);
 	setup_revisions(0, NULL, &rev, NULL);
@@ -281,7 +294,7 @@ static int add_config(const char *var, const char *value, void *cb)
 	return git_default_config(var, value, cb);
 }
 
-static int add_files(struct dir_struct *dir, int flags, int force_mode)
+static int add_files(struct dir_struct *dir, int flags)
 {
 	int i, exit_status = 0;
 
@@ -294,8 +307,7 @@ static int add_files(struct dir_struct *dir, int flags, int force_mode)
 	}
 
 	for (i = 0; i < dir->nr; i++)
-		if (add_file_to_index(&the_index, dir->entries[i]->name,
-				flags, force_mode)) {
+		if (add_file_to_index(&the_index, dir->entries[i]->name, flags)) {
 			if (!ignore_add_errors)
 				die(_("adding files failed"));
 			exit_status = 1;
@@ -441,11 +453,13 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	plug_bulk_checkin();
 
-	exit_status |= add_files_to_cache(prefix, &pathspec, flags, force_mode);
+	exit_status |= add_files_to_cache(prefix, &pathspec, flags);
 
 	if (add_new_files)
-		exit_status |= add_files(&dir, flags, force_mode);
+		exit_status |= add_files(&dir, flags);
 
+	if (force_mode)
+		chmod_pathspec(&pathspec, force_mode);
 	unplug_bulk_checkin();
 
 finish:
