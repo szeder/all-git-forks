@@ -29,7 +29,7 @@ static int show_valid_bit;
 static int line_terminator = '\n';
 static int debug_mode;
 static int show_eol;
-static const char *output_path_prefix = "";
+static const char *output_path_prefix;
 static int recurse_submodules;
 
 static const char *prefix;
@@ -78,7 +78,7 @@ static void write_name(const char *name)
 	 * churn.
 	 */
 	static struct strbuf full_name = STRBUF_INIT;
-	if (*output_path_prefix) {
+	if (output_path_prefix && *output_path_prefix) {
 		strbuf_reset(&full_name);
 		strbuf_addstr(&full_name, output_path_prefix);
 		strbuf_addstr(&full_name, name);
@@ -181,7 +181,8 @@ static void show_gitlink(const struct cache_entry *ce)
 	argv_array_push(&cp.args, "ls-files");
 	argv_array_push(&cp.args, "--recurse-submodules");
 	argv_array_pushf(&cp.args, "--output-path-prefix=%s%s/",
-			 output_path_prefix, ce->name);
+			 output_path_prefix ? output_path_prefix : "",
+			 ce->name);
 	cp.git_cmd = 1;
 	cp.dir = ce->name;
 	status = run_command(&cp);
