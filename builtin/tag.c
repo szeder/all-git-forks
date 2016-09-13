@@ -106,7 +106,28 @@ static int delete_tag(const char *name, const char *ref,
 static int verify_tag(const char *name, const char *ref,
 				const unsigned char *sha1)
 {
-	return gpg_verify_tag(sha1, name, GPG_VERIFY_VERBOSE);
+	int flags;
+	flags = GPG_VERIFY_VERBOSE;
+
+	if (fmt_pretty) {
+		//verify_ref_format(fmt_pretty);
+
+		// Create a `ref_array_item` in order to use `show_ref_array_item`
+		// XXX: Just copies code from `static new_ref_array_item` in ref_filter.c
+		struct ref_array_item *ref_item;
+		FLEX_ALLOC_STR(ref_item, refname, name);
+		hashcpy(ref_item->objectname, sha1);
+		ref_item->kind = FILTER_REFS_TAGS;
+		ref_item->flag = 0;
+
+		show_ref_array_item(ref_item, fmt_pretty, 0);
+		free((char *)ref_item->symref);
+		free(ref_item);
+
+		flags = GPG_VERIFY_QUIET;
+	}
+
+	return gpg_verify_tag(sha1, name, flags);
 }
 
 static int do_sign(struct strbuf *buffer)
