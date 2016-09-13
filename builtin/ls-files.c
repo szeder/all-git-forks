@@ -78,7 +78,7 @@ static void write_name(const char *name)
 	 * churn.
 	 */
 	static struct strbuf full_name = STRBUF_INIT;
-	if (output_path_prefix != '\0') {
+	if (*output_path_prefix) {
 		strbuf_reset(&full_name);
 		strbuf_addstr(&full_name, output_path_prefix);
 		strbuf_addstr(&full_name, name);
