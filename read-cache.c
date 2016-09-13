@@ -2189,6 +2189,22 @@ static int write_shared_index(struct index_state *istate,
 	return ret;
 }
 
+static const int max_percent_split_change = 20;
+
+int too_many_not_shared_entries(struct index_state *istate)
+{
+	int i, not_shared = 0;
+
+	/* Count not shared entries */
+	for (i = 0; i < istate->cache_nr; i++) {
+		struct cache_entry *ce = istate->cache[i];
+		if (!ce->index)
+			not_shared++;
+	}
+
+	return istate->cache_nr * max_percent_split_change < not_shared * 100;
+}
+
 int write_locked_index(struct index_state *istate, struct lock_file *lock,
 		       unsigned flags)
 {
@@ -2206,7 +2222,8 @@ int write_locked_index(struct index_state *istate, struct lock_file *lock,
 		if ((v & 15) < 6)
 			istate->cache_changed |= SPLIT_INDEX_ORDERED;
 	}
-	if (istate->cache_changed & SPLIT_INDEX_ORDERED) {
+	if (istate->cache_changed & SPLIT_INDEX_ORDERED ||
+	    too_many_not_shared_entries(istate)) {
 		int ret = write_shared_index(istate, lock, flags);
 		if (ret)
 			return ret;
