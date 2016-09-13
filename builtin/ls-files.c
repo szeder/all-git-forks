@@ -14,6 +14,7 @@
 #include "resolve-undo.h"
 #include "string-list.h"
 #include "pathspec.h"
+#include "run-command.h"
 
 static int abbrev;
 static int show_deleted;
@@ -28,6 +29,8 @@ static int show_valid_bit;
 static int line_terminator = '\n';
 static int debug_mode;
 static int show_eol;
+static const char *output_path_prefix = "";
+static int recurse_submodules;
 
 static const char *prefix;
 static int max_prefix_len;
@@ -67,6 +70,21 @@ static void write_eolinfo(const struct cache_entry *ce, const char *path)
 
 static void write_name(const char *name)
 {
+	/*
+	 * NEEDSWORK: To make this thread-safe, full_name would have to be owned
+	 * by the caller.
+	 *
+	 * full_name get reused across output lines to minimize the allocation
+	 * churn.
+	 */
+	static struct strbuf full_name = STRBUF_INIT;
+	if (output_path_prefix != '\0') {
+		strbuf_reset(&full_name);
+		strbuf_addstr(&full_name, output_path_prefix);
+		strbuf_addstr(&full_name, name);
+		name = full_name.buf;
+	}
+
 	/*
 	 * With "--full-name", prefix_len=0; this caller needs to pass
 	 * an empty string in that case (a NULL is good for "").
@@ -152,6 +170,25 @@ static void show_killed_files(struct dir_struct *dir)
 	}
 }
 
+/**
+ * Recursively call ls-files on a submodule
+ */
+static void show_gitlink(const struct cache_entry *ce)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	int status;
+
+	argv_array_push(&cp.args, "ls-files");
+	argv_array_push(&cp.args, "--recurse-submodules");
+	argv_array_pushf(&cp.args, "--output-path-prefix=%s%s/",
+			 output_path_prefix, ce->name);
+	cp.git_cmd = 1;
+	cp.dir = ce->name;
+	status = run_command(&cp);
+	if (status)
+		exit(status);
+}
+
 static void show_ce_entry(const char *tag, const struct cache_entry *ce)
 {
 	int len = max_prefix_len;
@@ -163,6 +200,10 @@ static void show_ce_entry(const char *tag, const struct cache_entry *ce)
 			    len, ps_matched,
 			    S_ISDIR(ce->ce_mode) || S_ISGITLINK(ce->ce_mode)))
 		return;
+	if (recurse_submodules && S_ISGITLINK(ce->ce_mode)) {
+		show_gitlink(ce);
+		return;
+	}
 
 	if (tag && *tag && show_valid_bit &&
 	    (ce->ce_flags & CE_VALID)) {
@@ -468,6 +509,10 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		{ OPTION_SET_INT, 0, "full-name", &prefix_len, NULL,
 			N_("make the output relative to the project top directory"),
 			PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL },
+		OPT_STRING(0, "output-path-prefix", &output_path_prefix,
+			N_("path"), N_("prepend <path> to each file")),
+		OPT_BOOL(0, "recurse-submodules", &recurse_submodules,
+			N_("recurse through submodules")),
 		OPT_BOOL(0, "error-unmatch", &error_unmatch,
 			N_("if any <file> is not in the index, treat this as an error")),
 		OPT_STRING(0, "with-tree", &with_tree, N_("tree-ish"),
@@ -518,6 +563,21 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 
 	if (require_work_tree && !is_inside_work_tree())
 		setup_work_tree();
+
+	if (recurse_submodules &&
+	    (show_stage || show_deleted || show_others || show_unmerged ||
+	     show_killed || show_modified || show_resolve_undo ||
+	     show_valid_bit || show_tag || show_eol))
+		die("ls-files --recurse-submodules can only be used in "
+		    "--cached mode");
+
+	if (recurse_submodules && error_unmatch)
+		die("ls-files --recurse-submodules does not support "
+		    "--error-unmatch");
+
+	if (recurse_submodules && argc)
+		die("ls-files --recurse-submodules does not support path "
+		    "arguments");
 
 	parse_pathspec(&pathspec, 0,
 		       PATHSPEC_PREFER_CWD |
