@@ -123,6 +123,17 @@ test_expect_success 'check that appropriate filter is invoke when --path is used
 	test "$file1_sha" = "$path1_sha"
 '
 
+test_expect_success 'gitattributes also work in a subdirectory' '
+	mkdir subdir &&
+	(
+		cd subdir &&
+		subdir_sha0=$(git hash-object ../file0) &&
+		subdir_sha1=$(git hash-object ../file1) &&
+		test "$file0_sha" = "$subdir_sha0" &&
+		test "$file1_sha" = "$subdir_sha1"
+	)
+'
+
 test_expect_success 'check that --no-filters option works' '
 	nofilters_file1=$(git hash-object --no-filters file1) &&
 	test "$file0_sha" = "$nofilters_file1" &&
