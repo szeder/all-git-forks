@@ -110,19 +110,13 @@ static int verify_tag(const char *name, const char *ref,
 	flags = GPG_VERIFY_VERBOSE;
 
 	if (fmt_pretty) {
-		//verify_ref_format(fmt_pretty);
-
-		// Create a `ref_array_item` in order to use `show_ref_array_item`
-		// XXX: Just copies code from `static new_ref_array_item` in ref_filter.c
+		verify_ref_format(fmt_pretty);
 		struct ref_array_item *ref_item;
-		FLEX_ALLOC_STR(ref_item, refname, name);
-		hashcpy(ref_item->objectname, sha1);
-		ref_item->kind = FILTER_REFS_TAGS;
-		ref_item->flag = 0;
 
-		show_ref_array_item(ref_item, fmt_pretty, 0);
-		free((char *)ref_item->symref);
-		free(ref_item);
+		ref_item = new_ref_item(name, sha1, 0);
+		ref_item->kind = FILTER_REFS_TAGS;
+		show_ref_item(ref_item, fmt_pretty, 0);
+		free_ref_item(ref_item);
 
 		flags = GPG_VERIFY_QUIET;
 	}
