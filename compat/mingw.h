@@ -67,6 +67,10 @@ typedef int pid_t;
 #define F_SETFD 2
 #define FD_CLOEXEC 0x1
 
+#if !defined O_CLOEXEC && defined O_NOINHERIT
+#define O_CLOEXEC	O_NOINHERIT
+#endif
+
 #ifndef EAFNOSUPPORT
 #define EAFNOSUPPORT WSAEAFNOSUPPORT
 #endif
@@ -416,9 +420,6 @@ int mingw_offset_1st_component(const char *path);
 #else
 #include <inttypes.h>
 #endif
-
-void mingw_open_html(const char *path);
-#define open_html mingw_open_html
 
 /**
  * Converts UTF-8 encoded string to UTF-16LE.
