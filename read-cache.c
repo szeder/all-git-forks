@@ -779,7 +779,7 @@ int chmod_index_entry(struct index_state *istate, struct cache_entry *ce,
 	default:
 		return -2;
 	}
-	cache_tree_invalidate_path(&the_index, ce->name);
+	cache_tree_invalidate_path(istate, ce->name);
 	ce->ce_flags |= CE_UPDATE_IN_BASE;
 	istate->cache_changed |= CE_ENTRY_CHANGED;
 
