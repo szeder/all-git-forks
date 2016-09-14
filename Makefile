@@ -1138,6 +1138,15 @@ else
 endif
 IMAP_SEND_LDFLAGS += $(OPENSSL_LINK) $(OPENSSL_LIBSSL) $(LIB_4_CRYPTO)
 
+# for linking straight out of zstd build directory
+ifdef ZSTD_PATH
+	LIB_OBJS += $(ZSTD_PATH)/zlibWrapper/zstd_zlibwrapper.o
+	BASIC_CFLAGS += -I$(ZSTD_PATH)/zlibWrapper
+	BASIC_CFLAGS += -I$(ZSTD_PATH)/lib -I$(ZSTD_PATH)/lib/common
+	BASIC_CFLAGS += -DUSE_ZSTD
+	EXTLIBS += $(ZSTD_PATH)/lib/libzstd.a
+endif
+
 ifdef ZLIB_PATH
 	BASIC_CFLAGS += -I$(ZLIB_PATH)/include
 	EXTLIBS += -L$(ZLIB_PATH)/$(lib) $(CC_LD_DYNPATH)$(ZLIB_PATH)/$(lib)

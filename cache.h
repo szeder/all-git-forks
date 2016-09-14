@@ -37,7 +37,11 @@
 #define git_SHA1_Update		git_SHA1_Update_Chunked
 #endif
 
+#ifdef USE_ZSTD
+#include "zstd_zlibwrapper.h"
+#else
 #include <zlib.h>
+#endif
 typedef struct git_zstream {
 	z_stream z;
 	unsigned long avail_in;

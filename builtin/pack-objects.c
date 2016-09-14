@@ -62,6 +62,7 @@ static int num_preferred_base;
 static struct progress *progress_state;
 static int pack_compression_level = Z_DEFAULT_COMPRESSION;
 static int pack_compression_seen;
+static int pack_compression_max = Z_BEST_COMPRESSION;
 
 static struct packed_git *reuse_packfile;
 static uint32_t reuse_packfile_objects;
@@ -2220,11 +2221,17 @@ static int git_pack_config(const char *k, const char *v, void *cb)
 		return 0;
 	}
 	if (!strcmp(k, "pack.compression")) {
-		int level = git_config_int(k, v);
-		if (level == -1)
-			level = Z_DEFAULT_COMPRESSION;
-		else if (level < 0 || level > Z_BEST_COMPRESSION)
-			die("bad pack compression level %d", level);
+		int level;
+		if (!v)
+			return config_error_nonbool(k);
+#ifdef USE_ZSTD
+		if (skip_prefix(v, "zstd", &v)) {
+			useZSTD(1);
+			/* XXX doesn't seem to be a constant? */
+			pack_compression_max = 22;
+		}
+#endif
+		level = git_config_int(k, v);
 		pack_compression_level = level;
 		pack_compression_seen = 1;
 		return 0;
@@ -2765,7 +2772,7 @@ int cmd_pack_objects(int argc, const char **argv, const char *prefix)
 		reuse_delta = 0;
 	if (pack_compression_level == -1)
 		pack_compression_level = Z_DEFAULT_COMPRESSION;
-	else if (pack_compression_level < 0 || pack_compression_level > Z_BEST_COMPRESSION)
+	else if (pack_compression_level < 0 || pack_compression_level > pack_compression_max)
 		die("bad pack compression level %d", pack_compression_level);
 
 	if (!delta_search_threads)	/* --threads=0 means autodetect */
