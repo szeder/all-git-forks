@@ -4,6 +4,7 @@
 #include "tree.h"
 #include "commit.h"
 #include "tag.h"
+#include "critbit.h"
 
 static struct object **obj_hash;
 static int nr_objs, obj_hash_size;
@@ -51,32 +52,8 @@ int type_from_string_gently(const char *str, ssize_t len, int gentle)
 	die("invalid object type \"%s\"", str);
 }
 
-/*
- * Return a numerical hash value between 0 and n-1 for the object with
- * the specified sha1.  n must be a power of 2.  Please note that the
- * return value is *not* consistent across computer architectures.
- */
-static unsigned int hash_obj(const unsigned char *sha1, unsigned int n)
-{
-	return sha1hash(sha1) & (n - 1);
-}
 
-/*
- * Insert obj into the hash table hash, which has length size (which
- * must be a power of 2).  On collisions, simply overflow to the next
- * empty bucket.
- */
-static void insert_obj_hash(struct object *obj, struct object **hash, unsigned int size)
-{
-	unsigned int j = hash_obj(obj->oid.hash, size);
-
-	while (hash[j]) {
-		j++;
-		if (j >= size)
-			j = 0;
-	}
-	hash[j] = obj;
-}
+struct critbit_tree objects;
 
 /*
  * Look up the record for the given sha1 in the hash map stored in
@@ -84,58 +61,10 @@ static void insert_obj_hash(struct object *obj, struct object **hash, unsigned i
  */
 struct object *lookup_object(const unsigned char *sha1)
 {
-	unsigned int i, first;
-	struct object *obj;
-
-	if (!obj_hash)
+	const unsigned char *ret = cb_find(&objects, sha1, 20);
+	if (!ret)
 		return NULL;
-
-	first = i = hash_obj(sha1, obj_hash_size);
-	while ((obj = obj_hash[i]) != NULL) {
-		if (!hashcmp(sha1, obj->oid.hash))
-			break;
-		i++;
-		if (i == obj_hash_size)
-			i = 0;
-	}
-	if (obj && i != first) {
-		/*
-		 * Move object to where we started to look for it so
-		 * that we do not need to walk the hash table the next
-		 * time we look for it.
-		 */
-		struct object *tmp = obj_hash[i];
-		obj_hash[i] = obj_hash[first];
-		obj_hash[first] = tmp;
-	}
-	return obj;
-}
-
-/*
- * Increase the size of the hash map stored in obj_hash to the next
- * power of 2 (but at least 32).  Copy the existing values to the new
- * hash map.
- */
-static void grow_object_hash(void)
-{
-	int i;
-	/*
-	 * Note that this size must always be power-of-2 to match hash_obj
-	 * above.
-	 */
-	int new_hash_size = obj_hash_size < 32 ? 32 : 2 * obj_hash_size;
-	struct object **new_hash;
-
-	new_hash = xcalloc(new_hash_size, sizeof(struct object *));
-	for (i = 0; i < obj_hash_size; i++) {
-		struct object *obj = obj_hash[i];
-		if (!obj)
-			continue;
-		insert_obj_hash(obj, new_hash, new_hash_size);
-	}
-	free(obj_hash);
-	obj_hash = new_hash;
-	obj_hash_size = new_hash_size;
+	return (struct object *)(ret - offsetof(struct object, oid));
 }
 
 void *create_object(const unsigned char *sha1, void *o)
@@ -147,10 +76,8 @@ void *create_object(const unsigned char *sha1, void *o)
 	obj->flags = 0;
 	hashcpy(obj->oid.hash, sha1);
 
-	if (obj_hash_size - 1 <= nr_objs * 2)
-		grow_object_hash();
+	cb_insert(&objects, &obj->oid, 20);
 
-	insert_obj_hash(obj, obj_hash, obj_hash_size);
 	nr_objs++;
 	return obj;
 }
