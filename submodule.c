@@ -434,13 +434,12 @@ static int submodule_needs_pushing(const char *path, struct sha1_array *hashes)
 
 	if (for_each_remote_ref_submodule(path, has_remote, NULL) > 0) {
 		struct child_process cp = CHILD_PROCESS_INIT;
+		struct strbuf buf = STRBUF_INIT;
+		int needs_pushing = 0;
 
 		argv_array_push(&cp.args, "rev-list");
 		sha1_array_for_each_unique(hashes, append_hash_to_argv, &cp.args);
 		argv_array_pushl(&cp.args, "--not", "--remotes", "-n", "1" , NULL);
-
-		struct strbuf buf = STRBUF_INIT;
-		int needs_pushing = 0;
 
 		prepare_submodule_repo_env(&cp.env_array);
 		cp.git_cmd = 1;
