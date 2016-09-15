@@ -252,6 +252,18 @@ Git repository:
 	Use a client spec to find the list of interesting files in p4.
 	See the "CLIENT SPEC" section below.
 
+--checkpoint-period <n>::
+	Issue explicit 'checkpoint' commands to the underlying
+	linkgit:git-fast-import[1] approximately every 'n' seconds. If
+	syncing or cloning from the Perforce server is interrupted, the
+	process can be resumed from the most recent checkpoint with a
+	new 'sync' invocation. This is useful in the situations where a
+	large amount of changes are being imported over an unreliable
+	network connection. Explicit checkpoints can take up to several
+	minutes each, so a suitable value for the checkpoint period is
+	approximately 1200 seconds. By default, no explicit checkpoints 
+	are performed.
+
 -/ <path>::
 	Exclude selected depot paths when cloning or syncing.
 
