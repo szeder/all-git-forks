@@ -154,6 +154,8 @@ test_expect_success 'push recurse-submodules on command line overrides config' '
 		git fetch ../pub.git &&
 		git diff --quiet FETCH_HEAD master &&
 		(cd gar/bage && git diff --quiet origin/master master^) &&
+		# Since this push was executed reset to previous state
+		(git push -f ../pub.git master^:master) &&
 
 		# Ensure that we can override check in the config to
 		# disable submodule recursion entirely (alternative form)
@@ -161,6 +163,8 @@ test_expect_success 'push recurse-submodules on command line overrides config' '
 		git fetch ../pub.git &&
 		git diff --quiet FETCH_HEAD master &&
 		(cd gar/bage && git diff --quiet origin/master master^) &&
+		# Since this push was executed reset to previous state
+		(git push -f ../pub.git master^:master) &&
 
 		# Ensure that we can override check in the config to
 		# push the submodule too
@@ -198,11 +202,15 @@ test_expect_success 'push recurse-submodules last one wins on command line' '
 		git diff --quiet FETCH_HEAD master &&
 		# Check that the submodule commit did not get there
 		(cd gar/bage && git diff --quiet origin/master master^) &&
+		# Since this push was executed reset to previous state
+		(git push -f ../pub.git master^:master) &&
 
 		# should result in "no"
 		git push --recurse-submodules=on-demand --no-recurse-submodules ../pub.git master &&
 		# Check that the submodule commit did not get there
 		(cd gar/bage && git diff --quiet origin/master master^) &&
+		# Since this push was executed reset to previous state
+		(git push -f ../pub.git master^:master) &&
 
 		# But the options in the other order should push the submodule
 		git push --recurse-submodules=check --recurse-submodules=on-demand ../pub.git master &&
@@ -249,9 +257,11 @@ test_expect_success 'push succeeds if submodule commit disabling recursion from 
 		git fetch ../pub.git &&
 		git diff --quiet FETCH_HEAD master &&
 		# But that the submodule commit did not
-		( cd gar/bage && git diff --quiet origin/master master^ ) &&
-		# Now push it to avoid confusing future tests
-		git push --recurse-submodules=on-demand ../pub.git master
+		(cd gar/bage &&
+			git diff --quiet origin/master master^ &&
+			# Now push it to avoid confusing future tests
+			git push
+		)
 	)
 '
 
@@ -271,9 +281,11 @@ test_expect_success 'push succeeds if submodule commit disabling recursion from 
 		git fetch ../pub.git &&
 		git diff --quiet FETCH_HEAD master &&
 		# But that the submodule commit did not
-		( cd gar/bage && git diff --quiet origin/master master^ ) &&
-		# Now push it to avoid confusing future tests
-		git push --recurse-submodules=on-demand ../pub.git master
+		(cd gar/bage &&
+			git diff --quiet origin/master master^ &&
+			# Now push it to avoid confusing future tests
+			git push
+		)
 	)
 '
 

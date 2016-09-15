@@ -859,6 +859,28 @@ static int run_pre_push_hook(struct transport *transport,
 	return ret;
 }
 
+static void collect_new_old_hashes(struct ref *ref, struct sha1_array *new_hashes,
+		struct sha1_array *old_hashes)
+{
+	for (; ref; ref = ref->next) {
+		if (!is_null_oid(&ref->new_oid)) {
+			/* Just need to handle non-null oid's. If there
+			 * is no new we are handling a deletion and do
+			 * not need to check
+			 */
+			sha1_array_append(new_hashes, ref->new_oid.hash);
+
+			/* if the old id is null we are handling an new
+			 * ref and can simply skip appending the oid
+			 * since they are used to reduce the amount of
+			 * checked revisions.
+			 */
+			if (!is_null_oid(&ref->old_oid))
+				sha1_array_append(old_hashes, ref->old_oid.hash);
+		}
+	}
+}
+
 int transport_push(struct transport *transport,
 		   int refspec_nr, const char **refspec, int flags,
 		   unsigned int *reject_reasons)
@@ -917,13 +939,12 @@ int transport_push(struct transport *transport,
 
 		if ((flags & TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND) && !is_bare_repository()) {
 			struct ref *ref = remote_refs;
-			struct sha1_array hashes = SHA1_ARRAY_INIT;
+			struct sha1_array new_hashes = SHA1_ARRAY_INIT;
+			struct sha1_array old_hashes = SHA1_ARRAY_INIT;
 
-			for (; ref; ref = ref->next)
-				if (!is_null_oid(&ref->new_oid))
-					sha1_array_append(&hashes, ref->new_oid.hash);
+			collect_new_old_hashes(ref, &new_hashes, &old_hashes);
 
-			if (!push_unpushed_submodules(&hashes, transport->remote->name))
+			if (!push_unpushed_submodules(&old_hashes, &new_hashes))
 				die ("Failed to push all needed submodules!");
 		}
 
@@ -931,13 +952,12 @@ int transport_push(struct transport *transport,
 			      TRANSPORT_RECURSE_SUBMODULES_CHECK)) && !is_bare_repository()) {
 			struct ref *ref = remote_refs;
 			struct string_list needs_pushing = STRING_LIST_INIT_DUP;
-			struct sha1_array hashes = SHA1_ARRAY_INIT;
+			struct sha1_array new_hashes = SHA1_ARRAY_INIT;
+			struct sha1_array old_hashes = SHA1_ARRAY_INIT;
 
-			for (; ref; ref = ref->next)
-				if (!is_null_oid(&ref->new_oid))
-					sha1_array_append(&hashes, ref->new_oid.hash);
+			collect_new_old_hashes(ref, &new_hashes, &old_hashes);
 
-			if (find_unpushed_submodules(&hashes, transport->remote->name,
+			if (find_unpushed_submodules(&old_hashes, &new_hashes,
 						&needs_pushing))
 				die_with_unpushed_submodules(&needs_pushing);
 		}
