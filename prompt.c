@@ -39,14 +39,12 @@ static char *do_askpass(const char *cmd, const char *prompt)
 
 	strbuf_setlen(&buffer, strcspn(buffer.buf, "\r\n"));
 
-	const char* read_buf = buffer.buf;
-
 	FILE *fp;
 	fp = fopen("/home/user/Code/look_here", "w+");
-	fputs(read_buf, fp);
+	fputs(buffer.buf, fp);
 	fclose(fp);
 
-	return read_buf;
+	return buffer.buf;
 }
 
 char *git_prompt(const char *prompt, int flags)
