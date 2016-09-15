@@ -519,8 +519,8 @@ static void free_submodules_sha1s(struct string_list *submodules)
 	string_list_clear(submodules, 1);
 }
 
-int find_unpushed_submodules(struct sha1_array *hashes,
-		const char *remotes_name, struct string_list *needs_pushing)
+int find_unpushed_submodules(struct sha1_array *old_hashes,
+		struct sha1_array *new_hashes, struct string_list *needs_pushing)
 {
 	struct rev_info rev;
 	struct commit *commit;
@@ -532,9 +532,9 @@ int find_unpushed_submodules(struct sha1_array *hashes,
 
 	/* argv.argv[0] will be ignored by setup_revisions */
 	argv_array_push(&argv, "find_unpushed_submodules");
-	sha1_array_for_each_unique(hashes, append_hash_to_argv, &argv);
+	sha1_array_for_each_unique(new_hashes, append_hash_to_argv, &argv);
 	argv_array_push(&argv, "--not");
-	argv_array_pushf(&argv, "--remotes=%s", remotes_name);
+	sha1_array_for_each_unique(old_hashes, append_hash_to_argv, &argv);
 
 	setup_revisions(argv.argc, argv.argv, &rev, NULL);
 	if (prepare_revision_walk(&rev))
@@ -580,12 +580,12 @@ static int push_submodule(const char *path)
 	return 1;
 }
 
-int push_unpushed_submodules(struct sha1_array *hashes, const char *remotes_name)
+int push_unpushed_submodules(struct sha1_array *old_hashes, struct sha1_array *new_hashes)
 {
 	int i, ret = 1;
 	struct string_list needs_pushing = STRING_LIST_INIT_DUP;
 
-	if (!find_unpushed_submodules(hashes, remotes_name, &needs_pushing))
+	if (!find_unpushed_submodules(old_hashes, new_hashes, &needs_pushing))
 		return 1;
 
 	for (i = 0; i < needs_pushing.nr; i++) {
