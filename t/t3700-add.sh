@@ -331,6 +331,11 @@ test_expect_success 'git add --dry-run --ignore-missing of non-existing file out
 	test_i18ncmp expect.err actual.err
 '
 
+test_expect_success 'git add empty string should invoke warning' '
+	git add "" 2>output &&
+	test_i18ngrep "warning: empty strings" output
+'
+
 test_expect_success 'git add --chmod=[+-]x stages correctly' '
 	rm -f foo1 &&
 	echo foo >foo1 &&
@@ -347,11 +352,6 @@ test_expect_success POSIXPERM,SYMLINKS 'git add --chmod=+x with symlinks' '
 	echo foo >foo2 &&
 	git add --chmod=+x foo2 &&
 	test_mode_in_index 100755 foo2
-'
-
-test_expect_success 'git add empty string should invoke warning' '
-	git add "" 2>output &&
-	test_i18ngrep "warning: empty strings" output
 '
 
 test_expect_success 'git add --chmod=[+-]x changes index with already added file' '
