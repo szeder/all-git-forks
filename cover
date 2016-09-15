@@ -1,3 +1,5 @@
+git-p4: Add --checkpoint-period option to sync/clone
+
 Importing a long history from Perforce into git using the git-p4 tool
 can be especially challenging. The `git p4 clone` operation is based
 on an all-or-nothing transactionality guarantee. Under real-world
@@ -8,37 +10,16 @@ history being imported, the more likely a fault occurs during the
 process. Long enough imports thus become statistically unlikely to ever
 succeed.
 
-I'm looking for feedback on a potential approach for addressing the
-problem. My idea was to leverage the checkpoint feature of git
-fast-import. I've included a patch which exposes a new option to the
-sync/clone commands in the git-p4 tool. The option enables explict
-checkpoints on a periodic basis (approximately every x seconds).
+My idea was to leverage the checkpoint feature of git fast-import.
+I've included a patch which exposes a new option to the sync/clone
+commands in the git-p4 tool. The option enables explict checkpoints on
+a periodic basis (approximately every x seconds).
 
 If the sync/clone command fails during processing of Perforce changes,
 the user can craft a new git p4 sync command that will identify
 changes that have already been imported and proceed with importing
 only changes more recent than the last successful checkpoint.
 
-Assuming this approach makes sense, there are a few questions/items I
-have:
-
-  1. To add tests for this option, I'm thinking I'd need to simulate a
-     Perforce server or client that exits abnormally after first
-     processing some operations successfully. I'm looking for
-     suggestions on sane approaches for implementing that.
-  2. From a usability perspective, I think it makes sense to print
-     out a message upon clone/sync failure if the user has enabled the
-     option. This message would describe how long ago the last
-     successful checkpoint was completed and document what command/s
-     to execute to continue importing Perforce changes. Ideally, the
-     commmand to continue would be exactly the same as the command
-     which failed, but today, clone will ignore any commits already
-     imported to git. There are some lingering TODO comments in
-     git-p4.py suggesting that clone should try to avoid reimporting
-     changes. I don't mind taking a stab at addressing the TODO, but
-     am worried I'll quickly encounter edge cases in the clone/sync
-     features I don't understand.
-  3. This is my first attempt at a git contribution, so I'm definitely
-     looking for feedback on commit messages, etc.
-
-Cheers!
+In v2 of this patch series I've added some basic test scenarios,
+documentation, and did some minor clean up of the implementation
+based on feedback on v1.
