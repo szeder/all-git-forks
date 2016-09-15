@@ -56,6 +56,8 @@ extern const char *typename(unsigned int type);
 extern int type_from_string_gently(const char *str, ssize_t, int gentle);
 #define type_from_string(str) type_from_string_gently(str, -1, 0)
 
+void print_time_spent_resolving_hash_collisions(void);
+
 /*
  * Return the current number of buckets in the object hashmap.
  */

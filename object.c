@@ -5,8 +5,39 @@
 #include "commit.h"
 #include "tag.h"
 
+#include <time.h>
+
 static struct object **obj_hash;
 static int nr_objs, obj_hash_size;
+
+struct timespec caching = {0, 0};
+
+void diff(struct timespec *start, struct timespec *end, struct timespec *dst)
+{
+	if ((end->tv_nsec-start->tv_nsec)<0) {
+		dst->tv_sec = end->tv_sec-start->tv_sec-1;
+		dst->tv_nsec = 1000000000+end->tv_nsec-start->tv_nsec;
+	} else {
+		dst->tv_sec = end->tv_sec-start->tv_sec;
+		dst->tv_nsec = end->tv_nsec-start->tv_nsec;
+	}
+}
+
+void add_time_to(struct timespec *dst, struct timespec *addend)
+{
+	dst->tv_sec += addend->tv_sec;
+	dst->tv_nsec += addend->tv_nsec;
+	while (dst->tv_nsec > 1000000000) {
+		dst->tv_nsec -= 1000000000;
+		dst->tv_sec ++;
+	}
+}
+
+void print_time_spent_resolving_hash_collisions(void)
+{
+	fprintf(stderr, "print_time_spent_resolving_hash_collisions %ld:%9ld\n",
+		(long)caching.tv_sec, (long)caching.tv_nsec);
+}
 
 unsigned int get_max_object_index(void)
 {
@@ -86,11 +117,13 @@ struct object *lookup_object(const unsigned char *sha1)
 {
 	unsigned int i, first;
 	struct object *obj;
+	struct timespec time1, time2, t_diff;
 
 	if (!obj_hash)
 		return NULL;
 
 	first = i = hash_obj(sha1, obj_hash_size);
+	clock_gettime(CLOCK_MONOTONIC, &time1);
 	while ((obj = obj_hash[i]) != NULL) {
 		if (!hashcmp(sha1, obj->oid.hash))
 			break;
@@ -98,6 +131,9 @@ struct object *lookup_object(const unsigned char *sha1)
 		if (i == obj_hash_size)
 			i = 0;
 	}
+	clock_gettime(CLOCK_MONOTONIC, &time2);
+	diff(&time1, &time2, &t_diff);
+	add_time_to(&caching, &t_diff);
 	if (obj && i != first) {
 		/*
 		 * Move object to where we started to look for it so

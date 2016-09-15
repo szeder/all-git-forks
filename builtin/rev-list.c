@@ -412,5 +412,7 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 			printf("%d\n", revs.count_left + revs.count_right);
 	}
 
+	print_time_spent_resolving_hash_collisions();
+
 	return 0;
 }
