@@ -2214,7 +2214,7 @@ static int write_shared_index(struct index_state *istate,
 	return ret;
 }
 
-static const int max_percent_split_change = 20;
+static const int default_max_percent_split_change = 20;
 
 int too_many_not_shared_entries(struct index_state *istate)
 {
@@ -2227,7 +2227,7 @@ int too_many_not_shared_entries(struct index_state *istate)
 			not_shared++;
 	}
 
-	return istate->cache_nr * max_percent_split_change < not_shared * 100;
+	return istate->cache_nr * default_max_percent_split_change < not_shared * 100;
 }
 
 int write_locked_index(struct index_state *istate, struct lock_file *lock,
