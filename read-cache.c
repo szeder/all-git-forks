@@ -2219,6 +2219,20 @@ static const int default_max_percent_split_change = 20;
 int too_many_not_shared_entries(struct index_state *istate)
 {
 	int i, not_shared = 0;
+	int max_split = git_config_get_max_percent_split_change();
+
+	switch (max_split) {
+	case -1:
+		/* not or badly configured: use the default value */
+		max_split = default_max_percent_split_change;
+		break;
+	case 0:
+		return 1; /* 0% means always write a new shares index */
+	case 100:
+		return 0; /* 100% means never write a new shares index */
+	default:
+		; /* do nothing: just use the configured value */
+	}
 
 	/* Count not shared entries */
 	for (i = 0; i < istate->cache_nr; i++) {
@@ -2227,7 +2241,7 @@ int too_many_not_shared_entries(struct index_state *istate)
 			not_shared++;
 	}
 
-	return istate->cache_nr * default_max_percent_split_change < not_shared * 100;
+	return istate->cache_nr * max_split < not_shared * 100;
 }
 
 int write_locked_index(struct index_state *istate, struct lock_file *lock,
