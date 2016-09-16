@@ -108,20 +108,10 @@ static int verify_tag(const char *name, const char *ref,
 {
 	int flags;
 	flags = GPG_VERIFY_VERBOSE;
-
-	if (fmt_pretty) {
-		verify_ref_format(fmt_pretty);
-		struct ref_array_item *ref_item;
-
-		ref_item = new_ref_item(name, sha1, 0);
-		ref_item->kind = FILTER_REFS_TAGS;
-		show_ref_item(ref_item, fmt_pretty, 0);
-		free_ref_item(ref_item);
-
+	if (fmt_pretty)
 		flags = GPG_VERIFY_QUIET;
-	}
 
-	return gpg_verify_tag(sha1, name, flags);
+	return verify_and_format_tag(sha1, name, fmt_pretty, flags);
 }
 
 static int do_sign(struct strbuf *buffer)
@@ -440,8 +430,12 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		die(_("--merged and --no-merged option are only allowed with -l"));
 	if (cmdmode == 'd')
 		return for_each_tag_name(argv, delete_tag);
-	if (cmdmode == 'v')
+	if (cmdmode == 'v') {
+		if (fmt_pretty)
+			verify_ref_format(fmt_pretty);
 		return for_each_tag_name(argv, verify_tag);
+
+	}
 
 	if (msg.given || msgfile) {
 		if (msg.given && msgfile)

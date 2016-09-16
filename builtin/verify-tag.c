@@ -51,23 +51,18 @@ int cmd_verify_tag(int argc, const char **argv, const char *prefix)
 	if (verbose)
 		flags |= GPG_VERIFY_VERBOSE;
 
+	if (fmt_pretty) {
+		verify_ref_format(fmt_pretty);
+		flags |= GPG_VERIFY_QUIET;
+	}
+
 	while (i < argc) {
 		unsigned char sha1[20];
 		const char *name = argv[i++];
 		if (get_sha1(name, sha1))
 			had_error = !!error("tag '%s' not found.", name);
 		else {
-			if (fmt_pretty) {
-				verify_ref_format(fmt_pretty);
-				struct ref_array_item *ref_item;
-				ref_item = new_ref_item(name, sha1, 0);
-				ref_item->kind = FILTER_REFS_TAGS;
-				show_ref_item(ref_item, fmt_pretty, 0);
-				free_ref_item(ref_item);
-				flags |= GPG_VERIFY_QUIET;
-			}
-
-			if (gpg_verify_tag(sha1, name, flags))
+			if (verify_and_format_tag(sha1, name, fmt_pretty, flags))
 				had_error = 1;
 		}
 	}
