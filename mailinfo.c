@@ -54,14 +54,68 @@ static void parse_bogus_from(struct mailinfo *mi, const struct strbuf *line)
 	get_sane_name(&mi->name, &mi->name, &mi->email);
 }
 
+static int unquote_quoted_string(struct strbuf *line)
+{
+	struct strbuf outbuf;
+	const char *in = line->buf;
+	int c, take_next_literally = 0;
+	int found_error = 0;
+	char escape_context=0;
+
+	strbuf_init(&outbuf, line->len);
+
+	while ((c = *in++) != 0) {
+		if (take_next_literally) {
+			take_next_literally = 0;
+		} else {
+			switch (c) {
+			case '"':
+				if (!escape_context)
+					escape_context = '"';
+				else if (escape_context == '"')
+					escape_context = 0;
+				continue;
+			case '\\':
+				if (escape_context) {
+					take_next_literally = 1;
+					continue;
+				}
+				break;
+			case '(':
+				if (!escape_context)
+					escape_context = '(';
+				else if (escape_context == '(')
+					found_error = 1;
+				break;
+			case ')':
+				if (escape_context == '(')
+					escape_context = 0;
+				break;
+			}
+		}
+
+		strbuf_addch(&outbuf, c);
+	}
+
+	strbuf_reset(line);
+	strbuf_addbuf(line, &outbuf);
+	strbuf_release(&outbuf);
+
+	return found_error;
+
+}
+
 static void handle_from(struct mailinfo *mi, const struct strbuf *from)
 {
 	char *at;
 	size_t el;
 	struct strbuf f;
 
+
 	strbuf_init(&f, from->len);
 	strbuf_addbuf(&f, from);
+
+	unquote_quoted_string(&f);
 
 	at = strchr(f.buf, '@');
 	if (!at) {

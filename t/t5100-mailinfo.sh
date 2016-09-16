@@ -142,4 +142,10 @@ test_expect_success 'mailinfo unescapes with --mboxrd' '
 	test_cmp expect mboxrd/msg
 '
 
+test_expect_success 'mailinfo unescapes rfc2822 quoted-string' '
+    mkdir quoted-pair &&
+    git mailinfo /dev/null /dev/null <"$TEST_DIRECTORY"/t5100/quoted-pair.in >quoted-pair/info &&
+    test_cmp "$TEST_DIRECTORY"/t5100/quoted-pair.expect quoted-pair/info
+'
+
 test_done
