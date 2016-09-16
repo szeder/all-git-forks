@@ -340,23 +340,56 @@ static struct strbuf *decode_b_segment(const struct strbuf *b_seg)
 	return out;
 }
 
+/*
+ * Attempts to convert line into UTF-8, storing the result in line.
+ *
+ * This differs from convert_to_utf8 in that conversion non-success is not
+ * considered an error case - mi->input_error is not set, and no error message
+ * is printed.
+ *
+ * If the conversion is unnecessary, returns 0 and stores NULL in old_buf (if
+ * old_buf is not NULL).
+ *
+ * If the conversion is successful, returns 0 and stores the unconverted string
+ * in old_buf and old_len (if they are respectively not NULL).
+ *
+ * If the conversion is unsuccessful, returns -1.
+ */
+static int try_convert_to_utf8(const struct mailinfo *mi, struct strbuf *line,
+			       const char *charset, char **old_buf,
+			       size_t *old_len)
+{
+	char *utf8;
+
+	if (!mi->metainfo_charset || !charset || !*charset ||
+	    same_encoding(mi->metainfo_charset, charset)) {
+		if (old_buf)
+			*old_buf = NULL;
+		return 0;
+	}
+
+	utf8 = reencode_string(line->buf, mi->metainfo_charset, charset);
+	if (utf8) {
+		char *temp = strbuf_detach(line, old_len);
+		if (old_buf)
+			*old_buf = temp;
+		strbuf_attach(line, utf8, strlen(utf8), strlen(utf8));
+		return 0;
+	}
+	return -1;
+}
+
+/*
+ * Converts line into UTF-8, setting mi->input_error to -1 upon failure.
+ */
 static int convert_to_utf8(struct mailinfo *mi,
 			   struct strbuf *line, const char *charset)
 {
-	char *out;
-
-	if (!mi->metainfo_charset || !charset || !*charset)
-		return 0;
-
-	if (same_encoding(mi->metainfo_charset, charset))
-		return 0;
-	out = reencode_string(line->buf, mi->metainfo_charset, charset);
-	if (!out) {
+	if (try_convert_to_utf8(mi, line, charset, NULL, NULL)) {
 		mi->input_error = -1;
 		return error("cannot convert from %s to %s",
 			     charset, mi->metainfo_charset);
 	}
-	strbuf_attach(line, out, strlen(out), strlen(out));
 	return 0;
 }
 
@@ -515,6 +548,13 @@ check_header_out:
 	return ret;
 }
 
+static int check_header_raw(struct mailinfo *mi,
+			    char *buf, size_t len,
+			    struct strbuf *hdr_data[], int overwrite) {
+	const struct strbuf sb = {0, len, buf};
+	return check_header(mi, &sb, hdr_data, overwrite);
+}
+
 static void decode_transfer_encoding(struct mailinfo *mi, struct strbuf *line)
 {
 	struct strbuf *ret;
@@ -623,31 +663,47 @@ static int is_scissors_line(const struct strbuf *line)
 		gap * 2 < perforation);
 }
 
-static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
+static int resembles_rfc2822_header(const struct strbuf *line)
 {
-	assert(!mi->filter_stage);
+	char *c;
 
-	if (mi->header_stage) {
-		if (!line->len || (line->len == 1 && line->buf[0] == '\n'))
+	if (!isalpha(line->buf[0]))
+		return 0;
+
+	for (c = line->buf + 1; *c != 0; c++) {
+		if (*c == ':')
+			return 1;
+		else if (*c != '-' && !isalpha(*c))
 			return 0;
 	}
+	return 0;
+}
 
-	if (mi->use_inbody_headers && mi->header_stage) {
-		mi->header_stage = check_header(mi, line, mi->s_hdr_data, 0);
-		if (mi->header_stage)
-			return 0;
-	} else
-		/* Only trim the first (blank) line of the commit message
-		 * when ignoring in-body headers.
-		 */
-		mi->header_stage = 0;
+static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
+{
+	int ret = 0;
+	int utf8_result;
+	char *old_buf;
+	size_t old_len;
 
-	/* normalize the log message to UTF-8. */
-	if (convert_to_utf8(mi, line, mi->charset.buf))
-		return 0; /* mi->input_error already set */
+	assert(!mi->filter_stage);
 
-	if (mi->use_scissors && is_scissors_line(line)) {
+	/*
+	 * Obtain UTF8 for scissors line and patchbreak checks, but retain the
+	 * undecoded line in case we need to process it as an in-body header.
+	 */
+	utf8_result = try_convert_to_utf8(mi, line, mi->charset.buf, &old_buf,
+					  &old_len);
+
+	if (!utf8_result && mi->use_scissors && is_scissors_line(line)) {
 		int i;
+
+		if (resembles_rfc2822_header(line))
+			/*
+			 * Explicitly reject scissor lines that resemble a RFC
+			 * 2822 header, to avoid being prone to error.
+			 */
+			die("scissors line resembles RFC 2822 header");
 
 		strbuf_setlen(&mi->log_message, 0);
 		mi->header_stage = 1;
@@ -661,18 +717,47 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 				strbuf_release(mi->s_hdr_data[i]);
 			mi->s_hdr_data[i] = NULL;
 		}
-		return 0;
+		goto handle_commit_msg_out;
 	}
-
-	if (patchbreak(line)) {
+	if (!utf8_result && patchbreak(line)) {
 		if (mi->message_id)
 			strbuf_addf(&mi->log_message,
 				    "Message-Id: %s\n", mi->message_id);
-		return 1;
+		ret = 1;
+		goto handle_commit_msg_out;
 	}
 
+	if (mi->header_stage) {
+		char *buf = old_buf ? old_buf : line->buf;
+		if (buf[0] == 0 || (buf[0] == '\n' && buf[1] == 0))
+			goto handle_commit_msg_out;
+	}
+
+	if (mi->use_inbody_headers && mi->header_stage) {
+		char *buf = old_buf ? old_buf : line->buf;
+		size_t len = old_buf ? old_len : line->len;
+		mi->header_stage = check_header_raw(mi, buf, len,
+						    mi->s_hdr_data, 0);
+		if (mi->header_stage)
+			goto handle_commit_msg_out;
+	} else
+		/* Only trim the first (blank) line of the commit message
+		 * when ignoring in-body headers.
+		 */
+		mi->header_stage = 0;
+
+	/* If adding as a log message, conversion to UTF-8 is required. */
+	if (utf8_result) {
+		mi->input_error = -1;
+		error("cannot convert from %s to %s",
+		      mi->charset.buf, mi->metainfo_charset);
+		goto handle_commit_msg_out;
+	}
 	strbuf_addbuf(&mi->log_message, line);
-	return 0;
+
+handle_commit_msg_out:
+	free(old_buf);
+	return ret;
 }
 
 static void handle_patch(struct mailinfo *mi, const struct strbuf *line)
