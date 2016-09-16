@@ -529,8 +529,7 @@ static void emit_line_0(struct diff_options *o, const char *set, const char *res
 
 	if (len == 0) {
 		has_trailing_newline = (first == '\n');
-		has_trailing_carriage_return = (!has_trailing_newline &&
-						(first == '\r'));
+		has_trailing_carriage_return = (first == '\r');
 		nofirst = has_trailing_newline || has_trailing_carriage_return;
 	} else {
 		has_trailing_newline = (len > 0 && line[len-1] == '\n');
