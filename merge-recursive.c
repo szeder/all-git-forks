@@ -382,7 +382,7 @@ static struct string_list *get_unmerged(void)
 		}
 		e = item->util;
 		e->stages[ce_stage(ce)].mode = ce->ce_mode;
-		oidcpy(&e->stages[ce_stage(ce)].oid, &ce->oid);
+		hashcpy(e->stages[ce_stage(ce)].oid.hash, ce->sha1);
 	}
 
 	return unmerged;
@@ -910,9 +910,9 @@ static int merge_3way(struct merge_options *o,
 		name2 = mkpathdup("%s", branch2);
 	}
 
-	read_mmblob(&orig, &one->oid);
-	read_mmblob(&src1, &a->oid);
-	read_mmblob(&src2, &b->oid);
+	read_mmblob(&orig, one->oid.hash);
+	read_mmblob(&src1, a->oid.hash);
+	read_mmblob(&src2, b->oid.hash);
 
 	merge_status = ll_merge(result_buf, a->path, &orig, base_name,
 				&src1, name1, &src2, name2, &ll_opts);

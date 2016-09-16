@@ -173,7 +173,7 @@ struct cache_entry {
 	unsigned int ce_flags;
 	unsigned int ce_namelen;
 	unsigned int index;	/* for link extension */
-	struct object_id oid;
+	unsigned char sha1[20];
 	char name[FLEX_ARRAY]; /* more */
 };
 
@@ -1231,7 +1231,7 @@ extern char *sha1_to_hex(const unsigned char *sha1);	/* static buffer result! */
 extern char *oid_to_hex(const struct object_id *oid);	/* same static buffer as sha1_to_hex */
 
 extern int interpret_branch_name(const char *str, int len, struct strbuf *);
-extern int get_oid_mb(const char *str, struct object_id *oid);
+extern int get_sha1_mb(const char *str, unsigned char *sha1);
 
 extern int validate_headref(const char *ref);
 
@@ -1425,9 +1425,7 @@ extern struct packed_git *parse_pack_index(unsigned char *sha1, const char *idx_
 /* A hook to report invalid files in pack directory */
 #define PACKDIR_FILE_PACK 1
 #define PACKDIR_FILE_IDX 2
-#define PACKDIR_FILE_BITMAP 4
-#define PACKDIR_FILE_KEEP 8
-#define PACKDIR_FILE_GARBAGE 16
+#define PACKDIR_FILE_GARBAGE 4
 extern void (*report_garbage)(unsigned seen_bits, const char *path);
 
 extern void prepare_packed_git(void);
@@ -1580,15 +1578,7 @@ struct object_info {
 		} packed;
 	} u;
 };
-
-/*
- * Initializer for a "struct object_info" that wants no items. You may
- * also memset() the memory to all-zeroes.
- */
-#define OBJECT_INFO_INIT {NULL}
-
 extern int sha1_object_info_extended(const unsigned char *, struct object_info *, unsigned flags);
-extern int packed_object_info(struct packed_git *pack, off_t offset, struct object_info *);
 
 /* Dumb servers support */
 extern int update_server_info(int);

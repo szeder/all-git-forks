@@ -995,35 +995,35 @@ static int interpret_nth_prior_checkout(const char *name, int namelen,
 	return retval;
 }
 
-int get_oid_mb(const char *name, struct object_id *oid)
+int get_sha1_mb(const char *name, unsigned char *sha1)
 {
 	struct commit *one, *two;
 	struct commit_list *mbs;
-	struct object_id oid_tmp;
+	unsigned char sha1_tmp[20];
 	const char *dots;
 	int st;
 
 	dots = strstr(name, "...");
 	if (!dots)
-		return get_oid(name, oid);
+		return get_sha1(name, sha1);
 	if (dots == name)
-		st = get_oid("HEAD", &oid_tmp);
+		st = get_sha1("HEAD", sha1_tmp);
 	else {
 		struct strbuf sb;
 		strbuf_init(&sb, dots - name);
 		strbuf_add(&sb, name, dots - name);
-		st = get_sha1_committish(sb.buf, oid_tmp.hash);
+		st = get_sha1_committish(sb.buf, sha1_tmp);
 		strbuf_release(&sb);
 	}
 	if (st)
 		return st;
-	one = lookup_commit_reference_gently(oid_tmp.hash, 0);
+	one = lookup_commit_reference_gently(sha1_tmp, 0);
 	if (!one)
 		return -1;
 
-	if (get_sha1_committish(dots[3] ? (dots + 3) : "HEAD", oid_tmp.hash))
+	if (get_sha1_committish(dots[3] ? (dots + 3) : "HEAD", sha1_tmp))
 		return -1;
-	two = lookup_commit_reference_gently(oid_tmp.hash, 0);
+	two = lookup_commit_reference_gently(sha1_tmp, 0);
 	if (!two)
 		return -1;
 	mbs = get_merge_bases(one, two);
@@ -1031,7 +1031,7 @@ int get_oid_mb(const char *name, struct object_id *oid)
 		st = -1;
 	else {
 		st = 0;
-		oidcpy(oid, &mbs->item->object.oid);
+		hashcpy(sha1, mbs->item->object.oid.hash);
 	}
 	free_commit_list(mbs);
 	return st;
@@ -1435,7 +1435,7 @@ static int get_sha1_with_context_1(const char *name,
 			    memcmp(ce->name, cp, namelen))
 				break;
 			if (ce_stage(ce) == stage) {
-				hashcpy(sha1, ce->oid.hash);
+				hashcpy(sha1, ce->sha1);
 				oc->mode = ce->ce_mode;
 				free(new_path);
 				return 0;

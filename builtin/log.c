@@ -464,9 +464,9 @@ static void show_tagger(char *buf, int len, struct rev_info *rev)
 	strbuf_release(&out);
 }
 
-static int show_blob_object(const struct object_id *oid, struct rev_info *rev, const char *obj_name)
+static int show_blob_object(const unsigned char *sha1, struct rev_info *rev, const char *obj_name)
 {
-	struct object_id oidc;
+	unsigned char sha1c[20];
 	struct object_context obj_context;
 	char *buf;
 	unsigned long size;
@@ -474,13 +474,13 @@ static int show_blob_object(const struct object_id *oid, struct rev_info *rev, c
 	fflush(rev->diffopt.file);
 	if (!DIFF_OPT_TOUCHED(&rev->diffopt, ALLOW_TEXTCONV) ||
 	    !DIFF_OPT_TST(&rev->diffopt, ALLOW_TEXTCONV))
-		return stream_blob_to_fd(1, oid, NULL, 0);
+		return stream_blob_to_fd(1, sha1, NULL, 0);
 
-	if (get_sha1_with_context(obj_name, 0, oidc.hash, &obj_context))
+	if (get_sha1_with_context(obj_name, 0, sha1c, &obj_context))
 		die(_("Not a valid object name %s"), obj_name);
 	if (!obj_context.path[0] ||
-	    !textconv_object(obj_context.path, obj_context.mode, &oidc, 1, &buf, &size))
-		return stream_blob_to_fd(1, oid, NULL, 0);
+	    !textconv_object(obj_context.path, obj_context.mode, sha1c, 1, &buf, &size))
+		return stream_blob_to_fd(1, sha1, NULL, 0);
 
 	if (!buf)
 		die(_("git show %s: bad file"), obj_name);
@@ -489,15 +489,15 @@ static int show_blob_object(const struct object_id *oid, struct rev_info *rev, c
 	return 0;
 }
 
-static int show_tag_object(const struct object_id *oid, struct rev_info *rev)
+static int show_tag_object(const unsigned char *sha1, struct rev_info *rev)
 {
 	unsigned long size;
 	enum object_type type;
-	char *buf = read_sha1_file(oid->hash, &type, &size);
+	char *buf = read_sha1_file(sha1, &type, &size);
 	int offset = 0;
 
 	if (!buf)
-		return error(_("Could not read object %s"), oid_to_hex(oid));
+		return error(_("Could not read object %s"), sha1_to_hex(sha1));
 
 	assert(type == OBJ_TAG);
 	while (offset < size && buf[offset] != '\n') {
@@ -574,7 +574,7 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 		const char *name = objects[i].name;
 		switch (o->type) {
 		case OBJ_BLOB:
-			ret = show_blob_object(&o->oid, &rev, name);
+			ret = show_blob_object(o->oid.hash, &rev, name);
 			break;
 		case OBJ_TAG: {
 			struct tag *t = (struct tag *)o;
@@ -585,7 +585,7 @@ int cmd_show(int argc, const char **argv, const char *prefix)
 					diff_get_color_opt(&rev.diffopt, DIFF_COMMIT),
 					t->tag,
 					diff_get_color_opt(&rev.diffopt, DIFF_RESET));
-			ret = show_tag_object(&o->oid, &rev);
+			ret = show_tag_object(o->oid.hash, &rev);
 			rev.shown_one = 1;
 			if (ret)
 				break;
@@ -1042,6 +1042,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	diff_flush(&opts);
 
 	fprintf(rev->diffopt.file, "\n");
+	print_signature(rev->diffopt.file);
 }
 
 static const char *clean_message_id(const char *msg_id)
@@ -1247,11 +1248,11 @@ static struct commit *get_base_commit(const char *base_commit,
 		if (upstream) {
 			struct commit_list *base_list;
 			struct commit *commit;
-			struct object_id oid;
+			unsigned char sha1[20];
 
-			if (get_oid(upstream, &oid))
+			if (get_sha1(upstream, sha1))
 				die(_("Failed to resolve '%s' as a valid ref."), upstream);
-			commit = lookup_commit_or_die(oid.hash, "upstream base");
+			commit = lookup_commit_or_die(sha1, "upstream base");
 			base_list = get_merge_bases_many(commit, total, list);
 			/* There should be one and only one merge base. */
 			if (!base_list || base_list->next)
@@ -1338,22 +1339,15 @@ static void prepare_bases(struct base_tree_info *bases,
 	 * and stuff them in bases structure.
 	 */
 	while ((commit = get_revision(&revs)) != NULL) {
-		struct object_id oid;
+		unsigned char sha1[20];
 		struct object_id *patch_id;
 		if (commit->util)
 			continue;
-		switch (commit_patch_id(commit, &diffopt, oid.hash, 0)) {
-		case PATCH_ID_OK:
-			break;
-		case PATCH_ID_NONE:
-			continue;
-		case PATCH_ID_ERROR:
+		if (commit_patch_id(commit, &diffopt, sha1, 0))
 			die(_("cannot get patch id"));
-		}
-
 		ALLOC_GROW(bases->patch_id, bases->nr_patch_id + 1, bases->alloc_patch_id);
 		patch_id = bases->patch_id + bases->nr_patch_id;
-		oidcpy(patch_id, &oid);
+		hashcpy(patch_id->hash, sha1);
 		bases->nr_patch_id++;
 	}
 }
@@ -1634,10 +1628,10 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 			check_head = 1;
 
 		if (check_head) {
-			struct object_id oid;
+			unsigned char sha1[20];
 			const char *ref, *v;
 			ref = resolve_ref_unsafe("HEAD", RESOLVE_REF_READING,
-						 oid.hash, NULL);
+						 sha1, NULL);
 			if (ref && skip_prefix(ref, "refs/heads/", &v))
 				branch_name = xstrdup(v);
 			else
@@ -1726,7 +1720,6 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		make_cover_letter(&rev, use_stdout,
 				  origin, nr, list, branch_name, quiet);
 		print_bases(&bases, rev.diffopt.file);
-		print_signature(rev.diffopt.file);
 		total++;
 		start_number--;
 	}
@@ -1786,13 +1779,13 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		if (!use_stdout)
 			rev.shown_one = 0;
 		if (shown) {
-			print_bases(&bases, rev.diffopt.file);
 			if (rev.mime_boundary)
 				fprintf(rev.diffopt.file, "\n--%s%s--\n\n\n",
 				       mime_boundary_leader,
 				       rev.mime_boundary);
 			else
 				print_signature(rev.diffopt.file);
+			print_bases(&bases, rev.diffopt.file);
 		}
 		if (!use_stdout)
 			fclose(rev.diffopt.file);
@@ -1809,9 +1802,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 
 static int add_pending_commit(const char *arg, struct rev_info *revs, int flags)
 {
-	struct object_id oid;
-	if (get_oid(arg, &oid) == 0) {
-		struct commit *commit = lookup_commit_reference(oid.hash);
+	unsigned char sha1[20];
+	if (get_sha1(arg, sha1) == 0) {
+		struct commit *commit = lookup_commit_reference(sha1);
 		if (commit) {
 			commit->object.flags |= flags;
 			add_pending_object(revs, &commit->object, arg);

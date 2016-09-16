@@ -9,7 +9,6 @@
  */
 #include "cache.h"
 #include "dir.h"
-#include "attr.h"
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
@@ -208,37 +207,6 @@ int within_depth(const char *name, int namelen,
 	return 1;
 }
 
-static int match_attrs(const char *name, int namelen,
-		       const struct pathspec_item *item)
-{
-	int i;
-
-	git_check_attr_counted(name, namelen, item->attr_check);
-	for (i = 0; i < item->attr_match_nr; i++) {
-		const char *value;
-		int matched;
-		enum attr_match_mode match_mode;
-
-		value = item->attr_check->check[i].value;
-		match_mode = item->attr_match[i].match_mode;
-
-		if (ATTR_TRUE(value))
-			matched = (match_mode == MATCH_SET);
-		else if (ATTR_FALSE(value))
-			matched = (match_mode == MATCH_UNSET);
-		else if (ATTR_UNSET(value))
-			matched = (match_mode == MATCH_UNSPECIFIED);
-		else
-			matched = (match_mode == MATCH_VALUE &&
-				   !strcmp(item->attr_match[i].value, value));
-
-		if (!matched)
-			return 0;
-	}
-
-	return 1;
-}
-
 #define DO_MATCH_EXCLUDE   1
 #define DO_MATCH_DIRECTORY 2
 
@@ -292,9 +260,6 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
 	 */
 	if (item->prefix && (item->magic & PATHSPEC_ICASE) &&
 	    strncmp(item->match, name - prefix, item->prefix))
-		return 0;
-
-	if (item->attr_match_nr && !match_attrs(name, namelen, item))
 		return 0;
 
 	/* If the match was just the prefix, we matched */
@@ -560,7 +525,7 @@ static void *read_skip_worktree_file_from_index(const char *path, size_t *size,
 		return NULL;
 	if (!ce_skip_worktree(active_cache[pos]))
 		return NULL;
-	data = read_sha1_file(active_cache[pos]->oid.hash, &type, &sz);
+	data = read_sha1_file(active_cache[pos]->sha1, &type, &sz);
 	if (!data || type != OBJ_BLOB) {
 		free(data);
 		return NULL;
@@ -568,7 +533,7 @@ static void *read_skip_worktree_file_from_index(const char *path, size_t *size,
 	*size = xsize_t(sz);
 	if (sha1_stat) {
 		memset(&sha1_stat->stat, 0, sizeof(sha1_stat->stat));
-		hashcpy(sha1_stat->sha1, active_cache[pos]->oid.hash);
+		hashcpy(sha1_stat->sha1, active_cache[pos]->sha1);
 	}
 	return data;
 }
@@ -748,8 +713,7 @@ static int add_excludes(const char *fname, const char *base, int baselen,
 				 !ce_stage(active_cache[pos]) &&
 				 ce_uptodate(active_cache[pos]) &&
 				 !would_convert_to_git(fname))
-				hashcpy(sha1_stat->sha1,
-					active_cache[pos]->oid.hash);
+				hashcpy(sha1_stat->sha1, active_cache[pos]->sha1);
 			else
 				hash_sha1_file(buf, size, "blob", sha1_stat->sha1);
 			fill_stat_data(&sha1_stat->stat, &st);

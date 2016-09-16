@@ -82,7 +82,7 @@ static int create_file(const char *path, unsigned int mode)
 static void *read_blob_entry(const struct cache_entry *ce, unsigned long *size)
 {
 	enum object_type type;
-	void *new = read_sha1_file(ce->oid.hash, &type, size);
+	void *new = read_sha1_file(ce->sha1, &type, size);
 
 	if (new) {
 		if (type == OBJ_BLOB)
@@ -127,7 +127,7 @@ static int streaming_write_entry(const struct cache_entry *ce, char *path,
 	if (fd < 0)
 		return -1;
 
-	result |= stream_blob_to_fd(fd, &ce->oid, filter, 1);
+	result |= stream_blob_to_fd(fd, ce->sha1, filter, 1);
 	*fstat_done = fstat_output(fd, state, statbuf);
 	result |= close(fd);
 
@@ -148,8 +148,7 @@ static int write_entry(struct cache_entry *ce,
 	struct stat st;
 
 	if (ce_mode_s_ifmt == S_IFREG) {
-		struct stream_filter *filter = get_stream_filter(ce->name,
-								 ce->oid.hash);
+		struct stream_filter *filter = get_stream_filter(ce->name, ce->sha1);
 		if (filter &&
 		    !streaming_write_entry(ce, path, filter,
 					   state, to_tempfile,
@@ -163,7 +162,7 @@ static int write_entry(struct cache_entry *ce,
 		new = read_blob_entry(ce, &size);
 		if (!new)
 			return error("unable to read sha1 file of %s (%s)",
-				path, oid_to_hex(&ce->oid));
+				path, sha1_to_hex(ce->sha1));
 
 		if (ce_mode_s_ifmt == S_IFLNK && has_symlinks && !to_tempfile) {
 			ret = symlink(new, path);

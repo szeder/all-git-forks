@@ -1041,7 +1041,7 @@ The possible behaviours are: ignore, warn, error.")"
 		# placed before the commit of the next action
 		checkout_onto
 
-		warn "$(gettext "You can fix this with 'git rebase --edit-todo' and then run 'git rebase --continue'.")"
+		warn "$(gettext "You can fix this with 'git rebase --edit-todo'.")"
 		die "$(gettext "Or you can abort the rebase with 'git rebase --abort'.")"
 	fi
 }
@@ -1140,6 +1140,9 @@ To continue rebase after editing, run:
 	exit
 	;;
 esac
+
+git var GIT_COMMITTER_IDENT >/dev/null ||
+	die "$(gettext "You need to set your committer info first")"
 
 comment_for_reflog start
 
