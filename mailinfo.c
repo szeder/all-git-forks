@@ -729,8 +729,10 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 
 	if (mi->header_stage) {
 		char *buf = old_buf ? old_buf : line->buf;
-		if (buf[0] == 0 || (buf[0] == '\n' && buf[1] == 0))
+		if (buf[0] == 0 || (buf[0] == '\n' && buf[1] == 0)) {
+			strbuf_reset(&mi->last_inbody_header);
 			goto handle_commit_msg_out;
+		}
 	}
 
 	if (mi->use_inbody_headers && mi->header_stage) {
@@ -738,8 +740,24 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 		size_t len = old_buf ? old_len : line->len;
 		mi->header_stage = check_header_raw(mi, buf, len,
 						    mi->s_hdr_data, 0);
-		if (mi->header_stage)
+		if (mi->header_stage) {
+			strbuf_reset(&mi->last_inbody_header);
+			strbuf_add(&mi->last_inbody_header, buf, len);
 			goto handle_commit_msg_out;
+		}
+
+		if (mi->last_inbody_header.len &&
+		    (buf[0] == ' ' || buf[0] == '\t')) {
+			strbuf_strip_suffix(&mi->last_inbody_header, "\n");
+			strbuf_add(&mi->last_inbody_header, buf, len);
+			mi->header_stage = check_header(mi,
+							&mi->last_inbody_header,
+							mi->s_hdr_data, 1);
+			if (mi->header_stage)
+				goto handle_commit_msg_out;
+		}
+
+		mi->header_stage = 0;
 	} else
 		/* Only trim the first (blank) line of the commit message
 		 * when ignoring in-body headers.
@@ -1086,6 +1104,7 @@ void setup_mailinfo(struct mailinfo *mi)
 	strbuf_init(&mi->email, 0);
 	strbuf_init(&mi->charset, 0);
 	strbuf_init(&mi->log_message, 0);
+	strbuf_init(&mi->last_inbody_header, 0);
 	mi->header_stage = 1;
 	mi->use_inbody_headers = 1;
 	mi->content_top = mi->content;
@@ -1099,6 +1118,7 @@ void clear_mailinfo(struct mailinfo *mi)
 	strbuf_release(&mi->name);
 	strbuf_release(&mi->email);
 	strbuf_release(&mi->charset);
+	strbuf_release(&mi->last_inbody_header);
 	free(mi->message_id);
 
 	for (i = 0; mi->p_hdr_data[i]; i++)

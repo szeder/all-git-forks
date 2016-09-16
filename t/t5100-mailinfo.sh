@@ -11,7 +11,7 @@ test_expect_success 'split sample box' \
 	'git mailsplit -o. "$TEST_DIRECTORY"/t5100/sample.mbox >last &&
 	last=$(cat last) &&
 	echo total is $last &&
-	test $(cat last) = 17'
+	test $(cat last) = 18'
 
 check_mailinfo () {
 	mail=$1 opt=$2
@@ -51,7 +51,7 @@ test_expect_success 'split box with rfc2047 samples' \
 	echo total is $last &&
 	test $(cat rfc2047/last) = 11'
 
-for mail in rfc2047/00*
+for mail in rfc2047/0001
 do
 	test_expect_success "mailinfo $mail" '
 		git mailinfo -u $mail-msg $mail-patch <$mail >$mail-info &&
