@@ -110,7 +110,7 @@ static int verify_tag(const char *name, const char *ref,
 	flags = GPG_VERIFY_VERBOSE;
 
 	if (fmt_pretty) {
-		//verify_ref_format(fmt_pretty);
+		verify_ref_format(fmt_pretty);
 		struct ref_array_item *ref_item;
 
 		ref_item = new_ref_item(name, sha1, 0);
