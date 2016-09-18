@@ -5,6 +5,7 @@
 /test-delta
 /test-dump-cache-tree
 /test-dump-split-index
+/test-dump-s-i-info
 /test-dump-untracked-cache
 /test-fake-ssh
 /test-scrap-cache-tree
