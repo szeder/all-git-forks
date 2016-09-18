@@ -1,15 +1,23 @@
 #include "cache.h"
 
 static const char usage_str[] = "(write|delete|read) <args>...";
+static const char write_usage_str[] = "write <shared-index> <path>";
 
 static void write_s_i_info(int ac, const char **av)
 {
-	int i;
+	const char *shared_index;
+	const char *path;
 
-	printf("writing args (ac: %d):\n", ac);
-	for (i = 2; i < ac; i++) {
-		printf("av[%d]: %s\n", i, av[i]);
-	}
+	if (ac != 4)
+		die("%s\nusage: %s %s",
+		    "write command requires exactly 2 arguments",
+		    av[0], write_usage_str);
+
+	shared_index = av[2];
+	path = av[3];
+
+	printf("writing shared_index: %s\n", shared_index);
+	printf("writing path: %s\n", path);
 }
 
 static void show_args(int ac, const char **av)
