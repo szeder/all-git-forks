@@ -1,7 +1,8 @@
 #include "cache.h"
 
-static const char usage_str[] = "(write|delete|read) <args>...";
+static const char usage_str[] = "(write|delete|list|read) <args>...";
 static const char write_usage_str[] = "write <shared-index> <path>";
+static const char delete_usage_str[] = "delete <shared-index> <path>";
 
 static void sha1_from_path(unsigned char *sha1, const char *path)
 {
@@ -63,6 +64,28 @@ static void handle_write_command(int ac, const char **av)
 	write_s_i_info(av[2], av[3]);
 }
 
+static void delete_s_i_info(const char *shared_index, const char *path)
+{
+	struct strbuf s_i_info = STRBUF_INIT;
+
+	s_i_info_filename(&s_i_info, shared_index, path);
+
+	if (unlink(s_i_info.buf))
+		die_errno("unable to unlink: %s", s_i_info.buf);
+
+	strbuf_release(&s_i_info);
+}
+
+static void handle_delete_command(int ac, const char **av)
+{
+	if (ac != 4)
+		die("%s\nusage: %s %s",
+		    "delete command requires exactly 2 arguments",
+		    av[0], delete_usage_str);
+
+	delete_s_i_info(av[2], av[3]);
+}
+
 static void show_args(int ac, const char **av)
 {
 	int i;
@@ -83,6 +106,8 @@ int cmd_main(int ac, const char **av)
 
 	if (!strcmp(command, "write"))
 		handle_write_command(ac, av);
+	else if (!strcmp(command, "delete"))
+		handle_delete_command(ac, av);
 	else
 		show_args(ac, av);
 
