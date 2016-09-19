@@ -3,6 +3,9 @@
 static const char usage_str[] = "(write|delete|list|read) <args>...";
 static const char write_usage_str[] = "write <shared-index> <path>";
 static const char delete_usage_str[] = "delete <shared-index> <path>";
+static const char list_usage_str[] = "list <shared-index>";
+
+#define SHAREDINDEX_INFO "sharedindex-info"
 
 static void sha1_from_path(unsigned char *sha1, const char *path)
 {
@@ -18,7 +21,7 @@ static void s_i_info_filename(struct strbuf *sb, const char *shared_index, const
 	unsigned char path_sha1[GIT_SHA1_RAWSZ];
 
 	sha1_from_path(path_sha1, path);
-	strbuf_git_path(sb, "sharedindex-info/%s-%s",
+	strbuf_git_path(sb, SHAREDINDEX_INFO "/%s-%s",
 			shared_index, sha1_to_hex(path_sha1));
 }
 
@@ -86,6 +89,56 @@ static void handle_delete_command(int ac, const char **av)
 	delete_s_i_info(av[2], av[3]);
 }
 
+static void read_from_s_i_info_filename(struct strbuf *sb, const char *filename)
+{
+	const char *path = git_path(SHAREDINDEX_INFO "/%s", filename);
+
+	if (strbuf_read_file(sb, path, 0) < 0)
+		die_errno(_("could not read '%s'"), path);
+}
+
+static void list_s_i_info(const char *shared_index, struct string_list *paths)
+{
+	struct dirent *de;
+	DIR *dir = opendir(git_path(SHAREDINDEX_INFO));
+
+	if (!dir) {
+		if (errno == ENOENT)
+			return;
+		die_errno("could not open directory '%s'",
+			  git_path(SHAREDINDEX_INFO));
+	}
+
+	while ((de = readdir(dir)) != NULL) {
+		if (starts_with(de->d_name, shared_index)) {
+			struct strbuf index_path = STRBUF_INIT;
+			read_from_s_i_info_filename(&index_path, de->d_name);
+			string_list_append(paths, strbuf_detach(&index_path, NULL));
+		}
+	}
+	closedir(dir);
+}
+
+static void handle_list_command(int ac, const char **av)
+{
+	struct string_list paths = STRING_LIST_INIT_NODUP;
+	struct string_list_item *item;
+
+	if (ac != 3)
+		die("%s\nusage: %s %s",
+		    "list command requires exactly 1 argument",
+		    av[0], list_usage_str);
+
+	list_s_i_info(av[2], &paths);
+
+	printf("index paths:\n\n");
+	for_each_string_list_item(item, &paths) {
+		printf("%s", item->string);
+	}
+
+	string_list_clear(&paths, 0);
+}
+
 static void show_args(int ac, const char **av)
 {
 	int i;
@@ -108,6 +161,8 @@ int cmd_main(int ac, const char **av)
 		handle_write_command(ac, av);
 	else if (!strcmp(command, "delete"))
 		handle_delete_command(ac, av);
+	else if (!strcmp(command, "list"))
+		handle_list_command(ac, av);
 	else
 		show_args(ac, av);
 
