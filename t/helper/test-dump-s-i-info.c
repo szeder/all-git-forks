@@ -12,20 +12,10 @@ static void sha1_from_path(unsigned char *sha1, const char *path)
 	git_SHA1_Final(sha1, &ctx);
 }
 
-static void write_s_i_info(int ac, const char **av)
+static void write_s_i_info(const char *shared_index, const char *path)
 {
-	const char *shared_index;
-	const char *path;
 	unsigned char path_sha1[GIT_SHA1_RAWSZ];
 	struct strbuf s_i_info = STRBUF_INIT;
-
-	if (ac != 4)
-		die("%s\nusage: %s %s",
-		    "write command requires exactly 2 arguments",
-		    av[0], write_usage_str);
-
-	shared_index = av[2];
-	path = av[3];
 
 	sha1_from_path(path_sha1, path);
 
@@ -55,12 +45,17 @@ static void write_s_i_info(int ac, const char **av)
 
 	write_file(s_i_info.buf, "%s", path);
 
-	printf("writing shared_index: %s\n", shared_index);
-	printf("writing path: %s\n", path);
-	printf("writing path sha1: %s\n", sha1_to_hex(path_sha1));
-	printf("writing shared index info file: %s\n", s_i_info.buf);
-
 	strbuf_release(&s_i_info);
+}
+
+static void handle_write_command(int ac, const char **av)
+{
+	if (ac != 4)
+		die("%s\nusage: %s %s",
+		    "write command requires exactly 2 arguments",
+		    av[0], write_usage_str);
+
+	write_s_i_info(av[2], av[3]);
 }
 
 static void show_args(int ac, const char **av)
@@ -82,7 +77,7 @@ int cmd_main(int ac, const char **av)
 	command = av[1];
 
 	if (!strcmp(command, "write"))
-		write_s_i_info(ac, av);
+		handle_write_command(ac, av);
 	else
 		show_args(ac, av);
 
