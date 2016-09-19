@@ -3322,7 +3322,7 @@ void diff_setup_done(struct diff_options *options)
 	if (options->output_format & DIFF_FORMAT_NO_OUTPUT)
 		count++;
 	if (count > 1)
-		die("--name-only, --name-status, --check and -s are mutually exclusive");
+		die(_("--name-only, --name-status, --check and -s are mutually exclusive"));
 
 	/*
 	 * Most of the time we can say "there are changes"
@@ -3518,7 +3518,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				width = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-width' requires a value");
+				die(_("Option '--stat-width' requires a value"));
 			else if (!*arg) {
 				width = strtoul(av[1], &end, 10);
 				argcount = 2;
@@ -3527,7 +3527,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				name_width = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-name-width' requires a value");
+				die(_("Option '--stat-name-width' requires a value"));
 			else if (!*arg) {
 				name_width = strtoul(av[1], &end, 10);
 				argcount = 2;
@@ -3536,7 +3536,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				graph_width = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-graph-width' requires a value");
+				die(_("Option '--stat-graph-width' requires a value"));
 			else if (!*arg) {
 				graph_width = strtoul(av[1], &end, 10);
 				argcount = 2;
@@ -3545,7 +3545,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				count = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-count' requires a value");
+				die(_("Option '--stat-count' requires a value"));
 			else if (!*arg) {
 				count = strtoul(av[1], &end, 10);
 				argcount = 2;
