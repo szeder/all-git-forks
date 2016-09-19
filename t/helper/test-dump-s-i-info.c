@@ -12,15 +12,20 @@ static void sha1_from_path(unsigned char *sha1, const char *path)
 	git_SHA1_Final(sha1, &ctx);
 }
 
-static void write_s_i_info(const char *shared_index, const char *path)
+static void s_i_info_filename(struct strbuf *sb, const char *shared_index, const char *path)
 {
 	unsigned char path_sha1[GIT_SHA1_RAWSZ];
-	struct strbuf s_i_info = STRBUF_INIT;
 
 	sha1_from_path(path_sha1, path);
-
-	strbuf_git_path(&s_i_info, "sharedindex-info/%s-%s",
+	strbuf_git_path(sb, "sharedindex-info/%s-%s",
 			shared_index, sha1_to_hex(path_sha1));
+}
+
+static void write_s_i_info(const char *shared_index, const char *path)
+{
+	struct strbuf s_i_info = STRBUF_INIT;
+
+	s_i_info_filename(&s_i_info, shared_index, path);
 
 	switch (safe_create_leading_directories(s_i_info.buf))
 	{
