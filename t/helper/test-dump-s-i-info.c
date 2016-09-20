@@ -19,18 +19,6 @@ static void handle_write_command(int ac, const char **av)
 	write_split_index_canary(av[2], av[3]);
 }
 
-static void delete_s_i_info(const char *shared_index, const char *path)
-{
-	struct strbuf s_i_info = STRBUF_INIT;
-
-	split_index_canary_filename(&s_i_info, shared_index, path);
-
-	if (unlink(s_i_info.buf) && (errno != ENOENT))
-		die_errno("unable to unlink: %s", s_i_info.buf);
-
-	strbuf_release(&s_i_info);
-}
-
 static void handle_delete_command(int ac, const char **av)
 {
 	if (ac != 4)
@@ -38,7 +26,7 @@ static void handle_delete_command(int ac, const char **av)
 		    "delete command requires exactly 2 arguments",
 		    av[0], delete_usage_str);
 
-	delete_s_i_info(av[2], av[3]);
+	delete_split_index_canary(av[2], av[3]);
 }
 
 static void read_s_i_info_into_list(const char *filename, struct string_list *paths)
