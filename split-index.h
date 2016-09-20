@@ -70,4 +70,9 @@ void remove_split_index(struct index_state *istate);
  * creating the split-index file.
  */
 
+void s_i_info_filename(struct strbuf *sb,
+		       const char *shared_index,
+		       const char *path);
+void write_s_i_info(const char *shared_index, const char *path);
+
 #endif
