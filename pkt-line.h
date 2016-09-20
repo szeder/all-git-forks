@@ -86,6 +86,7 @@ ssize_t read_packetized_to_buf(int fd_in, struct strbuf *sb_out);
 
 #define DEFAULT_PACKET_MAX 1000
 #define LARGE_PACKET_MAX 65520
+#define PKTLINE_DATA_MAXLEN (LARGE_PACKET_MAX - 4)
 extern char packet_buffer[LARGE_PACKET_MAX];
 
 #endif
