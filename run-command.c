@@ -6,6 +6,19 @@
 #include "thread-utils.h"
 #include "strbuf.h"
 
+void check_pipe(int err)
+{
+	if (err == EPIPE) {
+		if (in_async())
+			async_exit(141);
+
+		signal(SIGPIPE, SIG_DFL);
+		raise(SIGPIPE);
+		/* Should never happen, but just in case... */
+		exit(141);
+	}
+}
+
 void child_process_init(struct child_process *child)
 {
 	memset(child, 0, sizeof(*child));
