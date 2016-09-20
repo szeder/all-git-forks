@@ -396,3 +396,14 @@ void write_s_i_info(const char *shared_index, const char *path)
 	strbuf_release(&s_i_info);
 }
 
+void delete_s_i_info(const char *shared_index, const char *path)
+{
+	struct strbuf s_i_info = STRBUF_INIT;
+
+	s_i_info_filename(&s_i_info, shared_index, path);
+
+	if (unlink(s_i_info.buf) && (errno != ENOENT))
+		die_errno("unable to unlink: %s", s_i_info.buf);
+
+	strbuf_release(&s_i_info);
+}
