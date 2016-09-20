@@ -39,5 +39,6 @@ void s_i_info_filename(struct strbuf *sb,
 		       const char *shared_index,
 		       const char *path);
 void write_s_i_info(const char *shared_index, const char *path);
+void delete_s_i_info(const char *shared_index, const char *path);
 
 #endif
