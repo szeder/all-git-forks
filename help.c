@@ -105,7 +105,16 @@ static int is_executable(const char *name)
 		return 0;
 
 #if defined(GIT_WINDOWS_NATIVE)
-{	/* cannot trust the executable bit, peek into the file instead */
+	/* On Windows we cannot use the executable bit. The executable
+	 * state is determined by extension only. We do this first
+	 * because with virus scanners opening an executeable for
+	 * reading is potentially expensive.
+	 */
+	if (ends_with(name, ".exe"))
+		return S_IXUSR;
+
+{	/* now that we know it does not have an executable extension,
+	   peek into the file instead */
 	char buf[3] = { 0 };
 	int n;
 	int fd = open(name, O_RDONLY);
@@ -113,8 +122,8 @@ static int is_executable(const char *name)
 	if (fd >= 0) {
 		n = read(fd, buf, 2);
 		if (n == 2)
-			/* DOS executables start with "MZ" */
-			if (!strcmp(buf, "#!") || !strcmp(buf, "MZ"))
+			/* look for a she-bang */
+			if (!strcmp(buf, "#!"))
 				st.st_mode |= S_IXUSR;
 		close(fd);
 	}
@@ -414,6 +423,8 @@ const char *help_unknown_cmd(const char *cmd)
 
 int cmd_version(int argc, const char **argv, const char *prefix)
 {
+	static char build_platform[] = GIT_BUILD_PLATFORM;
+
 	/*
 	 * The format of this string should be kept stable for compatibility
 	 * with external projects that rely on the output of "git version".
@@ -422,6 +433,7 @@ int cmd_version(int argc, const char **argv, const char *prefix)
 	while (*++argv) {
 		if (!strcmp(*argv, "--build-options")) {
 			printf("sizeof-long: %d\n", (int)sizeof(long));
+			printf("machine: %s\n", build_platform);
 			/* NEEDSWORK: also save and output GIT-BUILD_OPTIONS? */
 		}
 	}
