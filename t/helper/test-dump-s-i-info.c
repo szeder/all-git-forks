@@ -1,4 +1,5 @@
 #include "cache.h"
+#include "split-index.h"
 
 static const char usage_str[] = "(write|delete|list|read) <args>...";
 static const char write_usage_str[] = "write <shared-index> <path>";
@@ -8,56 +9,6 @@ static const char read_usage_str[] = "read <shared-index> <path>";
 
 #define SHAREDINDEX_INFO "sharedindex-info"
 
-static void sha1_from_path(unsigned char *sha1, const char *path)
-{
-	git_SHA_CTX ctx;
-
-	git_SHA1_Init(&ctx);
-	git_SHA1_Update(&ctx, path, strlen(path));
-	git_SHA1_Final(sha1, &ctx);
-}
-
-static void s_i_info_filename(struct strbuf *sb, const char *shared_index, const char *path)
-{
-	unsigned char path_sha1[GIT_SHA1_RAWSZ];
-
-	sha1_from_path(path_sha1, path);
-	strbuf_git_path(sb, SHAREDINDEX_INFO "/%s-%s",
-			shared_index, sha1_to_hex(path_sha1));
-}
-
-static void write_s_i_info(const char *shared_index, const char *path)
-{
-	struct strbuf s_i_info = STRBUF_INIT;
-
-	s_i_info_filename(&s_i_info, shared_index, path);
-
-	switch (safe_create_leading_directories(s_i_info.buf))
-	{
-	case SCLD_OK:
-		break; /* success */
-	case SCLD_EXISTS:
-		die("unable to create directory for '%s' "
-		    "as a file with the same name as a directory already exists",
-		    s_i_info.buf);
-	case SCLD_VANISHED:
-		die("unable to create directory for '%s' "
-		    "as an underlying directory was just pruned; "
-		    "maybe try again?",
-		    s_i_info.buf);
-	case SCLD_PERMS:
-		die("unable to create directory for '%s' "
-		    "because of permission problems",
-		    s_i_info.buf);
-	default:
-		die("unable to create directory for '%s'", s_i_info.buf);
-	}
-
-	write_file(s_i_info.buf, "%s", path);
-
-	strbuf_release(&s_i_info);
-}
-
 static void handle_write_command(int ac, const char **av)
 {
 	if (ac != 4)
@@ -65,14 +16,14 @@ static void handle_write_command(int ac, const char **av)
 		    "write command requires exactly 2 arguments",
 		    av[0], write_usage_str);
 
-	write_s_i_info(av[2], av[3]);
+	write_split_index_canary(av[2], av[3]);
 }
 
 static void delete_s_i_info(const char *shared_index, const char *path)
 {
 	struct strbuf s_i_info = STRBUF_INIT;
 
-	s_i_info_filename(&s_i_info, shared_index, path);
+	split_index_canary_filename(&s_i_info, shared_index, path);
 
 	if (unlink(s_i_info.buf) && (errno != ENOENT))
 		die_errno("unable to unlink: %s", s_i_info.buf);
@@ -145,7 +96,7 @@ static void read_s_i_info(struct strbuf *sb,
 {
 	struct strbuf s_i_info = STRBUF_INIT;
 
-	s_i_info_filename(&s_i_info, shared_index, path);
+	split_index_canary_filename(&s_i_info, shared_index, path);
 
 	if (strbuf_read_file(sb, s_i_info.buf, 0) < 0)
 		die_errno(_("could not read '%s'"), s_i_info.buf);
