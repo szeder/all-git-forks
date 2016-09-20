@@ -2184,9 +2184,18 @@ static int write_split_index(struct index_state *istate,
 			     unsigned flags)
 {
 	int ret;
+	const char *filename = get_tempfile_path(&lock->tempfile);
+	struct split_index *si = istate->split_index;
+
+	if (!si)
+		die ("BUG: writing split-index with no split index");
+
+	write_split_index_canary(sha1_to_hex(si->base_sha1), filename);
+
 	prepare_to_write_split_index(istate);
 	ret = do_write_locked_index(istate, lock, flags);
 	finish_writing_split_index(istate);
+
 	return ret;
 }
 
