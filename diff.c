@@ -27,6 +27,7 @@
 #endif
 
 static int diff_detect_rename_default;
+static int diff_indent_heuristic; /* experimental */
 static int diff_compaction_heuristic; /* experimental */
 static int diff_rename_limit_default = 400;
 static int diff_suppress_blank_empty;
@@ -177,6 +178,21 @@ void init_diff_ui_defaults(void)
 	diff_detect_rename_default = 1;
 }
 
+int git_diff_heuristic_config(const char *var, const char *value, void *cb)
+{
+	if (!strcmp(var, "diff.indentheuristic")) {
+		diff_indent_heuristic = git_config_bool(var, value);
+		if (diff_indent_heuristic)
+			diff_compaction_heuristic = 0;
+	}
+	if (!strcmp(var, "diff.compactionheuristic")) {
+		diff_compaction_heuristic = git_config_bool(var, value);
+		if (diff_compaction_heuristic)
+			diff_indent_heuristic = 0;
+	}
+	return 0;
+}
+
 int git_diff_ui_config(const char *var, const char *value, void *cb)
 {
 	if (!strcmp(var, "diff.color") || !strcmp(var, "color.diff")) {
@@ -191,10 +207,6 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 	}
 	if (!strcmp(var, "diff.renames")) {
 		diff_detect_rename_default = git_config_rename(var, value);
-		return 0;
-	}
-	if (!strcmp(var, "diff.compactionheuristic")) {
-		diff_compaction_heuristic = git_config_bool(var, value);
 		return 0;
 	}
 	if (!strcmp(var, "diff.autorefreshindex")) {
@@ -237,6 +249,8 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (git_diff_heuristic_config(var, value, cb) < 0)
+		return -1;
 	if (git_color_config(var, value, cb) < 0)
 		return -1;
 
@@ -2703,7 +2717,7 @@ static int reuse_worktree_file(const char *name, const unsigned char *sha1, int 
 	 * This is not the sha1 we are looking for, or
 	 * unreusable because it is not a regular file.
 	 */
-	if (hashcmp(sha1, ce->sha1) || !S_ISREG(ce->ce_mode))
+	if (hashcmp(sha1, ce->oid.hash) || !S_ISREG(ce->ce_mode))
 		return 0;
 
 	/*
@@ -3296,7 +3310,9 @@ void diff_setup(struct diff_options *options)
 	options->use_color = diff_use_color_default;
 	options->detect_rename = diff_detect_rename_default;
 	options->xdl_opts |= diff_algorithm;
-	if (diff_compaction_heuristic)
+	if (diff_indent_heuristic)
+		DIFF_XDL_SET(options, INDENT_HEURISTIC);
+	else if (diff_compaction_heuristic)
 		DIFF_XDL_SET(options, COMPACTION_HEURISTIC);
 
 	options->orderfile = diff_order_file_cfg;
@@ -3325,7 +3341,7 @@ void diff_setup_done(struct diff_options *options)
 	if (options->output_format & DIFF_FORMAT_NO_OUTPUT)
 		count++;
 	if (count > 1)
-		die("--name-only, --name-status, --check and -s are mutually exclusive");
+		die(_("--name-only, --name-status, --check and -s are mutually exclusive"));
 
 	/*
 	 * Most of the time we can say "there are changes"
@@ -3521,7 +3537,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				width = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-width' requires a value");
+				die(_("Option '--stat-width' requires a value"));
 			else if (!*arg) {
 				width = strtoul(av[1], &end, 10);
 				argcount = 2;
@@ -3530,7 +3546,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				name_width = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-name-width' requires a value");
+				die(_("Option '--stat-name-width' requires a value"));
 			else if (!*arg) {
 				name_width = strtoul(av[1], &end, 10);
 				argcount = 2;
@@ -3539,7 +3555,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				graph_width = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-graph-width' requires a value");
+				die(_("Option '--stat-graph-width' requires a value"));
 			else if (!*arg) {
 				graph_width = strtoul(av[1], &end, 10);
 				argcount = 2;
@@ -3548,7 +3564,7 @@ static int stat_opt(struct diff_options *options, const char **av)
 			if (*arg == '=')
 				count = strtoul(arg + 1, &end, 10);
 			else if (!*arg && !av[1])
-				die("Option '--stat-count' requires a value");
+				die(_("Option '--stat-count' requires a value"));
 			else if (!*arg) {
 				count = strtoul(av[1], &end, 10);
 				argcount = 2;
@@ -3818,9 +3834,15 @@ int diff_opt_parse(struct diff_options *options,
 		DIFF_XDL_SET(options, IGNORE_WHITESPACE_AT_EOL);
 	else if (!strcmp(arg, "--ignore-blank-lines"))
 		DIFF_XDL_SET(options, IGNORE_BLANK_LINES);
-	else if (!strcmp(arg, "--compaction-heuristic"))
+	else if (!strcmp(arg, "--indent-heuristic")) {
+		DIFF_XDL_SET(options, INDENT_HEURISTIC);
+		DIFF_XDL_CLR(options, COMPACTION_HEURISTIC);
+	} else if (!strcmp(arg, "--no-indent-heuristic"))
+		DIFF_XDL_CLR(options, INDENT_HEURISTIC);
+	else if (!strcmp(arg, "--compaction-heuristic")) {
 		DIFF_XDL_SET(options, COMPACTION_HEURISTIC);
-	else if (!strcmp(arg, "--no-compaction-heuristic"))
+		DIFF_XDL_CLR(options, INDENT_HEURISTIC);
+	} else if (!strcmp(arg, "--no-compaction-heuristic"))
 		DIFF_XDL_CLR(options, COMPACTION_HEURISTIC);
 	else if (!strcmp(arg, "--patience"))
 		options->xdl_opts = DIFF_WITH_ALG(options, PATIENCE_DIFF);

@@ -461,6 +461,7 @@ CURL_CONFIG = curl-config
 PTHREAD_LIBS = -lpthread
 PTHREAD_CFLAGS =
 GCOV = gcov
+SPATCH = spatch
 
 export TCL_PATH TCLTK_PATH
 
@@ -696,6 +697,7 @@ LIB_OBJS += abspath.o
 LIB_OBJS += advice.o
 LIB_OBJS += alias.o
 LIB_OBJS += alloc.o
+LIB_OBJS += apply.o
 LIB_OBJS += archive.o
 LIB_OBJS += archive-tar.o
 LIB_OBJS += archive-zip.o
@@ -2307,6 +2309,18 @@ check: common-cmds.h
 		exit 1; \
 	fi
 
+C_SOURCES = $(patsubst %.o,%.c,$(C_OBJ))
+%.cocci.patch: %.cocci $(C_SOURCES)
+	@echo '    ' SPATCH $<; \
+	for f in $(C_SOURCES); do \
+		$(SPATCH) --sp-file $< $$f; \
+	done >$@ 2>$@.log; \
+	if test -s $@; \
+	then \
+		echo '    ' SPATCH result: $@; \
+	fi
+coccicheck: $(patsubst %.cocci,%.cocci.patch,$(wildcard contrib/coccinelle/*.cocci))
+
 ### Installation rules
 
 ifneq ($(filter /%,$(firstword $(template_dir))),)
@@ -2498,6 +2512,7 @@ clean: profile-clean coverage-clean
 	$(RM) -r $(GIT_TARNAME) .doc-tmp-dir
 	$(RM) $(GIT_TARNAME).tar.gz git-core_$(GIT_VERSION)-*.tar.gz
 	$(RM) $(htmldocs).tar.gz $(manpages).tar.gz
+	$(RM) contrib/coccinelle/*.cocci.patch*
 	$(MAKE) -C Documentation/ clean
 ifndef NO_PERL
 	$(MAKE) -C gitweb clean
