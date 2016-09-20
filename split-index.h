@@ -34,4 +34,10 @@ void discard_split_index(struct index_state *istate);
 void add_split_index(struct index_state *istate);
 void remove_split_index(struct index_state *istate);
 
+/* Tracking info for deleting old share index files */
+void s_i_info_filename(struct strbuf *sb,
+		       const char *shared_index,
+		       const char *path);
+void write_s_i_info(const char *shared_index, const char *path);
+
 #endif
