@@ -368,11 +368,11 @@ static void wt_longstatus_print_change_data(struct wt_status *s,
 		if (d->new_submodule_commits || d->dirty_submodule) {
 			strbuf_addstr(&extra, " (");
 			if (d->new_submodule_commits)
-				strbuf_addstr(&extra, _("new commits, "));
+				strbuf_addf(&extra, _("new commits, "));
 			if (d->dirty_submodule & DIRTY_SUBMODULE_MODIFIED)
-				strbuf_addstr(&extra, _("modified content, "));
+				strbuf_addf(&extra, _("modified content, "));
 			if (d->dirty_submodule & DIRTY_SUBMODULE_UNTRACKED)
-				strbuf_addstr(&extra, _("untracked content, "));
+				strbuf_addf(&extra, _("untracked content, "));
 			strbuf_setlen(&extra, extra.len - 2);
 			strbuf_addch(&extra, ')');
 		}
@@ -624,7 +624,7 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 			d->index_status = DIFF_STATUS_ADDED;
 			/* Leave {mode,oid}_head zero for adds. */
 			d->mode_index = ce->ce_mode;
-			hashcpy(d->oid_index.hash, ce->oid.hash);
+			hashcpy(d->oid_index.hash, ce->sha1);
 		}
 	}
 }
@@ -2094,7 +2094,7 @@ static void wt_porcelain_v2_print_unmerged_entry(
 		if (strcmp(ce->name, it->string) || !stage)
 			break;
 		stages[stage - 1].mode = ce->ce_mode;
-		hashcpy(stages[stage - 1].oid.hash, ce->oid.hash);
+		hashcpy(stages[stage - 1].oid.hash, ce->sha1);
 		sum |= (1 << (stage - 1));
 	}
 	if (sum != d->stagemask)
@@ -2214,14 +2214,13 @@ void wt_status_print(struct wt_status *s)
 /**
  * Returns 1 if there are unstaged changes, 0 otherwise.
  */
-int has_unstaged_changes(int ignore_submodules)
+static int has_unstaged_changes(void)
 {
 	struct rev_info rev_info;
 	int result;
 
 	init_revisions(&rev_info, NULL);
-	if (ignore_submodules)
-		DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
+	DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
 	DIFF_OPT_SET(&rev_info.diffopt, QUICK);
 	diff_setup_done(&rev_info.diffopt);
 	result = run_diff_files(&rev_info, 0);
@@ -2231,7 +2230,7 @@ int has_unstaged_changes(int ignore_submodules)
 /**
  * Returns 1 if there are uncommitted changes, 0 otherwise.
  */
-int has_uncommitted_changes(int ignore_submodules)
+static int has_uncommitted_changes(void)
 {
 	struct rev_info rev_info;
 	int result;
@@ -2240,8 +2239,7 @@ int has_uncommitted_changes(int ignore_submodules)
 		return 0;
 
 	init_revisions(&rev_info, NULL);
-	if (ignore_submodules)
-		DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
+	DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
 	DIFF_OPT_SET(&rev_info.diffopt, QUICK);
 	add_head_to_pending(&rev_info);
 	diff_setup_done(&rev_info.diffopt);
@@ -2253,7 +2251,7 @@ int has_uncommitted_changes(int ignore_submodules)
  * If the work tree has unstaged or uncommitted changes, dies with the
  * appropriate message.
  */
-int require_clean_work_tree(const char *action, const char *hint, int ignore_submodules, int gently)
+int require_clean_work_tree(const char *action, const char *hint, int gently)
 {
 	struct lock_file *lock_file = xcalloc(1, sizeof(*lock_file));
 	int err = 0;
@@ -2263,12 +2261,12 @@ int require_clean_work_tree(const char *action, const char *hint, int ignore_sub
 	update_index_if_able(&the_index, lock_file);
 	rollback_lock_file(lock_file);
 
-	if (has_unstaged_changes(ignore_submodules)) {
+	if (has_unstaged_changes()) {
 		error(_("Cannot %s: You have unstaged changes."), _(action));
 		err = 1;
 	}
 
-	if (has_uncommitted_changes(ignore_submodules)) {
+	if (has_uncommitted_changes()) {
 		if (err)
 			error(_("Additionally, your index contains uncommitted changes."));
 		else
