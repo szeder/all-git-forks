@@ -74,5 +74,6 @@ void s_i_info_filename(struct strbuf *sb,
 		       const char *shared_index,
 		       const char *path);
 void write_split_index_canary(const char *shared_index, const char *path);
+void delete_split_index_canary(const char *shared_index, const char *path);
 
 #endif
