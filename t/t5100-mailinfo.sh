@@ -13,7 +13,7 @@ test_expect_success 'split sample box' \
 	'git mailsplit -o. "$DATA"/sample.mbox >last &&
 	last=$(cat last) &&
 	echo total is $last &&
-	test $(cat last) = 17'
+	test $(cat last) = 18'
 
 check_mailinfo () {
 	mail=$1 opt=$2
