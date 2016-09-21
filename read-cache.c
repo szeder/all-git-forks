@@ -2145,19 +2145,11 @@ static int do_write_locked_index(struct index_state *istate, struct lock_file *l
 	assert((flags & (COMMIT_LOCK | CLOSE_LOCK)) !=
 	       (COMMIT_LOCK | CLOSE_LOCK));
 	if (flags & COMMIT_LOCK)
-		ret = commit_locked_index(lock);
+		return commit_locked_index(lock);
 	else if (flags & CLOSE_LOCK)
-		ret = close_lock_file(lock);
-
-	if (!ret) {
-		struct strbuf *filename = &lock->tempfile.filename;
-		struct split_index *si = istate->split_index;
-
-		if (si)
-			delete_s_i_info(sha1_to_hex(si->base_sha1), filename->buf);
-	}
-
-	return ret;
+		return close_lock_file(lock);
+	else
+		return ret;
 }
 
 static int write_split_index(struct index_state *istate,
