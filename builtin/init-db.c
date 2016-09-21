@@ -23,6 +23,7 @@ static int init_is_bare_repository = 0;
 static int init_shared_repository = -1;
 static const char *init_db_template_dir;
 static const char *git_link;
+static const char *original_git_dir;
 
 static void copy_templates_1(struct strbuf *path, struct strbuf *template,
 			     DIR *dir)
@@ -263,7 +264,7 @@ static int create_default_files(const char *template_path)
 		/* allow template config file to override the default */
 		if (log_all_ref_updates == -1)
 			git_config_set("core.logallrefupdates", "true");
-		if (needs_work_tree_config(get_git_dir(), work_tree))
+		if (needs_work_tree_config(original_git_dir, work_tree))
 			git_config_set("core.worktree", work_tree);
 	}
 
@@ -314,6 +315,8 @@ static void create_object_directory(void)
 int set_git_dir_init(const char *git_dir, const char *real_git_dir,
 		     int exist_ok)
 {
+	original_git_dir = xstrdup(real_path(git_dir));
+
 	if (real_git_dir) {
 		struct stat st;
 
