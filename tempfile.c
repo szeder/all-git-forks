@@ -282,6 +282,8 @@ int rename_tempfile(struct tempfile *tempfile, const char *path)
 	if (!tempfile->active)
 		die("BUG: rename_tempfile called for inactive object");
 
+	trace_printf("tempfile path: %s\n", path);
+
 	if (close_tempfile(tempfile))
 		return -1;
 
