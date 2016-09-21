@@ -419,18 +419,30 @@ static int add_cacheinfo(unsigned int mode, const struct object_id *oid,
 	return 0;
 }
 
-static void chmod_path(char flip, const char *path)
+static void chmod_path(int flip, const char *path)
 {
 	int pos;
 	struct cache_entry *ce;
+	unsigned int mode;
 
 	pos = cache_name_pos(path, strlen(path));
 	if (pos < 0)
 		goto fail;
 	ce = active_cache[pos];
-	if (chmod_cache_entry(ce, flip) < 0)
+	mode = ce->ce_mode;
+	if (!S_ISREG(mode))
 		goto fail;
-
+	switch (flip) {
+	case '+':
+		ce->ce_mode |= 0111; break;
+	case '-':
+		ce->ce_mode &= ~0111; break;
+	default:
+		goto fail;
+	}
+	cache_tree_invalidate_path(&the_index, path);
+	ce->ce_flags |= CE_UPDATE_IN_BASE;
+	active_cache_changed |= CE_ENTRY_CHANGED;
 	report("chmod %cx '%s'", flip, path);
 	return;
  fail:
@@ -1116,9 +1128,9 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 		break;
 	case UC_DISABLE:
 		if (git_config_get_untracked_cache() == 1)
-			warning(_("core.untrackedCache is set to true; "
-				  "remove or change it, if you really want to "
-				  "disable the untracked cache"));
+			warning("core.untrackedCache is set to true; "
+				"remove or change it, if you really want to "
+				"disable the untracked cache");
 		remove_untracked_cache(&the_index);
 		report(_("Untracked cache disabled"));
 		break;
@@ -1128,9 +1140,9 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 	case UC_ENABLE:
 	case UC_FORCE:
 		if (git_config_get_untracked_cache() == 0)
-			warning(_("core.untrackedCache is set to false; "
-				  "remove or change it, if you really want to "
-				  "enable the untracked cache"));
+			warning("core.untrackedCache is set to false; "
+				"remove or change it, if you really want to "
+				"enable the untracked cache");
 		add_untracked_cache(&the_index);
 		report(_("Untracked cache enabled for '%s'"), get_git_work_tree());
 		break;

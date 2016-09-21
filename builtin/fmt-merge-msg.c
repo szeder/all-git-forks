@@ -395,7 +395,7 @@ static void shortlog(const char *name,
 
 	for (i = 0; i < subjects.nr; i++)
 		if (i >= limit)
-			strbuf_addstr(out, "  ...\n");
+			strbuf_addf(out, "  ...\n");
 		else
 			strbuf_addf(out, "  %s\n", subjects.items[i].string);
 

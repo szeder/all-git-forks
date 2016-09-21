@@ -54,49 +54,6 @@ static void parse_bogus_from(struct mailinfo *mi, const struct strbuf *line)
 	get_sane_name(&mi->name, &mi->name, &mi->email);
 }
 
-static void unquote_quoted_string(struct strbuf *line)
-{
-	const char *in = strbuf_detach(line, NULL);
-	int c, take_next_literally = 0;
-
-	/*
-	 * Stores the character that started the escape mode so that we know what
-	 * character will stop it
-	 */
-	char escape_context = 0;
-
-	while ((c = *in++) != 0) {
-		if (take_next_literally) {
-			take_next_literally = 0;
-		} else {
-			switch (c) {
-			case '"':
-				if (!escape_context)
-					escape_context = '"';
-				else if (escape_context == '"')
-					escape_context = 0;
-				continue;
-			case '\\':
-				if (escape_context) {
-					take_next_literally = 1;
-					continue;
-				}
-				break;
-			case '(':
-				if (!escape_context)
-					escape_context = '(';
-				break;
-			case ')':
-				if (escape_context == '(')
-					escape_context = 0;
-				break;
-			}
-		}
-
-		strbuf_addch(line, c);
-	}
-}
-
 static void handle_from(struct mailinfo *mi, const struct strbuf *from)
 {
 	char *at;
@@ -105,8 +62,6 @@ static void handle_from(struct mailinfo *mi, const struct strbuf *from)
 
 	strbuf_init(&f, from->len);
 	strbuf_addbuf(&f, from);
-
-	unquote_quoted_string(&f);
 
 	at = strchr(f.buf, '@');
 	if (!at) {
@@ -540,6 +495,21 @@ static int check_header(struct mailinfo *mi,
 		goto check_header_out;
 	}
 
+	/* for inbody stuff */
+	if (starts_with(line->buf, ">From") && isspace(line->buf[5])) {
+		ret = is_format_patch_separator(line->buf + 1, line->len - 1);
+		goto check_header_out;
+	}
+	if (starts_with(line->buf, "[PATCH]") && isspace(line->buf[7])) {
+		for (i = 0; header[i]; i++) {
+			if (!strcmp("Subject", header[i])) {
+				handle_header(&hdr_data[i], line);
+				ret = 1;
+				goto check_header_out;
+			}
+		}
+	}
+
 check_header_out:
 	strbuf_release(&sb);
 	return ret;
@@ -602,35 +572,37 @@ static inline int patchbreak(const struct strbuf *line)
 	return 0;
 }
 
-static int is_scissors_line(const char *line)
+static int is_scissors_line(const struct strbuf *line)
 {
-	const char *c;
+	size_t i, len = line->len;
 	int scissors = 0, gap = 0;
-	const char *first_nonblank = NULL, *last_nonblank = NULL;
-	int visible, perforation = 0, in_perforation = 0;
+	int first_nonblank = -1;
+	int last_nonblank = 0, visible, perforation = 0, in_perforation = 0;
+	const char *buf = line->buf;
 
-	for (c = line; *c; c++) {
-		if (isspace(*c)) {
+	for (i = 0; i < len; i++) {
+		if (isspace(buf[i])) {
 			if (in_perforation) {
 				perforation++;
 				gap++;
 			}
 			continue;
 		}
-		last_nonblank = c;
-		if (first_nonblank == NULL)
-			first_nonblank = c;
-		if (*c == '-') {
+		last_nonblank = i;
+		if (first_nonblank < 0)
+			first_nonblank = i;
+		if (buf[i] == '-') {
 			in_perforation = 1;
 			perforation++;
 			continue;
 		}
-		if ((!memcmp(c, ">8", 2) || !memcmp(c, "8<", 2) ||
-		     !memcmp(c, ">%", 2) || !memcmp(c, "%<", 2))) {
+		if (i + 1 < len &&
+		    (!memcmp(buf + i, ">8", 2) || !memcmp(buf + i, "8<", 2) ||
+		     !memcmp(buf + i, ">%", 2) || !memcmp(buf + i, "%<", 2))) {
 			in_perforation = 1;
 			perforation += 2;
 			scissors += 2;
-			c++;
+			i++;
 			continue;
 		}
 		in_perforation = 0;
@@ -645,29 +617,10 @@ static int is_scissors_line(const char *line)
 	 * than half of the perforation.
 	 */
 
-	if (first_nonblank && last_nonblank)
-		visible = last_nonblank - first_nonblank + 1;
-	else
-		visible = 0;
+	visible = last_nonblank - first_nonblank + 1;
 	return (scissors && 8 <= visible &&
 		visible < perforation * 3 &&
 		gap * 2 < perforation);
-}
-
-static int check_inbody_header(struct mailinfo *mi, const struct strbuf *line)
-{
-	if (starts_with(line->buf, ">From") && isspace(line->buf[5]))
-		return is_format_patch_separator(line->buf + 1, line->len - 1);
-	if (starts_with(line->buf, "[PATCH]") && isspace(line->buf[7])) {
-		int i;
-		for (i = 0; header[i]; i++)
-			if (!strcmp("Subject", header[i])) {
-				handle_header(&mi->s_hdr_data[i], line);
-				return 1;
-			}
-		return 0;
-	}
-	return check_header(mi, line, mi->s_hdr_data, 0);
 }
 
 static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
@@ -680,7 +633,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 	}
 
 	if (mi->use_inbody_headers && mi->header_stage) {
-		mi->header_stage = check_inbody_header(mi, line);
+		mi->header_stage = check_header(mi, line, mi->s_hdr_data, 0);
 		if (mi->header_stage)
 			return 0;
 	} else
@@ -693,7 +646,7 @@ static int handle_commit_msg(struct mailinfo *mi, struct strbuf *line)
 	if (convert_to_utf8(mi, line, mi->charset.buf))
 		return 0; /* mi->input_error already set */
 
-	if (mi->use_scissors && is_scissors_line(line->buf)) {
+	if (mi->use_scissors && is_scissors_line(line)) {
 		int i;
 
 		strbuf_setlen(&mi->log_message, 0);

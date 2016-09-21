@@ -167,7 +167,6 @@ void diffcore_break(int break_score)
 
 	DIFF_QUEUE_CLEAR(&outq);
 
-	diff_debug_queue("begin breaking", q);
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		int score;
@@ -222,7 +221,6 @@ void diffcore_break(int break_score)
 	free(q->queue);
 	*q = outq;
 
-	diff_debug_queue("end breaking", q);
 	return;
 }
 
@@ -269,7 +267,6 @@ void diffcore_merge_broken(void)
 
 	DIFF_QUEUE_CLEAR(&outq);
 
-	diff_debug_queue("begin merge broken", q);
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		if (!p)
@@ -302,7 +299,6 @@ void diffcore_merge_broken(void)
 	}
 	free(q->queue);
 	*q = outq;
-	diff_debug_queue("end merge broken", q);
 
 	return;
 }

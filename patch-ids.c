@@ -4,18 +4,9 @@
 #include "sha1-lookup.h"
 #include "patch-ids.h"
 
-static int patch_id_defined(struct commit *commit)
-{
-	/* must be 0 or 1 parents */
-	return !commit->parents || !commit->parents->next;
-}
-
 int commit_patch_id(struct commit *commit, struct diff_options *options,
 		    unsigned char *sha1, int diff_header_only)
 {
-	if (!patch_id_defined(commit))
-		return -1;
-
 	if (commit->parents)
 		diff_tree_sha1(commit->parents->item->object.oid.hash,
 			       commit->object.oid.hash, "", options);
@@ -54,7 +45,6 @@ int init_patch_ids(struct patch_ids *ids)
 {
 	memset(ids, 0, sizeof(*ids));
 	diff_setup(&ids->diffopts);
-	ids->diffopts.detect_rename = 0;
 	DIFF_OPT_SET(&ids->diffopts, RECURSIVE);
 	diff_setup_done(&ids->diffopts);
 	hashmap_init(&ids->patches, (hashmap_cmp_fn)patch_id_cmp, 256);
@@ -86,9 +76,6 @@ struct patch_id *has_commit_patch_id(struct commit *commit,
 {
 	struct patch_id patch;
 
-	if (!patch_id_defined(commit))
-		return NULL;
-
 	memset(&patch, 0, sizeof(patch));
 	if (init_patch_id_entry(&patch, commit, ids))
 		return NULL;
@@ -100,9 +87,6 @@ struct patch_id *add_commit_patch_id(struct commit *commit,
 				     struct patch_ids *ids)
 {
 	struct patch_id *key = xcalloc(1, sizeof(*key));
-
-	if (!patch_id_defined(commit))
-		return NULL;
 
 	if (init_patch_id_entry(key, commit, ids)) {
 		free(key);

@@ -2220,8 +2220,6 @@ static int git_blame_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
-	if (git_diff_heuristic_config(var, value, cb) < 0)
-		return -1;
 	if (userdiff_config(var, value) < 0)
 		return -1;
 
@@ -2456,41 +2454,6 @@ static char *prepare_final(struct scoreboard *sb)
 	return xstrdup_or_null(name);
 }
 
-static const char *dwim_reverse_initial(struct scoreboard *sb)
-{
-	/*
-	 * DWIM "git blame --reverse ONE -- PATH" as
-	 * "git blame --reverse ONE..HEAD -- PATH" but only do so
-	 * when it makes sense.
-	 */
-	struct object *obj;
-	struct commit *head_commit;
-	unsigned char head_sha1[20];
-
-	if (sb->revs->pending.nr != 1)
-		return NULL;
-
-	/* Is that sole rev a committish? */
-	obj = sb->revs->pending.objects[0].item;
-	obj = deref_tag(obj, NULL, 0);
-	if (obj->type != OBJ_COMMIT)
-		return NULL;
-
-	/* Do we have HEAD? */
-	if (!resolve_ref_unsafe("HEAD", RESOLVE_REF_READING, head_sha1, NULL))
-		return NULL;
-	head_commit = lookup_commit_reference_gently(head_sha1, 1);
-	if (!head_commit)
-		return NULL;
-
-	/* Turn "ONE" into "ONE..HEAD" then */
-	obj->flags |= UNINTERESTING;
-	add_pending_object(sb->revs, &head_commit->object, "HEAD");
-
-	sb->final = (struct commit *)obj;
-	return sb->revs->pending.objects[0].name;
-}
-
 static char *prepare_initial(struct scoreboard *sb)
 {
 	int i;
@@ -2509,17 +2472,14 @@ static char *prepare_initial(struct scoreboard *sb)
 		if (obj->type != OBJ_COMMIT)
 			die("Non commit %s?", revs->pending.objects[i].name);
 		if (sb->final)
-			die("More than one commit to dig up from, %s and %s?",
+			die("More than one commit to dig down to %s and %s?",
 			    revs->pending.objects[i].name,
 			    final_commit_name);
 		sb->final = (struct commit *) obj;
 		final_commit_name = revs->pending.objects[i].name;
 	}
-
 	if (!final_commit_name)
-		final_commit_name = dwim_reverse_initial(sb);
-	if (!final_commit_name)
-		die("No commit to dig up from?");
+		die("No commit to dig down to?");
 	return xstrdup(final_commit_name);
 }
 
@@ -2590,15 +2550,6 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		OPT_BIT('s', NULL, &output_option, N_("Suppress author name and timestamp (Default: off)"), OUTPUT_NO_AUTHOR),
 		OPT_BIT('e', "show-email", &output_option, N_("Show author email instead of name (Default: off)"), OUTPUT_SHOW_EMAIL),
 		OPT_BIT('w', NULL, &xdl_opts, N_("Ignore whitespace differences"), XDF_IGNORE_WHITESPACE),
-
-		/*
-		 * The following two options are parsed by parse_revision_opt()
-		 * and are only included here to get included in the "-h"
-		 * output:
-		 */
-		{ OPTION_LOWLEVEL_CALLBACK, 0, "indent-heuristic", NULL, NULL, N_("Use an experimental indent-based heuristic to improve diffs"), PARSE_OPT_NOARG, parse_opt_unknown_cb },
-		{ OPTION_LOWLEVEL_CALLBACK, 0, "compaction-heuristic", NULL, NULL, N_("Use an experimental blank-line-based heuristic to improve diffs"), PARSE_OPT_NOARG, parse_opt_unknown_cb },
-
 		OPT_BIT(0, "minimal", &xdl_opts, N_("Spend extra cycles to find better match"), XDF_NEED_MINIMAL),
 		OPT_STRING('S', NULL, &revs_file, N_("file"), N_("Use revisions from <file> instead of calling git-rev-list")),
 		OPT_STRING(0, "contents", &contents_from, N_("file"), N_("Use <file>'s contents as the final image")),
@@ -2645,13 +2596,12 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	}
 parse_done:
 	no_whole_file_rename = !DIFF_OPT_TST(&revs.diffopt, FOLLOW_RENAMES);
-	xdl_opts |= revs.diffopt.xdl_opts & (XDF_COMPACTION_HEURISTIC | XDF_INDENT_HEURISTIC);
 	DIFF_OPT_CLR(&revs.diffopt, FOLLOW_RENAMES);
 	argc = parse_options_end(&ctx);
 
 	if (incremental || (output_option & OUTPUT_PORCELAIN)) {
 		if (show_progress > 0)
-			die(_("--progress can't be used with --incremental or porcelain formats"));
+			die("--progress can't be used with --incremental or porcelain formats");
 		show_progress = 0;
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
@@ -2763,13 +2713,12 @@ parse_done:
 		argv[argc - 1] = "--";
 
 		setup_work_tree();
+		if (!file_exists(path))
+			die_errno("cannot stat path '%s'", path);
 	}
 
 	revs.disable_stdin = 1;
 	setup_revisions(argc, argv, &revs, NULL);
-	if (!revs.pending.nr && !file_exists(path))
-		die_errno("cannot stat path '%s'", path);
-
 	memset(&sb, 0, sizeof(sb));
 
 	sb.revs = &revs;
@@ -2778,7 +2727,7 @@ parse_done:
 		sb.commits.compare = compare_commits_by_commit_date;
 	}
 	else if (contents_from)
-		die(_("--contents and --reverse do not blend well."));
+		die("--contents and --reverse do not blend well.");
 	else {
 		final_commit_name = prepare_initial(&sb);
 		sb.commits.compare = compare_commits_by_reverse_commit_date;
@@ -2798,12 +2747,12 @@ parse_done:
 		add_pending_object(&revs, &(sb.final->object), ":");
 	}
 	else if (contents_from)
-		die(_("cannot use --contents with final commit object name"));
+		die("Cannot use --contents with final commit object name");
 
 	if (reverse && revs.first_parent_only) {
 		final_commit = find_single_final(sb.revs, NULL);
 		if (!final_commit)
-			die(_("--reverse and --first-parent together require specified latest commit"));
+			die("--reverse and --first-parent together require specified latest commit");
 	}
 
 	/*
@@ -2830,7 +2779,7 @@ parse_done:
 		}
 
 		if (oidcmp(&c->object.oid, &sb.final->object.oid))
-			die(_("--reverse --first-parent together require range along first-parent chain"));
+			die("--reverse --first-parent together require range along first-parent chain");
 	}
 
 	if (is_null_oid(&sb.final->object.oid)) {
@@ -2841,7 +2790,7 @@ parse_done:
 	else {
 		o = get_origin(&sb, sb.final, path);
 		if (fill_blob_sha1_and_mode(o))
-			die(_("no such path %s in %s"), path, final_commit_name);
+			die("no such path %s in %s", path, final_commit_name);
 
 		if (DIFF_OPT_TST(&sb.revs->diffopt, ALLOW_TEXTCONV) &&
 		    textconv_object(path, o->mode, &o->blob_oid, 1, (char **) &sb.final_buf,
@@ -2852,7 +2801,7 @@ parse_done:
 						      &sb.final_buf_size);
 
 		if (!sb.final_buf)
-			die(_("cannot read blob %s for path %s"),
+			die("Cannot read blob %s for path %s",
 			    oid_to_hex(&o->blob_oid),
 			    path);
 	}
@@ -2871,9 +2820,7 @@ parse_done:
 				    &bottom, &top, sb.path))
 			usage(blame_usage);
 		if (lno < top || ((lno || bottom) && lno < bottom))
-			die(Q_("file %s has only %lu line",
-			       "file %s has only %lu lines",
-			       lno), path, lno);
+			die("file %s has only %lu lines", path, lno);
 		if (bottom < 1)
 			bottom = 1;
 		if (top < 1)

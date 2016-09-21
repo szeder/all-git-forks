@@ -17,23 +17,25 @@ struct batch_options {
 	int print_contents;
 	int buffer_output;
 	int all_objects;
-	int cmdmode; /* may be 'w' or 'c' for --filters or --textconv */
 	const char *format;
 };
 
-static const char *force_path;
-
 static int filter_object(const char *path, unsigned mode,
-			 const struct object_id *oid,
+			 const unsigned char *sha1,
 			 char **buf, unsigned long *size)
 {
 	enum object_type type;
 
-	*buf = read_sha1_file(oid->hash, &type, size);
+	*buf = read_sha1_file(sha1, &type, size);
 	if (!*buf)
 		return error(_("cannot read object %s '%s'"),
-			     oid_to_hex(oid), path);
-	if ((type == OBJ_BLOB) && S_ISREG(mode)) {
+			sha1_to_hex(sha1), path);
+	if (type != OBJ_BLOB) {
+		free(*buf);
+		return error(_("blob expected for %s '%s'"),
+			sha1_to_hex(sha1), path);
+	}
+	if (S_ISREG(mode)) {
 		struct strbuf strbuf = STRBUF_INIT;
 		if (convert_to_working_tree(path, *buf, *size, &strbuf)) {
 			free(*buf);
@@ -48,32 +50,26 @@ static int filter_object(const char *path, unsigned mode,
 static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 			int unknown_type)
 {
-	struct object_id oid;
+	unsigned char sha1[20];
 	enum object_type type;
 	char *buf;
 	unsigned long size;
 	struct object_context obj_context;
-	struct object_info oi = OBJECT_INFO_INIT;
+	struct object_info oi = {NULL};
 	struct strbuf sb = STRBUF_INIT;
 	unsigned flags = LOOKUP_REPLACE_OBJECT;
-	const char *path = force_path;
 
 	if (unknown_type)
 		flags |= LOOKUP_UNKNOWN_OBJECT;
 
-	if (get_sha1_with_context(obj_name, 0, oid.hash, &obj_context))
+	if (get_sha1_with_context(obj_name, 0, sha1, &obj_context))
 		die("Not a valid object name %s", obj_name);
-
-	if (!path)
-		path = obj_context.path;
-	if (obj_context.mode == S_IFINVALID)
-		obj_context.mode = 0100644;
 
 	buf = NULL;
 	switch (opt) {
 	case 't':
 		oi.typename = &sb;
-		if (sha1_object_info_extended(oid.hash, &oi, flags) < 0)
+		if (sha1_object_info_extended(sha1, &oi, flags) < 0)
 			die("git cat-file: could not get object info");
 		if (sb.len) {
 			printf("%s\n", sb.buf);
@@ -84,34 +80,34 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 
 	case 's':
 		oi.sizep = &size;
-		if (sha1_object_info_extended(oid.hash, &oi, flags) < 0)
+		if (sha1_object_info_extended(sha1, &oi, flags) < 0)
 			die("git cat-file: could not get object info");
 		printf("%lu\n", size);
 		return 0;
 
 	case 'e':
-		return !has_object_file(&oid);
+		return !has_sha1_file(sha1);
 
 	case 'w':
-		if (!path[0])
+		if (!obj_context.path[0])
 			die("git cat-file --filters %s: <object> must be "
 			    "<sha1:path>", obj_name);
 
-		if (filter_object(path, obj_context.mode,
-				  &oid, &buf, &size))
+		if (filter_object(obj_context.path, obj_context.mode,
+				  sha1, &buf, &size))
 			return -1;
 		break;
 
 	case 'c':
-		if (!path[0])
+		if (!obj_context.path[0])
 			die("git cat-file --textconv %s: <object> must be <sha1:path>",
 			    obj_name);
 
-		if (textconv_object(path, obj_context.mode, &oid, 1, &buf, &size))
+		if (textconv_object(obj_context.path, obj_context.mode, sha1, 1, &buf, &size))
 			break;
 
 	case 'p':
-		type = sha1_object_info(oid.hash, NULL);
+		type = sha1_object_info(sha1, NULL);
 		if (type < 0)
 			die("Not a valid object name %s", obj_name);
 
@@ -124,8 +120,8 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 		}
 
 		if (type == OBJ_BLOB)
-			return stream_blob_to_fd(1, &oid, NULL, 0);
-		buf = read_sha1_file(oid.hash, &type, &size);
+			return stream_blob_to_fd(1, sha1, NULL, 0);
+		buf = read_sha1_file(sha1, &type, &size);
 		if (!buf)
 			die("Cannot read object %s", obj_name);
 
@@ -134,19 +130,19 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 
 	case 0:
 		if (type_from_string(exp_type) == OBJ_BLOB) {
-			struct object_id blob_oid;
-			if (sha1_object_info(oid.hash, NULL) == OBJ_TAG) {
-				char *buffer = read_sha1_file(oid.hash, &type, &size);
+			unsigned char blob_sha1[20];
+			if (sha1_object_info(sha1, NULL) == OBJ_TAG) {
+				char *buffer = read_sha1_file(sha1, &type, &size);
 				const char *target;
 				if (!skip_prefix(buffer, "object ", &target) ||
-				    get_oid_hex(target, &blob_oid))
-					die("%s not a valid tag", oid_to_hex(&oid));
+				    get_sha1_hex(target, blob_sha1))
+					die("%s not a valid tag", sha1_to_hex(sha1));
 				free(buffer);
 			} else
-				oidcpy(&blob_oid, &oid);
+				hashcpy(blob_sha1, sha1);
 
-			if (sha1_object_info(blob_oid.hash, NULL) == OBJ_BLOB)
-				return stream_blob_to_fd(1, &blob_oid, NULL, 0);
+			if (sha1_object_info(blob_sha1, NULL) == OBJ_BLOB)
+				return stream_blob_to_fd(1, blob_sha1, NULL, 0);
 			/*
 			 * we attempted to dereference a tag to a blob
 			 * and failed; there may be new dereference
@@ -154,7 +150,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 			 * fall-back to the usual case.
 			 */
 		}
-		buf = read_object_with_reference(oid.hash, exp_type, &size, NULL);
+		buf = read_object_with_reference(sha1, exp_type, &size, NULL);
 		break;
 
 	default:
@@ -169,12 +165,12 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 }
 
 struct expand_data {
-	struct object_id oid;
+	unsigned char sha1[20];
 	enum object_type type;
 	unsigned long size;
 	off_t disk_size;
 	const char *rest;
-	struct object_id delta_base_oid;
+	unsigned char delta_base_sha1[20];
 
 	/*
 	 * If mark_query is true, we do not expand anything, but rather
@@ -217,7 +213,7 @@ static void expand_atom(struct strbuf *sb, const char *atom, int len,
 
 	if (is_atom("objectname", atom, len)) {
 		if (!data->mark_query)
-			strbuf_addstr(sb, oid_to_hex(&data->oid));
+			strbuf_addstr(sb, sha1_to_hex(data->sha1));
 	} else if (is_atom("objecttype", atom, len)) {
 		if (data->mark_query)
 			data->info.typep = &data->type;
@@ -240,10 +236,9 @@ static void expand_atom(struct strbuf *sb, const char *atom, int len,
 			strbuf_addstr(sb, data->rest);
 	} else if (is_atom("deltabase", atom, len)) {
 		if (data->mark_query)
-			data->info.delta_base_sha1 = data->delta_base_oid.hash;
+			data->info.delta_base_sha1 = data->delta_base_sha1;
 		else
-			strbuf_addstr(sb,
-				      oid_to_hex(&data->delta_base_oid));
+			strbuf_addstr(sb, sha1_to_hex(data->delta_base_sha1));
 	} else
 		die("unknown format element: %.*s", len, atom);
 }
@@ -274,53 +269,28 @@ static void batch_write(struct batch_options *opt, const void *data, int len)
 
 static void print_object_or_die(struct batch_options *opt, struct expand_data *data)
 {
-	const struct object_id *oid = &data->oid;
+	const unsigned char *sha1 = data->sha1;
 
 	assert(data->info.typep);
 
 	if (data->type == OBJ_BLOB) {
 		if (opt->buffer_output)
 			fflush(stdout);
-		if (opt->cmdmode) {
-			char *contents;
-			unsigned long size;
-
-			if (!data->rest)
-				die("missing path for '%s'", oid_to_hex(oid));
-
-			if (opt->cmdmode == 'w') {
-				if (filter_object(data->rest, 0100644, oid,
-						  &contents, &size))
-					die("could not convert '%s' %s",
-					    oid_to_hex(oid), data->rest);
-			} else if (opt->cmdmode == 'c') {
-				enum object_type type;
-				if (!textconv_object(data->rest, 0100644, oid,
-						     1, &contents, &size))
-					contents = read_sha1_file(oid->hash, &type,
-								  &size);
-				if (!contents)
-					die("could not convert '%s' %s",
-					    oid_to_hex(oid), data->rest);
-			} else
-				die("BUG: invalid cmdmode: %c", opt->cmdmode);
-			batch_write(opt, contents, size);
-			free(contents);
-		} else if (stream_blob_to_fd(1, oid, NULL, 0) < 0)
-			die("unable to stream %s to stdout", oid_to_hex(oid));
+		if (stream_blob_to_fd(1, sha1, NULL, 0) < 0)
+			die("unable to stream %s to stdout", sha1_to_hex(sha1));
 	}
 	else {
 		enum object_type type;
 		unsigned long size;
 		void *contents;
 
-		contents = read_sha1_file(oid->hash, &type, &size);
+		contents = read_sha1_file(sha1, &type, &size);
 		if (!contents)
-			die("object %s disappeared", oid_to_hex(oid));
+			die("object %s disappeared", sha1_to_hex(sha1));
 		if (type != data->type)
-			die("object %s changed type!?", oid_to_hex(oid));
+			die("object %s changed type!?", sha1_to_hex(sha1));
 		if (data->info.sizep && size != data->size)
-			die("object %s changed size!?", oid_to_hex(oid));
+			die("object %s changed size!?", sha1_to_hex(sha1));
 
 		batch_write(opt, contents, size);
 		free(contents);
@@ -333,9 +303,8 @@ static void batch_object_write(const char *obj_name, struct batch_options *opt,
 	struct strbuf buf = STRBUF_INIT;
 
 	if (!data->skip_object_info &&
-	    sha1_object_info_extended(data->oid.hash, &data->info, LOOKUP_REPLACE_OBJECT) < 0) {
-		printf("%s missing\n",
-		       obj_name ? obj_name : oid_to_hex(&data->oid));
+	    sha1_object_info_extended(data->sha1, &data->info, LOOKUP_REPLACE_OBJECT) < 0) {
+		printf("%s missing\n", obj_name ? obj_name : sha1_to_hex(data->sha1));
 		fflush(stdout);
 		return;
 	}
@@ -358,7 +327,7 @@ static void batch_one_object(const char *obj_name, struct batch_options *opt,
 	int flags = opt->follow_symlinks ? GET_SHA1_FOLLOW_SYMLINKS : 0;
 	enum follow_symlinks_result result;
 
-	result = get_sha1_with_context(obj_name, flags, data->oid.hash, &ctx);
+	result = get_sha1_with_context(obj_name, flags, data->sha1, &ctx);
 	if (result != FOUND) {
 		switch (result) {
 		case MISSING_OBJECT:
@@ -404,7 +373,7 @@ struct object_cb_data {
 static void batch_object_cb(const unsigned char sha1[20], void *vdata)
 {
 	struct object_cb_data *data = vdata;
-	hashcpy(data->expand->oid.hash, sha1);
+	hashcpy(data->expand->sha1, sha1);
 	batch_object_write(NULL, data->opt, data->expand);
 }
 
@@ -444,11 +413,10 @@ static int batch_objects(struct batch_options *opt)
 	data.mark_query = 1;
 	strbuf_expand(&buf, opt->format, expand_format, &data);
 	data.mark_query = 0;
-	if (opt->cmdmode)
-		data.split_on_whitespace = 1;
 
 	if (opt->all_objects) {
-		struct object_info empty = OBJECT_INFO_INIT;
+		struct object_info empty;
+		memset(&empty, 0, sizeof(empty));
 		if (!memcmp(&data.info, &empty, sizeof(empty)))
 			data.skip_object_info = 1;
 	}
@@ -509,8 +477,8 @@ static int batch_objects(struct batch_options *opt)
 }
 
 static const char * const cat_file_usage[] = {
-	N_("git cat-file (-t [--allow-unknown-type] | -s [--allow-unknown-type] | -e | -p | <type> | --textconv | --filters) [--path=<path>] <object>"),
-	N_("git cat-file (--batch | --batch-check) [--follow-symlinks] [--textconv | --filters]"),
+	N_("git cat-file (-t [--allow-unknown-type]|-s [--allow-unknown-type]|-e|-p|<type>|--textconv|--filters) <object>"),
+	N_("git cat-file (--batch | --batch-check) [--follow-symlinks]"),
 	NULL
 };
 
@@ -557,8 +525,6 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 			    N_("for blob objects, run textconv on object's content"), 'c'),
 		OPT_CMDMODE(0, "filters", &opt,
 			    N_("for blob objects, run filters on object's content"), 'w'),
-		OPT_STRING(0, "path", &force_path, N_("blob"),
-			   N_("use a specific path for --textconv/--filters")),
 		OPT_BOOL(0, "allow-unknown-type", &unknown_type,
 			  N_("allow -s and -t to work with broken/corrupt objects")),
 		OPT_BOOL(0, "buffer", &batch.buffer_output, N_("buffer --batch output")),
@@ -581,9 +547,7 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, options, cat_file_usage, 0);
 
 	if (opt) {
-		if (batch.enabled && (opt == 'c' || opt == 'w'))
-			batch.cmdmode = opt;
-		else if (argc == 1)
+		if (argc == 1)
 			obj_name = argv[0];
 		else
 			usage_with_options(cat_file_usage, options);
@@ -595,25 +559,11 @@ int cmd_cat_file(int argc, const char **argv, const char *prefix)
 		} else
 			usage_with_options(cat_file_usage, options);
 	}
-	if (batch.enabled) {
-		if (batch.cmdmode != opt || argc)
-			usage_with_options(cat_file_usage, options);
-		if (batch.cmdmode && batch.all_objects)
-			die("--batch-all-objects cannot be combined with "
-			    "--textconv nor with --filters");
+	if (batch.enabled && (opt || argc)) {
+		usage_with_options(cat_file_usage, options);
 	}
 
 	if ((batch.follow_symlinks || batch.all_objects) && !batch.enabled) {
-		usage_with_options(cat_file_usage, options);
-	}
-
-	if (force_path && opt != 'c' && opt != 'w') {
-		error("--path=<path> needs --textconv or --filters");
-		usage_with_options(cat_file_usage, options);
-	}
-
-	if (force_path && batch.enabled) {
-		error("--path=<path> incompatible with --batch");
 		usage_with_options(cat_file_usage, options);
 	}
 

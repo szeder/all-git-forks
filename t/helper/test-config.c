@@ -72,9 +72,6 @@ int cmd_main(int argc, const char **argv)
 	const char *v;
 	const struct string_list *strptr;
 	struct config_set cs;
-
-	setup_git_directory();
-
 	git_configset_init(&cs);
 
 	if (argc < 2) {
