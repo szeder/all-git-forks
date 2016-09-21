@@ -2163,6 +2163,8 @@ static int write_split_index(struct index_state *istate,
 	if (!si)
 		die ("BUG: writing split-index with no split index");
 
+	trace_printf("lock filename: %s\n", filename);
+
 	write_s_i_info(sha1_to_hex(si->base_sha1), filename);
 
 	prepare_to_write_split_index(istate);
