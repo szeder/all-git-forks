@@ -330,11 +330,11 @@ int set_git_dir_init(const char *git_dir, const char *real_git_dir,
 		 * make sure symlinks are resolved because we'll be
 		 * moving the target repo later on in separate_git_dir()
 		 */
-		git_link = xstrdup(real_path(git_dir));
+		git_link = original_git_dir;
 		set_git_dir(real_path(real_git_dir));
 	}
 	else {
-		set_git_dir(real_path(git_dir));
+		set_git_dir(original_git_dir);
 		git_link = NULL;
 	}
 	startup_info->have_repository = 1;
