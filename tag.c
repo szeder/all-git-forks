@@ -3,6 +3,7 @@
 #include "commit.h"
 #include "tree.h"
 #include "blob.h"
+#include "ref-filter.h"
 
 const char *tag_type = "tag";
 
@@ -30,8 +31,8 @@ static int run_gpg_verify(const char *buf, unsigned long size, unsigned flags)
 	return ret;
 }
 
-int gpg_verify_tag(const unsigned char *sha1, const char *name_to_report,
-		unsigned flags)
+int verify_and_format_tag(const unsigned char *sha1, const char *name_to_report,
+		const char *fmt_pretty, unsigned flags)
 {
 	enum object_type type;
 	char *buf;
@@ -56,6 +57,15 @@ int gpg_verify_tag(const unsigned char *sha1, const char *name_to_report,
 	ret = run_gpg_verify(buf, size, flags);
 
 	free(buf);
+
+	if (fmt_pretty) {
+		struct ref_array_item *ref_item;
+		ref_item = new_ref_item(name_to_report, sha1, 0);
+		ref_item->kind = FILTER_REFS_TAGS;
+		show_ref_item(ref_item, fmt_pretty, 0);
+		free_ref_item(ref_item);
+	}
+
 	return ret;
 }
 
