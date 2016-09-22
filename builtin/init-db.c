@@ -23,6 +23,7 @@ static int init_is_bare_repository = 0;
 static int init_shared_repository = -1;
 static const char *init_db_template_dir;
 static const char *git_link;
+static const char *original_git_dir;
 
 static void copy_templates_1(struct strbuf *path, struct strbuf *template,
 			     DIR *dir)
@@ -138,7 +139,7 @@ static void copy_templates(const char *template_dir)
 		goto close_free_return;
 	}
 
-	strbuf_addstr(&path, get_git_dir());
+	strbuf_addstr(&path, get_git_common_dir());
 	strbuf_complete(&path, '/');
 	copy_templates_1(&path, &template_path, dir);
 close_free_return:
@@ -153,6 +154,14 @@ static int git_init_db_config(const char *k, const char *v, void *cb)
 {
 	if (!strcmp(k, "init.templatedir"))
 		return git_config_pathname(&init_db_template_dir, k, v);
+
+	if (!strcmp(k, "core.hidedotfiles")) {
+		if (v && !strcasecmp(v, "dotgitonly"))
+			hide_dotfiles = HIDE_DOTFILES_DOTGITONLY;
+		else
+			hide_dotfiles = git_config_bool(k, v);
+		return 0;
+	}
 
 	return 0;
 }
@@ -185,16 +194,25 @@ static int create_default_files(const char *template_path)
 	/* Just look for `init.templatedir` */
 	git_config(git_init_db_config, NULL);
 
-	/* First copy the templates -- we might have the default
+	/*
+	 * First copy the templates -- we might have the default
 	 * config file there, in which case we would want to read
 	 * from it after installing.
+	 *
+	 * Before reading that config, we also need to clear out any cached
+	 * values (since we've just potentially changed what's available on
+	 * disk).
 	 */
 	copy_templates(template_path);
-
+	git_config_clear();
+	reset_shared_repository();
 	git_config(git_default_config, NULL);
-	is_bare_repository_cfg = init_is_bare_repository;
 
-	/* reading existing config may have overwrote it */
+	/*
+	 * We must make sure command-line options continue to override any
+	 * values we might have just re-read from the config.
+	 */
+	is_bare_repository_cfg = init_is_bare_repository;
 	if (init_shared_repository != -1)
 		set_shared_repository(init_shared_repository);
 
@@ -255,7 +273,7 @@ static int create_default_files(const char *template_path)
 		/* allow template config file to override the default */
 		if (log_all_ref_updates == -1)
 			git_config_set("core.logallrefupdates", "true");
-		if (needs_work_tree_config(get_git_dir(), work_tree))
+		if (needs_work_tree_config(original_git_dir, work_tree))
 			git_config_set("core.worktree", work_tree);
 	}
 
@@ -306,6 +324,8 @@ static void create_object_directory(void)
 int set_git_dir_init(const char *git_dir, const char *real_git_dir,
 		     int exist_ok)
 {
+	original_git_dir = xstrdup(real_path(git_dir));
+
 	if (real_git_dir) {
 		struct stat st;
 
@@ -319,11 +339,11 @@ int set_git_dir_init(const char *git_dir, const char *real_git_dir,
 		 * make sure symlinks are resolved because we'll be
 		 * moving the target repo later on in separate_git_dir()
 		 */
-		git_link = xstrdup(real_path(git_dir));
+		git_link = original_git_dir;
 		set_git_dir(real_path(real_git_dir));
 	}
 	else {
-		set_git_dir(real_path(git_dir));
+		set_git_dir(original_git_dir);
 		git_link = NULL;
 	}
 	startup_info->have_repository = 1;
@@ -358,6 +378,9 @@ int init_db(const char *template_dir, unsigned int flags)
 
 	if (git_link)
 		separate_git_dir(git_dir);
+
+	/* Just look for `init.templatedir` and `core.hidedotfiles` */
+	git_config(git_init_db_config, NULL);
 
 	safe_create_dir(git_dir, 0);
 

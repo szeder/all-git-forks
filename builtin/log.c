@@ -1042,7 +1042,6 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	diff_flush(&opts);
 
 	fprintf(rev->diffopt.file, "\n");
-	print_signature(rev->diffopt.file);
 }
 
 static const char *clean_message_id(const char *msg_id)
@@ -1110,6 +1109,11 @@ static int subject_prefix_callback(const struct option *opt, const char *arg,
 	subject_prefix = 1;
 	((struct rev_info *)opt->value)->subject_prefix = arg;
 	return 0;
+}
+
+static int rfc_callback(const struct option *opt, const char *arg, int unset)
+{
+	return subject_prefix_callback(opt, "RFC PATCH", unset);
 }
 
 static int numbered_cmdline_opt = 0;
@@ -1361,7 +1365,7 @@ static void print_bases(struct base_tree_info *bases, FILE *file)
 		return;
 
 	/* Show the base commit */
-	fprintf(file, "base-commit: %s\n", oid_to_hex(&bases->base_commit));
+	fprintf(file, "\nbase-commit: %s\n", oid_to_hex(&bases->base_commit));
 
 	/* Show the prerequisite patches */
 	for (i = bases->nr_patch_id - 1; i >= 0; i--)
@@ -1419,6 +1423,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 			    N_("start numbering patches at <n> instead of 1")),
 		OPT_INTEGER('v', "reroll-count", &reroll_count,
 			    N_("mark the series as Nth re-roll")),
+		{ OPTION_CALLBACK, 0, "rfc", &rev, NULL,
+			    N_("Use [RFC PATCH] instead of [PATCH]"),
+			    PARSE_OPT_NOARG | PARSE_OPT_NONEG, rfc_callback },
 		{ OPTION_CALLBACK, 0, "subject-prefix", &rev, N_("prefix"),
 			    N_("Use [<prefix>] instead of [PATCH]"),
 			    PARSE_OPT_NONEG, subject_prefix_callback },
@@ -1557,7 +1564,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	if (numbered && keep_subject)
 		die (_("-n and -k are mutually exclusive."));
 	if (keep_subject && subject_prefix)
-		die (_("--subject-prefix and -k are mutually exclusive."));
+		die (_("--subject-prefix/--rfc and -k are mutually exclusive."));
 	rev.preserve_subject = keep_subject;
 
 	argc = setup_revisions(argc, argv, &rev, &s_r_opt);
@@ -1720,6 +1727,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		make_cover_letter(&rev, use_stdout,
 				  origin, nr, list, branch_name, quiet);
 		print_bases(&bases, rev.diffopt.file);
+		print_signature(rev.diffopt.file);
 		total++;
 		start_number--;
 	}
@@ -1779,13 +1787,13 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		if (!use_stdout)
 			rev.shown_one = 0;
 		if (shown) {
+			print_bases(&bases, rev.diffopt.file);
 			if (rev.mime_boundary)
 				fprintf(rev.diffopt.file, "\n--%s%s--\n\n\n",
 				       mime_boundary_leader,
 				       rev.mime_boundary);
 			else
 				print_signature(rev.diffopt.file);
-			print_bases(&bases, rev.diffopt.file);
 		}
 		if (!use_stdout)
 			fclose(rev.diffopt.file);

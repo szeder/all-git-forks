@@ -415,8 +415,7 @@ int find_commit_subject(const char *commit_buffer, const char **subject)
 		p++;
 	if (*p) {
 		p = skip_blank_lines(p + 2);
-		for (eol = p; *eol && *eol != '\n'; eol++)
-			; /* do nothing */
+		eol = strchrnul(p, '\n');
 	} else
 		eol = p;
 
@@ -1511,9 +1510,9 @@ static int verify_utf8(struct strbuf *buf)
 }
 
 static const char commit_utf8_warn[] =
-"Warning: commit message did not conform to UTF-8.\n"
-"You may want to amend it after fixing the message, or set the config\n"
-"variable i18n.commitencoding to the encoding your project uses.\n";
+N_("Warning: commit message did not conform to UTF-8.\n"
+   "You may want to amend it after fixing the message, or set the config\n"
+   "variable i18n.commitencoding to the encoding your project uses.\n");
 
 int commit_tree_extended(const char *msg, size_t msg_len,
 			 const unsigned char *tree,
@@ -1566,7 +1565,7 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 
 	/* And check the encoding */
 	if (encoding_is_utf8 && !verify_utf8(&buffer))
-		fprintf(stderr, commit_utf8_warn);
+		fprintf(stderr, _(commit_utf8_warn));
 
 	if (sign_commit && do_sign_commit(&buffer, sign_commit))
 		return -1;

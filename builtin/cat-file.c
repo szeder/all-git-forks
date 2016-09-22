@@ -24,21 +24,16 @@ struct batch_options {
 static const char *force_path;
 
 static int filter_object(const char *path, unsigned mode,
-			 const unsigned char *sha1,
+			 const struct object_id *oid,
 			 char **buf, unsigned long *size)
 {
 	enum object_type type;
 
-	*buf = read_sha1_file(sha1, &type, size);
+	*buf = read_sha1_file(oid->hash, &type, size);
 	if (!*buf)
 		return error(_("cannot read object %s '%s'"),
-			sha1_to_hex(sha1), path);
-	if (type != OBJ_BLOB) {
-		free(*buf);
-		return error(_("blob expected for %s '%s'"),
-			sha1_to_hex(sha1), path);
-	}
-	if (S_ISREG(mode)) {
+			     oid_to_hex(oid), path);
+	if ((type == OBJ_BLOB) && S_ISREG(mode)) {
 		struct strbuf strbuf = STRBUF_INIT;
 		if (convert_to_working_tree(path, *buf, *size, &strbuf)) {
 			free(*buf);
@@ -58,7 +53,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 	char *buf;
 	unsigned long size;
 	struct object_context obj_context;
-	struct object_info oi = {NULL};
+	struct object_info oi = OBJECT_INFO_INIT;
 	struct strbuf sb = STRBUF_INIT;
 	unsigned flags = LOOKUP_REPLACE_OBJECT;
 	const char *path = force_path;
@@ -103,7 +98,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 			    "<sha1:path>", obj_name);
 
 		if (filter_object(path, obj_context.mode,
-				  oid.hash, &buf, &size))
+				  &oid, &buf, &size))
 			return -1;
 		break;
 
@@ -112,7 +107,7 @@ static int cat_one_file(int opt, const char *exp_type, const char *obj_name,
 			die("git cat-file --textconv %s: <object> must be <sha1:path>",
 			    obj_name);
 
-		if (textconv_object(obj_context.path, obj_context.mode, &oid, 1, &buf, &size))
+		if (textconv_object(path, obj_context.mode, &oid, 1, &buf, &size))
 			break;
 
 	case 'p':
@@ -294,16 +289,15 @@ static void print_object_or_die(struct batch_options *opt, struct expand_data *d
 				die("missing path for '%s'", oid_to_hex(oid));
 
 			if (opt->cmdmode == 'w') {
-				if (filter_object(data->rest, 0100644,
-						  oid->hash, &contents, &size))
+				if (filter_object(data->rest, 0100644, oid,
+						  &contents, &size))
 					die("could not convert '%s' %s",
 					    oid_to_hex(oid), data->rest);
 			} else if (opt->cmdmode == 'c') {
 				enum object_type type;
 				if (!textconv_object(data->rest, 0100644, oid,
 						     1, &contents, &size))
-					contents = read_sha1_file(oid->hash,
-								  &type,
+					contents = read_sha1_file(oid->hash, &type,
 								  &size);
 				if (!contents)
 					die("could not convert '%s' %s",
@@ -454,8 +448,7 @@ static int batch_objects(struct batch_options *opt)
 		data.split_on_whitespace = 1;
 
 	if (opt->all_objects) {
-		struct object_info empty;
-		memset(&empty, 0, sizeof(empty));
+		struct object_info empty = OBJECT_INFO_INIT;
 		if (!memcmp(&data.info, &empty, sizeof(empty)))
 			data.skip_object_info = 1;
 	}
