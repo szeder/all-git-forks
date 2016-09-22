@@ -71,7 +71,7 @@ static void verify_opt_compatible(const char *me, const char *base_opt, ...)
 		die(_("%s: %s cannot be used with %s"), me, this_opt, base_opt);
 }
 
-static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
+static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 {
 	const char * const * usage_str = revert_or_cherry_pick_usage(opts);
 	const char *me = action_name(opts);
@@ -115,15 +115,25 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 	if (opts->keep_redundant_commits)
 		opts->allow_empty = 1;
 
+	/* Set the subcommand */
+	if (cmd == 'q')
+		opts->subcommand = REPLAY_REMOVE_STATE;
+	else if (cmd == 'c')
+		opts->subcommand = REPLAY_CONTINUE;
+	else if (cmd == 'a')
+		opts->subcommand = REPLAY_ROLLBACK;
+	else
+		opts->subcommand = REPLAY_NONE;
+
 	/* Check for incompatible command line arguments */
-	if (cmd) {
+	if (opts->subcommand != REPLAY_NONE) {
 		char *this_operation;
-		if (cmd == 'q')
+		if (opts->subcommand == REPLAY_REMOVE_STATE)
 			this_operation = "--quit";
-		else if (cmd == 'c')
+		else if (opts->subcommand == REPLAY_CONTINUE)
 			this_operation = "--continue";
 		else {
-			assert(cmd == 'a');
+			assert(opts->subcommand == REPLAY_ROLLBACK);
 			this_operation = "--abort";
 		}
 
@@ -146,7 +156,7 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 				"--edit", opts->edit,
 				NULL);
 
-	if (cmd) {
+	if (opts->subcommand != REPLAY_NONE) {
 		opts->revs = NULL;
 	} else {
 		struct setup_revision_opt s_r_opt;
@@ -164,26 +174,20 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 
 	if (argc > 1)
 		usage_with_options(usage_str, options);
-
-	if (cmd == 'q')
-		return sequencer_remove_state(opts);
-	if (cmd == 'c')
-		return sequencer_continue(opts);
-	if (cmd == 'a')
-		return sequencer_rollback(opts);
-	return sequencer_pick_revisions(opts);
 }
 
 int cmd_revert(int argc, const char **argv, const char *prefix)
 {
-	struct replay_opts opts = REPLAY_OPTS_INIT;
+	struct replay_opts opts;
 	int res;
 
+	memset(&opts, 0, sizeof(opts));
 	if (isatty(0))
 		opts.edit = 1;
 	opts.action = REPLAY_REVERT;
 	git_config(git_default_config, NULL);
-	res = run_sequencer(argc, argv, &opts);
+	parse_args(argc, argv, &opts);
+	res = sequencer_pick_revisions(&opts);
 	if (res < 0)
 		die(_("revert failed"));
 	return res;
@@ -191,12 +195,14 @@ int cmd_revert(int argc, const char **argv, const char *prefix)
 
 int cmd_cherry_pick(int argc, const char **argv, const char *prefix)
 {
-	struct replay_opts opts = REPLAY_OPTS_INIT;
+	struct replay_opts opts;
 	int res;
 
+	memset(&opts, 0, sizeof(opts));
 	opts.action = REPLAY_PICK;
 	git_config(git_default_config, NULL);
-	res = run_sequencer(argc, argv, &opts);
+	parse_args(argc, argv, &opts);
+	res = sequencer_pick_revisions(&opts);
 	if (res < 0)
 		die(_("cherry-pick failed"));
 	return res;
