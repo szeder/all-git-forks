@@ -22,8 +22,8 @@ set up install paths (via config.mak.autogen), so you can write instead
 
 	$ make configure ;# as yourself
 	$ ./configure --prefix=/usr ;# as yourself
-	$ make all doc ;# as yourself
-	# make install install-doc install-html;# as root
+	$ make all doc info ;# as yourself
+	# make install install-doc install-html install-info ;# as root
 
 If you're willing to trade off (much) longer build time for a later
 faster git you can also do a profile feedback build with
