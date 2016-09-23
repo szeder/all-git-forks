@@ -44,6 +44,7 @@ update=
 prefix=
 custom_name=
 depth=
+progress=
 
 die_if_unmatched ()
 {
@@ -498,6 +499,9 @@ cmd_update()
 		-q|--quiet)
 			GIT_QUIET=1
 			;;
+		--progress)
+			progress="--progress"
+			;;
 		-i|--init)
 			test -z $init || test $init = by_args || die "$(gettext "Only one of --init or --init-default-path may be used.")"
 			init=by_args
@@ -588,6 +592,7 @@ cmd_update()
 
 	{
 	git submodule--helper update-clone ${GIT_QUIET:+--quiet} \
+		${progress:+"$progress"} \
 		${wt_prefix:+--prefix "$wt_prefix"} \
 		${prefix:+--recursive-prefix "$prefix"} \
 		${update:+--update "$update"} \
