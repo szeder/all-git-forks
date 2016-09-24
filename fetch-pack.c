@@ -459,10 +459,9 @@ static int find_common(struct fetch_pack_args *args,
 						packet_buf_write(&req_buf, "have %s\n", hex);
 						state_len = req_buf.len;
 						/*
-						 * Reset in_vain because this
-						 * ack is a novel ack (that is,
-						 * an ack for this commit has
-						 * not been seen).
+						 * Reset in_vain because an ack
+						 * for this commit has not been
+						 * seen.
 						 */
 						in_vain = 0;
 					} else if (!args->stateless_rpc
