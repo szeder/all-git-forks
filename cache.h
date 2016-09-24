@@ -526,10 +526,9 @@ extern void verify_non_filename(const char *prefix, const char *name);
 extern int path_inside_repo(const char *prefix, const char *path);
 
 #define INIT_DB_QUIET 0x0001
-#define INIT_DB_EXIST_OK 0x0002
 
-extern int init_db(const char *git_dir, const char *real_git_dir,
-		   const char *template_dir, unsigned int flags);
+extern int set_git_dir_init(const char *git_dir, const char *real_git_dir, int);
+extern int init_db(const char *template_dir, unsigned int flags);
 
 extern void sanitize_stdfds(void);
 extern int daemonize(void);
@@ -1442,9 +1441,7 @@ extern struct packed_git *parse_pack_index(unsigned char *sha1, const char *idx_
 /* A hook to report invalid files in pack directory */
 #define PACKDIR_FILE_PACK 1
 #define PACKDIR_FILE_IDX 2
-#define PACKDIR_FILE_BITMAP 4
-#define PACKDIR_FILE_KEEP 8
-#define PACKDIR_FILE_GARBAGE 16
+#define PACKDIR_FILE_GARBAGE 4
 extern void (*report_garbage)(unsigned seen_bits, const char *path);
 
 extern void prepare_packed_git(void);

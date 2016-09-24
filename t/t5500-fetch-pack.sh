@@ -553,7 +553,7 @@ check_prot_path () {
 	Diag: protocol=$2
 	Diag: path=$3
 	EOF
-	git fetch-pack --diag-url "$1" | egrep -v "(user|host|port)=" >actual &&
+	git fetch-pack --diag-url "$1" | grep -v hostandport= >actual &&
 	test_cmp expected actual
 }
 
@@ -561,27 +561,22 @@ check_prot_host_port_path () {
 	case "$2" in
 		*ssh*)
 		pp=ssh
+		uah=userandhost
+		ehost=$(echo $3 | tr -d "[]")
+		diagport="Diag: port=$4"
 		;;
 		*)
-		pp=$2
-		;;
-	esac
-	ehost=$(echo $3 | tr -d "[]")
-	case "$ehost" in
-		*@*)
-		user=${ehost%@*}
-		ehost=${ehost#$user@}
-		;;
-		*)
-		user=NULL
+		pp=$p
+		uah=hostandport
+		ehost=$(echo $3$4 | sed -e "s/22$/:22/" -e "s/NONE//")
+		diagport=""
 		;;
 	esac
 	cat >exp <<-EOF &&
 	Diag: url=$1
 	Diag: protocol=$pp
-	Diag: user=$user
-	Diag: host=$ehost
-	Diag: port=$4
+	Diag: $uah=$ehost
+	$diagport
 	Diag: path=$5
 	EOF
 	grep -v "^$" exp >expected
@@ -589,7 +584,7 @@ check_prot_host_port_path () {
 	test_cmp expected actual
 }
 
-for r in repo re:po re/po re@po
+for r in repo re:po re/po
 do
 	# git or ssh with scheme
 	for p in "ssh+git" "git+ssh" git ssh
@@ -612,26 +607,6 @@ do
 			test_expect_success "fetch-pack --diag-url $p://$h:22/$r" '
 				check_prot_host_port_path $p://$h:22/$r $p "$h" 22 "/$r"
 			'
-			test_expect_success "fetch-pack --diag-url $p://$h:22/$r" '
-				check_prot_host_port_path $p://$h:22/$r $p "$h" 22 "/$r"
-			'
-		done
-	done
-	# git with scheme and []
-	for p in git
-	do
-		for h in [host:123]
-		do
-			for c in "" :
-			do
-				test_expect_success "fetch-pack --diag-url $p://$h$c/$r" '
-					check_prot_host_port_path $p://$h/$r $p "$h" NONE "/$r"
-				'
-				# "/~" -> "~" conversion
-				test_expect_success "fetch-pack --diag-url $p://$h$c/~$r" '
-					check_prot_host_port_path $p://$h/~$r $p "$h" NONE "~$r"
-				'
-			done
 		done
 	done
 	# file with scheme
@@ -666,18 +641,6 @@ do
 		# Do "/~" -> "~" conversion
 		test_expect_success "fetch-pack --diag-url $h:/~$r" '
 			check_prot_host_port_path $h:/~$r $p "$h" NONE "~$r"
-		'
-	done
-	#ssh without scheme with port
-	p=ssh
-	for h in host user@host
-	do
-		test_expect_success "fetch-pack --diag-url [$h:22]:$r" '
-			check_prot_host_port_path [$h:22]:$r $p $h 22 "$r"
-		'
-		# Do "/~" -> "~" conversion
-		test_expect_success "fetch-pack --diag-url [$h:22]:/~$r" '
-			check_prot_host_port_path [$h:22]:/~$r $p $h 22 "~$r"
 		'
 	done
 done
