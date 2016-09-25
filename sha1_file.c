@@ -25,6 +25,7 @@
 #include "dir.h"
 #include "mru.h"
 #include "list.h"
+#include "mergesort.h"
 
 #ifndef O_NOATIME
 #if defined(__linux__) && (defined(__i386__) || defined(__PPC__))
@@ -1380,10 +1381,20 @@ static void prepare_packed_git_one(char *objdir, int local)
 	strbuf_release(&path);
 }
 
+static void *get_next_packed_git(const void *p)
+{
+	return ((const struct packed_git *)p)->next;
+}
+
+static void set_next_packed_git(void *p, void *next)
+{
+	((struct packed_git *)p)->next = next;
+}
+
 static int sort_pack(const void *a_, const void *b_)
 {
-	struct packed_git *a = *((struct packed_git **)a_);
-	struct packed_git *b = *((struct packed_git **)b_);
+	const struct packed_git *a = a_;
+	const struct packed_git *b = b_;
 	int st;
 
 	/*
@@ -1410,28 +1421,8 @@ static int sort_pack(const void *a_, const void *b_)
 
 static void rearrange_packed_git(void)
 {
-	struct packed_git **ary, *p;
-	int i, n;
-
-	for (n = 0, p = packed_git; p; p = p->next)
-		n++;
-	if (n < 2)
-		return;
-
-	/* prepare an array of packed_git for easier sorting */
-	ary = xcalloc(n, sizeof(struct packed_git *));
-	for (n = 0, p = packed_git; p; p = p->next)
-		ary[n++] = p;
-
-	qsort(ary, n, sizeof(struct packed_git *), sort_pack);
-
-	/* link them back again */
-	for (i = 0; i < n - 1; i++)
-		ary[i]->next = ary[i + 1];
-	ary[n - 1]->next = NULL;
-	packed_git = ary[0];
-
-	free(ary);
+	packed_git = llist_mergesort(packed_git, get_next_packed_git,
+				     set_next_packed_git, sort_pack);
 }
 
 static void prepare_packed_git_mru(void)
@@ -2269,11 +2260,11 @@ static void add_delta_base_cache(struct packed_git *p, off_t base_offset,
 	void *base, unsigned long base_size, enum object_type type)
 {
 	struct delta_base_cache_entry *ent = xmalloc(sizeof(*ent));
-	struct list_head *lru;
+	struct list_head *lru, *tmp;
 
 	delta_base_cached += base_size;
 
-	list_for_each(lru, &delta_base_cache_lru) {
+	list_for_each_safe(lru, tmp, &delta_base_cache_lru) {
 		struct delta_base_cache_entry *f =
 			list_entry(lru, struct delta_base_cache_entry, lru);
 		if (delta_base_cached <= delta_base_cache_limit)

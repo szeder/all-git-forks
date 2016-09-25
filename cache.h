@@ -173,7 +173,7 @@ struct cache_entry {
 	unsigned int ce_flags;
 	unsigned int ce_namelen;
 	unsigned int index;	/* for link extension */
-	unsigned char sha1[20];
+	struct object_id oid;
 	char name[FLEX_ARRAY]; /* more */
 };
 
@@ -453,6 +453,12 @@ static inline enum object_type object_type(unsigned int mode)
  */
 extern const char * const local_repo_env[];
 
+/*
+ * Returns true iff we have a configured git repository (either via
+ * setup_git_directory, or in the environment via $GIT_DIR).
+ */
+int have_git_dir(void);
+
 extern int is_bare_repository_cfg;
 extern int is_bare_repository(void);
 extern int is_inside_git_dir(void);
@@ -665,8 +671,15 @@ extern size_t delta_base_cache_limit;
 extern unsigned long big_file_threshold;
 extern unsigned long pack_size_limit_cfg;
 
+/*
+ * Accessors for the core.sharedrepository config which lazy-load the value
+ * from the config (if not already set). The "reset" function can be
+ * used to unset "set" or cached value, meaning that the value will be loaded
+ * fresh from the config file on the next call to get_shared_repository().
+ */
 void set_shared_repository(int value);
 int get_shared_repository(void);
+void reset_shared_repository(void);
 
 /*
  * Do replace refs need to be checked this run?  This variable is
@@ -1231,7 +1244,7 @@ extern char *sha1_to_hex(const unsigned char *sha1);	/* static buffer result! */
 extern char *oid_to_hex(const struct object_id *oid);	/* same static buffer as sha1_to_hex */
 
 extern int interpret_branch_name(const char *str, int len, struct strbuf *);
-extern int get_sha1_mb(const char *str, unsigned char *sha1);
+extern int get_oid_mb(const char *str, struct object_id *oid);
 
 extern int validate_headref(const char *ref);
 
@@ -1813,7 +1826,6 @@ extern void write_file(const char *path, const char *fmt, ...);
 
 /* pager.c */
 extern void setup_pager(void);
-extern const char *pager_program;
 extern int pager_in_use(void);
 extern int pager_use_color;
 extern int term_columns(void);
