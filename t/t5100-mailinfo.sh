@@ -7,8 +7,10 @@ test_description='git mailinfo and git mailsplit test'
 
 . ./test-lib.sh
 
+data="$TEST_DIRECTORY/t5100"
+
 test_expect_success 'split sample box' \
-	'git mailsplit -o. "$TEST_DIRECTORY"/t5100/sample.mbox >last &&
+	'git mailsplit -o. "$data"/sample.mbox >last &&
 	last=$(cat last) &&
 	echo total is $last &&
 	test $(cat last) = 17'
@@ -17,9 +19,9 @@ check_mailinfo () {
 	mail=$1 opt=$2
 	mo="$mail$opt"
 	git mailinfo -u $opt msg$mo patch$mo <$mail >info$mo &&
-	test_cmp "$TEST_DIRECTORY"/t5100/msg$mo msg$mo &&
-	test_cmp "$TEST_DIRECTORY"/t5100/patch$mo patch$mo &&
-	test_cmp "$TEST_DIRECTORY"/t5100/info$mo info$mo
+	test_cmp "$data"/msg$mo msg$mo &&
+	test_cmp "$data"/patch$mo patch$mo &&
+	test_cmp "$data"/info$mo info$mo
 }
 
 
@@ -27,15 +29,15 @@ for mail in 00*
 do
 	test_expect_success "mailinfo $mail" '
 		check_mailinfo $mail "" &&
-		if test -f "$TEST_DIRECTORY"/t5100/msg$mail--scissors
+		if test -f "$data"/msg$mail--scissors
 		then
 			check_mailinfo $mail --scissors
 		fi &&
-		if test -f "$TEST_DIRECTORY"/t5100/msg$mail--no-inbody-headers
+		if test -f "$data"/msg$mail--no-inbody-headers
 		then
 			check_mailinfo $mail --no-inbody-headers
 		fi &&
-		if test -f "$TEST_DIRECTORY"/t5100/msg$mail--message-id
+		if test -f "$data"/msg$mail--message-id
 		then
 			check_mailinfo $mail --message-id
 		fi
@@ -45,7 +47,7 @@ done
 
 test_expect_success 'split box with rfc2047 samples' \
 	'mkdir rfc2047 &&
-	git mailsplit -orfc2047 "$TEST_DIRECTORY"/t5100/rfc2047-samples.mbox \
+	git mailsplit -orfc2047 "$data"/rfc2047-samples.mbox \
 	  >rfc2047/last &&
 	last=$(cat rfc2047/last) &&
 	echo total is $last &&
@@ -56,18 +58,18 @@ do
 	test_expect_success "mailinfo $mail" '
 		git mailinfo -u $mail-msg $mail-patch <$mail >$mail-info &&
 		echo msg &&
-		test_cmp "$TEST_DIRECTORY"/t5100/empty $mail-msg &&
+		test_cmp "$data"/empty $mail-msg &&
 		echo patch &&
-		test_cmp "$TEST_DIRECTORY"/t5100/empty $mail-patch &&
+		test_cmp "$data"/empty $mail-patch &&
 		echo info &&
-		test_cmp "$TEST_DIRECTORY"/t5100/rfc2047-info-$(basename $mail) $mail-info
+		test_cmp "$data"/rfc2047-info-$(basename $mail) $mail-info
 	'
 done
 
 test_expect_success 'respect NULs' '
 
-	git mailsplit -d3 -o. "$TEST_DIRECTORY"/t5100/nul-plain &&
-	test_cmp "$TEST_DIRECTORY"/t5100/nul-plain 001 &&
+	git mailsplit -d3 -o. "$data"/nul-plain &&
+	test_cmp "$data"/nul-plain 001 &&
 	(cat 001 | git mailinfo msg patch) &&
 	test_line_count = 4 patch
 
@@ -75,52 +77,52 @@ test_expect_success 'respect NULs' '
 
 test_expect_success 'Preserve NULs out of MIME encoded message' '
 
-	git mailsplit -d5 -o. "$TEST_DIRECTORY"/t5100/nul-b64.in &&
-	test_cmp "$TEST_DIRECTORY"/t5100/nul-b64.in 00001 &&
+	git mailsplit -d5 -o. "$data"/nul-b64.in &&
+	test_cmp "$data"/nul-b64.in 00001 &&
 	git mailinfo msg patch <00001 &&
-	test_cmp "$TEST_DIRECTORY"/t5100/nul-b64.expect patch
+	test_cmp "$data"/nul-b64.expect patch
 
 '
 
 test_expect_success 'mailinfo on from header without name works' '
 
 	mkdir info-from &&
-	git mailsplit -oinfo-from "$TEST_DIRECTORY"/t5100/info-from.in &&
-	test_cmp "$TEST_DIRECTORY"/t5100/info-from.in info-from/0001 &&
+	git mailsplit -oinfo-from "$data"/info-from.in &&
+	test_cmp "$data"/info-from.in info-from/0001 &&
 	git mailinfo info-from/msg info-from/patch \
 	  <info-from/0001 >info-from/out &&
-	test_cmp "$TEST_DIRECTORY"/t5100/info-from.expect info-from/out
+	test_cmp "$data"/info-from.expect info-from/out
 
 '
 
 test_expect_success 'mailinfo finds headers after embedded From line' '
 	mkdir embed-from &&
-	git mailsplit -oembed-from "$TEST_DIRECTORY"/t5100/embed-from.in &&
-	test_cmp "$TEST_DIRECTORY"/t5100/embed-from.in embed-from/0001 &&
+	git mailsplit -oembed-from "$data"/embed-from.in &&
+	test_cmp "$data"/embed-from.in embed-from/0001 &&
 	git mailinfo embed-from/msg embed-from/patch \
 	  <embed-from/0001 >embed-from/out &&
-	test_cmp "$TEST_DIRECTORY"/t5100/embed-from.expect embed-from/out
+	test_cmp "$data"/embed-from.expect embed-from/out
 '
 
 test_expect_success 'mailinfo on message with quoted >From' '
 	mkdir quoted-from &&
-	git mailsplit -oquoted-from "$TEST_DIRECTORY"/t5100/quoted-from.in &&
-	test_cmp "$TEST_DIRECTORY"/t5100/quoted-from.in quoted-from/0001 &&
+	git mailsplit -oquoted-from "$data"/quoted-from.in &&
+	test_cmp "$data"/quoted-from.in quoted-from/0001 &&
 	git mailinfo quoted-from/msg quoted-from/patch \
 	  <quoted-from/0001 >quoted-from/out &&
-	test_cmp "$TEST_DIRECTORY"/t5100/quoted-from.expect quoted-from/msg
+	test_cmp "$data"/quoted-from.expect quoted-from/msg
 '
 
 test_expect_success 'mailinfo unescapes with --mboxrd' '
 	mkdir mboxrd &&
 	git mailsplit -omboxrd --mboxrd \
-		"$TEST_DIRECTORY"/t5100/sample.mboxrd >last &&
+		"$data"/sample.mboxrd >last &&
 	test x"$(cat last)" = x2 &&
 	for i in 0001 0002
 	do
 		git mailinfo mboxrd/msg mboxrd/patch \
 		  <mboxrd/$i >mboxrd/out &&
-		test_cmp "$TEST_DIRECTORY"/t5100/${i}mboxrd mboxrd/msg
+		test_cmp "$data"/${i}mboxrd mboxrd/msg
 	done &&
 	sp=" " &&
 	echo "From " >expect &&
