@@ -310,6 +310,11 @@ static int prepare_prefixes(const char *name, int len,
 	return 0;
 }
 
+static int multiple_bits_set(unsigned flags)
+{
+	return !!(flags & (flags - 1));
+}
+
 static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 			  unsigned flags)
 {
@@ -327,6 +332,10 @@ static int get_short_sha1(const char *name, int len, unsigned char *sha1,
 	prepare_alt_odb();
 
 	memset(&ds, 0, sizeof(ds));
+
+	if (multiple_bits_set(flags & GET_SHA1_DISAMBIGUATORS))
+		die("BUG: multiple get_short_sha1 disambiguator flags");
+
 	if (flags & GET_SHA1_COMMIT)
 		ds.fn = disambiguate_commit_only;
 	else if (flags & GET_SHA1_COMMITTISH)
