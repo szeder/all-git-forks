@@ -89,6 +89,7 @@ ifndef::git-pull[]
 	option alone does not subject tags to pruning, even if --prune
 	is used (though tags may be pruned anyway if they are also the
 	destination of an explicit refspec; see `--prune`).
+endif::git-pull[]
 
 --recurse-submodules[=yes|on-demand|no]::
 	This option controls if and under what conditions new commits of
@@ -108,6 +109,7 @@ ifndef::git-pull[]
 	submodules will be faster. By default submodules will be fetched
 	one at a time.
 
+ifndef::git-pull[]
 --no-recurse-submodules::
 	Disable recursive fetching of submodules (this has the same effect as
 	using the `--recurse-submodules=no` option).
