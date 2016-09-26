@@ -333,8 +333,22 @@ static int try_parent_shorthands(const char *arg)
 	if (include_rev)
 		show_rev(NORMAL, sha1, arg);
 	commit = lookup_commit_reference(sha1);
+
+	if (exclude_parent) {
+		/* do we have enough parents? */
+		for (parent_number = 0, parents = commit->parents;
+		     parents;
+		     parents = parents->next)
+			parent_number++;
+		if (parent_number < exclude_parent) {
+			*dotdot = '^';
+			return 0;
+		}
+	}
+
 	for (parent_number = 1, parents = commit->parents;
-	     parents; parents = parents->next, parent_number++) {
+	     parents;
+	     parents = parents->next, parent_number++) {
 		if (exclude_parent && parent_number != exclude_parent)
 			continue;
 
@@ -343,8 +357,6 @@ static int try_parent_shorthands(const char *arg)
 	}
 
 	*dotdot = '^';
-	if (exclude_parent >= parent_number)
-		return 0;
 	return 1;
 }
 

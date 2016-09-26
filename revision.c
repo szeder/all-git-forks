@@ -1318,8 +1318,23 @@ static int add_parents_only(struct rev_info *revs, const char *arg_, int flags,
 	if (it->type != OBJ_COMMIT)
 		return 0;
 	commit = (struct commit *)it;
+
+	if (exclude_parent) {
+		struct commit_list *parents;
+		int parent_number;
+
+		/* do we have enough parents? */
+		for (parent_number = 0, parents = commit->parents;
+		     parents;
+		     parents = parents->next)
+			parent_number++;
+		if (parent_number < exclude_parent)
+			return 0;
+	}
+
 	for (parent_number = 1, parents = commit->parents;
-	     parents; parents = parents->next, parent_number++) {
+	     parents;
+	     parents = parents->next, parent_number++) {
 		if (exclude_parent && parent_number != exclude_parent)
 			continue;
 
