@@ -686,12 +686,12 @@ struct object *peel_to_type(const char *name, int namelen,
 	}
 }
 
-static int peel_onion(const char *name, int len, unsigned char *sha1)
+static int peel_onion(const char *name, int len, unsigned char *sha1,
+		      unsigned lookup_flags)
 {
 	unsigned char outer[20];
 	const char *sp;
 	unsigned int expected_type = 0;
-	unsigned lookup_flags = 0;
 	struct object *o;
 
 	/*
@@ -731,10 +731,11 @@ static int peel_onion(const char *name, int len, unsigned char *sha1)
 	else
 		return -1;
 
+	lookup_flags &= ~GET_SHA1_DISAMBIGUATORS;
 	if (expected_type == OBJ_COMMIT)
-		lookup_flags = GET_SHA1_COMMITTISH;
+		lookup_flags |= GET_SHA1_COMMITTISH;
 	else if (expected_type == OBJ_TREE)
-		lookup_flags = GET_SHA1_TREEISH;
+		lookup_flags |= GET_SHA1_TREEISH;
 
 	if (get_sha1_1(name, sp - name - 2, outer, lookup_flags))
 		return -1;
@@ -835,7 +836,7 @@ static int get_sha1_1(const char *name, int len, unsigned char *sha1, unsigned l
 		return get_nth_ancestor(name, len1, sha1, num);
 	}
 
-	ret = peel_onion(name, len, sha1);
+	ret = peel_onion(name, len, sha1, lookup_flags);
 	if (!ret)
 		return 0;
 
@@ -1470,7 +1471,12 @@ static int get_sha1_with_context_1(const char *name,
 	if (*cp == ':') {
 		unsigned char tree_sha1[20];
 		int len = cp - name;
-		if (!get_sha1_1(name, len, tree_sha1, GET_SHA1_TREEISH)) {
+		unsigned sub_flags = flags;
+
+		sub_flags &= ~GET_SHA1_DISAMBIGUATORS;
+		sub_flags |= GET_SHA1_TREEISH;
+
+		if (!get_sha1_1(name, len, tree_sha1, sub_flags)) {
 			const char *filename = cp+1;
 			char *new_filename = NULL;
 
