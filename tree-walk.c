@@ -27,12 +27,14 @@ static void decode_tree_entry(struct tree_desc *desc, const char *buf, unsigned 
 	const char *path;
 	unsigned int mode, len;
 
-	if (size < 24 || buf[size - 21])
-		die("corrupt tree file");
+	if (size < 23 || buf[size - 21])
+		die("too-short tree object");
 
 	path = get_mode(buf, &mode);
-	if (!path || !*path)
-		die("corrupt tree file");
+	if (!path)
+		die("malformed mode in tree entry for tree");
+	if (!*path)
+		die("empty filename in tree entry for tree");
 	len = strlen(path) + 1;
 
 	/* Initialize the descriptor entry */
@@ -81,7 +83,7 @@ void update_tree_entry(struct tree_desc *desc)
 	unsigned long len = end - (const unsigned char *)buf;
 
 	if (size < len)
-		die("corrupt tree file");
+		die("too-short tree file");
 	buf = end;
 	size -= len;
 	desc->buffer = buf;
