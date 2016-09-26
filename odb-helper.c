@@ -160,7 +160,7 @@ int odb_helper_fetch_object(struct odb_helper *o, const unsigned char *sha1,
 	struct odb_helper_cmd cmd;
 	unsigned long total_got;
 	git_zstream stream;
-	int zret;
+	int zret = Z_STREAM_END;
 	git_SHA_CTX hash;
 	unsigned char real_sha1[20];
 
