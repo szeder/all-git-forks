@@ -1646,7 +1646,9 @@ unsigned long unpack_object_header_buffer(const unsigned char *buf,
 	return used;
 }
 
-int unpack_sha1_header(git_zstream *stream, unsigned char *map, unsigned long mapsize, void *buffer, unsigned long bufsiz)
+static int unpack_sha1_short_header(git_zstream *stream,
+				    unsigned char *map, unsigned long mapsize,
+				    void *buffer, unsigned long bufsiz)
 {
 	/* Get the data stream */
 	memset(stream, 0, sizeof(*stream));
@@ -1659,13 +1661,37 @@ int unpack_sha1_header(git_zstream *stream, unsigned char *map, unsigned long ma
 	return git_inflate(stream, 0);
 }
 
+int unpack_sha1_header(git_zstream *stream,
+		       unsigned char *map, unsigned long mapsize,
+		       void *buffer, unsigned long bufsiz)
+{
+	const char *eoh;
+	int status = unpack_sha1_short_header(stream, map, mapsize,
+					      buffer, bufsiz);
+
+	if (status < Z_OK)
+		return status;
+
+	/* Make sure we have the terminating NUL */
+	eoh = memchr(buffer, '\0', stream->next_out - (unsigned char *)buffer);
+	if (!eoh)
+		return -1;
+	/* Make sure we have ' ' at the end of type */
+	if (!memchr(buffer, ' ', eoh - (const char *)buffer))
+		return -1;
+	return 0;
+}
+
 static int unpack_sha1_header_to_strbuf(git_zstream *stream, unsigned char *map,
 					unsigned long mapsize, void *buffer,
 					unsigned long bufsiz, struct strbuf *header)
 {
+	const char *eoh;
 	int status;
 
-	status = unpack_sha1_header(stream, map, mapsize, buffer, bufsiz);
+	status = unpack_sha1_short_header(stream, map, mapsize, buffer, bufsiz);
+	if (status < Z_OK)
+		return -1;
 
 	/*
 	 * Check if entire header is unpacked in the first iteration.
@@ -1686,11 +1712,19 @@ static int unpack_sha1_header_to_strbuf(git_zstream *stream, unsigned char *map,
 		status = git_inflate(stream, 0);
 		strbuf_add(header, buffer, stream->next_out - (unsigned char *)buffer);
 		if (memchr(buffer, '\0', stream->next_out - (unsigned char *)buffer))
-			return 0;
+			goto enough;
 		stream->next_out = buffer;
 		stream->avail_out = bufsiz;
 	} while (status != Z_STREAM_END);
 	return -1;
+
+enough:
+	eoh = memchr(header->buf, '\0', header->len);
+	if (!eoh)
+		die("BUG: the NUL we earlier saw is gone???");
+	if (!memchr(header->buf, ' ', eoh - header->buf))
+		return -1;
+	return 0;
 }
 
 static void *unpack_sha1_rest(git_zstream *stream, void *buffer, unsigned long size, const unsigned char *sha1)
