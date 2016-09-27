@@ -18,7 +18,7 @@ ordering and formatting options, such as `--reverse`.
 -<number>::
 -n <number>::
 --max-count=<number>::
-	Limit the number of commits to output.
+	Limit to last n number of commits to output specified in <number>.
 
 --skip=<number>::
 	Skip 'number' commits before starting to show the commit output.
