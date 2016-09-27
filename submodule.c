@@ -396,7 +396,7 @@ output_header:
 			find_unique_abbrev(one->hash, DEFAULT_ABBREV));
 	if (!fast_backward && !fast_forward)
 		strbuf_addch(&sb, '.');
-	strbuf_addstr(&sb, find_unique_abbrev(two->hash, DEFAULT_ABBREV));
+	strbuf_add_unique_abbrev(&sb->hash, two, DEFAULT_ABBREV);
 	if (message)
 		strbuf_addf(&sb, " %s%s\n", message, reset);
 	else
