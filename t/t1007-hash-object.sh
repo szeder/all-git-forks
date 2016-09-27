@@ -183,9 +183,20 @@ for args in "-w --stdin-paths" "--stdin-paths -w"; do
 	pop_repo
 done
 
-test_expect_success 'corrupt tree' '
+test_expect_success 'too-short tree' '
 	echo abc >malformed-tree &&
-	test_must_fail git hash-object -t tree malformed-tree
+	test_must_fail git hash-object -t tree malformed-tree 2>err &&
+	grep "too-short tree object" err
+'
+
+test_expect_success 'malformed mode in tree' '
+	test_must_fail git hash-object -t tree ../t1007/tree-with-malformed-mode 2>err &&
+	grep "malformed mode in tree entry" err
+'
+
+test_expect_success 'empty filename in tree' '
+	test_must_fail git hash-object -t tree ../t1007/tree-with-empty-filename 2>err &&
+	grep "empty filename in tree entry" err
 '
 
 test_expect_success 'corrupt commit' '
