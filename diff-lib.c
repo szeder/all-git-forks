@@ -545,6 +545,7 @@ int index_differs_from(const char *def, int diff_flags)
 	DIFF_OPT_SET(&rev.diffopt, QUICK);
 	DIFF_OPT_SET(&rev.diffopt, EXIT_WITH_STATUS);
 	rev.diffopt.flags |= diff_flags;
+	rev.diffopt.shift_ita = 1;
 	run_diff_index(&rev, 1);
 	if (rev.pending.alloc)
 		free(rev.pending.objects);
