@@ -48,7 +48,10 @@ sub clean_filename {
 
 sub smudge_filename {
 	my $filename = shift;
-	$filename =~ s{/}{@{[SLASH_REPLACEMENT]}}g;
+	my $use_ns = shift || "";
+	if ($use_ns) {
+		$filename =~ s/^$use_ns://;
+	}
 	$filename =~ s/ /_/g;
 	# Decode forbidden characters encoded in clean_filename
 	$filename =~ s/_%_([0-9a-fA-F][0-9a-fA-F])/sprintf('%c', hex($1))/ge;
