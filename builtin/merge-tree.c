@@ -88,7 +88,7 @@ static void *origin(struct merge_list *entry, unsigned long *size)
 	return NULL;
 }
 
-static int show_outf(void *priv_, mmbuffer_t *mb, int nbuf)
+static int show_outf(void *priv_, mmbuffer_t *mb, int nbuf, long unused_offset)
 {
 	int i;
 	for (i = 0; i < nbuf; i++)

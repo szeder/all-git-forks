@@ -41,7 +41,7 @@ long xdl_bogosqrt(long n) {
 
 
 int xdl_emit_diffrec(char const *rec, long size, char const *pre, long psize,
-		     xdemitcb_t *ecb) {
+		     xdemitcb_t *ecb, long offset) {
 	int i = 2;
 	mmbuffer_t mb[3];
 
@@ -54,7 +54,7 @@ int xdl_emit_diffrec(char const *rec, long size, char const *pre, long psize,
 		mb[2].size = strlen(mb[2].ptr);
 		i++;
 	}
-	if (ecb->outf(ecb->priv, mb, i) < 0) {
+	if (ecb->outf(ecb->priv, mb, i, offset) < 0) {
 
 		return -1;
 	}
@@ -459,7 +459,7 @@ int xdl_emit_hunk_hdr(long s1, long c1, long s2, long c2,
 
 	mb.ptr = buf;
 	mb.size = nb;
-	if (ecb->outf(ecb->priv, &mb, 1) < 0)
+	if (ecb->outf(ecb->priv, &mb, 1, -1) < 0)
 		return -1;
 
 	return 0;

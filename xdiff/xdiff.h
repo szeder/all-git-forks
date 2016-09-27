@@ -85,7 +85,7 @@ typedef struct s_xpparam {
 
 typedef struct s_xdemitcb {
 	void *priv;
-	int (*outf)(void *, mmbuffer_t *, int);
+	int (*outf)(void *, mmbuffer_t *, int, long);
 } xdemitcb_t;
 
 typedef long (*find_func_t)(const char *line, long line_len, char *buffer, long buffer_size, void *priv);

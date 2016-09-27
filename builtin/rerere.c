@@ -13,7 +13,7 @@ static const char * const rerere_usage[] = {
 	NULL,
 };
 
-static int outf(void *dummy, mmbuffer_t *ptr, int nbuf)
+static int outf(void *dummy, mmbuffer_t *ptr, int nbuf, long unused_offset)
 {
 	int i;
 	for (i = 0; i < nbuf; i++)
