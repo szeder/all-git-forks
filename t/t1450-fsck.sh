@@ -188,8 +188,7 @@ test_expect_success 'commit with NUL in header' '
 	grep "error in commit $new.*unterminated header: NUL at offset" out
 '
 
-test_expect_success 'malformatted tree object' '
-	test_when_finished "git update-ref -d refs/tags/wrong" &&
+test_expect_success 'tree object with duplicate entries' '
 	test_when_finished "remove_object \$T" &&
 	T=$(
 		GIT_INDEX_FILE=test-index &&
@@ -206,6 +205,20 @@ test_expect_success 'malformatted tree object' '
 	) &&
 	test_must_fail git fsck 2>out &&
 	grep "error in tree .*contains duplicate file entries" out
+'
+
+test_expect_success 'unparseable tree object' '
+	test_when_finished "git update-ref -d refs/heads/wrong" &&
+	test_when_finished "remove_object 307e300745b82417cc1a903f875c7d22e45ef907" &&
+	test_when_finished "remove_object f506a346749bb96f52d8605ffba9fb93d46b5ffd" &&
+	mkdir -p .git/objects/30 mkdir -p .git/objects/f5 &&
+	cp ../t1450/bad-objects/307e300745b82417cc1a903f875c7d22e45ef907 .git/objects/30/7e300745b82417cc1a903f875c7d22e45ef907 &&
+	cp ../t1450/bad-objects/f506a346749bb96f52d8605ffba9fb93d46b5ffd .git/objects/f5/06a346749bb96f52d8605ffba9fb93d46b5ffd &&
+	git update-ref refs/heads/wrong 307e300745b82417cc1a903f875c7d22e45ef907 &&
+	test_must_fail git fsck 2>out &&
+	grep "warning: empty filename in tree entry" out &&
+	grep "f506a346749bb96f52d8605ffba9fb93d46b5ffd" out &&
+	! grep "fatal: empty filename in tree entry" out
 '
 
 test_expect_success 'tag pointing to nonexistent' '
