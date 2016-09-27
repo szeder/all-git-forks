@@ -19,7 +19,8 @@ struct diffgrep_cb {
 	int hit;
 };
 
-static void diffgrep_consume(void *priv, char *line, unsigned long len)
+static void diffgrep_consume(void *priv, char *line, unsigned long len,
+			     long offset)
 {
 	struct diffgrep_cb *data = priv;
 	regmatch_t regmatch;

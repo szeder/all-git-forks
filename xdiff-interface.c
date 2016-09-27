@@ -56,7 +56,7 @@ int parse_hunk_header(char *line, int len,
 	return -!!memcmp(cp, " @@", 3);
 }
 
-static void consume_one(void *priv_, char *s, unsigned long size)
+static void consume_one(void *priv_, char *s, unsigned long size, long offset)
 {
 	struct xdiff_emit_state *priv = priv_;
 	char *ep;
@@ -64,13 +64,13 @@ static void consume_one(void *priv_, char *s, unsigned long size)
 		unsigned long this_size;
 		ep = memchr(s, '\n', size);
 		this_size = (ep == NULL) ? size : (ep - s + 1);
-		priv->consume(priv->consume_callback_data, s, this_size);
+		priv->consume(priv->consume_callback_data, s, this_size, offset);
 		size -= this_size;
 		s += this_size;
 	}
 }
 
-static int xdiff_outf(void *priv_, mmbuffer_t *mb, int nbuf)
+static int xdiff_outf(void *priv_, mmbuffer_t *mb, int nbuf, long offset)
 {
 	struct xdiff_emit_state *priv = priv_;
 	int i;
@@ -84,15 +84,15 @@ static int xdiff_outf(void *priv_, mmbuffer_t *mb, int nbuf)
 
 		/* we have a complete line */
 		if (!priv->remainder.len) {
-			consume_one(priv, mb[i].ptr, mb[i].size);
+			consume_one(priv, mb[i].ptr, mb[i].size, offset);
 			continue;
 		}
 		strbuf_add(&priv->remainder, mb[i].ptr, mb[i].size);
-		consume_one(priv, priv->remainder.buf, priv->remainder.len);
+		consume_one(priv, priv->remainder.buf, priv->remainder.len, offset);
 		strbuf_reset(&priv->remainder);
 	}
 	if (priv->remainder.len) {
-		consume_one(priv, priv->remainder.buf, priv->remainder.len);
+		consume_one(priv, priv->remainder.buf, priv->remainder.len, offset);
 		strbuf_reset(&priv->remainder);
 	}
 	return 0;

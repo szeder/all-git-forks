@@ -342,7 +342,8 @@ struct combine_diff_state {
 	struct sline *lost_bucket;
 };
 
-static void consume_line(void *state_, char *line, unsigned long len)
+static void consume_line(void *state_, char *line, unsigned long len,
+			 long offset)
 {
 	struct combine_diff_state *state = state_;
 	if (5 < len && !memcmp("@@ -", line, 4)) {
