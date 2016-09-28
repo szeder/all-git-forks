@@ -260,6 +260,7 @@ test_expect_success 'iteration shows correct origins' '
 	name=
 	scope=cmdline
 	EOF
+	GIT_CONFIG_NOSYSTEM=1 \
 	GIT_CONFIG_PARAMETERS=$cmdline_config test-config iterate >actual &&
 	test_cmp expect actual
 '

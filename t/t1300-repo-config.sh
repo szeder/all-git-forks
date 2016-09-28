@@ -341,13 +341,11 @@ version.1.2.3eX.alpha=beta
 EOF
 
 test_expect_success 'working --list' '
-	git config --list > output &&
+	git config --local --list > output &&
 	test_cmp expect output
 '
-cat > expect << EOF
-EOF
-
-test_expect_success '--list without repo produces empty output' '
+test_expect_success '--list without repo shows only from the global' '
+	git config --system --list >expect &&
 	git --git-dir=nonexistent config --list >output &&
 	test_cmp expect output
 '
@@ -360,7 +358,7 @@ version.1.2.3eX.alpha
 EOF
 
 test_expect_success '--name-only --list' '
-	git config --name-only --list >output &&
+	git config --local --name-only --list >output &&
 	test_cmp expect output
 '
 
@@ -370,7 +368,7 @@ nextsection.nonewline wow2 for me
 EOF
 
 test_expect_success '--get-regexp' '
-	git config --get-regexp in >output &&
+	git config --local --get-regexp in >output &&
 	test_cmp expect output
 '
 
@@ -380,7 +378,7 @@ nextsection.nonewline
 EOF
 
 test_expect_success '--name-only --get-regexp' '
-	git config --name-only --get-regexp in >output &&
+	git config --local --name-only --get-regexp in >output &&
 	test_cmp expect output
 '
 
@@ -391,7 +389,7 @@ EOF
 
 test_expect_success '--add' '
 	git config --add nextsection.nonewline "wow4 for you" &&
-	git config --get-all nextsection.nonewline > output &&
+	git config --local --get-all nextsection.nonewline > output &&
 	test_cmp expect output
 '
 
@@ -935,7 +933,7 @@ section.quotecont=cont;inued
 EOF
 
 test_expect_success 'value continued on next line' '
-	git config --list > result &&
+	git config --local --list > result &&
 	test_cmp result expect
 '
 
@@ -959,7 +957,7 @@ Qsection.sub=section.val4
 Qsection.sub=section.val5Q
 EOF
 test_expect_success '--null --list' '
-	git config --null --list >result.raw &&
+	git config --null --local --list >result.raw &&
 	nul_to_q <result.raw >result &&
 	echo >>result &&
 	test_cmp expect result
@@ -1264,6 +1262,7 @@ test_expect_success '--show-origin with --list' '
 		file:.git/../include/relative.include	user.relative=include
 		command line:	user.cmdline=true
 	EOF
+	GIT_CONFIG_NOSYSTEM=1 \
 	git -c user.cmdline=true config --list --show-origin >output &&
 	test_cmp expect output
 '
@@ -1281,6 +1280,7 @@ test_expect_success '--show-origin with --list --null' '
 		includeQcommand line:Quser.cmdline
 		trueQ
 	EOF
+	GIT_CONFIG_NOSYSTEM=1 \
 	git -c user.cmdline=true config --null --list --show-origin >output.raw &&
 	nul_to_q <output.raw >output &&
 	# The here-doc above adds a newline that the --null output would not
@@ -1304,6 +1304,7 @@ test_expect_success '--show-origin with --get-regexp' '
 		file:$HOME/.gitconfig	user.global true
 		file:.git/config	user.local true
 	EOF
+	GIT_CONFIG_NOSYSTEM=1 \
 	git config --show-origin --get-regexp "user\.[g|l].*" >output &&
 	test_cmp expect output
 '
@@ -1312,6 +1313,7 @@ test_expect_success '--show-origin getting a single key' '
 	cat >expect <<-\EOF &&
 		file:.git/config	local
 	EOF
+	GIT_CONFIG_NOSYSTEM=1 \
 	git config --show-origin user.override >output &&
 	test_cmp expect output
 '
