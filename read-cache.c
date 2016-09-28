@@ -1701,6 +1701,16 @@ int is_index_unborn(struct index_state *istate)
 	return (!istate->cache_nr && !istate->timestamp.sec);
 }
 
+int has_ita_entries(struct index_state *istate)
+{
+	int i;
+
+	for (i = 0; i < istate->cache_nr; i++)
+		if (ce_intent_to_add(istate->cache[i]))
+			return 1;
+	return 0;
+}
+
 int discard_index(struct index_state *istate)
 {
 	int i;
