@@ -1236,6 +1236,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			case 'U':
 			case 'N':
 			case 'X':
+			case 'Y':
 			case 'R':
 				strbuf_addch(sb, c->signature_check.result);
 			}

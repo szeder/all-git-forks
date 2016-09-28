@@ -35,7 +35,7 @@ static struct {
 	{ 'U', "\n[GNUPG:] TRUST_UNDEFINED" },
 	{ 'E', "\n[GNUPG:] ERRSIG "},
 	{ 'X', "\n[GNUPG:] EXPSIG "},
-	{ 'X', "\n[GNUPG:] EXPKEYSIG "},
+	{ 'Y', "\n[GNUPG:] EXPKEYSIG "},
 	{ 'R', "\n[GNUPG:] REVKEYSIG "},
 };
 
