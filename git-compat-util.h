@@ -424,6 +424,12 @@ extern struct error_context error_print;
 extern struct error_context error_warn;
 extern struct error_context error_die;
 
+/* use like
+ *   struct strbuf err_buf = STRBUF_INIT;
+ *   struct error_context err = STRBUF_ERROR(&err_buf);
+ */
+#define STRBUF_ERR(buf) { (error_function)strbuf_vaddf, buf }
+
 __attribute__((format (printf, 2, 3)))
 extern int report_error(struct error_context *err, const char *fmt, ...);
 __attribute__((format (printf, 2, 3)))
