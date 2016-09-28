@@ -542,7 +542,7 @@ static int post_rpc(struct rpc_state *rpc)
 		if (err != HTTP_OK)
 			return -1;
 
-		if (results.auth_avail & CURLAUTH_GSSNEGOTIATE)
+		if (results.auth_avail & CURLAUTH_NEGOTIATE)
 			needs_100_continue = 1;
 	}
 

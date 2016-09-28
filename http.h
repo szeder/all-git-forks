@@ -42,6 +42,13 @@
 #endif
 
 /*
+ * Keep it compatible on system with cURL < 7.38.0
+ * */
+#ifndef CURLAUTH_NEGOTIATE
+#define CURLAUTH_NEGOTIATE CURLAUTH_GSSNEGOTIATE
+#endif
+
+/*
  * CURLOPT_USE_SSL was known as CURLOPT_FTP_SSL up to 7.16.4,
  * and the constants were known as CURLFTPSSL_*
 */

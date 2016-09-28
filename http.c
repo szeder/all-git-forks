@@ -79,7 +79,7 @@ static struct {
 } proxy_authmethods[] = {
 	{ "basic", CURLAUTH_BASIC },
 	{ "digest", CURLAUTH_DIGEST },
-	{ "negotiate", CURLAUTH_GSSNEGOTIATE },
+	{ "negotiate", CURLAUTH_NEGOTIATE },
 	{ "ntlm", CURLAUTH_NTLM },
 #ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
 	{ "anyauth", CURLAUTH_ANY },
@@ -1277,7 +1277,7 @@ static int handle_curl_result(struct slot_results *results)
 			return HTTP_NOAUTH;
 		} else {
 #ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
-			http_auth_methods &= ~CURLAUTH_GSSNEGOTIATE;
+			http_auth_methods &= ~CURLAUTH_NEGOTIATE;
 #endif
 			return HTTP_REAUTH;
 		}
