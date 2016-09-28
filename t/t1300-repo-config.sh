@@ -1372,4 +1372,19 @@ test_expect_success !MINGW '--show-origin blob ref' '
 	test_cmp expect output
 '
 
+test_expect_success 'system-wide configuration' '
+	system="$TRASH_DIRECTORY/system-wide" &&
+	>"$system" &&
+	git config -f "$system" --add frotz.nitfol xyzzy &&
+
+	git config -f "$system" frotz.nitfol >expect &&
+	GIT_ETC_GITCONFIG="$system" \
+	git config --system frotz.nitfol >actual &&
+
+	GIT_ETC_GITCONFIG="$system" \
+	git config --system --replace-all frotz.nitfol blorb &&
+	echo blorb >expect &&
+	GIT_ETC_GITCONFIG="$system" git config --system frotz.nitfol >actual
+'
+
 test_done

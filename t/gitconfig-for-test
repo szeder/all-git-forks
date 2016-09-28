@@ -1,0 +1,6 @@
+;; This file is used as if it were /etc/gitconfig while running the
+;; test scripts in this directory.
+;;
+;; [user]
+;;	name = A U Thor
+;;	email = author@example.com
