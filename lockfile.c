@@ -146,10 +146,10 @@ static int lock_file_timeout(struct lock_file *lk, const char *path,
 	}
 }
 
-void unable_to_lock_message(const char *path, int err, struct strbuf *buf)
+void unable_to_lock_message(const char *path, int err, struct error_context *ctx)
 {
 	if (err == EEXIST) {
-		strbuf_addf(buf, _("Unable to create '%s.lock': %s.\n\n"
+		report_error(ctx, _("Unable to create '%s.lock': %s.\n\n"
 		    "Another git process seems to be running in this repository, e.g.\n"
 		    "an editor opened by 'git commit'. Please make sure all processes\n"
 		    "are terminated then try again. If it still fails, a git process\n"
@@ -157,16 +157,14 @@ void unable_to_lock_message(const char *path, int err, struct strbuf *buf)
 		    "remove the file manually to continue."),
 			    absolute_path(path), strerror(err));
 	} else
-		strbuf_addf(buf, _("Unable to create '%s.lock': %s"),
-			    absolute_path(path), strerror(err));
+		report_error(ctx, _("Unable to create '%s.lock': %s"),
+			     absolute_path(path), strerror(err));
 }
 
 NORETURN void unable_to_lock_die(const char *path, int err)
 {
-	struct strbuf buf = STRBUF_INIT;
-
-	unable_to_lock_message(path, err, &buf);
-	die("%s", buf.buf);
+	unable_to_lock_message(path, err, &error_die);
+	die("BUG: error_die did not die");
 }
 
 /* This should return a meaningful errno on failure */

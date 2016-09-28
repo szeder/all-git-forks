@@ -516,7 +516,8 @@ enum ref_type ref_type(const char *refname)
 }
 
 static int write_pseudoref(const char *pseudoref, const unsigned char *sha1,
-			   const unsigned char *old_sha1, struct strbuf *err)
+			   const unsigned char *old_sha1,
+			   struct error_context *err)
 {
 	const char *filename;
 	int fd;
@@ -529,8 +530,7 @@ static int write_pseudoref(const char *pseudoref, const unsigned char *sha1,
 	filename = git_path("%s", pseudoref);
 	fd = hold_lock_file_for_update(&lock, filename, LOCK_DIE_ON_ERROR);
 	if (fd < 0) {
-		strbuf_addf(err, "could not open '%s' for writing: %s",
-			    filename, strerror(errno));
+		report_errno(err, "could not open '%s' for writing", filename);
 		return -1;
 	}
 
@@ -540,14 +540,14 @@ static int write_pseudoref(const char *pseudoref, const unsigned char *sha1,
 		if (read_ref(pseudoref, actual_old_sha1))
 			die("could not read ref '%s'", pseudoref);
 		if (hashcmp(actual_old_sha1, old_sha1)) {
-			strbuf_addf(err, "unexpected sha1 when writing '%s'", pseudoref);
+			report_error(err, "unexpected sha1 when writing '%s'", pseudoref);
 			rollback_lock_file(&lock);
 			goto done;
 		}
 	}
 
 	if (write_in_full(fd, buf.buf, buf.len) != buf.len) {
-		strbuf_addf(err, "could not write to '%s'", filename);
+		report_error(err, "could not write to '%s'", filename);
 		rollback_lock_file(&lock);
 		goto done;
 	}
@@ -595,23 +595,19 @@ int delete_ref(const char *refname, const unsigned char *old_sha1,
 	       unsigned int flags)
 {
 	struct ref_transaction *transaction;
-	struct strbuf err = STRBUF_INIT;
 
 	if (ref_type(refname) == REF_TYPE_PSEUDOREF)
 		return delete_pseudoref(refname, old_sha1);
 
-	transaction = ref_transaction_begin(&err);
+	transaction = ref_transaction_begin(&error_print);
 	if (!transaction ||
 	    ref_transaction_delete(transaction, refname, old_sha1,
-				   flags, NULL, &err) ||
-	    ref_transaction_commit(transaction, &err)) {
-		error("%s", err.buf);
+				   flags, NULL, &error_print) ||
+	    ref_transaction_commit(transaction, &error_print)) {
 		ref_transaction_free(transaction);
-		strbuf_release(&err);
 		return 1;
 	}
 	ref_transaction_free(transaction);
-	strbuf_release(&err);
 	return 0;
 }
 
@@ -774,7 +770,7 @@ int read_ref_at(const char *refname, unsigned int flags, unsigned long at_time, 
 	return 1;
 }
 
-struct ref_transaction *ref_transaction_begin(struct strbuf *err)
+struct ref_transaction *ref_transaction_begin(struct error_context *err)
 {
 	assert(err);
 
@@ -830,15 +826,15 @@ int ref_transaction_update(struct ref_transaction *transaction,
 			   const unsigned char *new_sha1,
 			   const unsigned char *old_sha1,
 			   unsigned int flags, const char *msg,
-			   struct strbuf *err)
+			   struct error_context *err)
 {
 	assert(err);
 
 	if ((new_sha1 && !is_null_sha1(new_sha1)) ?
 	    check_refname_format(refname, REFNAME_ALLOW_ONELEVEL) :
 	    !refname_is_safe(refname)) {
-		strbuf_addf(err, "refusing to update ref with bad name '%s'",
-			    refname);
+		report_error(err, "refusing to update ref with bad name '%s'",
+			     refname);
 		return -1;
 	}
 
@@ -853,7 +849,7 @@ int ref_transaction_create(struct ref_transaction *transaction,
 			   const char *refname,
 			   const unsigned char *new_sha1,
 			   unsigned int flags, const char *msg,
-			   struct strbuf *err)
+			   struct error_context *err)
 {
 	if (!new_sha1 || is_null_sha1(new_sha1))
 		die("BUG: create called without valid new_sha1");
@@ -865,7 +861,7 @@ int ref_transaction_delete(struct ref_transaction *transaction,
 			   const char *refname,
 			   const unsigned char *old_sha1,
 			   unsigned int flags, const char *msg,
-			   struct strbuf *err)
+			   struct error_context *err)
 {
 	if (old_sha1 && is_null_sha1(old_sha1))
 		die("BUG: delete called with old_sha1 set to zeros");
@@ -878,7 +874,7 @@ int ref_transaction_verify(struct ref_transaction *transaction,
 			   const char *refname,
 			   const unsigned char *old_sha1,
 			   unsigned int flags,
-			   struct strbuf *err)
+			   struct error_context *err)
 {
 	if (!old_sha1)
 		die("BUG: verify called with old_sha1 set to NULL");
@@ -900,7 +896,8 @@ int update_ref(const char *msg, const char *refname,
 	       unsigned int flags, enum action_on_err onerr)
 {
 	struct ref_transaction *t = NULL;
-	struct strbuf err = STRBUF_INIT;
+	struct strbuf err_buf = STRBUF_INIT;
+	struct error_context err = STRBUF_ERR(&err_buf);
 	int ret = 0;
 
 	if (ref_type(refname) == REF_TYPE_PSEUDOREF) {
@@ -920,18 +917,18 @@ int update_ref(const char *msg, const char *refname,
 
 		switch (onerr) {
 		case UPDATE_REFS_MSG_ON_ERR:
-			error(str, refname, err.buf);
+			error(str, refname, err_buf.buf);
 			break;
 		case UPDATE_REFS_DIE_ON_ERR:
-			die(str, refname, err.buf);
+			die(str, refname, err_buf.buf);
 			break;
 		case UPDATE_REFS_QUIET_ON_ERR:
 			break;
 		}
-		strbuf_release(&err);
+		strbuf_release(&err_buf);
 		return 1;
 	}
-	strbuf_release(&err);
+	strbuf_release(&err_buf);
 	if (t)
 		ref_transaction_free(t);
 	return 0;
@@ -1121,16 +1118,12 @@ const char *find_descendant_ref(const char *dirname,
 int rename_ref_available(const char *old_refname, const char *new_refname)
 {
 	struct string_list skip = STRING_LIST_INIT_NODUP;
-	struct strbuf err = STRBUF_INIT;
 	int ok;
 
 	string_list_insert(&skip, old_refname);
-	ok = !verify_refname_available(new_refname, NULL, &skip, &err);
-	if (!ok)
-		error("%s", err.buf);
+	ok = !verify_refname_available(new_refname, NULL, &skip, &error_print);
 
 	string_list_clear(&skip, 0);
-	strbuf_release(&err);
 	return ok;
 }
 
@@ -1311,7 +1304,7 @@ static const char *resolve_ref_recursively(struct ref_store *refs,
 }
 
 /* backend functions */
-int refs_init_db(struct strbuf *err)
+int refs_init_db(struct error_context *err)
 {
 	struct ref_store *refs = get_ref_store(NULL);
 
@@ -1471,7 +1464,7 @@ int create_symref(const char *ref_target, const char *refs_heads_master,
 }
 
 int ref_transaction_commit(struct ref_transaction *transaction,
-			   struct strbuf *err)
+			   struct error_context *err)
 {
 	struct ref_store *refs = get_ref_store(NULL);
 
@@ -1481,7 +1474,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 int verify_refname_available(const char *refname,
 			     const struct string_list *extra,
 			     const struct string_list *skip,
-			     struct strbuf *err)
+			     struct error_context *err)
 {
 	struct ref_store *refs = get_ref_store(NULL);
 
@@ -1523,7 +1516,7 @@ int reflog_exists(const char *refname)
 }
 
 int safe_create_reflog(const char *refname, int force_create,
-		       struct strbuf *err)
+		       struct error_context *err)
 {
 	struct ref_store *refs = get_ref_store(NULL);
 
@@ -1552,7 +1545,7 @@ int reflog_expire(const char *refname, const unsigned char *sha1,
 }
 
 int initial_ref_transaction_commit(struct ref_transaction *transaction,
-				   struct strbuf *err)
+				   struct error_context *err)
 {
 	struct ref_store *refs = get_ref_store(NULL);
 

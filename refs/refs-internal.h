@@ -124,7 +124,7 @@ enum peel_status peel_object(const unsigned char *name, unsigned char *sha1);
 int verify_refname_available(const char *newname,
 			     const struct string_list *extras,
 			     const struct string_list *skip,
-			     struct strbuf *err);
+			     struct error_context *err);
 
 /*
  * Copy the reflog message msg to buf, which has been allocated sufficiently
@@ -485,11 +485,11 @@ struct ref_store;
  */
 typedef struct ref_store *ref_store_init_fn(const char *submodule);
 
-typedef int ref_init_db_fn(struct ref_store *refs, struct strbuf *err);
+typedef int ref_init_db_fn(struct ref_store *refs, struct error_context *err);
 
 typedef int ref_transaction_commit_fn(struct ref_store *refs,
 				      struct ref_transaction *transaction,
-				      struct strbuf *err);
+				      struct error_context *err);
 
 typedef int pack_refs_fn(struct ref_store *ref_store, unsigned int flags);
 typedef int peel_ref_fn(struct ref_store *ref_store,
@@ -532,7 +532,7 @@ typedef int for_each_reflog_ent_reverse_fn(struct ref_store *ref_store,
 					   void *cb_data);
 typedef int reflog_exists_fn(struct ref_store *ref_store, const char *refname);
 typedef int create_reflog_fn(struct ref_store *ref_store, const char *refname,
-			     int force_create, struct strbuf *err);
+			     int force_create, struct error_context *err);
 typedef int delete_reflog_fn(struct ref_store *ref_store, const char *refname);
 typedef int reflog_expire_fn(struct ref_store *ref_store,
 			     const char *refname, const unsigned char *sha1,
@@ -588,7 +588,7 @@ typedef int verify_refname_available_fn(struct ref_store *ref_store,
 					const char *newname,
 					const struct string_list *extras,
 					const struct string_list *skip,
-					struct strbuf *err);
+					struct error_context *err);
 
 struct ref_storage_be {
 	struct ref_storage_be *next;

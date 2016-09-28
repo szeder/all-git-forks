@@ -181,7 +181,7 @@ static inline int hold_lock_file_for_update(
  * `errno` set by the failing call.
  */
 extern void unable_to_lock_message(const char *path, int err,
-				   struct strbuf *buf);
+				   struct error_context *buf);
 
 /*
  * Emit an appropriate error message and `die()` following the failure

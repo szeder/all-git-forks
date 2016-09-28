@@ -618,17 +618,18 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 			if (opts->new_branch_log &&
 			    !should_autocreate_reflog(refname)) {
 				int ret;
-				struct strbuf err = STRBUF_INIT;
+				struct strbuf err_buf = STRBUF_INIT;
+				struct error_context err = STRBUF_ERR(&err_buf);
 
 				ret = safe_create_reflog(refname, 1, &err);
 				if (ret) {
 					fprintf(stderr, _("Can not do reflog for '%s': %s\n"),
-						opts->new_orphan_branch, err.buf);
-					strbuf_release(&err);
+						opts->new_orphan_branch, err_buf.buf);
+					strbuf_release(&err_buf);
 					free(refname);
 					return;
 				}
-				strbuf_release(&err);
+				strbuf_release(&err_buf);
 			}
 			free(refname);
 		}

@@ -1748,7 +1748,6 @@ static int update_branch(struct branch *b)
 	static const char *msg = "fast-import";
 	struct ref_transaction *transaction;
 	unsigned char old_sha1[20];
-	struct strbuf err = STRBUF_INIT;
 
 	if (is_null_sha1(b->sha1)) {
 		if (b->delete)
@@ -1772,18 +1771,15 @@ static int update_branch(struct branch *b)
 			return -1;
 		}
 	}
-	transaction = ref_transaction_begin(&err);
+	transaction = ref_transaction_begin(&error_print);
 	if (!transaction ||
 	    ref_transaction_update(transaction, b->name, b->sha1, old_sha1,
-				   0, msg, &err) ||
-	    ref_transaction_commit(transaction, &err)) {
+				   0, msg, &error_print) ||
+	    ref_transaction_commit(transaction, &error_print)) {
 		ref_transaction_free(transaction);
-		error("%s", err.buf);
-		strbuf_release(&err);
 		return -1;
 	}
 	ref_transaction_free(transaction);
-	strbuf_release(&err);
 	return 0;
 }
 
@@ -1803,12 +1799,11 @@ static void dump_tags(void)
 	static const char *msg = "fast-import";
 	struct tag *t;
 	struct strbuf ref_name = STRBUF_INIT;
-	struct strbuf err = STRBUF_INIT;
 	struct ref_transaction *transaction;
 
-	transaction = ref_transaction_begin(&err);
+	transaction = ref_transaction_begin(&error_print);
 	if (!transaction) {
-		failure |= error("%s", err.buf);
+		failure = -1;
 		goto cleanup;
 	}
 	for (t = first_tag; t; t = t->next_tag) {
@@ -1816,18 +1811,17 @@ static void dump_tags(void)
 		strbuf_addf(&ref_name, "refs/tags/%s", t->name);
 
 		if (ref_transaction_update(transaction, ref_name.buf,
-					   t->sha1, NULL, 0, msg, &err)) {
-			failure |= error("%s", err.buf);
+					   t->sha1, NULL, 0, msg, &error_print)) {
+			failure = -1;
 			goto cleanup;
 		}
 	}
-	if (ref_transaction_commit(transaction, &err))
-		failure |= error("%s", err.buf);
+	if (ref_transaction_commit(transaction, &error_print))
+		failure = -1;
 
  cleanup:
 	ref_transaction_free(transaction);
 	strbuf_release(&ref_name);
-	strbuf_release(&err);
 }
 
 static void dump_marks_helper(FILE *f,

@@ -258,7 +258,6 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		 const char **write_ref, const char *write_ref_log_details)
 {
 	struct strbuf refname = STRBUF_INIT;
-	struct strbuf err = STRBUF_INIT;
 	struct ref_transaction *transaction = NULL;
 	unsigned char *sha1 = xmalloc(targets * 20);
 	char *msg = NULL;
@@ -267,11 +266,9 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 	save_commit_buffer = 0;
 
 	if (write_ref) {
-		transaction = ref_transaction_begin(&err);
-		if (!transaction) {
-			error("%s", err.buf);
+		transaction = ref_transaction_begin(&error_print);
+		if (!transaction)
 			goto done;
-		}
 	}
 
 	if (!walker->get_recover) {
@@ -307,15 +304,11 @@ int walker_fetch(struct walker *walker, int targets, char **target,
 		if (ref_transaction_update(transaction, refname.buf,
 					   &sha1[20 * i], NULL, 0,
 					   msg ? msg : "fetch (unknown)",
-					   &err)) {
-			error("%s", err.buf);
+					   &error_print))
 			goto done;
-		}
 	}
-	if (ref_transaction_commit(transaction, &err)) {
-		error("%s", err.buf);
+	if (ref_transaction_commit(transaction, &error_print))
 		goto done;
-	}
 
 	ret = 0;
 
@@ -323,7 +316,6 @@ done:
 	ref_transaction_free(transaction);
 	free(msg);
 	free(sha1);
-	strbuf_release(&err);
 	strbuf_release(&refname);
 	return ret;
 }

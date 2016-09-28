@@ -179,7 +179,6 @@ static int parse_next_sha1(struct strbuf *input, const char **next,
 static const char *parse_cmd_update(struct ref_transaction *transaction,
 				    struct strbuf *input, const char *next)
 {
-	struct strbuf err = STRBUF_INIT;
 	char *refname;
 	unsigned char new_sha1[20];
 	unsigned char old_sha1[20];
@@ -199,15 +198,13 @@ static const char *parse_cmd_update(struct ref_transaction *transaction,
 	if (*next != line_termination)
 		die("update %s: extra input: %s", refname, next);
 
-	if (ref_transaction_update(transaction, refname,
-				   new_sha1, have_old ? old_sha1 : NULL,
-				   update_flags | create_reflog_flag,
-				   msg, &err))
-		die("%s", err.buf);
+	ref_transaction_update(transaction, refname,
+			       new_sha1, have_old ? old_sha1 : NULL,
+			       update_flags | create_reflog_flag,
+			       msg, &error_die);
 
 	update_flags = 0;
 	free(refname);
-	strbuf_release(&err);
 
 	return next;
 }
@@ -215,7 +212,6 @@ static const char *parse_cmd_update(struct ref_transaction *transaction,
 static const char *parse_cmd_create(struct ref_transaction *transaction,
 				    struct strbuf *input, const char *next)
 {
-	struct strbuf err = STRBUF_INIT;
 	char *refname;
 	unsigned char new_sha1[20];
 
@@ -232,14 +228,12 @@ static const char *parse_cmd_create(struct ref_transaction *transaction,
 	if (*next != line_termination)
 		die("create %s: extra input: %s", refname, next);
 
-	if (ref_transaction_create(transaction, refname, new_sha1,
-				   update_flags | create_reflog_flag,
-				   msg, &err))
-		die("%s", err.buf);
+	ref_transaction_create(transaction, refname, new_sha1,
+			       update_flags | create_reflog_flag,
+			       msg, &error_die);
 
 	update_flags = 0;
 	free(refname);
-	strbuf_release(&err);
 
 	return next;
 }
@@ -247,7 +241,6 @@ static const char *parse_cmd_create(struct ref_transaction *transaction,
 static const char *parse_cmd_delete(struct ref_transaction *transaction,
 				    struct strbuf *input, const char *next)
 {
-	struct strbuf err = STRBUF_INIT;
 	char *refname;
 	unsigned char old_sha1[20];
 	int have_old;
@@ -268,14 +261,12 @@ static const char *parse_cmd_delete(struct ref_transaction *transaction,
 	if (*next != line_termination)
 		die("delete %s: extra input: %s", refname, next);
 
-	if (ref_transaction_delete(transaction, refname,
-				   have_old ? old_sha1 : NULL,
-				   update_flags, msg, &err))
-		die("%s", err.buf);
+	ref_transaction_delete(transaction, refname,
+			       have_old ? old_sha1 : NULL,
+			       update_flags, msg, &error_die);
 
 	update_flags = 0;
 	free(refname);
-	strbuf_release(&err);
 
 	return next;
 }
@@ -283,7 +274,6 @@ static const char *parse_cmd_delete(struct ref_transaction *transaction,
 static const char *parse_cmd_verify(struct ref_transaction *transaction,
 				    struct strbuf *input, const char *next)
 {
-	struct strbuf err = STRBUF_INIT;
 	char *refname;
 	unsigned char old_sha1[20];
 
@@ -298,13 +288,11 @@ static const char *parse_cmd_verify(struct ref_transaction *transaction,
 	if (*next != line_termination)
 		die("verify %s: extra input: %s", refname, next);
 
-	if (ref_transaction_verify(transaction, refname, old_sha1,
-				   update_flags, &err))
-		die("%s", err.buf);
+	ref_transaction_verify(transaction, refname, old_sha1,
+			       update_flags, &error_die);
 
 	update_flags = 0;
 	free(refname);
-	strbuf_release(&err);
 
 	return next;
 }
@@ -378,21 +366,16 @@ int cmd_update_ref(int argc, const char **argv, const char *prefix)
 	create_reflog_flag = create_reflog ? REF_FORCE_CREATE_REFLOG : 0;
 
 	if (read_stdin) {
-		struct strbuf err = STRBUF_INIT;
 		struct ref_transaction *transaction;
 
-		transaction = ref_transaction_begin(&err);
-		if (!transaction)
-			die("%s", err.buf);
+		transaction = ref_transaction_begin(&error_die);
 		if (delete || no_deref || argc > 0)
 			usage_with_options(git_update_ref_usage, options);
 		if (end_null)
 			line_termination = '\0';
 		update_refs_stdin(transaction);
-		if (ref_transaction_commit(transaction, &err))
-			die("%s", err.buf);
+		ref_transaction_commit(transaction, &error_die);
 		ref_transaction_free(transaction);
-		strbuf_release(&err);
 		return 0;
 	}
 

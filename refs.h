@@ -68,7 +68,7 @@ int should_autocreate_reflog(const char *refname);
 
 int is_branch(const char *refname);
 
-extern int refs_init_db(struct strbuf *err);
+extern int refs_init_db(struct error_context *err);
 
 /*
  * If refname is a non-symbolic reference that refers to a tag object,
@@ -258,7 +258,7 @@ int pack_refs(unsigned int flags);
 /*
  * Setup reflog before using. Fill in err and return -1 on failure.
  */
-int safe_create_reflog(const char *refname, int force_create, struct strbuf *err);
+int safe_create_reflog(const char *refname, int force_create, struct error_context *err);
 
 /** Reads log for the value of ref during at_time. **/
 int read_ref_at(const char *refname, unsigned int flags,
@@ -346,7 +346,7 @@ enum action_on_err {
  * Begin a reference transaction.  The reference transaction must
  * be freed by calling ref_transaction_free().
  */
-struct ref_transaction *ref_transaction_begin(struct strbuf *err);
+struct ref_transaction *ref_transaction_begin(struct error_context *err);
 
 /*
  * Reference transaction updates
@@ -395,7 +395,7 @@ int ref_transaction_update(struct ref_transaction *transaction,
 			   const unsigned char *new_sha1,
 			   const unsigned char *old_sha1,
 			   unsigned int flags, const char *msg,
-			   struct strbuf *err);
+			   struct error_context *err);
 
 /*
  * Add a reference creation to transaction. new_sha1 is the value that
@@ -410,7 +410,7 @@ int ref_transaction_create(struct ref_transaction *transaction,
 			   const char *refname,
 			   const unsigned char *new_sha1,
 			   unsigned int flags, const char *msg,
-			   struct strbuf *err);
+			   struct error_context *err);
 
 /*
  * Add a reference deletion to transaction. If old_sha1 is non-NULL,
@@ -424,7 +424,7 @@ int ref_transaction_delete(struct ref_transaction *transaction,
 			   const char *refname,
 			   const unsigned char *old_sha1,
 			   unsigned int flags, const char *msg,
-			   struct strbuf *err);
+			   struct error_context *err);
 
 /*
  * Verify, within a transaction, that refname has the value old_sha1,
@@ -438,7 +438,7 @@ int ref_transaction_verify(struct ref_transaction *transaction,
 			   const char *refname,
 			   const unsigned char *old_sha1,
 			   unsigned int flags,
-			   struct strbuf *err);
+			   struct error_context *err);
 
 /*
  * Commit all of the changes that have been queued in transaction, as
@@ -451,7 +451,7 @@ int ref_transaction_verify(struct ref_transaction *transaction,
 /* All other errors. */
 #define TRANSACTION_GENERIC_ERROR -2
 int ref_transaction_commit(struct ref_transaction *transaction,
-			   struct strbuf *err);
+			   struct error_context *err);
 
 /*
  * Like ref_transaction_commit(), but optimized for creating
@@ -465,7 +465,7 @@ int ref_transaction_commit(struct ref_transaction *transaction,
  * old_sha1 values must either be absent or NULL_SHA1.
  */
 int initial_ref_transaction_commit(struct ref_transaction *transaction,
-				   struct strbuf *err);
+				   struct error_context *err);
 
 /*
  * Free an existing transaction and all associated data.

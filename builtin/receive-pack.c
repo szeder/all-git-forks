@@ -347,6 +347,8 @@ static void rp_error(const char *err, ...)
 	va_end(params);
 }
 
+static struct error_context error_rp = { (error_function)report_message, "error: " };
+
 static int copy_to_sideband(int in, int out, void *arg)
 {
 	char data[128];
@@ -1079,7 +1081,6 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 	}
 
 	if (is_null_sha1(new_sha1)) {
-		struct strbuf err = STRBUF_INIT;
 		if (!parse_object(old_sha1)) {
 			old_sha1 = NULL;
 			if (ref_exists(name)) {
@@ -1092,16 +1093,11 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 		if (ref_transaction_delete(transaction,
 					   namespaced_name,
 					   old_sha1,
-					   0, "push", &err)) {
-			rp_error("%s", err.buf);
-			strbuf_release(&err);
+					   0, "push", &error_rp))
 			return "failed to delete";
-		}
-		strbuf_release(&err);
 		return NULL; /* good */
 	}
 	else {
-		struct strbuf err = STRBUF_INIT;
 		if (shallow_update && si->shallow_ref[cmd->index] &&
 		    update_shallow_ref(cmd, si))
 			return "shallow error";
@@ -1110,13 +1106,8 @@ static const char *update(struct command *cmd, struct shallow_info *si)
 					   namespaced_name,
 					   new_sha1, old_sha1,
 					   0, "push",
-					   &err)) {
-			rp_error("%s", err.buf);
-			strbuf_release(&err);
-
+					   &error_rp))
 			return "failed to update ref";
-		}
-		strbuf_release(&err);
 
 		return NULL; /* good */
 	}
@@ -1338,16 +1329,13 @@ static void execute_commands_non_atomic(struct command *commands,
 					struct shallow_info *si)
 {
 	struct command *cmd;
-	struct strbuf err = STRBUF_INIT;
 
 	for (cmd = commands; cmd; cmd = cmd->next) {
 		if (!should_process_cmd(cmd))
 			continue;
 
-		transaction = ref_transaction_begin(&err);
+		transaction = ref_transaction_begin(&error_rp);
 		if (!transaction) {
-			rp_error("%s", err.buf);
-			strbuf_reset(&err);
 			cmd->error_string = "transaction failed to start";
 			continue;
 		}
@@ -1355,27 +1343,20 @@ static void execute_commands_non_atomic(struct command *commands,
 		cmd->error_string = update(cmd, si);
 
 		if (!cmd->error_string
-		    && ref_transaction_commit(transaction, &err)) {
-			rp_error("%s", err.buf);
-			strbuf_reset(&err);
+		    && ref_transaction_commit(transaction, &error_rp))
 			cmd->error_string = "failed to update ref";
-		}
 		ref_transaction_free(transaction);
 	}
-	strbuf_release(&err);
 }
 
 static void execute_commands_atomic(struct command *commands,
 					struct shallow_info *si)
 {
 	struct command *cmd;
-	struct strbuf err = STRBUF_INIT;
 	const char *reported_error = "atomic push failure";
 
-	transaction = ref_transaction_begin(&err);
+	transaction = ref_transaction_begin(&error_rp);
 	if (!transaction) {
-		rp_error("%s", err.buf);
-		strbuf_reset(&err);
 		reported_error = "transaction failed to start";
 		goto failure;
 	}
@@ -1390,8 +1371,7 @@ static void execute_commands_atomic(struct command *commands,
 			goto failure;
 	}
 
-	if (ref_transaction_commit(transaction, &err)) {
-		rp_error("%s", err.buf);
+	if (ref_transaction_commit(transaction, &error_rp)) {
 		reported_error = "atomic transaction failed";
 		goto failure;
 	}
@@ -1404,7 +1384,6 @@ failure:
 
 cleanup:
 	ref_transaction_free(transaction);
-	strbuf_release(&err);
 }
 
 static void execute_commands(struct command *commands,

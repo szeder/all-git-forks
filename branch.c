@@ -302,17 +302,13 @@ void create_branch(const char *name, const char *start_name,
 
 	if (!dont_change_ref) {
 		struct ref_transaction *transaction;
-		struct strbuf err = STRBUF_INIT;
 
-		transaction = ref_transaction_begin(&err);
-		if (!transaction ||
-		    ref_transaction_update(transaction, ref.buf,
-					   sha1, forcing ? NULL : null_sha1,
-					   0, msg, &err) ||
-		    ref_transaction_commit(transaction, &err))
-			die("%s", err.buf);
+		transaction = ref_transaction_begin(&error_die);
+		ref_transaction_update(transaction, ref.buf,
+				       sha1, forcing ? NULL : null_sha1,
+				       0, msg, &error_die);
+		ref_transaction_commit(transaction, &error_die);
 		ref_transaction_free(transaction);
-		strbuf_release(&err);
 	}
 
 	if (real_ref && track)

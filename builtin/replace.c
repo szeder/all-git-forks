@@ -156,7 +156,6 @@ static int replace_object_sha1(const char *object_ref,
 	enum object_type obj_type, repl_type;
 	char ref[PATH_MAX];
 	struct ref_transaction *transaction;
-	struct strbuf err = STRBUF_INIT;
 
 	obj_type = sha1_object_info(object, NULL);
 	repl_type = sha1_object_info(repl, NULL);
@@ -169,12 +168,10 @@ static int replace_object_sha1(const char *object_ref,
 
 	check_ref_valid(object, prev, ref, sizeof(ref), force);
 
-	transaction = ref_transaction_begin(&err);
-	if (!transaction ||
-	    ref_transaction_update(transaction, ref, repl, prev,
-				   0, NULL, &err) ||
-	    ref_transaction_commit(transaction, &err))
-		die("%s", err.buf);
+	transaction = ref_transaction_begin(&error_die);
+	ref_transaction_update(transaction, ref, repl, prev,
+			       0, NULL, &error_die);
+	ref_transaction_commit(transaction, &error_die);
 
 	ref_transaction_free(transaction);
 	return 0;

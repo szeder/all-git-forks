@@ -761,7 +761,7 @@ static int verify_refname_available_dir(const char *refname,
 					const struct string_list *extras,
 					const struct string_list *skip,
 					struct ref_dir *dir,
-					struct strbuf *err)
+					struct error_context *err)
 {
 	const char *slash;
 	const char *extra_refname;
@@ -795,16 +795,16 @@ static int verify_refname_available_dir(const char *refname,
 				 * a proper prefix of refname; e.g.,
 				 * "refs/foo", and is not in skip.
 				 */
-				strbuf_addf(err, "'%s' exists; cannot create '%s'",
-					    dirname.buf, refname);
+				report_error(err, "'%s' exists; cannot create '%s'",
+					     dirname.buf, refname);
 				goto cleanup;
 			}
 		}
 
 		if (extras && string_list_has_string(extras, dirname.buf) &&
 		    (!skip || !string_list_has_string(skip, dirname.buf))) {
-			strbuf_addf(err, "cannot process '%s' and '%s' at the same time",
-				    refname, dirname.buf);
+			report_error(err, "cannot process '%s' and '%s' at the same time",
+				     refname, dirname.buf);
 			goto cleanup;
 		}
 
@@ -863,8 +863,8 @@ static int verify_refname_available_dir(const char *refname,
 			dir = get_ref_dir(dir->entries[pos]);
 			sort_ref_dir(dir);
 			if (do_for_each_entry_in_dir(dir, 0, nonmatching_ref_fn, &data)) {
-				strbuf_addf(err, "'%s' exists; cannot create '%s'",
-					    data.conflicting_refname, refname);
+				report_error(err, "'%s' exists; cannot create '%s'",
+					     data.conflicting_refname, refname);
 				goto cleanup;
 			}
 		}
@@ -872,8 +872,8 @@ static int verify_refname_available_dir(const char *refname,
 
 	extra_refname = find_descendant_ref(dirname.buf, extras, skip);
 	if (extra_refname)
-		strbuf_addf(err, "cannot process '%s' and '%s' at the same time",
-			    refname, extra_refname);
+		report_error(err, "cannot process '%s' and '%s' at the same time",
+			     refname, extra_refname);
 	else
 		ret = 0;
 
@@ -1532,7 +1532,7 @@ static int lock_raw_ref(struct files_ref_store *refs,
 			struct ref_lock **lock_p,
 			struct strbuf *referent,
 			unsigned int *type,
-			struct strbuf *err)
+			struct error_context *err)
 {
 	struct ref_lock *lock;
 	struct strbuf ref_file = STRBUF_INIT;
@@ -1555,7 +1555,9 @@ retry:
 	switch (safe_create_leading_directories(ref_file.buf)) {
 	case SCLD_OK:
 		break; /* success */
-	case SCLD_EXISTS:
+	case SCLD_EXISTS: {
+		struct strbuf err_buf = STRBUF_INIT;
+		struct error_context local_err = STRBUF_ERR(&err_buf);
 		/*
 		 * Suppose refname is "refs/foo/bar". We just failed
 		 * to create the containing directory, "refs/foo",
@@ -1564,22 +1566,22 @@ retry:
 		 * another reference such as "refs/foo". There is no
 		 * reason to expect this error to be transitory.
 		 */
-		if (verify_refname_available(refname, extras, skip, err)) {
+		if (verify_refname_available(refname, extras, skip, &local_err)) {
 			if (mustexist) {
 				/*
 				 * To the user the relevant error is
 				 * that the "mustexist" reference is
 				 * missing:
 				 */
-				strbuf_reset(err);
-				strbuf_addf(err, "unable to resolve reference '%s'",
-					    refname);
+				report_error(err, "unable to resolve reference '%s'",
+					     refname);
 			} else {
 				/*
 				 * The error message set by
 				 * verify_refname_available_dir() is OK.
 				 */
 				ret = TRANSACTION_NAME_CONFLICT;
+				report_error(err, "%s", err_buf.buf);
 			}
 		} else {
 			/*
@@ -1587,19 +1589,21 @@ retry:
 			 * reference. Report it as a low-level
 			 * failure.
 			 */
-			strbuf_addf(err, "unable to create lock file %s.lock; "
-				    "non-directory in the way",
-				    ref_file.buf);
+			report_error(err, "unable to create lock file %s.lock; "
+				     "non-directory in the way",
+				     ref_file.buf);
 		}
+		strbuf_release(&err_buf);
 		goto error_return;
+	}
 	case SCLD_VANISHED:
 		/* Maybe another process was tidying up. Try again. */
 		if (--attempts_remaining > 0)
 			goto retry;
 		/* fall through */
 	default:
-		strbuf_addf(err, "unable to create directory for %s",
-			    ref_file.buf);
+		report_error(err, "unable to create directory for %s",
+			     ref_file.buf);
 		goto error_return;
 	}
 
@@ -1630,8 +1634,8 @@ retry:
 		if (errno == ENOENT) {
 			if (mustexist) {
 				/* Garden variety missing reference. */
-				strbuf_addf(err, "unable to resolve reference '%s'",
-					    refname);
+				report_error(err, "unable to resolve reference '%s'",
+					     refname);
 				goto error_return;
 			} else {
 				/*
@@ -1662,8 +1666,8 @@ retry:
 			 */
 			if (mustexist) {
 				/* Garden variety missing reference. */
-				strbuf_addf(err, "unable to resolve reference '%s'",
-					    refname);
+				report_error(err, "unable to resolve reference '%s'",
+					     refname);
 				goto error_return;
 			} else if (remove_dir_recursively(&ref_file,
 							  REMOVE_DIR_EMPTY_ONLY)) {
@@ -1684,19 +1688,19 @@ retry:
 					 * references that it should
 					 * contain.
 					 */
-					strbuf_addf(err, "there is a non-empty directory '%s' "
-						    "blocking reference '%s'",
-						    ref_file.buf, refname);
+					report_error(err, "there is a non-empty directory '%s' "
+						     "blocking reference '%s'",
+						     ref_file.buf, refname);
 					goto error_return;
 				}
 			}
 		} else if (errno == EINVAL && (*type & REF_ISBROKEN)) {
-			strbuf_addf(err, "unable to resolve reference '%s': "
-				    "reference broken", refname);
+			report_error(err, "unable to resolve reference '%s': "
+				     "reference broken", refname);
 			goto error_return;
 		} else {
-			strbuf_addf(err, "unable to resolve reference '%s': %s",
-				    refname, strerror(errno));
+			report_error(err, "unable to resolve reference '%s': %s",
+				     refname, strerror(errno));
 			goto error_return;
 		}
 
@@ -1709,9 +1713,8 @@ retry:
 		if (verify_refname_available_dir(
 				    refname, extras, skip,
 				    get_packed_refs(refs),
-				    err)) {
+				    err))
 			goto error_return;
-		}
 	}
 
 	ret = 0;
@@ -1947,7 +1950,7 @@ static struct ref_iterator *files_ref_iterator_begin(
  */
 static int verify_lock(struct ref_lock *lock,
 		       const unsigned char *old_sha1, int mustexist,
-		       struct strbuf *err)
+		       struct error_context *err)
 {
 	assert(err);
 
@@ -1956,7 +1959,7 @@ static int verify_lock(struct ref_lock *lock,
 			  lock->old_oid.hash, NULL)) {
 		if (old_sha1) {
 			int save_errno = errno;
-			strbuf_addf(err, "can't verify ref '%s'", lock->ref_name);
+			report_error(err, "can't verify ref '%s'", lock->ref_name);
 			errno = save_errno;
 			return -1;
 		} else {
@@ -1965,7 +1968,7 @@ static int verify_lock(struct ref_lock *lock,
 		}
 	}
 	if (old_sha1 && hashcmp(lock->old_oid.hash, old_sha1)) {
-		strbuf_addf(err, "ref '%s' is at %s but expected %s",
+		report_error(err, "ref '%s' is at %s but expected %s",
 			    lock->ref_name,
 			    oid_to_hex(&lock->old_oid),
 			    sha1_to_hex(old_sha1));
@@ -1995,7 +1998,7 @@ static struct ref_lock *lock_ref_sha1_basic(struct files_ref_store *refs,
 					    const struct string_list *extras,
 					    const struct string_list *skip,
 					    unsigned int flags, int *type,
-					    struct strbuf *err)
+					    struct error_context *err)
 {
 	struct strbuf ref_file = STRBUF_INIT;
 	struct ref_lock *lock;
@@ -2031,8 +2034,8 @@ static struct ref_lock *lock_ref_sha1_basic(struct files_ref_store *refs,
 			if (!verify_refname_available_dir(
 					    refname, extras, skip,
 					    get_loose_refs(refs), err))
-				strbuf_addf(err, "there are still refs under '%s'",
-					    refname);
+				report_error(err, "there are still refs under '%s'",
+					     refname);
 			goto error_return;
 		}
 		resolved = !!resolve_ref_unsafe(refname, resolve_flags,
@@ -2044,8 +2047,8 @@ static struct ref_lock *lock_ref_sha1_basic(struct files_ref_store *refs,
 		    !verify_refname_available_dir(
 				    refname, extras, skip,
 				    get_loose_refs(refs), err))
-			strbuf_addf(err, "unable to resolve reference '%s': %s",
-				    refname, strerror(last_errno));
+			report_error(err, "unable to resolve reference '%s': %s",
+				     refname, strerror(last_errno));
 
 		goto error_return;
 	}
@@ -2078,8 +2081,8 @@ static struct ref_lock *lock_ref_sha1_basic(struct files_ref_store *refs,
 		/* fall through */
 	default:
 		last_errno = errno;
-		strbuf_addf(err, "unable to create directory for '%s'",
-			    ref_file.buf);
+		report_error(err, "unable to create directory for '%s'",
+			     ref_file.buf);
 		goto error_return;
 	}
 
@@ -2333,23 +2336,20 @@ static void try_remove_empty_parents(char *name)
 static void prune_ref(struct ref_to_prune *r)
 {
 	struct ref_transaction *transaction;
-	struct strbuf err = STRBUF_INIT;
 
 	if (check_refname_format(r->name, 0))
 		return;
 
-	transaction = ref_transaction_begin(&err);
+	transaction = ref_transaction_begin(&error_print);
 	if (!transaction ||
 	    ref_transaction_delete(transaction, r->name, r->sha1,
-				   REF_ISPRUNING | REF_NODEREF, NULL, &err) ||
-	    ref_transaction_commit(transaction, &err)) {
+				   REF_ISPRUNING | REF_NODEREF, NULL,
+				   &error_print) ||
+	    ref_transaction_commit(transaction, &error_print)) {
 		ref_transaction_free(transaction);
-		error("%s", err.buf);
-		strbuf_release(&err);
 		return;
 	}
 	ref_transaction_free(transaction);
-	strbuf_release(&err);
 	try_remove_empty_parents(r->name);
 }
 
@@ -2391,7 +2391,7 @@ static int files_pack_refs(struct ref_store *ref_store, unsigned int flags)
  * The refs in 'refnames' needn't be sorted. `err` must not be NULL.
  */
 static int repack_without_refs(struct files_ref_store *refs,
-			       struct string_list *refnames, struct strbuf *err)
+			       struct string_list *refnames, struct error_context *err)
 {
 	struct ref_dir *packed;
 	struct string_list_item *refname;
@@ -2434,8 +2434,7 @@ static int repack_without_refs(struct files_ref_store *refs,
 	/* Write what remains */
 	ret = commit_packed_refs(refs);
 	if (ret)
-		strbuf_addf(err, "unable to overwrite old ref-pack file: %s",
-			    strerror(errno));
+		report_errno(err, "unable to overwrite old ref-pack file");
 	return ret;
 }
 
@@ -2462,7 +2461,8 @@ static int files_delete_refs(struct ref_store *ref_store,
 {
 	struct files_ref_store *refs =
 		files_downcast(ref_store, 0, "delete_refs");
-	struct strbuf err = STRBUF_INIT;
+	struct strbuf err_buf = STRBUF_INIT;
+	struct error_context err = STRBUF_ERR(&err_buf);
 	int i, result = 0;
 
 	if (!refnames->nr)
@@ -2479,9 +2479,9 @@ static int files_delete_refs(struct ref_store *ref_store,
 		 */
 		if (refnames->nr == 1)
 			error(_("could not delete reference %s: %s"),
-			      refnames->items[0].string, err.buf);
+			      refnames->items[0].string, err_buf.buf);
 		else
-			error(_("could not delete references: %s"), err.buf);
+			error(_("could not delete references: %s"), err_buf.buf);
 
 		goto out;
 	}
@@ -2494,7 +2494,7 @@ static int files_delete_refs(struct ref_store *ref_store,
 	}
 
 out:
-	strbuf_release(&err);
+	strbuf_release(&err_buf);
 	return result;
 }
 
@@ -2563,7 +2563,7 @@ static int files_verify_refname_available(struct ref_store *ref_store,
 					  const char *newname,
 					  const struct string_list *extras,
 					  const struct string_list *skip,
-					  struct strbuf *err)
+					  struct error_context *err)
 {
 	struct files_ref_store *refs =
 		files_downcast(ref_store, 1, "verify_refname_available");
@@ -2597,7 +2597,6 @@ static int files_rename_ref(struct ref_store *ref_store,
 	struct ref_lock *lock;
 	struct stat loginfo;
 	int log = !lstat(git_path("logs/%s", oldrefname), &loginfo);
-	struct strbuf err = STRBUF_INIT;
 
 	if (log && S_ISLNK(loginfo.st_mode))
 		return error("reflog for %s is a symlink", oldrefname);
@@ -2657,16 +2656,16 @@ static int files_rename_ref(struct ref_store *ref_store,
 	lock = lock_ref_sha1_basic(refs, newrefname, NULL, NULL, NULL,
 				   REF_NODEREF, NULL, &err);
 	if (!lock) {
-		error("unable to rename '%s' to '%s': %s", oldrefname, newrefname, err.buf);
-		strbuf_release(&err);
+		error("unable to rename '%s' to '%s': %s", oldrefname, newrefname, err_buf.buf);
+		strbuf_release(&err_buf);
 		goto rollback;
 	}
 	hashcpy(lock->old_oid.hash, orig_sha1);
 
 	if (write_ref_to_lockfile(lock, orig_sha1, &err) ||
 	    commit_ref_update(refs, lock, orig_sha1, logmsg, &err)) {
-		error("unable to write current sha1 into %s: %s", newrefname, err.buf);
-		strbuf_release(&err);
+		error("unable to write current sha1 into %s: %s", newrefname, err_buf.buf);
+		strbuf_release(&err_buf);
 		goto rollback;
 	}
 
@@ -2676,7 +2675,7 @@ static int files_rename_ref(struct ref_store *ref_store,
 	lock = lock_ref_sha1_basic(refs, oldrefname, NULL, NULL, NULL,
 				   REF_NODEREF, NULL, &err);
 	if (!lock) {
-		error("unable to lock %s for rollback: %s", oldrefname, err.buf);
+		error("unable to lock %s for rollback: %s", oldrefname, err_buf.buf);
 		strbuf_release(&err);
 		goto rollbacklog;
 	}

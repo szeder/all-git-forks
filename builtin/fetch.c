@@ -424,7 +424,6 @@ static int s_update_ref(const char *action,
 	char msg[1024];
 	char *rla = getenv("GIT_REFLOG_ACTION");
 	struct ref_transaction *transaction;
-	struct strbuf err = STRBUF_INIT;
 	int ret, df_conflict = 0;
 
 	if (dry_run)
@@ -433,27 +432,24 @@ static int s_update_ref(const char *action,
 		rla = default_rla.buf;
 	snprintf(msg, sizeof(msg), "%s: %s", rla, action);
 
-	transaction = ref_transaction_begin(&err);
+	transaction = ref_transaction_begin(&error_print);
 	if (!transaction ||
 	    ref_transaction_update(transaction, ref->name,
 				   ref->new_oid.hash,
 				   check_old ? ref->old_oid.hash : NULL,
-				   0, msg, &err))
+				   0, msg, &error_print))
 		goto fail;
 
-	ret = ref_transaction_commit(transaction, &err);
+	ret = ref_transaction_commit(transaction, &error_print);
 	if (ret) {
 		df_conflict = (ret == TRANSACTION_NAME_CONFLICT);
 		goto fail;
 	}
 
 	ref_transaction_free(transaction);
-	strbuf_release(&err);
 	return 0;
 fail:
 	ref_transaction_free(transaction);
-	error("%s", err.buf);
-	strbuf_release(&err);
 	return df_conflict ? STORE_REF_ERROR_DF_CONFLICT
 			   : STORE_REF_ERROR_OTHER;
 }

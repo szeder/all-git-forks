@@ -1774,16 +1774,14 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	strbuf_insert(&sb, 0, reflog_msg, strlen(reflog_msg));
 	strbuf_insert(&sb, strlen(reflog_msg), ": ", 2);
 
-	transaction = ref_transaction_begin(&err);
-	if (!transaction ||
-	    ref_transaction_update(transaction, "HEAD", sha1,
-				   current_head
-				   ? current_head->object.oid.hash : null_sha1,
-				   0, sb.buf, &err) ||
-	    ref_transaction_commit(transaction, &err)) {
-		rollback_index_files();
-		die("%s", err.buf);
-	}
+	transaction = ref_transaction_begin(&error_die);
+	ref_transaction_update(transaction, "HEAD", sha1,
+			       current_head ?
+					current_head->object.oid.hash : null_sha1,
+				0, sb.buf, &error_die);
+	ref_transaction_commit(transaction, &error_die);
+	/* XXX we used to rollback_index_files, but presumably we would do so
+	 * on dying */
 	ref_transaction_free(transaction);
 
 	unlink(git_path_cherry_pick_head());

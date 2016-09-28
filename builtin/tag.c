@@ -345,7 +345,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	const char *msgfile = NULL, *keyid = NULL;
 	struct msg_arg msg = { 0, STRBUF_INIT };
 	struct ref_transaction *transaction;
-	struct strbuf err = STRBUF_INIT;
 	struct ref_filter filter;
 	static struct ref_sorting *sorting = NULL, **sorting_tail = &sorting;
 	const char *format = NULL;
@@ -500,18 +499,15 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		create_tag(object, tag, &buf, &opt, prev, object);
 	}
 
-	transaction = ref_transaction_begin(&err);
-	if (!transaction ||
-	    ref_transaction_update(transaction, ref.buf, object, prev,
-				   create_reflog ? REF_FORCE_CREATE_REFLOG : 0,
-				   NULL, &err) ||
-	    ref_transaction_commit(transaction, &err))
-		die("%s", err.buf);
+	transaction = ref_transaction_begin(&error_die);
+	ref_transaction_update(transaction, ref.buf, object, prev,
+			       create_reflog ? REF_FORCE_CREATE_REFLOG : 0,
+			       NULL, &error_die);
+	ref_transaction_commit(transaction, &error_die);
 	ref_transaction_free(transaction);
 	if (force && !is_null_sha1(prev) && hashcmp(prev, object))
 		printf(_("Updated tag '%s' (was %s)\n"), tag, find_unique_abbrev(prev, DEFAULT_ABBREV));
 
-	strbuf_release(&err);
 	strbuf_release(&buf);
 	strbuf_release(&ref);
 	return 0;
