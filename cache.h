@@ -469,7 +469,7 @@ extern int get_common_dir_noenv(struct strbuf *sb, const char *gitdir);
 extern int get_common_dir(struct strbuf *sb, const char *gitdir);
 extern const char *get_git_namespace(void);
 extern const char *strip_namespace(const char *namespaced_ref);
-extern const char *get_super_prefix();
+extern const char *get_super_prefix(void);
 extern const char *get_git_work_tree(void);
 
 /*

@@ -225,7 +225,7 @@ const char *strip_namespace(const char *namespaced_ref)
 	return namespaced_ref + namespace_len;
 }
 
-const char *get_super_prefix()
+const char *get_super_prefix(void)
 {
 	if (!super_prefix)
 		super_prefix = getenv(GIT_SUPER_PREFIX_ENVIRONMENT);
