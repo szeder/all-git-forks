@@ -7,6 +7,7 @@
 #include "tree-walk.h"
 #include "pathspec.h"
 #include "object.h"
+#include "hashmap.h"
 
 struct rev_info;
 struct diff_options;
@@ -253,6 +254,7 @@ struct diff_options {
 	 * to be a waste of memory.
 	 * Instead keep an index to the current file pair here in the struct.
 	 */
+	int color_moved;
 	int use_buffer;
 	struct buffered_patch_line *line_buffer;
 	int line_buffer_nr, line_buffer_alloc;
@@ -260,6 +262,10 @@ struct diff_options {
 	int filepair_buffer_nr, filepair_buffer_alloc;
 	struct buffered_patch *current_filepair;
 	int emitted_lines;
+
+	struct hashmap *deleted_lines;
+	struct hashmap *added_lines;
+	int hash_prev;
 };
 
 void emit_line_fmt(struct diff_options *o, const char *set, const char *reset,
@@ -276,7 +282,9 @@ enum color_diff {
 	DIFF_FILE_NEW = 5,
 	DIFF_COMMIT = 6,
 	DIFF_WHITESPACE = 7,
-	DIFF_FUNCINFO = 8
+	DIFF_FUNCINFO = 8,
+	DIFF_FILE_MOVED_TO = 9,
+	DIFF_FILE_MOVED_FROM = 10
 };
 const char *diff_get_color(int diff_use_color, enum color_diff ix);
 #define diff_get_color_opt(o, ix) \

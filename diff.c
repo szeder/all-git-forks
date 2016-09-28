@@ -32,6 +32,7 @@ static int diff_compaction_heuristic; /* experimental */
 static int diff_rename_limit_default = 400;
 static int diff_suppress_blank_empty;
 static int diff_use_color_default = -1;
+static int diff_color_moved_default;
 static int diff_context_default = 3;
 static const char *diff_word_regex_cfg;
 static const char *external_diff_cmd_cfg;
@@ -55,6 +56,8 @@ static char diff_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_YELLOW,	/* COMMIT */
 	GIT_COLOR_BG_RED,	/* WHITESPACE */
 	GIT_COLOR_NORMAL,	/* FUNCINFO */
+	GIT_COLOR_BLUE,		/* MOVED FROM */
+	GIT_COLOR_MAGENTA,	/* MOVED TO */
 };
 
 static NORETURN void die_want_option(const char *option_name)
@@ -80,6 +83,10 @@ static int parse_diff_color_slot(const char *var)
 		return DIFF_WHITESPACE;
 	if (!strcasecmp(var, "func"))
 		return DIFF_FUNCINFO;
+	if (!strcasecmp(var, "movedfrom"))
+		return DIFF_FILE_MOVED_FROM;
+	if (!strcasecmp(var, "movedto"))
+		return DIFF_FILE_MOVED_TO;
 	return -1;
 }
 
@@ -242,6 +249,10 @@ int git_diff_ui_config(const char *var, const char *value, void *cb)
 		diff_use_color_default = git_config_colorbool(var, value);
 		return 0;
 	}
+	if (!strcmp(var, "color.moved")) {
+		diff_color_moved_default = git_config_bool(var, value);
+		return 0;
+	}
 	if (!strcmp(var, "diff.context")) {
 		diff_context_default = git_config_int(var, value);
 		if (diff_context_default < 0)
@@ -354,6 +365,41 @@ int git_diff_basic_config(const char *var, const char *value, void *cb)
 		return parse_submodule_config_option(var, value);
 
 	return git_default_config(var, value, cb);
+}
+
+struct moved_entry {
+	struct hashmap_entry ent;
+	char *line;
+	int hash_prev;
+};
+
+static int moved_entry_cmp(const struct moved_entry *a,
+			   const struct moved_entry *b,
+			   const void *unused)
+{
+	return strcmp(a->line, b->line) &&
+	       a->hash_prev == b->hash_prev;
+}
+
+static struct moved_entry *prepare_entry(const char *line,
+					 unsigned long len,
+					 int ws_rule,
+					 int hash_prev)
+{
+	int i;
+	struct strbuf sb = STRBUF_INIT;
+	struct moved_entry *ret = xmalloc(sizeof(*ret));
+
+	for (i = 0; i < len; i++) {
+		if (ws_rule && isspace(line[i]))
+			continue;
+		strbuf_addch(&sb, line[i]);
+	}
+
+	ret->ent.hash = memhash(sb.buf, sb.len);
+	ret->line = xmemdupz(line, len);
+	ret->hash_prev = hash_prev;
+	return ret;
 }
 
 static char *quote_two(const char *one, const char *two)
@@ -540,6 +586,29 @@ static void get_line(struct diff_options *o,
 	}
 }
 
+static int should_color_as_moved(struct diff_options *o,
+				 struct buffered_patch_line *e,
+				 struct moved_entry *keydata,
+				 struct hashmap *lookup)
+{
+	struct moved_entry *me;
+
+	if (!o->color_moved)
+		return 0;
+	if (e->first != '+' && e->first != '-')
+		return 0;
+
+	me = hashmap_get(lookup, keydata, keydata);
+
+	if (!me)
+		return 0;
+
+	if (me->hash_prev == 0 || o->hash_prev == 0)
+		return 1;
+
+	return (me->hash_prev == o->hash_prev);
+}
+
 static void emit_buffered_patch_line(struct diff_options *o,
 				     struct buffered_patch_line *e)
 {
@@ -562,6 +631,20 @@ static void emit_buffered_patch_line(struct diff_options *o,
 			o->current_filepair->ws : "";
 
 		get_line(o, e, &line, &len, &eof);
+
+		if (o->color_moved && (e->first == '+' || e->first == '-')) {
+			struct moved_entry *keydata;
+			keydata = prepare_entry(e->line, e->len,
+						DIFF_XDL_TST(o, IGNORE_WHITESPACE), 0);
+			if (e->first == '-' &&
+			    should_color_as_moved(o, e, keydata, o->added_lines))
+				e->set = diff_get_color_opt(o, DIFF_FILE_MOVED_FROM);
+			if (e->first == '+' &&
+			    should_color_as_moved(o, e, keydata, o->deleted_lines))
+				e->set = diff_get_color_opt(o, DIFF_FILE_MOVED_TO);
+
+			o->hash_prev = keydata->ent.hash;
+		}
 
 		ws_check_emit(line, len, o->current_filepair->ws_rule, file,
 			      set, reset, ws);
@@ -1494,11 +1577,35 @@ static void fn_out_consume(void *priv, char *line, unsigned long len,
 
 	switch (line[0]) {
 	case '+':
+		if (o->color_moved) {
+			struct buffered_patch_line *l =
+				&o->line_buffer[o->line_buffer_nr - 1];
+			struct moved_entry *keydata = prepare_entry(l->line, l->len,
+						DIFF_XDL_TST(o, IGNORE_WHITESPACE),
+						o->hash_prev);
+			l = &o->line_buffer[o->line_buffer_nr - 2];
+			if (l->first == '+')
+				keydata->hash_prev = o->hash_prev;
+			hashmap_add(o->added_lines, keydata);
+			o->hash_prev = keydata->ent.hash;
+		}
+
 		ecbdata->lno_in_postimage++;
 		color = DIFF_FILE_NEW;
 		ws_error_highlight = WSEH_NEW;
 		break;
 	case '-':
+		if (o->color_moved) {
+			struct buffered_patch_line *l =
+				&o->line_buffer[o->line_buffer_nr - 1];
+			struct moved_entry *keydata = prepare_entry(l->line, l->len,
+						DIFF_XDL_TST(o, IGNORE_WHITESPACE), 0);
+			l = &o->line_buffer[o->line_buffer_nr - 2];
+			if (l->first == '-')
+				keydata->hash_prev = o->hash_prev;
+			hashmap_add(o->deleted_lines, keydata);
+			o->hash_prev = keydata->ent.hash;
+		}
 		ecbdata->lno_in_preimage++;
 		color = DIFF_FILE_OLD;
 		ws_error_highlight = WSEH_OLD;
@@ -3556,6 +3663,7 @@ void diff_setup(struct diff_options *options)
 	options->change = diff_change;
 	options->add_remove = diff_addremove;
 	options->use_color = diff_use_color_default;
+	options->color_moved = diff_color_moved_default;
 	options->detect_rename = diff_detect_rename_default;
 	options->xdl_opts |= diff_algorithm;
 	if (diff_indent_heuristic)
@@ -3680,6 +3788,9 @@ void diff_setup_done(struct diff_options *options)
 
 	if (DIFF_OPT_TST(options, FOLLOW_RENAMES) && options->pathspec.nr != 1)
 		die(_("--follow requires exactly one pathspec"));
+
+	if (!options->use_color || external_diff())
+		options->color_moved = 0;
 }
 
 static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *val)
@@ -4110,6 +4221,10 @@ int diff_opt_parse(struct diff_options *options,
 	}
 	else if (!strcmp(arg, "--no-color"))
 		options->use_color = 0;
+	else if (!strcmp(arg, "--color-moved"))
+		options->color_moved = 1;
+	else if (!strcmp(arg, "--no-color-moved"))
+		options->color_moved = 0;
 	else if (!strcmp(arg, "--color-words")) {
 		options->use_color = 1;
 		options->word_diff = DIFF_WORDS_COLOR;
@@ -4952,16 +5067,15 @@ static void diff_flush_patch_all_file_pairs(struct diff_options *o)
 {
 	int i;
 	struct diff_queue_struct *q = &diff_queued_diff;
-	/*
-	 * TODO:
-	 * For testing purposes we want to make sure the diff machinery
-	 * works with the buffer. If there is anything emitted outside the
-	 * emit_buffered_patch_line, then the order is screwed up and the
-	 * tests will fail.
-	 *
-	 * We'll unset this flag in a later patch.
-	 */
-	o->use_buffer = 1;
+
+	if (o->color_moved) {
+		o->use_buffer = 1;
+		o->deleted_lines = xmallocz(sizeof(*o->deleted_lines));
+		o->added_lines = xmallocz(sizeof(*o->added_lines));
+		hashmap_init(o->deleted_lines, (hashmap_cmp_fn)moved_entry_cmp, 0);
+		hashmap_init(o->added_lines, (hashmap_cmp_fn)moved_entry_cmp, 0);
+	}
+
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		if (check_pair_status(p))
@@ -5055,6 +5169,7 @@ void diff_flush(struct diff_options *options)
 		if (!options->file)
 			die_errno("Could not open /dev/null");
 		options->close_file = 1;
+		options->color_moved = 0;
 		for (i = 0; i < q->nr; i++) {
 			struct diff_filepair *p = q->queue[i];
 			if (check_pair_status(p))

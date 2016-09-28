@@ -232,6 +232,13 @@ ifdef::git-diff[]
 endif::git-diff[]
 	It is the same as `--color=never`.
 
+--[no-]color-moved::
+	Show moved blocks in a different color.
+ifdef::git-diff[]
+	It can be changed by the `diff.ui` and `color.diff`
+	configuration settings.
+endif::git-diff[]
+
 --word-diff[=<mode>]::
 	Show a word diff, using the <mode> to delimit changed words.
 	By default, words are delimited by whitespace; see

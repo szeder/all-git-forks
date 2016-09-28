@@ -2116,6 +2116,8 @@ _git_config ()
 		color.diff.old
 		color.diff.plain
 		color.diff.whitespace
+		color.diff.movedFrom
+		color.diff.movedTo
 		color.grep
 		color.grep.context
 		color.grep.filename
