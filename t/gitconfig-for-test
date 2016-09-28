@@ -4,3 +4,6 @@
 ;; [user]
 ;;	name = A U Thor
 ;;	email = author@example.com
+
+[core]
+	abbrev = 7
