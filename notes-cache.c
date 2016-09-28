@@ -14,7 +14,7 @@ static int notes_cache_match_validity(const char *ref, const char *validity)
 	if (read_ref(ref, sha1) < 0)
 		return 0;
 
-	commit = lookup_commit_reference_gently(sha1, 1);
+	commit = lookup_commit_reference_gently(sha1, &error_silent);
 	if (!commit)
 		return 0;
 

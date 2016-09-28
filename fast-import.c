@@ -1760,8 +1760,8 @@ static int update_branch(struct branch *b)
 	if (!force_update && !is_null_sha1(old_sha1)) {
 		struct commit *old_cmit, *new_cmit;
 
-		old_cmit = lookup_commit_reference_gently(old_sha1, 0);
-		new_cmit = lookup_commit_reference_gently(b->sha1, 0);
+		old_cmit = lookup_commit_reference_gently(old_sha1, &error_print);
+		new_cmit = lookup_commit_reference_gently(b->sha1, &error_print);
 		if (!old_cmit || !new_cmit)
 			return error("Branch %s is missing commits.", b->name);
 

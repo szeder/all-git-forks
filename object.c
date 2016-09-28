@@ -155,7 +155,8 @@ void *create_object(const unsigned char *sha1, void *o)
 	return obj;
 }
 
-void *object_as_type(struct object *obj, enum object_type type, int quiet)
+void *object_as_type(struct object *obj, enum object_type type,
+		     struct error_context *err)
 {
 	if (obj->type == type)
 		return obj;
@@ -166,10 +167,9 @@ void *object_as_type(struct object *obj, enum object_type type, int quiet)
 		return obj;
 	}
 	else {
-		if (!quiet)
-			error("object %s is a %s, not a %s",
-			      oid_to_hex(&obj->oid),
-			      typename(obj->type), typename(type));
+		report_error(err, "object %s is a %s, not a %s",
+			     oid_to_hex(&obj->oid),
+			     typename(obj->type), typename(type));
 		return NULL;
 	}
 }

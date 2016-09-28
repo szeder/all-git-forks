@@ -1134,13 +1134,13 @@ int get_oid_mb(const char *name, struct object_id *oid)
 	}
 	if (st)
 		return st;
-	one = lookup_commit_reference_gently(oid_tmp.hash, 0);
+	one = lookup_commit_reference_gently(oid_tmp.hash, &error_print);
 	if (!one)
 		return -1;
 
 	if (get_sha1_committish(dots[3] ? (dots + 3) : "HEAD", oid_tmp.hash))
 		return -1;
-	two = lookup_commit_reference_gently(oid_tmp.hash, 0);
+	two = lookup_commit_reference_gently(oid_tmp.hash, &error_print);
 	if (!two)
 		return -1;
 	mbs = get_merge_bases(one, two);

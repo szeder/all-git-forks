@@ -862,7 +862,8 @@ static struct commit *is_old_style_invocation(int argc, const char **argv,
 
 		if (get_sha1(argv[1], second_sha1))
 			return NULL;
-		second_token = lookup_commit_reference_gently(second_sha1, 0);
+		second_token = lookup_commit_reference_gently(second_sha1,
+							      &error_print);
 		if (!second_token)
 			die(_("'%s' is not a commit"), argv[1]);
 		if (hashcmp(second_token->object.oid.hash, head))

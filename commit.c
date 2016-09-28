@@ -19,18 +19,18 @@ int save_commit_buffer = 1;
 const char *commit_type = "commit";
 
 struct commit *lookup_commit_reference_gently(const unsigned char *sha1,
-					      int quiet)
+					      struct error_context *err)
 {
 	struct object *obj = deref_tag(parse_object(sha1), NULL, 0);
 
 	if (!obj)
 		return NULL;
-	return object_as_type(obj, OBJ_COMMIT, quiet);
+	return object_as_type(obj, OBJ_COMMIT, err);
 }
 
 struct commit *lookup_commit_reference(const unsigned char *sha1)
 {
-	return lookup_commit_reference_gently(sha1, 0);
+	return lookup_commit_reference_gently(sha1, &error_print);
 }
 
 struct commit *lookup_commit_or_die(const unsigned char *sha1, const char *ref_name)
@@ -563,7 +563,7 @@ void clear_commit_marks_for_object_array(struct object_array *a, unsigned mark)
 
 	for (i = 0; i < a->nr; i++) {
 		object = a->objects[i].item;
-		commit = lookup_commit_reference_gently(object->oid.hash, 1);
+		commit = lookup_commit_reference_gently(object->oid.hash, &error_silent);
 		if (commit)
 			clear_commit_marks(commit, mark);
 	}

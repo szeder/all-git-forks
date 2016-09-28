@@ -1433,7 +1433,7 @@ static int ref_filter_handler(const char *refname, const struct object_id *oid, 
 	 * non-commits early. The actual filtering is done later.
 	 */
 	if (filter->merge_commit || filter->with_commit || filter->verbose) {
-		commit = lookup_commit_reference_gently(oid->hash, 1);
+		commit = lookup_commit_reference_gently(oid->hash, &error_silent);
 		if (!commit)
 			return 0;
 		/* We perform the filtering for the '--contains' option */
@@ -1733,7 +1733,7 @@ int parse_opt_merge_filter(const struct option *opt, const char *arg, int unset)
 	if (get_sha1(arg, sha1))
 		die(_("malformed object name %s"), arg);
 
-	rf->merge_commit = lookup_commit_reference_gently(sha1, 0);
+	rf->merge_commit = lookup_commit_reference_gently(sha1, &error_print);
 	if (!rf->merge_commit)
 		return opterror(opt, "must point to a commit", 0);
 

@@ -48,7 +48,7 @@ const struct name_decoration *get_name_decoration(const struct object *obj);
 struct commit *lookup_commit(const unsigned char *sha1);
 struct commit *lookup_commit_reference(const unsigned char *sha1);
 struct commit *lookup_commit_reference_gently(const unsigned char *sha1,
-					      int quiet);
+					      struct error_context *err);
 struct commit *lookup_commit_reference_by_name(const char *name);
 
 /*

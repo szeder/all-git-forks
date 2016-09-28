@@ -475,7 +475,7 @@ static void paint_down(struct paint_info *info, const unsigned char *sha1,
 	size_t bitmap_size = st_mult(sizeof(uint32_t), bitmap_nr);
 	uint32_t *tmp = xmalloc(bitmap_size); /* to be freed before return */
 	uint32_t *bitmap = paint_alloc(info);
-	struct commit *c = lookup_commit_reference_gently(sha1, 1);
+	struct commit *c = lookup_commit_reference_gently(sha1, &error_silent);
 	if (!c)
 		return;
 	memset(bitmap, 0, bitmap_size);
@@ -531,7 +531,7 @@ static void paint_down(struct paint_info *info, const unsigned char *sha1,
 static int mark_uninteresting(const char *refname, const struct object_id *oid,
 			      int flags, void *cb_data)
 {
-	struct commit *commit = lookup_commit_reference_gently(oid->hash, 1);
+	struct commit *commit = lookup_commit_reference_gently(oid->hash, &error_silent);
 	if (!commit)
 		return 0;
 	commit->object.flags |= UNINTERESTING;
@@ -641,7 +641,7 @@ static int add_ref(const char *refname, const struct object_id *oid,
 {
 	struct commit_array *ca = cb_data;
 	ALLOC_GROW(ca->commits, ca->nr + 1, ca->alloc);
-	ca->commits[ca->nr] = lookup_commit_reference_gently(oid->hash, 1);
+	ca->commits[ca->nr] = lookup_commit_reference_gently(oid->hash, &error_silent);
 	if (ca->commits[ca->nr])
 		ca->nr++;
 	return 0;

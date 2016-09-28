@@ -192,7 +192,7 @@ static int keep_entry(struct commit **it, unsigned char *sha1)
 
 	if (is_null_sha1(sha1))
 		return 1;
-	commit = lookup_commit_reference_gently(sha1, 1);
+	commit = lookup_commit_reference_gently(sha1, &error_silent);
 	if (!commit)
 		return 0;
 
@@ -261,7 +261,7 @@ static int unreachable(struct expire_reflog_policy_cb *cb, struct commit *commit
 		if (is_null_sha1(sha1))
 			return 0;
 
-		commit = lookup_commit_reference_gently(sha1, 1);
+		commit = lookup_commit_reference_gently(sha1, &error_silent);
 
 		/* Not a commit -- keep it */
 		if (!commit)
@@ -318,7 +318,7 @@ static int push_tip_to_list(const char *refname, const struct object_id *oid,
 	struct commit *tip_commit;
 	if (flags & REF_ISSYMREF)
 		return 0;
-	tip_commit = lookup_commit_reference_gently(oid->hash, 1);
+	tip_commit = lookup_commit_reference_gently(oid->hash, &error_silent);
 	if (!tip_commit)
 		return 0;
 	commit_list_insert(tip_commit, list);
@@ -335,7 +335,7 @@ static void reflog_expiry_prepare(const char *refname,
 		cb->tip_commit = NULL;
 		cb->unreachable_expire_kind = UE_HEAD;
 	} else {
-		cb->tip_commit = lookup_commit_reference_gently(sha1, 1);
+		cb->tip_commit = lookup_commit_reference_gently(sha1, &error_silent);
 		if (!cb->tip_commit)
 			cb->unreachable_expire_kind = UE_ALWAYS;
 		else
