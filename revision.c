@@ -1371,6 +1371,8 @@ void init_revisions(struct rev_info *revs, const char *prefix)
 	}
 
 	revs->notes_opt.use_default_notes = -1;
+
+	strbuf_init(&revs->last_commit_header, 0);
 }
 
 static void add_pending_commit_list(struct rev_info *revs,
@@ -1870,6 +1872,8 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->verbose_header = 1;
 		revs->pretty_given = 1;
 		get_commit_format(arg+9, revs);
+	} else if (skip_prefix(arg, "--commit-header=", &arg)) {
+		revs->commit_header = arg;
 	} else if (!strcmp(arg, "--expand-tabs")) {
 		revs->expand_tabs_in_log = 8;
 	} else if (!strcmp(arg, "--no-expand-tabs")) {
