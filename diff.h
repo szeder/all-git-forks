@@ -115,6 +115,64 @@ enum diff_submodule_format {
 	DIFF_SUBMODULE_INLINE_DIFF
 };
 
+/*
+ * This struct is used when we need to buffer the output of the diff output.
+ * There are two cases that we need to handle:
+ *  - headers, annotations such as similarity, file moves, mode changes
+ *  - content, i.e. lines typically prefixed with '+', '-', ' '.
+ *
+ * In the first case we do not expect a lot of lines, so we can just buffer
+ * them by duplicating memory into `line` and `len`.
+ *
+ * As the content of a diff is the major portion, we want to be a bit
+ * more cautious and not duplicate all the lines for buffering. Instead we
+ * could just store the line number and at emit time we'll look up the line
+ * as well as the coloring options. However looking up by line number is hard,
+ * so we'll use the offset into the file instead.
+ */
+struct buffered_patch_line {
+	const char *set;
+	const char *reset;
+	const char *line;
+	int len;
+	int has_trailing_carriage_return;
+	int has_trailing_newline;
+
+	unsigned char first;
+
+	/* Depends on 'first': ' ', '+' are post image, '-' is preimage. */
+	long line_offset;
+};
+#define BUFFERED_PATCH_LINE_INIT {NULL, NULL, NULL, 0, 0, 0, 0, 0}
+
+/*
+ * This contains all information that we need to know about
+ * a file pair when buffering.
+ */
+struct buffered_patch {
+	const char *ws;
+	unsigned ws_rule;
+
+	/*
+	 * This is pointing to the beginning of the files to enable
+	 * looking up the line by offset.
+	 */
+	char *data1;
+	long len1;
+	char *data2;
+	long len2;
+
+	struct diff_filespec *one;
+	struct diff_filespec *two;
+
+	/*
+	 * When the index in diff_options->line_buffer[] is greater than the
+	 * handover_at, diff_options should switch to the the next buffered_patch.
+	 */
+	int handover_at;
+};
+#define BUFFERED_PATCH_INIT {NULL, NULL, NULL, 0, 0, 0}
+
 struct diff_options {
 	const char *orderfile;
 	const char *pickaxe;
@@ -186,6 +244,22 @@ struct diff_options {
 	void *output_prefix_data;
 
 	int diff_path_counter;
+
+	/**
+	 * When using buffered output, then we'll have 2 buffers:
+	 * One contains all the lines, the other contains the file pair settings.
+	 * We could have a pointer from each line buffer to the corresponding
+	 * file pair buffer, but as there can be a lot of lines, this seems
+	 * to be a waste of memory.
+	 * Instead keep an index to the current file pair here in the struct.
+	 */
+	int use_buffer;
+	struct buffered_patch_line *line_buffer;
+	int line_buffer_nr, line_buffer_alloc;
+	struct buffered_patch *filepair_buffer;
+	int filepair_buffer_nr, filepair_buffer_alloc;
+	struct buffered_patch *current_filepair;
+	int emitted_lines;
 };
 
 void emit_line_fmt(struct diff_options *o, const char *set, const char *reset,

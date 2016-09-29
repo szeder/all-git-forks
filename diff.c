@@ -518,42 +518,125 @@ static void check_blank_at_eof(mmfile_t *mf1, mmfile_t *mf2,
 	ecbdata->blank_at_eof_in_postimage = (at - l2) + 1;
 }
 
-static void emit_line_0(struct diff_options *o, const char *set, const char *reset,
-			int first, const char *line, int len)
+static void get_line(struct diff_options *o,
+		     struct buffered_patch_line *e,
+		     const char **line, int *len, int *eof)
 {
-	int has_trailing_newline, has_trailing_carriage_return;
-	int nofirst;
+	const char *data;
+	long max_len;
+	if (e->first == '-') {
+		data = o->current_filepair->data1;
+		max_len = o->current_filepair->len1;
+	} else {
+		data = o->current_filepair->data2;
+		max_len = o->current_filepair->len2;
+	}
+
+	*line = &data[e->line_offset];
+	*len = e->len;
+	if (e->len + e->line_offset > max_len) {
+		*len = max_len - e->line_offset;
+		*eof = 1;
+	}
+}
+
+static void emit_buffered_patch_line(struct diff_options *o,
+				     struct buffered_patch_line *e)
+{
 	FILE *file = o->file;
 
 	fputs(diff_line_prefix(o), file);
 
+	if (e->set)
+		fputs(e->set, file);
+	if (e->first)
+		fputc(e->first, file);
+
+	if (!e->line) {
+		const char *line;
+		const char *eof_line = "\n\\ No newline at end of file";
+		int len = 0, eof = 0;
+		const char *reset = e->reset ? e->reset : "";
+		const char *set = e->set ? e->set : "";
+		const char *ws = o->current_filepair->ws ?
+			o->current_filepair->ws : "";
+
+		get_line(o, e, &line, &len, &eof);
+
+		ws_check_emit(line, len, o->current_filepair->ws_rule, file,
+			      set, reset, ws);
+		if (eof) {
+			//~ fprintf(stderr, "reached eof\n");
+			//~ fflush(stderr);
+			fwrite(eof_line,strlen(eof_line), 1, file);
+		}
+	} else
+		fwrite(e->line, e->len, 1, file);
+	if (e->reset)
+		fputs(e->reset, file);
+	if (e->has_trailing_carriage_return)
+		fputc('\r', file);
+	if (e->has_trailing_newline)
+		fputc('\n', file);
+}
+
+static void free_buffered_patch_line(struct buffered_patch_line *e)
+{
+	/*
+	 * No need to free set, reset, ws as they always point to the
+	 * diff_colors[] static array. We don't own that memory.
+	 */
+	free((char*)e->line);
+}
+
+static void append_buffered_patch_line_to_buffered_patch(
+		struct diff_options *o,
+		struct buffered_patch_line *e)
+{
+	struct buffered_patch_line *f;
+	ALLOC_GROW(o->line_buffer,
+		   o->line_buffer_nr + 1,
+		   o->line_buffer_alloc);
+	f = &o->line_buffer[o->line_buffer_nr++];
+	memcpy(f, e, sizeof(*e));
+
+	if (e->line)
+		/* duplicate the line for now as it is not a stable pointer */
+		f->line = xmemdupz(e->line, e->len);
+
+	o->emitted_lines++;
+}
+
+static void emit_line_0(struct diff_options *o, const char *set,
+			const char *reset, char first, const char *line, int len)
+{
+	int nofirst;
+	struct buffered_patch_line e = BUFFERED_PATCH_LINE_INIT;
+
 	if (len == 0) {
-		has_trailing_newline = (first == '\n');
-		has_trailing_carriage_return = (first == '\r');
-		nofirst = has_trailing_newline || has_trailing_carriage_return;
+		e.has_trailing_newline = (first == '\n');
+		e.has_trailing_carriage_return = (first == '\r');
+		nofirst = e.has_trailing_newline || e.has_trailing_carriage_return;
 	} else {
-		has_trailing_newline = (len > 0 && line[len-1] == '\n');
-		if (has_trailing_newline)
+		e.has_trailing_newline = (len > 0 && line[len-1] == '\n');
+		if (e.has_trailing_newline)
 			len--;
-		has_trailing_carriage_return = (len > 0 && line[len-1] == '\r');
-		if (has_trailing_carriage_return)
+		e.has_trailing_carriage_return = (len > 0 && line[len-1] == '\r');
+		if (e.has_trailing_carriage_return)
 			len--;
 		nofirst = 0;
 	}
 
-	if (len || !nofirst) {
-		if (set)
-			fputs(set, file);
-		if (!nofirst && first)
-			fputc(first, file);
-		fwrite(line, len, 1, file);
-		if (reset)
-			fputs(reset, file);
-	}
-	if (has_trailing_carriage_return)
-		fputc('\r', file);
-	if (has_trailing_newline)
-		fputc('\n', file);
+	e.set = set;
+	e.first = !nofirst ? first : 0;
+	e.line = line;
+	e.len = len;
+	e.reset = reset;
+
+	if (!o->use_buffer)
+		emit_buffered_patch_line(o, &e);
+	else
+		append_buffered_patch_line_to_buffered_patch(o, &e);
 }
 
 void emit_line(struct diff_options *o, const char *set, const char *reset,
@@ -592,27 +675,50 @@ static void emit_line_checked(const char *reset,
 			      const char *line, int len,
 			      enum color_diff color,
 			      unsigned ws_error_highlight,
-			      char sign)
+			      char sign, long offset)
 {
 	const char *set = diff_get_color(ecbdata->color_diff, color);
 	const char *ws = NULL;
+	struct diff_options *o = ecbdata->opt;
 
-	if (ecbdata->opt->ws_error_highlight & ws_error_highlight) {
+	if (o->ws_error_highlight & ws_error_highlight) {
 		ws = diff_get_color(ecbdata->color_diff, DIFF_WHITESPACE);
 		if (!*ws)
 			ws = NULL;
 	}
 
-	if (!ws)
-		emit_line_0(ecbdata->opt, set, reset, sign, line, len);
-	else if (sign == '+' && new_blank_line_at_eof(ecbdata, line, len))
-		/* Blank line at EOF - paint '+' as well */
-		emit_line_0(ecbdata->opt, ws, reset, sign, line, len);
-	else {
-		/* Emit just the prefix, then the rest. */
-		emit_line_0(ecbdata->opt, set, reset, sign, "", 0);
-		ws_check_emit(line, len, ecbdata->ws_rule,
-			      ecbdata->opt->file, set, reset, ws);
+	if (!o->use_buffer) {
+		if (!ws)
+			emit_line_0(o, set, reset, sign, line, len);
+		else if (sign == '+' && new_blank_line_at_eof(ecbdata, line, len))
+			/* Blank line at EOF - paint '+' as well */
+			emit_line_0(o, ws, reset, sign, line, len);
+		else {
+			/* Emit just the prefix, then the rest. */
+			emit_line_0(ecbdata->opt, set, reset, sign, "", 0);
+			ws_check_emit(line, len, ecbdata->ws_rule,
+				      ecbdata->opt->file, set, reset, ws);
+		}
+	} else {
+		assert(line || offset != -1);
+		if (offset != -1) {
+			struct buffered_patch_line e = BUFFERED_PATCH_LINE_INIT;
+			e.first = sign;
+			e.line_offset = offset;
+			e.has_trailing_newline =
+				(len > 0 && line[len-1] == '\n');
+			if (e.has_trailing_newline)
+				len--;
+			e.has_trailing_carriage_return =
+				(len > 0 && line[len-1] == '\r');
+			if (e.has_trailing_carriage_return)
+				len--;
+			e.len = len;
+			e.set = set;
+
+			append_buffered_patch_line_to_buffered_patch(ecbdata->opt, &e);
+		} else
+			emit_line_0(o, ws, reset, sign, line, len);
 	}
 }
 
@@ -621,7 +727,7 @@ static void emit_add_line(const char *reset,
 			  const char *line, int len)
 {
 	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_FILE_NEW, WSEH_NEW, '+');
+			  DIFF_FILE_NEW, WSEH_NEW, '+', -1);
 }
 
 static void emit_del_line(const char *reset,
@@ -629,15 +735,7 @@ static void emit_del_line(const char *reset,
 			  const char *line, int len)
 {
 	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_FILE_OLD, WSEH_OLD, '-');
-}
-
-static void emit_context_line(const char *reset,
-			      struct emit_callback *ecbdata,
-			      const char *line, int len)
-{
-	emit_line_checked(reset, ecbdata, line, len,
-			  DIFF_CONTEXT, WSEH_CONTEXT, ' ');
+			  DIFF_FILE_OLD, WSEH_OLD, '-', -1);
 }
 
 static void emit_hunk_header(struct emit_callback *ecbdata,
@@ -1162,6 +1260,15 @@ static void diff_words_flush(struct emit_callback *ecbdata)
 	if (ecbdata->diff_words->minus.text.size ||
 	    ecbdata->diff_words->plus.text.size)
 		diff_words_show(ecbdata->diff_words);
+
+	if (ecbdata->diff_words->opt->line_buffer_nr) {
+		int i;
+		for (i = 0; i < ecbdata->diff_words->opt->line_buffer_nr; i++)
+			append_buffered_patch_line_to_buffered_patch(
+				ecbdata->opt,
+				&ecbdata->diff_words->opt->line_buffer[i]);
+		ecbdata->diff_words->opt->line_buffer_nr = 0;
+	}
 }
 
 static void diff_filespec_load_driver(struct diff_filespec *one)
@@ -1197,6 +1304,12 @@ static void init_diff_words_data(struct emit_callback *ecbdata,
 		xcalloc(1, sizeof(struct diff_words_data));
 	ecbdata->diff_words->type = o->word_diff;
 	ecbdata->diff_words->opt = o;
+
+	/* Create our own buffer if needed. */
+	o->line_buffer = NULL;
+	o->line_buffer_nr = 0;
+	o->line_buffer_alloc = 0;
+
 	if (!o->word_regex)
 		o->word_regex = userdiff_word_regex(one);
 	if (!o->word_regex)
@@ -1303,6 +1416,8 @@ static void fn_out_consume(void *priv, char *line, unsigned long len,
 	const char *context = diff_get_color(ecbdata->color_diff, DIFF_CONTEXT);
 	const char *reset = diff_get_color(ecbdata->color_diff, DIFF_RESET);
 	struct diff_options *o = ecbdata->opt;
+	enum color_diff color;
+	unsigned ws_error_highlight;
 
 	o->found_changes = 1;
 
@@ -1380,24 +1495,30 @@ static void fn_out_consume(void *priv, char *line, unsigned long len,
 	switch (line[0]) {
 	case '+':
 		ecbdata->lno_in_postimage++;
-		emit_add_line(reset, ecbdata, line + 1, len - 1);
+		color = DIFF_FILE_NEW;
+		ws_error_highlight = WSEH_NEW;
 		break;
 	case '-':
 		ecbdata->lno_in_preimage++;
-		emit_del_line(reset, ecbdata, line + 1, len - 1);
+		color = DIFF_FILE_OLD;
+		ws_error_highlight = WSEH_OLD;
 		break;
 	case ' ':
 		ecbdata->lno_in_postimage++;
 		ecbdata->lno_in_preimage++;
-		emit_context_line(reset, ecbdata, line + 1, len - 1);
+		color = DIFF_CONTEXT;
+		ws_error_highlight = WSEH_CONTEXT;
 		break;
 	default:
 		/* incomplete line at the end */
 		ecbdata->lno_in_preimage++;
-		emit_line(o, diff_get_color(ecbdata->color_diff, DIFF_CONTEXT),
-			  reset, line, len);
+		color = DIFF_CONTEXT;
+		ws_error_highlight = WSEH_CONTEXT;
 		break;
 	}
+
+	emit_line_checked(reset, ecbdata, line + 1, len - 1,
+			  color, ws_error_highlight, line[0], offset);
 }
 
 static char *pprint_rename(const char *a, const char *b)
@@ -2571,9 +2692,27 @@ static void builtin_diff(const char *name_a,
 			xecfg.ctxlen = strtoul(v, NULL, 10);
 		if (o->word_diff)
 			init_diff_words_data(&ecbdata, o, one, two);
+		if (o->use_buffer) {
+			ALLOC_GROW(o->filepair_buffer,
+				   o->filepair_buffer_nr + 1,
+				   o->filepair_buffer_alloc);
+			o->current_filepair =
+				&o->filepair_buffer[o->filepair_buffer_nr++];
+			o->current_filepair->one = one;
+			o->current_filepair->two = two;
+			o->current_filepair->ws_rule = ecbdata.ws_rule;
+			if (o->ws_error_highlight) {
+				o->current_filepair->ws =
+					diff_get_color(ecbdata.color_diff, DIFF_WHITESPACE);
+				if (!*o->current_filepair->ws)
+					o->current_filepair->ws = NULL;
+			}
+		}
 		if (xdi_diff_outf(&mf1, &mf2, fn_out_consume, &ecbdata,
 				  &xpp, &xecfg))
 			die("unable to generate diff for %s", one->path);
+		if (o->use_buffer)
+			o->current_filepair->handover_at = o->emitted_lines;
 		if (o->word_diff)
 			free_diff_words_data(&ecbdata);
 		if (textconv_one)
@@ -4763,14 +4902,82 @@ void diff_warn_rename_limit(const char *varname, int needed, int degraded_cc)
 		warning(_(rename_limit_advice), varname, needed);
 }
 
+static void check_current_file_pair(struct diff_options *o, int i)
+{
+	struct userdiff_driver *textconv_one = NULL;
+	struct userdiff_driver *textconv_two = NULL;
+
+	//~ fprintf(stderr, "check_current_file_pair: loading new file pair\n");
+
+	/* check if we need to flip to the next current file pair: */
+	if (!o->current_filepair) {
+		if (o->filepair_buffer_nr > 0)
+			o->current_filepair = &o->filepair_buffer[0];
+		else
+			return;
+	} else if (i > o->current_filepair->handover_at) {
+		/* free up old file pair */
+		diff_free_filespec_data(o->current_filepair->one);
+		diff_free_filespec_data(o->current_filepair->two);
+		o->current_filepair ++;
+		if (o->current_filepair >= &o->filepair_buffer[o->filepair_buffer_nr]) {
+			o->current_filepair = NULL;
+			return;
+		}
+	} else
+		return;
+
+	/* Reload the file pair data pointers: */
+	if (DIFF_OPT_TST(o, ALLOW_TEXTCONV)) {
+		textconv_one = get_textconv(o->current_filepair->one);
+		textconv_two = get_textconv(o->current_filepair->two);
+	}
+	if (DIFF_FILE_VALID(o->current_filepair->one)) {
+		diff_populate_filespec(o->current_filepair->one, 0);
+		o->current_filepair->len1 =
+			fill_textconv(textconv_one,
+					o->current_filepair->one,
+					&o->current_filepair->data1);
+	}
+	if (DIFF_FILE_VALID(o->current_filepair->two)) {
+		diff_populate_filespec(o->current_filepair->two, 0);
+		o->current_filepair->len2 =
+			fill_textconv(textconv_two,
+				o->current_filepair->two,
+				&o->current_filepair->data2);
+	}
+}
+
 static void diff_flush_patch_all_file_pairs(struct diff_options *o)
 {
 	int i;
 	struct diff_queue_struct *q = &diff_queued_diff;
+	/*
+	 * TODO:
+	 * For testing purposes we want to make sure the diff machinery
+	 * works with the buffer. If there is anything emitted outside the
+	 * emit_buffered_patch_line, then the order is screwed up and the
+	 * tests will fail.
+	 *
+	 * We'll unset this flag in a later patch.
+	 */
+	o->use_buffer = 1;
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
 		if (check_pair_status(p))
 			diff_flush_patch(p, o);
+	}
+
+	if (o->use_buffer) {
+		o->current_filepair = NULL;
+		check_current_file_pair(o, 0);
+		for (i = 0; i < o->line_buffer_nr; i++) {
+			emit_buffered_patch_line(o, &o->line_buffer[i]);
+			free_buffered_patch_line(&o->line_buffer[i]);
+			check_current_file_pair(o, i);
+		}
+		o->line_buffer_nr = 0;
+		o->filepair_buffer_nr = 0;
 	}
 }
 
