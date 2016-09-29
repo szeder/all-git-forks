@@ -3714,3 +3714,46 @@ int for_each_packed_object(each_packed_object_fn cb, void *data, unsigned flags)
 	}
 	return r ? r : pack_errors;
 }
+
+static int init_default_abbrev(void)
+{
+	unsigned long count = 0;
+	struct packed_git *p;
+	struct strbuf buf = STRBUF_INIT;
+	DIR *dir;
+	char *name;
+	int ret;
+
+	prepare_packed_git();
+	for (p = packed_git; p; p = p->next) {
+		if (open_pack_index(p))
+			continue;
+		count += p->num_objects;
+	}
+
+	strbuf_addstr(&buf, get_object_directory());
+	strbuf_addstr(&buf, "/42/");
+	name = strbuf_detach(&buf, NULL);
+	dir = opendir(name);
+	free(name);
+	if (dir) {
+		struct dirent *de;
+		while ((de = readdir(dir)) != NULL) {
+			count += 256;
+		}
+		closedir(dir);
+	}
+	for (ret = 7; ret < 15; ret++) {
+		unsigned long expect_collision = 1ul << (ret * 2);
+		if (count < expect_collision)
+			break;
+	}
+	return ret;
+}
+
+int get_default_abbrev(void)
+{
+	if (default_abbrev < 0)
+		default_abbrev = init_default_abbrev();
+	return default_abbrev;
+}
