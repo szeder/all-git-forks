@@ -1182,8 +1182,9 @@ static inline int hex2chr(const char *s)
 }
 
 /* Convert to/from hex/sha1 representation */
+extern int get_default_abbrev(void);
 #define MINIMUM_ABBREV minimum_abbrev
-#define DEFAULT_ABBREV default_abbrev
+#define DEFAULT_ABBREV get_default_abbrev()
 
 struct object_context {
 	unsigned char tree[20];
