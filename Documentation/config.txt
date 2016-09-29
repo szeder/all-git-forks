@@ -945,6 +945,10 @@ browser.<tool>.path::
 	browse HTML help (see `-w` option in linkgit:git-help[1]) or a
 	working repository in gitweb (see linkgit:git-instaweb[1]).
 
+cherrypick.originLineLocation::
+	Default for the `--origin-line-location` option in git-cherry-pick.
+	Defaults to `bottom`.
+
 clean.requireForce::
 	A boolean to make git-clean do nothing unless given -f,
 	-i or -n.   Defaults to true.

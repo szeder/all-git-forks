@@ -244,4 +244,63 @@ test_expect_success 'cherry-pick preserves commit message' '
 	test_cmp expect actual
 '
 
+mesg_one_para="This is a commit message
+in one paragraph"
+
+test_expect_success 'cherry-pick -x (top location) one-paragraph commit message' '
+	pristine_detach initial &&
+	test_config cherrypick.originLineLocation top &&
+	test_commit "$mesg_one_para" foo b mesg-one-para &&
+	git reset --hard initial &&
+	sha1=$(git rev-parse mesg-one-para^0) &&
+	git cherry-pick -x mesg-one-para &&
+	cat <<-EOF >expect &&
+		$mesg_one_para
+
+		(cherry picked from commit $sha1)
+	EOF
+	git log -1 --pretty=format:%B >actual &&
+	test_cmp expect actual
+'
+
+space=" "
+mesg_multi_para="$mesg_one_para
+$space
+
+$mesg_one_para"
+
+test_expect_success 'cherry-pick -x (top location) multi-paragraph commit message' '
+	pristine_detach initial &&
+	test_config cherrypick.originLineLocation top &&
+	test_commit "$mesg_multi_para" foo b mesg-multi-para &&
+	git reset --hard initial &&
+	sha1=$(git rev-parse mesg-multi-para^0) &&
+	git cherry-pick -x mesg-multi-para &&
+	cat <<-EOF >expect &&
+		$mesg_one_para
+
+		(cherry picked from commit $sha1)
+
+		$mesg_one_para
+	EOF
+	git log -1 --pretty=format:%B >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'cherry-pick -x location argument overrides config' '
+	test_config cherrypick.originLineLocation top &&
+	git reset --hard initial &&
+	sha1=$(git rev-parse mesg-multi-para^0) &&
+	git cherry-pick -x --origin-line-location=bottom mesg-multi-para &&
+	cat <<-EOF >expect &&
+		$mesg_one_para
+
+		$mesg_one_para
+
+		(cherry picked from commit $sha1)
+	EOF
+	git log -1 --pretty=format:%B >actual &&
+	test_cmp expect actual
+'
+
 test_done

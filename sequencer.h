@@ -20,6 +20,11 @@ enum replay_subcommand {
 	REPLAY_ROLLBACK
 };
 
+enum origin_line {
+	ORIGIN_LINE_BOTTOM,
+	ORIGIN_LINE_TOP
+};
+
 struct replay_opts {
 	enum replay_action action;
 	enum replay_subcommand subcommand;
@@ -46,6 +51,8 @@ struct replay_opts {
 
 	/* Only used by REPLAY_NONE */
 	struct rev_info *revs;
+
+	enum origin_line origin_line;
 };
 
 int sequencer_pick_revisions(struct replay_opts *opts);

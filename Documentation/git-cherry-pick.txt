@@ -58,7 +58,7 @@ OPTIONS
 	message prior to committing.
 
 -x::
-	When recording the commit, append a line that says
+	When recording the commit, add a line that says
 	"(cherry picked from commit ...)" to the original commit
 	message in order to indicate which commit this change was
 	cherry-picked from.  This is done only for cherry
@@ -70,6 +70,14 @@ OPTIONS
 	maintenance branch for an older release from a
 	development branch), adding this information can be
 	useful.
+
+--origin-line-location::
+	Where to put the "(cherry picked from commit ...)" line when requested
+	with the `-x` option.  May be `top`, meaning at the top of the commit
+	message body, immediately below the commit title (see the DISCUSSION
+	section of linkgit:git-commit[1]), or `bottom`, meaning at the end of
+	the commit message.  The default is controlled by the
+	`cherrypick.originLineLocation` configuration variable.
 
 -r::
 	It used to be that the command defaulted to do `-x`
@@ -223,6 +231,11 @@ the working tree.
 <4> try to apply the change introduced by `topic^` again,
 spending extra time to avoid mistakes based on incorrectly matching
 context lines.
+
+CONFIGURATION
+-------------
+cherrypick.originLineLocation::
+	Default for the `--origin-line-location` option.  Defaults to `bottom`.
 
 SEE ALSO
 --------

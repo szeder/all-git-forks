@@ -454,23 +454,45 @@ static int allow_empty(struct replay_opts *opts, struct commit *commit)
 static void append_message(struct strbuf *msgbuf,
 			   const struct commit_message *msg,
 			   int record_origin,
+			   enum origin_line origin_line,
 			   const struct commit *commit)
 {
 	/*
-	 * Append the commit log message to msgbuf; it starts
+	 * The commit log message starts
 	 * after the tree, parent, author, committer
 	 * information followed by "\n\n".
 	 */
 	const char *p = strstr(msg->message, "\n\n");
-	if (p)
-		strbuf_addstr(msgbuf, skip_blank_lines(p + 2));
+	p = skip_blank_lines(p + 2);
+	if (!record_origin) {
+		strbuf_addstr(msgbuf, p);
+		return;
+	}
 
-	if (record_origin) {
+	switch (origin_line) {
+	case ORIGIN_LINE_TOP:
+		/* First, add only the subject. */
+		p = format_subject(msgbuf, p, "\n");
+		strbuf_addstr(msgbuf, "\n\n");
+		break;
+	case ORIGIN_LINE_BOTTOM:
+		strbuf_addstr(msgbuf, p);
 		if (!has_conforming_footer(msgbuf, NULL, 0))
 			strbuf_addch(msgbuf, '\n');
-		strbuf_addstr(msgbuf, cherry_picked_prefix);
-		strbuf_addstr(msgbuf, oid_to_hex(&commit->object.oid));
-		strbuf_addstr(msgbuf, ")\n");
+		break;
+	}
+
+	strbuf_addstr(msgbuf, cherry_picked_prefix);
+	strbuf_addstr(msgbuf, oid_to_hex(&commit->object.oid));
+	strbuf_addstr(msgbuf, ")\n");
+
+	if (origin_line == ORIGIN_LINE_TOP) {
+		/* Add the rest of the commit message. */
+		p = skip_blank_lines(p);
+		if (*p) {
+			strbuf_addch(msgbuf, '\n');
+			strbuf_addstr(msgbuf, p);
+		}
 	}
 }
 
@@ -570,7 +592,8 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		next = commit;
 		next_label = msg.label;
 
-		append_message(&msgbuf, &msg, opts->record_origin, commit);
+		append_message(&msgbuf, &msg, opts->record_origin,
+			       opts->origin_line, commit);
 	}
 
 	if (!opts->strategy || !strcmp(opts->strategy, "recursive") || opts->action == REPLAY_REVERT) {

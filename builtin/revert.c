@@ -71,11 +71,25 @@ static void verify_opt_compatible(const char *me, const char *base_opt, ...)
 		die(_("%s: %s cannot be used with %s"), me, this_opt, base_opt);
 }
 
+static int set_origin_line(enum origin_line *line, const char *str)
+{
+	if (!strcmp(str, "bottom")) {
+		*line = ORIGIN_LINE_BOTTOM;
+		return 1;
+	}
+	if (!strcmp(str, "top")) {
+		*line = ORIGIN_LINE_TOP;
+		return 1;
+	}
+	return 0;
+}
+
 static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 {
 	const char * const * usage_str = revert_or_cherry_pick_usage(opts);
 	const char *me = action_name(opts);
 	int cmd = 0;
+	const char *origin_str = NULL;
 	struct option base_options[] = {
 		OPT_CMDMODE(0, "quit", &cmd, N_("end revert or cherry-pick sequence"), 'q'),
 		OPT_CMDMODE(0, "continue", &cmd, N_("resume revert or cherry-pick sequence"), 'c'),
@@ -98,6 +112,7 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 	if (opts->action == REPLAY_PICK) {
 		struct option cp_extra[] = {
 			OPT_BOOL('x', NULL, &opts->record_origin, N_("append commit name")),
+			OPT_STRING(0, "origin-line-location", &origin_str, N_("origin-line-location"), N_("location of appended commit name")),
 			OPT_BOOL(0, "ff", &opts->allow_ff, N_("allow fast-forward")),
 			OPT_BOOL(0, "allow-empty", &opts->allow_empty, N_("preserve initially empty commits")),
 			OPT_BOOL(0, "allow-empty-message", &opts->allow_empty_message, N_("allow commits with empty messages")),
@@ -124,6 +139,12 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 		opts->subcommand = REPLAY_ROLLBACK;
 	else
 		opts->subcommand = REPLAY_NONE;
+
+	/* Set the origin line location */
+	if (origin_str)
+		if (!set_origin_line(&opts->origin_line, origin_str))
+			die(_("%s: --origin-line-location must be top or bottom"),
+			    me);
 
 	/* Check for incompatible command line arguments */
 	if (opts->subcommand != REPLAY_NONE) {
@@ -176,6 +197,21 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 		usage_with_options(usage_str, options);
 }
 
+static int git_cherry_pick_config(const char *var, const char *value,
+				  void *opts_)
+{
+	struct replay_opts *opts = opts_;
+
+	if (!strcmp(var, "cherrypick.originlinelocation")) {
+		if (!value)
+			return config_error_nonbool(var);
+		set_origin_line(&opts->origin_line, value);
+		return 0;
+	}
+
+	return git_default_config(var, value, opts_);
+}
+
 int cmd_revert(int argc, const char **argv, const char *prefix)
 {
 	struct replay_opts opts;
@@ -200,7 +236,7 @@ int cmd_cherry_pick(int argc, const char **argv, const char *prefix)
 
 	memset(&opts, 0, sizeof(opts));
 	opts.action = REPLAY_PICK;
-	git_config(git_default_config, NULL);
+	git_config(git_cherry_pick_config, &opts);
 	parse_args(argc, argv, &opts);
 	res = sequencer_pick_revisions(&opts);
 	if (res < 0)
