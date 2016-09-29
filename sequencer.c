@@ -447,6 +447,33 @@ static int allow_empty(struct replay_opts *opts, struct commit *commit)
 		return 1;
 }
 
+/*
+ * Appends the commit log message, including the cherry picked notification if
+ * record_origin is nonzero.
+ */
+static void append_message(struct strbuf *msgbuf,
+			   const struct commit_message *msg,
+			   int record_origin,
+			   const struct commit *commit)
+{
+	/*
+	 * Append the commit log message to msgbuf; it starts
+	 * after the tree, parent, author, committer
+	 * information followed by "\n\n".
+	 */
+	const char *p = strstr(msg->message, "\n\n");
+	if (p)
+		strbuf_addstr(msgbuf, skip_blank_lines(p + 2));
+
+	if (record_origin) {
+		if (!has_conforming_footer(msgbuf, NULL, 0))
+			strbuf_addch(msgbuf, '\n');
+		strbuf_addstr(msgbuf, cherry_picked_prefix);
+		strbuf_addstr(msgbuf, oid_to_hex(&commit->object.oid));
+		strbuf_addstr(msgbuf, ")\n");
+	}
+}
+
 static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 {
 	unsigned char head[20];
@@ -538,29 +565,12 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		}
 		strbuf_addstr(&msgbuf, ".\n");
 	} else {
-		const char *p;
-
 		base = parent;
 		base_label = msg.parent_label;
 		next = commit;
 		next_label = msg.label;
 
-		/*
-		 * Append the commit log message to msgbuf; it starts
-		 * after the tree, parent, author, committer
-		 * information followed by "\n\n".
-		 */
-		p = strstr(msg.message, "\n\n");
-		if (p)
-			strbuf_addstr(&msgbuf, skip_blank_lines(p + 2));
-
-		if (opts->record_origin) {
-			if (!has_conforming_footer(&msgbuf, NULL, 0))
-				strbuf_addch(&msgbuf, '\n');
-			strbuf_addstr(&msgbuf, cherry_picked_prefix);
-			strbuf_addstr(&msgbuf, oid_to_hex(&commit->object.oid));
-			strbuf_addstr(&msgbuf, ")\n");
-		}
+		append_message(&msgbuf, &msg, opts->record_origin, commit);
 	}
 
 	if (!opts->strategy || !strcmp(opts->strategy, "recursive") || opts->action == REPLAY_REVERT) {
