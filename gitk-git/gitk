@@ -11462,6 +11462,7 @@ proc prefspage_general {notebook} {
 
 proc prefspage_colors {notebook} {
     global NS uicolor bgcolor fgcolor ctext diffcolors selectbgcolor markbgcolor
+    global headbgcolor headfgcolor remotebgcolor
 
     set page [create_prefs_page $notebook.colors]
 
@@ -11505,6 +11506,18 @@ proc prefspage_colors {notebook} {
     ${NS}::button $page.selbgbut -text [mc "Select bg"] \
 	-command [list choosecolor selectbgcolor {} $page.selbgsep [mc "background"] setselbg]
     grid x $page.selbgbut $page.selbgsep -sticky w
+    label $page.headbgcolor -padx 40 -relief sunk -background $headbgcolor
+    ${NS}::button $page.headbgcolorbut -text [mc "Head bg"] \
+       -command [list choosecolor headbgcolor {} $page.headbgcolor [mc "head background color"] redrawexistingheads]
+    grid x $page.headbgcolorbut $page.headbgcolor -sticky w
+    label $page.headfgcolor -padx 40 -relief sunk -background $headfgcolor
+    ${NS}::button $page.headfgcolorbut -text [mc "Head fg"] \
+       -command [list choosecolor headfgcolor {} $page.headfgcolor [mc "head foreground color"] redrawexistingheads]
+    grid x $page.headfgcolorbut $page.headfgcolor -sticky w
+    label $page.remotebgcolor -padx 40 -relief sunk -background $remotebgcolor
+    ${NS}::button $page.remotebgcolorbut -text [mc "Remote bg"] \
+       -command [list choosecolor remotebgcolor {} $page.remotebgcolor [mc "remote head background color"] redrawexistingheads]
+    grid x $page.remotebgcolorbut $page.remotebgcolor -sticky w
     return $page
 }
 
@@ -11653,6 +11666,13 @@ proc setfg {c} {
     allcanvs itemconf text -fill $c
     $canv itemconf circle -outline $c
     $canv itemconf markid -outline $c
+}
+
+proc redrawexistingheads {c} {
+    global canv idheads headids
+    foreach key [array names idheads] {
+        redrawtags $key
+    }
 }
 
 proc prefscan {} {
