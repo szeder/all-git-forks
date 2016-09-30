@@ -55,7 +55,7 @@ if (@ARGV != 2) {
 	exit_error_usage();
 }
 
-my $VERBOSE = 4;
+my $VERBOSE = 1;
 my $remotename = $ARGV[0];
 my $url = $ARGV[1];
 
@@ -339,8 +339,19 @@ sub get_pages {
 	# if ($all_namespaces && !$use_namespace) {
         #   get_other_namespaces( \%pages );
         # }
-	warn (scalar keys %pages) . " pages found.\n" if $VERBOSE & 1
-	return %pages;
+        if ($VERBOSE & 1) {
+          my $found = scalar keys %pages;
+          if ($found == 1) {
+            warn "1 page found.\n";
+          }
+          if ($found > 1) {
+            warn "$found pages found.\n";
+          }
+          if (!$found) {
+            warn "No pages found.\n";
+          }
+        }
+        return %pages;
 }
 
 # usage: $out = run_git("command args");
