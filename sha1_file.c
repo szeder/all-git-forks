@@ -421,6 +421,12 @@ void add_to_alternates_file(const char *reference)
 	free(alts);
 }
 
+void add_to_alternates_internal(const char *reference)
+{
+	prepare_alt_odb();
+	link_alt_odb_entries(reference, strlen(reference), '\n', NULL, 0);
+}
+
 /*
  * Compute the exact path an alternate is at and returns it. In case of
  * error NULL is returned and the human readable error is added to `err`
