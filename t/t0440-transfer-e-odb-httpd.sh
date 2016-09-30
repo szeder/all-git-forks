@@ -12,17 +12,18 @@ LIB_HTTPD_PORT=3440
 
 start_httpd apache-e-odb.conf
 
+UPLOADFILENAME="hello_apache_upload.txt"
 
 #SMART=smart
 #MYURL="$HTTPD_URL/$SMART/repo.git"
 #MYURL="$HTTPD_URL/repo.git"
-MYURL="$HTTPD_URL/upload/"
+MYURL="$HTTPD_URL/upload/?filename=$UPLOADFILENAME"
 
 echo "MYURL: $MYURL"
 echo "GIT_EXEC_PATH: $GIT_EXEC_PATH"
 
 test_expect_success 'server request log matches test results' '
-	curl --data "Hello Apache World" --include "$MYURL" >out
+	curl --data "Hello Apache World!" --include "$MYURL" >out
 '
 
 exit 1
@@ -30,6 +31,15 @@ exit 1
 stop_httpd
 
 test_done
+
+
+	echo "Hello Apache World!" >hello_to_send.txt &&
+	echo "How are you?" >>hello_to_send.txt &&
+	curl --form param1=value1 --form "fileupload=@hello_to_send.txt" --include "$MYURL" >out
+
+	echo "Hello Apache World!" >hello_to_send.txt &&
+	echo "How are you?" >>hello_to_send.txt &&
+	curl --data @hello_to_send.txt --include "$MYURL" >out
 
 exit 0
 
