@@ -11666,6 +11666,7 @@ proc setfg {c} {
     allcanvs itemconf text -fill $c
     $canv itemconf circle -outline $c
     $canv itemconf markid -outline $c
+    redrawexistingheads $c
 }
 
 proc redrawexistingheads {c} {
