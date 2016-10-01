@@ -433,6 +433,7 @@ static inline enum object_type object_type(unsigned int mode)
 #define GIT_GLOB_PATHSPECS_ENVIRONMENT "GIT_GLOB_PATHSPECS"
 #define GIT_NOGLOB_PATHSPECS_ENVIRONMENT "GIT_NOGLOB_PATHSPECS"
 #define GIT_ICASE_PATHSPECS_ENVIRONMENT "GIT_ICASE_PATHSPECS"
+#define GIT_QUARANTINE_ENVIRONMENT "GIT_QUARANTINE_PATH"
 
 /*
  * This environment variable is expected to contain a boolean indicating
@@ -1398,6 +1399,7 @@ extern void prepare_alt_odb(void);
 extern void read_info_alternates(const char * relative_base, int depth);
 extern char *compute_alternate_path(const char *path, struct strbuf *err);
 extern void add_to_alternates_file(const char *reference);
+extern void add_to_alternates_internal(const char *reference);
 typedef int alt_odb_fn(struct alternate_object_database *, void *);
 extern int foreach_alt_odb(alt_odb_fn, void*);
 
