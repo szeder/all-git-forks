@@ -21,10 +21,21 @@
 const char sign_off_header[] = "Signed-off-by: ";
 static const char cherry_picked_prefix[] = "(cherry picked from commit ";
 
-static GIT_PATH_FUNC(git_path_todo_file, SEQ_TODO_FILE)
-static GIT_PATH_FUNC(git_path_opts_file, SEQ_OPTS_FILE)
-static GIT_PATH_FUNC(git_path_seq_dir, SEQ_DIR)
-static GIT_PATH_FUNC(git_path_head_file, SEQ_HEAD_FILE)
+GIT_PATH_FUNC(git_path_seq_dir, "sequencer")
+
+static GIT_PATH_FUNC(git_path_todo_file, "sequencer/todo")
+static GIT_PATH_FUNC(git_path_opts_file, "sequencer/opts")
+static GIT_PATH_FUNC(git_path_head_file, "sequencer/head")
+
+static const char *get_dir(const struct replay_opts *opts)
+{
+	return git_path_seq_dir();
+}
+
+static const char *get_todo_path(const struct replay_opts *opts)
+{
+	return git_path_todo_file();
+}
 
 static int is_rfc2822_line(const char *buf, int len)
 {
@@ -108,13 +119,28 @@ static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	return 1;
 }
 
-static void remove_sequencer_state(void)
+void *sequencer_entrust(struct replay_opts *opts, void *to_free)
 {
-	struct strbuf seq_dir = STRBUF_INIT;
+	ALLOC_GROW(opts->owned, opts->owned_nr + 1, opts->owned_alloc);
+	opts->owned[opts->owned_nr++] = to_free;
 
-	strbuf_addstr(&seq_dir, git_path(SEQ_DIR));
-	remove_dir_recursively(&seq_dir, 0);
-	strbuf_release(&seq_dir);
+	return to_free;
+}
+
+static void remove_sequencer_state(const struct replay_opts *opts)
+{
+	struct strbuf dir = STRBUF_INIT;
+	int i;
+
+	for (i = 0; i < opts->owned_nr; i++)
+		free(opts->owned[i]);
+	free(opts->owned);
+
+	free(opts->xopts);
+
+	strbuf_addf(&dir, "%s", get_dir(opts));
+	remove_dir_recursively(&dir, 0);
+	strbuf_release(&dir);
 }
 
 static const char *action_name(const struct replay_opts *opts)
@@ -469,8 +495,7 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (has_ita_entries(&the_index) ||
-		    index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
+		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -756,25 +781,24 @@ static int parse_insn_buffer(char *buf, struct commit_list **todo_list,
 static int read_populate_todo(struct commit_list **todo_list,
 			struct replay_opts *opts)
 {
+	const char *todo_file = get_todo_path(opts);
 	struct strbuf buf = STRBUF_INIT;
 	int fd, res;
 
-	fd = open(git_path_todo_file(), O_RDONLY);
+	fd = open(todo_file, O_RDONLY);
 	if (fd < 0)
-		return error_errno(_("Could not open %s"),
-				   git_path_todo_file());
+		return error_errno(_("Could not open %s"), todo_file);
 	if (strbuf_read(&buf, fd, 0) < 0) {
 		close(fd);
 		strbuf_release(&buf);
-		return error(_("Could not read %s."), git_path_todo_file());
+		return error(_("Could not read %s."), todo_file);
 	}
 	close(fd);
 
 	res = parse_insn_buffer(buf.buf, todo_list, opts);
 	strbuf_release(&buf);
 	if (res)
-		return error(_("Unusable instruction sheet: %s"),
-			git_path_todo_file());
+		return error(_("Unusable instruction sheet: %s"), todo_file);
 	return 0;
 }
 
@@ -797,13 +821,18 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		opts->allow_ff = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.mainline"))
 		opts->mainline = git_config_int(key, value);
-	else if (!strcmp(key, "options.strategy"))
+	else if (!strcmp(key, "options.strategy")) {
 		git_config_string(&opts->strategy, key, value);
-	else if (!strcmp(key, "options.gpg-sign"))
+		sequencer_entrust(opts, (char *) opts->strategy);
+	}
+	else if (!strcmp(key, "options.gpg-sign")) {
 		git_config_string(&opts->gpg_sign, key, value);
+		sequencer_entrust(opts, (char *) opts->gpg_sign);
+	}
 	else if (!strcmp(key, "options.strategy-option")) {
 		ALLOC_GROW(opts->xopts, opts->xopts_nr + 1, opts->xopts_alloc);
-		opts->xopts[opts->xopts_nr++] = xstrdup(value);
+		opts->xopts[opts->xopts_nr++] =
+			sequencer_entrust(opts, xstrdup(value));
 	} else
 		return error(_("Invalid key: %s"), key);
 
@@ -813,7 +842,7 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 	return 0;
 }
 
-static int read_populate_opts(struct replay_opts **opts)
+static int read_populate_opts(struct replay_opts *opts)
 {
 	if (!file_exists(git_path_opts_file()))
 		return 0;
@@ -823,7 +852,7 @@ static int read_populate_opts(struct replay_opts **opts)
 	 * about this case, though, because we wrote that file ourselves, so we
 	 * are pretty certain that it is syntactically correct.
 	 */
-	if (git_config_from_file(populate_opts_cb, git_path_opts_file(), *opts) < 0)
+	if (git_config_from_file(populate_opts_cb, git_path_opts_file(), opts) < 0)
 		return error(_("Malformed options sheet: %s"),
 			git_path_opts_file());
 	return 0;
@@ -940,7 +969,7 @@ static int sequencer_rollback(struct replay_opts *opts)
 	}
 	if (reset_for_rollback(sha1))
 		goto fail;
-	remove_sequencer_state();
+	remove_sequencer_state(opts);
 	strbuf_release(&buf);
 	return 0;
 fail:
@@ -1034,7 +1063,7 @@ static int pick_commits(struct commit_list *todo_list, struct replay_opts *opts)
 	 * Sequence of picks finished successfully; cleanup by
 	 * removing the .git/sequencer directory
 	 */
-	remove_sequencer_state();
+	remove_sequencer_state(opts);
 	return 0;
 }
 
@@ -1052,9 +1081,9 @@ static int sequencer_continue(struct replay_opts *opts)
 {
 	struct commit_list *todo_list = NULL;
 
-	if (!file_exists(git_path_todo_file()))
+	if (!file_exists(get_todo_path(opts)))
 		return continue_single_pick();
-	if (read_populate_opts(&opts) ||
+	if (read_populate_opts(opts) ||
 			read_populate_todo(&todo_list, opts))
 		return -1;
 
@@ -1065,7 +1094,7 @@ static int sequencer_continue(struct replay_opts *opts)
 		if (ret)
 			return ret;
 	}
-	if (has_ita_entries(&the_index) || index_differs_from("HEAD", 0))
+	if (index_differs_from("HEAD", 0))
 		return error_dirty_index(opts);
 	todo_list = todo_list->next;
 	return pick_commits(todo_list, opts);
@@ -1095,7 +1124,7 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 	 * one that is being continued
 	 */
 	if (opts->subcommand == REPLAY_REMOVE_STATE) {
-		remove_sequencer_state();
+		remove_sequencer_state(opts);
 		return 0;
 	}
 	if (opts->subcommand == REPLAY_ROLLBACK)
