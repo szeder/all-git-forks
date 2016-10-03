@@ -396,7 +396,7 @@ output_header:
 			find_unique_abbrev(one->hash, DEFAULT_ABBREV));
 	if (!fast_backward && !fast_forward)
 		strbuf_addch(&sb, '.');
-	strbuf_addf(&sb, "%s", find_unique_abbrev(two->hash, DEFAULT_ABBREV));
+	strbuf_add_unique_abbrev(&sb, two->hash, DEFAULT_ABBREV);
 	if (message)
 		strbuf_addf(&sb, " %s%s\n", message, reset);
 	else
@@ -606,14 +606,15 @@ struct collect_submodule_from_sha1s_data {
 	struct string_list *needs_pushing;
 };
 
-static void collect_submodules_from_sha1s(const unsigned char sha1[20],
-		void *data)
+static int collect_submodules_from_sha1s(const unsigned char sha1[20],
+					 void *data)
 {
 	struct collect_submodule_from_sha1s_data *me =
 		(struct collect_submodule_from_sha1s_data *) data;
 
 	if (submodule_needs_pushing(me->submodule_path, sha1))
 		string_list_insert(me->needs_pushing, me->submodule_path);
+	return 0;
 }
 
 static void free_submodules_sha1s(struct string_list *submodules)
@@ -627,11 +628,12 @@ static void free_submodules_sha1s(struct string_list *submodules)
 	string_list_clear(submodules, 1);
 }
 
-static void append_hash_to_argv(const unsigned char sha1[20],
-		void *data)
+static int append_hash_to_argv(const unsigned char sha1[20],
+			       void *data)
 {
 	struct argv_array *argv = (struct argv_array *) data;
 	argv_array_push(argv, sha1_to_hex(sha1));
+	return 0;
 }
 
 int find_unpushed_submodules(struct sha1_array *hashes,
@@ -791,9 +793,10 @@ void check_for_new_submodule_commits(unsigned char new_sha1[20])
 	sha1_array_append(&ref_tips_after_fetch, new_sha1);
 }
 
-static void add_sha1_to_argv(const unsigned char sha1[20], void *data)
+static int add_sha1_to_argv(const unsigned char sha1[20], void *data)
 {
 	argv_array_push(data, sha1_to_hex(sha1));
+	return 0;
 }
 
 static void calculate_changed_submodule_paths(void)

@@ -102,9 +102,9 @@ test_valid_repo'
 cd "$base_dir"
 
 test_expect_success \
-    'that relative alternate is only possible for current dir' '
+    'that relative alternate is recursive' '
     cd D &&
-    ! (test_valid_repo)
+    test_valid_repo
 '
 
 cd "$base_dir"

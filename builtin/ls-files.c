@@ -29,10 +29,11 @@ static int show_valid_bit;
 static int line_terminator = '\n';
 static int debug_mode;
 static int show_eol;
-static const char *submodule_prefix;
 static int recurse_submodules;
+static struct argv_array submodules_options = ARGV_ARRAY_INIT;
 
 static const char *prefix;
+static const char *super_prefix;
 static int max_prefix_len;
 static int prefix_len;
 static struct pathspec pathspec;
@@ -71,16 +72,14 @@ static void write_eolinfo(const struct cache_entry *ce, const char *path)
 static void write_name(const char *name)
 {
 	/*
-	 * NEEDSWORK: To make this thread-safe, full_name would have to be owned
-	 * by the caller.
-	 *
-	 * full_name get reused across output lines to minimize the allocation
-	 * churn.
+	 * Prepend the super_prefix to name to construct the full_name to be
+	 * written.  'full_name' gets reused across output lines to minimize the
+	 * allocation churn.
 	 */
 	static struct strbuf full_name = STRBUF_INIT;
-	if (submodule_prefix && *submodule_prefix) {
+	if (super_prefix && *super_prefix) {
 		strbuf_reset(&full_name);
-		strbuf_addstr(&full_name, submodule_prefix);
+		strbuf_addstr(&full_name, super_prefix);
 		strbuf_addstr(&full_name, name);
 		name = full_name.buf;
 	}
@@ -170,6 +169,45 @@ static void show_killed_files(struct dir_struct *dir)
 	}
 }
 
+/*
+ * Compile an argv_array with all of the options supported by --recurse_submodules
+ */
+static void compile_submodule_options(const struct dir_struct *dir, int show_tag)
+{
+	if (line_terminator == '\0')
+		argv_array_push(&submodules_options, "-z");
+	if (show_tag)
+		argv_array_push(&submodules_options, "-t");
+	if (show_valid_bit)
+		argv_array_push(&submodules_options, "-v");
+	if (show_cached)
+		argv_array_push(&submodules_options, "--cached");
+	if (show_deleted)
+		argv_array_push(&submodules_options, "--deleted");
+	if (show_modified)
+		argv_array_push(&submodules_options, "--modified");
+	if (show_others)
+		argv_array_push(&submodules_options, "--others");
+	if (dir->flags & DIR_SHOW_IGNORED)
+		argv_array_push(&submodules_options, "--ignored");
+	if (show_stage)
+		argv_array_push(&submodules_options, "--stage");
+	if (show_killed)
+		argv_array_push(&submodules_options, "--killed");
+	if (dir->flags & DIR_SHOW_OTHER_DIRECTORIES)
+		argv_array_push(&submodules_options, "--directory");
+	if (!(dir->flags & DIR_SHOW_OTHER_DIRECTORIES))
+		argv_array_push(&submodules_options, "--empty-directory");
+	if (show_unmerged)
+		argv_array_push(&submodules_options, "--unmerged");
+	if (show_resolve_undo)
+		argv_array_push(&submodules_options, "--resolve-undo");
+	if (show_eol)
+		argv_array_push(&submodules_options, "--eol");
+	if (debug_mode)
+		argv_array_push(&submodules_options, "--debug");
+}
+
 /**
  * Recursively call ls-files on a submodule
  */
@@ -179,22 +217,14 @@ static void show_gitlink(const struct cache_entry *ce)
 	int status;
 	int i;
 
+	argv_array_pushf(&cp.args, "--super-prefix=%s%s/",
+			 super_prefix ? super_prefix : "",
+			 ce->name);
 	argv_array_push(&cp.args, "ls-files");
 	argv_array_push(&cp.args, "--recurse-submodules");
-	argv_array_pushf(&cp.args, "--submodule-prefix=%s%s/",
-			 submodule_prefix ? submodule_prefix : "",
-			 ce->name);
-	/* add options */
-	if (show_eol)
-		argv_array_push(&cp.args, "--eol");
-	if (show_valid_bit)
-		argv_array_push(&cp.args, "-v");
-	if (show_stage)
-		argv_array_push(&cp.args, "--stage");
-	if (show_cached)
-		argv_array_push(&cp.args, "--cached");
-	if (debug_mode)
-		argv_array_push(&cp.args, "--debug");
+
+	/* add supported options */
+	argv_array_pushv(&cp.args, submodules_options.argv);
 
 	/*
 	 * Pass in the original pathspec args.  The submodule will be
@@ -216,8 +246,8 @@ static void show_ce_entry(const char *tag, const struct cache_entry *ce)
 {
 	struct strbuf name = STRBUF_INIT;
 	int len = max_prefix_len;
-	if (submodule_prefix)
-		strbuf_addstr(&name, submodule_prefix);
+	if (super_prefix)
+		strbuf_addstr(&name, super_prefix);
 	strbuf_addstr(&name, ce->name);
 
 	if (len >= ce_namelen(ce))
@@ -537,8 +567,6 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 		{ OPTION_SET_INT, 0, "full-name", &prefix_len, NULL,
 			N_("make the output relative to the project top directory"),
 			PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL },
-		OPT_STRING(0, "submodule-prefix", &submodule_prefix,
-			N_("path"), N_("prepend <path> to each file")),
 		OPT_BOOL(0, "recurse-submodules", &recurse_submodules,
 			N_("recurse through submodules")),
 		OPT_BOOL(0, "error-unmatch", &error_unmatch,
@@ -557,6 +585,7 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 	prefix = cmd_prefix;
 	if (prefix)
 		prefix_len = strlen(prefix);
+	super_prefix = get_super_prefix();
 	git_config(git_default_config, NULL);
 
 	if (read_cache() < 0)
@@ -592,9 +621,13 @@ int cmd_ls_files(int argc, const char **argv, const char *cmd_prefix)
 	if (require_work_tree && !is_inside_work_tree())
 		setup_work_tree();
 
+	if (recurse_submodules)
+		compile_submodule_options(&dir, show_tag);
+
 	if (recurse_submodules &&
 	    (show_deleted || show_others || show_unmerged ||
-	     show_killed || show_modified || show_resolve_undo))
+	     show_killed || show_modified || show_resolve_undo ||
+	     with_tree))
 		die("ls-files --recurse-submodules unsupported mode");
 
 	if (recurse_submodules && error_unmatch)

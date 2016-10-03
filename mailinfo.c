@@ -54,47 +54,84 @@ static void parse_bogus_from(struct mailinfo *mi, const struct strbuf *line)
 	get_sane_name(&mi->name, &mi->name, &mi->email);
 }
 
-static void unquote_quoted_string(struct strbuf *line)
+static const char *unquote_comment(struct strbuf *outbuf, const char *in)
 {
-	const char *in = strbuf_detach(line, NULL);
-	int c, take_next_literally = 0;
+	int c;
+	int take_next_litterally = 0;
 
-	/*
-	 * Stores the character that started the escape mode so that we know what
-	 * character will stop it
-	 */
-	char escape_context = 0;
+	strbuf_addch(outbuf, '(');
 
 	while ((c = *in++) != 0) {
-		if (take_next_literally) {
-			take_next_literally = 0;
+		if (take_next_litterally == 1) {
+			take_next_litterally = 0;
 		} else {
 			switch (c) {
-			case '"':
-				if (!escape_context)
-					escape_context = '"';
-				else if (escape_context == '"')
-					escape_context = 0;
-				continue;
 			case '\\':
-				if (escape_context) {
-					take_next_literally = 1;
-					continue;
-				}
-				break;
+				take_next_litterally = 1;
+				continue;
 			case '(':
-				if (!escape_context)
-					escape_context = '(';
-				break;
+				in = unquote_comment(outbuf, in);
+				continue;
 			case ')':
-				if (escape_context == '(')
-					escape_context = 0;
-				break;
+				strbuf_addch(outbuf, ')');
+				return in;
 			}
 		}
 
-		strbuf_addch(line, c);
+		strbuf_addch(outbuf, c);
 	}
+
+	return in;
+}
+
+static const char *unquote_quoted_string(struct strbuf *outbuf, const char *in)
+{
+	int c;
+	int take_next_litterally = 0;
+
+	while ((c = *in++) != 0) {
+		if (take_next_litterally == 1) {
+			take_next_litterally = 0;
+		} else {
+			switch (c) {
+			case '\\':
+				take_next_litterally = 1;
+				continue;
+			case '"':
+				return in;
+			}
+		}
+
+		strbuf_addch(outbuf, c);
+	}
+
+	return in;
+}
+
+static void unquote_quoted_pair(struct strbuf *line)
+{
+	struct strbuf outbuf;
+	const char *in = line->buf;
+	int c;
+
+	strbuf_init(&outbuf, line->len);
+
+	while ((c = *in++) != 0) {
+		switch (c) {
+		case '"':
+			in = unquote_quoted_string(&outbuf, in);
+			continue;
+		case '(':
+			in = unquote_comment(&outbuf, in);
+			continue;
+		}
+
+		strbuf_addch(&outbuf, c);
+	}
+
+	strbuf_swap(&outbuf, line);
+	strbuf_release(&outbuf);
+
 }
 
 static void handle_from(struct mailinfo *mi, const struct strbuf *from)
@@ -106,7 +143,7 @@ static void handle_from(struct mailinfo *mi, const struct strbuf *from)
 	strbuf_init(&f, from->len);
 	strbuf_addbuf(&f, from);
 
-	unquote_quoted_string(&f);
+	unquote_quoted_pair(&f);
 
 	at = strchr(f.buf, '@');
 	if (!at) {
