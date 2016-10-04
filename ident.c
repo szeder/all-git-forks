@@ -101,7 +101,7 @@ static int canonical_name(const char *host, struct strbuf *out)
 	memset (&hints, '\0', sizeof (hints));
 	hints.ai_flags = AI_CANONNAME;
 	if (!getaddrinfo(host, NULL, &hints, &ai)) {
-		if (ai && strchr(ai->ai_canonname, '.')) {
+		if (ai && ai->ai_canonname && strchr(ai->ai_canonname, '.')) {
 			strbuf_addstr(out, ai->ai_canonname);
 			status = 0;
 		}
@@ -182,6 +182,11 @@ static const char *ident_default_date(void)
 	if (!git_default_date.len)
 		datestamp(&git_default_date);
 	return git_default_date.buf;
+}
+
+void reset_ident_date(void)
+{
+	strbuf_reset(&git_default_date);
 }
 
 static int crud(unsigned char c)
