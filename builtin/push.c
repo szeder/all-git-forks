@@ -3,6 +3,7 @@
  */
 #include "cache.h"
 #include "refs.h"
+#include "dir.h"
 #include "run-command.h"
 #include "builtin.h"
 #include "remote.h"
@@ -22,7 +23,7 @@ static int deleterefs;
 static const char *receivepack;
 static int verbosity;
 static int progress = -1;
-static int recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
+static int recurse_submodules;
 static enum transport_family family;
 
 static struct push_cas_option cas;
@@ -30,6 +31,19 @@ static struct push_cas_option cas;
 static const char **refspec;
 static int refspec_nr;
 static int refspec_alloc;
+
+static void preset_submodule_default(void)
+{
+	struct strbuf sb = STRBUF_INIT;
+	strbuf_addf(&sb, "%s/modules", get_git_dir());
+
+	if (file_exists(sb.buf))
+		recurse_submodules = RECURSE_SUBMODULES_CHECK;
+	else
+		recurse_submodules = RECURSE_SUBMODULES_OFF;
+
+	strbuf_release(&sb);
+}
 
 static void add_refspec(const char *ref)
 {
@@ -552,6 +566,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 	};
 
 	packet_trace_identity("push");
+	preset_submodule_default();
 	git_config(git_push_config, &flags);
 	argc = parse_options(argc, argv, prefix, options, push_usage, 0);
 	set_push_cert_flags(&flags, push_cert);
