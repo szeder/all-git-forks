@@ -388,6 +388,11 @@ static int do_push(const char *repo, int flags,
 		    "    git push <name>\n"));
 	}
 
+	if (recurse_submodules == RECURSE_SUBMODULES_CHECK)
+		flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
+	else if (recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND)
+		flags |= TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND;
+
 	if (remote->mirror)
 		flags |= (TRANSPORT_PUSH_MIRROR|TRANSPORT_PUSH_FORCE);
 
@@ -575,11 +580,6 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		die(_("--delete is incompatible with --all, --mirror and --tags"));
 	if (deleterefs && argc < 2)
 		die(_("--delete doesn't make sense without any refs"));
-
-	if (recurse_submodules == RECURSE_SUBMODULES_CHECK)
-		flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
-	else if (recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND)
-		flags |= TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND;
 
 	if (tags)
 		add_refspec("refs/tags/*");
