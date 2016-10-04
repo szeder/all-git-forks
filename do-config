@@ -2,7 +2,7 @@
 
 TOPSRCDIR=`dirname $0`
 
-PKG=git-2.9.2
+PKG=git-2.10.1
 
 : ${TARGET:=/usr/local}
 PKGDIR=$TARGET/stow/$PKG
