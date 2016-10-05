@@ -23,10 +23,6 @@ named commits and the current branch, called "merge base", is
 calculated, and then net changes taken from the merge base to
 the named commits are applied.
 
-This command is used by 'git pull' to incorporate changes from another
-repository, and can be used by hand to merge changes from one branch
-into another.
-
 Assume the following history exists and the current branch is
 "`master`":
 
@@ -119,18 +115,17 @@ of `git fetch` for merging are merged to the current branch.
 PRE-MERGE CHECKS
 ----------------
 
-Before applying outside changes, you should get your own work in
-good shape and committed locally, so it will not be clobbered if
-there are conflicts.  See also linkgit:git-stash[1].
-'git pull' and 'git merge' will stop without doing anything when
-local uncommitted changes overlap with files that 'git pull'/'git
-merge' may need to update.
+Before applying outside changes, you should get your own work in good
+shape and committed locally, so it will not be clobbered if there are
+conflicts. See also linkgit:git-stash[1]. 'git merge' will stop
+without doing anything when local uncommitted changes overlap with
+files that 'git merge' may need to update.
 
-To avoid recording unrelated changes in the merge commit,
-'git pull' and 'git merge' will also abort if there are any changes
-registered in the index relative to the `HEAD` commit.  (One
-exception is when the changed index entries are in the state that
-would result from the merge already.)
+To avoid recording unrelated changes in the merge commit, 'git merge'
+will also abort if there are any changes registered in the index
+relative to the `HEAD` commit. (One exception is when the changed
+index entries are in the state that would result from the merge
+already.)
 
 If all named commits are already ancestors of `HEAD`, 'git merge'
 will exit early with the message "Already up-to-date."
@@ -138,14 +133,15 @@ will exit early with the message "Already up-to-date."
 FAST-FORWARD MERGE
 ------------------
 
-Often the current branch head is an ancestor of the named commit.
+Often the current branch head is an ancestor of the named commit.  In
+this case, a new commit is not needed to store the combined history;
+instead, the `HEAD` (along with the index) is updated to point at the
+named commit, without creating an extra merge commit.
+
 This is the most common case especially when invoked from 'git
 pull': you are tracking an upstream repository, you have committed
 no local changes, and now you want to update to a newer upstream
-revision.  In this case, a new commit is not needed to store the
-combined history; instead, the `HEAD` (along with the index) is
-updated to point at the named commit, without creating an extra
-merge commit.
+revision.
 
 This behavior can be suppressed with the `--no-ff` option.
 
