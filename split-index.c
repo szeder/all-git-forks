@@ -353,9 +353,9 @@ static void sha1_from_path(unsigned char *sha1, const char *path)
 	git_SHA1_Final(sha1, &ctx);
 }
 
-void s_i_info_filename(struct strbuf *sb,
-		       const char *shared_index,
-		       const char *path)
+void split_index_canary_filename(struct strbuf *sb,
+				 const char *shared_index,
+				 const char *path)
 {
 	unsigned char path_sha1[GIT_SHA1_RAWSZ];
 
