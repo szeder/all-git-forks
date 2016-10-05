@@ -26,7 +26,7 @@ static void handle_delete_command(int ac, const char **av)
 		    "delete command requires exactly 2 arguments",
 		    av[0], delete_usage_str);
 
-	delete_s_i_info(av[2], av[3]);
+	delete_split_index_canary(av[2], av[3]);
 }
 
 static void read_s_i_info_into_list(const char *filename, struct string_list *paths)
