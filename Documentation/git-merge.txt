@@ -16,11 +16,16 @@ SYNOPSIS
 
 DESCRIPTION
 -----------
-Incorporates changes from the named commits (since the time their
-histories diverged from the current branch) into the current
-branch.  This command is used by 'git pull' to incorporate changes
-from another repository and can be used by hand to merge changes
-from one branch into another.
+
+Incorporates changes that lead to the named commits into the current
+branch, and joins corresponding histories. The best common ancestor of
+named commits and the current branch, called "merge base", is
+calculated, and then net changes taken from the merge base to
+the named commits are applied.
+
+This command is used by 'git pull' to incorporate changes from another
+repository, and can be used by hand to merge changes from one branch
+into another.
 
 Assume the following history exists and the current branch is
 "`master`":
@@ -31,11 +36,11 @@ Assume the following history exists and the current branch is
     D---E---F---G master
 ------------
 
-Then "`git merge topic`" will replay the changes made on the
-`topic` branch since it diverged from `master` (i.e., `E`) until
-its current commit (`C`) on top of `master`, and record the result
-in a new commit along with the names of the two parent commits and
-a log message from the user describing the changes.
+Then "`git merge topic`" will replay the changes made on the `topic`
+branch since it diverged from `master` (i.e., `E`) until its current
+commit (`C`) on top of `master`, and record the result in a new commit
+along with references to the two parent commits and a log message from
+the user describing the changes.
 
 ------------
 	  A---B---C topic
