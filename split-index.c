@@ -364,7 +364,7 @@ void split_index_canary_filename(struct strbuf *sb,
 			shared_index, sha1_to_hex(path_sha1));
 }
 
-void write_s_i_info(const char *shared_index, const char *path)
+void write_split_index_canary(const char *shared_index, const char *path)
 {
 	struct strbuf s_i_info = STRBUF_INIT;
 

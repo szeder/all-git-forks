@@ -16,7 +16,7 @@ static void handle_write_command(int ac, const char **av)
 		    "write command requires exactly 2 arguments",
 		    av[0], write_usage_str);
 
-	write_s_i_info(av[2], av[3]);
+	write_split_index_canary(av[2], av[3]);
 }
 
 static void handle_delete_command(int ac, const char **av)
