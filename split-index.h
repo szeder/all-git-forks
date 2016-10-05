@@ -34,4 +34,40 @@ void discard_split_index(struct index_state *istate);
 void add_split_index(struct index_state *istate);
 void remove_split_index(struct index_state *istate);
 
+/*
+ * Canary files are files designed to help decide if it's ok to delete
+ * share index files.
+ *
+ * A shared index file should be deleted only if is not refered by any
+ * split-index file. The problem is that there is currently no way to
+ * know where are all the split-index files that could reference a
+ * shared index file. The purpose of canary files is to help track
+ * this information.
+ *
+ * A canary file should have a filename that is a concatenation of the
+ * shared index sha1 (si->base->sha1) and the sha1 hash of the path of
+ * the split-index that will reference the shared index.
+ *
+ * This makes sure that a canary file is specific to a split-index
+ * file and that it is easy to find all the canary files related to a
+ * specific shared index file.
+ *
+ * To simplify things let's create the canary file just before it's
+ * split-index file is renamed to it's final name.
+ *
+ * => Q: what happens if we check whether we can delete a shared index
+ * file between the time when the shared index file has been created
+ * and the time the canary file is created?
+ *
+ * => A: we can avoid that problem by requiring that only shared index
+ * files older than one day can be deleted (if they also have no
+ * corresponding canary file).
+ *
+ * => Q: When we are creating a new split-index file how do we know
+ * that the referenced shared index file is not being deleted?
+ *
+ * => A: We can avoid that by "touch"ing the shared index file before
+ * creating the split-index file.
+ */
+
 #endif
