@@ -215,7 +215,7 @@ static struct commit_list *best_bisection_sorted(struct commit_list *list, int n
 		array[cnt].distance = distance;
 		cnt++;
 	}
-	QSORT(array, cnt, compare_commit_dist);
+	qsort(array, cnt, sizeof(*array), compare_commit_dist);
 	for (p = list, i = 0; i < cnt; i++) {
 		char buf[100]; /* enough for dist=%d */
 		struct object *obj = &(array[i].commit->object);

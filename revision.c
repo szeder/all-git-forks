@@ -1289,14 +1289,12 @@ void add_index_objects_to_pending(struct rev_info *revs, unsigned flags)
 	}
 }
 
-static int add_parents_only(struct rev_info *revs, const char *arg_, int flags,
-			    int exclude_parent)
+static int add_parents_only(struct rev_info *revs, const char *arg_, int flags)
 {
 	unsigned char sha1[20];
 	struct object *it;
 	struct commit *commit;
 	struct commit_list *parents;
-	int parent_number;
 	const char *arg = arg_;
 
 	if (*arg == '^') {
@@ -1318,15 +1316,7 @@ static int add_parents_only(struct rev_info *revs, const char *arg_, int flags,
 	if (it->type != OBJ_COMMIT)
 		return 0;
 	commit = (struct commit *)it;
-	if (exclude_parent &&
-	    exclude_parent > commit_list_count(commit->parents))
-		return 0;
-	for (parents = commit->parents, parent_number = 1;
-	     parents;
-	     parents = parents->next, parent_number++) {
-		if (exclude_parent && parent_number != exclude_parent)
-			continue;
-
+	for (parents = commit->parents; parents; parents = parents->next) {
 		it = &parents->item->object;
 		it->flags |= flags;
 		add_rev_cmdline(revs, it, arg_, REV_CMD_PARENTS_ONLY, flags);
@@ -1529,33 +1519,17 @@ int handle_revision_arg(const char *arg_, struct rev_info *revs, int flags, unsi
 		}
 		*dotdot = '.';
 	}
-
 	dotdot = strstr(arg, "^@");
 	if (dotdot && !dotdot[2]) {
 		*dotdot = 0;
-		if (add_parents_only(revs, arg, flags, 0))
+		if (add_parents_only(revs, arg, flags))
 			return 0;
 		*dotdot = '^';
 	}
 	dotdot = strstr(arg, "^!");
 	if (dotdot && !dotdot[2]) {
 		*dotdot = 0;
-		if (!add_parents_only(revs, arg, flags ^ (UNINTERESTING | BOTTOM), 0))
-			*dotdot = '^';
-	}
-	dotdot = strstr(arg, "^-");
-	if (dotdot) {
-		int exclude_parent = 1;
-
-		if (dotdot[2]) {
-			char *end;
-			exclude_parent = strtoul(dotdot + 2, &end, 10);
-			if (*end != '\0' || !exclude_parent)
-				return -1;
-		}
-
-		*dotdot = 0;
-		if (!add_parents_only(revs, arg, flags ^ (UNINTERESTING | BOTTOM), exclude_parent))
+		if (!add_parents_only(revs, arg, flags ^ (UNINTERESTING | BOTTOM)))
 			*dotdot = '^';
 	}
 

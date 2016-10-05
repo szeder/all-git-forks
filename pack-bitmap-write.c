@@ -385,7 +385,8 @@ void bitmap_writer_select_commits(struct commit **indexed_commits,
 {
 	unsigned int i = 0, j, next;
 
-	QSORT(indexed_commits, indexed_commits_nr, date_compare);
+	qsort(indexed_commits, indexed_commits_nr, sizeof(indexed_commits[0]),
+	      date_compare);
 
 	if (writer.show_progress)
 		writer.progress = start_progress("Selecting bitmap commits", 0);

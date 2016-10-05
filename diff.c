@@ -2019,7 +2019,7 @@ found_damage:
 		return;
 
 	/* Show all directories with more than x% of the changes */
-	QSORT(dir.files, dir.nr, dirstat_compare);
+	qsort(dir.files, dir.nr, sizeof(dir.files[0]), dirstat_compare);
 	gather_dirstat(options, &dir, changed, "", 0);
 }
 
@@ -2063,7 +2063,7 @@ static void show_dirstat_by_line(struct diffstat_t *data, struct diff_options *o
 		return;
 
 	/* Show all directories with more than x% of the changes */
-	QSORT(dir.files, dir.nr, dirstat_compare);
+	qsort(dir.files, dir.nr, sizeof(dir.files[0]), dirstat_compare);
 	gather_dirstat(options, &dir, changed, "", 0);
 }
 
@@ -3109,7 +3109,7 @@ static void fill_metainfo(struct strbuf *msg,
 		}
 		strbuf_addf(msg, "%s%sindex %s..", line_prefix, set,
 			    find_unique_abbrev(one->oid.hash, abbrev));
-		strbuf_add_unique_abbrev(msg, two->oid.hash, abbrev);
+		strbuf_addstr(msg, find_unique_abbrev(two->oid.hash, abbrev));
 		if (one->mode == two->mode)
 			strbuf_addf(msg, " %06o", one->mode);
 		strbuf_addf(msg, "%s\n", reset);
@@ -3421,7 +3421,7 @@ void diff_setup_done(struct diff_options *options)
 			 */
 			read_cache();
 	}
-	if (40 < options->abbrev)
+	if (options->abbrev <= 0 || 40 < options->abbrev)
 		options->abbrev = 40; /* full */
 
 	/*
@@ -3951,8 +3951,6 @@ int diff_opt_parse(struct diff_options *options,
 		return parse_submodule_opt(options, arg);
 	else if (skip_prefix(arg, "--ws-error-highlight=", &arg))
 		return parse_ws_error_highlight(options, arg);
-	else if (!strcmp(arg, "--shift-ita"))
-		options->shift_ita = 1;
 
 	/* misc options */
 	else if (!strcmp(arg, "-z"))
@@ -4138,8 +4136,7 @@ void diff_free_filepair(struct diff_filepair *p)
 	free(p);
 }
 
-/*
- * This is different from find_unique_abbrev() in that
+/* This is different from find_unique_abbrev() in that
  * it stuffs the result with dots for alignment.
  */
 const char *diff_unique_abbrev(const unsigned char *sha1, int len)
@@ -4151,26 +4148,6 @@ const char *diff_unique_abbrev(const unsigned char *sha1, int len)
 
 	abbrev = find_unique_abbrev(sha1, len);
 	abblen = strlen(abbrev);
-
-	/*
-	 * In well-behaved cases, where the abbbreviated result is the
-	 * same as the requested length, append three dots after the
-	 * abbreviation (hence the whole logic is limited to the case
-	 * where abblen < 37); when the actual abbreviated result is a
-	 * bit longer than the requested length, we reduce the number
-	 * of dots so that they match the well-behaved ones.  However,
-	 * if the actual abbreviation is longer than the requested
-	 * length by more than three, we give up on aligning, and add
-	 * three dots anyway, to indicate that the output is not the
-	 * full object name.  Yes, this may be suboptimal, but this
-	 * appears only in "diff --raw --abbrev" output and it is not
-	 * worth the effort to change it now.  Note that this would
-	 * likely to work fine when the automatic sizing of default
-	 * abbreviation length is used--we would be fed -1 in "len" in
-	 * that case, and will end up always appending three-dots, but
-	 * the automatic sizing is supposed to give abblen that ensures
-	 * uniqueness across all objects (statistically speaking).
-	 */
 	if (abblen < 37) {
 		static char hex[41];
 		if (len < abblen && abblen <= len + 2)
@@ -4946,7 +4923,7 @@ static int diffnamecmp(const void *a_, const void *b_)
 void diffcore_fix_diff_index(struct diff_options *options)
 {
 	struct diff_queue_struct *q = &diff_queued_diff;
-	QSORT(q->queue, q->nr, diffnamecmp);
+	qsort(q->queue, q->nr, sizeof(q->queue[0]), diffnamecmp);
 }
 
 void diffcore_std(struct diff_options *options)

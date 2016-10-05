@@ -61,7 +61,8 @@ const char *write_idx_file(const char *index_name, struct pack_idx_entry **objec
 			if (objects[i]->offset > last_obj_offset)
 				last_obj_offset = objects[i]->offset;
 		}
-		QSORT(sorted_by_sha, nr_objects, sha1_compare);
+		qsort(sorted_by_sha, nr_objects, sizeof(sorted_by_sha[0]),
+		      sha1_compare);
 	}
 	else
 		sorted_by_sha = list = last = NULL;

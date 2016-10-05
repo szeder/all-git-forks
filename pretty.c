@@ -1072,7 +1072,7 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 	case 'C':
 		if (starts_with(placeholder + 1, "(auto)")) {
 			c->auto_color = want_color(c->pretty_ctx->color);
-			if (c->auto_color && sb->len)
+			if (c->auto_color)
 				strbuf_addstr(sb, GIT_COLOR_RESET);
 			return 7; /* consumed 7 bytes, "C(auto)" */
 		} else {
@@ -1232,11 +1232,8 @@ static size_t format_commit_one(struct strbuf *sb, /* in UTF-8 */
 			switch (c->signature_check.result) {
 			case 'G':
 			case 'B':
-			case 'E':
 			case 'U':
 			case 'N':
-			case 'X':
-			case 'R':
 				strbuf_addch(sb, c->signature_check.result);
 			}
 			break;

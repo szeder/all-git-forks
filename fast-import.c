@@ -1460,9 +1460,9 @@ static void mktree(struct tree_content *t, int v, struct strbuf *b)
 	unsigned int i;
 
 	if (!v)
-		QSORT(t->entries, t->entry_count, tecmp0);
+		qsort(t->entries,t->entry_count,sizeof(t->entries[0]),tecmp0);
 	else
-		QSORT(t->entries, t->entry_count, tecmp1);
+		qsort(t->entries,t->entry_count,sizeof(t->entries[0]),tecmp1);
 
 	for (i = 0; i < t->entry_count; i++) {
 		if (t->entries[i]->versions[v].mode)

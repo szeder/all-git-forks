@@ -180,7 +180,8 @@ int read_tree(struct tree *tree, int stage, struct pathspec *match)
 	 * Sort the cache entry -- we need to nuke the cache tree, though.
 	 */
 	cache_tree_free(&active_cache_tree);
-	QSORT(active_cache, active_nr, cmp_cache_name_compare);
+	qsort(active_cache, active_nr, sizeof(active_cache[0]),
+	      cmp_cache_name_compare);
 	return 0;
 }
 

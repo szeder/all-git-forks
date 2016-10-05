@@ -409,7 +409,6 @@ static inline enum object_type object_type(unsigned int mode)
 #define GIT_NAMESPACE_ENVIRONMENT "GIT_NAMESPACE"
 #define GIT_WORK_TREE_ENVIRONMENT "GIT_WORK_TREE"
 #define GIT_PREFIX_ENVIRONMENT "GIT_PREFIX"
-#define GIT_SUPER_PREFIX_ENVIRONMENT "GIT_INTERNAL_SUPER_PREFIX"
 #define DEFAULT_GIT_DIR_ENVIRONMENT ".git"
 #define DB_ENVIRONMENT "GIT_OBJECT_DIRECTORY"
 #define INDEX_ENVIRONMENT "GIT_INDEX_FILE"
@@ -434,7 +433,6 @@ static inline enum object_type object_type(unsigned int mode)
 #define GIT_GLOB_PATHSPECS_ENVIRONMENT "GIT_GLOB_PATHSPECS"
 #define GIT_NOGLOB_PATHSPECS_ENVIRONMENT "GIT_NOGLOB_PATHSPECS"
 #define GIT_ICASE_PATHSPECS_ENVIRONMENT "GIT_ICASE_PATHSPECS"
-#define GIT_QUARANTINE_ENVIRONMENT "GIT_QUARANTINE_PATH"
 
 /*
  * This environment variable is expected to contain a boolean indicating
@@ -477,7 +475,6 @@ extern int get_common_dir_noenv(struct strbuf *sb, const char *gitdir);
 extern int get_common_dir(struct strbuf *sb, const char *gitdir);
 extern const char *get_git_namespace(void);
 extern const char *strip_namespace(const char *namespaced_ref);
-extern const char *get_super_prefix(void);
 extern const char *get_git_work_tree(void);
 
 /*
@@ -566,7 +563,6 @@ extern int do_read_index(struct index_state *istate, const char *path,
 extern int read_index_from(struct index_state *, const char *path);
 extern int is_index_unborn(struct index_state *);
 extern int read_index_unmerged(struct index_state *);
-extern int has_ita_entries(struct index_state *);
 #define COMMIT_LOCK		(1 << 0)
 #define CLOSE_LOCK		(1 << 1)
 extern int write_locked_index(struct index_state *, struct lock_file *lock, unsigned flags);
@@ -1190,9 +1186,6 @@ static inline int hex2chr(const char *s)
 #define MINIMUM_ABBREV minimum_abbrev
 #define DEFAULT_ABBREV default_abbrev
 
-/* used when the code does not know or care what the default abbrev is */
-#define FALLBACK_DEFAULT_ABBREV 7
-
 struct object_context {
 	unsigned char tree[20];
 	char path[PATH_MAX];
@@ -1211,13 +1204,7 @@ struct object_context {
 #define GET_SHA1_TREEISH          020
 #define GET_SHA1_BLOB             040
 #define GET_SHA1_FOLLOW_SYMLINKS 0100
-#define GET_SHA1_AUTOMATIC	 0200
 #define GET_SHA1_ONLY_TO_DIE    04000
-
-#define GET_SHA1_DISAMBIGUATORS \
-	(GET_SHA1_COMMIT | GET_SHA1_COMMITTISH | \
-	GET_SHA1_TREE | GET_SHA1_TREEISH | \
-	GET_SHA1_BLOB)
 
 extern int get_sha1(const char *str, unsigned char *sha1);
 extern int get_sha1_commit(const char *str, unsigned char *sha1);
@@ -1232,8 +1219,6 @@ extern int get_oid(const char *str, struct object_id *oid);
 
 typedef int each_abbrev_fn(const unsigned char *sha1, void *);
 extern int for_each_abbrev(const char *prefix, each_abbrev_fn, void *);
-
-extern int set_disambiguate_hint_config(const char *var, const char *value);
 
 /*
  * Try to read a SHA1 in hexadecimal format from the 40 characters
@@ -1405,7 +1390,6 @@ extern void prepare_alt_odb(void);
 extern void read_info_alternates(const char * relative_base, int depth);
 extern char *compute_alternate_path(const char *path, struct strbuf *err);
 extern void add_to_alternates_file(const char *reference);
-extern void add_to_alternates_internal(const char *reference);
 typedef int alt_odb_fn(struct alternate_object_database *, void *);
 extern int foreach_alt_odb(alt_odb_fn, void*);
 
@@ -1458,9 +1442,7 @@ extern struct packed_git *parse_pack_index(unsigned char *sha1, const char *idx_
 /* A hook to report invalid files in pack directory */
 #define PACKDIR_FILE_PACK 1
 #define PACKDIR_FILE_IDX 2
-#define PACKDIR_FILE_BITMAP 4
-#define PACKDIR_FILE_KEEP 8
-#define PACKDIR_FILE_GARBAGE 16
+#define PACKDIR_FILE_GARBAGE 4
 extern void (*report_garbage)(unsigned seen_bits, const char *path);
 
 extern void prepare_packed_git(void);
@@ -1613,15 +1595,7 @@ struct object_info {
 		} packed;
 	} u;
 };
-
-/*
- * Initializer for a "struct object_info" that wants no items. You may
- * also memset() the memory to all-zeroes.
- */
-#define OBJECT_INFO_INIT {NULL}
-
 extern int sha1_object_info_extended(const unsigned char *, struct object_info *, unsigned flags);
-extern int packed_object_info(struct packed_git *pack, off_t offset, struct object_info *);
 
 /* Dumb servers support */
 extern int update_server_info(int);

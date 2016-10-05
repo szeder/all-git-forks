@@ -1,10 +1,9 @@
 #include "cache.h"
 #include "sha1-array.h"
 
-static int print_sha1(const unsigned char sha1[20], void *data)
+static void print_sha1(const unsigned char sha1[20], void *data)
 {
 	puts(sha1_to_hex(sha1));
-	return 0;
 }
 
 int cmd_main(int argc, const char **argv)
