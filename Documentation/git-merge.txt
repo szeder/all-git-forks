@@ -10,7 +10,7 @@ SYNOPSIS
 --------
 [verse]
 'git merge' [options] [-m <msg>] [<commit>...]
-'git merge' <msg> HEAD <commit>...
+'git merge' [options] <msg> HEAD <commit>...
 'git merge' --abort
 
 DESCRIPTION
