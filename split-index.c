@@ -396,7 +396,7 @@ void write_split_index_canary(const char *shared_index, const char *path)
 	strbuf_release(&s_i_info);
 }
 
-void delete_s_i_info(const char *shared_index, const char *path)
+void delete_split_index_canary(const char *shared_index, const char *path)
 {
 	struct strbuf s_i_info = STRBUF_INIT;
 

@@ -73,6 +73,6 @@ void split_index_canary_filename(struct strbuf *sb,
 				 const char *shared_index,
 				 const char *path);
 void write_split_index_canary(const char *shared_index, const char *path);
-void delete_s_i_info(const char *shared_index, const char *path);
+void delete_split_index_canary(const char *shared_index, const char *path);
 
 #endif
