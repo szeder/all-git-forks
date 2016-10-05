@@ -84,7 +84,7 @@ static void read_s_i_info(struct strbuf *sb,
 {
 	struct strbuf s_i_info = STRBUF_INIT;
 
-	s_i_info_filename(&s_i_info, shared_index, path);
+	split_index_canary_filename(&s_i_info, shared_index, path);
 
 	if (strbuf_read_file(sb, s_i_info.buf, 0) < 0)
 		die_errno(_("could not read '%s'"), s_i_info.buf);

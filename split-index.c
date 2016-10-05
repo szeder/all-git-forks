@@ -353,9 +353,9 @@ static void sha1_from_path(unsigned char *sha1, const char *path)
 	git_SHA1_Final(sha1, &ctx);
 }
 
-void s_i_info_filename(struct strbuf *sb,
-		       const char *shared_index,
-		       const char *path)
+void split_index_canary_filename(struct strbuf *sb,
+				 const char *shared_index,
+				 const char *path)
 {
 	unsigned char path_sha1[GIT_SHA1_RAWSZ];
 
@@ -368,7 +368,7 @@ void write_s_i_info(const char *shared_index, const char *path)
 {
 	struct strbuf s_i_info = STRBUF_INIT;
 
-	s_i_info_filename(&s_i_info, shared_index, path);
+	split_index_canary_filename(&s_i_info, shared_index, path);
 
 	switch (safe_create_leading_directories(s_i_info.buf))
 	{
@@ -400,7 +400,7 @@ void delete_split_index_canary(const char *shared_index, const char *path)
 {
 	struct strbuf s_i_info = STRBUF_INIT;
 
-	s_i_info_filename(&s_i_info, shared_index, path);
+	split_index_canary_filename(&s_i_info, shared_index, path);
 
 	if (unlink(s_i_info.buf) && (errno != ENOENT))
 		die_errno("unable to unlink: %s", s_i_info.buf);
