@@ -2826,11 +2826,18 @@ stash.showStat::
 	See description of 'show' command in linkgit:git-stash[1].
 
 submodule.<name>.path::
+	The path within this project for a submodule. This variable is
+	kept in the .gitmodules file. See linkgit:git-submodule[1] and
+	linkgit:gitmodules[5] for details.
+
 submodule.<name>.url::
-	The path within this project and URL for a submodule. These
-	variables are initially populated by 'git submodule init'. See
-	linkgit:git-submodule[1] and linkgit:gitmodules[5] for
-	details.
+	The URL for a submodule. This variable is copied from the .gitmodules
+	file to the git config via 'git submodule init'. The user can change
+	the configured URL before obtaining the submodule via 'git submodule
+	update'. After obtaining the submodule, this variable is kept in the
+	config as a boolean flag to indicate whether the submodule is of
+	interest to git commands.  See linkgit:git-submodule[1] and
+	linkgit:gitmodules[5] for details.
 
 submodule.<name>.update::
 	The default update procedure for a submodule. This variable
