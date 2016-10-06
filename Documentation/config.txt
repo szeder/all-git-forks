@@ -2350,6 +2350,10 @@ push.default::
   pushing to the same repository you would normally pull from
   (i.e. central workflow).
 
+* `tracking` - Deprecated synonym for `upstream`, which we still
+  support for backwards compatibility with existing configuration
+  files.
+
 * `simple` - in centralized workflow, work like `upstream` with an
   added safety to refuse to push if the upstream branch's name is
   different from the local one.
