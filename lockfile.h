@@ -112,6 +112,8 @@
 
 struct lock_file {
 	struct tempfile tempfile;
+	int (*pre_commit_fn)(struct lock_file *lk);
+	void *data;
 };
 
 /* String appended to a filename to derive the lockfile name: */
@@ -274,10 +276,7 @@ extern int commit_lock_file(struct lock_file *lk);
  * Like `commit_lock_file()`, but rename the lockfile to the provided
  * `path`. `path` must be on the same filesystem as the lock file.
  */
-static inline int commit_lock_file_to(struct lock_file *lk, const char *path)
-{
-	return rename_tempfile(&lk->tempfile, path);
-}
+extern int commit_lock_file_to(struct lock_file *lk, const char *path);
 
 /*
  * Roll back `lk`: close the file descriptor and/or file pointer and
