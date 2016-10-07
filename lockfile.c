@@ -192,6 +192,16 @@ char *get_locked_file_path(struct lock_file *lk)
 	return strbuf_detach(&ret, NULL);
 }
 
+int commit_lock_file_to(struct lock_file *lk, const char *path)
+{
+	int ret = 0;
+
+	if (lk->pre_commit_fn)
+		ret = lk->pre_commit_fn(lk);
+
+	return ret || rename_tempfile(&lk->tempfile, path);
+}
+
 int commit_lock_file(struct lock_file *lk)
 {
 	char *result_path = get_locked_file_path(lk);
