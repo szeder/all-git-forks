@@ -691,5 +691,8 @@ int cmd_pack_redundant(int argc, const char **argv, const char *prefix)
 		fprintf(stderr, "%luMB of redundant packs in total.\n",
 			(unsigned long)pack_set_bytecount(red)/(1024*1024));
 
+
+	llist_free(ignore);
+	// TODO: also free `red`
 	return 0;
 }
