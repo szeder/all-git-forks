@@ -833,6 +833,8 @@ static int match_name_with_pattern(const char *key, const char *name,
 		strbuf_add(&sb, value, vstar - value);
 		strbuf_add(&sb, name + klen, namelen - klen - ksuffixlen);
 		strbuf_addstr(&sb, vstar + 1);
+		if (*result)
+			free(*result);
 		*result = strbuf_detach(&sb, NULL);
 	}
 	return ret;
@@ -1262,6 +1264,8 @@ static char *get_ref_match(const struct refspec *rs, int rs_nr, const struct ref
 		 */
 		if (!send_mirror && !starts_with(ref->name, "refs/heads/"))
 			return NULL;
+		if (name)
+			free(name);
 		name = xstrdup(ref->name);
 	}
 	if (ret_pat)
