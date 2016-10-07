@@ -2155,8 +2155,14 @@ void set_alternate_index_output(const char *name)
 	alternate_index_output = name;
 }
 
-static int commit_locked_index(struct lock_file *lk)
+static int commit_locked_index(struct index_state *istate, struct lock_file *lk)
 {
+	const char *filename = get_tempfile_path(&lk->tempfile);
+	struct split_index *si = istate->split_index;
+
+	if (si)
+		write_split_index_canary(sha1_to_hex(si->base_sha1), filename);
+
 	if (alternate_index_output)
 		return commit_lock_file_to(lk, alternate_index_output);
 	else
@@ -2169,10 +2175,11 @@ static int do_write_locked_index(struct index_state *istate, struct lock_file *l
 	int ret = do_write_index(istate, get_lock_file_fd(lock), 0);
 	if (ret)
 		return ret;
+
 	assert((flags & (COMMIT_LOCK | CLOSE_LOCK)) !=
 	       (COMMIT_LOCK | CLOSE_LOCK));
 	if (flags & COMMIT_LOCK)
-		return commit_locked_index(lock);
+		return commit_locked_index(istate, lock);
 	else if (flags & CLOSE_LOCK)
 		return close_lock_file(lock);
 	else
