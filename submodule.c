@@ -529,27 +529,49 @@ static int append_hash_to_argv(const unsigned char sha1[20], void *data)
 	return 0;
 }
 
-static int submodule_needs_pushing(const char *path, const unsigned char sha1[20])
+static int check_has_hash(const unsigned char sha1[20], void *data)
 {
-	if (add_submodule_odb(path) || !lookup_commit_reference(sha1))
+	int *has_hash = (int *) data;
+
+	if (!lookup_commit_reference(sha1))
+		*has_hash = 0;
+
+	return 0;
+}
+
+static int submodule_has_hashes(const char *path, struct sha1_array *hashes)
+{
+	int has_hash = 1;
+
+	if (add_submodule_odb(path))
+		return 0;
+
+	sha1_array_for_each_unique(hashes, check_has_hash, &has_hash);
+	return has_hash;
+}
+
+static int submodule_needs_pushing(const char *path, struct sha1_array *hashes)
+{
+	if (!submodule_has_hashes(path, hashes))
 		return 0;
 
 	if (for_each_remote_ref_submodule(path, has_remote, NULL) > 0) {
 		struct child_process cp = CHILD_PROCESS_INIT;
-		const char *argv[] = {"rev-list", NULL, "--not", "--remotes", "-n", "1" , NULL};
 		struct strbuf buf = STRBUF_INIT;
 		int needs_pushing = 0;
 
-		argv[1] = sha1_to_hex(sha1);
-		cp.argv = argv;
+		argv_array_push(&cp.args, "rev-list");
+		sha1_array_for_each_unique(hashes, append_hash_to_argv, &cp.args);
+		argv_array_pushl(&cp.args, "--not", "--remotes", "-n", "1" , NULL);
+
 		prepare_submodule_repo_env(&cp.env_array);
 		cp.git_cmd = 1;
 		cp.no_stdin = 1;
 		cp.out = -1;
 		cp.dir = path;
 		if (start_command(&cp))
-			die("Could not run 'git rev-list %s --not --remotes -n 1' command in submodule %s",
-				sha1_to_hex(sha1), path);
+			die("Could not run 'git rev-list <hashes> --not --remotes -n 1' command in submodule %s",
+					path);
 		if (strbuf_read(&buf, cp.out, 41))
 			needs_pushing = 1;
 		finish_command(&cp);
@@ -604,21 +626,6 @@ static void find_unpushed_submodule_commits(struct commit *commit,
 	diff_tree_combined_merge(commit, 1, &rev);
 }
 
-struct collect_submodule_from_sha1s_data {
-	char *submodule_path;
-	struct string_list *needs_pushing;
-};
-
-static void collect_submodules_from_sha1s(const unsigned char sha1[20],
-		void *data)
-{
-	struct collect_submodule_from_sha1s_data *me =
-		(struct collect_submodule_from_sha1s_data *) data;
-
-	if (submodule_needs_pushing(me->submodule_path, sha1))
-		string_list_insert(me->needs_pushing, me->submodule_path);
-}
-
 static void free_submodules_sha1s(struct string_list *submodules)
 {
 	int i;
@@ -658,13 +665,11 @@ int find_unpushed_submodules(struct sha1_array *hashes,
 	argv_array_clear(&argv);
 
 	for (i = 0; i < submodules.nr; i++) {
-		struct string_list_item *item = &submodules.items[i];
-		struct collect_submodule_from_sha1s_data data;
-		data.submodule_path = item->string;
-		data.needs_pushing = needs_pushing;
-		sha1_array_for_each_unique((struct sha1_array *) item->util,
-				collect_submodules_from_sha1s,
-				&data);
+		struct string_list_item *submodule = &submodules.items[i];
+		struct sha1_array *hashes = (struct sha1_array *) submodule->util;
+
+		if (submodule_needs_pushing(submodule->string, hashes))
+			string_list_insert(needs_pushing, submodule->string);
 	}
 	free_submodules_sha1s(&submodules);
 
