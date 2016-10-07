@@ -1657,7 +1657,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		if (rev.pending.nr == 2) {
 			struct object_array_entry *o = rev.pending.objects;
 			if (oidcmp(&o[0].item->oid, &o[1].item->oid) == 0)
-				return 0;
+				goto out;
 		}
 		get_patch_ids(&rev, &ids);
 	}
@@ -1681,7 +1681,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	}
 	if (nr == 0)
 		/* nothing to do */
-		return 0;
+		goto out;
 	total = nr;
 	if (cover_letter == -1) {
 		if (config_cover_letter == COVER_AUTO)
@@ -1798,6 +1798,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		if (!use_stdout)
 			fclose(rev.diffopt.file);
 	}
+out:
 	free(list);
 	free(branch_name);
 	string_list_clear(&extra_to, 0);
