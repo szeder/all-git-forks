@@ -2190,6 +2190,41 @@ static int write_split_index(struct index_state *istate,
 	return ret;
 }
 
+static const char *shared_index_expire = "1.week.ago";
+
+static unsigned long get_shared_index_expire_date(void)
+{
+	static unsigned long shared_index_expire_date;
+	static int shared_index_expire_date_prepared;
+
+	if (!shared_index_expire_date_prepared) {
+		git_config_get_date_string("splitindex.sharedindexexpire",
+					   &shared_index_expire);
+		shared_index_expire_date = approxidate(shared_index_expire);
+		shared_index_expire_date_prepared = 1;
+	}
+
+	return shared_index_expire_date;
+}
+
+static int can_delete_shared_index(const char *shared_sha1_hex)
+{
+	struct stat st;
+	unsigned long expiration;
+	const char *shared_index = git_path("sharedindex.%s", shared_sha1_hex);
+
+	/* Check timestamp */
+	expiration = get_shared_index_expire_date();
+	if (!expiration)
+		return 0;
+	if (stat(shared_index, &st))
+		return error_errno("could not stat '%s", shared_index);
+	if (st.st_mtime > expiration)
+		return 0;
+
+	return 1;
+}
+
 static void clean_shared_index_files(const char *current_hex)
 {
 	struct dirent *de;
@@ -2206,7 +2241,8 @@ static void clean_shared_index_files(const char *current_hex)
 			continue;
 		if (!strcmp(sha1_hex, current_hex))
 			continue;
-		if (unlink(git_path("%s", de->d_name)))
+		if (can_delete_shared_index(sha1_hex) > 0 &&
+		    unlink(git_path("%s", de->d_name)))
 			error_errno("unable to unlink: %s", git_path("%s", de->d_name));
 	}
 	closedir(dir);
