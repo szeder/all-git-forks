@@ -22,7 +22,7 @@ void child_process_clear(struct child_process *child)
 struct child_to_clean {
 	pid_t pid;
 	char *name;
-	int stdin;
+	int stdin_fd;
 	int wait;
 	struct child_to_clean *next;
 };
@@ -37,8 +37,8 @@ static void cleanup_children(int sig, int in_signal)
 	/* Close the the child's stdin as indicator that Git will exit soon */
 	while (p) {
 		if (p->wait)
-			if (p->stdin > 0)
-				close(p->stdin);
+			if (p->stdin_fd > 0)
+				close(p->stdin_fd);
 		p = p->next;
 	}
 
@@ -73,12 +73,12 @@ static void cleanup_children_on_exit(void)
 	cleanup_children(SIGTERM, 0);
 }
 
-static void mark_child_for_cleanup(pid_t pid, const char *name, int stdin, int wait)
+static void mark_child_for_cleanup(pid_t pid, const char *name, int stdin_fd, int wait)
 {
 	struct child_to_clean *p = xmalloc(sizeof(*p));
 	p->pid = pid;
 	p->wait = wait;
-	p->stdin = stdin;
+	p->stdin_fd = stdin_fd;
 	if (name)
 		p->name = xstrdup(name);
 	else
@@ -94,7 +94,7 @@ static void mark_child_for_cleanup(pid_t pid, const char *name, int stdin, int w
 }
 
 #ifdef NO_PTHREADS
-static void mark_child_for_cleanup_no_wait(pid_t pid, const char *name, int timeout, int stdin)
+static void mark_child_for_cleanup_no_wait(pid_t pid, const char *name, int timeout, int stdin_fd)
 {
 	mark_child_for_cleanup(pid, NULL, 0, 0);
 }
@@ -522,7 +522,7 @@ fail_pipe:
 		error_errno("cannot spawn %s", cmd->argv[0]);
 	if ((cmd->clean_on_exit || cmd->wait_on_exit) && cmd->pid >= 0)
 		mark_child_for_cleanup(
-			cmd->pid, cmd->argv[0], cmd->in, cmd->clean_on_exit_timeout);
+			cmd->pid, cmd->argv[0], cmd->in, 0);
 
 	argv_array_clear(&nargv);
 	cmd->argv = sargv;
