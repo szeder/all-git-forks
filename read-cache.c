@@ -2209,6 +2209,24 @@ static int write_split_index(struct index_state *istate,
 	return ret;
 }
 
+/* Default shared index grace period is one week */
+const time_t shared_index_expire = 7 * 24 * 3600;
+
+static int can_delete_shared_index(const char *shared_sha1_hex)
+{
+	struct stat st;
+	time_t now = time(NULL);
+	const char *shared_index = git_path("sharedindex.%s", shared_sha1_hex);
+
+	/* Check timestamp */
+	if (stat(shared_index, &st))
+		return error_errno("could not stat '%s", shared_index);
+	if (now < st->st_mtime + shared_index_expire)
+		return 0;
+
+	return 1;
+}
+
 static void clean_shared_index_files(const char *current_hex)
 {
 	struct dirent *de;
@@ -2225,7 +2243,8 @@ static void clean_shared_index_files(const char *current_hex)
 			continue;
 		if (!strcmp(sha1_hex, current_hex))
 			continue;
-		if (unlink(git_path("%s", de->d_name)))
+		if (can_delete_shared_index(sha1_hex) > 0 &&
+		    unlink(git_path("%s", de->d_name)))
 			error_errno("unable to unlink: %s", git_path("%s", de->d_name));
 	}
 	closedir(dir);
