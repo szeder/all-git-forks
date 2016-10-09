@@ -2278,6 +2278,12 @@ int write_locked_index(struct index_state *istate, struct lock_file *lock,
 		int ret = write_shared_index(istate, lock, flags);
 		if (ret)
 			return ret;
+	} else {
+		/* Signal that the shared index is used */
+		const char *shared_index = git_path("sharedindex.%s",
+						    sha1_to_hex(si->base_sha1));
+		if (!check_and_freshen_file(shared_index, 1))
+			warning("could not freshen '%s'", shared_index);
 	}
 
 	return write_split_index(istate, lock, flags);
