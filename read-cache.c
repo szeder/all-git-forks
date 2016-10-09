@@ -2221,7 +2221,7 @@ static int can_delete_shared_index(const char *shared_sha1_hex)
 	/* Check timestamp */
 	if (stat(shared_index, &st))
 		return error_errno("could not stat '%s", shared_index);
-	if (now < st->st_mtime + shared_index_expire)
+	if (now < st.st_mtime + shared_index_expire)
 		return 0;
 
 	return 1;
