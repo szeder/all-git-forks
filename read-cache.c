@@ -2273,9 +2273,9 @@ int too_many_not_shared_entries(struct index_state *istate)
 		max_split = default_max_percent_split_change;
 		break;
 	case 0:
-		return 1; /* 0% means always write a new shares index */
+		return 1; /* 0% means always write a new shared index */
 	case 100:
-		return 0; /* 100% means never write a new shares index */
+		return 0; /* 100% means never write a new shared index */
 	default:
 		; /* do nothing: just use the configured value */
 	}
