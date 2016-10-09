@@ -29,35 +29,6 @@ static void handle_delete_command(int ac, const char **av)
 	delete_split_index_canary(av[2], av[3]);
 }
 
-static void read_s_i_info_into_list(const char *filename, struct string_list *paths)
-{
-	struct strbuf index_path = STRBUF_INIT;
-	const char *path = git_path(SHAREDINDEX_INFO "/%s", filename);
-
-	if (strbuf_read_file(&index_path, path, 0) < 0)
-		die_errno(_("could not read '%s'"), path);
-	string_list_append(paths, strbuf_detach(&index_path, NULL));
-}
-
-static void list_s_i_info(const char *shared_index, struct string_list *paths)
-{
-	struct dirent *de;
-	DIR *dir = opendir(git_path(SHAREDINDEX_INFO));
-
-	if (!dir) {
-		if (errno == ENOENT)
-			return;
-		die_errno("could not open directory '%s'",
-			  git_path(SHAREDINDEX_INFO));
-	}
-
-	while ((de = readdir(dir)) != NULL) {
-		if (starts_with(de->d_name, shared_index))
-			read_s_i_info_into_list(de->d_name, paths);
-	}
-	closedir(dir);
-}
-
 static void handle_list_command(int ac, const char **av)
 {
 	struct string_list paths = STRING_LIST_INIT_NODUP;
@@ -68,7 +39,7 @@ static void handle_list_command(int ac, const char **av)
 		    "list command requires exactly 1 argument",
 		    av[0], list_usage_str);
 
-	list_s_i_info(av[2], &paths);
+	read_all_split_index_canaries(av[2], &paths);
 
 	printf("index paths:\n\n");
 	for_each_string_list_item(item, &paths) {
