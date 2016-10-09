@@ -2179,11 +2179,28 @@ static int do_write_locked_index(struct index_state *istate, struct lock_file *l
 		return ret;
 }
 
+static int save_canary_file(struct lock_file *lock)
+{
+	const char *filename = get_tempfile_path(&lock->tempfile);
+	struct index_state *istate = (struct index_state *)lock->data;
+	struct split_index *si = istate->split_index;
+
+	if (!si)
+		die ("BUG in save_canary(): writing split-index with no split index");
+
+	write_split_index_canary(sha1_to_hex(si->base_sha1), filename);
+
+	return 0;
+}
+
 static int write_split_index(struct index_state *istate,
 			     struct lock_file *lock,
 			     unsigned flags)
 {
 	int ret;
+
+	lock->pre_commit_fn = save_canary_file;
+	lock->data = istate;
 
 	prepare_to_write_split_index(istate);
 	ret = do_write_locked_index(istate, lock, flags);
