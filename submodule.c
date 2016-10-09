@@ -396,7 +396,7 @@ output_header:
 			find_unique_abbrev(one->hash, DEFAULT_ABBREV));
 	if (!fast_backward && !fast_forward)
 		strbuf_addch(&sb, '.');
-	strbuf_addf(&sb, "%s", find_unique_abbrev(two->hash, DEFAULT_ABBREV));
+	strbuf_add_unique_abbrev(&sb, two->hash, DEFAULT_ABBREV);
 	if (message)
 		strbuf_addf(&sb, " %s%s\n", message, reset);
 	else
@@ -728,9 +728,10 @@ void check_for_new_submodule_commits(unsigned char new_sha1[20])
 	sha1_array_append(&ref_tips_after_fetch, new_sha1);
 }
 
-static void add_sha1_to_argv(const unsigned char sha1[20], void *data)
+static int add_sha1_to_argv(const unsigned char sha1[20], void *data)
 {
 	argv_array_push(data, sha1_to_hex(sha1));
+	return 0;
 }
 
 static void calculate_changed_submodule_paths(void)
