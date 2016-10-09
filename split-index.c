@@ -405,3 +405,38 @@ void delete_split_index_canary(const char *shared_index, const char *path)
 
 	strbuf_release(&s_i_info);
 }
+
+static void read_split_index_canary_into_list(const char *filename,
+					      struct string_list *paths)
+{
+	struct strbuf index_path = STRBUF_INIT;
+	const char *path = git_path(SHAREDINDEX_INFO "/%s", filename);
+
+	if (strbuf_read_file(&index_path, path, 0) < 0)
+		die_errno(_("could not read '%s'"), path);
+	/* Remove the new line added by write_file() */
+	strbuf_rtrim(&index_path);
+
+	string_list_append(paths, strbuf_detach(&index_path, NULL));
+}
+
+void read_all_split_index_canaries(const char *shared_index,
+				   struct string_list *paths)
+{
+	struct dirent *de;
+	DIR *dir = opendir(git_path(SHAREDINDEX_INFO));
+
+	if (!dir) {
+		if (errno == ENOENT)
+			return;
+		die_errno("could not open directory '%s'",
+			  git_path(SHAREDINDEX_INFO));
+	}
+
+	while ((de = readdir(dir)) != NULL) {
+		if (starts_with(de->d_name, shared_index))
+			read_split_index_canary_into_list(de->d_name, paths);
+	}
+	closedir(dir);
+}
+
