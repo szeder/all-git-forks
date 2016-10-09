@@ -123,9 +123,7 @@ void stage_updated_gitmodules(void)
 static int add_submodule_odb(const char *path)
 {
 	struct strbuf objects_directory = STRBUF_INIT;
-	struct alternate_object_database *alt_odb;
 	int ret = 0;
-	size_t alloc;
 
 	ret = strbuf_git_path_submodule(&objects_directory, path, "objects/");
 	if (ret)
@@ -134,26 +132,7 @@ static int add_submodule_odb(const char *path)
 		ret = -1;
 		goto done;
 	}
-	/* avoid adding it twice */
-	prepare_alt_odb();
-	for (alt_odb = alt_odb_list; alt_odb; alt_odb = alt_odb->next)
-		if (alt_odb->name - alt_odb->base == objects_directory.len &&
-				!strncmp(alt_odb->base, objects_directory.buf,
-					objects_directory.len))
-			goto done;
-
-	alloc = st_add(objects_directory.len, 42); /* for "12/345..." sha1 */
-	alt_odb = xmalloc(st_add(sizeof(*alt_odb), alloc));
-	alt_odb->next = alt_odb_list;
-	xsnprintf(alt_odb->base, alloc, "%s", objects_directory.buf);
-	alt_odb->name = alt_odb->base + objects_directory.len;
-	alt_odb->name[2] = '/';
-	alt_odb->name[40] = '\0';
-	alt_odb->name[41] = '\0';
-	alt_odb_list = alt_odb;
-
-	/* add possible alternates from the submodule */
-	read_info_alternates(objects_directory.buf, 0);
+	add_to_alternates_memory(objects_directory.buf);
 done:
 	strbuf_release(&objects_directory);
 	return ret;
@@ -396,7 +375,7 @@ output_header:
 			find_unique_abbrev(one->hash, DEFAULT_ABBREV));
 	if (!fast_backward && !fast_forward)
 		strbuf_addch(&sb, '.');
-	strbuf_addf(&sb, "%s", find_unique_abbrev(two->hash, DEFAULT_ABBREV));
+	strbuf_add_unique_abbrev(&sb, two->hash, DEFAULT_ABBREV);
 	if (message)
 		strbuf_addf(&sb, " %s%s\n", message, reset);
 	else
@@ -554,19 +533,38 @@ static int submodule_needs_pushing(const char *path, const unsigned char sha1[20
 	return 0;
 }
 
+static struct sha1_array *get_sha1s_from_list(struct string_list *submodules,
+		const char *path)
+{
+	struct string_list_item *item;
+	struct sha1_array *hashes;
+
+	item = string_list_insert(submodules, path);
+	if (item->util)
+		return (struct sha1_array *) item->util;
+
+	hashes = (struct sha1_array *) xmalloc(sizeof(struct sha1_array));
+	/* NEEDSWORK: should we add an initializer function for
+	 * sha1_array ? */
+	memset(hashes, 0, sizeof(struct sha1_array));
+	item->util = hashes;
+	return hashes;
+}
+
 static void collect_submodules_from_diff(struct diff_queue_struct *q,
 					 struct diff_options *options,
 					 void *data)
 {
 	int i;
-	struct string_list *needs_pushing = data;
+	struct string_list *submodules = data;
 
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
+		struct sha1_array *hashes;
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
-		if (submodule_needs_pushing(p->two->path, p->two->oid.hash))
-			string_list_insert(needs_pushing, p->two->path);
+		hashes = get_sha1s_from_list(submodules, p->two->path);
+		sha1_array_append(hashes, p->two->oid.hash);
 	}
 }
 
@@ -582,32 +580,78 @@ static void find_unpushed_submodule_commits(struct commit *commit,
 	diff_tree_combined_merge(commit, 1, &rev);
 }
 
-int find_unpushed_submodules(unsigned char new_sha1[20],
+struct collect_submodule_from_sha1s_data {
+	char *submodule_path;
+	struct string_list *needs_pushing;
+};
+
+static int collect_submodules_from_sha1s(const unsigned char sha1[20],
+					 void *data)
+{
+	struct collect_submodule_from_sha1s_data *me =
+		(struct collect_submodule_from_sha1s_data *) data;
+
+	if (submodule_needs_pushing(me->submodule_path, sha1))
+		string_list_insert(me->needs_pushing, me->submodule_path);
+	return 0;
+}
+
+static void free_submodules_sha1s(struct string_list *submodules)
+{
+	int i;
+	for (i = 0; i < submodules->nr; i++) {
+		struct string_list_item *item = &submodules->items[i];
+		struct sha1_array *hashes = (struct sha1_array *) item->util;
+		sha1_array_clear(hashes);
+	}
+	string_list_clear(submodules, 1);
+}
+
+static int append_hash_to_argv(const unsigned char sha1[20],
+			       void *data)
+{
+	struct argv_array *argv = (struct argv_array *) data;
+	argv_array_push(argv, sha1_to_hex(sha1));
+	return 0;
+}
+
+int find_unpushed_submodules(struct sha1_array *hashes,
 		const char *remotes_name, struct string_list *needs_pushing)
 {
 	struct rev_info rev;
 	struct commit *commit;
-	const char *argv[] = {NULL, NULL, "--not", "NULL", NULL};
-	int argc = ARRAY_SIZE(argv) - 1;
-	char *sha1_copy;
+	int i;
+	struct string_list submodules = STRING_LIST_INIT_DUP;
+	struct argv_array argv = ARGV_ARRAY_INIT;
 
-	struct strbuf remotes_arg = STRBUF_INIT;
-
-	strbuf_addf(&remotes_arg, "--remotes=%s", remotes_name);
 	init_revisions(&rev, NULL);
-	sha1_copy = xstrdup(sha1_to_hex(new_sha1));
-	argv[1] = sha1_copy;
-	argv[3] = remotes_arg.buf;
-	setup_revisions(argc, argv, &rev, NULL);
+
+	/* argv.argv[0] will be ignored by setup_revisions */
+	argv_array_push(&argv, "find_unpushed_submodules");
+	sha1_array_for_each_unique(hashes, append_hash_to_argv, &argv);
+	argv_array_push(&argv, "--not");
+	argv_array_pushf(&argv, "--remotes=%s", remotes_name);
+
+	setup_revisions(argv.argc, argv.argv, &rev, NULL);
 	if (prepare_revision_walk(&rev))
 		die("revision walk setup failed");
 
 	while ((commit = get_revision(&rev)) != NULL)
-		find_unpushed_submodule_commits(commit, needs_pushing);
+		find_unpushed_submodule_commits(commit, &submodules);
 
 	reset_revision_walk();
-	free(sha1_copy);
-	strbuf_release(&remotes_arg);
+	argv_array_clear(&argv);
+
+	for (i = 0; i < submodules.nr; i++) {
+		struct string_list_item *item = &submodules.items[i];
+		struct collect_submodule_from_sha1s_data data;
+		data.submodule_path = item->string;
+		data.needs_pushing = needs_pushing;
+		sha1_array_for_each_unique((struct sha1_array *) item->util,
+				collect_submodules_from_sha1s,
+				&data);
+	}
+	free_submodules_sha1s(&submodules);
 
 	return needs_pushing->nr;
 }
@@ -634,12 +678,12 @@ static int push_submodule(const char *path)
 	return 1;
 }
 
-int push_unpushed_submodules(unsigned char new_sha1[20], const char *remotes_name)
+int push_unpushed_submodules(struct sha1_array *hashes, const char *remotes_name)
 {
 	int i, ret = 1;
 	struct string_list needs_pushing = STRING_LIST_INIT_DUP;
 
-	if (!find_unpushed_submodules(new_sha1, remotes_name, &needs_pushing))
+	if (!find_unpushed_submodules(hashes, remotes_name, &needs_pushing))
 		return 1;
 
 	for (i = 0; i < needs_pushing.nr; i++) {
@@ -728,9 +772,10 @@ void check_for_new_submodule_commits(unsigned char new_sha1[20])
 	sha1_array_append(&ref_tips_after_fetch, new_sha1);
 }
 
-static void add_sha1_to_argv(const unsigned char sha1[20], void *data)
+static int add_sha1_to_argv(const unsigned char sha1[20], void *data)
 {
 	argv_array_push(data, sha1_to_hex(sha1));
+	return 0;
 }
 
 static void calculate_changed_submodule_paths(void)
