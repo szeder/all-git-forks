@@ -31,7 +31,8 @@ static const char * const git_tag_usage[] = {
 static unsigned int colopts;
 static int force_sign_annotate;
 
-static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, const char *format)
+static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting,
+		     struct ref_format *format)
 {
 	struct ref_array array;
 	char *to_free = NULL;
@@ -42,24 +43,24 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 	if (filter->lines == -1)
 		filter->lines = 0;
 
-	if (!format) {
+	if (!format->format) {
 		if (filter->lines) {
 			to_free = xstrfmt("%s %%(contents:lines=%d)",
 					  "%(align:15)%(refname:strip=2)%(end)",
 					  filter->lines);
-			format = to_free;
+			format->format = to_free;
 		} else
-			format = "%(refname:strip=2)";
+			format->format = "%(refname:strip=2)";
 	}
 
-	if (verify_ref_format(format))
+	if (ref_format_verify(format))
 		die(_("unable to parse format string"));
 	filter->with_commit_tag_algo = 1;
 	filter_refs(&array, filter, FILTER_REFS_TAGS);
 	ref_array_sort(sorting, &array);
 
 	for (i = 0; i < array.nr; i++)
-		show_ref_array_item(array.items[i], format, 0);
+		ref_format_show(format, array.items[i]);
 	ref_array_clear(&array);
 	free(to_free);
 
@@ -349,7 +350,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct strbuf err = STRBUF_INIT;
 	struct ref_filter filter;
 	static struct ref_sorting *sorting = NULL, **sorting_tail = &sorting;
-	const char *format = NULL;
+	struct ref_format format = REF_FORMAT_INIT;
 	int icase = 0;
 	struct option options[] = {
 		OPT_CMDMODE('l', "list", &cmdmode, N_("list tag names"), 'l'),
@@ -385,7 +386,8 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 			OPTION_CALLBACK, 0, "points-at", &filter.points_at, N_("object"),
 			N_("print only tags of the object"), 0, parse_opt_object_name
 		},
-		OPT_STRING(  0 , "format", &format, N_("format"), N_("format to use for the output")),
+		OPT_STRING(0, "format", &format.format, N_("format"),
+			   N_("format to use for the output")),
 		OPT_BOOL('i', "ignore-case", &icase, N_("sorting and filtering are case insensitive")),
 		OPT_END()
 	};
@@ -429,7 +431,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 			run_column_filter(colopts, &copts);
 		}
 		filter.name_patterns = argv;
-		ret = list_tags(&filter, sorting, format);
+		ret = list_tags(&filter, sorting, &format);
 		if (column_active(colopts))
 			stop_column_filter();
 		return ret;

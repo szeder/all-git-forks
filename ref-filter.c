@@ -418,16 +418,12 @@ static const char *find_next(const char *cp)
 	return NULL;
 }
 
-/*
- * Make sure the format string is well formed, and parse out
- * the used atoms.
- */
-int verify_ref_format(const char *format)
+int ref_format_verify(struct ref_format *format)
 {
 	const char *cp, *sp;
 
 	need_color_reset_at_eol = 0;
-	for (cp = format; *cp && (sp = find_next(cp)); ) {
+	for (cp = format->format; *cp && (sp = find_next(cp)); ) {
 		const char *color, *ep = strchr(sp, ')');
 		int at;
 
@@ -1635,16 +1631,16 @@ static void append_literal(const char *cp, const char *ep, struct ref_formatting
 	}
 }
 
-void show_ref_array_item(struct ref_array_item *info, const char *format, int quote_style)
+void ref_format_show(struct ref_format *format, struct ref_array_item *info)
 {
 	const char *cp, *sp, *ep;
 	struct strbuf *final_buf;
 	struct ref_formatting_state state = REF_FORMATTING_STATE_INIT;
 
-	state.quote_style = quote_style;
+	state.quote_style = format->quote_style;
 	push_stack_element(&state.stack);
 
-	for (cp = format; *cp && (sp = find_next(cp)); cp = ep + 1) {
+	for (cp = format->format; *cp && (sp = find_next(cp)); cp = ep + 1) {
 		struct atom_value *atomv;
 
 		ep = strchr(sp, ')');

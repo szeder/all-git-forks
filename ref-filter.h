@@ -76,6 +76,13 @@ struct ref_filter_cbdata {
 	struct ref_filter *filter;
 };
 
+struct ref_format {
+	int quote_style;
+	const char *format;
+};
+
+#define REF_FORMAT_INIT { 0 }
+
 /*  Macros for checking --merged and --no-merged options */
 #define _OPT_MERGED_NO_MERGED(option, filter, h) \
 	{ OPTION_CALLBACK, 0, option, (filter), N_("commit"), (h), \
@@ -96,12 +103,8 @@ int filter_refs(struct ref_array *array, struct ref_filter *filter, unsigned int
 void ref_array_clear(struct ref_array *array);
 /*  Parse format string and sort specifiers */
 int parse_ref_filter_atom(const char *atom, const char *ep);
-/*  Used to verify if the given format is correct and to parse out the used atoms */
-int verify_ref_format(const char *format);
 /*  Sort the given ref_array as per the ref_sorting provided */
 void ref_array_sort(struct ref_sorting *sort, struct ref_array *array);
-/*  Print the ref using the given format and quote_style */
-void show_ref_array_item(struct ref_array_item *info, const char *format, int quote_style);
 /*  Callback function for parsing the sort option */
 int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset);
 /*  Default sort option based on refname */
@@ -110,10 +113,15 @@ struct ref_sorting *ref_default_sorting(void);
 int parse_opt_merge_filter(const struct option *opt, const char *arg, int unset);
 
 /*
- * Print a single ref, outside of any ref-filter. Note that the
- * name must be a fully qualified refname.
+ * Verify that all parameters of the ref_formatter are consistent, and perform
+ * any finalizing necessary. This must be called before calling
+ * ref_formatter_show() with the formatter.
  */
-void pretty_print_ref(const char *name, const unsigned char *sha1,
-		const char *format);
+int ref_format_verify(struct ref_format *rf);
+
+/*
+ * Print one ref to stdout using the format parameters.
+ */
+void ref_format_show(struct ref_format *rf, struct ref_array_item *info);
 
 #endif /*  REF_FILTER_H  */
