@@ -789,7 +789,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		res = allow;
 		goto leave;
 	}
-	if (!opts->no_commit)
+	if (!res && !opts->no_commit)
 		res = run_git_commit(opts->edit ? NULL : git_path_merge_msg(),
 				     opts, allow, opts->edit, 0, 0);
 
