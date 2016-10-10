@@ -167,11 +167,14 @@ endif::git-rev-list[]
 - '%Cblue': switch color to blue
 - '%Creset': reset color
 - '%C(...)': color specification, as described in color.branch.* config option;
-  adding `auto,` at the beginning will emit color only when colors are
-  enabled for log output (by `color.diff`, `color.ui`, or `--color`, and
-  respecting the `auto` settings of the former if we are going to a
-  terminal). `auto` alone (i.e. `%C(auto)`) will turn on auto coloring
-  on the next placeholders until the color is switched again.
+  By default, colors are shown only when enabled for log output (by
+  `color.diff`, `color.ui`, or `--color`, and respecting the `auto`
+  settings of the former if we are going to a terminal). `%C(auto,...)`
+  is accepted as a historical synonym for the default. Specifying
+  `%C(always,...) will show the colors always, even when colors are not
+  otherwise enabled (to enable this behavior for the whole format, use
+  `--color=always`). `auto` alone (i.e. `%C(auto)`) will turn on auto
+  coloring on the next placeholders until the color is switched again.
 - '%m': left (`<`), right (`>`) or boundary (`-`) mark
 - '%n': newline
 - '%%': a raw '%'
