@@ -52,7 +52,8 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 			format = "%(refname:strip=2)";
 	}
 
-	verify_ref_format(format);
+	if (verify_ref_format(format))
+		die(_("unable to parse format string"));
 	filter->with_commit_tag_algo = 1;
 	filter_refs(&array, filter, FILTER_REFS_TAGS);
 	ref_array_sort(sorting, &array);
