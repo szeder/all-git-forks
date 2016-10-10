@@ -2209,21 +2209,24 @@ static int write_split_index(struct index_state *istate,
 	return ret;
 }
 
-/* Default shared index grace period is one week */
-const time_t shared_index_expire = 7 * 24 * 3600;
+static const char *shared_index_expire = "1.week.ago";
 
 static int can_delete_shared_index(const char *shared_sha1_hex)
 {
 	struct stat st;
-	time_t now = time(NULL);
+	unsigned long expiration;
 	int i;
 	struct string_list index_paths = STRING_LIST_INIT_NODUP;
 	const char *shared_index = git_path("sharedindex.%s", shared_sha1_hex);
 
 	/* Check timestamp */
+	git_config_get_date_string("splitindex.sharedindexexpire", &shared_index_expire);
+	expiration = approxidate(shared_index_expire);
+	if (!expiration)
+		return 0;
 	if (stat(shared_index, &st))
 		return error_errno("could not stat '%s", shared_index);
-	if (now < st.st_mtime + shared_index_expire)
+	if (st.st_mtime > expiration)
 		return 0;
 
 	/* Check canary files */
