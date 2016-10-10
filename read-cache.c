@@ -2230,6 +2230,8 @@ static int can_delete_shared_index(const char *shared_sha1_hex)
 {
 	struct stat st;
 	unsigned long expiration;
+	int i;
+	struct string_list index_paths = STRING_LIST_INIT_NODUP;
 	const char *shared_index = git_path("sharedindex.%s", shared_sha1_hex);
 
 	/* Check timestamp */
@@ -2240,6 +2242,16 @@ static int can_delete_shared_index(const char *shared_sha1_hex)
 		return error_errno("could not stat '%s", shared_index);
 	if (st.st_mtime > expiration)
 		return 0;
+
+	/* Check canary files */
+	read_all_split_index_canaries(shared_sha1_hex, &index_paths);
+	for (i = 0; i < index_paths.nr; ++i) {
+		char *path = index_paths.items[i].string;
+		if (file_exists(path))
+			return 0;
+		/* Delete canary file */
+		delete_split_index_canary(shared_sha1_hex, path);
+	}
 
 	return 1;
 }
