@@ -174,6 +174,12 @@ static void parse_args(int argc, const char **argv, struct replay_opts *opts)
 
 	if (argc > 1)
 		usage_with_options(usage_str, options);
+
+	/* These option values will be free()d */
+	if (opts->gpg_sign)
+		opts->gpg_sign = xstrdup(opts->gpg_sign);
+	if (opts->strategy)
+		opts->strategy = xstrdup(opts->strategy);
 }
 
 int cmd_revert(int argc, const char **argv, const char *prefix)
