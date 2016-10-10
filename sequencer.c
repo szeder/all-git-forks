@@ -265,12 +265,6 @@ static int write_message(struct strbuf *msgbuf, const char *filename)
 	return res;
 }
 
-static int write_file_gently(const char *filename,
-			     const char *text, int append_eol)
-{
-	return write_with_lock_file(filename, text, strlen(text), append_eol);
-}
-
 /*
  * Reads a file that was presumably written by a shell script, i.e.
  * with an end-of-line marker that needs to be stripped.
