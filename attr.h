@@ -10,6 +10,13 @@ struct git_attr;
  */
 extern struct git_attr *git_attr(const char *);
 
+/*
+ * Return the name of the attribute represented by the argument.  The
+ * return value is a pointer to a null-delimited string that is part
+ * of the internal data structure; it should not be modified or freed.
+ */
+extern const char *git_attr_name(const struct git_attr *);
+
 extern int attr_name_valid(const char *name, size_t namelen);
 extern void invalid_attr_name_message(struct strbuf *, const char *, int);
 
@@ -22,44 +29,52 @@ extern const char git_attr__false[];
 #define ATTR_FALSE(v) ((v) == git_attr__false)
 #define ATTR_UNSET(v) ((v) == NULL)
 
-/*
- * Send one or more git_attr_check to git_check_attrs(), and
- * each 'value' member tells what its value is.
- * Unset one is returned as NULL.
- */
-struct git_attr_check_elem {
-	const struct git_attr *attr;
-	const char *value;
-};
-
 struct git_attr_check {
 	int finalized;
 	int check_nr;
 	int check_alloc;
-	struct git_attr_check_elem *check;
+	const struct git_attr **attr;
 };
+#define GIT_ATTR_CHECK_INIT {0, 0, 0, NULL}
 
-extern struct git_attr_check *git_attr_check_initl(const char *, ...);
-extern int git_check_attr(const char *path, struct git_attr_check *);
+struct git_attr_result {
+	int check_nr;
+	int check_alloc;
+	const char **value;
+};
+#define GIT_ATTR_RESULT_INIT {0, 0, NULL}
 
+/*
+ * Initialize the `git_attr_check` via one of the following three functions:
+ *
+ * git_attr_check_alloc allocates an empty check, add more attributes via
+ *                      git_attr_check_append.
+ * git_all_attrs        allocates a check and fills in all attributes that
+ *                      are set for the given path.
+ * git_attr_check_initl takes a pointer to where the check will be initialized,
+ *                      followed by all attributes that are to be checked.
+ *                      This makes it potentially thread safe as it could
+ *                      internally have a mutex for that memory location.
+ *                      Currently it is not thread safe!
+ */
 extern struct git_attr_check *git_attr_check_alloc(void);
-extern struct git_attr_check_elem *git_attr_check_append(struct git_attr_check *, const struct git_attr *);
+extern void git_attr_check_append(struct git_attr_check *, const struct git_attr *);
+extern void git_all_attrs(const char *path, struct git_attr_check *, struct git_attr_result *);
+extern void git_attr_check_initl(struct git_attr_check **, const char *, ...);
+
+/* Query a path for its attributes */
+extern struct git_attr_result *git_check_attr(const char *path,
+					      struct git_attr_check *);
+
+/**
+ * Free or clear the result struct. The underlying strings are not free'd
+ * as they are globally known.
+ */
+extern void git_attr_result_free(struct git_attr_result *);
+extern void git_attr_result_clear(struct git_attr_result *);
 
 extern void git_attr_check_clear(struct git_attr_check *);
-extern void git_attr_check_free(struct git_attr_check *);
 
-/*
- * Return the name of the attribute represented by the argument.  The
- * return value is a pointer to a null-delimited string that is part
- * of the internal data structure; it should not be modified or freed.
- */
-extern const char *git_attr_name(const struct git_attr *);
-
-/*
- * Retrieve all attributes that apply to the specified path.
- * check holds the attributes and their values.
- */
-void git_all_attrs(const char *path, struct git_attr_check *check);
 
 enum git_attr_direction {
 	GIT_ATTR_CHECKIN,

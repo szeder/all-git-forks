@@ -355,6 +355,7 @@ int ll_merge(mmbuffer_t *result_buf,
 {
 	static struct git_attr_check *check;
 	static const struct ll_merge_options default_opts;
+	struct git_attr_result *result;
 	const char *ll_driver_name = NULL;
 	int marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
 	const struct ll_merge_driver *driver;
@@ -369,12 +370,13 @@ int ll_merge(mmbuffer_t *result_buf,
 	}
 
 	if (!check)
-		check = git_attr_check_initl("merge", "conflict-marker-size", NULL);
+		git_attr_check_initl(&check, "merge", "conflict-marker-size", NULL);
 
-	if (!git_check_attr(path, check)) {
-		ll_driver_name = check->check[0].value;
-		if (check->check[1].value) {
-			marker_size = atoi(check->check[1].value);
+	result = git_check_attr(path, check);
+	if (result) {
+		ll_driver_name = result->value[0];
+		if (result->value[1]) {
+			marker_size = atoi(result->value[1]);
 			if (marker_size <= 0)
 				marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
 		}
@@ -394,12 +396,15 @@ int ll_merge(mmbuffer_t *result_buf,
 int ll_merge_marker_size(const char *path)
 {
 	static struct git_attr_check *check;
+	struct git_attr_result *result;
 	int marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
 
 	if (!check)
-		check = git_attr_check_initl("conflict-marker-size", NULL);
-	if (!git_check_attr(path, check) && check->check[0].value) {
-		marker_size = atoi(check->check[0].value);
+		git_attr_check_initl(&check, "conflict-marker-size", NULL);
+
+	result = git_check_attr(path, check);
+	if (result && result->value[0]) {
+		marker_size = atoi(result->value[0]);
 		if (marker_size <= 0)
 			marker_size = DEFAULT_CONFLICT_MARKER_SIZE;
 	}
