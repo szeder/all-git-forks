@@ -10,9 +10,6 @@ struct git_attr;
  */
 extern struct git_attr *git_attr(const char *);
 
-/* The same, but with counted string */
-extern struct git_attr *git_attr_counted(const char *, size_t);
-
 extern int attr_name_valid(const char *name, size_t namelen);
 extern void invalid_attr_name_message(struct strbuf *, const char *, int);
 
