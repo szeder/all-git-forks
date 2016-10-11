@@ -4,9 +4,9 @@ test_description='tests for external objects to an HTTPD server'
 
 . ./test-lib.sh
 
-# If we don't specify a port the current test number will be used
+# If we don't specify a port, the current test number will be used
 # which will not work as it is less than 1024, so it can only be used by root.
-LIB_HTTPD_PORT=3440
+LIB_HTTPD_PORT=$(expr ${this_test#t} + 12000)
 
 . "$TEST_DIRECTORY"/lib-httpd.sh
 
@@ -22,8 +22,16 @@ MYURL="$HTTPD_URL/upload/?filename=$UPLOADFILENAME"
 echo "MYURL: $MYURL"
 echo "GIT_EXEC_PATH: $GIT_EXEC_PATH"
 
-test_expect_success 'server request log matches test results' '
-	curl --data "Hello Apache World!" --include "$MYURL" >out
+test_expect_success 'can upload a file' '
+	echo "Hello Apache World!" >hello_to_send.txt &&
+	echo "How are you?" >>hello_to_send.txt &&
+	curl --data-binary @hello_to_send.txt --include "$MYURL" >out
+'
+
+DOWNLOAD_URL="$HTTPD_URL/files/$UPLOADFILENAME"
+
+test_expect_success 'can download the uploaded file' '
+	curl --include "$DOWNLOAD_URL" >out2
 '
 
 exit 1
