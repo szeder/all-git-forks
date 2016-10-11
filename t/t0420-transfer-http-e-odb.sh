@@ -28,7 +28,9 @@ have)
 	die "curl '$list_url' failed"
 	;;
 get)
-	cat "$GIT_DIR"/objects/$(echo $2 | sed 's#..#&/#')
+	get_url="$HTTPD_URL/list/?sha1=$2"
+	curl "$get_url" ||
+	die "curl '$get_url' failed"
 	;;
 put)
 	sha1="$2"
@@ -80,7 +82,12 @@ test_expect_success 'can delete uploaded files' '
 FILES_DIR="httpd/www/files"
 
 test_expect_success 'new blobs are transfered to the http server' '
-	test_commit one
+	test_commit one &&
+	hash1=$(git ls-tree HEAD | grep one.t | cut -f1 | cut -d\  -f3)
+'
+
+test_expect_success 'blobs can be retrieved from the http server' '
+	git cat-file blob "$hash1"
 '
 
 exit 1
