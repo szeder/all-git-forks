@@ -3972,6 +3972,8 @@ int diff_opt_parse(struct diff_options *options,
 		return parse_submodule_opt(options, arg);
 	else if (skip_prefix(arg, "--ws-error-highlight=", &arg))
 		return parse_ws_error_highlight_opt(options, arg);
+	else if (!strcmp(arg, "--shift-ita"))
+		options->shift_ita = 1;
 
 	/* misc options */
 	else if (!strcmp(arg, "-z"))
