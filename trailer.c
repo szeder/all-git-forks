@@ -26,6 +26,10 @@ static struct conf_info default_conf_info;
 
 struct trailer_item {
 	struct trailer_item *next;
+	/*
+	 * If this is not a trailer line, the line is stored in value
+	 * (excluding the terminating newline) and token is NULL.
+	 */
 	char *token;
 	char *value;
 };
@@ -63,9 +67,14 @@ static size_t token_len_without_separator(const char *token, size_t len)
 
 static int same_token(const struct trailer_item *a, const struct arg_item *b)
 {
-	size_t a_len = token_len_without_separator(a->token, strlen(a->token));
-	size_t b_len = token_len_without_separator(b->token, strlen(b->token));
-	size_t min_len = (a_len > b_len) ? b_len : a_len;
+	size_t a_len, b_len, min_len;
+
+	if (!a->token)
+		return 0;
+
+	a_len = token_len_without_separator(a->token, strlen(a->token));
+	b_len = token_len_without_separator(b->token, strlen(b->token));
+	min_len = (a_len > b_len) ? b_len : a_len;
 
 	return !strncasecmp(a->token, b->token, min_len);
 }
@@ -123,7 +132,14 @@ static char last_non_space_char(const char *s)
 
 static void print_tok_val(FILE *outfile, const char *tok, const char *val)
 {
-	char c = last_non_space_char(tok);
+	char c;
+
+	if (!tok) {
+		fprintf(outfile, "%s\n", val);
+		return;
+	}
+
+	c = last_non_space_char(tok);
 	if (!c)
 		return;
 	if (strchr(separators, c))
@@ -510,8 +526,16 @@ static int token_matches_item(const char *tok, struct arg_item *item, int tok_le
 	return item->conf.key ? !strncasecmp(tok, item->conf.key, tok_len) : 0;
 }
 
+/*
+ * Parse the given trailer into token and value parts.
+ *
+ * If the given trailer does not have a separator (and thus cannot be separated
+ * into token and value parts), it is treated as a token (if parse_as_arg) or
+ * as a non-trailer line (if not parse_as_arg).
+ */
 static int parse_trailer(struct strbuf *tok, struct strbuf *val,
-			 const struct conf_info **conf, const char *trailer)
+			 const struct conf_info **conf, const char *trailer,
+			 int parse_as_arg)
 {
 	size_t len;
 	struct strbuf seps = STRBUF_INIT;
@@ -523,11 +547,18 @@ static int parse_trailer(struct strbuf *tok, struct strbuf *val,
 	len = strcspn(trailer, seps.buf);
 	strbuf_release(&seps);
 	if (len == 0) {
-		int l = strlen(trailer);
+		int l;
+		if (!parse_as_arg)
+			return -1;
+
+		l = strlen(trailer);
 		while (l > 0 && isspace(trailer[l - 1]))
 			l--;
 		return error(_("empty trailer token in trailer '%.*s'"), l, trailer);
 	}
+	if (!parse_as_arg && len == strlen(trailer))
+		return -1;
+
 	if (len < strlen(trailer)) {
 		strbuf_add(tok, trailer, len);
 		strbuf_trim(tok);
@@ -598,7 +629,7 @@ static struct arg_item *process_command_line_args(struct string_list *trailers)
 
 	/* Add an arg item for each trailer on the command line */
 	for_each_string_list_item(tr, trailers) {
-		if (!parse_trailer(&tok, &val, &conf, tr->string))
+		if (!parse_trailer(&tok, &val, &conf, tr->string, 1))
 			add_arg_item(&arg_tok_tail,
 				     strbuf_detach(&tok, NULL),
 				     strbuf_detach(&val, NULL),
@@ -652,7 +683,7 @@ static int find_patch_start(struct strbuf **lines, int count)
  */
 static int find_trailer_start(struct strbuf **lines, int count)
 {
-	int start, end_of_title, only_spaces = 1;
+	int start, end_of_title, only_spaces = 1, trailer_found = 0;
 
 	/* The first paragraph is the title and cannot be trailers */
 	for (start = 0; start < count; start++) {
@@ -668,22 +699,17 @@ static int find_trailer_start(struct strbuf **lines, int count)
 	 * for a line with only spaces before lines with one separator.
 	 */
 	for (start = count - 1; start >= end_of_title; start--) {
-		if (lines[start]->buf[0] == comment_line_char)
-			continue;
 		if (contains_only_spaces(lines[start]->buf)) {
 			if (only_spaces)
 				continue;
-			return start + 1;
+			return trailer_found ? start + 1 : count;
 		}
-		if (strcspn(lines[start]->buf, separators) < lines[start]->len) {
-			if (only_spaces)
-				only_spaces = 0;
-			continue;
-		}
-		return count;
+		only_spaces = 0;
+		if (strcspn(lines[start]->buf, separators) < lines[start]->len)
+			trailer_found = 1;
 	}
 
-	return only_spaces ? count : 0;
+	return count;
 }
 
 /* Get the index of the end of the trailers */
@@ -704,11 +730,8 @@ static int find_trailer_end(struct strbuf **lines, int patch_start)
 
 static int has_blank_line_before(struct strbuf **lines, int start)
 {
-	for (;start >= 0; start--) {
-		if (lines[start]->buf[0] == comment_line_char)
-			continue;
+	if (start >= 0)
 		return contains_only_spaces(lines[start]->buf);
-	}
 	return 0;
 }
 
@@ -744,11 +767,17 @@ static int process_input_file(FILE *outfile,
 
 	/* Parse trailer lines */
 	for (i = trailer_start; i < trailer_end; i++) {
-		if (lines[i]->buf[0] != comment_line_char &&
-		    !parse_trailer(&tok, &val, NULL, lines[i]->buf))
+		if (!parse_trailer(&tok, &val, NULL, lines[i]->buf, 0))
 			add_trailer_item(in_tok_tail,
 					 strbuf_detach(&tok, NULL),
 					 strbuf_detach(&val, NULL));
+		else {
+			strbuf_addbuf(&val, lines[i]);
+			strbuf_strip_suffix(&val, "\n");
+			add_trailer_item(in_tok_tail,
+					 NULL,
+					 strbuf_detach(&val, NULL));
+		}
 	}
 
 	return trailer_end;

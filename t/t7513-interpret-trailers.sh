@@ -126,6 +126,37 @@ test_expect_success 'with multiline title in the message' '
 	test_cmp expected actual
 '
 
+test_expect_success 'with non-trailer lines mixed with trailer lines' '
+	cat >patch <<-\EOF &&
+
+		this: is a trailer
+		this is not a trailer
+	EOF
+	cat >expected <<-\EOF &&
+
+		this: is a trailer
+		this is not a trailer
+		token: value
+	EOF
+	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'with non-trailer lines only' '
+	cat >patch <<-\EOF &&
+
+		this is not a trailer
+	EOF
+	cat >expected <<-\EOF &&
+
+		this is not a trailer
+
+		token: value
+	EOF
+	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
 test_expect_success 'with config setup' '
 	git config trailer.ack.key "Acked-by: " &&
 	cat >expected <<-\EOF &&
@@ -257,6 +288,8 @@ test_expect_success 'with message that has comments' '
 	cat >>expected <<-\EOF &&
 		# comment
 
+		# other comment
+		# yet another comment
 		Reviewed-by: Johan
 		Cc: Peff
 		# last comment
@@ -286,6 +319,8 @@ test_expect_success 'with message that has an old style conflict block' '
 	cat >>expected <<-\EOF &&
 		# comment
 
+		# other comment
+		# yet another comment
 		Reviewed-by: Johan
 		Cc: Peff
 		# last comment
