@@ -11,6 +11,14 @@ rm -f "$fail"
 trap 'echo aborted >"$fail"' TERM INT HUP
 for i in $(seq $GIT_STRESS_LOAD); do
 	(
+		# It doesn't really matter where this is as long as we're not
+		# likely to hit any other listening services, nor conflict with
+		# dynamic ports.
+		PORT=$((8000 + i))
+		export LIB_GIT_DAEMON_PORT=$PORT
+		export LIB_HTTPD_PORT=$PORT
+		export JGIT_DAEMON_PORT=$PORT
+
 		root=$GIT_STRESS_ROOT/root-$i &&
 		mkdir -p "$root" &&
 		cd t &&
