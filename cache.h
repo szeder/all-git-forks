@@ -613,6 +613,7 @@ extern int ie_modified(const struct index_state *, const struct cache_entry *, s
 #define HASH_FORMAT_CHECK 2
 extern int index_fd(unsigned char *sha1, int fd, struct stat *st, enum object_type type, const char *path, unsigned flags);
 extern int index_path(unsigned char *sha1, const char *path, struct stat *st, unsigned flags);
+extern void hash_fd(int fd, const char *type, const char *path, unsigned flags, int literally);
 
 /*
  * Record to sd the data from st that we use to check whether a file

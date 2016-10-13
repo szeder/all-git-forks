@@ -3733,3 +3733,37 @@ int for_each_packed_object(each_packed_object_fn cb, void *data, unsigned flags)
 	}
 	return r ? r : pack_errors;
 }
+
+/*
+ * This is to create corrupt objects for debugging and as such it
+ * needs to bypass the data conversion performed by, and the type
+ * limitation imposed by, index_fd() and its callees.
+ */
+static int hash_literally(unsigned char *sha1, int fd, const char *type, unsigned flags)
+{
+	struct strbuf buf = STRBUF_INIT;
+	int ret;
+
+	if (strbuf_read(&buf, fd, 4096) < 0)
+		ret = -1;
+	else
+		ret = hash_sha1_file_literally(buf.buf, buf.len, type, sha1, flags);
+	strbuf_release(&buf);
+	return ret;
+}
+
+void hash_fd(int fd, const char *type, const char *path, unsigned flags, int literally)
+{
+	struct stat st;
+	unsigned char sha1[20];
+
+	if (fstat(fd, &st) < 0 ||
+	    (literally
+	     ? hash_literally(sha1, fd, type, flags)
+	     : index_fd(sha1, fd, &st, type_from_string(type), path, flags)))
+		die((flags & HASH_WRITE_OBJECT)
+		    ? "Unable to add %s to database"
+		    : "Unable to hash %s", path);
+	printf("%s\n", sha1_to_hex(sha1));
+	maybe_flush_or_die(stdout, "hash to stdout");
+}
