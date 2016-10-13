@@ -618,9 +618,9 @@ static void *run_thread(void *data)
 	return (void *)ret;
 }
 
-static NORETURN void die_async(const char *err, va_list params)
+static NORETURN void die_async(const char *prefix, const char *err, va_list params)
 {
-	vreportf("fatal: ", err, params);
+	vreportf(prefix, err, params);
 
 	if (in_async()) {
 		struct async *async = pthread_getspecific(async_key);

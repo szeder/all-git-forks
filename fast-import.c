@@ -496,13 +496,13 @@ static void end_packfile(void);
 static void unkeep_all_packs(void);
 static void dump_marks(void);
 
-static NORETURN void die_nicely(const char *err, va_list params)
+static NORETURN void die_nicely(const char *prefix, const char *err, va_list params)
 {
 	static int zombie;
 	char message[2 * PATH_MAX];
 
 	vsnprintf(message, sizeof(message), err, params);
-	fputs("fatal: ", stderr);
+	fputs(prefix, stderr);
 	fputs(message, stderr);
 	fputc('\n', stderr);
 

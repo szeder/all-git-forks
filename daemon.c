@@ -114,8 +114,9 @@ static void loginfo(const char *err, ...)
 	va_end(params);
 }
 
-static void NORETURN daemon_die(const char *err, va_list params)
+static void NORETURN daemon_die(const char *prefix, const char *err, va_list params)
 {
+	/* no need to pass down prefix */
 	logreport(LOG_ERR, err, params);
 	exit(1);
 }
