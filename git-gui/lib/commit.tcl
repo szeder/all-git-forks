@@ -30,29 +30,14 @@ You are currently in the middle of a merge that has not been fully completed.  Y
 	set msg {}
 	set parents [list]
 	if {[catch {
-			set fd [git_read cat-file commit $curHEAD]
-			fconfigure $fd -encoding binary -translation lf
-			# By default commits are assumed to be in utf-8
-			set enc utf-8
-			while {[gets $fd line] > 0} {
-				if {[string match {parent *} $line]} {
-					lappend parents [string range $line 7 end]
-				} elseif {[string match {encoding *} $line]} {
-					set enc [string tolower [string range $line 9 end]]
-				} elseif {[regexp "author (.*)\\s<(.*)>\\s(\\d.*$)" $line all name email time]} {
-					set author_name $name
-					set author_email $email
-					set author_date $time
-				}
-			}
-			set msg [read $fd]
+			set fd [git_read log --encoding=UTF-8 -1 --date=raw --pretty=format:%P%n%an%n%ae%n%ad%n%B $curHEAD]
+			fconfigure $fd -encoding utf-8 -translation lf
+			set parents [gets $fd]
+			set author_name [gets $fd]
+			set author_email [gets $fd]
+			set author_date [gets $fd]
+			set msg [string trim [read $fd]]
 			close $fd
-
-			set enc [tcl_encoding $enc]
-			if {$enc ne {}} {
-				set msg [encoding convertfrom $enc $msg]
-			}
-			set msg [string trim $msg]
 		} err]} {
 		error_popup [strcat [mc "Error loading commit data for amend:"] "\n\n$err"]
 		return
