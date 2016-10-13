@@ -772,8 +772,8 @@ sub ask {
 			return $resp;
 		}
 		if ($confirm_only) {
-			# TRANSLATORS: Keep [y/N] as is.
 			my $yesno = $term->readline(
+				# TRANSLATORS: please keep [y/N] as is.
 				sprintf(__("Are you sure you want to use <%s> [y/N]? "), $resp));
 			if (defined $yesno && $yesno =~ /y/i) {
 				return $resp;
@@ -816,9 +816,9 @@ if (!defined $auto_8bit_encoding && scalar %broken_encoding) {
 if (!$force) {
 	for my $f (@files) {
 		if (get_patch_subject($f) =~ /\Q*** SUBJECT HERE ***\E/) {
-			die "Refusing to send because the patch\n\t$f\n"
+			die sprintf(__("Refusing to send because the patch\n\t%s\n"
 				. "has the template subject '*** SUBJECT HERE ***'. "
-				. "Pass --force if you really want to send.\n";
+				. "Pass --force if you really want to send.\n"), $f);
 		}
 	}
 }
@@ -1311,8 +1311,7 @@ Message-Id: $message_id
 
     For additional information, run 'git send-email --help'.
     To retain the current behavior, but squelch this message,
-    run 'git config --global sendemail.confirm auto'."),
-"\n\n";
+    run 'git config --global sendemail.confirm auto'."), "\n\n";
 		}
 		# TRANSLATORS: Make sure to include [y] [n] [q] [a] in your
 		# translation. The program will only accept English input
@@ -1396,8 +1395,8 @@ Message-Id: $message_id
 		}
 
 		if (!$smtp) {
-			die "Unable to initialize SMTP properly. Check config and use --smtp-debug. ",
-			    "VALUES: server=$smtp_server ",
+			die __("Unable to initialize SMTP properly. Check config and use --smtp-debug."),
+			    " VALUES: server=$smtp_server ",
 			    "encryption=$smtp_encryption ",
 			    "hello=$smtp_domain",
 			    defined $smtp_server_port ? " port=$smtp_server_port" : "";
@@ -1414,12 +1413,12 @@ Message-Id: $message_id
 			$smtp->datasend("$line") or die $smtp->message;
 		}
 		$smtp->dataend() or die $smtp->message;
-		$smtp->code =~ /250|200/ or die "Failed to send $subject\n".$smtp->message;
+		$smtp->code =~ /250|200/ or die sprintf(__("Failed to send %s\n"), $subject).$smtp->message;
 	}
 	if ($quiet) {
-		printf (($dry_run ? "Dry-" : ""). __("Sent %s\n"), $subject);
+		printf($dry_run ? __("Dry-Sent %s\n") : __("Sent %s\n"), $subject);
 	} else {
-		print (($dry_run ? "Dry-" : ""). __("OK. Log says:\n"));
+		print($dry_run ? __("Dry-OK. Log says:\n") : __("OK. Log says:\n"));
 		if (!file_name_is_absolute($smtp_server)) {
 			print "Server: $smtp_server\n";
 			print "MAIL FROM:<$raw_from>\n";
@@ -1669,7 +1668,7 @@ sub recipients_cmd {
 
 	my @addresses = ();
 	open my $fh, "-|", "$cmd \Q$file\E"
-	    or die "($prefix) Could not execute '$cmd'";
+	    or die sprintf(__("(%s) Could not execute '%s'"), $prefix, $cmd);
 	while (my $address = <$fh>) {
 		$address =~ s/^\s*//g;
 		$address =~ s/\s*$//g;
@@ -1753,10 +1752,11 @@ sub handle_backup {
 	    (substr($file, 0, $lastlen) eq $last) &&
 	    ($suffix = substr($file, $lastlen)) !~ /^[a-z0-9]/i) {
 		if (defined $known_suffix && $suffix eq $known_suffix) {
-			print "Skipping $file with backup suffix '$known_suffix'.\n";
+			printf(__("Skipping %s with backup suffix '%s'.\n"), $file, $known_suffix);
 			$skip = 1;
 		} else {
-			my $answer = ask("Do you really want to send $file? (y|N): ",
+			# TRANSLATORS: please keep "[y|N]" as is.
+			my $answer = ask(sprintf(__("Do you really want to send %s? [y|N]: "), $file),
 					 valid_re => qr/^(?:y|n)/i,
 					 default => 'n');
 			$skip = ($answer ne 'y');

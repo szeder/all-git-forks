@@ -4,7 +4,7 @@ use lib (split(/:/, $ENV{GITPERLLIB}));
 use strict;
 use warnings;
 use POSIX qw(:locale_h);
-use Test::More tests => 11;
+use Test::More tests => 13;
 use Git::I18N;
 
 my $has_gettext_library = $Git::I18N::__HAS_LIBRARY;
@@ -31,7 +31,8 @@ is_deeply(\@Git::I18N::EXPORT, \@Git::I18N::EXPORT_OK, "sanity: Git::I18N export
 	# more gettext wrapper functions.
 	my %prototypes = (qw(
 		__	$
-		Q__	$$$
+		__n	$$$
+		N__	$
 	));
 	while (my ($sub, $proto) = each %prototypes) {
 		is(prototype(\&{"Git::I18N::$sub"}), $proto, "sanity: $sub has a $proto prototype");
@@ -51,10 +52,12 @@ is_deeply(\@Git::I18N::EXPORT, \@Git::I18N::EXPORT_OK, "sanity: Git::I18N export
 	my ($got_singular, $got_plural, $expect_singular, $expect_plural) =
 		(('TEST: 1 file', 'TEST: n files') x 2);
 
-	is(Q__($got_singular, $got_plural, 1), $expect_singular,
-		"Get singular string through Q__() in C locale");
-	is(Q__($got_singular, $got_plural, 2), $expect_plural,
-		"Get plural string through Q__() in C locale");
+	is(__n($got_singular, $got_plural, 1), $expect_singular,
+		"Get singular string through __n() in C locale");
+	is(__n($got_singular, $got_plural, 2), $expect_plural,
+		"Get plural string through __n() in C locale");
+
+	is(N__($got), $expect, "Passing a string through N__() in the C locale works");
 }
 
 # Test a basic message on different locales

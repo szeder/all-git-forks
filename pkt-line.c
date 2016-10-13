@@ -174,12 +174,13 @@ int packet_write_fmt_gently(int fd, const char *fmt, ...)
 static int packet_write_gently(const int fd_out, const char *buf, size_t size)
 {
 	static char packet_write_buffer[LARGE_PACKET_MAX];
-	const size_t packet_size = size + 4;
+	size_t packet_size;
 
-	if (packet_size > sizeof(packet_write_buffer))
+	if (size > sizeof(packet_write_buffer) - 4)
 		return error("packet write failed - data exceeds max packet size");
 
 	packet_trace(buf, size, 1);
+	packet_size = size + 4;
 	set_packet_header(packet_write_buffer, packet_size);
 	memcpy(packet_write_buffer + 4, buf, size);
 	if (write_in_full(fd_out, packet_write_buffer, packet_size) == packet_size)
@@ -217,14 +218,13 @@ int write_packetized_from_fd(int fd_in, int fd_out)
 
 int write_packetized_from_buf(const char *src_in, size_t len, int fd_out)
 {
-	static char buf[LARGE_PACKET_DATA_MAX];
 	int err = 0;
 	size_t bytes_written = 0;
 	size_t bytes_to_write;
 
 	while (!err) {
-		if ((len - bytes_written) > sizeof(buf))
-			bytes_to_write = sizeof(buf);
+		if ((len - bytes_written) > LARGE_PACKET_DATA_MAX)
+			bytes_to_write = LARGE_PACKET_DATA_MAX;
 		else
 			bytes_to_write = len - bytes_written;
 		if (bytes_to_write == 0)
@@ -338,7 +338,11 @@ ssize_t read_packetized_to_strbuf(int fd_in, struct strbuf *sb_out)
 	for (;;) {
 		strbuf_grow(sb_out, LARGE_PACKET_DATA_MAX);
 		packet_len = packet_read(fd_in, NULL, NULL,
-			// TODO: explain + 1
+			/* strbuf_grow() above always allocates one extra byte to
+			 * store a '\0' at the end of the string. packet_read()
+			 * writes a '\0' extra byte at the end, too. Let it know
+			 * that there is already room for the extra byte.
+			 */
 			sb_out->buf + sb_out->len, LARGE_PACKET_DATA_MAX+1,
 			PACKET_READ_GENTLE_ON_EOF);
 		if (packet_len <= 0)

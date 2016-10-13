@@ -35,8 +35,7 @@ static void save_env_before_alias(void)
 	orig_cwd = xgetcwd();
 	for (i = 0; i < ARRAY_SIZE(env_names); i++) {
 		orig_env[i] = getenv(env_names[i]);
-		if (orig_env[i])
-			orig_env[i] = xstrdup(orig_env[i]);
+		orig_env[i] = xstrdup_or_null(orig_env[i]);
 	}
 }
 
@@ -580,9 +579,8 @@ static void execv_dashed_external(const char **argv)
 	const char *tmp;
 	int status;
 
-	if (get_super_prefix()) {
+	if (get_super_prefix())
 		die("%s doesn't support --super-prefix", argv[0]);
-	}
 
 	if (use_pager == -1)
 		use_pager = check_pager_config(argv[0]);

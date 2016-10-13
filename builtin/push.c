@@ -507,6 +507,7 @@ static int git_push_config(const char *k, const char *v, void *cb)
 		if (!git_config_get_value("push.recursesubmodules", &value))
 			recurse_submodules = parse_push_recurse_submodules_arg(k, value);
 	} else if (starts_with(k, "submodule.") && ends_with(k, ".url"))
+		/* The submodule.<name>.url is used as a bit to indicate existence */
 		has_submodules_configured = 1;
 
 	return git_default_config(k, v, NULL);

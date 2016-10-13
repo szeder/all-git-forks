@@ -28,9 +28,7 @@ file_size () {
 filter_git () {
 	rm -f rot13-filter.log &&
 	git "$@" 2>git-stderr.log &&
-	sed '/Waiting for/d' git-stderr.log >git-stderr-clean.log &&
-	test_must_be_empty git-stderr-clean.log &&
-	rm -f git-stderr.log git-stderr-clean.log
+	rm -f git-stderr.log
 }
 
 # Count unique lines in two files and compare them.
@@ -668,7 +666,7 @@ test_expect_success PERL 'process filter should not be restarted if it signals a
 	)
 '
 
-test_expect_success PERL 'process filter signals abort once to abort processing of all future files' '
+test_expect_success PERL 'process filter abort stops processing of all further files' '
 	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
 	rm -rf repo &&
 	mkdir repo &&
@@ -688,6 +686,8 @@ test_expect_success PERL 'process filter signals abort once to abort processing 
 		git add . &&
 		rm -f *.r &&
 
+		# Note: This test assumes that Git filters files in alphabetical
+		# order ("abort.r" before "test.r").
 		filter_git checkout --quiet --no-progress . &&
 		cat >expected.log <<-EOF &&
 			START

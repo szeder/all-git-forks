@@ -899,12 +899,15 @@ static void write_pack_file(void)
 static int no_try_delta(const char *path)
 {
 	static struct git_attr_check *check;
+	struct git_attr_result *result;
 
 	if (!check)
-		check = git_attr_check_initl("delta", NULL);
-	if (git_check_attr(path, check))
+		git_attr_check_initl(&check, "delta", NULL);
+
+	result = git_check_attr(path, check);
+	if (!result)
 		return 0;
-	if (ATTR_FALSE(check->check[0].value))
+	if (ATTR_FALSE(result->value[0]))
 		return 1;
 	return 0;
 }

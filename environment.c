@@ -233,8 +233,11 @@ const char *strip_namespace(const char *namespaced_ref)
 
 const char *get_super_prefix(void)
 {
-	if (!super_prefix)
+	static int initialized;
+	if (!initialized) {
 		super_prefix = getenv(GIT_SUPER_PREFIX_ENVIRONMENT);
+		initialized = 1;
+	}
 	return super_prefix;
 }
 

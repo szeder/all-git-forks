@@ -24,13 +24,17 @@ static const struct option check_attr_options[] = {
 	OPT_END()
 };
 
-static void output_attr(struct git_attr_check *check, const char *file)
+static void output_attr(struct git_attr_check *check,
+			struct git_attr_result *result, const char *file)
 {
 	int j;
 	int cnt = check->check_nr;
 
+	if (check->check_nr != result->check_nr)
+		die("BUG: confused check and result internally");
+
 	for (j = 0; j < cnt; j++) {
-		const char *value = check->check[j].value;
+		const char *value = result->value[j];
 
 		if (ATTR_TRUE(value))
 			value = "set";
@@ -44,11 +48,11 @@ static void output_attr(struct git_attr_check *check, const char *file)
 			       "%s%c" /* attrname */
 			       "%s%c" /* attrvalue */,
 			       file, 0,
-			       git_attr_name(check->check[j].attr), 0, value, 0);
+			       git_attr_name(check->attr[j]), 0, value, 0);
 		} else {
 			quote_c_style(file, NULL, stdout, 0);
 			printf(": %s: %s\n",
-			       git_attr_name(check->check[j].attr), value);
+			       git_attr_name(check->attr[j]), value);
 		}
 	}
 }
@@ -60,14 +64,17 @@ static void check_attr(const char *prefix,
 	char *full_path =
 		prefix_path(prefix, prefix ? strlen(prefix) : 0, file);
 	if (check != NULL) {
-		if (git_check_attr(full_path, check))
+		struct git_attr_result *result = git_check_attr(full_path, check);
+		if (!result)
 			die("git_check_attr died");
-		output_attr(check, file);
+		output_attr(check, result, file);
 	} else {
-		check = git_attr_check_alloc();
-		git_all_attrs(full_path, check);
-		output_attr(check, file);
-		git_attr_check_free(check);
+		struct git_attr_check check = GIT_ATTR_CHECK_INIT;
+		struct git_attr_result result = GIT_ATTR_RESULT_INIT;
+		git_all_attrs(full_path, &check, &result);
+		output_attr(&check, &result, file);
+		git_attr_result_clear(&result);
+		git_attr_check_clear(&check);
 	}
 	free(full_path);
 }
