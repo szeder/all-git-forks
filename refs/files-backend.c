@@ -1353,6 +1353,7 @@ static int files_read_raw_ref(struct ref_store *ref_store,
 	int fd;
 	int ret = -1;
 	int save_errno;
+	int retries = 0;
 
 	*type = 0;
 	strbuf_reset(&sb_path);
@@ -1390,7 +1391,8 @@ stat_ref:
 	if (S_ISLNK(st.st_mode)) {
 		strbuf_reset(&sb_contents);
 		if (strbuf_readlink(&sb_contents, path, 0) < 0) {
-			if (errno == ENOENT || errno == EINVAL)
+			if ((errno == ENOENT || errno == EINVAL) &&
+				retries++ < MAXRETRIES) 
 				/* inconsistent with lstat; retry */
 				goto stat_ref;
 			else
@@ -1426,7 +1428,7 @@ stat_ref:
 	 */
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
-		if (errno == ENOENT)
+		if (errno == ENOENT && retries++ < MAXRETRIES)
 			/* inconsistent with lstat; retry */
 			goto stat_ref;
 		else

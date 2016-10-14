@@ -255,6 +255,12 @@ int rename_ref_available(const char *old_refname, const char *new_refname);
 /* We allow "recursive" symbolic refs. Only within reason, though */
 #define SYMREF_MAXDEPTH 5
 
+/* 
+ * We allow only MAXRETRIES tries to jump on stat_ref, because of possible
+ * infinite loop
+ */
+#define MAXRETRIES 5
+
 /* Include broken references in a do_for_each_ref*() iteration: */
 #define DO_FOR_EACH_INCLUDE_BROKEN 0x01
 
