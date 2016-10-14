@@ -21,4 +21,13 @@ test_expect_success 'ls-tree fails with non-zero exit code on broken tree' '
 	test_must_fail git ls-tree -r HEAD
 '
 
+test_expect_success 'ls-tree fails due to broken symlink instead of infinite loop' '
+	mkdir foo_infinit &&
+	cd foo_infinit &&
+	git init testrepo &&
+	cd testrepo &&
+	mkdir -p .git/refs/remotes &&
+	ln -s ../remotes/foo .git/refs/heads/bar &&
+	test_expect_code 128 timeout 2 git ls-tree bar
+'
 test_done
