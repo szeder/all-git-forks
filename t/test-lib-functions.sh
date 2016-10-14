@@ -381,6 +381,10 @@ test_verify_prereq () {
 }
 
 test_expect_failure () {
+	if test "$test_in_progress" = 1
+	then
+		error "bug in the test script: did you mean test_must_fail instead of test_expect_failure?"
+	fi
 	test_start_
 	test "$#" = 3 && { test_prereq=$1; shift; } || test_prereq=
 	test "$#" = 2 ||

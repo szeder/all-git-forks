@@ -344,6 +344,7 @@ test_count=0
 test_fixed=0
 test_broken=0
 test_success=0
+test_in_progress=0
 
 test_external_has_tap=0
 
@@ -625,6 +626,7 @@ test_run_ () {
 }
 
 test_start_ () {
+	test_in_progress=1
 	test_count=$(($test_count+1))
 	maybe_setup_verbose
 	maybe_setup_valgrind
@@ -634,6 +636,7 @@ test_finish_ () {
 	echo >&3 ""
 	maybe_teardown_valgrind
 	maybe_teardown_verbose
+	test_in_progress=0
 }
 
 test_skip () {
