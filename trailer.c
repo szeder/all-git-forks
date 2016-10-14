@@ -410,12 +410,9 @@ static int set_if_missing(struct conf_info *item, const char *value)
 static void duplicate_conf(struct conf_info *dst, const struct conf_info *src)
 {
 	*dst = *src;
-	if (src->name)
-		dst->name = xstrdup(src->name);
-	if (src->key)
-		dst->key = xstrdup(src->key);
-	if (src->command)
-		dst->command = xstrdup(src->command);
+	dst->name = xstrdup_or_null(src->name);
+	dst->key = xstrdup_or_null(src->key);
+	dst->command = xstrdup_or_null(src->command);
 }
 
 static struct arg_item *get_conf_item(const char *name)
