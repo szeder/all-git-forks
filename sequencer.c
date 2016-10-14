@@ -45,6 +45,16 @@ static GIT_PATH_FUNC(rebase_path_todo, "rebase-merge/git-rebase-todo")
  */
 static GIT_PATH_FUNC(rebase_path_done, "rebase-merge/done")
 /*
+ * The file to keep track of how many commands were already processed (e.g.
+ * for the prompt).
+ */
+static GIT_PATH_FUNC(rebase_path_msgnum, "rebase-merge/msgnum");
+/*
+ * The file to keep track of how many commands are to be processed in total
+ * (e.g. for the prompt).
+ */
+static GIT_PATH_FUNC(rebase_path_msgtotal, "rebase-merge/end");
+/*
  * The commit message that is planned to be used for any changes that
  * need to be committed following a user interaction.
  */
@@ -1217,6 +1227,7 @@ struct todo_list {
 	struct strbuf buf;
 	struct todo_item *items;
 	int nr, alloc, current;
+	int done_nr, total_nr;
 };
 
 #define TODO_LIST_INIT { STRBUF_INIT }
@@ -1333,6 +1344,17 @@ static int parse_insn_buffer(char *buf, struct todo_list *todo_list)
 	return res;
 }
 
+static int count_commands(struct todo_list *todo_list)
+{
+	int count = 0, i;
+
+	for (i = 0; i < todo_list->nr; i++)
+		if (todo_list->items[i].command != TODO_COMMENT)
+			count++;
+
+	return count;
+}
+
 static int read_populate_todo(struct todo_list *todo_list,
 			struct replay_opts *opts)
 {
@@ -1373,6 +1395,26 @@ static int read_populate_todo(struct todo_list *todo_list,
 				return error(_("cannot cherry-pick during a revert."));
 			else
 				return error(_("cannot revert during a cherry-pick."));
+	}
+
+	if (is_rebase_i(opts)) {
+		struct todo_list done = TODO_LIST_INIT;
+		FILE *f = fopen(rebase_path_msgtotal(), "w");
+
+		if (strbuf_read_file(&done.buf, rebase_path_done(), 0) > 0 &&
+				!parse_insn_buffer(done.buf.buf, &done))
+			todo_list->done_nr = count_commands(&done);
+		else
+			todo_list->done_nr = 0;
+		todo_list_release(&done);
+
+		todo_list->total_nr = todo_list->done_nr
+			+ count_commands(todo_list);
+
+		if (f) {
+			fprintf(f, "%d\n", todo_list->total_nr);
+			fclose(f);
+		}
 	}
 
 	return 0;
@@ -1916,6 +1958,20 @@ static int pick_commits(struct todo_list *todo_list, struct replay_opts *opts)
 		if (save_todo(todo_list, opts))
 			return -1;
 		if (is_rebase_i(opts)) {
+			if (item->command != TODO_COMMENT) {
+				FILE *f = fopen(rebase_path_msgnum(), "w");
+
+				todo_list->done_nr++;
+
+				if (f) {
+					fprintf(f, "%d\n", todo_list->done_nr);
+					fclose(f);
+				}
+				fprintf(stderr, "Rebasing (%d/%d)%s",
+					todo_list->done_nr,
+					todo_list->total_nr,
+					opts->verbose ? "\n" : "\r");
+			}
 			unlink(rebase_path_message());
 			unlink(rebase_path_author_script());
 			unlink(rebase_path_stopped_sha());
@@ -2048,6 +2104,9 @@ static int pick_commits(struct todo_list *todo_list, struct replay_opts *opts)
 			}
 		}
 		apply_autostash(opts);
+
+		fprintf(stderr, "Successfully rebased and updated %s.\n",
+			head_ref.buf);
 
 		strbuf_release(&buf);
 		strbuf_release(&head_ref);
@@ -2300,4 +2359,48 @@ void append_signoff(struct strbuf *msgbuf, int ignore_footer, unsigned flag)
 				sob.buf, sob.len);
 
 	strbuf_release(&sob);
+}
+
+int sequencer_make_script(int keep_empty, FILE *out,
+		int argc, const char **argv)
+{
+	char *format = "%s";
+	struct pretty_print_context pp = {0};
+	struct strbuf buf = STRBUF_INIT;
+	struct rev_info revs;
+	struct commit *commit;
+
+	init_revisions(&revs, NULL);
+	revs.verbose_header = 1;
+	revs.max_parents = 1;
+	revs.cherry_pick = 1;
+	revs.limited = 1;
+	revs.reverse = 1;
+	revs.right_only = 1;
+	revs.sort_order = REV_SORT_IN_GRAPH_ORDER;
+	revs.topo_order = 1;
+
+	revs.pretty_given = 1;
+	git_config_get_string("rebase.instructionFormat", &format);
+	get_commit_format(format, &revs);
+	pp.fmt = revs.commit_format;
+	pp.output_encoding = get_log_output_encoding();
+
+	if (setup_revisions(argc, argv, &revs, NULL) > 1)
+		return error("make_script: unhandled options");
+
+	if (prepare_revision_walk(&revs) < 0)
+		return error("make_script: error preparing revisions");
+
+	while ((commit = get_revision(&revs))) {
+		strbuf_reset(&buf);
+		if (!keep_empty && is_original_commit_empty(commit))
+			strbuf_addf(&buf, "%c ", comment_line_char);
+		strbuf_addf(&buf, "pick %s ", oid_to_hex(&commit->object.oid));
+		pretty_print_commit(&pp, commit, &buf);
+		strbuf_addch(&buf, '\n');
+		fputs(buf.buf, out);
+	}
+	strbuf_release(&buf);
+	return 0;
 }
