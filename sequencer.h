@@ -35,13 +35,27 @@ struct replay_opts {
 
 	/* Only used by REPLAY_NONE */
 	struct rev_info *revs;
+
+	/* malloc()ed data entrusted to the sequencer */
+	void **owned;
+	int owned_nr, owned_alloc;
 };
 #define REPLAY_OPTS_INIT { -1 }
+
+/*
+ * Make it the duty of sequencer_remove_state() to release the memory;
+ * For ease of use, return the same pointer.
+ */
+void *sequencer_entrust(struct replay_opts *opts, void *to_free);
 
 int sequencer_pick_revisions(struct replay_opts *opts);
 int sequencer_continue(struct replay_opts *opts);
 int sequencer_rollback(struct replay_opts *opts);
 int sequencer_remove_state(struct replay_opts *opts);
+
+int sequencer_commit(const char *defmsg, struct replay_opts *opts,
+			  int allow_empty, int edit, int amend,
+			  int cleanup_commit_message);
 
 extern const char sign_off_header[];
 
