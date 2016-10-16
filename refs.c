@@ -1500,8 +1500,13 @@ int ref_transaction_commit(struct ref_transaction *transaction,
 			   struct strbuf *err)
 {
 	struct ref_store *refs = get_ref_store(NULL);
+	int ret;
 
-	return refs->be->transaction_commit(refs, transaction, err);
+	ret = refs->be->transaction_prepare(refs, transaction, err);
+	if (ret)
+		return ret;
+
+	return refs->be->transaction_finish(refs, transaction, err);
 }
 
 int verify_refname_available(const char *refname,

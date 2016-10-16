@@ -3696,15 +3696,25 @@ static int lock_ref_for_update(struct files_ref_store *refs,
 	return 0;
 }
 
-static int files_transaction_commit(struct ref_store *ref_store,
-				    struct ref_transaction *transaction,
-				    struct strbuf *err)
+static void files_transaction_cleanup(struct ref_store *ref_store,
+				      struct ref_transaction *transaction)
+{
+	int i;
+
+	for (i = 0; i < transaction->nr; i++)
+		if (transaction->updates[i]->backend_data)
+			unlock_ref(transaction->updates[i]->backend_data);
+
+	transaction->state = REF_TRANSACTION_CLOSED;
+}
+
+static int files_transaction_prepare(struct ref_store *ref_store,
+				     struct ref_transaction *transaction,
+				     struct strbuf *err)
 {
 	struct files_ref_store *refs =
-		files_downcast(ref_store, 0, "ref_transaction_commit");
+		files_downcast(ref_store, 0, "ref_transaction_commit_prepare");
 	int ret = 0, i;
-	struct string_list refs_to_delete = STRING_LIST_INIT_NODUP;
-	struct string_list_item *ref_to_delete;
 	struct string_list affected_refnames = STRING_LIST_INIT_NODUP;
 	char *head_ref = NULL;
 	int head_type;
@@ -3713,12 +3723,10 @@ static int files_transaction_commit(struct ref_store *ref_store,
 	assert(err);
 
 	if (transaction->state != REF_TRANSACTION_OPEN)
-		die("BUG: commit called for transaction that is not open");
+		die("BUG: prepare called for transaction that is not open");
 
-	if (!transaction->nr) {
-		transaction->state = REF_TRANSACTION_CLOSED;
-		return 0;
-	}
+	if (!transaction->nr)
+		goto cleanup;
 
 	/*
 	 * Fail if a refname appears more than once in the
@@ -3776,6 +3784,8 @@ static int files_transaction_commit(struct ref_store *ref_store,
 	 * that new values are valid, and write new values to the
 	 * lockfiles, ready to be activated. Only keep one lockfile
 	 * open at a time to avoid running out of file descriptors.
+	 * Note that lock_ref_for_update() can append more updates to
+	 * the transaction.
 	 */
 	for (i = 0; i < transaction->nr; i++) {
 		struct ref_update *update = transaction->updates[i];
@@ -3783,7 +3793,39 @@ static int files_transaction_commit(struct ref_store *ref_store,
 		ret = lock_ref_for_update(refs, update, transaction,
 					  head_ref, &affected_refnames, err);
 		if (ret)
-			goto cleanup;
+			break;
+	}
+
+cleanup:
+	free(head_ref);
+	string_list_clear(&affected_refnames, 0);
+
+	if (ret)
+		files_transaction_cleanup(ref_store, transaction);
+	else
+		transaction->state = REF_TRANSACTION_PREPARED;
+
+	return ret;
+}
+
+static int files_transaction_finish(struct ref_store *ref_store,
+				    struct ref_transaction *transaction,
+				    struct strbuf *err)
+{
+	struct files_ref_store *refs =
+		files_downcast(ref_store, 0, "ref_transaction_finish");
+	int ret = 0, i;
+	struct string_list refs_to_delete = STRING_LIST_INIT_NODUP;
+	struct string_list_item *ref_to_delete;
+
+	assert(err);
+
+	if (transaction->state != REF_TRANSACTION_PREPARED)
+		die("BUG: finish called for transaction that is not prepared");
+
+	if (!transaction->nr) {
+		transaction->state = REF_TRANSACTION_CLOSED;
+		return 0;
 	}
 
 	/* Perform updates first so live commits remain referenced */
@@ -3845,16 +3887,15 @@ static int files_transaction_commit(struct ref_store *ref_store,
 	clear_loose_ref_cache(refs);
 
 cleanup:
-	transaction->state = REF_TRANSACTION_CLOSED;
-
-	for (i = 0; i < transaction->nr; i++)
-		if (transaction->updates[i]->backend_data)
-			unlock_ref(transaction->updates[i]->backend_data);
 	string_list_clear(&refs_to_delete, 0);
-	free(head_ref);
-	string_list_clear(&affected_refnames, 0);
-
+	files_transaction_cleanup(ref_store, transaction);
 	return ret;
+}
+
+static void files_transaction_abort(struct ref_store *ref_store,
+				    struct ref_transaction *transaction)
+{
+	files_transaction_cleanup(ref_store, transaction);
 }
 
 static int ref_present(const char *refname,
@@ -4115,7 +4156,9 @@ struct ref_storage_be refs_be_files = {
 	"files",
 	files_ref_store_create,
 	files_init_db,
-	files_transaction_commit,
+	files_transaction_prepare,
+	files_transaction_finish,
+	files_transaction_abort,
 	files_initial_transaction_commit,
 
 	files_pack_refs,
