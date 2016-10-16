@@ -1,0 +1,389 @@
+Git 2.11 Release Notes
+======================
+
+Updates since v2.10
+-------------------
+
+UI, Workflows & Features
+
+ * "git format-patch --cover-letter HEAD^" to format a single patch
+   with a separate cover letter now numbers the output as [PATCH 0/1]
+   and [PATCH 1/1] by default.
+
+ * An incoming "git push" that attempts to push too many bytes can now
+   be rejected by setting a new configuration variable at the receiving
+   end.
+
+ * "git nosuchcommand --help" said "No manual entry for gitnosuchcommand",
+   which was not intuitive, given that "git nosuchcommand" said "git:
+   'nosuchcommand' is not a git command".
+
+ * "git clone --resurse-submodules --reference $path $URL" is a way to
+   reduce network transfer cost by borrowing objects in an existing
+   $path repository when cloning the superproject from $URL; it
+   learned to also peek into $path for presense of corresponding
+   repositories of submodules and borrow objects from there when able.
+
+ * The "git diff --submodule={short,log}" mechanism has been enhanced
+   to allow "--submodule=diff" to show the patch between the submodule
+   commits bound to the superproject.
+
+ * Even though "git hash-objects", which is a tool to take an
+   on-filesystem data stream and put it into the Git object store,
+   allowed to perform the "outside-world-to-Git" conversions (e.g.
+   end-of-line conversions and application of the clean-filter), and
+   it had the feature on by default from very early days, its reverse
+   operation "git cat-file", which takes an object from the Git object
+   store and externalize for the consumption by the outside world,
+   lacked an equivalent mechanism to run the "Git-to-outside-world"
+   conversion.  The command learned the "--filters" option to do so.
+
+ * Output from "git diff" can be made easier to read by selecting
+   which lines are common and which lines are added/deleted
+   intelligently when the lines before and after the changed section
+   are the same.  A command line option is added to help with the
+   experiment to find a good heuristics.
+
+ * In some projects, it is common to use "[RFC PATCH]" as the subject
+   prefix for a patch meant for discussion rather than application.  A
+   new option "--rfc" was a short-hand for "--subject-prefix=RFC PATCH"
+   to help the participants of such projects.
+
+ * "git add --chmod=+x <pathspec>" added recently only toggled the
+   executable bit for paths that are either new or modified. This has
+   been corrected to flip the executable bit for all paths that match
+   the given pathspec.
+
+ * When "git format-patch --stdout" output is placed as an in-body
+   header and it uses the RFC2822 header folding, "git am" failed to
+   put the header line back into a single logical line.  The
+   underlying "git mailinfo" was taught to handle this properly.
+
+ * "gitweb" can spawn "highlight" to show blob contents with
+   (programming) language-specific syntax highlighting, but only
+   when the language is known.  "highlight" can however be told
+   to make the guess itself by giving it "--force" option, which
+   has been enabled.
+
+ * "git gui" l10n to Portuguese.
+
+ * When given an abbreviated object name that is not (or more
+   realistically, "no longer") unique, we gave a fatal error
+   "ambiguous argument".  This error is now accompanied by hints that
+   lists the objects that begins with the given prefix.  During the
+   course of development of this new feature, numerous minor bugs were
+   uncovered and corrected, the most notable one of which is that we
+   gave "short SHA1 xxxx is ambiguous." twice without good reason.
+
+ * "git log rev^..rev" is an often-used revision range specification
+   to show what was done on a side branch merged at rev.  This has
+   gained a short-hand "rev^-1".  In general "rev^-$n" is the same as
+   "^rev^$n rev", i.e. what has happened on other branches while the
+   history leading to nth parent was looking the other way.
+
+ * In recent versions of cURL, GSSAPI credential delegation is
+   disabled by default due to CVE-2011-2192; introduce a configuration
+   to selectively allow enabling this.
+   (merge 26a7b23429 ps/http-gssapi-cred-delegation later to maint).
+
+
+Performance, Internal Implementation, Development Support etc.
+
+ * The delta-base-cache mechanism has been a key to the performance in
+   a repository with a tightly packed packfile, but it did not scale
+   well even with a larger value of core.deltaBaseCacheLimit.
+
+ * Enhance "git status --porcelain" output by collecting more data on
+   the state of the index and the working tree files, which may
+   further be used to teach git-prompt (in contrib/) to make fewer
+   calls to git.
+
+ * Extract a small helper out of the function that reads the authors
+   script file "git am" internally uses.
+   (merge a77598e jc/am-read-author-file later to maint).
+
+ * Lifts calls to exit(2) and die() higher in the callchain in
+   sequencer.c files so that more helper functions in it can be used
+   by callers that want to handle error conditions themselves.
+
+ * "git am" has been taught to make an internal call to "git apply"'s
+   innards without spawning the latter as a separate process.
+
+ * The ref-store abstraction was introduced to the refs API so that we
+   can plug in different backends to store references.
+
+ * The "unsigned char sha1[20]" to "struct object_id" conversion
+   continues.  Notable changes in this round includes that ce->sha1,
+   i.e. the object name recorded in the cache_entry, turns into an
+   object_id.
+
+ * JGit can show a fake ref "capabilities^{}" to "git fetch" when it
+   does not advertise any refs, but "git fetch" was not prepared to
+   see such an advertisement.  When the other side disconnects without
+   giving any ref advertisement, we used to say "there may not be a
+   repository at that URL", but we may have seen other advertisement
+   like "shallow" and ".have" in which case we definitely know that a
+   repository is there.  The code to detect this case has also been
+   updated.
+
+ * Some codepaths in "git pack-objects" were not ready to use an
+   existing pack bitmap; now they are and as the result they have
+   become faster.
+
+ * The codepath in "git fsck" to detect malformed tree objects has
+   been updated not to die but keep going after detecting them.
+
+ * We call "qsort(array, nelem, sizeof(array[0]), fn)", and most of
+   the time third parameter is redundant.  A new QSORT() macro lets us
+   omit it.
+
+ * "git pack-objects" in a repository with many packfiles used to
+   spend a lot of time looking for/at objects in them; the accesses to
+   the packfiles are now optimized by checking the most-recently-used
+   packfile first.
+   (merge c9af708b1a jk/pack-objects-optim-mru later to maint).
+
+
+Also contains various documentation updates and code clean-ups.
+
+
+Fixes since v2.10
+-----------------
+
+Unless otherwise noted, all the fixes since v2.9 in the maintenance
+track are contained in this release (see the maintenance releases'
+notes for details).
+
+ * Clarify various ways to specify the "revision ranges" in the
+   documentation.
+
+ * "diff-highlight" script (in contrib/) learned to work better with
+   "git log -p --graph" output.
+
+ * The test framework left the number of tests and success/failure
+   count in the t/test-results directory, keyed by the name of the
+   test script plus the process ID.  The latter however turned out not
+   to serve any useful purpose.  The process ID part of the filename
+   has been removed.
+
+ * Having a submodule whose ".git" repository is somehow corrupt
+   caused a few commands that recurse into submodules loop forever.
+
+ * "git symbolic-ref -d HEAD" happily removes the symbolic ref, but
+   the resulting repository becomes an invalid one.  Teach the command
+   to forbid removal of HEAD.
+
+ * A test spawned a short-lived background process, which sometimes
+   prevented the test directory from getting removed at the end of the
+   script on some platforms.
+
+ * Update a few tests that used to use GIT_CURL_VERBOSE to use the
+   newer GIT_TRACE_CURL.
+
+ * "git pack-objects --include-tag" was taught that when we know that
+   we are sending an object C, we want a tag B that directly points at
+   C but also a tag A that points at the tag B.  We used to miss the
+   intermediate tag B in some cases.
+
+ * Update Japanese translation for "git-gui".
+
+ * "git fetch http::/site/path" did not die correctly and segfaulted
+   instead.
+
+ * "git commit-tree" stopped reading commit.gpgsign configuration
+   variable that was meant for Porcelain "git commit" in Git 2.9; we
+   forgot to update "git gui" to look at the configuration to match
+   this change.
+
+ * "git add --chmod=+x" added recently lacked documentation, which has
+   been corrected.
+
+ * "git log --cherry-pick" used to include merge commits as candidates
+   to be matched up with other commits, resulting a lot of wasted time.
+   The patch-id generation logic has been updated to ignore merges to
+   avoid the wastage.
+
+ * The http transport (with curl-multi option, which is the default
+   these days) failed to remove curl-easy handle from a curlm session,
+   which led to unnecessary API failures.
+
+ * There were numerous corner cases in which the configuration files
+   are read and used or not read at all depending on the directory a
+   Git command was run, leading to inconsistent behaviour.  The code
+   to set-up repository access at the beginning of a Git process has
+   been updated to fix them.
+   (merge 4d0efa1 jk/setup-sequence-update later to maint).
+
+ * "git diff -W" output needs to extend the context backward to
+   include the header line of the current function and also forward to
+   include the body of the entire current function up to the header
+   line of the next one.  This process may have to merge to adjacent
+   hunks, but the code forgot to do so in some cases.
+   (merge 45d2f75 rs/xdiff-merge-overlapping-hunks-for-W-context later to maint).
+
+ * Performance tests done via "t/perf" did not use the same set of
+   build configuration if the user relied on autoconf generated
+   configuration.
+
+ * "git format-patch --base=..." feature that was recently added
+   showed the base commit information after "-- " e-mail signature
+   line, which turned out to be inconvenient.  The base information
+   has been moved above the signature line.
+
+ * More i18n.
+   (merge 43073f8 va/i18n later to maint).
+
+ * Even when "git pull --rebase=preserve" (and the underlying "git
+   rebase --preserve") can complete without creating any new commit
+   (i.e. fast-forwards), it still insisted on having a usable ident
+   information (read: user.email is set correctly), which was less
+   than nice.  As the underlying commands used inside "git rebase"
+   would fail with a more meaningful error message and advice text
+   when the bogus ident matters, this extra check was removed.
+
+ * "git gc --aggressive" used to limit the delta-chain length to 250,
+   which is way too deep for gaining additional space savings and is
+   detrimental for runtime performance.  The limit has been reduced to
+   50.
+
+ * Documentation for individual configuration variables to control use
+   of color (like `color.grep`) said that their default value is
+   'false', instead of saying their default is taken from `color.ui`.
+   When we updated the default value for color.ui from 'false' to
+   'auto' quite a while ago, all of them broke.  This has been
+   corrected.
+
+ * The pretty-format specifier "%C(auto)" used by the "log" family of
+   commands to enable coloring of the output is taught to also issue a
+   color-reset sequence to the output.
+   (merge c99ad27 rs/c-auto-resets-attributes later to maint).
+
+ * A shell script example in check-ref-format documentation has been
+   fixed.
+
+ * "git checkout <word>" does not follow the usual disambiguation
+   rules when the <word> can be both a rev and a path, to allow
+   checking out a branch 'foo' in a project that happens to have a
+   file 'foo' in the working tree without having to disambiguate.
+   This was poorly documented and the check was incorrect when the
+   command was run from a subdirectory.
+
+ * Some codepaths in "git diff" used regexec(3) on a buffer that was
+   mmap(2)ed, which may not have a terminating NUL, leading to a read
+   beyond the end of the mapped region.  This was fixed by introducing
+   a regexec_buf() helper that takes a <ptr,len> pair with REG_STARTEND
+   extension.
+   (merge b7d36ff js/regexec-buf later to maint).
+
+ * The procedure to build Git on Mac OS X for Travis CI hardcoded the
+   internal directory structure we assumed HomeBrew uses, which was a
+   no-no.  The procedure has been updated to ask HomeBrew things we
+   need to know to fix this.
+
+ * When "git rebase -i" is given a broken instruction, it told the
+   user to fix it with "--edit-todo", but didn't say what the step
+   after that was (i.e. "--continue").
+
+ * Documentation around tools to import from CVS was fairly outdated.
+
+ * "git clone --recurse-submodules" lost the progress eye-candy in
+   recent update, which has been corrected.
+
+ * A low-level function verify_packfile() was meant to show errors
+   that were detected without dying itself, but under some conditions
+   it didn't and died instead, which has been fixed.
+   (merge a9445d859e jk/verify-packfile-gently later to maint).
+
+ * When "git fetch" tries to find where the history of the repository
+   it runs in has diverged from what the other side has, it has a
+   mechanism to avoid digging too deep into irrelevant side branches.
+   This however did not work well over the "smart-http" transport due
+   to a design bug, which has been fixed.
+   (merge 06b3d386e0 jt/fetch-pack-in-vain-count-with-stateless later to maint).
+
+ * In the codepath that comes up with the hostname to be used in an
+   e-mail when the user didn't tell us, we looked at ai_canonname
+   field in struct addrinfo without making sure it is not NULL first.
+
+ * "git worktree", even though it used the default_abbrev setting that
+   ought to be affected by core.abbrev configuration variable, ignored
+   the variable setting.  The command has been taught to read the
+   default set of configuration variables to correct this.
+   (merge d49028e6e7 jc/worktree-config later to maint).
+
+ * "git init" tried to record core.worktree in the repository's
+   'config' file when GIT_WORK_TREE environment variable was set and
+   it was different from where GIT_DIR appears as ".git" at its top,
+   but the logic was faulty when .git is a "gitdir:" file that points
+   at the real place, causing trouble in working trees that are
+   managed by "git worktree".  This has been corrected.
+
+ * Codepaths that read from an on-disk loose object were too loose in
+   validating what they are reading is a proper object file and
+   sometimes read past the data they read from the disk, which has
+   been corrected.  H/t to Gustavo Grieco for reporting.
+   (merge d21f842690 jc/verify-loose-object-header later to maint).
+
+ * The original command line syntax for "git merge", which was "git
+   merge <msg> HEAD <parent>...", has been deprecated for quite some
+   time, and "git gui" was the last in-tree user of the syntax.  This
+   is finally fixed, so that we can move forward with the deprecation.
+   (merge ff65e796f0 rs/git-gui-use-modern-git-merge-syntax later to maint).
+
+ * An author name, that spelled a backslash-quoted double quote in the
+   human readable part "My \"double quoted\" name", was not unquoted
+   correctly while applying a patch from a piece of e-mail.
+   (merge f357e5de31 kd/mailinfo-quoted-string later to maint).
+
+ * Doc update to clarify what "log -3 --reverse" does.
+   (merge 04be69478f pb/rev-list-reverse-with-count later to maint).
+
+ * Almost everybody uses DEFAULT_ABBREV to refer to the default
+   setting for the abbreviation, but "git blame" peeked into
+   underlying variable bypassing the macro for no good reason.
+   (merge 5293284b4d jc/blame-abbrev later to maint).
+
+ * The "graph" API used in "git log --graph" miscounted the number of
+   output columns consumed so far when drawing a padding line, which
+   has been fixed; this did not affect any existing code as nobody
+   tried to write anything after the padding on such a line, though.
+   (merge 1647793524 jk/graph-padding-fix later to maint).
+
+ * The code that parses the format parameter of for-each-ref command
+   has seen a micro-optimization.
+   (merge e94ce1394e sg/ref-filter-parse-optim later to maint).
+
+ * When we started cURL to talk to imap server when a new enough
+   version of cURL library is available, we forgot to explicitly add
+   imap(s):// before the destination.  To some folks, that didn't work
+   and the library tried to make HTTP(s) requests instead.
+   (merge d2d07ab861 ak/curl-imap-send-explicit-scheme later to maint).
+
+ * The ./configure script generated from configure.ac was taught how
+   to detect support of SSL by libcurl better.
+   (merge 924b7eb1c9 dp/autoconf-curl-ssl later to maint).
+
+ * The command-line completion script (in contrib/) learned to
+   complete "git cmd ^mas<HT>" to complete the negative end of
+   reference to "git cmd ^master".
+   (merge 49416ad22a cp/completion-negative-refs later to maint).
+
+ * The existing "git fetch --depth=<n>" option was hard to use
+   correctly when making the history of an existing shallow clone
+   deeper.  A new option, "--deepen=<n>", has been added to make this
+   easier to use.  "git clone" also learned "--shallow-since=<date>"
+   and "--shallow-exclude=<tag>" options to make it easier to specify
+   "I am interested only in the recent N months worth of history" and
+   "Give me only the history since that version".
+   (merge cccf74e2da nd/shallow-deepen later to maint).
+
+ * It is a common mistake to say "git blame --reverse OLD path",
+   expecting that the command line is dwimmed as if asking how lines
+   in path in an old revision OLD have survived up to the current
+   commit.
+   (merge e1d09701a4 jc/blame-reverse later to maint).
+
+ * Other minor doc, test and build updates and code cleanups.
+   (merge a22ae75 rs/cocci later to maint).
+   (merge 45ccef87b3 rs/copy-array later to maint).
+   (merge 8201688ecd dt/mailinfo later to maint).

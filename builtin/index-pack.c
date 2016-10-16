@@ -13,7 +13,7 @@
 #include "thread-utils.h"
 
 static const char index_pack_usage[] =
-"git index-pack [-v] [-o <index-file>] [--keep | --keep=<msg>] [--verify] [--strict] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";
+"git index-pack [-v] [-o <index-file>] [--keep | --keep=<msg>] [--verify] [--strict] [--clone-bundle] (<pack-file> | --stdin [--fix-thin] [<pack-file>])";
 
 struct object_entry {
 	struct pack_idx_entry idx;
@@ -87,6 +87,7 @@ static struct progress *progress;
 static unsigned char input_buffer[4096];
 static unsigned int input_offset, input_len;
 static off_t consumed_bytes;
+static off_t max_input_size;
 static unsigned deepest_delta;
 static git_SHA_CTX input_ctx;
 static uint32_t input_crc32;
@@ -297,6 +298,8 @@ static void use(int bytes)
 	if (signed_add_overflows(consumed_bytes, bytes))
 		die(_("pack too large for current definition of off_t"));
 	consumed_bytes += bytes;
+	if (max_input_size && consumed_bytes > max_input_size)
+		die(_("pack exceeds maximum allowed size"));
 }
 
 static const char *open_pack_file(const char *pack_name)
@@ -1187,10 +1190,8 @@ static void resolve_deltas(void)
 		return;
 
 	/* Sort deltas by base SHA1/offset for fast searching */
-	qsort(ofs_deltas, nr_ofs_deltas, sizeof(struct ofs_delta_entry),
-	      compare_ofs_delta_entry);
-	qsort(ref_deltas, nr_ref_deltas, sizeof(struct ref_delta_entry),
-	      compare_ref_delta_entry);
+	QSORT(ofs_deltas, nr_ofs_deltas, compare_ofs_delta_entry);
+	QSORT(ref_deltas, nr_ref_deltas, compare_ref_delta_entry);
 
 	if (verbose || show_resolving_progress)
 		progress = start_progress(_("Resolving deltas"),
@@ -1353,7 +1354,7 @@ static void fix_unresolved_deltas(struct sha1file *f)
 	ALLOC_ARRAY(sorted_by_pos, nr_ref_deltas);
 	for (i = 0; i < nr_ref_deltas; i++)
 		sorted_by_pos[i] = &ref_deltas[i];
-	qsort(sorted_by_pos, nr_ref_deltas, sizeof(*sorted_by_pos), delta_pos_compare);
+	QSORT(sorted_by_pos, nr_ref_deltas, delta_pos_compare);
 
 	for (i = 0; i < nr_ref_deltas; i++) {
 		struct ref_delta_entry *d = sorted_by_pos[i];
@@ -1377,9 +1378,40 @@ static void fix_unresolved_deltas(struct sha1file *f)
 	free(sorted_by_pos);
 }
 
+static void write_bundle_file(const char *filename, unsigned char *sha1,
+			      const char *packname)
+{
+	int fd = open(filename, O_CREAT|O_EXCL|O_WRONLY, 0600);
+	struct strbuf buf = STRBUF_INIT;
+	struct stat st;
+	int i;
+
+	if (stat(packname, &st))
+		die(_("cannot stat %s"), packname);
+
+	strbuf_addstr(&buf, "# v3 git bundle\n");
+	strbuf_addf(&buf, "size: %lu\n", (unsigned long) st.st_size);
+	strbuf_addf(&buf, "sha1: %s\n", sha1_to_hex(sha1));
+	strbuf_addf(&buf, "data: %s\n\n", packname);
+
+	for (i = 0; i < nr_objects; i++) {
+		struct object *o = lookup_object(objects[i].idx.sha1);
+		if (!o || (o->flags & FLAG_LINK))
+			continue;
+		strbuf_addf(&buf, "%s refs/objects/%s\n",
+			    sha1_to_hex(o->oid.hash),
+			    sha1_to_hex(o->oid.hash));
+	}
+	if (write_in_full(fd, buf.buf, buf.len) != buf.len)
+		die(_("cannot write bundle header for %s"), packname);
+	close(fd);
+	strbuf_release(&buf);
+}
+
 static void final(const char *final_pack_name, const char *curr_pack_name,
 		  const char *final_index_name, const char *curr_index_name,
 		  const char *keep_name, const char *keep_msg,
+		  const char *bundle_name, int foreign_nr,
 		  unsigned char *sha1)
 {
 	const char *report = "pack";
@@ -1461,6 +1493,13 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 			input_offset += err;
 		}
 	}
+
+	if (bundle_name) {
+		if (foreign_nr)
+			warning(_("not writing bundle for an incomplete pack"));
+		else
+			write_bundle_file(bundle_name, sha1, final_pack_name);
+	}
 }
 
 static int git_index_pack_config(const char *k, const char *v, void *cb)
@@ -1530,8 +1569,7 @@ static void read_v2_anomalous_offsets(struct packed_git *p,
 		opts->anomaly[opts->anomaly_nr++] = ntohl(idx2[off * 2 + 1]);
 	}
 
-	if (1 < opts->anomaly_nr)
-		qsort(opts->anomaly, opts->anomaly_nr, sizeof(uint32_t), cmp_uint32);
+	QSORT(opts->anomaly, opts->anomaly_nr, cmp_uint32);
 }
 
 static void read_idx_option(struct pack_idx_option *opts, const char *pack_name)
@@ -1617,12 +1655,14 @@ static const char *derive_filename(const char *pack_name, const char *suffix,
 
 int cmd_index_pack(int argc, const char **argv, const char *prefix)
 {
-	int i, fix_thin_pack = 0, verify = 0, stat_only = 0;
+	int i, fix_thin_pack = 0, verify = 0, stat_only = 0, clone_bundle = 0;
 	const char *curr_index;
 	const char *index_name = NULL, *pack_name = NULL;
 	const char *keep_name = NULL, *keep_msg = NULL;
-	struct strbuf index_name_buf = STRBUF_INIT,
-		      keep_name_buf = STRBUF_INIT;
+	const char *bundle_name = NULL;
+	struct strbuf index_name_buf = STRBUF_INIT;
+	struct strbuf keep_name_buf = STRBUF_INIT;
+	struct strbuf bundle_name_buf = STRBUF_INIT;
 	struct pack_idx_entry **idx_objects;
 	struct pack_idx_option opts;
 	unsigned char pack_sha1[20];
@@ -1667,6 +1707,10 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 				verify = 1;
 				show_stat = 1;
 				stat_only = 1;
+			} else if (!strcmp(arg, "--clone-bundle")) {
+				strict = 1;
+				clone_bundle = 1;
+				check_self_contained_and_connected = 1;
 			} else if (!strcmp(arg, "--keep")) {
 				keep_msg = "";
 			} else if (starts_with(arg, "--keep=")) {
@@ -1714,6 +1758,8 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 					opts.off32_limit = strtoul(c+1, &c, 0);
 				if (*c || opts.off32_limit & 0x80000000)
 					die(_("bad %s"), arg);
+			} else if (skip_prefix(arg, "--max-input-size=", &arg)) {
+				max_input_size = strtoumax(arg, NULL, 10);
 			} else
 				usage(index_pack_usage);
 			continue;
@@ -1728,10 +1774,14 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 		usage(index_pack_usage);
 	if (fix_thin_pack && !from_stdin)
 		die(_("--fix-thin cannot be used without --stdin"));
+	if (clone_bundle && from_stdin)
+		die(_("--clone-bundle cannot be used with --stdin"));
 	if (!index_name && pack_name)
 		index_name = derive_filename(pack_name, ".idx", &index_name_buf);
 	if (keep_msg && !keep_name && pack_name)
 		keep_name = derive_filename(pack_name, ".keep", &keep_name_buf);
+	if (clone_bundle)
+		bundle_name = derive_filename(pack_name, ".bndl", &bundle_name_buf);
 
 	if (verify) {
 		if (!index_name)
@@ -1780,6 +1830,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 		final(pack_name, curr_pack,
 		      index_name, curr_index,
 		      keep_name, keep_msg,
+		      bundle_name, foreign_nr,
 		      pack_sha1);
 	else
 		close(input_fd);

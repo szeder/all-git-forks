@@ -44,6 +44,7 @@ update=
 prefix=
 custom_name=
 depth=
+progress=
 
 die_if_unmatched ()
 {
@@ -206,8 +207,14 @@ cmd_add()
 			tstart
 			s|/*$||
 		')
-	git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
-	die "$(eval_gettext "'\$sm_path' already exists in the index")"
+	if test -z "$force"
+	then
+		git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
+		die "$(eval_gettext "'\$sm_path' already exists in the index")"
+	else
+		git ls-files -s "$sm_path" | sane_grep -v "^160000" > /dev/null 2>&1 &&
+		die "$(eval_gettext "'\$sm_path' already exists in the index and is not a submodule")"
+	fi
 
 	if test -z "$force" && ! git add --dry-run --ignore-missing "$sm_path" > /dev/null 2>&1
 	then
@@ -498,6 +505,9 @@ cmd_update()
 		-q|--quiet)
 			GIT_QUIET=1
 			;;
+		--progress)
+			progress="--progress"
+			;;
 		-i|--init)
 			init=1
 			;;
@@ -573,10 +583,11 @@ cmd_update()
 
 	{
 	git submodule--helper update-clone ${GIT_QUIET:+--quiet} \
+		${progress:+"$progress"} \
 		${wt_prefix:+--prefix "$wt_prefix"} \
 		${prefix:+--recursive-prefix "$prefix"} \
 		${update:+--update "$update"} \
-		${reference:+--reference "$reference"} \
+		${reference:+"$reference"} \
 		${depth:+--depth "$depth"} \
 		${recommend_shallow:+"$recommend_shallow"} \
 		${jobs:+$jobs} \

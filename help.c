@@ -179,8 +179,7 @@ void load_command_list(const char *prefix,
 
 	if (exec_path) {
 		list_commands_in_dir(main_cmds, exec_path, prefix);
-		qsort(main_cmds->names, main_cmds->cnt,
-		      sizeof(*main_cmds->names), cmdname_compare);
+		QSORT(main_cmds->names, main_cmds->cnt, cmdname_compare);
 		uniq(main_cmds);
 	}
 
@@ -199,8 +198,7 @@ void load_command_list(const char *prefix,
 		}
 		free(paths);
 
-		qsort(other_cmds->names, other_cmds->cnt,
-		      sizeof(*other_cmds->names), cmdname_compare);
+		QSORT(other_cmds->names, other_cmds->cnt, cmdname_compare);
 		uniq(other_cmds);
 	}
 	exclude_cmds(other_cmds, main_cmds);
@@ -247,8 +245,7 @@ void list_common_cmds_help(void)
 			longest = strlen(common_cmds[i].name);
 	}
 
-	qsort(common_cmds, ARRAY_SIZE(common_cmds),
-		sizeof(common_cmds[0]), cmd_group_cmp);
+	QSORT(common_cmds, ARRAY_SIZE(common_cmds), cmd_group_cmp);
 
 	puts(_("These are common Git commands used in various situations:"));
 
@@ -333,8 +330,7 @@ const char *help_unknown_cmd(const char *cmd)
 
 	add_cmd_list(&main_cmds, &aliases);
 	add_cmd_list(&main_cmds, &other_cmds);
-	qsort(main_cmds.names, main_cmds.cnt,
-	      sizeof(*main_cmds.names), cmdname_compare);
+	QSORT(main_cmds.names, main_cmds.cnt, cmdname_compare);
 	uniq(&main_cmds);
 
 	/* This abuses cmdname->len for levenshtein distance */
@@ -368,8 +364,7 @@ const char *help_unknown_cmd(const char *cmd)
 			levenshtein(cmd, candidate, 0, 2, 1, 3) + 1;
 	}
 
-	qsort(main_cmds.names, main_cmds.cnt,
-	      sizeof(*main_cmds.names), levenshtein_compare);
+	QSORT(main_cmds.names, main_cmds.cnt, levenshtein_compare);
 
 	if (!main_cmds.cnt)
 		die(_("Uh oh. Your system reports no Git commands at all."));

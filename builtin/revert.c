@@ -165,6 +165,12 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 	if (argc > 1)
 		usage_with_options(usage_str, options);
 
+	/* These option values will be free()d */
+	if (opts->gpg_sign)
+		opts->gpg_sign = xstrdup(opts->gpg_sign);
+	if (opts->strategy)
+		opts->strategy = xstrdup(opts->strategy);
+
 	if (cmd == 'q')
 		return sequencer_remove_state(opts);
 	if (cmd == 'c')
