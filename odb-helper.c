@@ -153,6 +153,60 @@ int odb_helper_has_object(struct odb_helper *o, const unsigned char *sha1)
 	return !!odb_helper_lookup(o, sha1);
 }
 
+int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
+			   int fd)
+{
+	struct odb_helper_object *obj;
+	struct odb_helper_cmd cmd;
+	char hdr[32];
+	int hdrlen = sizeof(hdr);
+	unsigned char prepared_sha1[20];
+	git_SHA_CTX hash;
+	unsigned char real_sha1[20];
+
+	obj = odb_helper_lookup(o, sha1);
+	if (!obj)
+		return -1;
+
+	if (odb_helper_start(o, &cmd, 0, "get %s", sha1_to_hex(sha1)) < 0)
+		return -1;
+
+	git_SHA1_Init(&hash);
+
+	for (;;) {
+		unsigned char buf[4096];
+		int r;
+
+		r = xread(cmd.child.out, buf, sizeof(buf));
+		if (r < 0) {
+			error("unable to read from odb helper '%s': %s",
+			      o->name, strerror(errno));
+			close(cmd.child.out);
+			odb_helper_finish(o, &cmd);
+			return -1;
+		}
+		if (r == 0)
+			break;
+
+		/* TODO: append buf content to another buffer */
+
+		git_SHA1_Update(&hash, inflated, got);
+	}
+
+	close(cmd.child.out);
+	git_SHA1_Final(real_sha1, &hash);
+	if (odb_helper_finish(o, &cmd))
+		return -1;
+
+
+	write_sha1_file_prepare(buf, len, typename(OBJ_BLOB), prepared_sha1, hdr, &hdrlen);
+
+	if (fstat(cmd.child.out, &st) < 0)
+		die_errno("unable to fstat %s", filename);
+	if (index_fd(sha1, cmd.child.out, &st, type, NULL, flags) < 0)
+		die("unable to write object to database");
+}
+
 int odb_helper_fetch_object(struct odb_helper *o, const unsigned char *sha1,
 			    int fd)
 {
@@ -285,3 +339,4 @@ int odb_helper_write_object(struct odb_helper *o,
 	odb_helper_finish(o, &cmd);
 	return 0;
 }
+
