@@ -170,7 +170,7 @@ int cmd_check_attr(int argc, const char **argv, const char *prefix)
 	if (all_attrs) {
 		check = NULL;
 	} else {
-		check = git_attr_check_alloc();
+		git_attr_check_alloc(&check);
 		for (i = 0; i < cnt; i++) {
 			struct git_attr *a = git_attr(argv[i]);
 			if (!a)

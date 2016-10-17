@@ -984,9 +984,13 @@ void git_attr_check_initl(struct git_attr_check **check_,
 	attr_unlock();
 }
 
-struct git_attr_check *git_attr_check_alloc(void)
+void git_attr_check_alloc(struct git_attr_check **check)
 {
-	return xcalloc(1, sizeof(struct git_attr_check));
+	attr_lock();
+	if (!*check)
+		*check = xcalloc(1, sizeof(struct git_attr_check));
+
+	attr_unlock();
 }
 
 struct git_attr_result *git_attr_result_alloc(struct git_attr_check *check)

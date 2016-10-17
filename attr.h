@@ -76,7 +76,7 @@ struct git_attr_result {
  *                       internally have a mutex for that memory location.
  *                       Currently it is not thread safe!
  */
-extern struct git_attr_check *git_attr_check_alloc(void);
+extern void git_attr_check_alloc(struct git_attr_check **);
 extern struct git_attr_result *git_attr_result_alloc(struct git_attr_check *check);
 
 extern void git_attr_check_append(struct git_attr_check *,
