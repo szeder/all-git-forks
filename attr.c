@@ -1005,12 +1005,20 @@ struct git_attr_result *git_attr_result_alloc(struct git_attr_check *check)
 void git_attr_check_append(struct git_attr_check *check,
 			   const struct git_attr *attr)
 {
+	int i;
 	if (check->finalized)
 		die("BUG: append after git_attr_check structure is finalized");
 	if (!attr_check_is_dynamic(check))
 		die("BUG: appending to a statically initialized git_attr_check");
-	ALLOC_GROW(check->attr, check->check_nr + 1, check->check_alloc);
-	check->attr[check->check_nr++] = attr;
+	attr_lock();
+	for (i = 0; i < check->check_nr; i++)
+		if (check->attr[i] == attr)
+			break;
+	if (i == check->check_nr + 1) {
+		ALLOC_GROW(check->attr, check->check_nr + 1, check->check_alloc);
+		check->attr[check->check_nr++] = attr;
+	}
+	attr_unlock();
 }
 
 void git_attr_check_clear(struct git_attr_check *check)
