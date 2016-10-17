@@ -145,10 +145,7 @@ static void parse_pathspec_attr_match(struct pathspec_item *item, const char *va
 	string_list_split(&list, value, ' ', -1);
 	string_list_remove_empty_items(&list, 0);
 
-	if (!item->attr_check)
-		item->attr_check = git_attr_check_alloc();
-	else
-		die(_("Only one 'attr:' specification is allowed."));
+	git_attr_check_alloc(&item->attr_check);
 
 	ALLOC_GROW(item->attr_match, item->attr_match_nr + list.nr, item->attr_match_alloc);
 
