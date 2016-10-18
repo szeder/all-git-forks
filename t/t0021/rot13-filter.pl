@@ -95,13 +95,14 @@ $debug->flush();
 
 packet_txt_write("git-filter-server");
 packet_txt_write("version=2");
+packet_flush();
 
-( packet_txt_read() eq ( 0, "clean=true" ) )  || die "bad capability";
-( packet_txt_read() eq ( 0, "smudge=true" ) ) || die "bad capability";
-( packet_bin_read() eq ( 1, "" ) )            || die "bad capability end";
+( packet_txt_read() eq ( 0, "capability=clean" ) )  || die "bad capability";
+( packet_txt_read() eq ( 0, "capability=smudge" ) ) || die "bad capability";
+( packet_bin_read() eq ( 1, "" ) )                  || die "bad capability end";
 
 foreach (@capabilities) {
-	packet_txt_write( $_ . "=true" );
+	packet_txt_write( "capability=" . $_ );
 }
 packet_flush();
 print $debug "init handshake complete\n";

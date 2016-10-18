@@ -7,8 +7,7 @@ const char *git_path_seq_dir(void);
 
 enum replay_action {
 	REPLAY_REVERT,
-	REPLAY_PICK,
-	REPLAY_INTERACTIVE_REBASE
+	REPLAY_PICK
 };
 
 struct replay_opts {
@@ -24,7 +23,6 @@ struct replay_opts {
 	int allow_empty;
 	int allow_empty_message;
 	int keep_redundant_commits;
-	int verbose;
 
 	int mainline;
 
@@ -37,26 +35,13 @@ struct replay_opts {
 
 	/* Only used by REPLAY_NONE */
 	struct rev_info *revs;
-
-	/* malloc()ed data entrusted to the sequencer */
-	void **owned;
-	int owned_nr, owned_alloc;
 };
 #define REPLAY_OPTS_INIT { -1 }
-
-/*
- * Make it the duty of sequencer_remove_state() to release the memory;
- * For ease of use, return the same pointer.
- */
-void *sequencer_entrust(struct replay_opts *opts, void *to_free);
 
 int sequencer_pick_revisions(struct replay_opts *opts);
 int sequencer_continue(struct replay_opts *opts);
 int sequencer_rollback(struct replay_opts *opts);
 int sequencer_remove_state(struct replay_opts *opts);
-
-int sequencer_make_script(int keep_empty, FILE *out,
-		int argc, const char **argv);
 
 extern const char sign_off_header[];
 

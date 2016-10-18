@@ -70,13 +70,14 @@ sub packet_flush {
 
 packet_txt_write("git-filter-server");
 packet_txt_write("version=2");
+packet_flush();
 
-( packet_txt_read() eq ( 0, "clean=true" ) )  || die "bad capability";
-( packet_txt_read() eq ( 0, "smudge=true" ) ) || die "bad capability";
-( packet_bin_read() eq ( 1, "" ) )            || die "bad capability end";
+( packet_txt_read() eq ( 0, "capability=clean" ) )  || die "bad capability";
+( packet_txt_read() eq ( 0, "capability=smudge" ) ) || die "bad capability";
+( packet_bin_read() eq ( 1, "" ) )                  || die "bad capability end";
 
-packet_txt_write("clean=true");
-packet_txt_write("smudge=true");
+packet_txt_write("capability=clean");
+packet_txt_write("capability=smudge");
 packet_flush();
 
 while (1) {

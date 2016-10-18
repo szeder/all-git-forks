@@ -251,17 +251,21 @@ static void check_safe_crlf(const char *path, enum crlf_action crlf_action,
 		 * CRLFs would not be restored by checkout
 		 */
 		if (checksafe == SAFE_CRLF_WARN)
-			warning("CRLF will be replaced by LF in %s.\nThe file will have its original line endings in your working directory.", path);
+			warning(_("CRLF will be replaced by LF in %s.\n"
+				  "The file will have its original line"
+				  " endings in your working directory."), path);
 		else /* i.e. SAFE_CRLF_FAIL */
-			die("CRLF would be replaced by LF in %s.", path);
+			die(_("CRLF would be replaced by LF in %s."), path);
 	} else if (old_stats->lonelf && !new_stats->lonelf ) {
 		/*
 		 * CRLFs would be added by checkout
 		 */
 		if (checksafe == SAFE_CRLF_WARN)
-			warning("LF will be replaced by CRLF in %s.\nThe file will have its original line endings in your working directory.", path);
+			warning(_("LF will be replaced by CRLF in %s.\n"
+				  "The file will have its original line"
+				  " endings in your working directory."), path);
 		else /* i.e. SAFE_CRLF_FAIL */
-			die("LF would be replaced by CRLF in %s", path);
+			die(_("LF would be replaced by CRLF in %s"), path);
 	}
 }
 
@@ -635,7 +639,7 @@ static void kill_multi_file_filter(struct hashmap *hashmap, struct cmd2process *
 	free(entry);
 }
 
-void stop_multi_file_filter(struct child_process *process)
+static void stop_multi_file_filter(struct child_process *process)
 {
 	sigchain_push(SIGPIPE, SIG_IGN);
 	/* Closing the pipe signals the filter to initiate a shutdown. */
@@ -690,8 +694,11 @@ static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, cons
 	err = strcmp(packet_read_line(process->out, NULL), "version=2");
 	if (err)
 		goto done;
+	err = packet_read_line(process->out, NULL) != NULL;
+	if (err)
+		goto done;
 
-	err = packet_write_list(process->in, "clean=true", "smudge=true", NULL);
+	err = packet_write_list(process->in, "capability=clean", "capability=smudge", NULL);
 
 	for (;;) {
 		cap_buf = packet_read_line(process->out, NULL);
@@ -699,10 +706,10 @@ static struct cmd2process *start_multi_file_filter(struct hashmap *hashmap, cons
 			break;
 		string_list_split_in_place(&cap_list, cap_buf, '=', 1);
 
-		if (cap_list.nr != 2 || strcmp(cap_list.items[1].string, "true"))
+		if (cap_list.nr != 2 || strcmp(cap_list.items[0].string, "capability"))
 			continue;
 
-		cap_name = cap_list.items[0].string;
+		cap_name = cap_list.items[1].string;
 		if (!strcmp(cap_name, "clean")) {
 			entry->supported_capabilities |= CAP_CLEAN;
 		} else if (!strcmp(cap_name, "smudge")) {

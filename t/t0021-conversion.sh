@@ -31,38 +31,35 @@ filter_git () {
 	rm -f git-stderr.log
 }
 
-# Count unique lines in two files and compare them.
-test_cmp_count () {
-	for FILE in $@
-	do
-		sort $FILE | uniq -c | sed "s/^[ ]*//" >$FILE.tmp
-		cat $FILE.tmp >$FILE
-	done &&
-	test_cmp $@
-}
-
-# Count unique lines except clean invocations in two files and compare
-# them. Clean invocations are not counted because their number can vary.
+# Compare two files and ensure that `clean` and `smudge` respectively are
+# called at least once if specified in the `expect` file. The actual
+# invocation count is not relevant because their number can vary.
 # c.f. http://public-inbox.org/git/xmqqshv18i8i.fsf@gitster.mtv.corp.google.com/
-test_cmp_count_except_clean () {
-	for FILE in $@
+test_cmp_count () {
+	expect=$1
+	actual=$2
+	for FILE in "$expect" "$actual"
 	do
-		sort $FILE | uniq -c | sed "s/^[ ]*//" |
-			sed "s/^\([0-9]\) IN: clean/x IN: clean/" >$FILE.tmp
-		cat $FILE.tmp >$FILE
+		sort "$FILE" | uniq -c | sed "s/^[ ]*//" |
+			sed "s/^\([0-9]\) IN: clean/x IN: clean/" |
+			sed "s/^\([0-9]\) IN: smudge/x IN: smudge/" >"$FILE.tmp" &&
+		mv "$FILE.tmp" "$FILE"
 	done &&
-	test_cmp $@
+	test_cmp "$expect" "$actual"
 }
 
-# Compare two files but exclude clean invocations because they can vary.
+# Compare two files but exclude all `clean` invocations because Git can
+# call `clean` zero or more times.
 # c.f. http://public-inbox.org/git/xmqqshv18i8i.fsf@gitster.mtv.corp.google.com/
 test_cmp_exclude_clean () {
-	for FILE in $@
+	expect=$1
+	actual=$2
+	for FILE in "$expect" "$actual"
 	do
-		grep -v "IN: clean" $FILE >$FILE.tmp
-		cat $FILE.tmp >$FILE
+		grep -v "IN: clean" "$FILE" >"$FILE.tmp" &&
+		mv "$FILE.tmp" "$FILE"
 	done &&
-	test_cmp $@
+	test_cmp "$expect" "$actual"
 }
 
 # Check that the contents of two files are equal and that their rot13 version
@@ -395,7 +392,7 @@ test_expect_success PERL 'required process filter should filter data' '
 			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
 			STOP
 		EOF
-		test_cmp_count_except_clean expected.log rot13-filter.log &&
+		test_cmp_count expected.log rot13-filter.log &&
 
 		rm -f test2.r "testsubdir/test3 '\''sq'\'',\$x.r" &&
 
