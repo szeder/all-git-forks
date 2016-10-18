@@ -859,7 +859,7 @@ int cmd_main(int argc, const char **argv)
 
 	dir = argv[0];
 
-	if (!enter_repo(dir, strict))
+	if (!enter_repo(dir, strict, strict))
 		die("'%s' does not appear to be a git repository", dir);
 
 	git_config(upload_pack_config, NULL);

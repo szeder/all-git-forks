@@ -170,27 +170,23 @@ static const char *path_ok(const char *directory, struct hostinfo *hi)
 		return NULL;
 	}
 
-	if (*dir == '~') {
-		if (!user_path) {
-			logerror("'%s': User-path not allowed", dir);
-			return NULL;
-		}
-		if (*user_path) {
-			/* Got either "~alice" or "~alice/foo";
-			 * rewrite them to "~alice/%s" or
-			 * "~alice/%s/foo".
-			 */
-			int namlen, restlen = strlen(dir);
-			const char *slash = strchr(dir, '/');
-			if (!slash)
-				slash = dir + restlen;
-			namlen = slash - dir;
-			restlen -= namlen;
-			loginfo("userpath <%s>, request <%s>, namlen %d, restlen %d, slash <%s>", user_path, dir, namlen, restlen, slash);
-			snprintf(rpath, PATH_MAX, "%.*s/%s%.*s",
-				 namlen, dir, user_path, restlen, slash);
-			dir = rpath;
-		}
+	if (*dir == '~' && *user_path && user_path[0] != '\0') {
+		/* Got either "~alice" or "~alice/foo";
+		 * rewrite them:
+		 *
+		 * ~alice     -> ~alice/user_dir
+		 * ~alice/foo -> ~alice/user_dir/foo
+		 */
+		int namlen, restlen = strlen(dir);
+		const char *slash = strchr(dir, '/');
+		if (!slash)
+			slash = dir + restlen;
+		namlen = slash - dir;
+		restlen -= namlen;
+		loginfo("userpath <%s>, request <%s>, namlen %d, restlen %d, slash <%s>", user_path, dir, namlen, restlen, slash);
+		snprintf(rpath, PATH_MAX, "%.*s/%s%.*s",
+		         namlen, dir, user_path, restlen, slash);
+		dir = rpath;
 	}
 	else if (interpolated_path && hi->saw_extended_args) {
 		struct strbuf expanded_path = STRBUF_INIT;
@@ -223,14 +219,14 @@ static const char *path_ok(const char *directory, struct hostinfo *hi)
 		dir = rpath;
 	}
 
-	path = enter_repo(dir, strict_paths);
+	path = enter_repo(dir, strict_paths || !user_path, strict_paths);
 	if (!path && base_path && base_path_relaxed) {
 		/*
 		 * if we fail and base_path_relaxed is enabled, try without
 		 * prefixing the base path
 		 */
 		dir = directory;
-		path = enter_repo(dir, strict_paths);
+		path = enter_repo(dir, strict_paths || !user_path, strict_paths);
 	}
 
 	if (!path) {

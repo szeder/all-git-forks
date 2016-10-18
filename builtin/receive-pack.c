@@ -1860,7 +1860,7 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 
 	setup_path();
 
-	if (!enter_repo(service_dir, 0))
+	if (!enter_repo(service_dir, 0, 0))
 		die("'%s' does not appear to be a git repository", service_dir);
 
 	git_config(receive_pack_config, NULL);
