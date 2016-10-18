@@ -414,6 +414,9 @@ static void read_split_index_canary_into_list(const char *filename,
 
 	if (strbuf_read_file(&index_path, path, 0) < 0)
 		die_errno(_("could not read '%s'"), path);
+	/* Remove the new line added by write_file() */
+	strbuf_rtrim(&index_path);
+
 	string_list_append(paths, strbuf_detach(&index_path, NULL));
 }
 
