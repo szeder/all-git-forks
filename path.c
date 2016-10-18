@@ -673,96 +673,105 @@ return_null:
 }
 
 /*
- * First, one directory to try is determined by the following algorithm.
+ * chdir() to, and set_git_dir() to the directory found with "path", using the
+ * following algorithm.
  *
- * (0) If "strict" is given, the path is used as given and no DWIM is
- *     done. Otherwise:
- * (1) "~/path" to mean path under the running user's home directory;
- * (2) "~user/path" to mean path under named user's home directory;
- * (3) "relative/path" to mean cwd relative directory; or
- * (4) "/absolute/path" to mean absolute directory.
+ * (0) "relative/path" to mean cwd relative directory; or
+ * (1) "/absolute/path" to mean absolute directory.
+ * (2) trim trailing slashes
  *
- * Unless "strict" is given, we check "%s/.git", "%s", "%s.git/.git", "%s.git"
- * in this order. We select the first one that is a valid git repository, and
- * chdir() to it. If none match, or we fail to chdir, we return NULL.
+ * Unless "strict_prefix" is given:
+ * (3) "~/path" to mean path under the running user's home directory;
+ * (4) "~user/path" to mean path under named user's home directory;
  *
- * If all goes well, we return the directory we used to chdir() (but
- * before ~user is expanded), avoiding getcwd() resolving symbolic
- * links.  User relative paths are also returned as they are given,
- * except DWIM suffixing.
+ * Unless "strict_suffix" is given:
+ * (5) check "%s/.git", "%s", "%s.git/.git", "%s.git" in this order. We select
+ *     the first one that is a valid git repository, and chdir() to it. If none
+ *     match, we return NULL.
+ *
+ * And then, unconditionally:
+ * (6) If the result is a .git file (instead of a directory) that points to a
+ *     directory elsewhere, follow it.
+ *
+ * If all goes well, we return the input path with suffix alteration (steps 2,
+ * 5, 6) applied, but without prefix alteration (user paths) applied. The
+ * returned value is a pointer to a static buffer.
  */
-const char *enter_repo(const char *path, int strict)
+const char *enter_repo(const char *path, int strict_prefix, int strict_suffix)
 {
-	static struct strbuf validated_path = STRBUF_INIT;
-	static struct strbuf used_path = STRBUF_INIT;
+	/* chdir_path is the path we chdir() to */
+	static struct strbuf chdir_path = STRBUF_INIT;
+	/* ret_path is the path we return */
+	static struct strbuf ret_path = STRBUF_INIT;
+
+	int len;
+	const char *gitfile;
 
 	if (!path)
 		return NULL;
 
-	if (!strict) {
+	len = strlen(path);
+
+	/* strip trailing slashes */
+	while ((1 < len) && (path[len-1] == '/'))
+		len--;
+
+	/*
+	 * We can handle arbitrary-sized buffers, but this remains as a
+	 * sanity check on untrusted input.
+	 */
+	if (PATH_MAX <= len)
+		return NULL;
+
+	strbuf_reset(&chdir_path);
+	strbuf_add(&chdir_path, path, len);
+	strbuf_reset(&ret_path);
+	strbuf_add(&ret_path, path, len);
+
+	if (!strict_prefix && chdir_path.buf[0] == '~') {
+		/* operate only on chdir_path */
+		char *newpath = expand_user_path(chdir_path.buf);
+		if (!newpath)
+			return NULL;
+		strbuf_attach(&chdir_path, newpath, strlen(newpath),
+		              strlen(newpath));
+	}
+
+	if (!strict_suffix) {
+		/* operate on both chdir_path and ret_path */
 		static const char *suffix[] = {
 			"/.git", "", ".git/.git", ".git", NULL,
 		};
-		const char *gitfile;
-		int len = strlen(path);
 		int i;
-		while ((1 < len) && (path[len-1] == '/'))
-			len--;
-
-		/*
-		 * We can handle arbitrary-sized buffers, but this remains as a
-		 * sanity check on untrusted input.
-		 */
-		if (PATH_MAX <= len)
-			return NULL;
-
-		strbuf_reset(&used_path);
-		strbuf_reset(&validated_path);
-		strbuf_add(&used_path, path, len);
-		strbuf_add(&validated_path, path, len);
-
-		if (used_path.buf[0] == '~') {
-			char *newpath = expand_user_path(used_path.buf);
-			if (!newpath)
-				return NULL;
-			strbuf_attach(&used_path, newpath, strlen(newpath),
-				      strlen(newpath));
-		}
 		for (i = 0; suffix[i]; i++) {
 			struct stat st;
-			size_t baselen = used_path.len;
-			strbuf_addstr(&used_path, suffix[i]);
-			if (!stat(used_path.buf, &st) &&
+			size_t baselen = chdir_path.len;
+			strbuf_addstr(&chdir_path, suffix[i]);
+			if (!stat(chdir_path.buf, &st) &&
 			    (S_ISREG(st.st_mode) ||
-			    (S_ISDIR(st.st_mode) && is_git_directory(used_path.buf)))) {
-				strbuf_addstr(&validated_path, suffix[i]);
+			     (S_ISDIR(st.st_mode) && is_git_directory(chdir_path.buf)))) {
+				strbuf_addstr(&ret_path, suffix[i]);
 				break;
 			}
-			strbuf_setlen(&used_path, baselen);
+			strbuf_setlen(&chdir_path, baselen);
 		}
 		if (!suffix[i])
 			return NULL;
-		gitfile = read_gitfile(used_path.buf);
-		if (gitfile) {
-			strbuf_reset(&used_path);
-			strbuf_addstr(&used_path, gitfile);
-		}
-		if (chdir(used_path.buf))
-			return NULL;
-		path = validated_path.buf;
 	}
-	else {
-		const char *gitfile = read_gitfile(path);
-		if (gitfile)
-			path = gitfile;
-		if (chdir(path))
-			return NULL;
+
+	gitfile = read_gitfile(chdir_path.buf);
+	if (gitfile) {
+		/* operate only on chdir_path */
+		strbuf_reset(&chdir_path);
+		strbuf_addstr(&chdir_path, gitfile);
 	}
+	if (chdir(chdir_path.buf))
+		return NULL;
 
 	if (is_git_directory(".")) {
 		set_git_dir(".");
 		check_repository_format();
-		return path;
+		return ret_path.buf;
 	}
 
 	return NULL;
