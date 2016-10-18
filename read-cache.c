@@ -2226,11 +2226,11 @@ static unsigned long get_shared_index_expire_date(void)
 	return shared_index_expire_date;
 }
 
-static int can_delete_shared_index(const char *shared_sha1_hex)
+static int can_delete_shared_index(const char *shared_sha1_hex, const char *current_index)
 {
 	struct stat st;
 	unsigned long expiration;
-	int i;
+	int i, res = 1;
 	struct string_list index_paths = STRING_LIST_INIT_NODUP;
 	const char *shared_index = git_path("sharedindex.%s", shared_sha1_hex);
 
@@ -2247,16 +2247,22 @@ static int can_delete_shared_index(const char *shared_sha1_hex)
 	read_all_split_index_canaries(shared_sha1_hex, &index_paths);
 	for (i = 0; i < index_paths.nr; ++i) {
 		char *path = index_paths.items[i].string;
-		if (file_exists(path))
-			return 0;
-		/* Delete canary file */
-		delete_split_index_canary(shared_sha1_hex, path);
+		/*
+		 * It's ok to delete canary files for the current
+		 * index as we are writing a new shared index file for
+		 * it. It's also ok to delete canary files for other
+		 * index that have been removed.
+		 */
+		if (strcmp(path, current_index) && file_exists(path))
+			res = 0;
+		else
+			delete_split_index_canary(shared_sha1_hex, path);
 	}
 
-	return 1;
+	return res;
 }
 
-static void clean_shared_index_files(const char *current_hex)
+static void clean_shared_index_files(const char *current_hex, const char *current_index)
 {
 	struct dirent *de;
 	DIR *dir = opendir(get_git_dir());
@@ -2272,7 +2278,7 @@ static void clean_shared_index_files(const char *current_hex)
 			continue;
 		if (!strcmp(sha1_hex, current_hex))
 			continue;
-		if (can_delete_shared_index(sha1_hex) > 0 &&
+		if (can_delete_shared_index(sha1_hex, current_index) > 0 &&
 		    unlink(git_path("%s", de->d_name)))
 			error_errno("unable to unlink: %s", git_path("%s", de->d_name));
 	}
@@ -2302,7 +2308,8 @@ static int write_shared_index(struct index_state *istate,
 			      git_path("sharedindex.%s", sha1_to_hex(si->base->sha1)));
 	if (!ret) {
 		hashcpy(si->base_sha1, si->base->sha1);
-		clean_shared_index_files(sha1_to_hex(si->base->sha1));
+		clean_shared_index_files(sha1_to_hex(si->base->sha1),
+					 get_tempfile_path(&lock->tempfile));
 	}
 
 	return ret;
