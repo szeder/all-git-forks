@@ -76,6 +76,29 @@ static int chop_last_dir(char **remoteurl, int is_relative)
 	return 0;
 }
 
+static void strip_url_ending(char *url, size_t *len_)
+{
+	size_t len = len_ ? *len_ : strlen(url);
+
+	for (;;) {
+		if (len > 1 && is_dir_sep(url[len - 2]) && url[len - 1] == '.') {
+			url[len - 2] = '\0';
+			len -= 2;
+			continue;
+		}
+		if (len > 0 && is_dir_sep(url[len - 1])) {
+			url[len - 1] = '\0';
+			len--;
+			continue;
+		}
+
+		break;
+	}
+
+	if (len_)
+		*len_ = len;
+}
+
 /*
  * The `url` argument is the URL that navigates to the submodule origin
  * repo. When relative, this URL is relative to the superproject origin
@@ -93,14 +116,16 @@ static int chop_last_dir(char **remoteurl, int is_relative)
  * the superproject working tree otherwise.
  *
  * NEEDSWORK: This works incorrectly on the domain and protocol part.
- * remote_url      url              outcome          expectation
- * http://a.com/b  ../c             http://a.com/c   as is
- * http://a.com/b/ ../c             http://a.com/c   same as previous line, but
- *                                                   ignore trailing slash in url
- * http://a.com/b  ../../c          http://c         error out
- * http://a.com/b  ../../../c       http:/c          error out
- * http://a.com/b  ../../../../c    http:c           error out
- * http://a.com/b  ../../../../../c    .:c           error out
+ * remote_url       url              outcome          expectation
+ * http://a.com/b   ../c             http://a.com/c   as is
+ * http://a.com/b/  ../c             http://a.com/c   same as previous line, but
+ *                                                    ignore trailing '/' in url
+ * http://a.com/b/. ../c             http://a.com/c   same as previous line, but
+ *                                                    ignore trailing '/.' in url
+ * http://a.com/b   ../../c          http://c         error out
+ * http://a.com/b   ../../../c       http:/c          error out
+ * http://a.com/b   ../../../../c    http:c           error out
+ * http://a.com/b   ../../../../../c    .:c           error out
  * NEEDSWORK: Given how chop_last_dir() works, this function is broken
  * when a local part has a colon in its path component, too.
  */
@@ -115,8 +140,7 @@ static char *relative_url(const char *remote_url,
 	struct strbuf sb = STRBUF_INIT;
 	size_t len = strlen(remoteurl);
 
-	if (is_dir_sep(remoteurl[len-1]))
-		remoteurl[len-1] = '\0';
+	strip_url_ending(remoteurl, &len);
 
 	if (!url_is_local_not_ssh(remoteurl) || is_absolute_path(remoteurl))
 		is_relative = 0;
@@ -149,9 +173,9 @@ static char *relative_url(const char *remote_url,
 	}
 	strbuf_reset(&sb);
 	strbuf_addf(&sb, "%s%s%s", remoteurl, colonsep ? ":" : "/", url);
-	if (ends_with(url, "/"))
-		strbuf_setlen(&sb, sb.len - 1);
 	free(remoteurl);
+
+	strip_url_ending(sb.buf, &sb.len);
 
 	if (starts_with_dot_slash(sb.buf))
 		out = xstrdup(sb.buf + 2);
