@@ -310,9 +310,19 @@ EOF
 	test_cmp expect actual
 '
 
-test_expect_success 'only one "sharedindex" files' '
+test_expect_success 'shared index files expire after 7 days by default' '
 	: >ten &&
 	git update-index --add ten &&
+	test $(ls .git/sharedindex.* | wc -l) -gt 1 &&
+	just_less_7_days_ago=$((1-7*86400)) &&
+	test-chmtime =$just_less_7_days_ago .git/sharedindex.* &&
+	: >eleven &&
+	git update-index --add eleven &&
+	test $(ls .git/sharedindex.* | wc -l) -gt 1 &&
+	just_over_7_days_ago=$((-1-7*86400)) &&
+	test-chmtime =$just_over_7_days_ago .git/sharedindex.* &&
+	: >twelve &&
+	git update-index --add twelve &&
 	test $(ls .git/sharedindex.* | wc -l) = 1
 '
 
