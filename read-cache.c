@@ -2211,6 +2211,21 @@ static int write_split_index(struct index_state *istate,
 
 static const char *shared_index_expire = "1.week.ago";
 
+static unsigned long get_shared_index_expire_date(void)
+{
+	static unsigned long shared_index_expire_date;
+	static int shared_index_expire_date_prepared;
+
+	if (!shared_index_expire_date_prepared) {
+		git_config_get_date_string("splitindex.sharedindexexpire",
+					   &shared_index_expire);
+		shared_index_expire_date = approxidate(shared_index_expire);
+		shared_index_expire_date_prepared = 1;
+	}
+
+	return shared_index_expire_date;
+}
+
 static int can_delete_shared_index(const char *shared_sha1_hex)
 {
 	struct stat st;
@@ -2220,8 +2235,7 @@ static int can_delete_shared_index(const char *shared_sha1_hex)
 	const char *shared_index = git_path("sharedindex.%s", shared_sha1_hex);
 
 	/* Check timestamp */
-	git_config_get_date_string("splitindex.sharedindexexpire", &shared_index_expire);
-	expiration = approxidate(shared_index_expire);
+	expiration = get_shared_index_expire_date();
 	if (!expiration)
 		return 0;
 	if (stat(shared_index, &st))
