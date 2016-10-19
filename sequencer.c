@@ -469,7 +469,8 @@ static int do_pick_commit(struct commit *commit, struct replay_opts *opts)
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
+		if (has_ita_entries(&the_index) ||
+		    index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -1064,7 +1065,7 @@ static int sequencer_continue(struct replay_opts *opts)
 		if (ret)
 			return ret;
 	}
-	if (index_differs_from("HEAD", 0))
+	if (has_ita_entries(&the_index) || index_differs_from("HEAD", 0))
 		return error_dirty_index(opts);
 	todo_list = todo_list->next;
 	return pick_commits(todo_list, opts);
