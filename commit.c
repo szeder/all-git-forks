@@ -956,6 +956,8 @@ struct commit_list *get_merge_bases_opt(struct commit *one,
 	struct commit_list *result;
 	int cnt, i;
 	int cleanup = !!(flags & MB_POSTCLEAN);
+	int fpchain = !!(flags & MB_FPCHAIN);
+	char *on_fpchain;
 
 	result = merge_bases_many(one, n, twos);
 
@@ -980,14 +982,13 @@ struct commit_list *get_merge_bases_opt(struct commit *one,
 	/* There are more than one */
 	cnt = commit_list_count(result);
 	rslt = xcalloc(cnt, sizeof(*rslt));
+	on_fpchain = xcalloc(cnt, sizeof(*on_fpchain));
 	for (list = result, i = 0; list; list = list->next)
 		rslt[i++] = list->item;
 	free_commit_list(result);
 
 	for (i = 0; i < cnt; i++)
-		fprintf(stderr, "%c %s\n",
-			(rslt[i]->object.flags & FPCHAIN) ? '+' : '-',
-			oid_to_hex(&rslt[i]->object.oid));
+		on_fpchain[i] = !!(rslt[i]->object.flags & FPCHAIN);
 
 	clear_commit_marks(one, all_flags);
 	clear_commit_marks_many(n, twos, all_flags);
@@ -995,11 +996,13 @@ struct commit_list *get_merge_bases_opt(struct commit *one,
 	mark_redundant(rslt, cnt);
 	result = NULL;
 	for (i = 0; i < cnt; i++)
-		if (!(rslt[i]->object.flags & STALE))
+		if (!(rslt[i]->object.flags & STALE) &&
+		    (!fpchain || on_fpchain[i]))
 			commit_list_insert_by_date(rslt[i], &result);
 		else
 			rslt[i]->object.flags &= ~STALE;
 	free(rslt);
+	free(on_fpchain);
 	return result;
 }
 
