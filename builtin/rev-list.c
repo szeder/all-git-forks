@@ -157,6 +157,10 @@ static void show_commit(struct commit *commit, void *data)
 			if (revs->commit_format == CMIT_FMT_ONELINE)
 				putchar('\n');
 		}
+		if (revs->commit_format == CMIT_FMT_RAW) {
+			putchar(info->hdr_termination);
+		}
+
 		strbuf_release(&buf);
 	} else {
 		if (graph_show_remainder(revs->graph))

@@ -100,4 +100,11 @@ test_expect_success '--bisect and --first-parent can not be combined' '
 	test_must_fail git rev-list --bisect --first-parent HEAD
 '
 
+test_expect_success '--header shows a NUL after each commit' '
+	touch expect &&
+	printf "\0" > expect &&
+	git rev-list --header --max-count=1 HEAD | tail -n1 >actual &&
+	test_cmp_bin expect actual
+'
+
 test_done
