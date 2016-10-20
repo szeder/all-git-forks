@@ -159,7 +159,7 @@ static const unsigned char *get_rev(void)
 			return NULL;
 
 		commit = prio_queue_get(&rev_list);
-		parse_commit(commit);
+		parse_commit_or_die(commit);
 		parents = commit->parents;
 
 		commit->object.flags |= POPPED;

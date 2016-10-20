@@ -906,7 +906,7 @@ static int remove_redundant(struct commit **array, int cnt)
 	ALLOC_ARRAY(filled_index, cnt - 1);
 
 	for (i = 0; i < cnt; i++)
-		parse_commit(array[i]);
+		parse_commit_or_die(array[i]);
 	for (i = 0; i < cnt; i++) {
 		struct commit_list *common;
 

@@ -29,7 +29,7 @@ static void name_rev(struct commit *commit,
 	struct commit_list *parents;
 	int parent_number = 1;
 
-	parse_commit(commit);
+	parse_commit_or_die(commit);
 
 	if (commit->date < cutoff)
 		return;
