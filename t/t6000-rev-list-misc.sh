@@ -4,6 +4,12 @@ test_description='miscellaneous rev-list tests'
 
 . ./test-lib.sh
 
+test_ends_with_nul() {
+	printf "\0" >nul
+	sed '$!d' "$@" >contents
+	test_cmp_bin nul contents
+}
+
 test_expect_success setup '
 	echo content1 >wanted_file &&
 	echo content2 >unwanted_file &&
@@ -98,6 +104,11 @@ test_expect_success 'rev-list can show index objects' '
 
 test_expect_success '--bisect and --first-parent can not be combined' '
 	test_must_fail git rev-list --bisect --first-parent HEAD
+'
+
+test_expect_success '--header shows a NUL after each commit' '
+	git rev-list --header --max-count=1 HEAD | sed \$!d >actual &&
+	test_ends_with_nul actual
 '
 
 test_done
