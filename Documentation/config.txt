@@ -2838,9 +2838,9 @@ splitIndex.sharedIndexExpire::
 	index file is created. The value "now" expires all entries
 	immediately, and "never" suppresses expiration altogether.
 	The default value is "one.week.ago".
-	Note that each time a new split-index file is created, the
-	mtime of the related shared index file is updated to the
-	current time.
+	Note that each time a split index based on a shared index file
+	is either created or read from, the mtime of the shared index
+	file is updated to the current time.
 	See linkgit:git-update-index[1].
 
 status.relativePaths::
