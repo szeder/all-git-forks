@@ -886,7 +886,7 @@ static void collect_some_attrs(const char *path, int pathlen,
 
 		*result = git_attr_result_alloc(check);
 		for (i = 0; i < check->check_nr; i++)
-			(*result)->value[i] = res[i];
+			(*result)[i].value = res[i];
 
 		free(res);
 	}
@@ -898,16 +898,13 @@ static int git_check_attrs(const char *path, int pathlen,
 {
 	int i;
 
-	if (result->check_nr != check->check_nr)
-		die("BUG: check/result mismatch");
-
 	collect_some_attrs(path, pathlen, check, &result, 0);
 
 	for (i = 0; i < check->check_nr; i++) {
 		const char *value = check_all_attr[check->attr[i]->attr_nr].value;
 		if (value == ATTR__UNKNOWN)
 			value = ATTR__UNSET;
-		result->value[i] = value;
+		result[i].value = value;
 	}
 
 	return 0;
@@ -998,7 +995,6 @@ struct git_attr_result *git_attr_result_alloc(struct git_attr_check *check)
 	struct git_attr_result *ret;
 	ret = xcalloc(1, sizeof(struct git_attr_result) +
 			 check->check_nr * sizeof(ret->value[0]));
-	ret->check_nr = check->check_nr;
 	return ret;
 }
 
@@ -1014,7 +1010,7 @@ void git_attr_check_append(struct git_attr_check *check,
 	for (i = 0; i < check->check_nr; i++)
 		if (check->attr[i] == attr)
 			break;
-	if (i == check->check_nr + 1) {
+	if (i == check->check_nr) {
 		ALLOC_GROW(check->attr, check->check_nr + 1, check->check_alloc);
 		check->attr[check->check_nr++] = attr;
 	}

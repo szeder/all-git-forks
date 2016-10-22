@@ -40,27 +40,8 @@ struct git_attr_check {
 #define GIT_ATTR_CHECK_INIT {0, 0, 0, NULL}
 
 struct git_attr_result {
-	int check_nr;
-	/* Whether is was statically allocated and cannot be resized. */
-	int static_alloc;
-	const char *value[FLEX_ARRAY];
+	const char *value;
 };
-
-/*
- * Obtain a pointer to a git_attr_result with a given size.
- * As this macro is both declaration as well as code, it needs to be
- * put after all other decls.
- */
-#define GIT_ATTR_RESULT_INIT_FOR(name, size) \
-	struct { \
-		int check_nr; \
-		int static_alloc; \
-		const char *value[size]; \
-	} local_##name; \
-	struct git_attr_result *name = \
-		(struct git_attr_result *)&(local_##name); \
-	local_##name.static_alloc = 1; \
-	local_##name.check_nr = size;
 
 /*
  * Initialize the `git_attr_check` via one of the following three functions:
