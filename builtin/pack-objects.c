@@ -900,12 +900,12 @@ static int no_try_delta(const char *path)
 {
 	static struct git_attr_check *check;
 	int ret = 0;
-	GIT_ATTR_RESULT_INIT_FOR(result, 1);
+	struct git_attr_result result[1];
 
 	git_attr_check_initl(&check, "delta", NULL);
 
 	if (!git_check_attr(path, check, result)) {
-		if (ATTR_FALSE(result->value[0]))
+		if (ATTR_FALSE(result[0].value))
 			ret = 1;
 	}
 	return ret;

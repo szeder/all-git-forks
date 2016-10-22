@@ -772,7 +772,7 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 {
 	static struct git_attr_check *check;
 	static int init_user_convert_tail;
-	GIT_ATTR_RESULT_INIT_FOR(result, 5);
+	struct git_attr_result result[5];
 
 	git_attr_check_initl(&check, "crlf", "ident", "filter",
 			     "eol", "text", NULL);
@@ -784,14 +784,14 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 	}
 
 	if (!git_check_attr(path, check, result)) {
-		ca->crlf_action = git_path_check_crlf(result->value[4]);
+		ca->crlf_action = git_path_check_crlf(result[4].value);
 		if (ca->crlf_action == CRLF_UNDEFINED)
-			ca->crlf_action = git_path_check_crlf(result->value[0]);
+			ca->crlf_action = git_path_check_crlf(result[0].value);
 		ca->attr_action = ca->crlf_action;
-		ca->ident = git_path_check_ident(result->value[1]);
-		ca->drv = git_path_check_convert(result->value[2]);
+		ca->ident = git_path_check_ident(result[1].value);
+		ca->drv = git_path_check_convert(result[2].value);
 		if (ca->crlf_action != CRLF_BINARY) {
-			enum eol eol_attr = git_path_check_eol(result->value[3]);
+			enum eol eol_attr = git_path_check_eol(result[3].value);
 			if (ca->crlf_action == CRLF_AUTO && eol_attr == EOL_LF)
 				ca->crlf_action = CRLF_AUTO_INPUT;
 			else if (ca->crlf_action == CRLF_AUTO && eol_attr == EOL_CRLF)

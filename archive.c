@@ -114,7 +114,7 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 	write_archive_entry_fn_t write_entry = c->write_entry;
 	const char *path_without_prefix;
 	int err;
-	GIT_ATTR_RESULT_INIT_FOR(result, 2)
+	struct git_attr_result result[2];
 
 	args->convert = 0;
 	strbuf_reset(&path);
@@ -129,9 +129,9 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 	git_attr_check_initl(&check, "export-ignore", "export-subst", NULL);
 
 	if (!git_check_attr(path_without_prefix, check, result)) {
-		if (ATTR_TRUE(result->value[0]))
+		if (ATTR_TRUE(result[0].value))
 			return 0;
-		args->convert = ATTR_TRUE(result->value[1]);
+		args->convert = ATTR_TRUE(result[1].value);
 	}
 
 	if (S_ISDIR(mode) || S_ISGITLINK(mode)) {

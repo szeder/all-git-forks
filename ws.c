@@ -74,12 +74,12 @@ unsigned parse_whitespace_rule(const char *string)
 unsigned whitespace_rule(const char *pathname)
 {
 	static struct git_attr_check *attr_whitespace_rule;
-	GIT_ATTR_RESULT_INIT_FOR(result, 1);
+	struct git_attr_result result[1];
 
 	git_attr_check_initl(&attr_whitespace_rule, "whitespace", NULL);
 
 	if (!git_check_attr(pathname, attr_whitespace_rule, result)) {
-		if (ATTR_TRUE(result->value[0])) {
+		if (ATTR_TRUE(result[0].value)) {
 			/* true (whitespace) */
 			unsigned all_rule = ws_tab_width(whitespace_rule_cfg);
 			int i;
@@ -88,15 +88,15 @@ unsigned whitespace_rule(const char *pathname)
 				    !whitespace_rule_names[i].exclude_default)
 					all_rule |= whitespace_rule_names[i].rule_bits;
 			return all_rule;
-		} else if (ATTR_FALSE(result->value[0])) {
+		} else if (ATTR_FALSE(result[0].value)) {
 			/* false (-whitespace) */
 			return ws_tab_width(whitespace_rule_cfg);
-		} else if (ATTR_UNSET(result->value[0])) {
+		} else if (ATTR_UNSET(result[0].value)) {
 			/* reset to default (!whitespace) */
 			return whitespace_rule_cfg;
 		} else {
 			/* string */
-			return parse_whitespace_rule(result->value[0]);
+			return parse_whitespace_rule(result[0].value);
 		}
 	} else {
 		return whitespace_rule_cfg;

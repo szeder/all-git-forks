@@ -31,7 +31,7 @@ static void output_attr(struct git_attr_check *check,
 	int cnt = check->check_nr;
 
 	for (j = 0; j < cnt; j++) {
-		const char *value = result->value[j];
+		const char *value = result[j].value;
 
 		if (ATTR_TRUE(value))
 			value = "set";
@@ -107,7 +107,7 @@ static NORETURN void error_with_usage(const char *msg)
 
 int cmd_check_attr(int argc, const char **argv, const char *prefix)
 {
-	struct git_attr_check *check;
+	struct git_attr_check *check = NULL;
 	int cnt, i, doubledash, filei;
 
 	if (!is_bare_repository())
@@ -167,9 +167,7 @@ int cmd_check_attr(int argc, const char **argv, const char *prefix)
 			error_with_usage("No file specified");
 	}
 
-	if (all_attrs) {
-		check = NULL;
-	} else {
+	if (!all_attrs) {
 		git_attr_check_alloc(&check);
 		for (i = 0; i < cnt; i++) {
 			struct git_attr *a = git_attr(argv[i]);
