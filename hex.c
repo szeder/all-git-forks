@@ -76,9 +76,9 @@ char *oid_to_hex_r(char *buffer, const struct object_id *oid)
 
 char *sha1_to_hex(const unsigned char *sha1)
 {
-	static int bufno;
+	static size_t bufno;
 	static char hexbuffer[4][GIT_SHA1_HEXSZ + 1];
-	return sha1_to_hex_r(hexbuffer[3 & ++bufno], sha1);
+	return sha1_to_hex_r(NEXT_RING_ITEM(hexbuffer, bufno), sha1);
 }
 
 char *oid_to_hex(const struct object_id *oid)
