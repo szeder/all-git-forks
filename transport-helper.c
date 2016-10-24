@@ -28,6 +28,8 @@ struct helper_data {
 		signed_tags : 1,
 		check_connectivity : 1,
 		no_disconnect_req : 1,
+		early_capability : 1,
+		sent_advertise_prefixes : 1,
 		no_private_update : 1;
 	char *export_marks;
 	char *import_marks;
@@ -195,6 +197,8 @@ static struct child_process *get_helper(struct transport *transport)
 			data->import_marks = xstrdup(arg);
 		} else if (starts_with(capname, "no-private-update")) {
 			data->no_private_update = 1;
+		} else if (!strcmp(capname, "early-capability")) {
+			data->early_capability = 1;
 		} else if (mandatory) {
 			die("Unknown mandatory capability %s. This remote "
 			    "helper probably needs newer version of Git.",
@@ -343,6 +347,42 @@ static int set_helper_option(struct transport *transport,
 	return ret;
 }
 
+static void pass_advertise_prefixes(struct transport *t)
+{
+	struct helper_data *data = t->data;
+	struct strbuf buf = STRBUF_INIT;
+	int i;
+
+	/*
+	 * Pass early capabilities only if they are enabled by our caller, and
+	 * if our remote helper understands them.
+	 */
+	if (!t->early_capabilities || !data->early_capability)
+		return;
+
+	if (data->sent_advertise_prefixes)
+		return;
+
+	for (i = 0; i < t->advertise_prefixes.argc; i++) {
+		strbuf_reset(&buf);
+		strbuf_addf(&buf, "early-capability advertise-prefix=%s\n",
+			    t->advertise_prefixes.argv[i]);
+		sendline(data, &buf);
+		if (recvline(data, &buf))
+			exit(128);
+		if (strcmp(buf.buf, "ok")) {
+			/*
+			 * We cannot continue, as we would not want the
+			 * other side to see only half of our prefixes.
+			 */
+			die("%s rejected our advertise-prefix: %s",
+			    data->name, buf.buf);
+		}
+	}
+
+	data->sent_advertise_prefixes = 1;
+}
+
 static void standard_options(struct transport *t)
 {
 	char buf[16];
@@ -389,6 +429,8 @@ static int fetch_with_fetch(struct transport *transport,
 	struct helper_data *data = transport->data;
 	int i;
 	struct strbuf buf = STRBUF_INIT;
+
+	pass_advertise_prefixes(transport);
 
 	for (i = 0; i < nr_heads; i++) {
 		const struct ref *posn = to_fetch[i];
@@ -1036,6 +1078,8 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 	struct strbuf buf = STRBUF_INIT;
 
 	helper = get_helper(transport);
+
+	pass_advertise_prefixes(transport);
 
 	if (process_connect(transport, for_push)) {
 		do_take_over(transport);
