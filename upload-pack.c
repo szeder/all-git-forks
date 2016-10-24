@@ -64,6 +64,7 @@ static int stateless_rpc;
 static const char *pack_objects_hook;
 
 static int sent_capabilities;
+static int early_capabilities;
 
 static void reset_timeout(void)
 {
@@ -927,7 +928,8 @@ static void send_one_refname(const char *refname,
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow deepen-since deepen-not"
-		" deepen-relative no-progress include-tag multi_ack_detailed";
+		" deepen-relative no-progress include-tag multi_ack_detailed"
+		" early-capabilities";
 	struct strbuf symref_info = STRBUF_INIT;
 
 	if (sent_capabilities) {
@@ -984,9 +986,25 @@ static int find_symref(const char *refname, const struct object_id *oid,
 	return 0;
 }
 
+static void read_early_capabilities(void)
+{
+	char *line;
+
+	while ((line = packet_read_line(0, NULL))) {
+		/*
+		 * Ignore unknown capabilities; we will not ACK them to the
+		 * client, which will let it know that we did not understand it
+		 * (or choose not to respect it).
+		 */
+	}
+}
+
 static void upload_pack(void)
 {
 	struct string_list symref = STRING_LIST_INIT_DUP;
+
+	if (early_capabilities)
+		read_early_capabilities();
 
 	head_ref_namespaced(find_symref, &symref);
 
@@ -1050,6 +1068,8 @@ int cmd_main(int argc, const char **argv)
 			 N_("exit immediately after initial ref advertisement")),
 		OPT_BOOL(0, "strict", &strict,
 			 N_("do not try <directory>/.git/ if <directory> is no Git directory")),
+		OPT_BOOL(0, "early-capabilities", &early_capabilities,
+			 N_("expect early capabilities advertisement from client")),
 		OPT_INTEGER(0, "timeout", &timeout,
 			    N_("interrupt transfer after <n> seconds of inactivity")),
 		OPT_END()
