@@ -383,7 +383,29 @@ static void copy_request(const char *prog_name, int out)
 	free(buf);
 }
 
-static void run_service(const char **argv, int buffer_input)
+static void write_early_capabilities(const char *prog, int out)
+{
+	struct string_list *parameters = get_parameters();
+	int i;
+
+	for (i = 0; i < parameters->nr; i++) {
+		struct string_list_item *p = &parameters->items[i];
+		const char *name;
+
+		if (!skip_prefix(p->string, "early-", &name))
+			continue;
+
+		if (p->util)
+			packet_write(out, "%s=%s", name, (const char *)p->util);
+		else
+			packet_write(out, "%s", name);
+	}
+	packet_flush(out);
+	close(out);
+}
+
+static void run_service(const char **argv, int buffer_input,
+			int feed_early_capabilities)
 {
 	const char *encoding = getenv("HTTP_CONTENT_ENCODING");
 	const char *user = getenv("REMOTE_USER");
@@ -408,7 +430,7 @@ static void run_service(const char **argv, int buffer_input)
 				 "GIT_COMMITTER_EMAIL=%s@http.%s", user, host);
 
 	cld.argv = argv;
-	if (buffer_input || gzipped_request)
+	if (buffer_input || gzipped_request || feed_early_capabilities)
 		cld.in = -1;
 	cld.git_cmd = 1;
 	if (start_command(&cld))
@@ -419,6 +441,8 @@ static void run_service(const char **argv, int buffer_input)
 		inflate_request(argv[0], cld.in, buffer_input);
 	else if (buffer_input)
 		copy_request(argv[0], cld.in);
+	else if (feed_early_capabilities)
+		write_early_capabilities(argv[0], cld.in);
 	else
 		close(0);
 
@@ -456,6 +480,7 @@ static void get_info_refs(struct strbuf *hdr, char *arg)
 	if (service_name) {
 		const char *argv[] = {NULL /* service name */,
 			"--stateless-rpc", "--advertise-refs",
+			"--early-capabilities",
 			".", NULL};
 		struct rpc_service *svc = select_service(hdr, service_name);
 
@@ -468,7 +493,7 @@ static void get_info_refs(struct strbuf *hdr, char *arg)
 		packet_flush(1);
 
 		argv[0] = svc->name;
-		run_service(argv, 0);
+		run_service(argv, 0, 1);
 
 	} else {
 		select_getanyfile(hdr);
@@ -572,7 +597,7 @@ static void service_rpc(struct strbuf *hdr, char *service_name)
 	end_headers(hdr);
 
 	argv[0] = svc->name;
-	run_service(argv, svc->buffer_input);
+	run_service(argv, svc->buffer_input, 0);
 	strbuf_release(&buf);
 }
 
