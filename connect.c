@@ -709,11 +709,17 @@ struct child_process *git_connect(int fd[2], const char *url,
 	struct child_process *conn = &no_fork;
 	enum protocol protocol;
 	struct strbuf cmd = STRBUF_INIT;
+	const char *early_capabilities;
 
 	/* Without this we cannot rely on waitpid() to tell
 	 * what happened to our children.
 	 */
 	signal(SIGCHLD, SIG_DFL);
+
+	if (flags & CONNECT_EARLY_CAPABILITIES)
+		early_capabilities = " --early-capabilities";
+	else
+		early_capabilities = "";
 
 	protocol = parse_connect_url(url, &hostandport, &path);
 	if ((flags & CONNECT_DIAG_URL) && (protocol != PROTO_SSH)) {
@@ -751,15 +757,16 @@ struct child_process *git_connect(int fd[2], const char *url,
 		 * will cause older git-daemon servers to crash.
 		 */
 		packet_write_fmt(fd[1],
-			     "%s %s%chost=%s%c",
-			     prog, path, 0,
-			     target_host, 0);
+				 "%s%s %s%chost=%s%c",
+				 prog, early_capabilities, path, 0,
+				 target_host, 0);
 		free(target_host);
 	} else {
 		conn = xmalloc(sizeof(*conn));
 		child_process_init(conn);
 
 		strbuf_addstr(&cmd, prog);
+		strbuf_addstr(&cmd, early_capabilities);
 		strbuf_addch(&cmd, ' ');
 		sq_quote_buf(&cmd, path);
 
