@@ -63,6 +63,8 @@ static int advertise_refs;
 static int stateless_rpc;
 static const char *pack_objects_hook;
 
+static int sent_capabilities;
+
 static void reset_timeout(void)
 {
 	alarm(timeout);
@@ -919,37 +921,47 @@ static void format_symref_info(struct strbuf *buf, struct string_list *symref)
 		strbuf_addf(buf, " symref=%s:%s", item->string, (char *)item->util);
 }
 
-static int send_ref(const char *refname, const struct object_id *oid,
-		    int flag, void *cb_data)
+static void send_one_refname(const char *refname,
+			     const struct object_id *oid,
+			     struct string_list *symref_data)
 {
 	static const char *capabilities = "multi_ack thin-pack side-band"
 		" side-band-64k ofs-delta shallow deepen-since deepen-not"
 		" deepen-relative no-progress include-tag multi_ack_detailed";
+	struct strbuf symref_info = STRBUF_INIT;
+
+	if (sent_capabilities) {
+		packet_write_fmt(1, "%s %s\n", oid_to_hex(oid), refname);
+		return;
+	}
+
+	format_symref_info(&symref_info, symref_data);
+	packet_write_fmt(1, "%s %s%c%s%s%s%s%s agent=%s\n",
+			 oid_to_hex(oid), refname,
+			 0, capabilities,
+			 (allow_unadvertised_object_request & ALLOW_TIP_SHA1) ?
+			     " allow-tip-sha1-in-want" : "",
+			 (allow_unadvertised_object_request & ALLOW_REACHABLE_SHA1) ?
+			     " allow-reachable-sha1-in-want" : "",
+			 stateless_rpc ? " no-done" : "",
+			 symref_info.buf,
+			 git_user_agent_sanitized());
+	strbuf_release(&symref_info);
+
+	sent_capabilities = 1;
+}
+
+static int send_ref(const char *refname, const struct object_id *oid,
+		    int flag, void *cb_data)
+{
 	const char *refname_nons = strip_namespace(refname);
 	struct object_id peeled;
 
 	if (mark_our_ref(refname_nons, refname, oid))
 		return 0;
 
-	if (capabilities) {
-		struct strbuf symref_info = STRBUF_INIT;
+	send_one_refname(refname_nons, oid, cb_data);
 
-		format_symref_info(&symref_info, cb_data);
-		packet_write_fmt(1, "%s %s%c%s%s%s%s%s agent=%s\n",
-			     oid_to_hex(oid), refname_nons,
-			     0, capabilities,
-			     (allow_unadvertised_object_request & ALLOW_TIP_SHA1) ?
-				     " allow-tip-sha1-in-want" : "",
-			     (allow_unadvertised_object_request & ALLOW_REACHABLE_SHA1) ?
-				     " allow-reachable-sha1-in-want" : "",
-			     stateless_rpc ? " no-done" : "",
-			     symref_info.buf,
-			     git_user_agent_sanitized());
-		strbuf_release(&symref_info);
-	} else {
-		packet_write_fmt(1, "%s %s\n", oid_to_hex(oid), refname_nons);
-	}
-	capabilities = NULL;
 	if (!peel_ref(refname, peeled.hash))
 		packet_write_fmt(1, "%s %s^{}\n", oid_to_hex(&peeled), refname_nons);
 	return 0;
