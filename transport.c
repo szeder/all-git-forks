@@ -188,6 +188,7 @@ static int connect_setup(struct transport *transport, int for_push)
 
 	if (data->conn && transport->early_capabilities) {
 		int fd = data->fd[1];
+		int i;
 
 		/*
 		 * This does nothing by itself, but ensures that if our
@@ -195,6 +196,15 @@ static int connect_setup(struct transport *transport, int for_push)
 		 * an error from the other side.
 		 */
 		packet_write(fd, "early-capabilities");
+
+		if (transport->ignore_advertise_prefixes)
+			argv_array_clear(&transport->advertise_prefixes);
+
+		for (i = 0; i < transport->advertise_prefixes.argc; i++) {
+			packet_write(fd, "advertise-prefix=%s",
+				     transport->advertise_prefixes.argv[i]);
+		}
+
 		packet_flush(fd);
 		transport->sent_early_capabilities = 1;
 	}
@@ -851,6 +861,8 @@ struct transport *transport_get(struct remote *remote, const char *url)
 		if (remote->receivepack)
 			ret->smart_options->receivepack = remote->receivepack;
 	}
+
+	argv_array_init(&ret->advertise_prefixes);
 
 	return ret;
 }

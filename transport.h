@@ -129,6 +129,20 @@ struct transport {
 	 */
 	int early_capabilities;
 
+	/**
+	 * Set of "interesting" ref prefixes to ask the server for; note that
+	 * the server may not implement this feature, so callers should be
+	 * prepared to see refs outside of this space.
+	 *
+	 * For the convenience of callers, the whole list is ignored if the
+	 * "ignore" flag is set. This is because callers may build up this list
+	 * progressively but find out part-way through that the feature cannot
+	 * represent their needs. Sending a partial list of prefixes is wrong,
+	 * so we must fallback to sending nothing in that case.
+	 */
+	struct argv_array advertise_prefixes;
+	int ignore_advertise_prefixes;
+
 	/*
 	 * Used internally by the transport code; should not be set by callers.
 	 */
