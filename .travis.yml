@@ -86,8 +86,9 @@ before_install:
       brew_force_set_latest_binary_hash perforce-server
       # Uncomment this if you want to run perf tests:
       # brew install gnu-time
-      brew install git-lfs perforce-server perforce gettext
+      brew install git-lfs perforce-server perforce gettext openssl
       brew link --force gettext
+      brew link --force openssl
       ;;
     esac;
     echo "$(tput setaf 6)Perforce Server Version$(tput sgr0)";
