@@ -178,10 +178,26 @@ static int connect_setup(struct transport *transport, int for_push)
 	case TRANSPORT_FAMILY_IPV6: flags |= CONNECT_IPV6; break;
 	}
 
+	if (transport->early_capabilities)
+		flags |= CONNECT_EARLY_CAPABILITIES;
+
 	data->conn = git_connect(data->fd, transport->url,
 				 for_push ? data->options.receivepack :
 				 data->options.uploadpack,
 				 flags);
+
+	if (data->conn && transport->early_capabilities) {
+		int fd = data->fd[1];
+
+		/*
+		 * This does nothing by itself, but ensures that if our
+		 * --early-capabilities flag is somehow lost we provoke
+		 * an error from the other side.
+		 */
+		packet_write(fd, "early-capabilities");
+		packet_flush(fd);
+		transport->sent_early_capabilities = 1;
+	}
 
 	return 0;
 }
@@ -197,6 +213,10 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 			 &data->extra_have,
 			 &data->shallow);
 	data->got_remote_heads = 1;
+
+	if (transport->sent_early_capabilities &&
+	    !server_supports("early-capabilities"))
+		die("server does not speak our early-capabilities protocol");
 
 	return refs;
 }
@@ -544,6 +564,9 @@ static int git_transport_push(struct transport *transport, struct ref *remote_re
 		get_remote_heads(data->fd[0], NULL, 0, &tmp_refs, REF_NORMAL,
 				 NULL, &data->shallow);
 		data->got_remote_heads = 1;
+		if (transport->early_capabilities &&
+		    !server_supports("early-capabilities"))
+			die("server does not support our early-capabilities protocol");
 	}
 
 	memset(&args, 0, sizeof(args));

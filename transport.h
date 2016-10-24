@@ -121,6 +121,19 @@ struct transport {
 	 * in transport_set_verbosity().
 	 **/
 	unsigned progress : 1;
+
+	/**
+	 * Set to 0/1 based on whether the transport should ask the remote
+	 * for early capabilities. Set to -1 for auto-detection based on
+	 * past conversations.
+	 */
+	int early_capabilities;
+
+	/*
+	 * Used internally by the transport code; should not be set by callers.
+	 */
+	int sent_early_capabilities;
+
 	/*
 	 * If transport is at least potentially smart, this points to
 	 * git_transport_options structure to use in case transport
