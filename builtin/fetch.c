@@ -40,6 +40,7 @@ static int progress = -1, recurse_submodules = RECURSE_SUBMODULES_DEFAULT;
 static int tags = TAGS_DEFAULT, unshallow, update_shallow, deepen;
 static int max_children = -1;
 static enum transport_family family;
+static int early_capabilities = -1;
 static const char *depth;
 static const char *deepen_since;
 static const char *upload_pack;
@@ -141,6 +142,8 @@ static struct option builtin_fetch_options[] = {
 			TRANSPORT_FAMILY_IPV4),
 	OPT_SET_INT('6', "ipv6", &family, N_("use IPv6 addresses only"),
 			TRANSPORT_FAMILY_IPV6),
+	OPT_BOOL(0, "early-capabilities", &early_capabilities,
+		 N_("force early-capabilities transport flag")),
 	OPT_END()
 };
 
@@ -1020,6 +1023,8 @@ static struct transport *prepare_transport(struct remote *remote, int deepen)
 		set_option(transport, TRANS_OPT_DEEPEN_RELATIVE, "yes");
 	if (update_shallow)
 		set_option(transport, TRANS_OPT_UPDATE_SHALLOW, "yes");
+	if (early_capabilities >= 0)
+		transport->early_capabilities = early_capabilities;
 	return transport;
 }
 
