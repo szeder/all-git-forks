@@ -1012,6 +1012,8 @@ static void upload_pack(void)
 		reset_timeout();
 		head_ref_namespaced(send_ref, &symref);
 		for_each_namespaced_ref(send_ref, &symref);
+		if (!sent_capabilities)
+			send_one_refname("capabilities^{}", &null_oid, &symref);
 		advertise_shallow_grafts(1);
 		packet_flush(1);
 	} else {
