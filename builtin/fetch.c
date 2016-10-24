@@ -305,6 +305,33 @@ static void find_non_local_tags(struct transport *transport,
 	string_list_clear(&remote_refs, 0);
 }
 
+static void add_advertise_prefixes(struct transport *transport,
+				   const struct refspec *refs, int nr)
+{
+	struct argv_array *list = &transport->advertise_prefixes;
+	int i;
+
+	for (i = 0; i < nr; i++) {
+		const struct refspec *rs = &refs[i];
+		size_t len;
+
+		if (!rs->pattern)
+			argv_array_push(list, rs->src);
+		else if (strip_suffix(rs->src, "/*", &len))
+			argv_array_pushf(list, "%.*s", (int)len, rs->src);
+		else {
+			/*
+			 * This refspec is too complex for us to communicate;
+			 * not only do we skip it, but we must avoid
+			 * communicating any prefixes, since we need to see
+			 * all refs.
+			 */
+			transport->ignore_advertise_prefixes = 1;
+			return;
+		}
+	}
+}
+
 static struct ref *get_ref_map(struct transport *transport,
 			       struct refspec *refspecs, int refspec_count,
 			       int tags, int *autotags)
@@ -317,11 +344,17 @@ static struct ref *get_ref_map(struct transport *transport,
 	/* opportunistically-updated references: */
 	struct ref *orefs = NULL, **oref_tail = &orefs;
 
-	const struct ref *remote_refs = transport_get_remote_refs(transport);
+	const struct ref *remote_refs;
+
+	if (tags == TAGS_SET || (tags == TAGS_DEFAULT && *autotags))
+		add_advertise_prefixes(transport, tag_refspec, 1);
 
 	if (refspec_count) {
 		struct refspec *fetch_refspec;
 		int fetch_refspec_nr;
+
+		add_advertise_prefixes(transport, refspecs, refspec_count);
+		remote_refs = transport_get_remote_refs(transport);
 
 		for (i = 0; i < refspec_count; i++) {
 			get_fetch_map(remote_refs, &refspecs[i], &tail, 0);
@@ -373,6 +406,17 @@ static struct ref *get_ref_map(struct transport *transport,
 		    (remote->fetch_refspec_nr ||
 		     /* Note: has_merge implies non-NULL branch->remote_name */
 		     (has_merge && !strcmp(branch->remote_name, remote->name)))) {
+
+			add_advertise_prefixes(transport, remote->fetch,
+					       remote->fetch_refspec_nr);
+			if (has_merge && !strcmp(branch->remote_name, remote->name)) {
+				int i;
+				for (i = 0; i < branch->merge_nr; i++)
+					add_advertise_prefixes(transport, branch->merge[i], 1);
+			}
+
+			remote_refs = transport_get_remote_refs(transport);
+
 			for (i = 0; i < remote->fetch_refspec_nr; i++) {
 				get_fetch_map(remote_refs, &remote->fetch[i], &tail, 0);
 				if (remote->fetch[i].dst &&
@@ -393,6 +437,8 @@ static struct ref *get_ref_map(struct transport *transport,
 			    !strcmp(branch->remote_name, remote->name))
 				add_merge_config(&ref_map, remote_refs, branch, &tail);
 		} else {
+			argv_array_push(&transport->advertise_prefixes, "HEAD");
+			remote_refs = transport_get_remote_refs(transport);
 			ref_map = get_remote_ref(remote_refs, "HEAD");
 			if (!ref_map)
 				die(_("Couldn't find remote ref HEAD"));
