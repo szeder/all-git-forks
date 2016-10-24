@@ -56,6 +56,7 @@ static struct string_list option_required_reference = STRING_LIST_INIT_NODUP;
 static struct string_list option_optional_reference = STRING_LIST_INIT_NODUP;
 static int option_dissociate;
 static int max_jobs = -1;
+static int early_capabilities = -1;
 
 static struct option builtin_clone_options[] = {
 	OPT__VERBOSITY(&option_verbosity),
@@ -112,6 +113,8 @@ static struct option builtin_clone_options[] = {
 			TRANSPORT_FAMILY_IPV4),
 	OPT_SET_INT('6', "ipv6", &family, N_("use IPv6 addresses only"),
 			TRANSPORT_FAMILY_IPV6),
+	OPT_BOOL(0, "early-capabilities", &early_capabilities,
+		 N_("force early capabilities flag for transport")),
 	OPT_END()
 };
 
@@ -835,6 +838,40 @@ static void dissociate_from_references(void)
 	free(alternates);
 }
 
+static void set_advertise_prefixes(struct transport *transport)
+{
+	struct argv_array *list = &transport->advertise_prefixes;
+
+	if (option_single_branch) {
+		if (option_branch)
+			argv_array_pushf(list, "refs/heads/%s", option_branch);
+		else {
+			/*
+			 * We just want to fetch HEAD. In theory we might have
+			 * to get the whole list of refs to guess which
+			 * branch HEAD points to, but in practice versions of
+			 * git which know about advertise-prefix also know how
+			 * to output the symref explicitly.
+			 */
+			argv_array_push(list, "HEAD");
+		}
+
+		/*
+		 * We must include tags even in single-branch mode in order to
+		 * do tag-following (and also because --branch may point to a
+		 * tag.
+		 */
+		argv_array_push(list, "refs/tags");
+	} else if (option_mirror) {
+		/* No point in limiting if we are mirroring everything. */
+	} else {
+		/* Otherwise, the default is to fetch only heads and tags */
+		argv_array_push(list, "HEAD");
+		argv_array_push(list, "refs/heads");
+		argv_array_push(list, "refs/tags");
+	}
+}
+
 int cmd_clone(int argc, const char **argv, const char *prefix)
 {
 	int is_bundle = 0, is_local;
@@ -1054,6 +1091,11 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	if (transport->smart_options && !deepen)
 		transport->smart_options->check_self_contained_and_connected = 1;
+
+	if (early_capabilities >= 0)
+		transport->early_capabilities = early_capabilities;
+	if (transport->early_capabilities)
+		set_advertise_prefixes(transport);
 
 	refs = transport_get_remote_refs(transport);
 
