@@ -14,9 +14,9 @@ test_expect_success 'setup remote repo' '
 
 test_expect_success 'setup proxy script' '
 	write_script proxy-get-cmd "$PERL_PATH" <<-\EOF &&
-	read(STDIN, $buf, 4);
+	sysread(STDIN, $buf, 4);
 	my $n = hex($buf) - 4;
-	read(STDIN, $buf, $n);
+	sysread(STDIN, $buf, $n);
 	my ($cmd, $other) = split /\0/, $buf;
 	# drop absolute-path on repo name
 	$cmd =~ s{ /}{ };
