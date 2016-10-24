@@ -65,6 +65,7 @@ static const char *pack_objects_hook;
 
 static int sent_capabilities;
 static int early_capabilities;
+static struct string_list advertise_prefixes = STRING_LIST_INIT_DUP;
 
 static void reset_timeout(void)
 {
@@ -953,6 +954,24 @@ static void send_one_refname(const char *refname,
 	sent_capabilities = 1;
 }
 
+static int client_wants_ref_advertised(const char *refname)
+{
+	size_t i;
+
+	/* If the client gave us no restrictions, advertise everything. */
+	if (!advertise_prefixes.nr)
+		return 1;
+
+	for (i = 0; i < advertise_prefixes.nr; i++) {
+		const char *prefix = advertise_prefixes.items[i].string;
+		const char *v;
+		if (skip_prefix(refname, prefix, &v) &&
+		    (*v == '/' || *v == '\0'))
+			return 1;
+	}
+	return 0;
+}
+
 static int send_ref(const char *refname, const struct object_id *oid,
 		    int flag, void *cb_data)
 {
@@ -960,6 +979,9 @@ static int send_ref(const char *refname, const struct object_id *oid,
 	struct object_id peeled;
 
 	if (mark_our_ref(refname_nons, refname, oid))
+		return 0;
+
+	if (!client_wants_ref_advertised(refname_nons))
 		return 0;
 
 	send_one_refname(refname_nons, oid, cb_data);
@@ -991,6 +1013,11 @@ static void read_early_capabilities(void)
 	char *line;
 
 	while ((line = packet_read_line(0, NULL))) {
+		const char *v;
+
+		if (skip_prefix(line, "advertise-prefix=", &v))
+			string_list_append(&advertise_prefixes, v);
+
 		/*
 		 * Ignore unknown capabilities; we will not ACK them to the
 		 * client, which will let it know that we did not understand it
