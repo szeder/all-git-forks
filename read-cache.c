@@ -156,11 +156,14 @@ void fill_stat_cache_info(struct cache_entry *ce, struct stat *st)
 static int ce_compare_data(const struct cache_entry *ce, struct stat *st)
 {
 	int match = -1;
-	int fd = open(ce->name, O_RDONLY | O_CLOEXEC);
+	static int cloexec = O_CLOEXEC;
+	int fd = open(ce->name, O_RDONLY | cloexec);
 
-	if (O_CLOEXEC && fd < 0 && errno == EINVAL)
+	if ((cloexec & O_CLOEXEC) && fd < 0 && errno == EINVAL) {
 		/* Try again w/o O_CLOEXEC: the kernel might not support it */
-		fd = open(ce->name, O_RDONLY);
+		cloexec &= ~O_CLOEXEC;
+		return ce_compare_data(ce, st);
+	}
 
 	if (fd >= 0) {
 		unsigned char sha1[20];
