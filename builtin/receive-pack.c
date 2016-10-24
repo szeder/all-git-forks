@@ -80,6 +80,8 @@ static long nonce_stamp_slop;
 static unsigned long nonce_stamp_slop_limit;
 static struct ref_transaction *transaction;
 
+static int early_capabilities;
+
 static enum {
 	KEEPALIVE_NEVER = 0,
 	KEEPALIVE_AFTER_NUL,
@@ -232,7 +234,8 @@ static void show_ref(const char *path, const unsigned char *sha1)
 		struct strbuf cap = STRBUF_INIT;
 
 		strbuf_addstr(&cap,
-			      "report-status delete-refs side-band-64k quiet");
+			      "report-status delete-refs side-band-64k quiet"
+			      " early-capabilities");
 		if (advertise_atomic_push)
 			strbuf_addstr(&cap, " atomic");
 		if (prefer_ofs_delta)
@@ -1871,6 +1874,19 @@ static int delete_only(struct command *commands)
 	return 1;
 }
 
+static void read_early_capabilities(void)
+{
+	char *line;
+
+	while ((line = packet_read_line(0, NULL))) {
+		/*
+		 * Ignore unknown capabilities; we will not ACK them to the
+		 * client, which will let it know that we did not understand it
+		 * (or choose not to respect it).
+		 */
+	}
+}
+
 int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 {
 	int advertise_refs = 0;
@@ -1884,6 +1900,7 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		OPT_HIDDEN_BOOL(0, "stateless-rpc", &stateless_rpc, NULL),
 		OPT_HIDDEN_BOOL(0, "advertise-refs", &advertise_refs, NULL),
 		OPT_HIDDEN_BOOL(0, "reject-thin-pack-for-testing", &reject_thin, NULL),
+		OPT_HIDDEN_BOOL(0, "early-capabilities", &early_capabilities, NULL),
 		OPT_END()
 	};
 
@@ -1911,6 +1928,9 @@ int cmd_receive_pack(int argc, const char **argv, const char *prefix)
 		unpack_limit = transfer_unpack_limit;
 	else if (0 <= receive_unpack_limit)
 		unpack_limit = receive_unpack_limit;
+
+	if (early_capabilities)
+		read_early_capabilities();
 
 	if (advertise_refs || !stateless_rpc) {
 		write_head_info();
