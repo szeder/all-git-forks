@@ -557,6 +557,9 @@ extern int daemonize(void);
 		} \
 	} while (0)
 
+#define NEXT_RING_ITEM(array, index) \
+	(array)[(index) = ((index) + 1) % ARRAY_SIZE(array)]
+
 /* Initialize and use the cache information */
 struct lock_file;
 extern int read_index(struct index_state *);
