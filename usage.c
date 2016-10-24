@@ -105,9 +105,23 @@ void NORETURN usagef(const char *err, ...)
 	va_end(params);
 }
 
+void NORETURN usagef_(const char *err, ...)
+{
+	va_list params;
+
+	va_start(params, err);
+	usage_routine(_("usage: "), err, params);
+	va_end(params);
+}
+
 void NORETURN usage(const char *err)
 {
 	usagef("%s", err);
+}
+
+void NORETURN usage_(const char *err)
+{
+	usagef_("%s", err);
 }
 
 void NORETURN die(const char *err, ...)
@@ -121,6 +135,20 @@ void NORETURN die(const char *err, ...)
 
 	va_start(params, err);
 	die_routine("fatal: ", err, params);
+	va_end(params);
+}
+
+void NORETURN die_(const char *err, ...)
+{
+	va_list params;
+
+	if (die_is_recursing()) {
+		fputs(_("fatal: recursion detected in die handler\n"), stderr);
+		exit(128);
+	}
+
+	va_start(params, err);
+	die_routine(_("fatal: "), err, params);
 	va_end(params);
 }
 
@@ -163,6 +191,22 @@ void NORETURN die_errno(const char *fmt, ...)
 	va_end(params);
 }
 
+void NORETURN die_errno_(const char *fmt, ...)
+{
+	char buf[1024];
+	va_list params;
+
+	if (die_is_recursing()) {
+		fputs(_("fatal: recursion detected in die_errno handler\n"),
+			stderr);
+		exit(128);
+	}
+
+	va_start(params, fmt);
+	die_routine(_("fatal: "), fmt_with_err(buf, sizeof(buf), fmt), params);
+	va_end(params);
+}
+
 #undef error_errno
 int error_errno(const char *fmt, ...)
 {
@@ -175,6 +219,17 @@ int error_errno(const char *fmt, ...)
 	return -1;
 }
 
+int error_errno_(const char *fmt, ...)
+{
+	char buf[1024];
+	va_list params;
+
+	va_start(params, fmt);
+	error_routine(_("error: "), fmt_with_err(buf, sizeof(buf), fmt), params);
+	va_end(params);
+	return -1;
+}
+
 #undef error
 int error(const char *err, ...)
 {
@@ -182,6 +237,16 @@ int error(const char *err, ...)
 
 	va_start(params, err);
 	error_routine("error: ", err, params);
+	va_end(params);
+	return -1;
+}
+
+int error_(const char *err, ...)
+{
+	va_list params;
+
+	va_start(params, err);
+	error_routine(_("error: "), err, params);
 	va_end(params);
 	return -1;
 }
@@ -202,5 +267,14 @@ void warning(const char *warn, ...)
 
 	va_start(params, warn);
 	warn_routine("warning: ", warn, params);
+	va_end(params);
+}
+
+void warning_(const char *warn, ...)
+{
+	va_list params;
+
+	va_start(params, warn);
+	warn_routine(_("warning: "), warn, params);
 	va_end(params);
 }
