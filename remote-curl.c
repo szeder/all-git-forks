@@ -36,6 +36,8 @@ struct options {
 static struct options options;
 static struct string_list cas_options = STRING_LIST_INIT_DUP;
 
+static struct strbuf early_capabilities = STRBUF_INIT;
+
 static int set_option(const char *name, const char *value)
 {
 	if (!strcmp(name, "verbosity")) {
@@ -289,6 +291,7 @@ static struct discovery *discover_refs(const char *service, int for_push)
 		else
 			strbuf_addch(&refs_url, '&');
 		strbuf_addf(&refs_url, "service=%s", service);
+		strbuf_addbuf(&refs_url, &early_capabilities);
 	}
 
 	memset(&http_options, 0, sizeof(http_options));
@@ -1013,6 +1016,30 @@ static void parse_push(struct strbuf *buf)
 	free(specs);
 }
 
+/*
+ * We store the list of early capabilities directly in url-encoded form,
+ * since their only use is to be passed along via the refs url.
+ */
+static void append_early_capability(struct strbuf *out, const char *value)
+{
+	const char *equal_sign;
+
+	/*
+	 * We know there is always at least a "service" parameter, so we can
+	 * just start directly with "&" for each parameter we add.
+	 */
+	strbuf_addstr(out, "&early-");
+
+	equal_sign = strchr(value, '=');
+	if (equal_sign) {
+		strbuf_add_urlencode(out, value, equal_sign - value, 1);
+		strbuf_addch(out, '=');
+		strbuf_addstr_urlencode(out, equal_sign + 1, 1);
+	} else {
+		strbuf_addstr_urlencode(out, value, 1);
+	}
+}
+
 int cmd_main(int argc, const char **argv)
 {
 	struct strbuf buf = STRBUF_INIT;
@@ -1079,11 +1106,17 @@ int cmd_main(int argc, const char **argv)
 				printf("unsupported\n");
 			fflush(stdout);
 
+		} else if (skip_prefix(buf.buf, "early-capability ", &arg)) {
+			append_early_capability(&early_capabilities, arg);
+			printf("ok\n");
+			fflush(stdout);
+
 		} else if (!strcmp(buf.buf, "capabilities")) {
 			printf("fetch\n");
 			printf("option\n");
 			printf("push\n");
 			printf("check-connectivity\n");
+			printf("early-capability\n");
 			printf("\n");
 			fflush(stdout);
 		} else {
