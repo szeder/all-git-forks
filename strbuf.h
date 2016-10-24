@@ -565,7 +565,19 @@ static inline void strbuf_complete_line(struct strbuf *sb)
 extern int strbuf_branchname(struct strbuf *sb, const char *name);
 extern int strbuf_check_branch_ref(struct strbuf *sb, const char *name);
 
-extern void strbuf_addstr_urlencode(struct strbuf *, const char *,
+/**
+ * Append the buffer to the strbuf, using url percent-encoding for any
+ * characters that need it (according to rfc3986). If the "reserved" flag is
+ * true, percent-encode anything on the rfc3986 reserved list (this is usually
+ * what you want).
+ */
+extern void strbuf_add_urlencode(struct strbuf *sb, const char *buf,
+				 size_t len, int reserved);
+
+/**
+ * Like strbuf_add_urlencode, but for strings.
+ */
+extern void strbuf_addstr_urlencode(struct strbuf *sb, const char *str,
 				    int reserved);
 
 __attribute__((format (printf,1,2)))
