@@ -71,25 +71,15 @@ unsigned parse_whitespace_rule(const char *string)
 	return rule;
 }
 
-static void setup_whitespace_attr_check(struct git_attr_check *check)
-{
-	static struct git_attr *attr_whitespace;
-
-	if (!attr_whitespace)
-		attr_whitespace = git_attr("whitespace");
-	check[0].attr = attr_whitespace;
-}
-
 unsigned whitespace_rule(const char *pathname)
 {
-	struct git_attr_check attr_whitespace_rule;
+	static struct git_attr_check *attr_whitespace_rule;
+	struct git_attr_result result[1];
 
-	setup_whitespace_attr_check(&attr_whitespace_rule);
-	if (!git_check_attr(pathname, 1, &attr_whitespace_rule)) {
-		const char *value;
+	git_attr_check_initl(&attr_whitespace_rule, "whitespace", NULL);
 
-		value = attr_whitespace_rule.value;
-		if (ATTR_TRUE(value)) {
+	if (!git_check_attr(pathname, attr_whitespace_rule, result)) {
+		if (ATTR_TRUE(result[0].value)) {
 			/* true (whitespace) */
 			unsigned all_rule = ws_tab_width(whitespace_rule_cfg);
 			int i;
@@ -98,15 +88,15 @@ unsigned whitespace_rule(const char *pathname)
 				    !whitespace_rule_names[i].exclude_default)
 					all_rule |= whitespace_rule_names[i].rule_bits;
 			return all_rule;
-		} else if (ATTR_FALSE(value)) {
+		} else if (ATTR_FALSE(result[0].value)) {
 			/* false (-whitespace) */
 			return ws_tab_width(whitespace_rule_cfg);
-		} else if (ATTR_UNSET(value)) {
+		} else if (ATTR_UNSET(result[0].value)) {
 			/* reset to default (!whitespace) */
 			return whitespace_rule_cfg;
 		} else {
 			/* string */
-			return parse_whitespace_rule(value);
+			return parse_whitespace_rule(result[0].value);
 		}
 	} else {
 		return whitespace_rule_cfg;
