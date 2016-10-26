@@ -3151,24 +3151,16 @@ int create_object_tmpfile(struct strbuf *tmp, const char *filename)
 	return fd;
 }
 
-static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
-			      const void *buf, unsigned long len, time_t mtime)
+static void write_loose_object_internal(const unsigned char *sha1,
+					char *hdr, int hdrlen,
+					const void *buf, unsigned long len,
+					int fd)
 {
-	int fd, ret;
+	int ret;
 	unsigned char compressed[4096];
 	git_zstream stream;
 	git_SHA_CTX c;
 	unsigned char parano_sha1[20];
-	static struct strbuf tmp_file = STRBUF_INIT;
-	const char *filename = sha1_file_name(sha1);
-
-	fd = create_object_tmpfile(&tmp_file, filename);
-	if (fd < 0) {
-		if (errno == EACCES)
-			return error("insufficient permission for adding an object to repository database %s", get_object_directory());
-		else
-			return error_errno("unable to create temporary file");
-	}
 
 	/* Set it up */
 	git_deflate_init(&stream, zlib_compression_level);
@@ -3204,6 +3196,24 @@ static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
 	git_SHA1_Final(parano_sha1, &c);
 	if (hashcmp(sha1, parano_sha1) != 0)
 		die("confused by unstable object source data for %s", sha1_to_hex(sha1));
+}
+
+static int write_loose_object(const unsigned char *sha1, char *hdr, int hdrlen,
+			      const void *buf, unsigned long len, time_t mtime)
+{
+	int fd;
+	const char *filename = sha1_file_name(sha1);
+	static struct strbuf tmp_file = STRBUF_INIT;
+
+	fd = create_object_tmpfile(&tmp_file, filename);
+	if (fd < 0) {
+		if (errno == EACCES)
+			return error("insufficient permission for adding an object to repository database %s", get_object_directory());
+		else
+			return error_errno("unable to create temporary file");
+	}
+
+	write_loose_object_internal(sha1, hdr, hdrlen, buf, len, fd);
 
 	close_sha1_file(fd);
 
