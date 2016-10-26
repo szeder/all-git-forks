@@ -100,7 +100,7 @@ int external_odb_fetch_object(const unsigned char *sha1)
 			return -1;
 		}
 
-		if (odb_helper_fetch_object(o, sha1, fd) < 0) {
+		if (odb_helper_read_object(o, sha1, fd) < 0) {
 			close(fd);
 			unlink(tmpfile.buf);
 			strbuf_release(&tmpfile);
