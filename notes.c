@@ -1208,7 +1208,8 @@ void free_notes(struct notes_tree *t)
  * for human consumption.
  */
 static void format_note(struct notes_tree *t, const unsigned char *object_sha1,
-			struct strbuf *sb, const char *output_encoding, int raw)
+			struct strbuf *sb, const char *output_encoding, int raw,
+			int name_trees)
 {
 	static const char utf8[] = "utf-8";
 	const unsigned char *sha1;
@@ -1246,7 +1247,7 @@ static void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 
 	if (!raw) {
 		const char *ref = t->ref;
-		if (!ref || !strcmp(ref, GIT_NOTES_DEFAULT_REF)) {
+		if (!name_trees && (!ref || !strcmp(ref, GIT_NOTES_DEFAULT_REF))) {
 			strbuf_addstr(sb, "\nNotes:\n");
 		} else {
 			if (starts_with(ref, "refs/"))
@@ -1272,11 +1273,12 @@ static void format_note(struct notes_tree *t, const unsigned char *object_sha1,
 void format_display_notes(const unsigned char *object_sha1,
 			  struct strbuf *sb, const char *output_encoding, int raw)
 {
-	int i;
+	int i, name_trees;
 	assert(display_notes_trees);
+	name_trees = display_notes_trees[0] && display_notes_trees[1];
 	for (i = 0; display_notes_trees[i]; i++)
 		format_note(display_notes_trees[i], object_sha1, sb,
-			    output_encoding, raw);
+			    output_encoding, raw, name_trees);
 }
 
 int copy_note(struct notes_tree *t,
