@@ -12,6 +12,7 @@ SYNOPSIS
 'git diff' [options] [<commit>] [--] [<path>...]
 'git diff' [options] --cached [<commit>] [--] [<path>...]
 'git diff' [options] <commit> <commit> [--] [<path>...]
+'git diff' [options] <commit> <commit> <commit> [<commit>...]
 'git diff' [options] <blob> <blob>
 'git diff' [options] [--no-index] [--] <path> <path>
 
@@ -75,9 +76,16 @@ two blob objects, or changes between two files on disk.
 	"git diff $(git-merge-base A B) B".  You can omit any one
 	of <commit>, which has the same effect as using HEAD instead.
 
+'git diff' [options] <commit> <commit> <commit> [<commit>...]::
+
+	This is to view a combined diff between the first <commit>
+	and the remaining ones, just like viewing a combined diff
+	for a merge commit (see below) where the first <commit>
+	is the merge commit and the remaining ones are the parents.
+
 Just in case if you are doing something exotic, it should be
 noted that all of the <commit> in the above description, except
-in the last two forms that use ".." notations, can be any
+in the two forms that use ".." notations, can be any
 <tree>.
 
 For a more complete list of ways to spell <commit>, see
