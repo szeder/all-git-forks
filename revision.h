@@ -139,7 +139,8 @@ struct rev_info {
 			use_terminator:1,
 			missing_newline:1,
 			date_mode_explicit:1,
-			preserve_subject:1;
+			preserve_subject:1,
+			notes_raw;
 	unsigned int	disable_stdin:1;
 	unsigned int	leak_pending:1;
 	/* --show-linear-break */
