@@ -1591,8 +1591,10 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	if (!DIFF_OPT_TST(&rev.diffopt, TEXT) && !no_binary_diff)
 		DIFF_OPT_SET(&rev.diffopt, BINARY);
 
-	if (rev.show_notes)
+	if (rev.show_notes) {
 		init_display_notes(&rev.notes_opt);
+		rev.notes_raw = 1;
+	}
 
 	if (!output_directory && !use_stdout)
 		output_directory = config_output_directory;
