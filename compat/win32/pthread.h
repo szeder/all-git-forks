@@ -21,9 +21,25 @@
 static inline int return_0(int i) {
 	return 0;
 }
+
+#define PTHREAD_MUTEX_INITIALIZER NULL
 #define pthread_mutex_init(a,b) return_0((InitializeCriticalSection((a)), 0))
 #define pthread_mutex_destroy(a) DeleteCriticalSection((a))
-#define pthread_mutex_lock EnterCriticalSection
+#define pthread_mutex_lock(a) \
+{ \
+	if (!a) { \
+		HANDLE p = CreateMutex(NULL, FALSE, "Git-Global-Windows-Mutex"); \
+		EnterCriticalSection(p); \
+		MemoryBarrier(); \
+		if (!a)
+			pthread_mutex_init(a); \
+		MemoryBarrier(); \
+		ReleaseMutex(p); \
+	} \
+	EnterCriticalSection(a); \
+}
+
+
 #define pthread_mutex_unlock LeaveCriticalSection
 
 typedef int pthread_mutexattr_t;
