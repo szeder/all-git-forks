@@ -166,14 +166,8 @@ int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
 	int ret = Z_STREAM_END;
 	unsigned char compressed[4096];
 	git_zstream stream;
-	git_SHA_CTX c;
-	unsigned char parano_sha1[20];
-
-/*
-	unsigned char prepared_sha1[20];
 	git_SHA_CTX hash;
 	unsigned char real_sha1[20];
-*/
 
 	obj = odb_helper_lookup(o, sha1);
 	if (!obj)
@@ -182,21 +176,19 @@ int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
 	if (odb_helper_start(o, &cmd, 0, "get %s", sha1_to_hex(sha1)) < 0)
 		return -1;
 
-	/* Generate and write the header */
-	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(OBJ_BLOB), obj->size) + 1;
-
 	/* Set it up */
 	git_deflate_init(&stream, zlib_compression_level);
 	stream.next_out = compressed;
 	stream.avail_out = sizeof(compressed);
-	git_SHA1_Init(&c);
+	git_SHA1_Init(&hash);
 
 	/* First header.. */
+	hdrlen = xsnprintf(hdr, sizeof(hdr), "%s %lu", typename(obj->type), obj->size) + 1;
 	stream.next_in = (unsigned char *)hdr;
 	stream.avail_in = hdrlen;
 	while (git_deflate(&stream, 0) == Z_OK)
 		; /* nothing */
-	git_SHA1_Update(&c, hdr, hdrlen);
+	git_SHA1_Update(&hash, hdr, hdrlen);
 
 	for (;;) {
 		unsigned char buf[4096];
@@ -222,7 +214,7 @@ int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
 		do {
 			unsigned char *in0 = stream.next_in;
 			ret = git_deflate(&stream, Z_FINISH);
-			git_SHA1_Update(&c, in0, stream.next_in - in0);
+			git_SHA1_Update(&hash, in0, stream.next_in - in0);
 			write_or_die(fd, compressed, stream.next_out - compressed);
 			stream.next_out = compressed;
 			stream.avail_out = sizeof(compressed);
@@ -230,14 +222,23 @@ int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
 	}
 
 	close(cmd.child.out);
-	if (ret != Z_STREAM_END)
-		die("unable to deflate new object %s (%d)", sha1_to_hex(sha1), ret);
+	if (ret != Z_STREAM_END) {
+		warning("bad zlib data from odb helper '%s' for %s",
+			o->name, sha1_to_hex(sha1));
+		return -1;
+	}
 	ret = git_deflate_end_gently(&stream);
-	if (ret != Z_OK)
-		die("deflateEnd on object %s failed (%d)", sha1_to_hex(sha1), ret);
-	git_SHA1_Final(parano_sha1, &c);
-	if (hashcmp(sha1, parano_sha1) != 0)
-		die("confused by unstable object source data for %s", sha1_to_hex(sha1));
+	if (ret != Z_OK) {
+		warning("deflateEnd on object %s from odb helper '%s' failed (%d)",
+			sha1_to_hex(sha1), o->name, ret);
+		return -1;
+	}
+	git_SHA1_Final(real_sha1, &hash);
+	if (hashcmp(sha1, real_sha1)) {
+		warning("sha1 mismatch from odb helper '%s' for %s (got %s)",
+			o->name, sha1_to_hex(sha1), sha1_to_hex(real_sha1));
+		return -1;
+	}
 	if (odb_helper_finish(o, &cmd))
 		return -1;
 	if (total_got != obj->size) {
@@ -245,51 +246,6 @@ int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
 			o->name, sha1_to_hex(sha1), total_got, obj->size);
 		return -1;
 	}
-
-/*
-	write_or_die(fd, hdr, hdrlen);
-
-	git_deflate_init(&stream, zlib_compression_level);
-	stream.next_out = compressed;
-	stream.avail_out = sizeof(compressed);
-	git_SHA1_Init(&hash);
-
-	for (;;) {
-		unsigned char buf[4096];
-		int r;
-
-		r = xread(cmd.child.out, buf, sizeof(buf));
-		if (r < 0) {
-			error("unable to read from odb helper '%s': %s",
-			      o->name, strerror(errno));
-			close(cmd.child.out);
-			odb_helper_finish(o, &cmd);
-			return -1;
-		}
-		if (r == 0)
-			break;
-
-		// TODO: zlib compress and then write buf content to fd 
-
-		write_or_die(fd, buf, r);
-
-		git_SHA1_Update(&hash, inflated, got);
-	}
-
-	close(cmd.child.out);
-	git_SHA1_Final(real_sha1, &hash);
-	if (odb_helper_finish(o, &cmd))
-		return -1;
-
-
-	write_sha1_file_prepare(buf, len, typename(OBJ_BLOB), prepared_sha1, hdr, &hdrlen);
-
-	if (fstat(cmd.child.out, &st) < 0)
-		die_errno("unable to fstat %s", filename);
-	if (index_fd(sha1, cmd.child.out, &st, type, NULL, flags) < 0)
-		die("unable to write object to database");
-
-*/
 
 	return 0;
 }
