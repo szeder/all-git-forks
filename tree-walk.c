@@ -999,10 +999,11 @@ static enum interesting do_match(const struct name_entry *entry,
 					return entry_interesting;
 
 				/*
-				 * Match all directories. We'll try to
-				 * match files later on.
+				 * Match all directories and gitlinks. We'll
+				 * try to match files later on.
 				 */
-				if (ps->recursive && S_ISDIR(entry->mode))
+				if (ps->recursive && (S_ISDIR(entry->mode) ||
+						      S_ISGITLINK(entry->mode)))
 					return entry_interesting;
 			}
 
@@ -1043,13 +1044,13 @@ match_wildcards:
 		strbuf_setlen(base, base_offset + baselen);
 
 		/*
-		 * Match all directories. We'll try to match files
-		 * later on.
-		 * max_depth is ignored but we may consider support it
-		 * in future, see
+		 * Match all directories and gitlinks. We'll try to match files
+		 * later on.  max_depth is ignored but we may consider support
+		 * it in future, see
 		 * http://thread.gmane.org/gmane.comp.version-control.git/163757/focus=163840
 		 */
-		if (ps->recursive && S_ISDIR(entry->mode))
+		if (ps->recursive && (S_ISDIR(entry->mode) ||
+				      S_ISGITLINK(entry->mode)))
 			return entry_interesting;
 	}
 	return never_interesting; /* No matches */
