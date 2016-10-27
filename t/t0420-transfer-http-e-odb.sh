@@ -90,10 +90,24 @@ test_expect_success 'new blobs are transfered to the http server' '
 '
 
 test_expect_success 'blobs can be retrieved from the http server' '
-	git cat-file blob "$hash1"
+	git cat-file blob "$hash1" &&
+	git log -p >expected
+'
+
+test_expect_success 'setup another repo and pull from the first one' '
+	git init other-repo &&
+	(cd other-repo &&
+	 git remote add origin .. &&
+	 git pull origin master &&
+	 git cat-file blob "$hash1" &&
+	 git checkout master &&
+	 git log -p >../actual) &&
+	test_cmp expected actual
 '
 
 exit 1
+
+
 
 test_expect_success 'new blobs are transfered to the http server' '
 	test_commit one &&
