@@ -27,14 +27,6 @@
 #include "list.h"
 #include "mergesort.h"
 
-#ifndef O_NOATIME
-#if defined(__linux__) && (defined(__i386__) || defined(__PPC__))
-#define O_NOATIME 01000000
-#else
-#define O_NOATIME 0
-#endif
-#endif
-
 #define SZ_FMT PRIuMAX
 static inline uintmax_t sz_fmt(size_t s) { return s; }
 
@@ -1588,7 +1580,7 @@ int check_sha1_signature(const unsigned char *sha1, void *map,
 
 int git_open(const char *name)
 {
-	static int sha1_file_open_flag = O_NOATIME | O_CLOEXEC;
+	static int sha1_file_open_flag = O_CLOEXEC;
 
 	for (;;) {
 		int fd;
@@ -1604,11 +1596,6 @@ int git_open(const char *name)
 			continue;
 		}
 
-		/* Might the failure be due to O_NOATIME? */
-		if (errno != ENOENT && (sha1_file_open_flag & O_NOATIME)) {
-			sha1_file_open_flag &= ~O_NOATIME;
-			continue;
-		}
 		return -1;
 	}
 }
