@@ -198,6 +198,45 @@ void gitmodules_config(void)
 	}
 }
 
+/*
+ * Determine if a submodule has been initialized at a given 'path'
+ */
+int is_submodule_initialized(const char *path)
+{
+	int ret = 0;
+	const struct submodule *module = NULL;
+
+	module = submodule_from_path(null_sha1, path);
+
+	if (module) {
+		struct strbuf buf = STRBUF_INIT;
+		char *submodule_url = NULL;
+
+		strbuf_addf(&buf, "submodule.%s.url",module->name);
+		ret = !git_config_get_string(buf.buf, &submodule_url);
+
+		free(submodule_url);
+		strbuf_release(&buf);
+	}
+
+	return ret;
+}
+
+/*
+ * Determine if a submodule has been checked out at a given 'path'
+ */
+int is_submodule_checked_out(const char *path)
+{
+	int ret = 0;
+	struct strbuf buf = STRBUF_INIT;
+
+	strbuf_addf(&buf, "%s/.git", path);
+	ret = file_exists(buf.buf);
+
+	strbuf_release(&buf);
+	return ret;
+}
+
 int parse_submodule_update_strategy(const char *value,
 		struct submodule_update_strategy *dst)
 {
