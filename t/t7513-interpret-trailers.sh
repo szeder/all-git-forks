@@ -126,18 +126,102 @@ test_expect_success 'with multiline title in the message' '
 	test_cmp expected actual
 '
 
-test_expect_success 'with non-trailer lines mixed with trailer lines' '
+test_expect_success 'with non-trailer lines mixed with Signed-off-by' '
 	cat >patch <<-\EOF &&
 
-		this: is a trailer
+		this is not a trailer
+		this is not a trailer
+		Signed-off-by: a <a@example.com>
 		this is not a trailer
 	EOF
 	cat >expected <<-\EOF &&
 
-		this: is a trailer
+		this is not a trailer
+		this is not a trailer
+		Signed-off-by: a <a@example.com>
 		this is not a trailer
 		token: value
 	EOF
+	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'with non-trailer lines mixed with cherry picked from' '
+	cat >patch <<-\EOF &&
+
+		this is not a trailer
+		this is not a trailer
+		(cherry picked from commit x)
+		this is not a trailer
+	EOF
+	cat >expected <<-\EOF &&
+
+		this is not a trailer
+		this is not a trailer
+		(cherry picked from commit x)
+		this is not a trailer
+		token: value
+	EOF
+	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'with non-trailer lines mixed with a configured trailer' '
+	cat >patch <<-\EOF &&
+
+		this is not a trailer
+		this is not a trailer
+		My-trailer: x
+		this is not a trailer
+	EOF
+	cat >expected <<-\EOF &&
+
+		this is not a trailer
+		this is not a trailer
+		My-trailer: x
+		this is not a trailer
+		token: value
+	EOF
+	test_config trailer.my.key "My-trailer: " &&
+	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'with non-trailer lines mixed with a non-configured trailer' '
+	cat >patch <<-\EOF &&
+
+		this is not a trailer
+		this is not a trailer
+		I-am-not-configured: x
+		this is not a trailer
+	EOF
+	cat >expected <<-\EOF &&
+
+		this is not a trailer
+		this is not a trailer
+		I-am-not-configured: x
+		this is not a trailer
+
+		token: value
+	EOF
+	test_config trailer.my.key "My-trailer: " &&
+	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'with all non-configured trailers' '
+	cat >patch <<-\EOF &&
+
+		I-am-not-configured: x
+		I-am-also-not-configured: x
+	EOF
+	cat >expected <<-\EOF &&
+
+		I-am-not-configured: x
+		I-am-also-not-configured: x
+		token: value
+	EOF
+	test_config trailer.my.key "My-trailer: " &&
 	git interpret-trailers --trailer "token: value" patch >actual &&
 	test_cmp expected actual
 '
@@ -154,6 +238,51 @@ test_expect_success 'with non-trailer lines only' '
 		token: value
 	EOF
 	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'line with leading whitespace is not trailer' '
+	q_to_tab >patch <<-\EOF &&
+
+		Qtoken: value
+	EOF
+	q_to_tab >expected <<-\EOF &&
+
+		Qtoken: value
+
+		token: value
+	EOF
+	git interpret-trailers --trailer "token: value" patch >actual &&
+	test_cmp expected actual
+'
+
+test_expect_success 'multiline field treated as one trailer for 25% check' '
+	q_to_tab >patch <<-\EOF &&
+
+		Signed-off-by: a <a@example.com>
+		name: value on
+		Qmultiple lines
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+	EOF
+	q_to_tab >expected <<-\EOF &&
+
+		Signed-off-by: a <a@example.com>
+		name: value on
+		Qmultiple lines
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+		this is not a trailer
+		name: value
+	EOF
+	git interpret-trailers --trailer "name: value" patch >actual &&
 	test_cmp expected actual
 '
 
@@ -427,8 +556,6 @@ test_expect_success 'with message that has comments' '
 	cat >>expected <<-\EOF &&
 		# comment
 
-		# other comment
-		# yet another comment
 		Reviewed-by: Johan
 		Cc: Peff
 		# last comment
@@ -458,8 +585,6 @@ test_expect_success 'with message that has an old style conflict block' '
 	cat >>expected <<-\EOF &&
 		# comment
 
-		# other comment
-		# yet another comment
 		Reviewed-by: Johan
 		Cc: Peff
 		# last comment

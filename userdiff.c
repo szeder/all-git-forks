@@ -263,24 +263,23 @@ struct userdiff_driver *userdiff_find_by_name(const char *name) {
 struct userdiff_driver *userdiff_find_by_path(const char *path)
 {
 	static struct git_attr_check *check;
-	struct git_attr_result *result;
+	struct git_attr_result result[1];
 
-	if (!check)
-		git_attr_check_initl(&check, "diff", NULL);
 	if (!path)
 		return NULL;
 
-	result = git_check_attr(path, check);
-	if (!result)
+	git_attr_check_initl(&check, "diff", NULL);
+
+	if (git_check_attr(path, check, result))
 		return NULL;
 
-	if (ATTR_TRUE(result->value[0]))
+	if (ATTR_TRUE(result[0].value))
 		return &driver_true;
-	if (ATTR_FALSE(result->value[0]))
+	if (ATTR_FALSE(result[0].value))
 		return &driver_false;
-	if (ATTR_UNSET(result->value[0]))
+	if (ATTR_UNSET(result[0].value))
 		return NULL;
-	return userdiff_find_by_name(result->value[0]);
+	return userdiff_find_by_name(result[0].value);
 }
 
 struct userdiff_driver *userdiff_get_textconv(struct userdiff_driver *driver)

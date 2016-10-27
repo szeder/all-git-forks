@@ -720,7 +720,7 @@ static off_t write_reused_pack(struct sha1file *f)
 	if (!is_pack_valid(reuse_packfile))
 		die("packfile is invalid: %s", reuse_packfile->pack_name);
 
-	fd = git_open_noatime(reuse_packfile->pack_name);
+	fd = git_open(reuse_packfile->pack_name);
 	if (fd < 0)
 		die_errno("unable to open packfile for reuse: %s",
 			  reuse_packfile->pack_name);
@@ -899,17 +899,16 @@ static void write_pack_file(void)
 static int no_try_delta(const char *path)
 {
 	static struct git_attr_check *check;
-	struct git_attr_result *result;
+	int ret = 0;
+	struct git_attr_result result[1];
 
-	if (!check)
-		git_attr_check_initl(&check, "delta", NULL);
+	git_attr_check_initl(&check, "delta", NULL);
 
-	result = git_check_attr(path, check);
-	if (!result)
-		return 0;
-	if (ATTR_FALSE(result->value[0]))
-		return 1;
-	return 0;
+	if (!git_check_attr(path, check, result)) {
+		if (ATTR_FALSE(result[0].value))
+			ret = 1;
+	}
+	return ret;
 }
 
 /*

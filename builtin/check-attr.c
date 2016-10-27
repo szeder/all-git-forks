@@ -30,11 +30,8 @@ static void output_attr(struct git_attr_check *check,
 	int j;
 	int cnt = check->check_nr;
 
-	if (check->check_nr != result->check_nr)
-		die("BUG: confused check and result internally");
-
 	for (j = 0; j < cnt; j++) {
-		const char *value = result->value[j];
+		const char *value = result[j].value;
 
 		if (ATTR_TRUE(value))
 			value = "set";
@@ -63,19 +60,20 @@ static void check_attr(const char *prefix,
 {
 	char *full_path =
 		prefix_path(prefix, prefix ? strlen(prefix) : 0, file);
+	struct git_attr_check local_check = GIT_ATTR_CHECK_INIT;
+	struct git_attr_result *result = NULL;
+
 	if (check != NULL) {
-		struct git_attr_result *result = git_check_attr(full_path, check);
-		if (!result)
-			die("git_check_attr died");
-		output_attr(check, result, file);
+		result = git_attr_result_alloc(check);
+		git_check_attr(full_path, check, result);
 	} else {
-		struct git_attr_check check = GIT_ATTR_CHECK_INIT;
-		struct git_attr_result result = GIT_ATTR_RESULT_INIT;
-		git_all_attrs(full_path, &check, &result);
-		output_attr(&check, &result, file);
-		git_attr_result_clear(&result);
-		git_attr_check_clear(&check);
+		git_all_attrs(full_path, &local_check, &result);
+		check = &local_check;
 	}
+	output_attr(check, result, file);
+	git_attr_check_clear(&local_check);
+
+	git_attr_result_free(result);
 	free(full_path);
 }
 
@@ -109,7 +107,7 @@ static NORETURN void error_with_usage(const char *msg)
 
 int cmd_check_attr(int argc, const char **argv, const char *prefix)
 {
-	struct git_attr_check *check;
+	struct git_attr_check *check = NULL;
 	int cnt, i, doubledash, filei;
 
 	if (!is_bare_repository())
@@ -169,10 +167,8 @@ int cmd_check_attr(int argc, const char **argv, const char *prefix)
 			error_with_usage("No file specified");
 	}
 
-	if (all_attrs) {
-		check = NULL;
-	} else {
-		check = git_attr_check_alloc();
+	if (!all_attrs) {
+		git_attr_check_alloc(&check);
 		for (i = 0; i < cnt; i++) {
 			struct git_attr *a = git_attr(argv[i]);
 			if (!a)

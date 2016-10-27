@@ -214,7 +214,8 @@ int run_diff_files(struct rev_info *revs, unsigned int option)
 					       !is_null_oid(&ce->oid),
 					       ce->name, 0);
 				continue;
-			} else if (revs->diffopt.shift_ita && ce_intent_to_add(ce)) {
+			} else if (revs->diffopt.ita_invisible_in_index &&
+				   ce_intent_to_add(ce)) {
 				diff_addremove(&revs->diffopt, '+', ce->ce_mode,
 					       EMPTY_BLOB_SHA1_BIN, 0,
 					       ce->name, 0);
@@ -385,7 +386,8 @@ static void do_oneway_diff(struct unpack_trees_options *o,
 	int match_missing, cached;
 
 	/* i-t-a entries do not actually exist in the index */
-	if (revs->diffopt.shift_ita && idx && ce_intent_to_add(idx)) {
+	if (revs->diffopt.ita_invisible_in_index &&
+	    idx && ce_intent_to_add(idx)) {
 		idx = NULL;
 		if (!tree)
 			return;	/* nothing to diff.. */
@@ -533,7 +535,8 @@ int do_diff_cache(const unsigned char *tree_sha1, struct diff_options *opt)
 	return 0;
 }
 
-int index_differs_from(const char *def, int diff_flags)
+int index_differs_from(const char *def, int diff_flags,
+		       int ita_invisible_in_index)
 {
 	struct rev_info rev;
 	struct setup_revision_opt opt;
@@ -545,7 +548,7 @@ int index_differs_from(const char *def, int diff_flags)
 	DIFF_OPT_SET(&rev.diffopt, QUICK);
 	DIFF_OPT_SET(&rev.diffopt, EXIT_WITH_STATUS);
 	rev.diffopt.flags |= diff_flags;
-	rev.diffopt.shift_ita = 1;
+	rev.diffopt.ita_invisible_in_index = ita_invisible_in_index;
 	run_diff_index(&rev, 1);
 	if (rev.pending.alloc)
 		free(rev.pending.objects);

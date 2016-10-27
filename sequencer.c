@@ -234,8 +234,8 @@ static void print_advice(int show_hint, struct replay_opts *opts)
 	}
 }
 
-static int write_with_lock_file(const char *filename,
-				const void *buf, size_t len, int append_eol)
+static int write_message(const void *buf, size_t len, const char *filename,
+			 int append_eol)
 {
 	static struct lock_file msg_file;
 
@@ -258,16 +258,12 @@ static int write_with_lock_file(const char *filename,
 	return 0;
 }
 
-static int write_message(struct strbuf *msgbuf, const char *filename)
-{
-	int res = write_with_lock_file(filename, msgbuf->buf, msgbuf->len, 0);
-	strbuf_release(msgbuf);
-	return res;
-}
-
 /*
- * Reads a file that was presumably written by a shell script, i.e.
- * with an end-of-line marker that needs to be stripped.
+ * Reads a file that was presumably written by a shell script, i.e. with an
+ * end-of-line marker that needs to be stripped.
+ *
+ * Note that only the last end-of-line marker is stripped, consistent with the
+ * behavior of "$(cat path)" in a shell script.
  *
  * Returns 1 if the file was read, 0 if it could not be read or does not exist.
  */
@@ -662,8 +658,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (has_ita_entries(&the_index) ||
-		    index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
+		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0, 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -763,12 +758,14 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 					 head, &msgbuf, opts);
 		if (res < 0)
 			return res;
-		res |= write_message(&msgbuf, git_path_merge_msg());
+		res |= write_message(msgbuf.buf, msgbuf.len,
+				     git_path_merge_msg(), 0);
 	} else {
 		struct commit_list *common = NULL;
 		struct commit_list *remotes = NULL;
 
-		res = write_message(&msgbuf, git_path_merge_msg());
+		res = write_message(msgbuf.buf, msgbuf.len,
+				    git_path_merge_msg(), 0);
 
 		commit_list_insert(base, &common);
 		commit_list_insert(next, &remotes);
@@ -778,6 +775,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		free_commit_list(common);
 		free_commit_list(remotes);
 	}
+	strbuf_release(&msgbuf);
 
 	/*
 	 * If the merge was clean or if it failed due to conflict, we write
@@ -809,7 +807,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		res = allow;
 		goto leave;
 	}
-	if (!res && !opts->no_commit)
+	if (!opts->no_commit)
 		res = run_git_commit(opts->edit ? NULL : git_path_merge_msg(),
 				     opts, allow, opts->edit, 0, 0);
 
@@ -935,7 +933,7 @@ static int parse_insn_buffer(char *buf, struct todo_list *todo_list)
 	for (i = 1; *p; i++, p = next_p) {
 		char *eol = strchrnul(p, '\n');
 
-		next_p = *eol ? eol + 1 /* strip LF */ : eol;
+		next_p = *eol ? eol + 1 /* skip LF */ : eol;
 
 		if (p != eol && eol[-1] == '\r')
 			eol--; /* strip Carriage Return */
@@ -1314,7 +1312,7 @@ int sequencer_continue(struct replay_opts *opts)
 		if (res)
 			goto release_todo_list;
 	}
-	if (has_ita_entries(&the_index) || index_differs_from("HEAD", 0)) {
+	if (index_differs_from("HEAD", 0, 0)) {
 		res = error_dirty_index(opts);
 		goto release_todo_list;
 	}

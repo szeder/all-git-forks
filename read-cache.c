@@ -156,7 +156,14 @@ void fill_stat_cache_info(struct cache_entry *ce, struct stat *st)
 static int ce_compare_data(const struct cache_entry *ce, struct stat *st)
 {
 	int match = -1;
-	int fd = open(ce->name, O_RDONLY);
+	static int cloexec = O_CLOEXEC;
+	int fd = open(ce->name, O_RDONLY | cloexec);
+
+	if ((cloexec & O_CLOEXEC) && fd < 0 && errno == EINVAL) {
+		/* Try again w/o O_CLOEXEC: the kernel might not support it */
+		cloexec &= ~O_CLOEXEC;
+		fd = open(ce->name, O_RDONLY | cloexec);
+	}
 
 	if (fd >= 0) {
 		unsigned char sha1[20];
@@ -1699,16 +1706,6 @@ int read_index_from(struct index_state *istate, const char *path)
 int is_index_unborn(struct index_state *istate)
 {
 	return (!istate->cache_nr && !istate->timestamp.sec);
-}
-
-int has_ita_entries(struct index_state *istate)
-{
-	int i;
-
-	for (i = 0; i < istate->cache_nr; i++)
-		if (ce_intent_to_add(istate->cache[i]))
-			return 1;
-	return 0;
 }
 
 int discard_index(struct index_state *istate)

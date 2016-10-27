@@ -8,18 +8,6 @@ attributes to set of paths.
 Data Structure
 --------------
 
-extern struct git_attr *git_attr(const char *);
-
-/*
- * Return the name of the attribute represented by the argument.  The
- * return value is a pointer to a null-delimited string that is part
- * of the internal data structure; it should not be modified or freed.
- */
-extern const char *git_attr_name(const struct git_attr *);
-
-extern int attr_name_valid(const char *name, size_t namelen);
-extern void invalid_attr_name_message(struct strbuf *, const char *, int);
-
 `struct git_attr`::
 
 	An attribute is an opaque object that is identified by its name.
@@ -46,7 +34,7 @@ Attribute Values
 
 An attribute for a path can be in one of four states: Set, Unset,
 Unspecified or set to a string, and `.value` member of `struct
-git_attr_check` records it.  There are three macros to check these:
+git_attr_result` records it.  There are three macros to check these:
 
 `ATTR_TRUE()`::
 
@@ -67,25 +55,31 @@ value of the attribute for the path.
 Querying Specific Attributes
 ----------------------------
 
-* Prepare `struct git_attr_check` using git_attr_check_initl()
+* Prepare a `struct git_attr_check` using `git_attr_check_initl()`
   function, enumerating the names of attributes whose values you are
   interested in, terminated with a NULL pointer.  Alternatively, an
-  empty `struct git_attr_check` as alloced by git_attr_check_alloc()
+  empty `struct git_attr_check` as allocated by git_attr_check_alloc()
   can be prepared by calling `git_attr_check_alloc()` function and
   then attributes you want to ask about can be added to it with
   `git_attr_check_append()` function.
-  git_attr_check_initl is thread safe, i.e. you can call it
-  from different threads at the same time; internally however only one
-  call at a time is processed. If the calls from different threads have
-  the same arguments, the returned `git_attr_check` may be the same.
+  `git_attr_check_initl()` is thread safe, i.e. you can call it
+  from different threads at the same time; when check determines
+  the initialzisation is still needed, the threads will use a
+  single global mutex to perform the initialization just once, the
+  others will wait on the the thread to actually perform the
+  initialization.
+
+* Prepare a `struct git_attr_result` using `GIT_ATTR_RESULT_INIT_FOR()`
+  for the result for static allocations. When the result size is not known
+  at compile time, use `git_attr_result_alloc`. The call to initialize
+  the result is not thread safe, because different threads need their
+  own thread local result anyway.
 
 * Call `git_check_attr()` to check the attributes for the path,
-  the returned `git_attr_result` contains the result.
+  the given `git_attr_result` will be filled with the result.
 
 * Inspect the returned `git_attr_result` structure to see how
   each of the attribute in the array is defined for the path.
-
-* Do not free the result as the memory is owned by the attr subsystem.
 
 Example
 -------
@@ -96,28 +90,18 @@ To see how attributes "crlf" and "ident" are set for different paths.
   we are checking two attributes):
 
 ------------
-static struct git_attr_check *check;
-static void setup_check(void)
-{
-	if (check)
-		return; /* already done */
-	check = git_attr_check_initl("crlf", "ident", NULL);
-}
+	static struct git_attr_check *check;
+	git_attr_check_initl(check, "crlf", "ident", NULL);
 ------------
 
 . Call `git_check_attr()` with the prepared `struct git_attr_check`:
 
 ------------
 	const char *path;
-	struct git_attr_result *result;
+	GIT_ATTR_RESULT_INIT_FOR(result, 2);
 
-	setup_check();
-	result = git_check_attr(path, check);
+	git_check_attr(path, check, result);
 ------------
-
-The `result` must not be free'd as it is owned by the attr subsystem.
-It is reused by the same thread, so a subsequent call to git_check_attr
-in the same thread will overwrite the result.
 
 . Act on `result->value[]`:
 
@@ -156,6 +140,7 @@ static void setup_check(const char **argv)
 		git_attr_check_append(check, attr);
 		argv++;
 	}
+	struct git_attr_result *result = git_attr_result_alloc(check);
 }
 ------------
 
@@ -165,11 +150,11 @@ Querying All Attributes
 
 To get the values of all attributes associated with a file:
 
-* Setup a local variables on the stack for both the question
-  `struct git_attr_check` as well as the result `struct git_attr_result`.
-  Zero them out via their respective _INIT macro.
+* Setup a local variables for the question
+  `struct git_attr_check` as well as a pointer where the result
+  `struct git_attr_result` will be stored.
 
-* Call `git_all_attrs()`
+* Call `git_all_attrs()`.
 
 * Iterate over the `git_attr_check.attr[]` array to examine the
   attribute names.  The name of the attribute described by a
@@ -180,5 +165,5 @@ To get the values of all attributes associated with a file:
   The respective value for an attribute can be found in the same
   index position in of `git_attr_result`.
 
-* Clear the local variables by calling `git_attr_check_clear()` and
-  `git_attr_result_clear()`.
+* Clear the variables by calling `git_attr_check_clear()` and
+  `git_attr_result_free()`.
