@@ -16,7 +16,6 @@
 #include "strbuf.h"
 #include "utf8.h"
 #include "worktree.h"
-#include "lockfile.h"
 
 static const char cut_line[] =
 "------------------------ >8 ------------------------\n";
@@ -368,11 +367,11 @@ static void wt_longstatus_print_change_data(struct wt_status *s,
 		if (d->new_submodule_commits || d->dirty_submodule) {
 			strbuf_addstr(&extra, " (");
 			if (d->new_submodule_commits)
-				strbuf_addstr(&extra, _("new commits, "));
+				strbuf_addf(&extra, _("new commits, "));
 			if (d->dirty_submodule & DIRTY_SUBMODULE_MODIFIED)
-				strbuf_addstr(&extra, _("modified content, "));
+				strbuf_addf(&extra, _("modified content, "));
 			if (d->dirty_submodule & DIRTY_SUBMODULE_UNTRACKED)
-				strbuf_addstr(&extra, _("untracked content, "));
+				strbuf_addf(&extra, _("untracked content, "));
 			strbuf_setlen(&extra, extra.len - 2);
 			strbuf_addch(&extra, ')');
 		}
@@ -438,7 +437,7 @@ static void wt_status_collect_changed_cb(struct diff_queue_struct *q,
 
 		switch (p->status) {
 		case DIFF_STATUS_ADDED:
-			d->mode_worktree = p->two->mode;
+			die("BUG: worktree status add???");
 			break;
 
 		case DIFF_STATUS_DELETED:
@@ -548,7 +547,6 @@ static void wt_status_collect_changes_worktree(struct wt_status *s)
 	setup_revisions(0, NULL, &rev, NULL);
 	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
 	DIFF_OPT_SET(&rev.diffopt, DIRTY_SUBMODULES);
-	rev.diffopt.ita_invisible_in_index = 1;
 	if (!s->show_untracked_files)
 		DIFF_OPT_SET(&rev.diffopt, IGNORE_UNTRACKED_IN_SUBMODULES);
 	if (s->ignore_submodule_arg) {
@@ -572,7 +570,6 @@ static void wt_status_collect_changes_index(struct wt_status *s)
 	setup_revisions(0, NULL, &rev, &opt);
 
 	DIFF_OPT_SET(&rev.diffopt, OVERRIDE_SUBMODULE_CONFIG);
-	rev.diffopt.ita_invisible_in_index = 1;
 	if (s->ignore_submodule_arg) {
 		handle_ignore_submodules_arg(&rev.diffopt, s->ignore_submodule_arg);
 	} else {
@@ -608,8 +605,6 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 
 		if (!ce_path_match(ce, &s->pathspec, NULL))
 			continue;
-		if (ce_intent_to_add(ce))
-			continue;
 		it = string_list_insert(&s->change, ce->name);
 		d = it->util;
 		if (!d) {
@@ -628,7 +623,7 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 			d->index_status = DIFF_STATUS_ADDED;
 			/* Leave {mode,oid}_head zero for adds. */
 			d->mode_index = ce->ce_mode;
-			hashcpy(d->oid_index.hash, ce->oid.hash);
+			hashcpy(d->oid_index.hash, ce->sha1);
 		}
 	}
 }
@@ -916,7 +911,6 @@ static void wt_longstatus_print_verbose(struct wt_status *s)
 
 	init_revisions(&rev, NULL);
 	DIFF_OPT_SET(&rev.diffopt, ALLOW_TEXTCONV);
-	rev.diffopt.ita_invisible_in_index = 1;
 
 	memset(&opt, 0, sizeof(opt));
 	opt.def = s->is_initial ? EMPTY_TREE_SHA1_HEX : s->reference;
@@ -1116,6 +1110,7 @@ static void abbrev_sha1_in_line(struct strbuf *line)
 	split = strbuf_split_max(line, ' ', 3);
 	if (split[0] && split[1]) {
 		unsigned char sha1[20];
+		const char *abbrev;
 
 		/*
 		 * strbuf_split_max left a space. Trim it and re-add
@@ -1123,10 +1118,9 @@ static void abbrev_sha1_in_line(struct strbuf *line)
 		 */
 		strbuf_trim(split[1]);
 		if (!get_sha1(split[1]->buf, sha1)) {
+			abbrev = find_unique_abbrev(sha1, DEFAULT_ABBREV);
 			strbuf_reset(split[1]);
-			strbuf_add_unique_abbrev(split[1], sha1,
-						 DEFAULT_ABBREV);
-			strbuf_addch(split[1], ' ');
+			strbuf_addf(split[1], "%s ", abbrev);
 			strbuf_reset(line);
 			for (i = 0; split[i]; i++)
 				strbuf_addbuf(line, split[i]);
@@ -1349,8 +1343,10 @@ static char *get_branch(const struct worktree *wt, const char *path)
 	else if (starts_with(sb.buf, "refs/"))
 		;
 	else if (!get_sha1_hex(sb.buf, sha1)) {
+		const char *abbrev;
+		abbrev = find_unique_abbrev(sha1, DEFAULT_ABBREV);
 		strbuf_reset(&sb);
-		strbuf_add_unique_abbrev(&sb, sha1, DEFAULT_ABBREV);
+		strbuf_addstr(&sb, abbrev);
 	} else if (!strcmp(sb.buf, "detached HEAD")) /* rebase */
 		goto got_nothing;
 	else			/* bisect */
@@ -1387,7 +1383,8 @@ static int grab_1st_switch(unsigned char *osha1, unsigned char *nsha1,
 	if (!strcmp(cb->buf.buf, "HEAD")) {
 		/* HEAD is relative. Resolve it to the right reflog entry. */
 		strbuf_reset(&cb->buf);
-		strbuf_add_unique_abbrev(&cb->buf, nsha1, DEFAULT_ABBREV);
+		strbuf_addstr(&cb->buf,
+			      find_unique_abbrev(nsha1, DEFAULT_ABBREV));
 	}
 	return 1;
 }
@@ -2096,7 +2093,7 @@ static void wt_porcelain_v2_print_unmerged_entry(
 		if (strcmp(ce->name, it->string) || !stage)
 			break;
 		stages[stage - 1].mode = ce->ce_mode;
-		hashcpy(stages[stage - 1].oid.hash, ce->oid.hash);
+		hashcpy(stages[stage - 1].oid.hash, ce->sha1);
 		sum |= (1 << (stage - 1));
 	}
 	if (sum != d->stagemask)
@@ -2211,81 +2208,4 @@ void wt_status_print(struct wt_status *s)
 		wt_longstatus_print(s);
 		break;
 	}
-}
-
-/**
- * Returns 1 if there are unstaged changes, 0 otherwise.
- */
-int has_unstaged_changes(int ignore_submodules)
-{
-	struct rev_info rev_info;
-	int result;
-
-	init_revisions(&rev_info, NULL);
-	if (ignore_submodules)
-		DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
-	DIFF_OPT_SET(&rev_info.diffopt, QUICK);
-	diff_setup_done(&rev_info.diffopt);
-	result = run_diff_files(&rev_info, 0);
-	return diff_result_code(&rev_info.diffopt, result);
-}
-
-/**
- * Returns 1 if there are uncommitted changes, 0 otherwise.
- */
-int has_uncommitted_changes(int ignore_submodules)
-{
-	struct rev_info rev_info;
-	int result;
-
-	if (is_cache_unborn())
-		return 0;
-
-	init_revisions(&rev_info, NULL);
-	if (ignore_submodules)
-		DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
-	DIFF_OPT_SET(&rev_info.diffopt, QUICK);
-	add_head_to_pending(&rev_info);
-	diff_setup_done(&rev_info.diffopt);
-	result = run_diff_index(&rev_info, 1);
-	return diff_result_code(&rev_info.diffopt, result);
-}
-
-/**
- * If the work tree has unstaged or uncommitted changes, dies with the
- * appropriate message.
- */
-int require_clean_work_tree(const char *action, const char *hint, int ignore_submodules, int gently)
-{
-	struct lock_file *lock_file = xcalloc(1, sizeof(*lock_file));
-	int err = 0;
-
-	hold_locked_index(lock_file, 0);
-	refresh_cache(REFRESH_QUIET);
-	update_index_if_able(&the_index, lock_file);
-	rollback_lock_file(lock_file);
-
-	if (has_unstaged_changes(ignore_submodules)) {
-		/* TRANSLATORS: the action is e.g. "pull with rebase" */
-		error(_("cannot %s: You have unstaged changes."), _(action));
-		err = 1;
-	}
-
-	if (has_uncommitted_changes(ignore_submodules)) {
-		if (err)
-			error(_("additionally, your index contains uncommitted changes."));
-		else
-			error(_("cannot %s: Your index contains uncommitted changes."),
-			      _(action));
-		err = 1;
-	}
-
-	if (err) {
-		if (hint)
-			error("%s", hint);
-		if (!gently)
-			exit(128);
-	}
-
-	return err;
 }
