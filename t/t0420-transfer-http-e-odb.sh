@@ -83,7 +83,10 @@ FILES_DIR="httpd/www/files"
 
 test_expect_success 'new blobs are transfered to the http server' '
 	test_commit one &&
-	hash1=$(git ls-tree HEAD | grep one.t | cut -f1 | cut -d\  -f3)
+	hash1=$(git ls-tree HEAD | grep one.t | cut -f1 | cut -d\  -f3) &&
+	echo "$hash1-4-blob" >expected &&
+	ls "$FILES_DIR" >actual &&
+	test_cmp expected actual
 '
 
 test_expect_success 'blobs can be retrieved from the http server' '
