@@ -333,6 +333,10 @@ static int write_message(const void *buf, size_t len, const char *filename,
 		rollback_lock_file(&msg_file);
 		return error_errno(_("could not write eol to '%s"), filename);
 	}
+	if (append_eol && write(msg_fd, "\n", 1) < 0) {
+		rollback_lock_file(&msg_file);
+		return error_errno(_("Could not write eol to '%s"), filename);
+	}
 	if (commit_lock_file(&msg_file) < 0) {
 		rollback_lock_file(&msg_file);
 		return error(_("failed to finalize '%s'."), filename);
@@ -954,7 +958,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
+		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0, 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -2027,28 +2031,25 @@ int sequencer_continue(struct replay_opts *opts)
 		if (commit_staged_changes(opts))
 			return -1;
 	}
-	else if (!file_exists(get_todo_path(opts)))
+	if (!file_exists(get_todo_path(opts)))
 		return continue_single_pick();
 	if (read_populate_opts(opts))
 		return -1;
 	if ((res = read_populate_todo(&todo_list, opts)))
 		goto release_todo_list;
 
-	if (!is_rebase_i(opts)) {
-		/* Verify that the conflict has been resolved */
-		if (file_exists(git_path_cherry_pick_head()) ||
-		    file_exists(git_path_revert_head())) {
-			res = continue_single_pick();
-			if (res)
-				goto release_todo_list;
-		}
-		if (index_differs_from("HEAD", 0)) {
-			res = error_dirty_index(opts);
+	/* Verify that the conflict has been resolved */
+	if (file_exists(git_path_cherry_pick_head()) ||
+	    file_exists(git_path_revert_head())) {
+		res = continue_single_pick();
+		if (res)
 			goto release_todo_list;
-		}
-		todo_list.current++;
 	}
-
+	if (index_differs_from("HEAD", 0, 0)) {
+		res = error_dirty_index(opts);
+		goto release_todo_list;
+	}
+	todo_list.current++;
 	res = pick_commits(&todo_list, opts);
 release_todo_list:
 	todo_list_release(&todo_list);
