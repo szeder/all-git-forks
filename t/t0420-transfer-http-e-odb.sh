@@ -40,6 +40,8 @@ put)
 	echo >&2 "upload_url: '$upload_url'"
 	curl --data-binary @- --include "$upload_url" >out ||
 	die "curl '$upload_url' failed"
+	ref_hash=$(echo "$sha1 $size $kind" | GIT_NO_EXTERNAL_ODB=1 git hash-object -w -t blob --stdin) || exit
+	git update-ref refs/odbs/magic/"$sha1" "$ref_hash"
 	;;
 *)
 	die "unknown command '$1'"
@@ -52,6 +54,15 @@ HELPER="\"$PWD\"/odb-http-helper"
 test_expect_success 'setup repo with a root commit and the helper' '
 	test_commit zero &&
 	git config odb.magic.command "$HELPER"
+'
+
+test_expect_success 'setup another repo from the first one' '
+	git init other-repo &&
+	(cd other-repo &&
+	 git remote add origin .. &&
+	 git pull origin master &&
+	 git checkout master &&
+	 git log)
 '
 
 UPLOADFILENAME="hello_apache_upload.txt"
@@ -94,45 +105,15 @@ test_expect_success 'blobs can be retrieved from the http server' '
 	git log -p >expected
 '
 
-test_expect_success 'setup another repo and pull from the first one' '
-	git init other-repo &&
-	(cd other-repo &&
-	 git remote add origin .. &&
-	 git pull origin master &&
-	 git cat-file blob "$hash1" &&
-	 git checkout master &&
-	 git log -p >../actual) &&
-	test_cmp expected actual
-'
-
-exit 1
-
-
-
-test_expect_success 'new blobs are transfered to the http server' '
-	test_commit one &&
-	hash1=$(git ls-tree HEAD | grep one.t | cut -f1 | cut -d\  -f3) &&
-	ls "$FILES_DIR/$hash1*" > actual
-'
-
-test_expect_success 'other repo gets the blobs from object store' '
+test_expect_success 'update other repo from the first one' '
 	(cd other-repo &&
 	 git fetch origin "refs/odbs/magic/*:refs/odbs/magic/*" &&
 	 test_must_fail git cat-file blob "$hash1" &&
-	 test_must_fail git cat-file blob "$hash2" &&
-	 git config odb.magic.command "$HELPER2" &&
+	 git config odb.magic.command "$HELPER" &&
 	 git cat-file blob "$hash1" &&
-	 git cat-file blob "$hash2"
-	)
+	 git pull origin master)
 '
 
-test_expect_success 'other repo gets everything else' '
-	(cd other-repo &&
-	 git fetch origin &&
-	 content=$(git show "$hash1") &&
-	 test "$content" = "one" &&
-	 content=$(git show "$hash2") &&
-	 test "$content" = "two")
-'
+stop_httpd
 
 test_done
