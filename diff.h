@@ -146,6 +146,7 @@ struct diff_options {
 	int dirstat_permille;
 	int setup;
 	int abbrev;
+	int ita_invisible_in_index;
 /* white-space error highlighting */
 #define WSEH_NEW 1
 #define WSEH_CONTEXT 2
@@ -340,7 +341,11 @@ extern void diff_warn_rename_limit(const char *varname, int needed, int degraded
 #define DIFF_STATUS_FILTER_AON		'*'
 #define DIFF_STATUS_FILTER_BROKEN	'B'
 
-extern const char *diff_unique_abbrev(const unsigned char *, int);
+/*
+ * This is different from find_unique_abbrev() in that
+ * it stuffs the result with dots for alignment.
+ */
+extern const char *diff_aligned_abbrev(const struct object_id *sha1, int);
 
 /* do not report anything on removed paths */
 #define DIFF_SILENT_ON_REMOVED 01
@@ -356,7 +361,7 @@ extern int diff_result_code(struct diff_options *, int);
 
 extern void diff_no_index(struct rev_info *, int, const char **);
 
-extern int index_differs_from(const char *def, int diff_flags);
+extern int index_differs_from(const char *def, int diff_flags, int ita_invisible_in_index);
 
 /*
  * Fill the contents of the filespec "df", respecting any textconv defined by

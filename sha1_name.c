@@ -448,9 +448,45 @@ int for_each_abbrev(const char *prefix, each_abbrev_fn fn, void *cb_data)
 	return ret;
 }
 
+/*
+ * Return the slot of the most-significant bit set in "val". There are various
+ * ways to do this quickly with fls() or __builtin_clzl(), but speed is
+ * probably not a big deal here.
+ */
+static unsigned msb(unsigned long val)
+{
+	unsigned r = 0;
+	while (val >>= 1)
+		r++;
+	return r;
+}
+
 int find_unique_abbrev_r(char *hex, const unsigned char *sha1, int len)
 {
 	int status, exists;
+
+	if (len < 0) {
+		unsigned long count = approximate_object_count();
+		/*
+		 * Add one because the MSB only tells us the highest bit set,
+		 * not including the value of all the _other_ bits (so "15"
+		 * is only one off of 2^4, but the MSB is the 3rd bit.
+		 */
+		len = msb(count) + 1;
+		/*
+		 * We now know we have on the order of 2^len objects, which
+		 * expects a collision at 2^(len/2). But we also care about hex
+		 * chars, not bits, and there are 4 bits per hex. So all
+		 * together we need to divide by 2; but we also want to round
+		 * odd numbers up, hence adding one before dividing.
+		 */
+		len = (len + 1) / 2;
+		/*
+		 * For very small repos, we stick with our regular fallback.
+		 */
+		if (len < FALLBACK_DEFAULT_ABBREV)
+			len = FALLBACK_DEFAULT_ABBREV;
+	}
 
 	sha1_to_hex_r(hex, sha1);
 	if (len == 40 || !len)
@@ -472,7 +508,9 @@ int find_unique_abbrev_r(char *hex, const unsigned char *sha1, int len)
 
 const char *find_unique_abbrev(const unsigned char *sha1, int len)
 {
-	static char hex[GIT_SHA1_HEXSZ + 1];
+	static int bufno;
+	static char hexbuffer[4][GIT_SHA1_HEXSZ + 1];
+	char *hex = hexbuffer[3 & ++bufno];
 	find_unique_abbrev_r(hex, sha1, len);
 	return hex;
 }

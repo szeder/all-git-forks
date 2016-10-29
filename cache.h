@@ -903,8 +903,8 @@ extern char *sha1_pack_index_name(const unsigned char *sha1);
  * The result will be at least `len` characters long, and will be NUL
  * terminated.
  *
- * The non-`_r` version returns a static buffer which will be overwritten by
- * subsequent calls.
+ * The non-`_r` version returns a static buffer which remains valid until 4
+ * more calls to find_unique_abbrev are made.
  *
  * The `_r` variant writes to a buffer supplied by the caller, which must be at
  * least `GIT_SHA1_HEXSZ + 1` bytes. The return value is the number of bytes
@@ -1189,6 +1189,9 @@ static inline int hex2chr(const char *s)
 /* Convert to/from hex/sha1 representation */
 #define MINIMUM_ABBREV minimum_abbrev
 #define DEFAULT_ABBREV default_abbrev
+
+/* used when the code does not know or care what the default abbrev is */
+#define FALLBACK_DEFAULT_ABBREV 7
 
 struct object_context {
 	unsigned char tree[20];
@@ -1489,6 +1492,12 @@ extern void (*report_garbage)(unsigned seen_bits, const char *path);
 extern void prepare_packed_git(void);
 extern void reprepare_packed_git(void);
 extern void install_packed_git(struct packed_git *pack);
+
+/*
+ * Give a rough count of objects in the repository. This sacrifices accuracy
+ * for speed.
+ */
+unsigned long approximate_object_count(void);
 
 extern struct packed_git *find_sha1_pack(const unsigned char *sha1,
 					 struct packed_git *packs);
