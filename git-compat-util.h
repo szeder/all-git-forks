@@ -683,6 +683,10 @@ char *gitstrdup(const char *s);
 #define O_CLOEXEC 0
 #endif
 
+#ifndef FD_CLOEXEC
+#define FD_CLOEXEC 0
+#endif
+
 #ifdef FREAD_READS_DIRECTORIES
 #ifdef fopen
 #undef fopen
