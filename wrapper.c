@@ -2,6 +2,7 @@
  * Various trivial helper wrappers around standard functions
  */
 #include "cache.h"
+#include "submodule.h"
 
 static void do_nothing(size_t size)
 {
@@ -592,6 +593,9 @@ int unlink_or_warn(const char *file)
 
 int rmdir_or_warn(const char *file)
 {
+	if (submodule_is_interesting(file)
+	    && depopulate_submodule(file))
+		return -1; /* TODO: set breakpoint here see where we come from, as we do not want to have this code in here? */
 	return warn_if_unremovable("rmdir", file, rmdir(file));
 }
 
