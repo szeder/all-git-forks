@@ -770,7 +770,6 @@ static int find_trailer_start(const char *buf, size_t len)
 	 * are to be considered non-trailers).
 	 */
 	int possible_continuation_lines = 0;
-	int ret;
 
 	/* The first paragraph is the title and cannot be trailers */
 	for (s = buf; s < buf + len; s = next_line(s)) {
