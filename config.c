@@ -652,46 +652,34 @@ int git_parse_ulong(const char *value, unsigned long *ret)
 NORETURN
 static void die_bad_number(const char *name, const char *value)
 {
+	const char * error_type = (errno == ERANGE)? _("out of range"):_("invalid unit");
+
 	if (!value)
 		value = "";
 
 	if (!(cf && cf->name))
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s': out of range")
-		    : _("bad numeric config value '%s' for '%s': invalid unit"),
-		    value, name);
+		die(_("bad numeric config value '%s' for '%s': %s"),
+		    value, name, error_type);
 
 	switch (cf->origin_type) {
 	case CONFIG_ORIGIN_BLOB:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in blob %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in blob %s: invalid unit"),
-		    value, name, cf->name);
+		die(_("bad numeric config value '%s' for '%s' in blob %s: %s"),
+		    value, name, cf->name, error_type);
 	case CONFIG_ORIGIN_FILE:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in file %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in file %s: invalid unit"),
-		    value, name, cf->name);
+		die(_("bad numeric config value '%s' for '%s' in file %s: %s"),
+		    value, name, cf->name, error_type);
 	case CONFIG_ORIGIN_STDIN:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in standard input: out of range")
-		    : _("bad numeric config value '%s' for '%s' in standard input: invalid unit"),
-		    value, name);
+		die(_("bad numeric config value '%s' for '%s' in standard input: %s"),
+		    value, name, error_type);
 	case CONFIG_ORIGIN_SUBMODULE_BLOB:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in submodule-blob %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in submodule-blob %s: invalid unit"),
-		    value, name, cf->name);
+		die(_("bad numeric config value '%s' for '%s' in submodule-blob %s: %s"),
+		    value, name, cf->name, error_type);
 	case CONFIG_ORIGIN_CMDLINE:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in command line %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in command line %s: invalid unit"),
-		    value, name, cf->name);
+		die(_("bad numeric config value '%s' for '%s' in command line %s: %s"),
+		    value, name, cf->name, error_type);
 	default:
-		die(errno == ERANGE
-		    ? _("bad numeric config value '%s' for '%s' in %s: out of range")
-		    : _("bad numeric config value '%s' for '%s' in %s: invalid unit"),
-		    value, name, cf->name);
+		die(_("bad numeric config value '%s' for '%s' in %s: %s"),
+		    value, name, cf->name, error_type);
 	}
 }
 
@@ -853,6 +841,9 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
+	if (!strcmp(var, "core.disambiguate"))
+		return set_disambiguate_hint_config(var, value);
+
 	if (!strcmp(var, "core.loosecompression")) {
 		int level = git_config_int(var, value);
 		if (level == -1)
@@ -938,9 +929,6 @@ static int git_default_core_config(const char *var, const char *value)
 		notes_ref_name = xstrdup(value);
 		return 0;
 	}
-
-	if (!strcmp(var, "core.pager"))
-		return git_config_string(&pager_program, var, value);
 
 	if (!strcmp(var, "core.editor"))
 		return git_config_string(&editor_program, var, value);
@@ -1301,7 +1289,7 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 	int ret = 0;
 	char *xdg_config = xdg_config_home("config");
 	char *user_config = expand_user_path("~/.gitconfig");
-	char *repo_config = git_pathdup("config");
+	char *repo_config = have_git_dir() ? git_pathdup("config") : NULL;
 
 	current_parsing_scope = CONFIG_SCOPE_SYSTEM;
 	if (git_config_system() && !access_or_die(git_etc_gitconfig(), R_OK, 0))

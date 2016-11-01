@@ -33,6 +33,10 @@ static struct {
 	{ 'B', "\n[GNUPG:] BADSIG " },
 	{ 'U', "\n[GNUPG:] TRUST_NEVER" },
 	{ 'U', "\n[GNUPG:] TRUST_UNDEFINED" },
+	{ 'E', "\n[GNUPG:] ERRSIG "},
+	{ 'X', "\n[GNUPG:] EXPSIG "},
+	{ 'Y', "\n[GNUPG:] EXPKEYSIG "},
+	{ 'R', "\n[GNUPG:] REVKEYSIG "},
 };
 
 void parse_gpg_output(struct signature_check *sigc)
@@ -54,9 +58,12 @@ void parse_gpg_output(struct signature_check *sigc)
 		/* The trust messages are not followed by key/signer information */
 		if (sigc->result != 'U') {
 			sigc->key = xmemdupz(found, 16);
-			found += 17;
-			next = strchrnul(found, '\n');
-			sigc->signer = xmemdupz(found, next - found);
+			/* The ERRSIG message is not followed by signer information */
+			if (sigc-> result != 'E') {
+				found += 17;
+				next = strchrnul(found, '\n');
+				sigc->signer = xmemdupz(found, next - found);
+			}
 		}
 	}
 }
@@ -217,6 +224,7 @@ int verify_signed_buffer(const char *payload, size_t payload_size,
 	argv_array_pushl(&gpg.args,
 			 gpg_program,
 			 "--status-fd=1",
+			 "--keyid-format=long",
 			 "--verify", temp.filename.buf, "-",
 			 NULL);
 

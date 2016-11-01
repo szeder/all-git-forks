@@ -404,51 +404,12 @@ pick_one_preserving_merges () {
 
 this_nth_commit_message () {
 	n=$1
-	case "$n" in
-	1) gettext "This is the 1st commit message:";;
-	2) gettext "This is the 2nd commit message:";;
-	3) gettext "This is the 3rd commit message:";;
-	4) gettext "This is the 4th commit message:";;
-	5) gettext "This is the 5th commit message:";;
-	6) gettext "This is the 6th commit message:";;
-	7) gettext "This is the 7th commit message:";;
-	8) gettext "This is the 8th commit message:";;
-	9) gettext "This is the 9th commit message:";;
-	10) gettext "This is the 10th commit message:";;
-	# TRANSLATORS: if the language you are translating into
-	# doesn't allow you to compose a sentence in this fashion,
-	# consider translating as if this and the following few strings
-	# were "This is the commit message ${n}:"
-	*1[0-9]|*[04-9]) eval_gettext "This is the \${n}th commit message:";;
-	*1) eval_gettext "This is the \${n}st commit message:";;
-	*2) eval_gettext "This is the \${n}nd commit message:";;
-	*3) eval_gettext "This is the \${n}rd commit message:";;
-	*) eval_gettext "This is the commit message \${n}:";;
-	esac
+	eval_gettext "This is the commit message #\${n}:"
 }
+
 skip_nth_commit_message () {
 	n=$1
-	case "$n" in
-	1) gettext "The 1st commit message will be skipped:";;
-	2) gettext "The 2nd commit message will be skipped:";;
-	3) gettext "The 3rd commit message will be skipped:";;
-	4) gettext "The 4th commit message will be skipped:";;
-	5) gettext "The 5th commit message will be skipped:";;
-	6) gettext "The 6th commit message will be skipped:";;
-	7) gettext "The 7th commit message will be skipped:";;
-	8) gettext "The 8th commit message will be skipped:";;
-	9) gettext "The 9th commit message will be skipped:";;
-	10) gettext "The 10th commit message will be skipped:";;
-	# TRANSLATORS: if the language you are translating into
-	# doesn't allow you to compose a sentence in this fashion,
-	# consider translating as if this and the following few strings
-	# were "The commit message ${n} will be skipped:"
-	*1[0-9]|*[04-9]) eval_gettext "The \${n}th commit message will be skipped:";;
-	*1) eval_gettext "The \${n}st commit message will be skipped:";;
-	*2) eval_gettext "The \${n}nd commit message will be skipped:";;
-	*3) eval_gettext "The \${n}rd commit message will be skipped:";;
-	*) eval_gettext "The commit message \${n} will be skipped:";;
-	esac
+	eval_gettext "The commit message #\${n} will be skipped:"
 }
 
 update_squash_messages () {
@@ -1080,7 +1041,7 @@ The possible behaviours are: ignore, warn, error.")"
 		# placed before the commit of the next action
 		checkout_onto
 
-		warn "$(gettext "You can fix this with 'git rebase --edit-todo'.")"
+		warn "$(gettext "You can fix this with 'git rebase --edit-todo' and then run 'git rebase --continue'.")"
 		die "$(gettext "Or you can abort the rebase with 'git rebase --abort'.")"
 	fi
 }
@@ -1121,7 +1082,7 @@ If they are meant to go into a new commit, run:
 
   git commit \$gpg_sign_opt_quoted
 
-In both case, once you're done, continue with:
+In both cases, once you're done, continue with:
 
   git rebase --continue
 ")"
@@ -1179,9 +1140,6 @@ To continue rebase after editing, run:
 	exit
 	;;
 esac
-
-git var GIT_COMMITTER_IDENT >/dev/null ||
-	die "$(gettext "You need to set your committer info first")"
 
 comment_for_reflog start
 

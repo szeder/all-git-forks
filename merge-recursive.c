@@ -73,12 +73,9 @@ static struct tree *shift_tree_object(struct tree *one, struct tree *two,
 static struct commit *make_virtual_commit(struct tree *tree, const char *comment)
 {
 	struct commit *commit = alloc_commit_node();
-	struct merge_remote_desc *desc = xmalloc(sizeof(*desc));
 
-	desc->name = comment;
-	desc->obj = (struct object *)commit;
+	set_merge_remote_desc(commit, comment, (struct object *)commit);
 	commit->tree = tree;
-	commit->util = desc;
 	commit->object.parsed = 1;
 	return commit;
 }
@@ -205,11 +202,11 @@ static void output_commit_title(struct merge_options *o, struct commit *commit)
 		strbuf_addf(&o->obuf, "virtual %s\n",
 			merge_remote_util(commit)->name);
 	else {
-		strbuf_addf(&o->obuf, "%s ",
-			find_unique_abbrev(commit->object.oid.hash,
-				DEFAULT_ABBREV));
+		strbuf_add_unique_abbrev(&o->obuf, commit->object.oid.hash,
+					 DEFAULT_ABBREV);
+		strbuf_addch(&o->obuf, ' ');
 		if (parse_commit(commit) != 0)
-			strbuf_addf(&o->obuf, _("(bad commit)\n"));
+			strbuf_addstr(&o->obuf, _("(bad commit)\n"));
 		else {
 			const char *title;
 			const char *msg = get_commit_buffer(commit, NULL);
@@ -385,7 +382,7 @@ static struct string_list *get_unmerged(void)
 		}
 		e = item->util;
 		e->stages[ce_stage(ce)].mode = ce->ce_mode;
-		hashcpy(e->stages[ce_stage(ce)].oid.hash, ce->sha1);
+		oidcpy(&e->stages[ce_stage(ce)].oid, &ce->oid);
 	}
 
 	return unmerged;
@@ -913,9 +910,9 @@ static int merge_3way(struct merge_options *o,
 		name2 = mkpathdup("%s", branch2);
 	}
 
-	read_mmblob(&orig, one->oid.hash);
-	read_mmblob(&src1, a->oid.hash);
-	read_mmblob(&src2, b->oid.hash);
+	read_mmblob(&orig, &one->oid);
+	read_mmblob(&src1, &a->oid);
+	read_mmblob(&src2, &b->oid);
 
 	merge_status = ll_merge(result_buf, a->path, &orig, base_name,
 				&src1, name1, &src2, name2, &ll_opts);
