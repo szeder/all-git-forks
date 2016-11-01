@@ -27,7 +27,7 @@ annotate_merge () {
 	perl -e '
 		sub wildo_match {
 			s/^\s*//;
-			if (/^Will (?:\S+ ){0,2}(fast-track|keep|merge|drop|discard|cook|kick|defer|be re-?rolled)[,. ]/ ||
+			if (/^Will (?:\S+ ){0,2}(fast-track|hold|keep|merge|drop|discard|cook|kick|defer|eject|be re-?rolled)[,. ]/ ||
 			    /^Not urgent/ || /^Not ready/ || /^Waiting for / ||
 			    /^Can wait in / || /^Still / ||
 			    /^Needs? / || /^Expecting / || /^May want to /) {
@@ -42,7 +42,7 @@ annotate_merge () {
 			my @msg = ();
 			while (<$fh>) {
 				chomp;
-				if (/^\* $branch /) {
+				if (/^\* \Q$branch\E /) {
 					$in_section = 1;
 					next;
 				}
@@ -54,7 +54,7 @@ annotate_merge () {
 				}
 				next unless ($in_section && $in_desc);
 				next if (/Originally merged to '\''next'\'' on ([-0-9]+)/);
-				next if (wildo_match($_));
+				last if (wildo_match($_));
 				push @msg, "$_\n";
 			}
 			return ($in_section, @msg);
@@ -242,7 +242,7 @@ show_merge () {
 show_pick () {
 	case "$msg" in
 	"### "* | "###")
-		merged="$msg"
+		merged="$msg$LF"
 		;;
 	*)
 		merged="$(git rev-parse --verify "$commit") pick $msg"
