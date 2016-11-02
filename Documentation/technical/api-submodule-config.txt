@@ -47,11 +47,11 @@ Functions
 	Can be passed to the config parsing infrastructure to parse
 	local (worktree) submodule configurations.
 
-`const struct submodule *submodule_from_path(const unsigned char *commit_sha1, const char *path)`::
+`const struct submodule *submodule_from_path(const unsigned char *commit_or_tree, const char *path)`::
 
 	Lookup values for one submodule by its commit_sha1 and path.
 
-`const struct submodule *submodule_from_name(const unsigned char *commit_sha1, const char *name)`::
+`const struct submodule *submodule_from_name(const unsigned char *commit_or_tree, const char *name)`::
 
 	The same as above but lookup by name.
 
