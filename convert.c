@@ -18,6 +18,8 @@
 #define CONVERT_STAT_BITS_TXT_CRLF  0x2
 #define CONVERT_STAT_BITS_BIN       0x4
 
+#define STREAM_BUFFER_SIZE (1024*16)
+
 enum crlf_action {
 	CRLF_UNDEFINED,
 	CRLF_BINARY,
@@ -79,14 +81,18 @@ static void gather_stats_partly(const char *buf, unsigned long size,
 	}
 }
 
+static void stats_file_ends_EOF(const char *buf, unsigned long size, struct text_stat *stats)
+{
+	/* If file ends with EOF then don't count this EOF as non-printable. */
+	if (size >= 1 && buf[size-1] == '\032')
+		stats->nonprintable--;
+}
+
 static void gather_stats(const char *buf, unsigned long size, struct text_stat *stats)
 {
 	memset(stats, 0, sizeof(*stats));
 	gather_stats_partly(buf, size, stats);
-
-	/* If file ends with EOF then don't count this EOF as non-printable. */
-	if (size >= 1 && buf[size-1] == '\032')
-		stats->nonprintable--;
+	stats_file_ends_EOF(buf, size, stats);
 }
 
 /*
@@ -121,6 +127,21 @@ static unsigned int gather_convert_stats(const char *data, unsigned long size)
 	return ret;
 }
 
+static unsigned convert_stats(const struct text_stat *stats, unsigned long size)
+{
+	unsigned ret = 0;
+	if (convert_is_binary(size, stats))
+		ret |= CONVERT_STAT_BITS_BIN;
+	if (stats->crlf)
+		ret |= CONVERT_STAT_BITS_TXT_CRLF;
+	if (stats->lonelf)
+		ret |=  CONVERT_STAT_BITS_TXT_LF;
+	if ((stats->printable >> 7) < stats->nonprintable)
+		ret |= CONVERT_STAT_BITS_BIN;
+
+	return ret;
+}
+
 static const char *gather_convert_stats_ascii(const char *data, unsigned long size)
 {
 	unsigned int convert_stats = gather_convert_stats(data, size);
@@ -149,14 +170,58 @@ const char *get_cached_convert_stats_ascii(const char *path)
 	return ret;
 }
 
+static unsigned get_convert_stats_wt(const char *path)
+{
+	struct text_stat stats;
+	ssize_t readlen = 0;
+	unsigned long size = 0;
+	int fd;
+	char buf[STREAM_BUFFER_SIZE];
+	memset(&stats, 0, sizeof(stats));
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return 0;
+	for (;;) {
+		readlen = read(fd, buf, sizeof(buf));
+		if (readlen < 0)
+			break;
+		if (!readlen)
+			break;
+		size += (unsigned long)readlen;
+		gather_stats_partly(buf, (unsigned long)readlen, &stats);
+		if (stats.nul) {
+			close(fd);
+			return CONVERT_STAT_BITS_BIN;
+		}
+	}
+	close(fd);
+	stats_file_ends_EOF(buf, size % STREAM_BUFFER_SIZE, &stats);
+	return convert_stats(&stats, size);
+}
+
+static const char *convert_stats_ascii(unsigned convert_stats)
+{
+	const unsigned eol_bits = CONVERT_STAT_BITS_TXT_LF |
+		CONVERT_STAT_BITS_TXT_CRLF;
+	if (convert_stats & CONVERT_STAT_BITS_BIN)
+		return "-text";
+	switch (convert_stats & eol_bits) {
+	case CONVERT_STAT_BITS_TXT_LF:
+		return "lf";
+	case CONVERT_STAT_BITS_TXT_CRLF:
+		return "crlf";
+	case CONVERT_STAT_BITS_TXT_LF | CONVERT_STAT_BITS_TXT_CRLF:
+		return "mixed";
+	default:
+		return "none";
+	}
+}
+
 const char *get_wt_convert_stats_ascii(const char *path)
 {
-	const char *ret = "";
-	struct strbuf sb = STRBUF_INIT;
-	if (strbuf_read_file(&sb, path, 0) >= 0)
-		ret = gather_convert_stats_ascii(sb.buf, sb.len);
-	strbuf_release(&sb);
-	return ret;
+	unsigned convert_stats;
+	convert_stats = get_convert_stats_wt(path);
+	return convert_stats_ascii(convert_stats);
 }
 
 static int text_eol_is_crlf(void)
