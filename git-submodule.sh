@@ -27,7 +27,8 @@ cd_to_toplevel
 #
 # If the user has already specified a set of allowed protocols,
 # we assume they know what they're doing and use that instead.
-: ${GIT_ALLOW_PROTOCOL=file:git:http:https:ssh}
+config_whitelist=$(git config core.allowProtocol)
+: ${GIT_ALLOW_PROTOCOL=${config_whitelist:-file:git:http:https:ssh}}
 export GIT_ALLOW_PROTOCOL
 
 command=

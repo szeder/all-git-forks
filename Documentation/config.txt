@@ -455,6 +455,15 @@ core.sshCommand::
 	the `GIT_SSH_COMMAND` environment variable and is overridden
 	when the environment variable is set.
 
+core.allowProtocol::
+	Provide a colon-separated list of protocols which are allowed to be
+	used with fetch/push/clone. This is useful to restrict recursive
+	submodule initialization from an untrusted repository. Any protocol not
+	mentioned will be disallowed (i.e., this is a whitelist, not a
+	blacklist). If the variable is not set at all, all protocols are
+	enabled. If the `GIT_ALLOW_PROTOCOL` enviornment variable is set, it is
+	used as the protocol whitelist instead of this config option.
+
 core.ignoreStat::
 	If true, Git will avoid using lstat() calls to detect if files have
 	changed by setting the "assume-unchanged" bit for those tracked files

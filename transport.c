@@ -652,7 +652,7 @@ static const struct string_list *protocol_whitelist(void)
 
 	if (enabled < 0) {
 		const char *v = getenv("GIT_ALLOW_PROTOCOL");
-		if (v) {
+		if (v || !git_config_get_value("core.allowProtocol", &v)) {
 			string_list_split(&allowed, v, ':', -1);
 			string_list_sort(&allowed);
 			enabled = 1;
