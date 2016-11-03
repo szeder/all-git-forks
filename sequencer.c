@@ -16,7 +16,6 @@
 #include "refs.h"
 #include "argv-array.h"
 #include "quote.h"
-#include "trailer.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
@@ -29,6 +28,14 @@ static GIT_PATH_FUNC(git_path_todo_file, "sequencer/todo")
 static GIT_PATH_FUNC(git_path_opts_file, "sequencer/opts")
 static GIT_PATH_FUNC(git_path_head_file, "sequencer/head")
 
+static GIT_PATH_FUNC(rebase_path, "rebase-merge")
+/*
+ * The file containing rebase commands, comments, and empty lines.
+ * This file is created by "git rebase -i" then edited by the user. As
+ * the lines are processed, they are removed from the front of this
+ * file and written to the tail of 'done'.
+ */
+static GIT_PATH_FUNC(rebase_path_todo, "rebase-merge/git-rebase-todo")
 /*
  * A script to set the GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
  * GIT_AUTHOR_DATE that will be used for the commit that is currently
@@ -41,20 +48,47 @@ static GIT_PATH_FUNC(rebase_path_author_script, "rebase-merge/author-script")
  */
 static GIT_PATH_FUNC(rebase_path_gpg_sign_opt, "rebase-merge/gpg_sign_opt")
 
-/* We will introduce the 'interactive rebase' mode later */
 static inline int is_rebase_i(const struct replay_opts *opts)
 {
-	return 0;
+	return opts->action == REPLAY_INTERACTIVE_REBASE;
 }
 
 static const char *get_dir(const struct replay_opts *opts)
 {
+	if (is_rebase_i(opts))
+		return rebase_path();
 	return git_path_seq_dir();
 }
 
 static const char *get_todo_path(const struct replay_opts *opts)
 {
+	if (is_rebase_i(opts))
+		return rebase_path_todo();
 	return git_path_todo_file();
+}
+
+static int is_rfc2822_line(const char *buf, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++) {
+		int ch = buf[i];
+		if (ch == ':')
+			return 1;
+		if (!isalnum(ch) && ch != '-')
+			break;
+	}
+
+	return 0;
+}
+
+static int is_cherry_picked_from_line(const char *buf, int len)
+{
+	/*
+	 * We only care that it looks roughly like (cherry picked from ...)
+	 */
+	return len > strlen(cherry_picked_prefix) + 1 &&
+		starts_with(buf, cherry_picked_prefix) && buf[len - 1] == ')';
 }
 
 /*
@@ -66,25 +100,49 @@ static const char *get_todo_path(const struct replay_opts *opts)
 static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	int ignore_footer)
 {
-	struct trailer_info info;
-	int i;
-	int found_sob = 0, found_sob_last = 0;
+	char prev;
+	int i, k;
+	int len = sb->len - ignore_footer;
+	const char *buf = sb->buf;
+	int found_sob = 0;
 
-	trailer_info_get(&info, sb->buf);
-
-	if (info.trailer_start == info.trailer_end)
+	/* footer must end with newline */
+	if (!len || buf[len - 1] != '\n')
 		return 0;
 
-	for (i = 0; i < info.trailer_nr; i++)
-		if (sob && !strncmp(info.trailers[i], sob->buf, sob->len)) {
-			found_sob = 1;
-			if (i == info.trailer_nr - 1)
-				found_sob_last = 1;
-		}
+	prev = '\0';
+	for (i = len - 1; i > 0; i--) {
+		char ch = buf[i];
+		if (prev == '\n' && ch == '\n') /* paragraph break */
+			break;
+		prev = ch;
+	}
 
-	trailer_info_release(&info);
+	/* require at least one blank line */
+	if (prev != '\n' || buf[i] != '\n')
+		return 0;
 
-	if (found_sob_last)
+	/* advance to start of last paragraph */
+	while (i < len - 1 && buf[i] == '\n')
+		i++;
+
+	for (; i < len; i = k) {
+		int found_rfc2822;
+
+		for (k = i; k < len && buf[k] != '\n'; k++)
+			; /* do nothing */
+		k++;
+
+		found_rfc2822 = is_rfc2822_line(buf + i, k - i - 1);
+		if (found_rfc2822 && sob &&
+		    !strncmp(buf + i, sob->buf, sob->len))
+			found_sob = k;
+
+		if (!(found_rfc2822 ||
+		      is_cherry_picked_from_line(buf + i, k - i - 1)))
+			return 0;
+	}
+	if (found_sob == i)
 		return 3;
 	if (found_sob)
 		return 2;
@@ -121,7 +179,15 @@ int sequencer_remove_state(struct replay_opts *opts)
 
 static const char *action_name(const struct replay_opts *opts)
 {
-	return opts->action == REPLAY_REVERT ? N_("revert") : N_("cherry-pick");
+	switch (opts->action) {
+	case REPLAY_REVERT:
+		return N_("revert");
+	case REPLAY_PICK:
+		return N_("cherry-pick");
+	case REPLAY_INTERACTIVE_REBASE:
+		return N_("rebase -i");
+	}
+	die(_("Unknown action: %d"), opts->action);
 }
 
 struct commit_message {
@@ -348,7 +414,10 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 
 	if (active_cache_changed &&
 	    write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
-		/* TRANSLATORS: %s will be "revert" or "cherry-pick" */
+		/*
+		 * TRANSLATORS: %s will be "revert", "cherry-pick" or
+		 * "rebase -i".
+		 */
 		return error(_("%s: Unable to write new index file"),
 			_(action_name(opts)));
 	rollback_lock_file(&index_lock);
@@ -570,14 +639,23 @@ static int allow_empty(struct replay_opts *opts, struct commit *commit)
 		return 1;
 }
 
+/*
+ * Note that ordering matters in this enum. Not only must it match the mapping
+ * below, it is also divided into several sections that matter.  When adding
+ * new commands, make sure you add it in the right section.
+ */
 enum todo_command {
+	/* commands that handle commits */
 	TODO_PICK = 0,
-	TODO_REVERT
+	TODO_REVERT,
+	/* commands that do nothing but are counted for reporting progress */
+	TODO_NOOP
 };
 
 static const char *todo_command_strings[] = {
 	"pick",
-	"revert"
+	"revert",
+	"noop"
 };
 
 static const char *command_to_string(const enum todo_command command)
@@ -611,7 +689,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0, 0))
+		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -847,6 +925,14 @@ static int parse_insn_line(struct todo_item *item, const char *bol, char *eol)
 	/* left-trim */
 	bol += strspn(bol, " \t");
 
+	if (bol == eol || *bol == '\r' || *bol == comment_line_char) {
+		item->command = TODO_NOOP;
+		item->commit = NULL;
+		item->arg = bol;
+		item->arg_len = eol - bol;
+		return 0;
+	}
+
 	for (i = 0; i < ARRAY_SIZE(todo_command_strings); i++)
 		if (skip_prefix(bol, todo_command_strings[i], &bol)) {
 			item->command = i;
@@ -854,6 +940,13 @@ static int parse_insn_line(struct todo_item *item, const char *bol, char *eol)
 		}
 	if (i >= ARRAY_SIZE(todo_command_strings))
 		return -1;
+
+	if (item->command == TODO_NOOP) {
+		item->commit = NULL;
+		item->arg = bol;
+		item->arg_len = eol - bol;
+		return 0;
+	}
 
 	/* Eat up extra spaces/ tabs before object name */
 	padding = strspn(bol, " \t");
@@ -938,16 +1031,6 @@ static int read_populate_todo(struct todo_list *todo_list,
 				return error(_("cannot revert during a cherry-pick."));
 	}
 
-	return 0;
-}
-
-static int git_config_string_dup(char **dest,
-				 const char *var, const char *value)
-{
-	if (!value)
-		return config_error_nonbool(var);
-	free(*dest);
-	*dest = xstrdup(value);
 	return 0;
 }
 
@@ -1167,6 +1250,9 @@ static int save_todo(struct todo_list *todo_list, struct replay_opts *opts)
 	const char *todo_path = get_todo_path(opts);
 	int next = todo_list->current, offset, fd;
 
+	if (is_rebase_i(opts))
+		next++;
+
 	fd = hold_lock_file_for_update(&todo_lock, todo_path, 0);
 	if (fd < 0)
 		return error_errno(_("could not lock '%s'"), todo_path);
@@ -1230,7 +1316,12 @@ static int pick_commits(struct todo_list *todo_list, struct replay_opts *opts)
 		struct todo_item *item = todo_list->items + todo_list->current;
 		if (save_todo(todo_list, opts))
 			return -1;
-		res = do_pick_commit(item->command, item->commit, opts);
+		if (item->command <= TODO_REVERT)
+			res = do_pick_commit(item->command, item->commit,
+					opts);
+		else if (item->command != TODO_NOOP)
+			return error(_("unknown command %d"), item->command);
+
 		todo_list->current++;
 		if (res)
 			return res;
@@ -1275,7 +1366,7 @@ int sequencer_continue(struct replay_opts *opts)
 		if (res)
 			goto release_todo_list;
 	}
-	if (index_differs_from("HEAD", 0, 0)) {
+	if (index_differs_from("HEAD", 0)) {
 		res = error_dirty_index(opts);
 		goto release_todo_list;
 	}
