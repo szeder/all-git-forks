@@ -59,7 +59,7 @@ msgstr ""
 "Project-Id-Version: git\n"
 "Report-Msgid-Bugs-To: Git Mailing List <git@vger.kernel.org>\n"
 "POT-Creation-Date: 2016-11-01 21:35+0800\n"
-"PO-Revision-Date: 2016-08-21 22:41+0900\n"
+"PO-Revision-Date: 2016-11-03 19:47+0900\n"
 "Last-Translator: Changwoo Ryu <cwryu@debian.org>\n"
 "Language-Team: Git Korean translation <http://github.com/changwoo/git-l10n-"
 "ko>\n"
@@ -161,14 +161,12 @@ msgid "unrecognized whitespace ignore option '%s'"
 msgstr "알 수 없는 공백 무시 옵션 '%s'"
 
 #: apply.c:125
-#, fuzzy
 msgid "--reject and --3way cannot be used together."
-msgstr "-x 및 -X 옵션은 같이 쓸 수 없습니다"
+msgstr "--reject 및 --3way 옵션은 같이 쓸 수 없습니다."
 
 #: apply.c:127
-#, fuzzy
 msgid "--cached and --3way cannot be used together."
-msgstr "-x 및 -X 옵션은 같이 쓸 수 없습니다"
+msgstr "--cached 및 --3way 옵션은 같이 쓸 수 없습니다."
 
 #: apply.c:130
 msgid "--3way outside a repository"
@@ -244,11 +242,9 @@ msgstr[0] ""
 "다. (%d번 줄)"
 
 #: apply.c:1589
-#, fuzzy, c-format
+#, c-format
 msgid "git diff header lacks filename information (line %d)"
-msgstr ""
-"경로 이름 부분에서 %d개를 제거라 때 git diff 헤더에 파일 이름 정보가 없습니"
-"다. (%d번 줄)"
+msgstr "git diff 헤더에 파일 이름 정보가 없습니다 (%d번 줄)"
 
 #: apply.c:1759
 msgid "new file depends on old contents"
@@ -312,7 +308,7 @@ msgstr "줄 시작이 잘못됨: '%c'"
 #, c-format
 msgid "Hunk #%d succeeded at %d (offset %d line)."
 msgid_plural "Hunk #%d succeeded at %d (offset %d lines)."
-msgstr[0] "패치 %d번 부분 %d번 줄에서 성공 (오프셋 %d줄)"
+msgstr[0] "패치 %d번 부분 %d번 줄에서 성공 (오프셋 %d번 줄)"
 
 #: apply.c:3062
 #, c-format
@@ -336,28 +332,28 @@ msgstr "'%s'에 대한 바이너리 패치 데이터가 없습니다"
 #: apply.c:3098
 #, c-format
 msgid "cannot reverse-apply a binary patch without the reverse hunk to '%s'"
-msgstr ""
+msgstr "반대 헝크가 없으면 '%s'에 대한 바이너리 패치를 반대로 적용할 수 없습니다"
 
 #: apply.c:3144
 #, c-format
 msgid "cannot apply binary patch to '%s' without full index line"
-msgstr ""
+msgstr "전체 인덱스 라인이 없으면 '%s'에 대한 바이너리 패치를 적용할 수 없습니다"
 
 #: apply.c:3154
 #, c-format
 msgid ""
 "the patch applies to '%s' (%s), which does not match the current contents."
-msgstr ""
+msgstr "패치가 '%s'(%s)에 적용되지만, 현재 내용과 일치하지 않습니다."
 
 #: apply.c:3162
 #, c-format
 msgid "the patch applies to an empty '%s' but it is not empty"
-msgstr ""
+msgstr "패치는 빈 '%s'에 적용되지만, 현재 비어 있지 않습니다"
 
 #: apply.c:3180
 #, c-format
 msgid "the necessary postimage %s for '%s' cannot be read"
-msgstr ""
+msgstr "'%2$s'에 대한 필요한 %1$s 포스트이미지를 읽을 수 없습니다"
 
 #: apply.c:3193
 #, c-format
@@ -407,34 +403,33 @@ msgid "%s: does not match index"
 msgstr "%s: 인덱스와 맞지 않습니다"
 
 #: apply.c:3554
-#, fuzzy
 msgid "repository lacks the necessary blob to fall back on 3-way merge."
 msgstr "저장소에 3-방향 병합으로 대신할 때 필요한 블롭이 없습니다."
 
 #: apply.c:3557
-#, fuzzy, c-format
+#, c-format
 msgid "Falling back to three-way merge...\n"
-msgstr "베이스 패치 적용 및 3-방향 병합으로 대신합니다..."
+msgstr "3-방향 병합으로 대신합니다...\n"
 
 #: apply.c:3573 apply.c:3577
-#, fuzzy, c-format
+#, c-format
 msgid "cannot read the current contents of '%s'"
-msgstr "브랜치 위에 없으면서 현재 브랜치 이름을 바꿀 수 없습니다."
+msgstr "'%s'의 현재 내용을 읽을 수 없습니다"
 
 #: apply.c:3589
-#, fuzzy, c-format
+#, c-format
 msgid "Failed to fall back on three-way merge...\n"
-msgstr "필요하면 3-방향 병합으로 대신하도록 허용합니다"
+msgstr "3-방향 병합으로 대신하는데 실패했습니다...\n"
 
 #: apply.c:3603
-#, fuzzy, c-format
+#, c-format
 msgid "Applied patch to '%s' with conflicts.\n"
-msgstr "%s 패치 깔끔하게 적용."
+msgstr "패치를 '%s'에 충돌이 있는 상태로 적용.\n"
 
 #: apply.c:3608
-#, fuzzy, c-format
+#, c-format
 msgid "Applied patch to '%s' cleanly.\n"
-msgstr "%s 패치 깔끔하게 적용."
+msgstr "패치를 '%s'에 패치 문제 없이 적용.\n"
 
 #: apply.c:3634
 msgid "removal patch leaves file contents"
@@ -493,17 +488,17 @@ msgstr "%s 패치를 확인하는 중입니다..."
 #: apply.c:4075
 #, c-format
 msgid "sha1 information is lacking or useless for submodule %s"
-msgstr ""
+msgstr "sha1 정보가 없거나 %s 하위 모듈에서 쓸 수 없습니다"
 
 #: apply.c:4082
 #, c-format
 msgid "mode change for %s, which is not in current HEAD"
-msgstr ""
+msgstr "%s에 대한 모드 변경이지만, 현재 HEAD에 없습니다"
 
 #: apply.c:4085
 #, c-format
 msgid "sha1 information is lacking or useless (%s)."
-msgstr ""
+msgstr "sha1 정보가 없거나 쓸 수 없습니다 (%s)."
 
 #: apply.c:4090 builtin/checkout.c:233 builtin/reset.c:135
 #, c-format
@@ -511,14 +506,14 @@ msgid "make_cache_entry failed for path '%s'"
 msgstr "경로 '%s'에 대해 make_cache_entry 실패"
 
 #: apply.c:4094
-#, fuzzy, c-format
+#, c-format
 msgid "could not add %s to temporary index"
-msgstr "임시 파일을 만들 수 없습니다"
+msgstr "임시 인덱스에 %s 항목을 추가할 수 없습니다"
 
 #: apply.c:4104
-#, fuzzy, c-format
+#, c-format
 msgid "could not write temporary index to %s"
-msgstr "임시 파일 이름을 '%s'(으)로 바꿀 수 없습니다"
+msgstr "임시 인덱스를 %s에 쓸 수 없습니다"
 
 #: apply.c:4242
 #, c-format
@@ -546,9 +541,9 @@ msgid "unable to add cache entry for %s"
 msgstr "%s에 대해 캐시 항목을 추가할 수 없습니다"
 
 #: apply.c:4338
-#, fuzzy, c-format
+#, c-format
 msgid "failed to write to '%s'"
-msgstr "'%s' 제거에 실패했습니다"
+msgstr "'%s'에 쓰는데 실패했습니다"
 
 #: apply.c:4342
 #, c-format
@@ -609,9 +604,9 @@ msgid "unable to read index file"
 msgstr "인덱스 파일을 읽을 수 없습니다"
 
 #: apply.c:4833
-#, fuzzy, c-format
+#, c-format
 msgid "can't open patch '%s': %s"
-msgstr "'%s' 패치를 열 수 없습니다"
+msgstr "'%s' 패치를 열 수 없습니다: %s"
 
 #: apply.c:4858
 #, c-format
@@ -623,13 +618,13 @@ msgstr[0] "공백 오류 %d개를 넘어갑니다"
 #, c-format
 msgid "%d line adds whitespace errors."
 msgid_plural "%d lines add whitespace errors."
-msgstr[0] "%d줄에서 공백 오류를 추가합니다."
+msgstr[0] "%d번 줄에서 공백 오류를 추가합니다."
 
 #: apply.c:4872
-#, fuzzy, c-format
+#, c-format
 msgid "%d line applied after fixing whitespace errors."
 msgid_plural "%d lines applied after fixing whitespace errors."
-msgstr[0] "%d줄에서 공백 오류를 추가합니다."
+msgstr[0] "공백 오류를 바로잡은 뒤에 %d번 줄 적용."
 
 #: apply.c:4888 builtin/add.c:463 builtin/mv.c:286 builtin/rm.c:431
 msgid "Unable to write new index file"
@@ -1244,6 +1239,9 @@ msgid ""
 "You may want to amend it after fixing the message, or set the config\n"
 "variable i18n.commitencoding to the encoding your project uses.\n"
 msgstr ""
+"경고: 커밋 메시지가 UTF-8 인코딩에 맞지 않습니다.\n"
+"메시지를 수정한 다음 커밋을 수정하거나, 설정의 i18n.commitencoding\n"
+"변수를 프로젝트가 사용 중인 인코딩으로 맞추십시오.\n"
 
 #: compat/obstack.c:406 compat/obstack.c:408
 msgid "memory exhausted"
@@ -1280,49 +1278,47 @@ msgid "bad config line %d in %s"
 msgstr "%2$s 안에 %1$d번 줄에 잘못된 설정"
 
 #: config.c:655
-#, fuzzy
 msgid "out of range"
-msgstr "범위가 아닙니다."
+msgstr "범위를 벗어남"
 
 #: config.c:655
-#, fuzzy
 msgid "invalid unit"
-msgstr "잘못된 %s"
+msgstr "단위가 잘못됨"
 
 #: config.c:661
-#, fuzzy, c-format
+#, c-format
 msgid "bad numeric config value '%s' for '%s': %s"
-msgstr "잘못된 수치 설정 값 '%s' (키 '%s'): 범위 벗어남"
+msgstr "잘못된 수치 설정 값 '%s' (키 '%s'): %s"
 
 #: config.c:666
-#, fuzzy, c-format
+#, c-format
 msgid "bad numeric config value '%s' for '%s' in blob %s: %s"
-msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 블롭 %s): 범위 벗어남"
+msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 블롭 %s): %s"
 
 #: config.c:669
-#, fuzzy, c-format
+#, c-format
 msgid "bad numeric config value '%s' for '%s' in file %s: %s"
-msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 파일 %s): 범위 벗어남"
+msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 파일 %s): %s"
 
 #: config.c:672
-#, fuzzy, c-format
+#, c-format
 msgid "bad numeric config value '%s' for '%s' in standard input: %s"
-msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 표준입력): 범위 벗어남"
+msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 표준입력): %s"
 
 #: config.c:675
-#, fuzzy, c-format
+#, c-format
 msgid "bad numeric config value '%s' for '%s' in submodule-blob %s: %s"
-msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 하위 모듈 블롭 %s): 범위 벗어남"
+msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 하위 모듈 블롭 %s): %s"
 
 #: config.c:678
-#, fuzzy, c-format
+#, c-format
 msgid "bad numeric config value '%s' for '%s' in command line %s: %s"
-msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 명령행 %s): 범위 벗어남"
+msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 명령행 %s): %s"
 
 #: config.c:681
-#, fuzzy, c-format
+#, c-format
 msgid "bad numeric config value '%s' for '%s' in %s: %s"
-msgstr "잘못된 수치 설정 값 '%s' (키 '%s', %s 안에): 범위 벗어남"
+msgstr "잘못된 수치 설정 값 '%s' (키 '%s', %s 안에): %s"
 
 #: config.c:768
 #, c-format
@@ -1374,7 +1370,7 @@ msgstr "'%s' 설정을 지울 수 없습니다"
 
 #: connect.c:49
 msgid "The remote end hung up upon initial contact"
-msgstr ""
+msgstr "리모트 측이 최초 연결했을 때 연결을 끊었습니다"
 
 #: connect.c:51
 msgid ""
@@ -1383,6 +1379,10 @@ msgid ""
 "Please make sure you have the correct access rights\n"
 "and the repository exists."
 msgstr ""
+"리모트 저장소에서 읽을 수 없습니다\n"
+"\n"
+"올바른 접근 권한이 있는지, 그리고 저장소가 있는지\n"
+"확인하십시오."
 
 #: connected.c:63 builtin/fsck.c:173 builtin/prune.c:140
 msgid "Checking connectivity"
@@ -1406,11 +1406,13 @@ msgid ""
 "CRLF will be replaced by LF in %s.\n"
 "The file will have its original line endings in your working directory."
 msgstr ""
+"%s에서 CRLF는 LF로 바뀝니다.\n"
+"작업 디렉터리에서는 원래 줄 바꿈 형식을 유지합니다."
 
 #: convert.c:205
 #, c-format
 msgid "CRLF would be replaced by LF in %s."
-msgstr ""
+msgstr "%s에서 CRLF는 LF로 바뀝니다."
 
 #: convert.c:211
 #, c-format
@@ -1418,11 +1420,13 @@ msgid ""
 "LF will be replaced by CRLF in %s.\n"
 "The file will have its original line endings in your working directory."
 msgstr ""
+"%s에서 LF는 CRLF로 바뀝니다.\n"
+"작업 디렉터리에서는 원래 줄 바꿈 형식을 유지합니다."
 
 #: convert.c:215
 #, c-format
 msgid "LF would be replaced by CRLF in %s"
-msgstr ""
+msgstr "%s에서 LF는 CRLF로 바뀝니다."
 
 #: date.c:97
 msgid "in the future"
@@ -1493,9 +1497,9 @@ msgid "Performing inexact rename detection"
 msgstr "부정확한 이름 바꾸기 탐색을 수행하는 중"
 
 #: diff.c:62
-#, fuzzy, c-format
+#, c-format
 msgid "option '%s' requires a value"
-msgstr "`m' 옵션에는 값이 필요합니다"
+msgstr "'%s' 옵션에는 값이 필요합니다"
 
 #: diff.c:124
 #, c-format
@@ -1527,9 +1531,8 @@ msgid "external diff died, stopping at %s"
 msgstr "외부 diff 프로그램이 죽음, %s 위치에서 멈춤"
 
 #: diff.c:3412
-#, fuzzy
 msgid "--name-only, --name-status, --check and -s are mutually exclusive"
-msgstr "-b, -B, --detach 옵션 중 하나만 쓸 수 있습니다"
+msgstr "\"--name-only, --name-status, --check, -s 옵션 중 하나만 쓸 수 있습니다"
 
 #: diff.c:3502
 msgid "--follow requires exactly one pathspec"
@@ -1551,17 +1554,17 @@ msgstr "--submodule 옵션 파라미터 파싱에 실패했습니다: '%s'"
 
 #: diff.c:4700
 msgid "inexact rename detection was skipped due to too many files."
-msgstr ""
+msgstr "파일이 너무 많아서 부정확한 이름 바꾸기 검색 기능을 건너뜁니다."
 
 #: diff.c:4703
 msgid "only found copies from modified paths due to too many files."
-msgstr ""
+msgstr "파일이 너무 많아서 수정한 경로의 복사본만 찾았습니다."
 
 #: diff.c:4706
 #, c-format
 msgid ""
 "you may want to set your %s variable to at least %d and retry the command."
-msgstr ""
+msgstr "%s 변수를 최소한 %d(으)로 설정하고 명령을 다시 시도해 보십시오."
 
 #: dir.c:1866
 msgid "failed to get kernel name and information"
@@ -1572,67 +1575,65 @@ msgid "Untracked cache is disabled on this system or location."
 msgstr "이 시스템 또는 위치에서는 추적되지 않는 캐시를 사용하지 않습니다."
 
 #: fetch-pack.c:213
-#, fuzzy
 msgid "git fetch-pack: expected shallow list"
-msgstr "git archive: 파일 끝을 예상함"
+msgstr "git fetch-pack: 얕은 목록을 예상함"
 
 #: fetch-pack.c:225
-#, fuzzy
 msgid "git fetch-pack: expected ACK/NAK, got EOF"
-msgstr "git archive: ACK/NAK가 와야 하지만, EOF를 받았습니다"
+msgstr "git fetch-pack: ACK/NAK가 와야 하지만, EOF를 받았습니다"
 
 #: fetch-pack.c:243
-#, fuzzy, c-format
+#, c-format
 msgid "git fetch_pack: expected ACK/NAK, got '%s'"
-msgstr "git archive: ACK/NAK가 와야 하지만, EOF를 받았습니다"
+msgstr "git fetch_pack: ACK/NAK가 와야 하지만, '%s'을(를) 받았습니다"
 
 #: fetch-pack.c:295
 msgid "--stateless-rpc requires multi_ack_detailed"
-msgstr ""
+msgstr "--stateless-rpc 옵션은 multi_ack_detailed가 필요합니다"
 
 #: fetch-pack.c:381
-#, fuzzy, c-format
+#, c-format
 msgid "invalid shallow line: %s"
-msgstr "줄 시작이 잘못됨: '%c'"
+msgstr "shallow 줄이 잘못됨: %s"
 
 #: fetch-pack.c:387
-#, fuzzy, c-format
+#, c-format
 msgid "invalid unshallow line: %s"
-msgstr "잘못된 신원 줄: %s"
+msgstr "unshallow 줄이 잘못됨: %s"
 
 #: fetch-pack.c:389
-#, fuzzy, c-format
+#, c-format
 msgid "object not found: %s"
-msgstr "%s 오브젝트가 없습니다"
+msgstr "오브젝트가 없습니다: %s"
 
 #: fetch-pack.c:392
-#, fuzzy, c-format
+#, c-format
 msgid "error in object: %s"
-msgstr "오브젝트에 오류"
+msgstr "오브젝트에 오류: %s"
 
 #: fetch-pack.c:394
-#, fuzzy, c-format
+#, c-format
 msgid "no shallow found: %s"
-msgstr "그런 URL이 없습니다: %s"
+msgstr "shallow가 없습니다: %s"
 
 #: fetch-pack.c:397
 #, c-format
 msgid "expected shallow/unshallow, got %s"
-msgstr ""
+msgstr "shallow/unshallow가 와야 하지만, %s을(를) 받았습니다"
 
 #: fetch-pack.c:436
-#, fuzzy, c-format
+#, c-format
 msgid "got %s %d %s"
-msgstr "%s: %s - %s"
+msgstr "받음: %s %d %s"
 
 #: fetch-pack.c:450
-#, fuzzy, c-format
+#, c-format
 msgid "invalid commit %s"
-msgstr "잘못된 옵션: %s"
+msgstr "잘못된 커밋 %s"
 
 #: fetch-pack.c:483
 msgid "giving up"
-msgstr ""
+msgstr "포기함"
 
 #: fetch-pack.c:493 progress.c:235
 msgid "done"
@@ -1641,110 +1642,104 @@ msgstr "완료"
 #: fetch-pack.c:505
 #, c-format
 msgid "got %s (%d) %s"
-msgstr ""
+msgstr "받음: %s (%d) %s"
 
 #: fetch-pack.c:551
 #, c-format
 msgid "Marking %s as complete"
-msgstr ""
+msgstr "%s 항목을 완료로 표시"
 
 #: fetch-pack.c:697
 #, c-format
 msgid "already have %s (%s)"
-msgstr ""
+msgstr "이미 %s (%s) 있음"
 
 #: fetch-pack.c:735
 msgid "fetch-pack: unable to fork off sideband demultiplexer"
-msgstr ""
+msgstr "fetch-pack: 사이드밴드 디멀티플렉서를 fork할 수 없습니다"
 
 #: fetch-pack.c:743
 msgid "protocol error: bad pack header"
-msgstr ""
+msgstr "프로토콜 오류: 잘못된 묶음 헤더"
 
 #: fetch-pack.c:799
-#, fuzzy, c-format
+#, c-format
 msgid "fetch-pack: unable to fork off %s"
-msgstr "git rm: %s을(를) 제거할 수 없습니다"
+msgstr "fetch-pack: %s 명령을 fork할 수 없습니다"
 
 #: fetch-pack.c:815
-#, fuzzy, c-format
+#, c-format
 msgid "%s failed"
-msgstr "fseek 실패"
+msgstr "%s 실패"
 
 #: fetch-pack.c:817
 msgid "error in sideband demultiplexer"
-msgstr ""
+msgstr "사이드밴드 디멀티플렉서에 오류"
 
 #: fetch-pack.c:844
-#, fuzzy
 msgid "Server does not support shallow clients"
-msgstr "rev-list는 노트 표시를 지원하지 않습니다"
+msgstr "서버에서 shallow 클라이언트를 지원하지 않습니다"
 
 #: fetch-pack.c:848
 msgid "Server supports multi_ack_detailed"
-msgstr ""
+msgstr "서버에서 multi_ack_detailed를 지원합니다"
 
 #: fetch-pack.c:851
 msgid "Server supports no-done"
-msgstr ""
+msgstr "서버에서 no-done을 지원합니다"
 
 #: fetch-pack.c:857
 msgid "Server supports multi_ack"
-msgstr ""
+msgstr "서버에서 multi_ack를 지원합니다"
 
 #: fetch-pack.c:861
 msgid "Server supports side-band-64k"
-msgstr ""
+msgstr "서버에서 side-band-64k를 지원합니다"
 
 #: fetch-pack.c:865
 msgid "Server supports side-band"
-msgstr ""
+msgstr "서버에서 side-band를 지원합니다"
 
 #: fetch-pack.c:869
 msgid "Server supports allow-tip-sha1-in-want"
-msgstr ""
+msgstr "서버에서 allow-tip-sha1-in-want를 지원합니다"
 
 #: fetch-pack.c:873
 msgid "Server supports allow-reachable-sha1-in-want"
-msgstr ""
+msgstr "서버에서 allow-reachable-sha1-in-want를 지원합니다"
 
 #: fetch-pack.c:883
 msgid "Server supports ofs-delta"
-msgstr ""
+msgstr "서버에서 ofs-delta를 지원합니다"
 
 #: fetch-pack.c:890
 #, c-format
 msgid "Server version is %.*s"
-msgstr ""
+msgstr "서버 버전이 %.*s입니다"
 
 #: fetch-pack.c:896
-#, fuzzy
 msgid "Server does not support --shallow-since"
-msgstr "받는 쪽에서 --signed 푸시를 지원하지 않습니다"
+msgstr "서버에서 --shallow-signed 옵션을 지원하지 않습니다"
 
 #: fetch-pack.c:900
-#, fuzzy
 msgid "Server does not support --shallow-exclude"
-msgstr "받는 쪽에서 --atomic 푸시를 지원하지 않습니다"
+msgstr "서버에서 --shallow-exclude 옵션을 지원하지 않습니다"
 
 #: fetch-pack.c:902
-#, fuzzy
 msgid "Server does not support --deepen"
-msgstr "받는 쪽에서 --signed 푸시를 지원하지 않습니다"
+msgstr "서버에서 --deepen 옵션을 지원하지 않습니다"
 
 #: fetch-pack.c:913
-#, fuzzy
 msgid "no common commits"
-msgstr "알 수 없는 커밋 %s"
+msgstr "공통 커밋 없음"
 
 #: fetch-pack.c:925
-#, fuzzy
 msgid "git fetch-pack: fetch failed."
-msgstr "패치 편집에 실패했습니다"
+msgstr "git fetch-pack: 가져오기 실패."
 
 #: fetch-pack.c:1087
 msgid "no matching remote head"
-msgstr ""
+msgstr "해당하는 리모트 헤드가 없습니다"
 
 #: gpg-interface.c:185
 msgid "gpg failed to sign the data"
@@ -1849,6 +1844,17 @@ msgid ""
 "Omit --global to set the identity only in this repository.\n"
 "\n"
 msgstr ""
+"\n"
+"*** 내가 누구인지 설정하십시오.\n"
+"\n"
+"다음을 실행하면,\n"
+"\n"
+"  git config --global user.email \"you@example.com\"\n"
+"  git config --global user.name \"내 이름\"\n"
+"\n"
+"계정의 기본 신원 정보를 설정합니다.\n"
+"--global 옵션을 빼면 이 저장소서만 신원 정보를 설정합니다.\n"
+"\n"
 
 #: lockfile.c:152
 #, c-format
@@ -2128,11 +2134,14 @@ msgid ""
 "Please, use 'git notes merge --commit' or 'git notes merge --abort' to "
 "commit/abort the previous merge before you start a new notes merge."
 msgstr ""
+"이전의 노트 병합을 다 마치지 않았습니다 (%s 있음).\n"
+"새로 노트 병합을 시작하기 전에 'git notes merge --commit'\n"
+"또는 'git notes merge --abort'로 이전 병합을 커밋/중지하십시오."
 
 #: notes-merge.c:280
-#, fuzzy, c-format
+#, c-format
 msgid "You have not concluded your notes merge (%s exists)."
-msgstr "병합 작업을 다 마치지 않았습니다 (MERGE_HEAD 파일이 있습니다)."
+msgstr "노트 병합 작업을 다 마치지 않았습니다. (%s 있음)"
 
 #: notes-utils.c:41
 msgid "Cannot commit uninitialized/unreferenced notes tree"
@@ -2249,7 +2258,7 @@ msgstr "%s: 경로명세 지시어가 이 명령어에서 지원하지 않습니
 msgid ""
 "empty strings as pathspecs will be made invalid in upcoming releases. please "
 "use . instead if you meant to match all paths"
-msgstr ""
+msgstr "경로명세로 빈 문자열을 넣는 일은 다음 릴리스에서 오류로 취급할 예정입니다. 모든 경로를 지정하려면 점(.)을 사용하십시오."
 
 #: pathspec.c:440
 #, c-format
@@ -2599,14 +2608,12 @@ msgid "the receiving end does not support push options"
 msgstr "받는 쪽에서 푸시 옵션을 지원하지 않습니다"
 
 #: sequencer.c:171
-#, fuzzy
 msgid "revert"
-msgstr "되돌리기 실패"
+msgstr "되돌리기"
 
 #: sequencer.c:171
-#, fuzzy
 msgid "cherry-pick"
-msgstr "cherry-pick 실패"
+msgstr "빼오기"
 
 #: sequencer.c:228
 msgid ""
@@ -2627,24 +2634,24 @@ msgstr ""
 "그리고 결과물을 'git commit'으로 커밋하십시오"
 
 #: sequencer.c:244 sequencer.c:1209
-#, fuzzy, c-format
+#, c-format
 msgid "could not lock '%s'"
-msgstr "'%s'을(를) 닫을 수 없습니다"
+msgstr "'%s'을(를) 잠글 수 없습니다"
 
 #: sequencer.c:247 sequencer.c:1125 sequencer.c:1214
-#, fuzzy, c-format
+#, c-format
 msgid "could not write to '%s'"
-msgstr "%s에 쓸 수 없습니다"
+msgstr "'%s'에 쓸 수 없습니다"
 
 #: sequencer.c:251
-#, fuzzy, c-format
+#, c-format
 msgid "could not write eol to '%s"
-msgstr "%s에 쓸 수 없습니다"
+msgstr "'%s'에 줄바꿈을 쓸 수 없습니다"
 
 #: sequencer.c:255 sequencer.c:1130 sequencer.c:1216
-#, fuzzy, c-format
+#, c-format
 msgid "failed to finalize '%s'."
-msgstr "'%s' 파일 삭제에 실패했습니다"
+msgstr "'%s' 마치는데 실패했습니다"
 
 #: sequencer.c:279 builtin/am.c:259 builtin/commit.c:749 builtin/merge.c:1032
 #, c-format
@@ -2652,14 +2659,13 @@ msgid "could not read '%s'"
 msgstr "'%s'에서 읽을 수 없습니다"
 
 #: sequencer.c:305
-#, fuzzy, c-format
+#, c-format
 msgid "your local changes would be overwritten by %s."
-msgstr "로컬 변경 사항을 revert 때문에 덮어 쓰게 됩니다."
+msgstr "로컬 변경 사항을 %s 때문에 덮어 쓰게 됩니다."
 
 #: sequencer.c:309
-#, fuzzy
 msgid "commit your changes or stash them to proceed."
-msgstr "변경 사항을 스테이징하거나 스태시한 다음 계속하십시오."
+msgstr "변경 사항을 커밋하거나 스태시한 다음 계속하십시오."
 
 #: sequencer.c:324
 #, c-format
@@ -2673,17 +2679,15 @@ msgid "%s: Unable to write new index file"
 msgstr "%s: 새 인덱스 파일을 쓸 수 없습니다"
 
 #: sequencer.c:418
-#, fuzzy
 msgid "could not resolve HEAD commit\n"
 msgstr "HEAD 커밋을 처리할 수 없습니다\n"
 
 #: sequencer.c:438
-#, fuzzy
 msgid "unable to update cache tree\n"
 msgstr "캐시 트리를 업데이트할 수 없습니다\n"
 
 #: sequencer.c:483
-#, fuzzy, c-format
+#, c-format
 msgid ""
 "you have staged changes in your working tree\n"
 "If these changes are meant to be squashed into the previous commit, run:\n"
@@ -2702,44 +2706,43 @@ msgstr ""
 "이 변경 사항을 이전 커밋에 합치려면,\n"
 "다음을 실행하십시오:\n"
 "\n"
-"  git commit --amend $gpg_sign_opt_quoted\n"
+"  git commit --amend %s\n"
 "\n"
 "새 커밋으로 만드려면 다음을 실행하십시오:\n"
 "\n"
-"  git commit $gpg_sign_opt_quoted\n"
+"  git commit %s\n"
 "\n"
 "어떤 경우이든, 마친 다음에 다음 명령으로 계속합니다:\n"
 "\n"
 "  git rebase --continue\n"
 
 #: sequencer.c:567
-#, fuzzy, c-format
+#, c-format
 msgid "could not parse commit %s\n"
 msgstr "%s 커밋을 파싱할 수 없습니다\n"
 
 #: sequencer.c:572
-#, fuzzy, c-format
+#, c-format
 msgid "could not parse parent commit %s\n"
 msgstr "%s 이전 커밋을 파싱할 수 없습니다\n"
 
 #: sequencer.c:656
-#, fuzzy
 msgid "your index file is unmerged."
 msgstr "인덱스 파일이 병합되지 않았습니다."
 
 #: sequencer.c:675
-#, fuzzy, c-format
+#, c-format
 msgid "commit %s is a merge but no -m option was given."
 msgstr "%s 커밋은 병합이지만 -m 옵션이 주어지지 않았습니다."
 
 # FIXME: "parent %d" 번호가 무슨 의미?
 #: sequencer.c:683
-#, fuzzy, c-format
+#, c-format
 msgid "commit %s does not have parent %d"
-msgstr "Commit %s 커밋에 이전 커밋 %d이(가) 없습니다"
+msgstr "%s 커밋에 이전 커밋 %d이(가) 없습니다"
 
 #: sequencer.c:687
-#, fuzzy, c-format
+#, c-format
 msgid "mainline was specified but commit %s is not a merge."
 msgstr "메인라인을 지정했지만 %s 커밋이 병합 커밋이 아닙니다."
 
@@ -2751,7 +2754,7 @@ msgid "%s: cannot parse parent commit %s"
 msgstr "%s: %s 이전 커밋을 파싱할 수 없습니다"
 
 #: sequencer.c:705
-#, fuzzy, c-format
+#, c-format
 msgid "cannot get commit message for %s"
 msgstr "%s에 대한 커밋 메시지를 가져올 수 없습니다"
 
@@ -2780,49 +2783,46 @@ msgid "git %s: failed to refresh the index"
 msgstr "git %s: 인덱스 새로 고침에 실패했습니다"
 
 #: sequencer.c:944
-#, fuzzy, c-format
+#, c-format
 msgid "invalid line %d: %.*s"
-msgstr "잘못된 신원 줄: %s"
+msgstr "잘못된 줄 %d: %.*s"
 
 #: sequencer.c:950
-#, fuzzy
 msgid "no commits parsed."
 msgstr "파싱한 커밋이 없습니다."
 
 #: sequencer.c:966
-#, fuzzy, c-format
+#, c-format
 msgid "could not read '%s'."
-msgstr "'%s'에서 읽을 수 없습니다"
+msgstr "'%s'에서 읽을 수 없습니다."
 
 #: sequencer.c:972
-#, fuzzy, c-format
+#, c-format
 msgid "unusable instruction sheet: '%s'"
-msgstr "사용 불가능 인스트럭션 파일: %s"
+msgstr "사용 불가능 인스트럭션 시트: '%s'"
 
 #: sequencer.c:983
-#, fuzzy
 msgid "cannot cherry-pick during a revert."
-msgstr "되돌리기(revert) 중에 빼오기(cherry-pick)를 할 수 없습니다"
+msgstr "되돌리기(revert) 중에 빼오기(cherry-pick)를 할 수 없습니다."
 
 #: sequencer.c:985
-#, fuzzy
 msgid "cannot revert during a cherry-pick."
 msgstr "빼오기(cherry-pick) 중에 되돌리기(revert)를 할 수 없습니다."
 
 #: sequencer.c:1028
-#, fuzzy, c-format
+#, c-format
 msgid "invalid key: %s"
 msgstr "잘못된 키: %s"
 
 #: sequencer.c:1031
-#, fuzzy, c-format
+#, c-format
 msgid "invalid value for %s: %s"
-msgstr "%s의 값이 올바르지 않습니다: %s"
+msgstr "%s의 값이 잘못됨: %s"
 
 #: sequencer.c:1063
-#, fuzzy, c-format
+#, c-format
 msgid "malformed options sheet: '%s'"
-msgstr "형식이 잘못된 옵션 파일: %s"
+msgstr "형식이 잘못된 옵션 시트: '%s'"
 
 #: sequencer.c:1101
 msgid "a cherry-pick or revert is already in progress"
@@ -2833,14 +2833,13 @@ msgid "try \"git cherry-pick (--continue | --quit | --abort)\""
 msgstr "\"git cherry-pick (--continue | --quit | --abort)\" 명령을 해 보십시오"
 
 #: sequencer.c:1106
-#, fuzzy, c-format
+#, c-format
 msgid "could not create sequencer directory '%s'"
-msgstr "%s 시퀀서 디렉터리를 만들 수 없습니다"
+msgstr "'%s' 시퀀서 디렉터리를 만들 수 없습니다"
 
 #: sequencer.c:1120
-#, fuzzy
 msgid "could not lock HEAD"
-msgstr "HEAD는 분리할 수 없습니다"
+msgstr "HEAD를 잠글 수 없습니다"
 
 #: sequencer.c:1151 sequencer.c:1289
 msgid "no cherry-pick or revert in progress"
@@ -2860,9 +2859,9 @@ msgid "cannot open '%s'"
 msgstr "'%s'을(를) 열 수 없습니다"
 
 #: sequencer.c:1177
-#, fuzzy, c-format
+#, c-format
 msgid "cannot read '%s': %s"
-msgstr "%s을(를) 읽을 수 없습니다: %s"
+msgstr "'%s'을(를) 읽을 수 없습니다: %s"
 
 #: sequencer.c:1178
 msgid "unexpected end of file"
@@ -2884,9 +2883,8 @@ msgid "%s: bad revision"
 msgstr "%s: 잘못된 리비전"
 
 #: sequencer.c:1391
-#, fuzzy
 msgid "can't revert as initial commit"
-msgstr "최초의 커밋을 되돌릴 수 없습니다"
+msgstr "최초의 커밋으로 되돌릴 수 없습니다"
 
 #: setup.c:160
 #, c-format
@@ -2966,9 +2964,9 @@ msgstr ""
 "파일의 소유자에 읽기와 쓰기 권한이 있어야 합니다."
 
 #: sha1_file.c:473
-#, fuzzy, c-format
+#, c-format
 msgid "path '%s' does not exist"
-msgstr "'%s' 브랜치가 없습니다"
+msgstr "'%s' 경로가 없습니다"
 
 #: sha1_file.c:499
 #, c-format
@@ -3008,12 +3006,11 @@ msgstr "오프셋이 %s의 묶음 인덱스 끝보다 뒤입니다 (망가진 �
 #: sha1_name.c:407
 #, c-format
 msgid "short SHA1 %s is ambiguous"
-msgstr ""
+msgstr "짧은 SHA1 %s은(는) 여럿에 대응됩니다"
 
 #: sha1_name.c:418
-#, fuzzy
 msgid "The candidates are:"
-msgstr "자주 사용하는 깃 안내서는 다음과 같습니다:\n"
+msgstr "후보는 다음과 같습니다:"
 
 #: sha1_name.c:577
 msgid ""
@@ -3180,22 +3177,20 @@ msgid "Could not read ref %s"
 msgstr "%s 레퍼런스를 읽을 수 없습니다"
 
 #: tree-walk.c:31
-#, fuzzy
 msgid "too-short tree object"
-msgstr "접근할 수 없는 오브젝트를 표시합니다"
+msgstr "너무 짧은 트리 오브젝트"
 
 #: tree-walk.c:37
-#, fuzzy
 msgid "malformed mode in tree entry"
-msgstr "잘못된 형식의 오브젝트 이름 %s"
+msgstr "트리 엔트리에 잘못된 형식의 모드"
 
 #: tree-walk.c:41
 msgid "empty filename in tree entry"
-msgstr ""
+msgstr "트리 엔트리에 빈 파일 이름"
 
 #: tree-walk.c:113
 msgid "too-short tree file"
-msgstr ""
+msgstr "너무 짧은 트리 파일"
 
 #: unpack-trees.c:64
 #, c-format
@@ -3384,7 +3379,7 @@ msgstr ""
 "%s"
 
 #: unpack-trees.c:126
-#, fuzzy, c-format
+#, c-format
 msgid ""
 "The following working tree files would be overwritten by sparse checkout "
 "update:\n"
@@ -3395,7 +3390,7 @@ msgstr ""
 "%s"
 
 #: unpack-trees.c:128
-#, fuzzy, c-format
+#, c-format
 msgid ""
 "The following working tree files would be removed by sparse checkout "
 "update:\n"
@@ -3940,19 +3935,18 @@ msgstr "다음 앞에: "
 
 #. TRANSLATORS: the action is e.g. "pull with rebase"
 #: wt-status.c:2270
-#, fuzzy, c-format
+#, c-format
 msgid "cannot %s: You have unstaged changes."
-msgstr "리베이스할 수 없습니다: 스테이징하지 않은 변경 사항이 있습니다."
+msgstr "%s 할 수 없습니다: 스테이징하지 않은 변경 사항이 있습니다."
 
 #: wt-status.c:2276
-#, fuzzy
 msgid "additionally, your index contains uncommitted changes."
 msgstr "추가로, 인덱스에 커밋하지 않은 변경 사항이 있습니다."
 
 #: wt-status.c:2278
-#, fuzzy, c-format
+#, c-format
 msgid "cannot %s: Your index contains uncommitted changes."
-msgstr "리베이스할 수 없습니다: 인덱스에 커밋하지 않은 변경 사항이 있습니다."
+msgstr "%s 할 수 없습니다: 인덱스에 커밋하지 않은 변경 사항이 있습니다."
 
 #: compat/precompose_utf8.c:57 builtin/clone.c:414
 #, c-format
@@ -4330,9 +4324,8 @@ msgid "Invalid value for --patch-format: %s"
 msgstr "--patch-format 옵션에 대해 잘못된 값: %s"
 
 #: builtin/am.c:2233
-#, fuzzy
 msgid "git am [<options>] [(<mbox> | <Maildir>)...]"
-msgstr "git am [<옵션>] [(<mbox>|<Maildir>)...]"
+msgstr "git am [<옵션>] [(<mbox> | <Maildir>)...]"
 
 #: builtin/am.c:2234
 msgid "git am [<options>] (--continue | --skip | --abort)"
@@ -4613,11 +4606,11 @@ msgstr "공백 문자 차이점을 무시합니다"
 
 #: builtin/blame.c:2599
 msgid "Use an experimental indent-based heuristic to improve diffs"
-msgstr ""
+msgstr "diff를 향상하는데 실험적인 들여쓰기 기반 휴리스틱을 사용합니다."
 
 #: builtin/blame.c:2600
 msgid "Use an experimental blank-line-based heuristic to improve diffs"
-msgstr ""
+msgstr "diff를 향상하는데 실험적인 빈 줄 기반 휴리스틱을 사용합니다."
 
 #: builtin/blame.c:2602
 msgid "Spend extra cycles to find better match"
@@ -4652,9 +4645,8 @@ msgid "Process only line range n,m, counting from 1"
 msgstr "n,m줄 (1번 줄부터 시작) 사이의 범위만 처리"
 
 #: builtin/blame.c:2654
-#, fuzzy
 msgid "--progress can't be used with --incremental or porcelain formats"
-msgstr "태그 푸시하기 (--all 또는 --mirror 옵션과 같이 쓸 수 없음)"
+msgstr "--progress 옵션은 --incremental 옵션이나 포스레인 형식에서 사용할 수 없습니다"
 
 #. TRANSLATORS: This string is used to tell us the maximum
 #. display width for a relative timestamp in "git blame"
@@ -4667,38 +4659,37 @@ msgid "4 years, 11 months ago"
 msgstr "4년 11달 전"
 
 #: builtin/blame.c:2780
-#, fuzzy
 msgid "--contents and --reverse do not blend well."
-msgstr "--column 및 --verbose 옵션은 호환되지 않습니다"
+msgstr "--contents 및 --reverse 옵션은 호환되지 않습니다."
 
 #: builtin/blame.c:2800
 msgid "cannot use --contents with final commit object name"
-msgstr ""
+msgstr "--contents 옵션을 마지막 오브젝트 이름에 사용할 수 없습니다"
 
 #: builtin/blame.c:2805
 msgid "--reverse and --first-parent together require specified latest commit"
-msgstr ""
+msgstr "--reverse 및 --first-parent 옵션을 같이 쓰면 최근 커밋을 지정해야 합니다"
 
 #: builtin/blame.c:2832
 msgid ""
 "--reverse --first-parent together require range along first-parent chain"
-msgstr ""
+msgstr "--reverse 및 --first-parent 옵션을 같이 쓰면 최초-상위 체인과 범위가 필요합니다"
 
 #: builtin/blame.c:2843
-#, fuzzy, c-format
+#, c-format
 msgid "no such path %s in %s"
-msgstr "그런 브랜치가 ('%s') 없습니다"
+msgstr "%s 경로가 %s 안에 없습니다"
 
 #: builtin/blame.c:2854
-#, fuzzy, c-format
+#, c-format
 msgid "cannot read blob %s for path %s"
-msgstr "%s '%s' 오브젝트를 읽을 수 없음"
+msgstr "%s 경로에 대해 %s 블롭을 읽을 수 없음"
 
 #: builtin/blame.c:2873
 #, c-format
 msgid "file %s has only %lu line"
 msgid_plural "file %s has only %lu lines"
-msgstr[0] ""
+msgstr[0] "%s 파일에는 줄이 %lu개 뿐입니다"
 
 #: builtin/branch.c:26
 msgid "git branch [<options>] [-r | -a] [--merged | --no-merged]"
@@ -4949,9 +4940,8 @@ msgid "change the upstream info"
 msgstr "업스트림 정보를 바꿉니다"
 
 #: builtin/branch.c:660
-#, fuzzy
 msgid "Unset the upstream info"
-msgstr "업스트림 정보를 바꿉니다"
+msgstr "업스트림 정보를 해제합니다"
 
 #: builtin/branch.c:661
 msgid "use colored output"
@@ -5152,20 +5142,16 @@ msgid "Need a repository to unbundle."
 msgstr "번들을 해제하려면 저장소가 필요합니다."
 
 #: builtin/cat-file.c:513
-#, fuzzy
 msgid ""
 "git cat-file (-t [--allow-unknown-type] | -s [--allow-unknown-type] | -e | -"
 "p | <type> | --textconv | --filters) [--path=<path>] <object>"
-msgstr ""
-"git cat-file (-t [--allow-unknown-type]|-s [--allow-unknown-type]|-e|-p|<종류"
-">|--textconv) <오브젝트>"
+msgstr "git cat-file (-t [--allow-unknown-type] | -s [--allow-unknown-type] | -e | -p | <종류> | --textconv | --filters) [--path=<경로>] <오브젝트>"
 
 #: builtin/cat-file.c:514
-#, fuzzy
 msgid ""
 "git cat-file (--batch | --batch-check) [--follow-symlinks] [--textconv | --"
 "filters]"
-msgstr "git cat-file (--batch | --batch-check) [--follow-symlinks]"
+msgstr "git cat-file (--batch | --batch-check) [--follow-symlinks] [--textconv | --filters]"
 
 #: builtin/cat-file.c:551
 msgid "<type> can be one of: blob, tree, commit, tag"
@@ -5192,9 +5178,8 @@ msgid "for blob objects, run textconv on object's content"
 msgstr "블롭 오브젝트에 대해서는, 오브젝트의 내용에 대해 textconv를 실행합니다"
 
 #: builtin/cat-file.c:560
-#, fuzzy
 msgid "for blob objects, run filters on object's content"
-msgstr "블롭 오브젝트에 대해서는, 오브젝트의 내용에 대해 textconv를 실행합니다"
+msgstr "블롭 오브젝트에 대해서는, 오브젝트의 내용에 대해 필터를 실행합니다"
 
 #: builtin/cat-file.c:561 git-submodule.sh:923
 msgid "blob"
@@ -5202,7 +5187,7 @@ msgstr "블롭"
 
 #: builtin/cat-file.c:562
 msgid "use a specific path for --textconv/--filters"
-msgstr ""
+msgstr "--textconv/--filters 옵션에 경로를 지정합니다"
 
 #: builtin/cat-file.c:564
 msgid "allow -s and -t to work with broken/corrupt objects"
@@ -5931,19 +5916,16 @@ msgid "time"
 msgstr "시각"
 
 #: builtin/clone.c:100
-#, fuzzy
 msgid "create a shallow clone since a specific time"
-msgstr "지정한 깊이의 얕은 복제를 만듭니다"
+msgstr "지정한 시간 이후의 얕은 복제를 만듭니다"
 
 #: builtin/clone.c:101 builtin/fetch.c:124
-#, fuzzy
 msgid "revision"
-msgstr "%s: 잘못된 리비전"
+msgstr "리비전"
 
 #: builtin/clone.c:102 builtin/fetch.c:125
-#, fuzzy
 msgid "deepen history of shallow clone by excluding rev"
-msgstr "얕은 복제의 커밋 내역을 깊게 만듭니다"
+msgstr "레퍼런스를 제외해 얕은 복제의 커밋 내역을 깊게 만듭니다"
 
 #: builtin/clone.c:104
 msgid "clone only one branch, HEAD or --branch"
@@ -5986,9 +5968,9 @@ msgstr ""
 "명령행에서 디렉터리를 지정하십시오"
 
 #: builtin/clone.c:303
-#, fuzzy, c-format
+#, c-format
 msgid "info: Could not add alternate for '%s': %s\n"
-msgstr "'%s'에 대해 reflog할 수 없습니다: %s\n"
+msgstr "정보: '%s'에 대한 보조 파일을 추가할 수 없습니다: %s\n"
 
 #: builtin/clone.c:375
 #, c-format
@@ -6126,7 +6108,7 @@ msgstr "'%s'에 복제합니다...\n"
 msgid ""
 "clone --recursive is not compatible with both --reference and --reference-if-"
 "able"
-msgstr ""
+msgstr "clone --recursive 옵션은 --reference 및 --reference-if-able 옵션을 같이 쓰는 것과 호환되지 않습니다"
 
 #: builtin/clone.c:1019
 msgid "--depth is ignored in local clones; use file:// instead."
@@ -6134,16 +6116,12 @@ msgstr ""
 "--depth 옵션은 로컬 복제에서 무시됩니다. 대신에 'file://'을 사용하십시오."
 
 #: builtin/clone.c:1021
-#, fuzzy
 msgid "--shallow-since is ignored in local clones; use file:// instead."
-msgstr ""
-"--depth 옵션은 로컬 복제에서 무시됩니다. 대신에 'file://'을 사용하십시오."
+msgstr "--shallow-since 옵션은 로컬 복제에서 무시됩니다. 대신에 'file://'을 사용하십시오."
 
 #: builtin/clone.c:1023
-#, fuzzy
 msgid "--shallow-exclude is ignored in local clones; use file:// instead."
-msgstr ""
-"--depth 옵션은 로컬 복제에서 무시됩니다. 대신에 'file://'을 사용하십시오."
+msgstr "--shallow-exclude 옵션은 로컬 복제에서 무시됩니다. 대신에 'file://'을 사용하십시오."
 
 #: builtin/clone.c:1026
 msgid "source repository is shallow, ignoring --local"
@@ -6563,9 +6541,8 @@ msgid "show branch information"
 msgstr "브랜치 정보를 표시합니다"
 
 #: builtin/commit.c:1345
-#, fuzzy
 msgid "version"
-msgstr "권한"
+msgstr "버전"
 
 #: builtin/commit.c:1345 builtin/commit.c:1621 builtin/push.c:522
 #: builtin/worktree.c:440
@@ -6969,6 +6946,9 @@ msgid ""
 "cannot overwrite multiple values with a single value\n"
 "       Use a regexp, --add or --replace-all to change %s."
 msgstr ""
+"여러 개의 값을 하나의 값으로 덮어쓸 수 없습니다.\n"
+"%s을(를) 변경하려면 정규식을 쓰거나, --add 또는 --replace-all 옵션을\n"
+"사용하십시오."
 
 #: builtin/count-objects.c:86
 msgid "git count-objects [-v] [-H | --human-readable]"
@@ -7272,9 +7252,8 @@ msgid "deepen history of shallow clone"
 msgstr "얕은 복제의 커밋 내역을 깊게 만듭니다"
 
 #: builtin/fetch.c:123
-#, fuzzy
 msgid "deepen history of shallow repository based on time"
-msgstr "얕은 복제의 커밋 내역을 깊게 만듭니다"
+msgstr "얕은 복제의 커밋 내역을 시간을 기준으로 깊게 만듭니다"
 
 #: builtin/fetch.c:129 builtin/pull.c:206
 msgid "convert to a complete repository"
@@ -7445,12 +7424,11 @@ msgstr "태그 이름을 지정해야 합니다."
 
 #: builtin/fetch.c:1322
 msgid "Negative depth in --deepen is not supported"
-msgstr ""
+msgstr "--deepen 옵션에 음수 깊이는 지원하지 않습니다"
 
 #: builtin/fetch.c:1324
-#, fuzzy
 msgid "--deepen and --depth are mutually exclusive"
-msgstr "-b, -B, --detach 옵션 중 하나만 쓸 수 있습니다"
+msgstr "-deepen, --depth 옵션 중 하나만 쓸 수 있습니다"
 
 #: builtin/fetch.c:1329
 msgid "--depth and --unshallow cannot be used together"
@@ -7972,7 +7950,7 @@ msgstr "사용 가능한 모든 명령의 목록을 표시합니다"
 
 #: builtin/help.c:43
 msgid "exclude guides"
-msgstr ""
+msgstr "설명서 제외"
 
 #: builtin/help.c:44
 msgid "print list of useful guides"
@@ -8138,7 +8116,7 @@ msgstr "현재 정의된 off_t에 비해 묶음이 너무 큽니다"
 
 #: builtin/index-pack.c:302 builtin/unpack-objects.c:92
 msgid "pack exceeds maximum allowed size"
-msgstr ""
+msgstr "묶음 크기가 최대 허용 크기를 넘었습니다"
 
 #: builtin/index-pack.c:317
 #, c-format
@@ -8690,9 +8668,8 @@ msgid "mark the series as Nth re-roll"
 msgstr "시리즈를 N번째 re-roll로 표시합니다"
 
 #: builtin/log.c:1427
-#, fuzzy
 msgid "Use [RFC PATCH] instead of [PATCH]"
-msgstr "[PATCH] 대신 [<접두어>]를 사용합니다"
+msgstr "[PATCH] 대신 [RFC PATCH]를 사용합니다"
 
 #: builtin/log.c:1430
 msgid "Use [<prefix>] instead of [PATCH]"
@@ -8807,9 +8784,8 @@ msgid "-n and -k are mutually exclusive."
 msgstr "-n 및 -k 옵션은 하나만 써야 합니다."
 
 #: builtin/log.c:1567
-#, fuzzy
 msgid "--subject-prefix/--rfc and -k are mutually exclusive."
-msgstr "--subject-prefix 및 -k 옵션은 하나만 써야 합니다."
+msgstr "--subject-prefix/--rfc 및 -k 옵션은 하나만 써야 합니다."
 
 #: builtin/log.c:1575
 msgid "--name-only does not make sense"
@@ -8934,9 +8910,8 @@ msgid "make the output relative to the project top directory"
 msgstr "최상위 디렉터리 상대 경로로 출력합니다"
 
 #: builtin/ls-files.c:551
-#, fuzzy
 msgid "recurse through submodules"
-msgstr "하위 트리로 재귀적으로 적용"
+msgstr "하위 모듈에 재귀적으로 적용"
 
 #: builtin/ls-files.c:553
 msgid "if any <file> is not in the index, treat this as an error"
@@ -9484,12 +9459,12 @@ msgid "set labels for file1/orig-file/file2"
 msgstr "<파일1>/<본래-파일>/<파일2>에 대한 레이블을 설정합니다"
 
 #: builtin/merge-recursive.c:45
-#, fuzzy, c-format
+#, c-format
 msgid "unknown option %s"
-msgstr "알 수 없는 옵션: $opt"
+msgstr "알 수 없는 옵션: %s"
 
 #: builtin/merge-recursive.c:51
-#, fuzzy, c-format
+#, c-format
 msgid "could not parse object '%s'"
 msgstr "'%s' 오브젝트를 파싱할 수 없습니다"
 
@@ -9497,22 +9472,21 @@ msgstr "'%s' 오브젝트를 파싱할 수 없습니다"
 #, c-format
 msgid "cannot handle more than %d base. Ignoring %s."
 msgid_plural "cannot handle more than %d bases. Ignoring %s."
-msgstr[0] ""
+msgstr[0] "베이스를 %d개 보다 많이 쓸 수 없습니다. %s 무시합니다."
 
 #: builtin/merge-recursive.c:63
-#, fuzzy
 msgid "not handling anything other than two heads merge."
 msgstr "두 개의 헤드 병합 외에는 처리하지 않습니다."
 
 #: builtin/merge-recursive.c:69 builtin/merge-recursive.c:71
-#, fuzzy, c-format
+#, c-format
 msgid "could not resolve ref '%s'"
-msgstr "%s 레퍼런스를 제거할 수 없습니다"
+msgstr "'%s' 레퍼런스를 알아낼 수 없습니다"
 
 #: builtin/merge-recursive.c:77
-#, fuzzy, c-format
+#, c-format
 msgid "Merging %s with %s\n"
-msgstr "이름 바꾸기, '%s'에서 '%s'(으)로\n"
+msgstr "%s 병합, %s 항목과\n"
 
 #: builtin/mktree.c:65
 msgid "git mktree [-z] [--missing] [--batch]"
@@ -9792,7 +9766,6 @@ msgid "failed to finish 'show' for object '%s'"
 msgstr "오브젝트 '%s'에 대해 'show'를 마치는데 실패했습니다"
 
 #: builtin/notes.c:194
-#, fuzzy
 msgid "please supply the note contents using either -m or -F option"
 msgstr "노트 내용을 -m 또는 -F 옵션으로 입력하십시오"
 
@@ -9801,7 +9774,7 @@ msgid "unable to write note object"
 msgstr "노트 오브젝트를 쓸 수 없습니다"
 
 #: builtin/notes.c:205
-#, fuzzy, c-format
+#, c-format
 msgid "the note contents have been left in %s"
 msgstr "노트 내용은 %s에 남습니다"
 
@@ -9818,36 +9791,36 @@ msgstr "'%s'을(를) 열거나 읽을 수 없습니다"
 #: builtin/notes.c:254 builtin/notes.c:305 builtin/notes.c:307
 #: builtin/notes.c:372 builtin/notes.c:427 builtin/notes.c:513
 #: builtin/notes.c:518 builtin/notes.c:596 builtin/notes.c:659
-#, fuzzy, c-format
+#, c-format
 msgid "failed to resolve '%s' as a valid ref."
 msgstr "'%s'을(를) 올바른 레퍼런스로 알아내는데 실패했습니다."
 
 #: builtin/notes.c:257
-#, fuzzy, c-format
+#, c-format
 msgid "failed to read object '%s'."
 msgstr "'%s' 오브젝트 읽기에 실패했습니다."
 
 #: builtin/notes.c:261
-#, fuzzy, c-format
+#, c-format
 msgid "cannot read note data from non-blob object '%s'."
 msgstr "블롭이 아닌 '%s' 오브젝트에 대해 노트 데이터를 읽을 수 없습니다."
 
 #: builtin/notes.c:301
-#, fuzzy, c-format
+#, c-format
 msgid "malformed input line: '%s'."
 msgstr "잘못된 형식의 입력 줄: '%s'."
 
 #: builtin/notes.c:316
-#, fuzzy, c-format
+#, c-format
 msgid "failed to copy notes from '%s' to '%s'"
 msgstr "'%s'에서 '%s'(으)로 노트를 복사하는데 실패했습니다"
 
 #. TRANSLATORS: the first %s will be replaced by a
 #. git notes command: 'add', 'merge', 'remove', etc.
 #: builtin/notes.c:345
-#, fuzzy, c-format
+#, c-format
 msgid "refusing to %s notes in %s (outside of refs/notes/)"
-msgstr "%s에서 노트를 다시 쓰기를 거부합니다 (refs/notes/ 밖임)"
+msgstr "%s에서 노트를 %s 하기를 거부합니다 (refs/notes/ 밖임)"
 
 #: builtin/notes.c:365 builtin/notes.c:420 builtin/notes.c:496
 #: builtin/notes.c:508 builtin/notes.c:584 builtin/notes.c:652
@@ -9856,7 +9829,7 @@ msgid "too many parameters"
 msgstr "파라미터가 너무 많습니다"
 
 #: builtin/notes.c:378 builtin/notes.c:665
-#, fuzzy, c-format
+#, c-format
 msgid "no note found for object %s."
 msgstr "%s 오브젝트에 대해 노트가 없습니다."
 
@@ -9925,7 +9898,7 @@ msgstr ""
 "를 덮어쓰려면 '-f' 옵션을 사용하십시오"
 
 #: builtin/notes.c:537
-#, fuzzy, c-format
+#, c-format
 msgid "missing notes on source object %s. Cannot copy."
 msgstr "원본 %s 오브젝트에 대한 노트가 없습니다. 복사할 수 없습니다."
 
@@ -9940,39 +9913,35 @@ msgstr ""
 
 #: builtin/notes.c:685
 msgid "failed to delete ref NOTES_MERGE_PARTIAL"
-msgstr ""
+msgstr "NOTES_MERGE_PARTIAL 레퍼런스 삭제에 실패했습니다"
 
 #: builtin/notes.c:687
-#, fuzzy
 msgid "failed to delete ref NOTES_MERGE_REF"
-msgstr "%s 파일을 삭제하는데 실패했습니다"
+msgstr "NOTES_MERGE_REF 레퍼런스 삭제에 실패했습니다"
 
 #: builtin/notes.c:689
-#, fuzzy
 msgid "failed to remove 'git notes merge' worktree"
-msgstr "'%s' 제거에 실패했습니다"
+msgstr "'git notes merge' 작업트리 제거에 실패했습니다"
 
 #: builtin/notes.c:709
 msgid "failed to read ref NOTES_MERGE_PARTIAL"
-msgstr ""
+msgstr "NOTES_MERGE_PARTIAL 레퍼런스 읽기에 실패했습니다"
 
 #: builtin/notes.c:711
 msgid "could not find commit from NOTES_MERGE_PARTIAL."
-msgstr ""
+msgstr "NOTES_MERGE_PARTIAL에서 커밋을 찾을 수 없습니다."
 
 #: builtin/notes.c:713
 msgid "could not parse commit from NOTES_MERGE_PARTIAL."
-msgstr ""
+msgstr "NOTES_MERGE_PARTIAL에서 커밋을 파싱할 수 없습니다."
 
 #: builtin/notes.c:726
-#, fuzzy
 msgid "failed to resolve NOTES_MERGE_REF"
-msgstr "%s 제거에 실패했습니다"
+msgstr "NOTES_MERGE_REF 알아내기에 실패했습니다"
 
 #: builtin/notes.c:729
-#, fuzzy
 msgid "failed to finalize notes merge"
-msgstr "정확한 병합 기준점을 찾는데 실패했습니다"
+msgstr "노트 병합을 마치는데 실패했습니다"
 
 #: builtin/notes.c:755
 #, c-format
@@ -10016,22 +9985,21 @@ msgid "cannot mix --commit, --abort or -s/--strategy"
 msgstr "--commit, --abort, -s/--strategy 옵션을 섞어 쓸 수 없습니다"
 
 #: builtin/notes.c:799
-#, fuzzy
 msgid "must specify a notes ref to merge"
 msgstr "병합할 노트 레퍼런스를 지정해야 합니다"
 
 #: builtin/notes.c:823
-#, fuzzy, c-format
+#, c-format
 msgid "unknown -s/--strategy: %s"
 msgstr "알 수 없는 전략(-s/--strategy): %s"
 
 #: builtin/notes.c:860
-#, fuzzy, c-format
+#, c-format
 msgid "a notes merge into %s is already in-progress at %s"
 msgstr "%s 위치로 노트 병합이 이미 %s에서 진행중입니다"
 
 #: builtin/notes.c:863
-#, fuzzy, c-format
+#, c-format
 msgid "failed to store link to current notes ref (%s)"
 msgstr "현재 노트 레퍼런스의 (%s) 링크를 저장하는데 실패했습니다."
 
@@ -10076,7 +10044,7 @@ msgid "use notes from <notes-ref>"
 msgstr "<노트-레퍼런스>에서 노트를 사용합니다"
 
 #: builtin/notes.c:1019
-#, fuzzy, c-format
+#, c-format
 msgid "unknown subcommand: %s"
 msgstr "알 수 없는 하위 명령: %s"
 
@@ -10428,10 +10396,9 @@ msgstr "만들어지지 않은 브랜치를 인덱스에 추가된 변경 사항
 
 #: builtin/pull.c:812
 msgid "pull with rebase"
-msgstr ""
+msgstr "리베이스로 풀하기"
 
 #: builtin/pull.c:813
-#, fuzzy
 msgid "please commit or stash them."
 msgstr "커밋하거나 스태시에 넣으십시오."
 
@@ -10863,6 +10830,16 @@ msgid ""
 "To squelch this message and still keep the default behaviour, set\n"
 "'receive.denyCurrentBranch' configuration variable to 'refuse'."
 msgstr ""
+"기본값으로 간략한 저장소가 아닌 현재 브랜치의 업데이트는 거부됩니다.\n"
+"업데이트하면 인덱스와 작업 트리가 푸시한 내용과 일치하지 않게 되므로,\n"
+"'git reset --hard'로 작업 트리를 HEAD에 맞춰야 합니다.\n"
+"\n"
+"리모트 저장소에서 'receive.denyCurrentBranch' 설정 변수를 'ignore'나\n"
+"'warn'으로 설정하면 현재 브랜치로 푸시할 수 있습니다. 하지만 작업\n"
+"트리의 내용을 푸시할 내용에 맞추는 게 아니라면 추천하지 않습니다.\n"
+"\n"
+"이 메시지를 보지 않고 기본 동작을 계속 하려면,\n"
+"'receive.denyCurrentBranch' 설정 변수를 'refuse'로 설정하십시오."
 
 #: builtin/receive-pack.c:813
 msgid ""
@@ -10875,6 +10852,14 @@ msgid ""
 "\n"
 "To squelch this message, you can set it to 'refuse'."
 msgstr ""
+"기본값으로, 현재 브랜치의 삭제는 거부됩니다. 다음에 'git clone'할 때\n"
+"아무 파일도 체크아웃하지 않게 되므로 혼동을 일으키기 때문입니다.\n"
+"\n"
+"'receive.denyDeleteCurrent' 설정 변수를 'ignore'나 'warn'으로 설정하면\n"
+"(경고 메시지를 포함하거나 포함하지 않고) 현재 브랜치를 삭제할 수\n"
+"있습니다.\n"
+"\n"
+"이 메시지를 보지 않으려면, 이 설정 변수를 'refuse'로 설정하십시오."
 
 #: builtin/receive-pack.c:1883
 msgid "quiet"
@@ -11579,9 +11564,8 @@ msgid ""
 msgstr "git reset [--mixed | --soft | --hard | --merge | --keep] [-q] [<커밋>]"
 
 #: builtin/reset.c:27
-#, fuzzy
 msgid "git reset [-q] [<tree-ish>] [--] <paths>..."
-msgstr "git reset [-q] <트리-따위> [--] <경로>..."
+msgstr "git reset [-q] [<트리-따위>] [--] <경로>..."
 
 #: builtin/reset.c:28
 msgid "git reset --patch [<tree-ish>] [--] [<paths>...]"
@@ -11980,12 +11964,12 @@ msgstr "git show-branch (-g | --reflog)[=<n>[,<베이스>]] [--list] [<레퍼런
 #, c-format
 msgid "ignoring %s; cannot handle more than %d ref"
 msgid_plural "ignoring %s; cannot handle more than %d refs"
-msgstr[0] ""
+msgstr[0] "%s 무시. 레퍼런스를 %d개보다 많이 처리할 수 없습니다"
 
 #: builtin/show-branch.c:541
-#, fuzzy, c-format
+#, c-format
 msgid "no matching refs with %s"
-msgstr "일치하는 파일을 페이저 프로그램에서 표시합니다"
+msgstr "%s와(과) 일치하는 레퍼런스가 없습니다"
 
 #: builtin/show-branch.c:639
 msgid "show remote-tracking and local branches"
@@ -12052,28 +12036,26 @@ msgid "show <n> most recent ref-log entries starting at base"
 msgstr "기준부터 시작해 최대 <n>개의 최근 ref-log 항목을 표시합니다"
 
 #: builtin/show-branch.c:703
-#, fuzzy
 msgid ""
 "--reflog is incompatible with --all, --remotes, --independent or --merge-base"
-msgstr "--delete 옵션은 --all, --mirror, --tags 옵션과 호환되지 않습니다"
+msgstr "--reflog 옵션은 --all, --remotes, --independent, --merge-base 옵션과 호환되지 않습니다"
 
 #: builtin/show-branch.c:727
 msgid "no branches given, and HEAD is not valid"
-msgstr ""
+msgstr "브랜치를 지정하지 않았고, HEAD가 올바르지 않습니다"
 
 #: builtin/show-branch.c:730
-#, fuzzy
 msgid "--reflog option needs one branch name"
-msgstr "--track 옵션은 브랜치 이름이 필요합니다"
+msgstr "--reflog 옵션은 브랜치 이름이 필요합니다"
 
 #: builtin/show-branch.c:733
 #, c-format
 msgid "only %d entry can be shown at one time."
 msgid_plural "only %d entries can be shown at one time."
-msgstr[0] ""
+msgstr[0] "한 번에 %d개 항목만 표시할 수 있습니다."
 
 #: builtin/show-branch.c:737
-#, fuzzy, c-format
+#, c-format
 msgid "no such ref %s"
 msgstr "그런 레퍼런스가 없습니다: %s"
 
@@ -12081,17 +12063,17 @@ msgstr "그런 레퍼런스가 없습니다: %s"
 #, c-format
 msgid "cannot handle more than %d rev."
 msgid_plural "cannot handle more than %d revs."
-msgstr[0] ""
+msgstr[0] "레퍼런스를 %d개보다 많이 처리할 수 없습니다."
 
 #: builtin/show-branch.c:833
-#, fuzzy, c-format
+#, c-format
 msgid "'%s' is not a valid ref."
-msgstr "'%s'은9는) 올바른 태그 이름이 아닙니다."
+msgstr "'%s'은(는) 올바른 레퍼런스가 아닙니다."
 
 #: builtin/show-branch.c:836
-#, fuzzy, c-format
+#, c-format
 msgid "cannot find commit %s (%s)"
-msgstr "%s '%s' 오브젝트를 읽을 수 없음"
+msgstr "%s 커밋을 찾을 수 없음 (%s)"
 
 #: builtin/show-ref.c:10
 msgid ""
@@ -12222,17 +12204,17 @@ msgstr "경로 '%s'에 대해 .gitmodules에 있는 하위모듈 매핑이 없�
 #: builtin/submodule--helper.c:524 builtin/submodule--helper.c:527
 #, c-format
 msgid "submodule '%s' cannot add alternate: %s"
-msgstr ""
+msgstr "'%s' 하위 모듈에 보조 오브젝트를 추가할 수 없습니다: %s"
 
 #: builtin/submodule--helper.c:563
 #, c-format
 msgid "Value '%s' for submodule.alternateErrorStrategy is not recognized"
-msgstr ""
+msgstr "submodule.alternateErrorStrategy에 대한 값이('%s') 알 수 없는 값입니다"
 
 #: builtin/submodule--helper.c:570
 #, c-format
 msgid "Value '%s' for submodule.alternateLocation is not recognized"
-msgstr ""
+msgstr "submodule.alternateLocation에 대한 값이('%s') 알 수 없는 값입니다"
 
 #: builtin/submodule--helper.c:593
 msgid "where the new submodule will be cloned to"
@@ -12251,9 +12233,8 @@ msgid "depth for shallow clones"
 msgstr "얕은 복제에 사용할 깊이"
 
 #: builtin/submodule--helper.c:608 builtin/submodule--helper.c:964
-#, fuzzy
 msgid "force cloning progress"
-msgstr "복제 과정을 표시하지 않습니다"
+msgstr "복제 진행 상황을 항상 표시합니다"
 
 #: builtin/submodule--helper.c:613
 msgid ""
@@ -12589,7 +12570,7 @@ msgstr "파라미터가 너무 많습니다"
 #: builtin/tag.c:458
 #, c-format
 msgid "'%s' is not a valid tag name."
-msgstr "'%s'은9는) 올바른 태그 이름이 아닙니다."
+msgstr "'%s'은(는) 올바른 태그 이름이 아닙니다."
 
 #: builtin/tag.c:463
 #, c-format
@@ -12788,17 +12769,17 @@ msgstr "파일 시스템 시험 없이 추적하지 않는 캐시를 사용합�
 msgid ""
 "core.untrackedCache is set to true; remove or change it, if you really want "
 "to disable the untracked cache"
-msgstr ""
+msgstr "core.untrackedCache값이 참입니다. 정말로 추적하지 않는 파일 캐시를 사용하지 않으려면 이 값을 제거하거나 바꾸십시오."
 
 #: builtin/update-index.c:1123
 msgid "Untracked cache disabled"
-msgstr "추적되지 않는 캐시를 사용하지 않습니다"
+msgstr "추적되지 않는 파일 캐시를 사용하지 않습니다"
 
 #: builtin/update-index.c:1131
 msgid ""
 "core.untrackedCache is set to false; remove or change it, if you really want "
 "to enable the untracked cache"
-msgstr ""
+msgstr "core.untrackedCache값이 거짓입니다. 정말로 추적하지 않는 파일 캐시를 사용하려면 이 값을 제거하거나 바꾸십시오."
 
 #: builtin/update-index.c:1135
 #, c-format
@@ -13026,6 +13007,10 @@ msgid ""
 "\n"
 "\tchmod 0700 %s"
 msgstr ""
+"소켓 디렉터리의 권한이 너무 느슨합니다. 다른 사용자가\n"
+"캐시에 들어 있는 비밀 정보를 읽을 수 있습니다. 다음을 실행해 보십시오:\n"
+"\n"
+"\tchmod 0700 %s"
 
 #: credential-cache--daemon.c:271
 msgid "print debugging messages to stderr"
@@ -13041,10 +13026,10 @@ msgstr ""
 "목록을 볼 수 있습니다. 특정 하위 명령어나 개념에 대해 읽어 보려면 'git help\n"
 "<명령>' 또는 'git help <개념>' 명령을 실행하십시오."
 
+# HTTP delegation
 #: http.c:342
-#, fuzzy
 msgid "Delegation control is not supported with cURL < 7.22.0"
-msgstr "공개 키 고정은 cURL 7.44.0 앞 버전에서는 지원하지 않습니다"
+msgstr "딜리게이션 컨트롤은 cURL 7.44.0 앞 버전에서는 지원하지 않습니다"
 
 #: http.c:351
 msgid "Public key pinning not supported with cURL < 7.44.0"
@@ -13386,7 +13371,6 @@ msgid "Automated merge did not work."
 msgstr "자동 병합이 동작하지 않았습니다."
 
 #: git-merge-octopus.sh:62
-#, fuzzy
 msgid "Should not be doing an octopus."
 msgstr "옥토퍼스 전략 병합을 할 수 없습니다."
 
@@ -13574,9 +13558,8 @@ msgid "Cannot save the current index state"
 msgstr "현재 인덱스 상태를 저장할 수 없습니다"
 
 #: git-stash.sh:103
-#, fuzzy
 msgid "Cannot save the untracked files"
-msgstr "현재 인덱스 상태를 저장할 수 없습니다"
+msgstr "추적하지 않는 파일을 저장할 수 없습니다"
 
 #: git-stash.sh:123 git-stash.sh:136
 msgid "Cannot save the current worktree state"
@@ -13619,9 +13602,8 @@ msgstr ""
 "       메시지를 넘기려면, 다음과 같이 쓰십시오: git stash save -- '$option'"
 
 #: git-stash.sh:251
-#, fuzzy
 msgid "Can't use --patch and --include-untracked or --all at the same time"
-msgstr "경로를 업데이트하고 '%s' 브랜치로 전환하는 일은 동시에 할 수 없습니다."
+msgstr "--patch 옵션과 --include-untracked 또는 --all 옵션을 동시에 쓸 수 없습니다"
 
 #: git-stash.sh:259
 msgid "No local changes to save"
@@ -13690,9 +13672,8 @@ msgid "Could not save index tree"
 msgstr "인덱스 트리를 저장할 수 없습니다"
 
 #: git-stash.sh:508
-#, fuzzy
 msgid "Could not restore untracked files from stash"
-msgstr "'%s'에서 읽을 수 없습니다"
+msgstr "스태시에서 추적하지 않는 파일을 복구할 수 없습니다"
 
 #: git-stash.sh:533
 msgid "Cannot unstage modified files"
@@ -14087,14 +14068,14 @@ msgid "Could not pick $sha1"
 msgstr "$sha1을 빼오기 할 수 없습니다"
 
 #: git-rebase--interactive.sh:407
-#, fuzzy, sh-format
+#, sh-format
 msgid "This is the commit message #${n}:"
-msgstr "커밋 메시지 ${n}입니다:"
+msgstr "커밋 메시지 #${n}번입니다:"
 
 #: git-rebase--interactive.sh:412
-#, fuzzy, sh-format
+#, sh-format
 msgid "The commit message #${n} will be skipped:"
-msgstr "${n}번째 커밋 메시지를 건너뜁니다:"
+msgstr "#${n}번째 커밋 메시지를 건너뜁니다:"
 
 #: git-rebase--interactive.sh:423
 #, sh-format
@@ -14257,11 +14238,10 @@ msgstr ""
 "합니다."
 
 #: git-rebase--interactive.sh:1044
-#, fuzzy
 msgid ""
 "You can fix this with 'git rebase --edit-todo' and then run 'git rebase --"
 "continue'."
-msgstr "'git rebase --edit-todo' 명령으로 바로잡을 수 있습니다."
+msgstr "'git rebase --edit-todo' 명령으로 바로잡을 수 있고 'git rebase --continue' 명령을 실행합니다."
 
 #: git-rebase--interactive.sh:1045
 msgid "Or you can abort the rebase with 'git rebase --abort'."
@@ -14272,7 +14252,7 @@ msgid "Could not remove CHERRY_PICK_HEAD"
 msgstr "CHERRY_PICK_HEAD를 제거할 수 없습니다"
 
 #: git-rebase--interactive.sh:1074
-#, fuzzy, sh-format
+#, sh-format
 msgid ""
 "You have staged changes in your working tree.\n"
 "If these changes are meant to be\n"
@@ -14436,144 +14416,3 @@ msgstr "이 명령은 작업 폴더의 최상위에서만 쓸 수 있습니다."
 #: git-sh-setup.sh:377
 msgid "Unable to determine absolute path of git directory"
 msgstr "깃 디렉터리의 절대 경로를 알아낼 수 없습니다"
-
-#~ msgid "bad numeric config value '%s' for '%s': invalid unit"
-#~ msgstr "잘못된 수치 설정 값 '%s' (키 '%s'): 단위 잘못됨"
-
-#~ msgid "bad numeric config value '%s' for '%s' in blob %s: invalid unit"
-#~ msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 블롭 %s): 단위 잘못됨"
-
-#~ msgid "bad numeric config value '%s' for '%s' in file %s: invalid unit"
-#~ msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 파일 %s): 단위 잘못됨"
-
-#~ msgid ""
-#~ "bad numeric config value '%s' for '%s' in standard input: invalid unit"
-#~ msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 표준입력): 단위 잘못됨"
-
-#~ msgid ""
-#~ "bad numeric config value '%s' for '%s' in submodule-blob %s: invalid unit"
-#~ msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 하위 모듈 블롭 %s): 단위 잘못됨"
-
-#~ msgid ""
-#~ "bad numeric config value '%s' for '%s' in command line %s: invalid unit"
-#~ msgstr "잘못된 수치 설정 값 '%s' (키 '%s', 명령행 %s): 단위 잘못됨"
-
-#~ msgid "bad numeric config value '%s' for '%s' in %s: invalid unit"
-#~ msgstr "잘못된 수치 설정 값 '%s' (키 '%s', %s 안에): 단위 잘못됨"
-
-#~ msgid "Could not write to %s"
-#~ msgstr "%s에 쓸 수 없습니다"
-
-#~ msgid "Error wrapping up %s."
-#~ msgstr "%s 잠그는데 오류."
-
-#~ msgid "Your local changes would be overwritten by cherry-pick."
-#~ msgstr "로컬 변경 사항을 cherry-pick 때문에 덮어 쓰게 됩니다."
-
-#~ msgid "Cannot revert during a another revert."
-#~ msgstr "되돌리는(revert) 중에 또 다른 되돌리기를 할 수 없습니다."
-
-#~ msgid "Cannot cherry-pick during another cherry-pick."
-#~ msgstr "빼오기(revert) 중에 또 다른 빼오기를 할 수 없습니다"
-
-#~ msgid "Could not parse line %d."
-#~ msgstr "%d번 줄을 파싱할 수 없습니다."
-
-#~ msgid "Could not open %s"
-#~ msgstr "%s을(를) 열 수 없습니다"
-
-#~ msgid "Could not read %s."
-#~ msgstr "%s을(를) 읽을 수 없습니다."
-
-#~ msgid "Could not format %s."
-#~ msgstr "%s에 포매팅할 수 없습니다."
-
-#~ msgid "%s: %s"
-#~ msgstr "%s: %s"
-
-#~ msgid "cannot open %s: %s"
-#~ msgstr "%s을(를) 열 수 없습니다: %s"
-
-#~ msgid "This is the 2nd commit message:"
-#~ msgstr "2번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 3rd commit message:"
-#~ msgstr "3번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 4th commit message:"
-#~ msgstr "4번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 5th commit message:"
-#~ msgstr "5번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 6th commit message:"
-#~ msgstr "6번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 7th commit message:"
-#~ msgstr "7번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 8th commit message:"
-#~ msgstr "8번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 9th commit message:"
-#~ msgstr "9번째 커밋 메시지입니다:"
-
-#~ msgid "This is the 10th commit message:"
-#~ msgstr "10번째 커밋 메시지입니다:"
-
-#~ msgid "This is the ${n}th commit message:"
-#~ msgstr "${n}번째 커밋 메시지입니다:"
-
-#~ msgid "This is the ${n}st commit message:"
-#~ msgstr "${n}번째 커밋 메시지입니다:"
-
-#~ msgid "This is the ${n}nd commit message:"
-#~ msgstr "${n}번째 커밋 메시지입니다:"
-
-#~ msgid "This is the ${n}rd commit message:"
-#~ msgstr "${n}번째 커밋 메시지입니다:"
-
-#~ msgid "The 1st commit message will be skipped:"
-#~ msgstr "1번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 2nd commit message will be skipped:"
-#~ msgstr "2번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 3rd commit message will be skipped:"
-#~ msgstr "3번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 4th commit message will be skipped:"
-#~ msgstr "4번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 5th commit message will be skipped:"
-#~ msgstr "5번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 6th commit message will be skipped:"
-#~ msgstr "6번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 7th commit message will be skipped:"
-#~ msgstr "7번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 8th commit message will be skipped:"
-#~ msgstr "8번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 9th commit message will be skipped:"
-#~ msgstr "9번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The 10th commit message will be skipped:"
-#~ msgstr "10번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The ${n}th commit message will be skipped:"
-#~ msgstr "${n}번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The ${n}st commit message will be skipped:"
-#~ msgstr "${n}번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The ${n}nd commit message will be skipped:"
-#~ msgstr "${n}번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "The ${n}rd commit message will be skipped:"
-#~ msgstr "${n}번째 커밋 메시지를 건너뜁니다:"
-
-#~ msgid "You need to set your committer info first"
-#~ msgstr "먼저 커밋하는 사람 정보를 설정해야 합니다"
