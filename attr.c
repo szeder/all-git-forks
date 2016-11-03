@@ -482,7 +482,7 @@ static struct attr_stack *read_attr_from_file(const char *path, unsigned flags)
 		fd = open(path, O_RDONLY);
 
 	if (fd < 0) {
-		if (errno != ENOENT && errno != ENOTDIR && errno != EINVAL)
+		if (errno != ENOENT && errno != ENOTDIR)
 			warn_on_inaccessible(path);
 		return NULL;
 	}
