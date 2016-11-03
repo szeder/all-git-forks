@@ -15,8 +15,6 @@
 #include "merge-recursive.h"
 #include "refs.h"
 #include "argv-array.h"
-#include "quote.h"
-#include "trailer.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
@@ -29,24 +27,6 @@ static GIT_PATH_FUNC(git_path_todo_file, "sequencer/todo")
 static GIT_PATH_FUNC(git_path_opts_file, "sequencer/opts")
 static GIT_PATH_FUNC(git_path_head_file, "sequencer/head")
 
-/*
- * A script to set the GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
- * GIT_AUTHOR_DATE that will be used for the commit that is currently
- * being rebased.
- */
-static GIT_PATH_FUNC(rebase_path_author_script, "rebase-merge/author-script")
-/*
- * The following files are written by git-rebase just after parsing the
- * command-line (and are only consumed, not modified, by the sequencer).
- */
-static GIT_PATH_FUNC(rebase_path_gpg_sign_opt, "rebase-merge/gpg_sign_opt")
-
-/* We will introduce the 'interactive rebase' mode later */
-static inline int is_rebase_i(const struct replay_opts *opts)
-{
-	return 0;
-}
-
 static const char *get_dir(const struct replay_opts *opts)
 {
 	return git_path_seq_dir();
@@ -55,6 +35,30 @@ static const char *get_dir(const struct replay_opts *opts)
 static const char *get_todo_path(const struct replay_opts *opts)
 {
 	return git_path_todo_file();
+}
+
+static int is_rfc2822_line(const char *buf, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++) {
+		int ch = buf[i];
+		if (ch == ':')
+			return 1;
+		if (!isalnum(ch) && ch != '-')
+			break;
+	}
+
+	return 0;
+}
+
+static int is_cherry_picked_from_line(const char *buf, int len)
+{
+	/*
+	 * We only care that it looks roughly like (cherry picked from ...)
+	 */
+	return len > strlen(cherry_picked_prefix) + 1 &&
+		starts_with(buf, cherry_picked_prefix) && buf[len - 1] == ')';
 }
 
 /*
@@ -66,39 +70,53 @@ static const char *get_todo_path(const struct replay_opts *opts)
 static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	int ignore_footer)
 {
-	struct trailer_info info;
-	int i;
-	int found_sob = 0, found_sob_last = 0;
+	char prev;
+	int i, k;
+	int len = sb->len - ignore_footer;
+	const char *buf = sb->buf;
+	int found_sob = 0;
 
-	trailer_info_get(&info, sb->buf);
-
-	if (info.trailer_start == info.trailer_end)
+	/* footer must end with newline */
+	if (!len || buf[len - 1] != '\n')
 		return 0;
 
-	for (i = 0; i < info.trailer_nr; i++)
-		if (sob && !strncmp(info.trailers[i], sob->buf, sob->len)) {
-			found_sob = 1;
-			if (i == info.trailer_nr - 1)
-				found_sob_last = 1;
-		}
+	prev = '\0';
+	for (i = len - 1; i > 0; i--) {
+		char ch = buf[i];
+		if (prev == '\n' && ch == '\n') /* paragraph break */
+			break;
+		prev = ch;
+	}
 
-	trailer_info_release(&info);
+	/* require at least one blank line */
+	if (prev != '\n' || buf[i] != '\n')
+		return 0;
 
-	if (found_sob_last)
+	/* advance to start of last paragraph */
+	while (i < len - 1 && buf[i] == '\n')
+		i++;
+
+	for (; i < len; i = k) {
+		int found_rfc2822;
+
+		for (k = i; k < len && buf[k] != '\n'; k++)
+			; /* do nothing */
+		k++;
+
+		found_rfc2822 = is_rfc2822_line(buf + i, k - i - 1);
+		if (found_rfc2822 && sob &&
+		    !strncmp(buf + i, sob->buf, sob->len))
+			found_sob = k;
+
+		if (!(found_rfc2822 ||
+		      is_cherry_picked_from_line(buf + i, k - i - 1)))
+			return 0;
+	}
+	if (found_sob == i)
 		return 3;
 	if (found_sob)
 		return 2;
 	return 1;
-}
-
-static const char *gpg_sign_opt_quoted(struct replay_opts *opts)
-{
-	static struct strbuf buf = STRBUF_INIT;
-
-	strbuf_reset(&buf);
-	if (opts->gpg_sign)
-		sq_quotef(&buf, "-S%s", opts->gpg_sign);
-	return buf.buf;
 }
 
 int sequencer_remove_state(struct replay_opts *opts)
@@ -121,7 +139,7 @@ int sequencer_remove_state(struct replay_opts *opts)
 
 static const char *action_name(const struct replay_opts *opts)
 {
-	return opts->action == REPLAY_REVERT ? N_("revert") : N_("cherry-pick");
+	return opts->action == REPLAY_REVERT ? "revert" : "cherry-pick";
 }
 
 struct commit_message {
@@ -187,62 +205,20 @@ static void print_advice(int show_hint, struct replay_opts *opts)
 	}
 }
 
-static int write_message(const void *buf, size_t len, const char *filename,
-			 int append_eol)
+static int write_message(struct strbuf *msgbuf, const char *filename)
 {
 	static struct lock_file msg_file;
 
 	int msg_fd = hold_lock_file_for_update(&msg_file, filename, 0);
 	if (msg_fd < 0)
-		return error_errno(_("could not lock '%s'"), filename);
-	if (write_in_full(msg_fd, buf, len) < 0) {
-		rollback_lock_file(&msg_file);
-		return error_errno(_("could not write to '%s'"), filename);
-	}
-	if (append_eol && write(msg_fd, "\n", 1) < 0) {
-		rollback_lock_file(&msg_file);
-		return error_errno(_("could not write eol to '%s"), filename);
-	}
-	if (commit_lock_file(&msg_file) < 0) {
-		rollback_lock_file(&msg_file);
-		return error(_("failed to finalize '%s'."), filename);
-	}
+		return error_errno(_("Could not lock '%s'"), filename);
+	if (write_in_full(msg_fd, msgbuf->buf, msgbuf->len) < 0)
+		return error_errno(_("Could not write to %s"), filename);
+	strbuf_release(msgbuf);
+	if (commit_lock_file(&msg_file) < 0)
+		return error(_("Error wrapping up %s."), filename);
 
 	return 0;
-}
-
-/*
- * Reads a file that was presumably written by a shell script, i.e. with an
- * end-of-line marker that needs to be stripped.
- *
- * Note that only the last end-of-line marker is stripped, consistent with the
- * behavior of "$(cat path)" in a shell script.
- *
- * Returns 1 if the file was read, 0 if it could not be read or does not exist.
- */
-static int read_oneliner(struct strbuf *buf,
-	const char *path, int skip_if_empty)
-{
-	int orig_len = buf->len;
-
-	if (!file_exists(path))
-		return 0;
-
-	if (strbuf_read_file(buf, path, 0) < 0) {
-		warning_errno(_("could not read '%s'"), path);
-		return 0;
-	}
-
-	if (buf->len > orig_len && buf->buf[buf->len - 1] == '\n') {
-		if (--buf->len > orig_len && buf->buf[buf->len - 1] == '\r')
-			--buf->len;
-		buf->buf[buf->len] = '\0';
-	}
-
-	if (skip_if_empty && buf->len == orig_len)
-		return 0;
-
-	return 1;
 }
 
 static struct tree *empty_tree(void)
@@ -253,13 +229,13 @@ static struct tree *empty_tree(void)
 static int error_dirty_index(struct replay_opts *opts)
 {
 	if (read_cache_unmerged())
-		return error_resolve_conflict(_(action_name(opts)));
+		return error_resolve_conflict(action_name(opts));
 
-	error(_("your local changes would be overwritten by %s."),
-		_(action_name(opts)));
+	error(_("Your local changes would be overwritten by %s."),
+		action_name(opts));
 
 	if (advice_commit_before_merge)
-		advise(_("commit your changes or stash them to proceed."));
+		advise(_("Commit your changes or stash them to proceed."));
 	return -1;
 }
 
@@ -274,7 +250,7 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 	if (checkout_fast_forward(from, to, 1))
 		return -1; /* the callee should have complained already */
 
-	strbuf_addf(&sb, _("%s: fast-forward"), _(action_name(opts)));
+	strbuf_addf(&sb, _("%s: fast-forward"), action_name(opts));
 
 	transaction = ref_transaction_begin(&err);
 	if (!transaction ||
@@ -350,7 +326,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 	    write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
 		/* TRANSLATORS: %s will be "revert" or "cherry-pick" */
 		return error(_("%s: Unable to write new index file"),
-			_(action_name(opts)));
+			action_name(opts));
 	rollback_lock_file(&index_lock);
 
 	if (opts->signoff)
@@ -368,7 +344,7 @@ static int is_index_unchanged(void)
 	struct commit *head_commit;
 
 	if (!resolve_ref_unsafe("HEAD", RESOLVE_REF_READING, head_sha1, NULL))
-		return error(_("could not resolve HEAD commit\n"));
+		return error(_("Could not resolve HEAD commit\n"));
 
 	head_commit = lookup_commit(head_sha1);
 
@@ -388,115 +364,41 @@ static int is_index_unchanged(void)
 
 	if (!cache_tree_fully_valid(active_cache_tree))
 		if (cache_tree_update(&the_index, 0))
-			return error(_("unable to update cache tree\n"));
+			return error(_("Unable to update cache tree\n"));
 
 	return !hashcmp(active_cache_tree->sha1, head_commit->tree->object.oid.hash);
 }
 
 /*
- * Read the author-script file into an environment block, ready for use in
- * run_command(), that can be free()d afterwards.
- */
-static char **read_author_script(void)
-{
-	struct strbuf script = STRBUF_INIT;
-	int i, count = 0;
-	char *p, *p2, **env;
-	size_t env_size;
-
-	if (strbuf_read_file(&script, rebase_path_author_script(), 256) <= 0)
-		return NULL;
-
-	for (p = script.buf; *p; p++)
-		if (skip_prefix(p, "'\\\\''", (const char **)&p2))
-			strbuf_splice(&script, p - script.buf, p2 - p, "'", 1);
-		else if (*p == '\'')
-			strbuf_splice(&script, p-- - script.buf, 1, "", 0);
-		else if (*p == '\n') {
-			*p = '\0';
-			count++;
-		}
-
-	env_size = (count + 1) * sizeof(*env);
-	strbuf_grow(&script, env_size);
-	memmove(script.buf + env_size, script.buf, script.len);
-	p = script.buf + env_size;
-	env = (char **)strbuf_detach(&script, NULL);
-
-	for (i = 0; i < count; i++) {
-		env[i] = p;
-		p += strlen(p) + 1;
-	}
-	env[count] = NULL;
-
-	return env;
-}
-
-static const char staged_changes_advice[] =
-N_("you have staged changes in your working tree\n"
-"If these changes are meant to be squashed into the previous commit, run:\n"
-"\n"
-"  git commit --amend %s\n"
-"\n"
-"If they are meant to go into a new commit, run:\n"
-"\n"
-"  git commit %s\n"
-"\n"
-"In both cases, once you're done, continue with:\n"
-"\n"
-"  git rebase --continue\n");
-
-/*
  * If we are cherry-pick, and if the merge did not result in
  * hand-editing, we will hit this commit and inherit the original
  * author date and name.
- *
  * If we are revert, or if our cherry-pick results in a hand merge,
  * we had better say that the current user is responsible for that.
- *
- * An exception is when run_git_commit() is called during an
- * interactive rebase: in that case, we will want to retain the
- * author metadata.
  */
 static int run_git_commit(const char *defmsg, struct replay_opts *opts,
-			  int allow_empty, int edit, int amend,
-			  int cleanup_commit_message)
+			  int allow_empty)
 {
-	char **env = NULL;
 	struct argv_array array;
 	int rc;
 	const char *value;
-
-	if (is_rebase_i(opts)) {
-		env = read_author_script();
-		if (!env) {
-			const char *gpg_opt = gpg_sign_opt_quoted(opts);
-
-			return error(_(staged_changes_advice),
-				     gpg_opt, gpg_opt);
-		}
-	}
 
 	argv_array_init(&array);
 	argv_array_push(&array, "commit");
 	argv_array_push(&array, "-n");
 
-	if (amend)
-		argv_array_push(&array, "--amend");
 	if (opts->gpg_sign)
 		argv_array_pushf(&array, "-S%s", opts->gpg_sign);
 	if (opts->signoff)
 		argv_array_push(&array, "-s");
-	if (defmsg)
-		argv_array_pushl(&array, "-F", defmsg, NULL);
-	if (cleanup_commit_message)
-		argv_array_push(&array, "--cleanup=strip");
-	if (edit)
-		argv_array_push(&array, "-e");
-	else if (!cleanup_commit_message &&
-		 !opts->signoff && !opts->record_origin &&
-		 git_config_get_value("commit.cleanup", &value))
-		argv_array_push(&array, "--cleanup=verbatim");
+	if (!opts->edit) {
+		argv_array_push(&array, "-F");
+		argv_array_push(&array, defmsg);
+		if (!opts->signoff &&
+		    !opts->record_origin &&
+		    git_config_get_value("commit.cleanup", &value))
+			argv_array_push(&array, "--cleanup=verbatim");
+	}
 
 	if (allow_empty)
 		argv_array_push(&array, "--allow-empty");
@@ -504,11 +406,8 @@ static int run_git_commit(const char *defmsg, struct replay_opts *opts,
 	if (opts->allow_empty_message)
 		argv_array_push(&array, "--allow-empty-message");
 
-	rc = run_command_v_opt_cd_env(array.argv, RUN_GIT_CMD, NULL,
-			(const char *const *)env);
+	rc = run_command_v_opt(array.argv, RUN_GIT_CMD);
 	argv_array_clear(&array);
-	free(env);
-
 	return rc;
 }
 
@@ -517,12 +416,12 @@ static int is_original_commit_empty(struct commit *commit)
 	const unsigned char *ptree_sha1;
 
 	if (parse_commit(commit))
-		return error(_("could not parse commit %s\n"),
+		return error(_("Could not parse commit %s\n"),
 			     oid_to_hex(&commit->object.oid));
 	if (commit->parents) {
 		struct commit *parent = commit->parents->item;
 		if (parse_commit(parent))
-			return error(_("could not parse parent commit %s\n"),
+			return error(_("Could not parse parent commit %s\n"),
 				oid_to_hex(&parent->object.oid));
 		ptree_sha1 = parent->tree->object.oid.hash;
 	} else {
@@ -606,12 +505,12 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		 * to work on.
 		 */
 		if (write_cache_as_tree(head, 0, NULL))
-			return error(_("your index file is unmerged."));
+			return error(_("Your index file is unmerged."));
 	} else {
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0, 0))
+		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -625,7 +524,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		struct commit_list *p;
 
 		if (!opts->mainline)
-			return error(_("commit %s is a merge but no -m option was given."),
+			return error(_("Commit %s is a merge but no -m option was given."),
 				oid_to_hex(&commit->object.oid));
 
 		for (cnt = 1, p = commit->parents;
@@ -633,11 +532,11 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		     cnt++)
 			p = p->next;
 		if (cnt != opts->mainline || !p)
-			return error(_("commit %s does not have parent %d"),
+			return error(_("Commit %s does not have parent %d"),
 				oid_to_hex(&commit->object.oid), opts->mainline);
 		parent = p->item;
 	} else if (0 < opts->mainline)
-		return error(_("mainline was specified but commit %s is not a merge."),
+		return error(_("Mainline was specified but commit %s is not a merge."),
 			oid_to_hex(&commit->object.oid));
 	else
 		parent = commit->parents->item;
@@ -655,7 +554,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 			oid_to_hex(&parent->object.oid));
 
 	if (get_message(commit, &msg) != 0)
-		return error(_("cannot get commit message for %s"),
+		return error(_("Cannot get commit message for %s"),
 			oid_to_hex(&commit->object.oid));
 
 	/*
@@ -711,14 +610,12 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 					 head, &msgbuf, opts);
 		if (res < 0)
 			return res;
-		res |= write_message(msgbuf.buf, msgbuf.len,
-				     git_path_merge_msg(), 0);
+		res |= write_message(&msgbuf, git_path_merge_msg());
 	} else {
 		struct commit_list *common = NULL;
 		struct commit_list *remotes = NULL;
 
-		res = write_message(msgbuf.buf, msgbuf.len,
-				    git_path_merge_msg(), 0);
+		res = write_message(&msgbuf, git_path_merge_msg());
 
 		commit_list_insert(base, &common);
 		commit_list_insert(next, &remotes);
@@ -728,7 +625,6 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		free_commit_list(common);
 		free_commit_list(remotes);
 	}
-	strbuf_release(&msgbuf);
 
 	/*
 	 * If the merge was clean or if it failed due to conflict, we write
@@ -761,8 +657,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		goto leave;
 	}
 	if (!opts->no_commit)
-		res = run_git_commit(opts->edit ? NULL : git_path_merge_msg(),
-				     opts, allow, opts->edit, 0, 0);
+		res = run_git_commit(git_path_merge_msg(), opts, allow);
 
 leave:
 	free_message(commit, &msg);
@@ -794,14 +689,14 @@ static int read_and_refresh_cache(struct replay_opts *opts)
 	if (read_index_preload(&the_index, NULL) < 0) {
 		rollback_lock_file(&index_lock);
 		return error(_("git %s: failed to read the index"),
-			_(action_name(opts)));
+			action_name(opts));
 	}
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, NULL, NULL, NULL);
 	if (the_index.cache_changed && index_fd >= 0) {
 		if (write_locked_index(&the_index, &index_lock, COMMIT_LOCK)) {
 			rollback_lock_file(&index_lock);
 			return error(_("git %s: failed to refresh the index"),
-				_(action_name(opts)));
+				action_name(opts));
 		}
 	}
 	rollback_lock_file(&index_lock);
@@ -843,9 +738,6 @@ static int parse_insn_line(struct todo_item *item, const char *bol, char *eol)
 	unsigned char commit_sha1[20];
 	char *end_of_object_name;
 	int i, saved, status, padding;
-
-	/* left-trim */
-	bol += strspn(bol, " \t");
 
 	for (i = 0; i < ARRAY_SIZE(todo_command_strings); i++)
 		if (skip_prefix(bol, todo_command_strings[i], &bol)) {
@@ -894,13 +786,13 @@ static int parse_insn_buffer(char *buf, struct todo_list *todo_list)
 		item = append_new_todo(todo_list);
 		item->offset_in_buf = p - todo_list->buf.buf;
 		if (parse_insn_line(item, p, eol)) {
-			res = error(_("invalid line %d: %.*s"),
+			res = error(_("Invalid line %d: %.*s"),
 				i, (int)(eol - p), p);
 			item->command = -1;
 		}
 	}
 	if (!todo_list->nr)
-		return error(_("no commits parsed."));
+		return error(_("No commits parsed."));
 	return res;
 }
 
@@ -913,18 +805,15 @@ static int read_populate_todo(struct todo_list *todo_list,
 	strbuf_reset(&todo_list->buf);
 	fd = open(todo_file, O_RDONLY);
 	if (fd < 0)
-		return error_errno(_("could not open '%s'"), todo_file);
+		return error_errno(_("Could not open %s"), todo_file);
 	if (strbuf_read(&todo_list->buf, fd, 0) < 0) {
 		close(fd);
-		return error(_("could not read '%s'."), todo_file);
+		return error(_("Could not read %s."), todo_file);
 	}
 	close(fd);
 
 	res = parse_insn_buffer(todo_list->buf.buf, todo_list);
-	if (res)
-		return error(_("unusable instruction sheet: '%s'"), todo_file);
-
-	if (!is_rebase_i(opts)) {
+	if (!res) {
 		enum todo_command valid =
 			opts->action == REPLAY_PICK ? TODO_PICK : TODO_REVERT;
 		int i;
@@ -933,21 +822,13 @@ static int read_populate_todo(struct todo_list *todo_list,
 			if (valid == todo_list->items[i].command)
 				continue;
 			else if (valid == TODO_PICK)
-				return error(_("cannot cherry-pick during a revert."));
+				return error(_("Cannot cherry-pick during a revert."));
 			else
-				return error(_("cannot revert during a cherry-pick."));
+				return error(_("Cannot revert during a cherry-pick."));
 	}
 
-	return 0;
-}
-
-static int git_config_string_dup(char **dest,
-				 const char *var, const char *value)
-{
-	if (!value)
-		return config_error_nonbool(var);
-	free(*dest);
-	*dest = xstrdup(value);
+	if (res)
+		return error(_("Unusable instruction sheet: %s"), todo_file);
 	return 0;
 }
 
@@ -988,32 +869,16 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		ALLOC_GROW(opts->xopts, opts->xopts_nr + 1, opts->xopts_alloc);
 		opts->xopts[opts->xopts_nr++] = xstrdup(value);
 	} else
-		return error(_("invalid key: %s"), key);
+		return error(_("Invalid key: %s"), key);
 
 	if (!error_flag)
-		return error(_("invalid value for %s: %s"), key, value);
+		return error(_("Invalid value for %s: %s"), key, value);
 
 	return 0;
 }
 
 static int read_populate_opts(struct replay_opts *opts)
 {
-	if (is_rebase_i(opts)) {
-		struct strbuf buf = STRBUF_INIT;
-
-		if (read_oneliner(&buf, rebase_path_gpg_sign_opt(), 1)) {
-			if (!starts_with(buf.buf, "-S"))
-				strbuf_reset(&buf);
-			else {
-				free(opts->gpg_sign);
-				opts->gpg_sign = xstrdup(buf.buf + 2);
-			}
-		}
-		strbuf_release(&buf);
-
-		return 0;
-	}
-
 	if (!file_exists(git_path_opts_file()))
 		return 0;
 	/*
@@ -1023,7 +888,7 @@ static int read_populate_opts(struct replay_opts *opts)
 	 * are pretty certain that it is syntactically correct.
 	 */
 	if (git_config_from_file(populate_opts_cb, git_path_opts_file(), opts) < 0)
-		return error(_("malformed options sheet: '%s'"),
+		return error(_("Malformed options sheet: %s"),
 			git_path_opts_file());
 	return 0;
 }
@@ -1066,7 +931,7 @@ static int create_seq_dir(void)
 		return -1;
 	}
 	else if (mkdir(git_path_seq_dir(), 0777) < 0)
-		return error_errno(_("could not create sequencer directory '%s'"),
+		return error_errno(_("Could not create sequencer directory %s"),
 				   git_path_seq_dir());
 	return 0;
 }
@@ -1080,17 +945,17 @@ static int save_head(const char *head)
 	fd = hold_lock_file_for_update(&head_lock, git_path_head_file(), 0);
 	if (fd < 0) {
 		rollback_lock_file(&head_lock);
-		return error_errno(_("could not lock HEAD"));
+		return error_errno(_("Could not lock HEAD"));
 	}
 	strbuf_addf(&buf, "%s\n", head);
 	if (write_in_full(fd, buf.buf, buf.len) < 0) {
 		rollback_lock_file(&head_lock);
-		return error_errno(_("could not write to '%s'"),
+		return error_errno(_("Could not write to %s"),
 				   git_path_head_file());
 	}
 	if (commit_lock_file(&head_lock) < 0) {
 		rollback_lock_file(&head_lock);
-		return error(_("failed to finalize '%s'."), git_path_head_file());
+		return error(_("Error wrapping up %s."), git_path_head_file());
 	}
 	return 0;
 }
@@ -1135,9 +1000,9 @@ int sequencer_rollback(struct replay_opts *opts)
 		return rollback_single_pick();
 	}
 	if (!f)
-		return error_errno(_("cannot open '%s'"), git_path_head_file());
+		return error_errno(_("cannot open %s"), git_path_head_file());
 	if (strbuf_getline_lf(&buf, f)) {
-		error(_("cannot read '%s': %s"), git_path_head_file(),
+		error(_("cannot read %s: %s"), git_path_head_file(),
 		      ferror(f) ?  strerror(errno) : _("unexpected end of file"));
 		fclose(f);
 		goto fail;
@@ -1169,14 +1034,14 @@ static int save_todo(struct todo_list *todo_list, struct replay_opts *opts)
 
 	fd = hold_lock_file_for_update(&todo_lock, todo_path, 0);
 	if (fd < 0)
-		return error_errno(_("could not lock '%s'"), todo_path);
+		return error_errno(_("Could not lock '%s'"), todo_path);
 	offset = next < todo_list->nr ?
 		todo_list->items[next].offset_in_buf : todo_list->buf.len;
 	if (write_in_full(fd, todo_list->buf.buf + offset,
 			todo_list->buf.len - offset) < 0)
-		return error_errno(_("could not write to '%s'"), todo_path);
+		return error_errno(_("Could not write to '%s'"), todo_path);
 	if (commit_lock_file(&todo_lock) < 0)
-		return error(_("failed to finalize '%s'."), todo_path);
+		return error(_("Error wrapping up %s."), todo_path);
 	return 0;
 }
 
@@ -1275,7 +1140,7 @@ int sequencer_continue(struct replay_opts *opts)
 		if (res)
 			goto release_todo_list;
 	}
-	if (index_differs_from("HEAD", 0, 0)) {
+	if (index_differs_from("HEAD", 0)) {
 		res = error_dirty_index(opts);
 		goto release_todo_list;
 	}
@@ -1351,7 +1216,7 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 			create_seq_dir() < 0)
 		return -1;
 	if (get_sha1("HEAD", sha1) && (opts->action == REPLAY_REVERT))
-		return error(_("can't revert as initial commit"));
+		return error(_("Can't revert as initial commit"));
 	if (save_head(sha1_to_hex(sha1)))
 		return -1;
 	if (save_opts(opts))
