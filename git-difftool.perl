@@ -22,7 +22,6 @@ use File::Path qw(mkpath rmtree);
 use File::Temp qw(tempdir);
 use Getopt::Long qw(:config pass_through);
 use Git;
-use Git::I18N;
 
 sub usage
 {
@@ -123,7 +122,7 @@ sub setup_dir_diff
 	my $i = 0;
 	while ($i < $#rawdiff) {
 		if ($rawdiff[$i] =~ /^::/) {
-			warn __ <<'EOF';
+			warn << 'EOF';
 Combined diff formats ('-c' and '--cc') are not supported in
 directory diff mode ('-d' and '--dir-diff').
 EOF
@@ -339,7 +338,7 @@ sub main
 		if (length($opts{difftool_cmd}) > 0) {
 			$ENV{GIT_DIFF_TOOL} = $opts{difftool_cmd};
 		} else {
-			print __("No <tool> given for --tool=<tool>\n");
+			print "No <tool> given for --tool=<tool>\n";
 			usage(1);
 		}
 	}
@@ -347,7 +346,7 @@ sub main
 		if (length($opts{extcmd}) > 0) {
 			$ENV{GIT_DIFFTOOL_EXTCMD} = $opts{extcmd};
 		} else {
-			print __("No <cmd> given for --extcmd=<cmd>\n");
+			print "No <cmd> given for --extcmd=<cmd>\n";
 			usage(1);
 		}
 	}
@@ -420,11 +419,11 @@ sub dir_diff
 		}
 
 		if (exists $wt_modified{$file} and exists $tmp_modified{$file}) {
-			warn sprintf(__(
-				"warning: Both files modified:\n" .
-				"'%s/%s' and '%s/%s'.\n" .
-				"warning: Working tree file has been left.\n" .
-				"warning:\n"), $workdir, $file, $b, $file);
+			my $errmsg = "warning: Both files modified: ";
+			$errmsg .= "'$workdir/$file' and '$b/$file'.\n";
+			$errmsg .= "warning: Working tree file has been left.\n";
+			$errmsg .= "warning:\n";
+			warn $errmsg;
 			$error = 1;
 		} elsif (exists $tmp_modified{$file}) {
 			my $mode = stat("$b/$file")->mode;
@@ -436,9 +435,8 @@ sub dir_diff
 		}
 	}
 	if ($error) {
-		warn sprintf(__(
-			"warning: Temporary files exist in '%s'.\n" .
-			"warning: You may want to cleanup or recover these.\n"), $tmpdir);
+		warn "warning: Temporary files exist in '$tmpdir'.\n";
+		warn "warning: You may want to cleanup or recover these.\n";
 		exit(1);
 	} else {
 		exit_cleanup($tmpdir, $rc);

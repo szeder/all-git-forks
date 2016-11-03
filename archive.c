@@ -87,6 +87,19 @@ void *sha1_file_to_archive(const struct archiver_args *args,
 	return buffer;
 }
 
+static void setup_archive_check(struct git_attr_check *check)
+{
+	static struct git_attr *attr_export_ignore;
+	static struct git_attr *attr_export_subst;
+
+	if (!attr_export_ignore) {
+		attr_export_ignore = git_attr("export-ignore");
+		attr_export_subst = git_attr("export-subst");
+	}
+	check[0].attr = attr_export_ignore;
+	check[1].attr = attr_export_subst;
+}
+
 struct directory {
 	struct directory *up;
 	struct object_id oid;
@@ -110,8 +123,7 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 	struct archiver_context *c = context;
 	struct archiver_args *args = c->args;
 	write_archive_entry_fn_t write_entry = c->write_entry;
-	static struct git_attr_check *check;
-	struct git_attr_result result[2];
+	struct git_attr_check check[2];
 	const char *path_without_prefix;
 	int err;
 
@@ -125,12 +137,11 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 		strbuf_addch(&path, '/');
 	path_without_prefix = path.buf + args->baselen;
 
-	git_attr_check_initl(&check, "export-ignore", "export-subst", NULL);
-
-	if (!git_check_attr(path_without_prefix, check, result)) {
-		if (ATTR_TRUE(result[0].value))
+	setup_archive_check(check);
+	if (!git_check_attr(path_without_prefix, ARRAY_SIZE(check), check)) {
+		if (ATTR_TRUE(check[0].value))
 			return 0;
-		args->convert = ATTR_TRUE(result[1].value);
+		args->convert = ATTR_TRUE(check[1].value);
 	}
 
 	if (S_ISDIR(mode) || S_ISGITLINK(mode)) {

@@ -36,7 +36,8 @@ struct object_array {
  * bisect.c:                               16
  * bundle.c:                               16
  * http-push.c:                            16-----19
- * commit.c:                               16-------20
+ * commit.c:                               16-----19
+ * sha1_name.c:                                     20
  */
 #define FLAG_BITS  27
 

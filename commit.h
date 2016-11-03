@@ -253,11 +253,8 @@ extern struct commit_list *get_merge_bases(struct commit *rev1, struct commit *r
 extern struct commit_list *get_merge_bases_many(struct commit *one, int n, struct commit **twos);
 extern struct commit_list *get_octopus_merge_bases(struct commit_list *in);
 
-#define MB_POSTCLEAN 01
-#define MB_FPCHAIN 02
-extern struct commit_list *get_merge_bases_opt(struct commit *one, int n, struct commit **twos, unsigned flags);
-
-#define get_merge_bases_many_dirty(one, n, twos) get_merge_bases_opt((one),(n),(twos),MB_POSTCLEAN)
+/* To be used only when object flags after this call no longer matter */
+extern struct commit_list *get_merge_bases_many_dirty(struct commit *one, int n, struct commit **twos);
 
 /* largest positive number a signed 32-bit integer can contain */
 #define INFINITE_DEPTH 0x7fffffff
@@ -358,7 +355,7 @@ extern const char *find_commit_header(const char *msg, const char *key,
 				      size_t *out_len);
 
 /* Find the end of the log message, the right place for a new trailer. */
-extern int ignore_non_trailer(const char *buf, size_t len);
+extern int ignore_non_trailer(struct strbuf *sb);
 
 typedef void (*each_mergetag_fn)(struct commit *commit, struct commit_extra_header *extra,
 				 void *cb_data);

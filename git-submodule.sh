@@ -9,7 +9,7 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] (--all| [--] <path>...)
-   or: $dashless [--quiet] update [--init[-default-path]] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
    or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
@@ -207,14 +207,8 @@ cmd_add()
 			tstart
 			s|/*$||
 		')
-	if test -z "$force"
-	then
-		git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
-		die "$(eval_gettext "'\$sm_path' already exists in the index")"
-	else
-		git ls-files -s "$sm_path" | sane_grep -v "^160000" > /dev/null 2>&1 &&
-		die "$(eval_gettext "'\$sm_path' already exists in the index and is not a submodule")"
-	fi
+	git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
+	die "$(eval_gettext "'\$sm_path' already exists in the index")"
 
 	if test -z "$force" && ! git add --dry-run --ignore-missing "$sm_path" > /dev/null 2>&1
 	then
@@ -509,12 +503,7 @@ cmd_update()
 			progress="--progress"
 			;;
 		-i|--init)
-			test -z $init || test $init = by_args || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_args
-			;;
-		--init-default-path)
-			test -z $init || test $init = by_config || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_config
+			init=1
 			;;
 		--remote)
 			remote=1
@@ -583,17 +572,7 @@ cmd_update()
 
 	if test -n "$init"
 	then
-		if test "$init" = "by_config"
-		then
-			if test $# -gt 0
-			then
-				die "$(gettext "path arguments are incompatible with --init-default-path")"
-			fi
-			cmd_init "--" $(git config --get-all submodule.defaultUpdatePath) || return
-		else
-			cmd_init "--" "$@" || return
-		fi
-
+		cmd_init "--" "$@" || return
 	fi
 
 	{

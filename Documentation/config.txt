@@ -783,11 +783,10 @@ core.sparseCheckout::
 	linkgit:git-read-tree[1] for more information.
 
 core.abbrev::
-	Set the length object names are abbreviated to.  If
-	unspecified or set to "auto", an appropriate value is
-	computed based on the approximate number of packed objects
-	in your repository, which hopefully is enough for
-	abbreviated object names to stay unique for some time.
+	Set the length object names are abbreviated to.  If unspecified,
+	many commands abbreviate to 7 hexdigits, which may not be enough
+	for abbreviated object names to stay unique for sufficiently long
+	time.
 
 add.ignoreErrors::
 add.ignore-errors (deprecated)::
@@ -2886,11 +2885,6 @@ submodule.alternateErrorStrategy
 	Specifies how to treat errors with the alternates for a submodule
 	as computed via `submodule.alternateLocation`. Possible values are
 	`ignore`, `info`, `die`. Default is `die`.
-
-submodule.defaultUpdatePath::
-	Specifies a set of submodules to initialize when calling
-	`git submodule --init-default-group` by using the pathspec
-	syntax.
 
 tag.forceSignAnnotated::
 	A boolean to specify whether annotated tags created should be GPG signed.

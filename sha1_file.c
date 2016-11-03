@@ -27,6 +27,14 @@
 #include "list.h"
 #include "mergesort.h"
 
+#ifndef O_NOATIME
+#if defined(__linux__) && (defined(__i386__) || defined(__PPC__))
+#define O_NOATIME 01000000
+#else
+#define O_NOATIME 0
+#endif
+#endif
+
 #define SZ_FMT PRIuMAX
 static inline uintmax_t sz_fmt(size_t s) { return s; }
 
@@ -1295,9 +1303,7 @@ void (*report_garbage)(unsigned seen_bits, const char *path);
 static void report_helper(const struct string_list *list,
 			  int seen_bits, int first, int last)
 {
-	static const int pack_and_index = PACKDIR_FILE_PACK|PACKDIR_FILE_IDX;
-
-	if ((seen_bits & pack_and_index) == pack_and_index)
+	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX))
 		return;
 
 	for (; first < last; first++)
@@ -1331,13 +1337,9 @@ static void report_pack_garbage(struct string_list *list)
 			first = i;
 		}
 		if (!strcmp(path + baselen, "pack"))
-			seen_bits |= PACKDIR_FILE_PACK;
+			seen_bits |= 1;
 		else if (!strcmp(path + baselen, "idx"))
-			seen_bits |= PACKDIR_FILE_IDX;
-		else if (!strcmp(path + baselen, "bitmap"))
-			seen_bits |= PACKDIR_FILE_BITMAP;
-		else if (!strcmp(path + baselen, "keep"))
-			seen_bits |= PACKDIR_FILE_KEEP;
+			seen_bits |= 2;
 	}
 	report_helper(list, seen_bits, first, list->nr);
 }
@@ -1584,31 +1586,31 @@ int check_sha1_signature(const unsigned char *sha1, void *map,
 	return hashcmp(sha1, real_sha1) ? -1 : 0;
 }
 
-int git_open_cloexec(const char *name, int flags)
+int git_open(const char *name)
 {
-	int fd;
-	static int o_cloexec = O_CLOEXEC;
+	static int sha1_file_open_flag = O_NOATIME | O_CLOEXEC;
 
-	fd = open(name, flags | o_cloexec);
-	if ((o_cloexec & O_CLOEXEC) && fd < 0 && errno == EINVAL) {
+	for (;;) {
+		int fd;
+
+		errno = 0;
+		fd = open(name, O_RDONLY | sha1_file_open_flag);
+		if (fd >= 0)
+			return fd;
+
 		/* Try again w/o O_CLOEXEC: the kernel might not support it */
-		o_cloexec &= ~O_CLOEXEC;
-		fd = open(name, flags | o_cloexec);
-	}
-
-#if defined(F_GETFL) && defined(F_SETFL) && defined(FD_CLOEXEC)
-	{
-		static int fd_cloexec = FD_CLOEXEC;
-
-		if (!o_cloexec && 0 <= fd && fd_cloexec) {
-			/* Opened w/o O_CLOEXEC?  try with fcntl(2) to add it */
-			int flags = fcntl(fd, F_GETFL);
-			if (fcntl(fd, F_SETFL, flags | fd_cloexec))
-				fd_cloexec = 0;
+		if ((sha1_file_open_flag & O_CLOEXEC) && errno == EINVAL) {
+			sha1_file_open_flag &= ~O_CLOEXEC;
+			continue;
 		}
+
+		/* Might the failure be due to O_NOATIME? */
+		if (errno != ENOENT && (sha1_file_open_flag & O_NOATIME)) {
+			sha1_file_open_flag &= ~O_NOATIME;
+			continue;
+		}
+		return -1;
 	}
-#endif
-	return fd;
 }
 
 static int stat_sha1_file(const unsigned char *sha1, struct stat *st)

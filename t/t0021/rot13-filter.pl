@@ -1,3 +1,4 @@
+#!/usr/bin/perl
 #
 # Example implementation for the Git filter protocol version 2
 # See Documentation/gitattributes.txt, section "Filter Protocol"
@@ -21,7 +22,6 @@
 
 use strict;
 use warnings;
-use IO::File;
 
 my $MAX_PACKET_CONTENT_SIZE = 65516;
 my @capabilities            = @ARGV;

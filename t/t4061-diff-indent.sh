@@ -1,6 +1,6 @@
 #!/bin/sh
 
-test_description='Test diff compaction heuristic.
+test_description='Test diff indent heuristic.
 
 '
 . ./test-lib.sh
@@ -157,28 +157,28 @@ test_expect_success 'diff: ugly spaces' '
 	compare_diff spaces-expect out
 '
 
-test_expect_success 'diff: nice spaces with --compaction-heuristic' '
-	git diff --compaction-heuristic old new -- spaces.txt >out-compacted &&
+test_expect_success 'diff: nice spaces with --indent-heuristic' '
+	git diff --indent-heuristic old new -- spaces.txt >out-compacted &&
 	compare_diff spaces-compacted-expect out-compacted
 '
 
-test_expect_success 'diff: nice spaces with diff.compactionHeuristic' '
-	git -c diff.compactionHeuristic=true diff old new -- spaces.txt >out-compacted2 &&
+test_expect_success 'diff: nice spaces with diff.indentHeuristic' '
+	git -c diff.indentHeuristic=true diff old new -- spaces.txt >out-compacted2 &&
 	compare_diff spaces-compacted-expect out-compacted2
 '
 
-test_expect_success 'diff: --no-compaction-heuristic overrides config' '
-	git -c diff.compactionHeuristic=true diff --no-compaction-heuristic old new -- spaces.txt >out2 &&
+test_expect_success 'diff: --no-indent-heuristic overrides config' '
+	git -c diff.indentHeuristic=true diff --no-indent-heuristic old new -- spaces.txt >out2 &&
 	compare_diff spaces-expect out2
 '
 
-test_expect_success 'diff: --compaction-heuristic with --patience' '
-	git diff --compaction-heuristic --patience old new -- spaces.txt >out-compacted3 &&
+test_expect_success 'diff: --indent-heuristic with --patience' '
+	git diff --indent-heuristic --patience old new -- spaces.txt >out-compacted3 &&
 	compare_diff spaces-compacted-expect out-compacted3
 '
 
-test_expect_success 'diff: --compaction-heuristic with --histogram' '
-	git diff --compaction-heuristic --histogram old new -- spaces.txt >out-compacted4 &&
+test_expect_success 'diff: --indent-heuristic with --histogram' '
+	git diff --indent-heuristic --histogram old new -- spaces.txt >out-compacted4 &&
 	compare_diff spaces-compacted-expect out-compacted4
 '
 
@@ -187,8 +187,8 @@ test_expect_success 'diff: ugly functions' '
 	compare_diff functions-expect out
 '
 
-test_expect_success 'diff: nice functions with --compaction-heuristic' '
-	git diff --compaction-heuristic old new -- functions.c >out-compacted &&
+test_expect_success 'diff: nice functions with --indent-heuristic' '
+	git diff --indent-heuristic old new -- functions.c >out-compacted &&
 	compare_diff functions-compacted-expect out-compacted
 '
 
@@ -197,18 +197,18 @@ test_expect_success 'blame: ugly spaces' '
 	compare_blame spaces-expect out-blame
 '
 
-test_expect_success 'blame: nice spaces with --compaction-heuristic' '
-	git blame --compaction-heuristic old..new -- spaces.txt >out-blame-compacted &&
+test_expect_success 'blame: nice spaces with --indent-heuristic' '
+	git blame --indent-heuristic old..new -- spaces.txt >out-blame-compacted &&
 	compare_blame spaces-compacted-expect out-blame-compacted
 '
 
-test_expect_success 'blame: nice spaces with diff.compactionHeuristic' '
-	git -c diff.compactionHeuristic=true blame old..new -- spaces.txt >out-blame-compacted2 &&
+test_expect_success 'blame: nice spaces with diff.indentHeuristic' '
+	git -c diff.indentHeuristic=true blame old..new -- spaces.txt >out-blame-compacted2 &&
 	compare_blame spaces-compacted-expect out-blame-compacted2
 '
 
-test_expect_success 'blame: --no-compaction-heuristic overrides config' '
-	git -c diff.compactionHeuristic=true blame --no-compaction-heuristic old..new -- spaces.txt >out-blame2 &&
+test_expect_success 'blame: --no-indent-heuristic overrides config' '
+	git -c diff.indentHeuristic=true blame --no-indent-heuristic old..new -- spaces.txt >out-blame2 &&
 	git blame old..new -- spaces.txt >out-blame &&
 	compare_blame spaces-expect out-blame2
 '
