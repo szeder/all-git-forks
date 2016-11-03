@@ -2,6 +2,7 @@
 #include "dir.h"
 #include "pathspec.h"
 #include "attr.h"
+#include "argv-array.h"
 
 /*
  * Finds which of the given pathspecs match items in the index.
@@ -138,17 +139,13 @@ static void parse_pathspec_attr_match(struct pathspec_item *item, const char *va
 {
 	struct string_list_item *si;
 	struct string_list list = STRING_LIST_INIT_DUP;
+	struct argv_array attrs = ARGV_ARRAY_INIT;
 
 	if (!value || !strlen(value))
 		die(_("attr spec must not be empty"));
 
 	string_list_split(&list, value, ' ', -1);
 	string_list_remove_empty_items(&list, 0);
-
-	if (!item->attr_check)
-		git_attr_check_alloc(&item->attr_check);
-	else
-		die(_("Only one 'attr:' specification is allowed."));
 
 	ALLOC_GROW(item->attr_match, item->attr_match_nr + list.nr, item->attr_match_alloc);
 
@@ -182,17 +179,22 @@ static void parse_pathspec_attr_match(struct pathspec_item *item, const char *va
 			break;
 		}
 
-		am->attr = git_attr_counted(attr, attr_len);
-		if (!am->attr) {
+		if (!attr_name_valid(attr, attr_len)) {
 			struct strbuf sb = STRBUF_INIT;
 			am->match_mode = INVALID_ATTR;
 			invalid_attr_name_message(&sb, attr, attr_len);
 			die(_("invalid attribute in '%s': '%s'"), value, sb.buf);
 		}
 
-		git_attr_check_append(item->attr_check, am->attr);
+		argv_array_push(&attrs, xmemdupz(attr, attr_len));
 	}
 
+	if (!item->attr_check)
+		git_attr_check_initv(&item->attr_check, attrs.argv);
+	else
+		die(_("Only one 'attr:' specification is allowed."));
+
+	argv_array_clear(&attrs);
 	string_list_clear(&list, 0);
 	return;
 }

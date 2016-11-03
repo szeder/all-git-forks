@@ -154,6 +154,11 @@ test_expect_success 'check label excluding other labels' '
 	test_cmp expect actual
 '
 
+test_expect_success 'fail on multiple attr specifiers in one pathspec item' '
+	test_must_fail git ls-files . ":(attr:labelB,attr:labelC)" 2>actual &&
+	test_i18ngrep "Only one" actual
+'
+
 test_expect_success 'checking attributes in a multithreaded process' '
 	git status ":(attr:labelB)"
 '

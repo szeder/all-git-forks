@@ -3,6 +3,7 @@
 #include "attr.h"
 #include "quote.h"
 #include "parse-options.h"
+#include "argv-array.h"
 
 static int all_attrs;
 static int cached_attrs;
@@ -168,14 +169,18 @@ int cmd_check_attr(int argc, const char **argv, const char *prefix)
 	}
 
 	if (!all_attrs) {
-		git_attr_check_alloc(&check);
+		struct argv_array attrs = ARGV_ARRAY_INIT;
 		for (i = 0; i < cnt; i++) {
-			struct git_attr *a = git_attr(argv[i]);
-			if (!a)
-				return error("%s: not a valid attribute name",
-					     argv[i]);
-			git_attr_check_append(check, a);
+			if (!attr_name_valid(argv[i], strlen(argv[i]))) {
+				struct strbuf sb = STRBUF_INIT;
+				invalid_attr_name_message(&sb, argv[i],
+							  strlen(argv[i]));
+				return error("%s", strbuf_detach(&sb, NULL));
+			}
+			argv_array_push(&attrs, argv[i]);
 		}
+		git_attr_check_initv(&check, attrs.argv);
+		argv_array_clear(&attrs);
 	}
 
 	if (stdin_paths)

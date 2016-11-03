@@ -107,14 +107,13 @@ static int write_archive_entry(const unsigned char *sha1, const char *base,
 		void *context)
 {
 	static struct strbuf path = STRBUF_INIT;
-	static struct git_attr_check *check;
-
 	struct archiver_context *c = context;
 	struct archiver_args *args = c->args;
 	write_archive_entry_fn_t write_entry = c->write_entry;
+	static struct git_attr_check *check;
+	struct git_attr_result result[2];
 	const char *path_without_prefix;
 	int err;
-	struct git_attr_result result[2];
 
 	args->convert = 0;
 	strbuf_reset(&path);

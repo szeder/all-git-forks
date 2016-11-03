@@ -35,7 +35,6 @@ struct pathspec {
 		int attr_match_nr;
 		int attr_match_alloc;
 		struct attr_match {
-			struct git_attr *attr;
 			char *value;
 			enum attr_match_mode {
 				MATCH_SET,

@@ -1094,8 +1094,10 @@ static int ident_to_worktree(const char *path, const char *src, size_t len,
 	return 1;
 }
 
-static enum crlf_action git_path_check_crlf(const char *value)
+static enum crlf_action git_path_check_crlf(struct git_attr_result *result)
 {
+	const char *value = result->value;
+
 	if (ATTR_TRUE(value))
 		return CRLF_TEXT;
 	else if (ATTR_FALSE(value))
@@ -1109,8 +1111,10 @@ static enum crlf_action git_path_check_crlf(const char *value)
 	return CRLF_UNDEFINED;
 }
 
-static enum eol git_path_check_eol(const char *value)
+static enum eol git_path_check_eol(struct git_attr_result *result)
 {
+	const char *value = result->value;
+
 	if (ATTR_UNSET(value))
 		;
 	else if (!strcmp(value, "lf"))
@@ -1120,8 +1124,9 @@ static enum eol git_path_check_eol(const char *value)
 	return EOL_UNSET;
 }
 
-static struct convert_driver *git_path_check_convert(const char *value)
+static struct convert_driver *git_path_check_convert(struct git_attr_result *result)
 {
+	const char *value = result->value;
 	struct convert_driver *drv;
 
 	if (ATTR_TRUE(value) || ATTR_FALSE(value) || ATTR_UNSET(value))
@@ -1132,8 +1137,10 @@ static struct convert_driver *git_path_check_convert(const char *value)
 	return NULL;
 }
 
-static int git_path_check_ident(const char *value)
+static int git_path_check_ident(struct git_attr_result *result)
 {
+	const char *value = result->value;
+
 	return !!ATTR_TRUE(value);
 }
 
@@ -1160,14 +1167,14 @@ static void convert_attrs(struct conv_attrs *ca, const char *path)
 	}
 
 	if (!git_check_attr(path, check, result)) {
-		ca->crlf_action = git_path_check_crlf(result[4].value);
+		ca->crlf_action = git_path_check_crlf(&result[4]);
 		if (ca->crlf_action == CRLF_UNDEFINED)
-			ca->crlf_action = git_path_check_crlf(result[0].value);
+			ca->crlf_action = git_path_check_crlf(&result[0]);
 		ca->attr_action = ca->crlf_action;
-		ca->ident = git_path_check_ident(result[1].value);
-		ca->drv = git_path_check_convert(result[2].value);
+		ca->ident = git_path_check_ident(&result[1]);
+		ca->drv = git_path_check_convert(&result[2]);
 		if (ca->crlf_action != CRLF_BINARY) {
-			enum eol eol_attr = git_path_check_eol(result[3].value);
+			enum eol eol_attr = git_path_check_eol(&result[3]);
 			if (ca->crlf_action == CRLF_AUTO && eol_attr == EOL_LF)
 				ca->crlf_action = CRLF_AUTO_INPUT;
 			else if (ca->crlf_action == CRLF_AUTO && eol_attr == EOL_CRLF)
