@@ -37,12 +37,13 @@ struct text_stat {
 	unsigned printable, nonprintable;
 };
 
-static void gather_stats(const char *buf, unsigned long size, struct text_stat *stats)
+static void gather_stats_partly(const char *buf, unsigned long size,
+				struct text_stat *stats)
 {
 	unsigned long i;
 
-	memset(stats, 0, sizeof(*stats));
-
+	if (!buf || !size)
+		return;
 	for (i = 0; i < size; i++) {
 		unsigned char c = buf[i];
 		if (c == '\r') {
@@ -76,10 +77,20 @@ static void gather_stats(const char *buf, unsigned long size, struct text_stat *
 		else
 			stats->printable++;
 	}
+}
 
+static void gather_stats_end(const char *buf, unsigned long size, struct text_stat *stats)
+{
 	/* If file ends with EOF then don't count this EOF as non-printable. */
 	if (size >= 1 && buf[size-1] == '\032')
 		stats->nonprintable--;
+}
+
+static void gather_stats(const char *buf, unsigned long size, struct text_stat *stats)
+{
+	memset(stats, 0, sizeof(*stats));
+	gather_stats_partly(buf, size, stats);
+	gather_stats_end(buf, size, stats);
 }
 
 /*
