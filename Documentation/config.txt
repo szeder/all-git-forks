@@ -2887,7 +2887,7 @@ submodule.alternateErrorStrategy
 
 submodule.defaultUpdatePath::
 	Specifies a set of submodules to initialize when calling
-	`git submodule --init-default-group` by using the pathspec
+	`git submodule --init-default-path` by using the pathspec
 	syntax.
 
 tag.forceSignAnnotated::
