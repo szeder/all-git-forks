@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Copyright (c) 2005 Junio C Hamano.
 #
@@ -32,6 +32,7 @@ verify             allow pre-rebase hook to run
 rerere-autoupdate  allow rerere to update index with resolved conflicts
 root!              rebase all reachable commits up to the root(s)
 autosquash         move commits that begin with squash!/fixup! under -i
+notreallyinteractive do a thing
 committer-date-is-author-date! passed to 'git am'
 ignore-date!       passed to 'git am'
 whitespace=!       passed to 'git apply'
@@ -44,7 +45,7 @@ abort!             abort and check out the original branch
 skip!              skip current patch and continue
 edit-todo!         edit the todo list during an interactive rebase
 "
-. git-sh-setup
+source ~/projects/git/git-sh-setup
 set_reflog_action rebase
 require_work_tree_exists
 cd_to_toplevel
@@ -84,6 +85,7 @@ state_dir=
 action=
 preserve_merges=
 autosquash=
+not_really_interactive=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
 case "$(git config --bool commit.gpgsign)" in
@@ -188,7 +190,7 @@ run_specific_rebase () {
 		export GIT_EDITOR
 		autosquash=
 	fi
-	. git-rebase--$type
+	source ~/projects/git/git-rebase--$type
 	ret=$?
 	if test $ret -eq 0
 	then
@@ -265,6 +267,9 @@ do
 	--autosquash)
 		autosquash=t
 		;;
+    --notreallyinteractive)
+        notreallyinteractive=t
+        ;;
 	--no-autosquash)
 		autosquash=
 		;;
@@ -446,7 +451,7 @@ then
 		if ! upstream_name=$(git rev-parse --symbolic-full-name \
 			--verify -q @{upstream} 2>/dev/null)
 		then
-			. git-parse-remote
+			source ~/projects/git/git-parse-remote
 			error_on_missing_default_upstream "rebase" "rebase" \
 				"against" "git rebase $(gettext '<branch>')"
 		fi
