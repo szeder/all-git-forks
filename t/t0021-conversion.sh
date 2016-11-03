@@ -22,7 +22,7 @@ generate_random_characters () {
 }
 
 file_size () {
-	cat "$1" | wc -c | sed "s/^[ ]*//"
+	wc -c <"$1"
 }
 
 filter_git () {
@@ -370,10 +370,10 @@ test_expect_success PERL 'required process filter should filter data' '
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
-			IN: clean test2.r $S2 [OK] -- OUT: $S2 . [OK]
+			IN: clean test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
+			IN: clean test2.r $(($S2)) [OK] -- OUT: $(($S2)) . [OK]
 			IN: clean test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
+			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $(($S3)) [OK] -- OUT: $(($S3)) . [OK]
 			STOP
 		EOF
 		test_cmp_count expected.log rot13-filter.log &&
@@ -382,14 +382,14 @@ test_expect_success PERL 'required process filter should filter data' '
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
-			IN: clean test2.r $S2 [OK] -- OUT: $S2 . [OK]
+			IN: clean test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
+			IN: clean test2.r $(($S2)) [OK] -- OUT: $(($S2)) . [OK]
 			IN: clean test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
-			IN: clean test2.r $S2 [OK] -- OUT: $S2 . [OK]
+			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $(($S3)) [OK] -- OUT: $(($S3)) . [OK]
+			IN: clean test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
+			IN: clean test2.r $(($S2)) [OK] -- OUT: $(($S2)) . [OK]
 			IN: clean test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
+			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $(($S3)) [OK] -- OUT: $(($S3)) . [OK]
 			STOP
 		EOF
 		test_cmp_count expected.log rot13-filter.log &&
@@ -400,8 +400,8 @@ test_expect_success PERL 'required process filter should filter data' '
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: smudge test2.r $S2 [OK] -- OUT: $S2 . [OK]
-			IN: smudge testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
+			IN: smudge test2.r $(($S2)) [OK] -- OUT: $(($S2)) . [OK]
+			IN: smudge testsubdir/test3 '\''sq'\'',\$x.r $(($S3)) [OK] -- OUT: $(($S3)) . [OK]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
@@ -410,7 +410,7 @@ test_expect_success PERL 'required process filter should filter data' '
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
+			IN: clean test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
@@ -419,10 +419,10 @@ test_expect_success PERL 'required process filter should filter data' '
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: smudge test.r $S [OK] -- OUT: $S . [OK]
-			IN: smudge test2.r $S2 [OK] -- OUT: $S2 . [OK]
+			IN: smudge test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
+			IN: smudge test2.r $(($S2)) [OK] -- OUT: $(($S2)) . [OK]
 			IN: smudge test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: smudge testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
+			IN: smudge testsubdir/test3 '\''sq'\'',\$x.r $(($S3)) [OK] -- OUT: $(($S3)) . [OK]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
@@ -452,7 +452,7 @@ test_expect_success PERL 'required process filter takes precedence' '
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
+			IN: clean test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
 			STOP
 		EOF
 		test_cmp_count expected.log rot13-filter.log
@@ -475,7 +475,7 @@ test_expect_success PERL 'required process filter should be used only for "clean
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
+			IN: clean test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
 			STOP
 		EOF
 		test_cmp_count expected.log rot13-filter.log &&
@@ -604,11 +604,11 @@ test_expect_success PERL 'process filter should restart after unexpected write f
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: smudge smudge-write-fail.r $SF [OK] -- OUT: $SF [WRITE FAIL]
+			IN: smudge smudge-write-fail.r $(($SF)) [OK] -- OUT: $(($SF)) [WRITE FAIL]
 			START
 			init handshake complete
-			IN: smudge test.r $S [OK] -- OUT: $S . [OK]
-			IN: smudge test2.r $S2 [OK] -- OUT: $S2 . [OK]
+			IN: smudge test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
+			IN: smudge test2.r $(($S2)) [OK] -- OUT: $(($S2)) . [OK]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
@@ -650,9 +650,9 @@ test_expect_success PERL 'process filter should not be restarted if it signals a
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: smudge error.r $SE [OK] -- OUT: 0 [ERROR]
-			IN: smudge test.r $S [OK] -- OUT: $S . [OK]
-			IN: smudge test2.r $S2 [OK] -- OUT: $S2 . [OK]
+			IN: smudge error.r $(($SE)) [OK] -- OUT: 0 [ERROR]
+			IN: smudge test.r $(($S)) [OK] -- OUT: $(($S)) . [OK]
+			IN: smudge test2.r $(($S2)) [OK] -- OUT: $(($S2)) . [OK]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
@@ -689,7 +689,7 @@ test_expect_success PERL 'process filter abort stops processing of all further f
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
-			IN: smudge abort.r $SA [OK] -- OUT: 0 [ABORT]
+			IN: smudge abort.r $(($SA)) [OK] -- OUT: 0 [ABORT]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
