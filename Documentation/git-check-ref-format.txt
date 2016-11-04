@@ -10,8 +10,9 @@ SYNOPSIS
 [verse]
 'git check-ref-format' [--report-errors] [--normalize]
        [--[no-]allow-onelevel] [--refspec-pattern]
-       <refname>
-'git check-ref-format' [--report-errors] --branch <branchname-shorthand>
+       <refname> | --stdin
+'git check-ref-format' [--report-errors] --branch
+       <branchname-shorthand> | --stdin
 
 DESCRIPTION
 -----------
@@ -108,6 +109,11 @@ OPTIONS
 --report-errors::
 	If any ref does not check OK, print a message to stderr.
         (By default, git check-ref-format is silent.)
+
+--stdin::
+	Instead of checking on ref supplied on the command line,
+	read refs, one per line, from stdin.  The exit status is
+	0 if all the refs were OK.
 
 
 EXAMPLES

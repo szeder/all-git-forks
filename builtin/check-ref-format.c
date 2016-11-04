@@ -76,6 +76,7 @@ static int check_one_ref_format(const char *refname)
 int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 {
 	int i;
+	int use_stdin = 0;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(builtin_check_ref_format_usage);
@@ -93,6 +94,8 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 			check_branch = 1;
 		else if (!strcmp(argv[i], "--report-errors"))
 			report_errors = 1;
+		else if (!strcmp(argv[i], "--stdin"))
+			use_stdin = 1;
 		else
 			usage(builtin_check_ref_format_usage);
 	}
@@ -100,8 +103,33 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 	if (check_branch && (flags || normalize))
 		usage(builtin_check_ref_format_usage);
 
-	if (! (i == argc - 1))
-		usage(builtin_check_ref_format_usage);
+	if (!use_stdin) {
+		if (! (i == argc - 1))
+			usage(builtin_check_ref_format_usage);
 
-	return check_one_ref_format(argv[i]);
+		return check_one_ref_format(argv[i]);
+	} else {
+		char buffer[2048];
+		int worst = 0;
+
+		if (! (i == argc))
+			usage(builtin_check_ref_format_usage);
+
+		while (fgets(buffer, sizeof(buffer), stdin)) {
+			char *newline = strchr(buffer, '\n');
+			if (!newline) {
+				fprintf(stderr, "%s --stdin: missing final newline or line too long\n", *argv);
+				exit(127);
+			}
+			*newline = 0;
+			int got = check_one_ref_format(buffer);
+			if (got > worst)
+				worst = got;
+		}
+		if (!feof(stdin)) {
+			perror("reading from stdin");
+			exit(127);
+		}
+		return worst;
+	}
 }
