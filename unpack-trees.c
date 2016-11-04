@@ -1518,7 +1518,7 @@ static int check_ok_to_remove(const char *name, int len, int dtype,
 	    (!trust_executable_bit ||
 	     (0100 & (ce->ce_mode ^ st->st_mode)) == 0) &&
 	    st->st_size < SAME_CONTENT_SIZE_LIMIT &&
-	    sha1_object_info(ce->sha1, &ce_size) == OBJ_BLOB &&
+	    sha1_object_info(ce->oid.hash, &ce_size) == OBJ_BLOB &&
 	    ce_size == st->st_size) {
 		void *buffer = NULL;
 		unsigned long size;
@@ -1526,7 +1526,7 @@ static int check_ok_to_remove(const char *name, int len, int dtype,
 		struct strbuf sb = STRBUF_INIT;
 		int matched =
 			strbuf_read_file(&sb, ce->name, ce_size) == ce_size &&
-			(buffer = read_sha1_file(ce->sha1, &type, &size)) != NULL &&
+			(buffer = read_sha1_file(ce->oid.hash, &type, &size)) != NULL &&
 			type == OBJ_BLOB &&
 			size == ce_size &&
 			!memcmp(buffer, sb.buf, size);
