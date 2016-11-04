@@ -223,10 +223,10 @@ test_expect_success 'preparation for long filename tests' '
 '
 
 cat >expect <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaa (new) | 1000 ++++++++++++
 EOF
 cat >expect-graph <<'EOF'
-|  ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++
+|  ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaa (new) | 1000 ++++++++++++
 EOF
 while read cmd args
 do
@@ -251,16 +251,16 @@ log -1 --stat
 EOF
 
 cat >expect80 <<'EOF'
- ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++++++++++
+ ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (new) | 1000 ++++++++++++++++++++
 EOF
 cat >expect80-graph <<'EOF'
-|  ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 ++++++++++++++++++++
+|  ...aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (new) | 1000 ++++++++++++++++++++
 EOF
 cat >expect200 <<'EOF'
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (new) | 1000 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 EOF
 cat >expect200-graph <<'EOF'
-|  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+|  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (new) | 1000 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 EOF
 while read verb expect cmd args
 do
@@ -285,10 +285,10 @@ respects expect200 log -1 --stat
 EOF
 
 cat >expect1 <<'EOF'
- ...aaaaaaa | 1000 ++++++
+ ...a (new) | 1000 ++++++
 EOF
 cat >expect1-graph <<'EOF'
-|  ...aaaaaaa | 1000 ++++++
+|  ...a (new) | 1000 ++++++
 EOF
 while read verb expect cmd args
 do
@@ -325,7 +325,7 @@ test_expect_success 'merge --stat respects COLUMNS (big change)' '
 '
 
 cat >expect <<'EOF'
- aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | 1000 +++++++++++++++++++++++++++++++++++++++
+ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa (new) | 1000 +++++++++++++++++++++++++++++++++
 EOF
 test_expect_success 'merge --stat respects COLUMNS (long filename)' '
 	COLUMNS=100 git merge --stat --no-ff master >output &&

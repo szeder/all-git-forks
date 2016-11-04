@@ -1383,7 +1383,8 @@ static void fn_out_consume(void *priv, char *line, unsigned long len)
 	}
 }
 
-static char *pprint_rename(const char *a, const char *b)
+static char *pprint_rename(const char *a, const char *b,
+			   const char *summary_word)
 {
 	const char *old = a;
 	const char *new = b;
@@ -1400,6 +1401,8 @@ static char *pprint_rename(const char *a, const char *b)
 		quote_c_style(a, &name, NULL, 0);
 		strbuf_addstr(&name, " => ");
 		quote_c_style(b, &name, NULL, 0);
+		if (summary_word)
+			strbuf_addf(&name, " (%s)", summary_word);
 		return strbuf_detach(&name, NULL);
 	}
 
@@ -1459,6 +1462,8 @@ static char *pprint_rename(const char *a, const char *b)
 		strbuf_addch(&name, '}');
 		strbuf_add(&name, a + len_a - sfx_length, sfx_length);
 	}
+	if (summary_word)
+		strbuf_addf(&name, " (%s)", summary_word);
 	return strbuf_detach(&name, NULL);
 }
 
@@ -1469,6 +1474,7 @@ struct diffstat_t {
 		char *from_name;
 		char *name;
 		char *print_name;
+		char *summary_word;
 		unsigned is_unmerged:1;
 		unsigned is_binary:1;
 		unsigned is_renamed:1;
@@ -1548,14 +1554,17 @@ static void fill_print_name(struct diffstat_file *file)
 
 	if (!file->is_renamed) {
 		struct strbuf buf = STRBUF_INIT;
-		if (quote_c_style(file->name, &buf, NULL, 0)) {
+		if (quote_c_style(file->name, &buf, NULL, 0) ||
+		    file->summary_word) {
+			strbuf_addf(&buf, " (%s)", file->summary_word);
 			pname = strbuf_detach(&buf, NULL);
 		} else {
 			pname = file->name;
 			strbuf_release(&buf);
 		}
 	} else {
-		pname = pprint_rename(file->from_name, file->name);
+		pname = pprint_rename(file->from_name, file->name,
+				      file->summary_word);
 	}
 	file->print_name = pname;
 }
@@ -2551,6 +2560,32 @@ static void builtin_diff(const char *name_a,
 	return;
 }
 
+static char *get_summary_word(const struct diff_filepair *p, int is_renamed)
+{
+	if (!is_renamed) {
+		if (p->status == DIFF_STATUS_ADDED) {
+			if (S_ISLNK(p->two->mode))
+				return "new +l";
+			else if ((p->two->mode & 0777) == 0755)
+				return "new +x";
+			else
+				return "new";
+		} else if (p->status == DIFF_STATUS_DELETED)
+			return "gone";
+	}
+	if (S_ISLNK(p->one->mode) && !S_ISLNK(p->two->mode))
+		return "mode -l";
+	else if (!S_ISLNK(p->one->mode) && S_ISLNK(p->two->mode))
+		return "mode +l";
+	else if ((p->one->mode & 0777) == 0644 &&
+		 (p->two->mode & 0777) == 0755)
+		return "mode +x";
+	else if ((p->one->mode & 0777) == 0755 &&
+		 (p->two->mode & 0777) == 0644)
+		return "mode -x";
+	return NULL;
+}
+
 static void builtin_diffstat(const char *name_a, const char *name_b,
 			     struct diff_filespec *one,
 			     struct diff_filespec *two,
@@ -2570,6 +2605,7 @@ static void builtin_diffstat(const char *name_a, const char *name_b,
 
 	data = diffstat_add(diffstat, name_a, name_b);
 	data->is_interesting = p->status != DIFF_STATUS_UNKNOWN;
+	data->summary_word = get_summary_word(p, data->is_renamed);
 
 	if (!one || !two) {
 		data->is_unmerged = 1;
@@ -4484,7 +4520,7 @@ static void show_mode_change(FILE *file, struct diff_filepair *p, int show_name,
 static void show_rename_copy(FILE *file, const char *renamecopy, struct diff_filepair *p,
 			const char *line_prefix)
 {
-	char *names = pprint_rename(p->one->path, p->two->path);
+	char *names = pprint_rename(p->one->path, p->two->path, NULL);
 
 	fprintf(file, " %s %s (%d%%)\n", renamecopy, names, similarity_index(p));
 	free(names);
