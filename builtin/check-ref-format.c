@@ -48,12 +48,22 @@ static int check_ref_format_branch(const char *arg)
 	return 0;
 }
 
+static int normalize = 0;
+static int flags = 0;
+
+static int check_one_ref_format(const char *refname)
+{
+	if (normalize)
+		refname = collapse_slashes(refname);
+	if (check_refname_format(refname, flags))
+		return 1;
+	if (normalize)
+		printf("%s\n", refname);
+}
+
 int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 {
 	int i;
-	int normalize = 0;
-	int flags = 0;
-	const char *refname;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(builtin_check_ref_format_usage);
@@ -76,13 +86,5 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 	if (! (i == argc - 1))
 		usage(builtin_check_ref_format_usage);
 
-	refname = argv[i];
-	if (normalize)
-		refname = collapse_slashes(refname);
-	if (check_refname_format(refname, flags))
-		return 1;
-	if (normalize)
-		printf("%s\n", refname);
-
-	return 0;
+	return check_one_ref_format(argv[i]);
 }
