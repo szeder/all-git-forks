@@ -963,6 +963,7 @@ static char *find_branch_name(struct rev_info *rev)
 }
 
 static void make_cover_letter(struct rev_info *rev, int use_stdout,
+			      const char *cover_letter_program,
 			      struct commit *origin,
 			      int nr, struct commit **list,
 			      const char *branch_name,
@@ -973,6 +974,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	const char *msg;
 	struct shortlog log;
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf custom_msg = STRBUF_INIT;
 	int i;
 	const char *encoding = "UTF-8";
 	struct diff_options opts;
@@ -1002,12 +1004,45 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	if (!branch_name)
 		branch_name = find_branch_name(rev);
 
-	msg = body;
+	if (cover_letter_program) {
+		struct child_process cp = CHILD_PROCESS_INIT;
+
+		argv_array_push(&cp.args, cover_letter_program);
+		argv_array_push(&cp.args, rev->subject_prefix);
+		argv_array_push(&cp.args, branch_name);
+		if (origin)
+			argv_array_push(&cp.args, oid_to_hex(&origin->object.oid));
+		else
+			argv_array_push(&cp.args, "");
+		argv_array_push(&cp.args, oid_to_hex(&head->object.oid));
+
+		cp.no_stdin = 1;
+		cp.out = -1;
+
+		if (start_command(&cp))
+			die_errno(_("failed to run '%s'"), cover_letter_program);
+
+		if (strbuf_read(&custom_msg, cp.out, 0) < 0)
+			die_errno(_("failed to read from '%s'"), cover_letter_program);
+
+		close(cp.out);
+		if (finish_command(&cp))
+			die_errno(_("failed to run '%s'"), cover_letter_program);
+
+		msg = custom_msg.buf;
+	} else
+		msg = body;
 	pp.fmt = CMIT_FMT_EMAIL;
 	pp.date_mode.type = DATE_RFC2822;
 	pp_user_info(&pp, NULL, &sb, committer, encoding);
 	pp_title_line(&pp, &msg, &sb, encoding, need_8bit_cte);
 	pp_remainder(&pp, &msg, &sb, 0);
+	if (cover_letter_program) {
+		printf("%s\n", sb.buf);
+		strbuf_release(&sb);
+		strbuf_release(&custom_msg);
+		return;
+	}
 	add_branch_description(&sb, branch_name);
 	fprintf(rev->diffopt.file, "%s\n", sb.buf);
 
@@ -1389,6 +1424,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	int just_numbers = 0;
 	int ignore_if_in_upstream = 0;
 	int cover_letter = -1;
+	const char *cover_letter_program = NULL;
 	int boundary_count = 0;
 	int no_binary_diff = 0;
 	int zero_commit = 0;
@@ -1415,6 +1451,8 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 			    N_("print patches to standard out")),
 		OPT_BOOL(0, "cover-letter", &cover_letter,
 			    N_("generate a cover letter")),
+		OPT_FILENAME(0, "cover-letter-program", &cover_letter_program,
+			     N_("program that generates a cover letter")),
 		OPT_BOOL(0, "numbered-files", &just_numbers,
 			    N_("use simple number sequence for output file names")),
 		OPT_STRING(0, "suffix", &fmt_patch_suffix, N_("sfx"),
@@ -1724,7 +1762,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	if (cover_letter) {
 		if (thread)
 			gen_message_id(&rev, "cover");
-		make_cover_letter(&rev, use_stdout,
+		make_cover_letter(&rev, use_stdout, cover_letter_program,
 				  origin, nr, list, branch_name, quiet);
 		print_bases(&bases, rev.diffopt.file);
 		print_signature(rev.diffopt.file);
