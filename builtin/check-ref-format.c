@@ -49,13 +49,19 @@ static int check_ref_format_branch(const char *arg)
 }
 
 static int normalize = 0;
+static int check_branch = 0;
 static int flags = 0;
 
 static int check_one_ref_format(const char *refname)
 {
+	int got;
+
 	if (normalize)
 		refname = collapse_slashes(refname);
-	if (check_refname_format(refname, flags))
+	got = check_branch
+		? check_ref_format_branch(refname)
+		: check_refname_format(refname, flags);
+	if (got)
 		return 1;
 	if (normalize)
 		printf("%s\n", refname);
@@ -68,9 +74,6 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage(builtin_check_ref_format_usage);
 
-	if (argc == 3 && !strcmp(argv[1], "--branch"))
-		return check_ref_format_branch(argv[2]);
-
 	for (i = 1; i < argc && argv[i][0] == '-'; i++) {
 		if (!strcmp(argv[i], "--normalize") || !strcmp(argv[i], "--print"))
 			normalize = 1;
@@ -80,9 +83,15 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 			flags &= ~REFNAME_ALLOW_ONELEVEL;
 		else if (!strcmp(argv[i], "--refspec-pattern"))
 			flags |= REFNAME_REFSPEC_PATTERN;
+		else if (!strcmp(argv[i], "--branch"))
+			check_branch = 1;
 		else
 			usage(builtin_check_ref_format_usage);
 	}
+
+	if (check_branch && (flags || normalize))
+		usage(builtin_check_ref_format_usage);
+
 	if (! (i == argc - 1))
 		usage(builtin_check_ref_format_usage);
 
