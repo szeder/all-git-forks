@@ -8,10 +8,10 @@ git-check-ref-format - Ensures that a reference name is well formed
 SYNOPSIS
 --------
 [verse]
-'git check-ref-format' [--normalize]
+'git check-ref-format' [--report-errors] [--normalize]
        [--[no-]allow-onelevel] [--refspec-pattern]
        <refname>
-'git check-ref-format' --branch <branchname-shorthand>
+'git check-ref-format' [--report-errors] --branch <branchname-shorthand>
 
 DESCRIPTION
 -----------
@@ -104,6 +104,10 @@ OPTIONS
 	refname is valid then print it to standard output and exit
 	with a status of 0.  (`--print` is a deprecated way to spell
 	`--normalize`.)
+
+--report-errors::
+	If any ref does not check OK, print a message to stderr.
+        (By default, git check-ref-format is silent.)
 
 
 EXAMPLES

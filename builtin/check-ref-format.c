@@ -9,7 +9,7 @@
 
 static const char builtin_check_ref_format_usage[] =
 "git check-ref-format [--normalize] [<options>] <refname>\n"
-"   or: git check-ref-format --branch <branchname-shorthand>";
+"   or: git check-ref-format [<options>] --branch <branchname-shorthand>";
 
 /*
  * Return a copy of refname but with leading slashes removed and runs
@@ -51,6 +51,7 @@ static int check_ref_format_branch(const char *arg)
 static int normalize = 0;
 static int check_branch = 0;
 static int flags = 0;
+static int report_errors = 0;
 
 static int check_one_ref_format(const char *refname)
 {
@@ -61,8 +62,11 @@ static int check_one_ref_format(const char *refname)
 	got = check_branch
 		? check_ref_format_branch(refname)
 		: check_refname_format(refname, flags);
-	if (got)
+	if (got) {
+		if (report_errors)
+			fprintf(stderr, "bad ref format: %s\n", refname);
 		return 1;
+	}
 	if (normalize) {
 		printf("%s\n", refname);
 		free((void*)refname);
@@ -87,6 +91,8 @@ int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
 			flags |= REFNAME_REFSPEC_PATTERN;
 		else if (!strcmp(argv[i], "--branch"))
 			check_branch = 1;
+		else if (!strcmp(argv[i], "--report-errors"))
+			report_errors = 1;
 		else
 			usage(builtin_check_ref_format_usage);
 	}
