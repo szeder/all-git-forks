@@ -1413,9 +1413,13 @@ Message-Id: $message_id
 			    print "RCPT TO:<$entry>\n";
 			}
 		} else {
+			print color 'yellow';
 			print "Sendmail: $smtp_server ".join(' ',@sendmail_parameters)."\n";
+			print color 'reset';
 		}
-		print $header, "\n";
+		my $colored_header = $header;
+		$colored_header =~ s/^(Subject: .*)/color("bold").$1.color("reset")/em;
+		print $colored_header, "\n";
 		if ($smtp) {
 			print "Result: ", $smtp->code, ' ',
 				($smtp->message =~ /\n([^\n]+\n)$/s), "\n";
