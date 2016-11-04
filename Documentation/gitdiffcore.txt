@@ -176,6 +176,25 @@ the expense of making it slower.  Without `--find-copies-harder`,
 'git diff-{asterisk}' commands can detect copies only if the file that was
 copied happened to have been modified in the same changeset.
 
+diffcore-rename can take a file that indicates what path should be
+renamed to what path. This overrides automatic detection. Each line in
+the file either starts with a keyword or is in the form "<path> =>
+<path>". All keywords start with a dot. Paths that start with a dot or
+contain spaces must be quoted. The following keywords are supported:
+
+* `.source` or `.target ` is followed by an object name that can be resolved
+  to a tree SHA-1, which specifies the diff source or target,
+  respectively, that the following rename lines can be applied. By
+  default, rename lines apply for all diff source or target.
+
+* `.nosource` and `.notarget` cancel the effect of `.source` and
+  `.target` respectively. The following rename lines apply for all
+  diff source or target again.
+
+* `.blob` is followed by an SHA-1 as the source blob, the character
+  sequence "=>" (without quotes) and an SHA-1 as the target blob. A
+  diff pair between the given source and target blobs are considered
+  exact rename regardless of diff source and target.
 
 diffcore-merge-broken: For Putting "Complete Rewrites" Back Together
 --------------------------------------------------------------------

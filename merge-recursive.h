@@ -2,6 +2,7 @@
 #define MERGE_RECURSIVE_H
 
 #include "string-list.h"
+struct notes_tree;
 
 struct merge_options {
 	const char *ancestor;
@@ -28,6 +29,8 @@ struct merge_options {
 	struct string_list current_file_set;
 	struct string_list current_directory_set;
 	struct string_list df_conflict_file_set;
+	const char *manual_renames;
+	struct notes_tree *rename_notes;
 };
 
 /* merge_trees() but with recursive ancestor consolidation */

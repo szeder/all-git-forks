@@ -6,6 +6,350 @@
 #include "diffcore.h"
 #include "hashmap.h"
 #include "progress.h"
+#include "refs.h"
+#include "notes.h"
+#include "commit.h"
+
+/*
+ * regex equivalent: \s*[a-f0-9]{40}\s*=>\s*[a-f0-9]{40}\s*
+ */
+static int parse_rename_blob(const char *next, const char *end,
+			     struct object_id *src,
+			     struct object_id *dst)
+{
+	while (next < end && isspace(*next))
+		next++;
+	if (get_oid_hex(next, src))
+		return -1;
+	next += GIT_SHA1_HEXSZ;
+	if (next >= end || !isspace(*next))
+		return -1;
+	while (next < end && isspace(*next))
+		next++;
+	if (!skip_prefix(next, "=>", &next))
+		return -1;
+	while (next < end && isspace(*next))
+		next++;
+	if (get_oid_hex(next, dst))
+		return -1;
+	next += GIT_SHA1_HEXSZ;
+	while (next < end && isspace(*next))
+		next++;
+	if (next != end)
+		return -1;
+	return 0;
+}
+
+/*
+ * Unquoted paths terminate at the first isspace(). Quoted paths start
+ * and end with a single quote. Only "\'" is recognized and escaped.
+ */
+static const char *parse_rename_one_path(const char *start, const char *end,
+					 const char **path, int *path_len)
+{
+	static struct strbuf sb = STRBUF_INIT;
+
+	if (*start != '\'') {
+		*path = start;
+		while (start < end && !isspace(*start))
+			start++;
+		*path_len = start - *path;
+		return start;
+	}
+
+	strbuf_reset(&sb);
+	start++;
+	while (start < end) {
+		char c = *start++;
+
+		switch (c) {
+		case '\'':
+			*path = sb.buf;
+			*path_len = sb.len;
+			return start;
+
+		case '\0':
+			return NULL;
+
+		case '\\':
+			if (start + 1 < end && start[0] == '\'') {
+				strbuf_addch(&sb, '\'');
+				start++;
+				break;
+			}
+			/* Fallthrough */
+
+		default:
+			strbuf_addch(&sb, c);
+		}
+	}
+	return NULL;
+}
+
+/* regex: <path>\s*=>\s*<path>\s* */
+static int parse_rename_path(const char *start, const char *end,
+			     const char **src, int *src_len,
+			     const char **dst, int *dst_len)
+{
+	const char *next;
+
+	next = parse_rename_one_path(start, end, src, src_len);
+	if (!next)
+		return -1;
+
+	while (next < end && isspace(*next))
+		next++;
+	if (!skip_prefix(next, "=>", &next))
+		return -1;
+	while (next < end && isspace(*next))
+		next++;
+
+	next = parse_rename_one_path(next, end, dst, dst_len);
+	if (!next)
+		return -1;
+
+	while (next < end && isspace(*next))
+		next++;
+	if (next < end && !isspace(*next))
+		return -1;
+
+	return 0;
+}
+
+static int parse_rename_anchor(const char *start, const char *end,
+			       const char *dot_x_spc, const char *dot_no_x_spc,
+			       const char **anchor, int *anchor_len)
+{
+	if (skip_prefix(start, dot_x_spc, &start)) {
+		while (start < end && isspace(*start))
+			start++;
+		*anchor = start;
+		*anchor_len = end - start;
+		return 1;
+	}
+
+	if (skip_prefix(start, dot_no_x_spc, &start)) {
+		while (start < end && isspace(*start))
+			start++;
+		*anchor = NULL;
+		*anchor_len = 0;
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
+ * Given "content", which must be NUL terminated at
+ * content[len]. Parse it and call either callback, depending on the
+ * content.
+ *
+ * Each line could start with a keyword, which starts with a dot, or
+ * in form "<path> => <path>". Paths that starts with a dot must be
+ * quoted.
+ */
+static int parse_rename_file(const char *content, int len,
+			     int (*match_rename_trees)(const char *src, int src_len,
+						       const char *dst, int dst_len,
+						       void *cb_data),
+			     int (*rename_path)(const char *src, int src_len,
+						const char *dst, int dst_len,
+						void *cb_data),
+			     int (*rename_blob)(const struct object_id *src,
+						const struct object_id *dst,
+						void *cb_data),
+			     void *cb_data)
+{
+	const char *content_end = content + len;
+	const char *p = content;
+	const char *src_anchor = NULL, *dst_anchor = NULL;
+	int src_anchor_len = 0, dst_anchor_len = 0;
+
+	while (p < content_end) {
+		const char *start = p, *next, *end, *src, *dst;
+		int src_len, dst_len;
+
+		while (start < content_end && isspace(*start))
+			start++;
+
+		end = strchr(start, '\n');
+		if (!end)
+			end = content_end;
+		p = end;
+
+		if (parse_rename_anchor(start, end, ".source ", ".nosource ",
+					&src_anchor, &src_anchor_len) ||
+		    parse_rename_anchor(start, end, ".target ", ".notarget ",
+					&dst_anchor, &dst_anchor_len))
+			continue;
+
+		if ((src_anchor || dst_anchor) &&
+		    !match_rename_trees(src_anchor, src_anchor_len,
+					dst_anchor, dst_anchor_len,
+					cb_data))
+			continue;
+
+		if (skip_prefix(start, ".blob ", &next)) {
+			struct object_id src, dst;
+
+			if (!parse_rename_blob(next, end, &src, &dst) &&
+			    rename_blob(&src, &dst, cb_data))
+				return -1;
+			continue;
+		}
+
+		if (*start == '.') /* future keywords */
+			continue;
+
+		if (!parse_rename_path(start, end, &src, &src_len,
+				       &dst, &dst_len) &&
+		    rename_path(src, src_len, dst, dst_len, cb_data))
+			return -1;
+	}
+	return 0;
+}
+
+struct merge_rename {
+	const unsigned char *object_hash;
+	const unsigned char *note_hash;
+	struct notes_tree *notes;
+	struct strbuf *cache;
+	struct strbuf src_tree;
+	struct strbuf dst_tree;
+};
+
+static int merge_rename_match_tree(const char *src, int src_len,
+				   const char *dst, int dst_len,
+				   void *cb_data)
+{
+	struct merge_rename *mr = cb_data;
+
+	strbuf_reset(&mr->src_tree);
+	strbuf_reset(&mr->dst_tree);
+
+	if (src_len)
+		strbuf_add(&mr->src_tree, src, src_len);
+	if (dst_len)
+		strbuf_add(&mr->dst_tree, dst, dst_len);
+
+	return 1;
+}
+
+static struct object_id *rename_path_to_oid(const struct strbuf *name,
+					    const unsigned char *hash,
+					    const char *extra,
+					    const char *path, int pathlen)
+{
+	static struct object_id oid[2];
+	static int idx = 0;
+	struct strbuf sb = STRBUF_INIT;
+	int ret;
+
+	idx = (idx + 1) % 2;
+	strbuf_addf(&sb, "%s%s:%.*s",
+		    name->len ? name->buf : sha1_to_hex(hash),
+		    extra, pathlen, path);
+	ret = get_sha1(sb.buf, oid[idx].hash);
+	strbuf_release(&sb);
+	return ret ? NULL : oid + idx;
+}
+
+static int merge_rename_blob(const struct object_id *src,
+			     const struct object_id *dst,
+			     void *cb_data)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct merge_rename *mr = cb_data;
+	unsigned char hash[GIT_SHA1_RAWSZ];
+	int ret;
+
+	strbuf_addf(&sb, ".blob %s => %s\n", oid_to_hex(src), oid_to_hex(dst));
+	ret = write_sha1_file(sb.buf, sb.len, typename(OBJ_BLOB), hash);
+	strbuf_release(&sb);
+	if (ret)
+		return ret;
+	return add_note(mr->notes, dst->hash, hash, NULL);
+}
+
+static int merge_rename_path(const char *src, int src_len,
+			     const char *dst, int dst_len,
+			     void *cb_data)
+{
+	struct merge_rename *mr = cb_data;
+	struct object_id *src_oid = NULL;
+	struct object_id *dst_oid = NULL;
+
+	src_oid = rename_path_to_oid(&mr->src_tree, mr->object_hash, "^", src, src_len);
+	dst_oid = rename_path_to_oid(&mr->dst_tree, mr->object_hash, "",  dst, dst_len);
+
+	if (!src_oid || !dst_oid)
+		return 0;
+
+	return merge_rename_blob(src_oid, dst_oid, cb_data);
+}
+
+static int merge_rename_note(const unsigned char *object_hash,
+			     const unsigned char *note_hash,
+			     char *note_path,
+			     void *cb_data)
+{
+	struct merge_rename mr;
+	enum object_type type;
+	unsigned long size;
+	char *note;
+
+	note = read_sha1_file(note_hash, &type, &size);
+	if (type != OBJ_BLOB) {
+		free(note);
+		return 0;
+	}
+
+	strbuf_init(&mr.src_tree, 0);
+	strbuf_init(&mr.dst_tree, 0);
+	mr.object_hash = object_hash;
+	mr.note_hash = note_hash;
+	mr.notes = cb_data;
+
+	parse_rename_file(note, size,
+			  merge_rename_match_tree,
+			  merge_rename_path,
+			  merge_rename_blob,
+			  &mr);
+
+	return 0;
+}
+
+/*
+ * Traverse through the given notes tree, convert all "path to path"
+ * rename lines into "blob to blob" and return it. If cache_file is
+ * non-NULL, return it's content if still valid. Otherwise save the
+ * new content in it.
+ */
+void merge_rename_notes(struct notes_tree *src, struct notes_tree *dst)
+{
+	struct object_id src_oid;
+	const unsigned char *hash;
+	unsigned char empty_hash[GIT_SHA1_RAWSZ];
+
+	if (!resolve_ref_unsafe(src->ref, RESOLVE_REF_READING,
+				src_oid.hash, NULL))
+		return;
+
+	hash = get_note(dst, src_oid.hash);
+	if (hash)
+		return;
+
+	/*
+	 * XXX: we can traverse back to previous commits of source
+	 * notes tree. If a cache is found and no old notes are
+	 * deleted, the old cache could be used as base and we only
+	 * have to process new notes.
+	 */
+	remove_all_notes(dst);
+	if (!for_each_note(src, 0, merge_rename_note, dst) &&
+	    !write_sha1_file("", 0, typename(OBJ_BLOB), empty_hash))
+		add_note(dst, src_oid.hash, empty_hash, NULL);
+}
 
 /* Table of rename/copy destinations */
 
@@ -350,13 +694,181 @@ static int find_exact_renames(struct diff_options *options)
 		insert_file_table(&file_table, i, rename_src[i].p->one);
 
 	/* Walk the destinations and find best source match */
-	for (i = 0; i < rename_dst_nr; i++)
+	for (i = 0; i < rename_dst_nr; i++) {
+		if (rename_dst[i].pair)
+			continue; /* dealt with exact match already. */
 		renames += find_identical_files(&file_table, i, options);
+	}
 
 	/* Free the hash data structure and entries */
 	hashmap_free(&file_table, 1);
 
 	return renames;
+}
+
+struct manual_rename {
+	int rename_count;
+	struct diff_options *options;
+};
+
+static int manual_rename_blob(const struct object_id *src,
+			      const struct object_id *dst,
+			      void *cb_data)
+{
+	int src_index, dst_index;
+	struct manual_rename *mr = cb_data;
+
+	for (src_index = 0; src_index < rename_src_nr; src_index++) {
+		if (oidcmp(src, &rename_src[src_index].p->one->oid))
+			break;
+	}
+	if (src_index == rename_src_nr)
+		return -1;
+
+	for (dst_index = 0; dst_index < rename_dst_nr; dst_index++) {
+		if (oidcmp(dst, &rename_dst[dst_index].two->oid))
+			break;
+	}
+	if (dst_index == rename_dst_nr)
+		return -1;
+
+	record_rename_pair(dst_index, src_index, MAX_SCORE);
+	mr->rename_count++;
+	return 0;
+}
+
+static int manual_rename_path(const char *src, int src_len,
+			      const char *dst, int dst_len,
+			      void *cb_data)
+{
+	int src_index, dst_index;
+	struct manual_rename *mr = cb_data;
+
+	for (src_index = 0; src_index < rename_src_nr; src_index++) {
+		const char *path = rename_src[src_index].p->one->path;
+		if (strlen(path) == src_len && !strncmp(path, src, src_len))
+			break;
+	}
+	if (src_index == rename_src_nr)
+		return 0;
+
+	for (dst_index = 0; dst_index < rename_dst_nr; dst_index++) {
+		const char *path = rename_dst[dst_index].two->path;
+		if (strlen(path) == dst_len && !strncmp(path, dst, dst_len))
+			break;
+	}
+	if (dst_index == rename_dst_nr)
+		return 0;
+
+	record_rename_pair(dst_index, src_index, MAX_SCORE);
+	mr->rename_count++;
+	return 0;
+}
+
+static int match_rename_one_tree(const char *name, int len,
+				 const unsigned char *tree_hash)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct object_id oid;
+	int ret;
+
+	if (!name || len == 0)
+		return 1;
+
+	if (!tree_hash)
+		return 0;
+
+	strbuf_add(&sb, name, len);
+	ret = get_sha1_treeish(sb.buf, oid.hash);
+	strbuf_release(&sb);
+	if (ret)
+		return 1;
+
+	return !hashcmp(tree_hash, oid.hash);
+}
+
+static int match_rename_tree(const char *src, int src_len,
+			     const char *dst, int dst_len,
+			     void *cb_data)
+{
+	struct manual_rename *mr = cb_data;
+	struct diff_options *opt = mr->options;
+
+	return match_rename_one_tree(src, src_len, opt->old_root) &&
+	       match_rename_one_tree(dst, dst_len, opt->new_root);
+}
+
+static int rename_manually(struct diff_options *options,
+			   const char *instructions,
+			   unsigned long size)
+{
+	struct manual_rename mr;
+
+	if (!instructions || !size)
+		return 0;
+
+	mr.rename_count = 0;
+	mr.options = options;
+	parse_rename_file(instructions, size,
+			  match_rename_tree,
+			  manual_rename_path, manual_rename_blob,
+			  &mr);
+	return mr.rename_count;
+}
+
+static char *get_rename_note(struct notes_tree *t,
+			     const struct object_id *oid,
+			     unsigned long *size)
+{
+	enum object_type type;
+	const unsigned char *hash;
+	char *note;
+
+	hash = get_note(t, oid->hash);
+	if (!hash)
+		return NULL;
+
+	note = read_sha1_file(oid->hash, &type, size);
+	if (type != OBJ_BLOB) {
+		free(note);
+		note = NULL;
+	}
+	return note;
+}
+
+static int rename_by_commit(struct diff_options *opt)
+{
+	static char *last_note;
+	unsigned long size;
+
+	if (!opt->current_commit)
+		return 0;
+
+	free(last_note);
+	last_note = get_rename_note(opt->rename_notes,
+				    &opt->current_commit->object.oid,
+				    &size);
+	return rename_manually(opt, last_note, size);
+}
+
+static int rename_by_blob(struct diff_options *opt)
+{
+	int rename_count = 0, i;
+
+	for (i = 0; i < rename_dst_nr; i++) {
+		unsigned long size;
+		char *note;
+
+		if (rename_dst[i].pair)
+			continue; /* dealt with exact match already. */
+
+		note = get_rename_note(opt->rename_notes,
+				       &rename_dst[i].two->oid,
+				       &size);
+		rename_count += rename_manually(opt, note, size);
+		free(note);
+	}
+	return rename_count;
 }
 
 #define NUM_CANDIDATE_PER_DST 4
@@ -452,7 +964,7 @@ void diffcore_rename(struct diff_options *options)
 	struct diff_queue_struct *q = &diff_queued_diff;
 	struct diff_queue_struct outq;
 	struct diff_score *mx;
-	int i, j, rename_count, skip_unmodified = 0;
+	int i, j, rename_count = 0, skip_unmodified = 0;
 	int num_create, dst_cnt;
 	struct progress *progress = NULL;
 
@@ -504,11 +1016,21 @@ void diffcore_rename(struct diff_options *options)
 	if (rename_dst_nr == 0 || rename_src_nr == 0)
 		goto cleanup; /* nothing to do */
 
+	if (options->rename_notes) {
+		rename_count += rename_by_commit(options);
+		rename_count += rename_by_blob(options);
+	}
+
+	if (options->manual_renames)
+		rename_count +=
+			rename_manually(options, options->manual_renames,
+					strlen(options->manual_renames));
+
 	/*
 	 * We really want to cull the candidates list early
 	 * with cheap tests in order to avoid doing deltas.
 	 */
-	rename_count = find_exact_renames(options);
+	rename_count += find_exact_renames(options);
 
 	/* Did we only want exact renames? */
 	if (minimum_score == MAX_SCORE)

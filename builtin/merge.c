@@ -31,6 +31,7 @@
 #include "gpg-interface.h"
 #include "sequencer.h"
 #include "string-list.h"
+#include "notes-utils.h"
 
 #define DEFAULT_TWOHEAD (1<<0)
 #define DEFAULT_OCTOPUS (1<<1)
@@ -69,6 +70,10 @@ static int allow_unrelated_histories;
 static int show_progress = -1;
 static int default_to_upstream = 1;
 static const char *sign_commit;
+static const char *rename_file;
+static struct strbuf manual_renames = STRBUF_INIT;
+static const char *rename_note_ref;
+static struct notes_tree rename_cache;
 
 static struct strategy all_strategy[] = {
 	{ "recursive",  DEFAULT_TWOHEAD | NO_TRIVIAL },
@@ -229,6 +234,8 @@ static struct option builtin_merge_options[] = {
 	{ OPTION_STRING, 'S', "gpg-sign", &sign_commit, N_("key-id"),
 	  N_("GPG sign commit"), PARSE_OPT_OPTARG, NULL, (intptr_t) "" },
 	OPT_BOOL(0, "overwrite-ignore", &overwrite_ignore, N_("update ignored files (default)")),
+	OPT_FILENAME(0, "rename-file", &rename_file, N_("--rename-file to diff")),
+	OPT_STRING(0, "rename-notes", &rename_note_ref, N_("note-ref"), N_("--rename-notes to diff")),
 	OPT_END()
 };
 
@@ -660,6 +667,10 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 		o.renormalize = option_renormalize;
 		o.show_rename_progress =
 			show_progress == -1 ? isatty(2) : show_progress;
+		if (manual_renames.len)
+			o.manual_renames = manual_renames.buf;
+		if (rename_note_ref)
+			o.rename_notes = &rename_cache;
 
 		for (x = 0; x < xopts_nr; x++)
 			if (parse_merge_opt(&o, xopts[x]))
@@ -1111,6 +1122,27 @@ static struct commit_list *collect_parents(struct commit *head_commit,
 	return remoteheads;
 }
 
+static void prepare_rename_notes(void)
+{
+	if (rename_file &&
+	    strbuf_read_file(&manual_renames, rename_file, 0) == -1)
+		die(_("unable to read %s"), rename_file);
+
+	if (rename_note_ref) {
+		struct notes_tree rename_notes;
+		struct strbuf ref = STRBUF_INIT;
+
+		strbuf_addstr(&ref, rename_note_ref);
+		expand_notes_ref(&ref);
+		init_notes(&rename_notes, ref.buf, NULL, 0);
+		strbuf_addstr(&ref, "-cache");
+		init_notes(&rename_cache, ref.buf, NULL, 0);
+		strbuf_release(&ref);
+		merge_rename_notes(&rename_notes, &rename_cache);
+		commit_notes(&rename_cache, "update");
+	}
+}
+
 int cmd_merge(int argc, const char **argv, const char *prefix)
 {
 	unsigned char result_tree[20];
@@ -1210,6 +1242,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	if (!argc)
 		usage_with_options(builtin_merge_usage,
 			builtin_merge_options);
+
+	if (rename_file && rename_note_ref)
+		die(_("--rename-file and --rename-notes are incompatible"));
 
 	if (!head_commit) {
 		/*
@@ -1472,6 +1507,8 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	     */
 	    save_state(stash))
 		hashclr(stash);
+
+	prepare_rename_notes();
 
 	for (i = 0; i < use_strategies_nr; i++) {
 		int ret;

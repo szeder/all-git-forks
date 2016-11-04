@@ -238,6 +238,14 @@ int write_notes_tree(struct notes_tree *t, unsigned char *result);
 void prune_notes(struct notes_tree *t, int flags);
 
 /*
+ * Remove all notes annotating non-existing objects from the given notes tree
+ *
+ * IMPORTANT: The changes made by prune_notes() to the given notes_tree
+ * structure are not persistent until a subsequent call to write_notes_tree()
+ * returns zero.
+ */
+void remove_all_notes(struct notes_tree *t);
+/*
  * Free (and de-initialize) the given notes_tree structure
  *
  * IMPORTANT: Changes made to the given notes_tree since the last, successful

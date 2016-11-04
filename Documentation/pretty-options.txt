@@ -89,6 +89,10 @@ being displayed. Examples: "--notes=foo" will show only notes from
 --[no-]standard-notes::
 	These options are deprecated. Use the above --notes/--no-notes
 	options instead.
+
+--rename-notes=<ref>::
+	Get per-commit or per-destination-blob rename instructions
+	from notes. See option `--rename-file` for more information.
 endif::git-rev-list[]
 
 --show-signature::

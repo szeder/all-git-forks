@@ -12,6 +12,7 @@ SYNOPSIS
 'git merge' [-n] [--stat] [--no-commit] [--squash] [--[no-]edit]
 	[-s <strategy>] [-X <strategy-option>] [-S[<keyid>]]
 	[--[no-]allow-unrelated-histories]
+	[--rename-file <file>]
 	[--[no-]rerere-autoupdate] [-m <msg>] [<commit>...]
 'git merge' <msg> HEAD <commit>...
 'git merge' --abort
@@ -65,6 +66,20 @@ back out of in the case of a conflict.
 OPTIONS
 -------
 include::merge-options.txt[]
+
+--rename-file=<path>::
+	The given file contains explicit rename pairs that override
+	automatic detected renames in three-way merges. See
+	linkgit:gitdiffcore[7] for the file syntax.
+
+--rename-notes=<ref>::
+	Collect all renames from the given ref to override automatic
+	detected in three-way merges. See option `--rename-file` for
+	more information.
++
+All renames are cached in $GIT_DIR/rename-cache. This path can be
+changed using the environment variable $GIT_MERGE_RENAME_CACHE. An
+empty variable disables caching.
 
 -S[<keyid>]::
 --gpg-sign[=<keyid>]::
