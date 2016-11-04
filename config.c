@@ -833,7 +833,10 @@ static int git_default_core_config(const char *var, const char *value)
 	}
 
 	if (!strcmp(var, "core.warnambiguousrefs")) {
-		warn_ambiguous_refs = git_config_bool(var, value);
+		if (!strcasecmp(value, "fatal"))
+			warn_ambiguous_refs = 2;
+		else
+			warn_ambiguous_refs = git_config_bool(var, value);
 		return 0;
 	}
 

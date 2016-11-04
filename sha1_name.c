@@ -596,6 +596,8 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 				warning(warn_msg, len, str);
 				if (advice_object_name_warning)
 					fprintf(stderr, "%s\n", _(object_name_msg));
+				if (warn_ambiguous_refs > 1)
+					die(_("cannot continue with ambiguous refs"));
 			}
 			free(real_ref);
 		}
@@ -653,8 +655,12 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1,
 
 	if (warn_ambiguous_refs && !(flags & GET_SHA1_QUIETLY) &&
 	    (refs_found > 1 ||
-	     !get_short_sha1(str, len, tmp_sha1, GET_SHA1_QUIETLY)))
-		warning(warn_msg, len, str);
+	     !get_short_sha1(str, len, tmp_sha1, GET_SHA1_QUIETLY))) {
+		if (warn_ambiguous_refs > 1)
+			die(warn_msg, len, str);
+		else
+			warning(warn_msg, len, str);
+	}
 
 	if (reflog_len) {
 		int nth, i;
