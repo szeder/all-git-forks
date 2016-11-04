@@ -260,12 +260,18 @@ static int handle_alias(int *argcp, const char ***argv)
 	if (alias_string) {
 		if (alias_string[0] == '!') {
 			struct child_process child = CHILD_PROCESS_INIT;
+			int keep_cwd = 1;
 
+			alias_string++;
 			commit_pager_choice();
-			restore_env(1);
+			if (*alias_string == '!') {
+				keep_cwd = 0;
+				alias_string++;
+			}
+			restore_env(keep_cwd);
 
 			child.use_shell = 1;
-			argv_array_push(&child.args, alias_string + 1);
+			argv_array_push(&child.args, alias_string);
 			argv_array_pushv(&child.args, (*argv) + 1);
 
 			ret = run_command(&child);
@@ -273,7 +279,7 @@ static int handle_alias(int *argcp, const char ***argv)
 				exit(ret);
 
 			die_errno("While expanding alias '%s': '%s'",
-			    alias_command, alias_string + 1);
+			    alias_command, alias_string);
 		}
 		count = split_cmdline(alias_string, &new_argv);
 		if (count < 0)
