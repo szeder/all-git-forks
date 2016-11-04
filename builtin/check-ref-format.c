@@ -63,8 +63,10 @@ static int check_one_ref_format(const char *refname)
 		: check_refname_format(refname, flags);
 	if (got)
 		return 1;
-	if (normalize)
+	if (normalize) {
 		printf("%s\n", refname);
+		free((void*)refname);
+	}
 }
 
 int cmd_check_ref_format(int argc, const char **argv, const char *prefix)
