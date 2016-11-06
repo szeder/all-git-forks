@@ -1540,6 +1540,7 @@ extern void check_pack_index_ptr(const struct packed_git *p, const void *ptr);
  * error.
  */
 extern const unsigned char *nth_packed_object_sha1(struct packed_git *, uint32_t n);
+extern const struct object_id *nth_packed_object_oid(struct packed_git *, uint32_t n);
 
 /*
  * Return the offset of the nth object within the specified packfile.
