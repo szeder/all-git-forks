@@ -594,3 +594,27 @@ ifeq ($(uname_S),QNX)
 	NO_STRCASESTR = YesPlease
 	NO_STRLCPY = YesPlease
 endif
+ifeq ($(uname_S),FreeMiNT)
+	CC = m68k-atari-mint-gcc
+	AR = m68k-atari-mint-ar
+	CFLAGS = -O2 -fomit-frame-pointer -Wall
+	# _BSD_SOURCE is needed for compat/stat.c compilation
+	COMPAT_CFLAGS += -DSA_RESTART=0 -D_BSD_SOURCE=1
+	NO_MMAP = YesPlease
+	NO_ICONV = YesPlease
+	NO_GETTEXT = YesPlease
+	NO_REGEX = YesPlease
+	NO_IPV6 = YesPlease
+	NEEDS_MODE_TRANSLATION = YesPlease
+	NO_PTHREADS = YesPlease
+	NO_MEMMEM = YesPlease
+	NEEDS_SSL_WITH_CURL = YesPlease
+	NO_MKDTEMP = YesPlease
+	NO_MKSTEMPS=YesPlease
+	NO_PERL_MAKEMAKER = YesPlease
+	NO_D_TYPE_IN_DIRENT = YesPlease
+	NO_LIBGEN_H = YesPlease
+	HAVE_PATHS_H = YesPlease
+	HAVE_STRINGS_H = YesPlease
+	HAVE_GETDELIM = YesPlease
+endif

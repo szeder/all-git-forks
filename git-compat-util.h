@@ -588,6 +588,25 @@ extern int git_munmap(void *start, size_t length);
 #define S_IFCHR  0020000
 #define S_IFIFO  0010000
 #define S_IFSOCK 0140000
+
+#undef S_ISTYPE
+#define S_ISTYPE(mode, mask) (((mode) & __S_IFMT) == (mask))
+
+#undef S_ISDIR
+#undef S_ISCHR
+#undef S_ISBLK
+#undef S_ISREG
+#undef S_ISFIFO
+#undef S_ISLNK
+#undef S_ISSOCK
+#define S_ISDIR(mode)  S_ISTYPE((mode), S_IFDIR)
+#define S_ISCHR(mode)  S_ISTYPE((mode), S_IFCHR)
+#define S_ISBLK(mode)  S_ISTYPE((mode), S_IFBLK)
+#define S_ISREG(mode)  S_ISTYPE((mode), S_IFREG)
+#define S_ISFIFO(mode) S_ISTYPE((mode), S_IFIFO)
+#define S_ISLNK(mode)  S_ISTYPE((mode), S_IFLNK)
+#define S_ISSOCK(mode) S_ISTYPE((mode), S_IFSOCK)
+
 #ifdef stat
 #undef stat
 #endif
