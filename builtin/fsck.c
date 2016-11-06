@@ -362,13 +362,13 @@ static int fsck_obj(struct object *obj)
 	return 0;
 }
 
-static int fsck_sha1(const unsigned char *sha1)
+static int fsck_oid(const struct object_id *oid)
 {
-	struct object *obj = parse_object(sha1);
+	struct object *obj = parse_object(oid->hash);
 	if (!obj) {
 		errors_found |= ERROR_OBJECT;
 		return error("%s: object corrupt or missing",
-			     sha1_to_hex(sha1));
+			     oid_to_hex(oid));
 	}
 	obj->flags |= HAS_OBJ;
 	return fsck_obj(obj);
@@ -488,9 +488,9 @@ static void get_default_heads(void)
 	}
 }
 
-static int fsck_loose(const unsigned char *sha1, const char *path, void *data)
+static int fsck_loose(const struct object_id *oid, const char *path, void *data)
 {
-	if (fsck_sha1(sha1))
+	if (fsck_oid(oid))
 		errors_found |= ERROR_OBJECT;
 	return 0;
 }
