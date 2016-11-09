@@ -36,6 +36,7 @@ static int default_follow;
 static int default_show_signature;
 static int decoration_style;
 static int decoration_given;
+static int decorate_remote_reflog;
 static int use_mailmap_config;
 static const char *fmt_patch_subject_prefix = "PATCH";
 static const char *fmt_pretty;
@@ -141,6 +142,10 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 		OPT_BOOL(0, "use-mailmap", &mailmap, N_("Use mail map file")),
 		{ OPTION_CALLBACK, 0, "decorate", NULL, NULL, N_("decorate options"),
 		  PARSE_OPT_OPTARG, decorate_callback},
+		{ OPTION_INTEGER, 0, "decorate-remote-reflog",
+		  &decorate_remote_reflog, N_("n"),
+		  N_("decorate the last <n> reflog entries of remote refs"),
+		  PARSE_OPT_OPTARG | PARSE_OPT_NONEG, NULL, 1 },
 		OPT_CALLBACK('L', NULL, &line_cb, "n,m:file",
 			     N_("Process line range n,m in file, counting from 1"),
 			     log_line_range_callback),
@@ -195,9 +200,12 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 			rev->abbrev_commit = 0;
 	}
 
+	if (decorate_remote_reflog > 0 && !decoration_style)
+		decoration_style = DECORATE_SHORT_REFS;
 	if (decoration_style) {
 		rev->show_decorations = 1;
-		load_ref_decorations(decoration_style);
+		load_ref_decorations(decoration_style,
+				     decorate_remote_reflog);
 	}
 
 	if (rev->line_level_traverse)
