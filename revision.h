@@ -29,6 +29,7 @@ struct rev_info;
 struct log_info;
 struct string_list;
 struct saved_parents;
+struct base_count;
 
 struct rev_cmdline_info {
 	unsigned int nr;
@@ -88,6 +89,7 @@ struct rev_info {
 			topo_order:1,
 			simplify_merges:1,
 			simplify_by_decoration:1,
+			simplify_by_merge_graph:1,
 			tag_objects:1,
 			tree_objects:1,
 			blob_objects:1,
@@ -210,6 +212,9 @@ struct rev_info {
 
 	/* copies of the parent lists, for --full-diff display */
 	struct saved_parents *saved_parents_slab;
+
+	/* --simplify-by-merge-graph */
+	struct base_count *merge_base_count;
 
 	struct commit_list *previous_parents;
 	const char *break_bar;

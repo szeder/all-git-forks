@@ -424,6 +424,8 @@ static void file_change(struct diff_options *options,
 	DIFF_OPT_SET(options, HAS_CHANGES);
 }
 
+define_commit_slab(base_count, int);
+
 static int rev_compare_tree(struct rev_info *revs,
 			    struct commit *parent, struct commit *commit)
 {
@@ -435,6 +437,18 @@ static int rev_compare_tree(struct rev_info *revs,
 	if (!t2)
 		return REV_TREE_OLD;
 
+	if (revs->simplify_by_merge_graph) {
+		int *count;
+
+		if (commit->parents->next)
+			return REV_TREE_DIFFERENT;
+
+		count = base_count_peek(revs->merge_base_count, commit);
+		if (count && *count > 1)
+			return REV_TREE_DIFFERENT;
+
+	}
+
 	if (revs->simplify_by_decoration) {
 		/*
 		 * If we are simplifying by decoration, then the commit
@@ -442,6 +456,9 @@ static int rev_compare_tree(struct rev_info *revs,
 		 */
 		if (get_name_decoration(&commit->object))
 			return REV_TREE_DIFFERENT;
+	}
+
+	if (revs->simplify_by_decoration || revs->simplify_by_merge_graph) {
 		/*
 		 * A commit that is not pointed by a tag is uninteresting
 		 * if we are not limited by path.  This means that you will
@@ -799,6 +816,12 @@ static int add_parents_to_list(struct rev_info *revs, struct commit *commit,
 			p->object.flags |= SEEN;
 			commit_list_insert_by_date_cached(p, list, cached_base, cache_ptr);
 		}
+		if (revs->merge_base_count) {
+			int *count;
+
+			count = base_count_at(revs->merge_base_count, p);
+			(*count)++;
+		}
 		if (revs->first_parent_only)
 			break;
 	}
@@ -1024,11 +1047,21 @@ static int limit_list(struct rev_info *revs)
 	struct commit_list **p = &newlist;
 	struct commit_list *bottom = NULL;
 	struct commit *interesting_cache = NULL;
+	struct base_count base_count;
+	int simplify_by_merge_graph;
 
 	if (revs->ancestry_path) {
 		bottom = collect_bottom_commits(list);
 		if (!bottom)
 			die("--ancestry-path given but there are no bottom commits");
+	}
+
+	simplify_by_merge_graph = revs->simplify_by_merge_graph;
+	if (simplify_by_merge_graph) {
+		revs->merge_base_count = &base_count;
+		init_base_count(revs->merge_base_count);
+		/* delay try_to_simplify_commit() until we're ready */
+		revs->simplify_by_merge_graph = 0;
 	}
 
 	while (list) {
@@ -1076,6 +1109,13 @@ static int limit_list(struct rev_info *revs)
 	if (bottom) {
 		limit_to_ancestry(bottom, newlist);
 		free_commit_list(bottom);
+	}
+	revs->simplify_by_merge_graph = simplify_by_merge_graph;
+	if (revs->simplify_by_merge_graph) {
+		for (list = newlist; list; list = list->next)
+			try_to_simplify_commit(revs, list->item);
+		clear_base_count(revs->merge_base_count);
+		revs->merge_base_count = NULL;
 	}
 
 	/*
@@ -1744,6 +1784,13 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->limited = 1;
 		revs->prune = 1;
 		load_ref_decorations(DECORATE_SHORT_REFS, 0);
+	} else if (!strcmp(arg, "--simplify-by-merge-graph")) {
+		revs->topo_order = 1;
+		revs->rewrite_parents = 1;
+		revs->simplify_history = 0;
+		revs->simplify_by_merge_graph = 1;
+		revs->limited = 1;
+		revs->prune = 1;
 	} else if (!strcmp(arg, "--date-order")) {
 		revs->sort_order = REV_SORT_BY_COMMIT_DATE;
 		revs->topo_order = 1;
