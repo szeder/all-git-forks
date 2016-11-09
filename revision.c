@@ -1968,6 +1968,26 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		return argcount;
 	} else if (!strcmp(arg, "--log-size")) {
 		revs->show_log_size = 1;
+	} else if (skip_prefix(arg, "--decorate-commit=", &arg)) {
+		const char *object_name = arg;
+		unsigned char sha1[20];
+		struct commit *commit;
+		const char *separator = strchr(arg, ' ');
+		struct strbuf name = STRBUF_INIT;
+
+		if (separator) {
+			object_name = separator + 1;
+			strbuf_addf(&name, "commit: %.*s",
+				    (int)(separator - arg), arg);
+		} else
+			strbuf_addf(&name, "commit: %s", arg);
+
+		if (!get_sha1_committish(object_name, sha1) &&
+		    (commit = lookup_commit(sha1)))
+			add_name_decoration(DECORATION_CUSTOM,
+					    name.buf,
+					    &commit->object);
+		strbuf_release(&name);
 	}
 	/*
 	 * Grepping the commit log

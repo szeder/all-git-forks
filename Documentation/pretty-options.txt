@@ -94,3 +94,7 @@ endif::git-rev-list[]
 --show-signature::
 	Check the validity of a signed commit object by passing the signature
 	to `gpg --verify` and show the output.
+
+--decorate-commit=<committish>::
+--decorate-commit=<name> <committish>::
+	Decorate the specified commit.

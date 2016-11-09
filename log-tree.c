@@ -24,6 +24,7 @@ static char decoration_colors[][COLOR_MAXLEN] = {
 	GIT_COLOR_BOLD_MAGENTA,	/* REF_STASH */
 	GIT_COLOR_BOLD_CYAN,	/* REF_HEAD */
 	GIT_COLOR_BOLD_BLUE,	/* GRAFTED */
+	GIT_COLOR_BOLD_BLUE,	/* CUSTOM */
 };
 
 static const char *decorate_get_color(int decorate_use_color, enum decoration_type ix)
@@ -55,6 +56,8 @@ static int parse_decorate_color_slot(const char *slot)
 		return DECORATION_REF_STASH;
 	if (!strcasecmp(slot, "HEAD"))
 		return DECORATION_REF_HEAD;
+	if (!strcasecmp(slot, "custom"))
+		return DECORATION_CUSTOM;
 	return -1;
 }
 

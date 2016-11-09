@@ -987,8 +987,9 @@ color.diff.<slot>::
 
 color.decorate.<slot>::
 	Use customized color for 'git log --decorate' output.  `<slot>` is one
-	of `branch`, `remoteBranch`, `tag`, `stash` or `HEAD` for local
-	branches, remote-tracking branches, tags, stash and HEAD, respectively.
+	of `branch`, `remoteBranch`, `tag`, `stash`, `HEAD` or `custom` for local
+	branches, remote-tracking branches, tags, stash, HEAD and `--decorate-commit`,
+	respectively.
 
 color.grep::
 	When set to `always`, always highlight matches.  When `false` (or
