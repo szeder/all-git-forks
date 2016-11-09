@@ -619,7 +619,8 @@ static int allow_empty(struct replay_opts *opts, struct commit *commit)
 
 enum todo_command {
 	TODO_PICK = 0,
-	TODO_REVERT
+	TODO_REVERT,
+	TODO_INVALID
 };
 
 static const char *todo_command_strings[] = {
@@ -629,7 +630,7 @@ static const char *todo_command_strings[] = {
 
 static const char *command_to_string(const enum todo_command command)
 {
-	if (command < ARRAY_SIZE(todo_command_strings))
+	if (command < TODO_INVALID)
 		return todo_command_strings[command];
 	die("Unknown command: %d", command);
 }
