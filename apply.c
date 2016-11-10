@@ -4318,7 +4318,7 @@ static int try_create_file(const char *path, unsigned int mode, const char *buf,
 		return !!mkdir(path, 0777);
 	}
 
-	if (has_symlinks && S_ISLNK(mode))
+	if (S_ISLNK(mode) && symlink_allowed(buf, -1, path))
 		/* Although buf:size is counted string, it also is NUL
 		 * terminated.
 		 */

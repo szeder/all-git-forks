@@ -1257,6 +1257,14 @@ int is_ntfs_dotgit(const char *name)
 		}
 }
 
+int symlink_allowed(const char *target, size_t len, const char *linkpath)
+{
+	if (!has_symlinks)
+		return 0;
+
+	return 1;
+}
+
 char *xdg_config_home(const char *filename)
 {
 	const char *home, *config_home;

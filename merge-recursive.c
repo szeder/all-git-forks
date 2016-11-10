@@ -818,7 +818,8 @@ static int update_file_flags(struct merge_options *o,
 			update_wd = 0;
 			goto free_buf;
 		}
-		if (S_ISREG(mode) || (!has_symlinks && S_ISLNK(mode))) {
+		if (S_ISREG(mode) ||
+		    (S_ISLNK(mode) && !symlink_allowed(buf, size, path))) {
 			int fd;
 			if (mode & 0100)
 				mode = 0777;
