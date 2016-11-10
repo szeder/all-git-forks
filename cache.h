@@ -2080,6 +2080,6 @@ void sleep_millisec(int millisec);
  */
 void safe_create_dir(const char *dir, int share);
 
-int symlink_allowed(const char *target, size_t len, const char *linkpath);
+int safe_symlink(const char *target, const char *linkpath);
 
 #endif /* CACHE_H */

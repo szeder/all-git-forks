@@ -4318,11 +4318,11 @@ static int try_create_file(const char *path, unsigned int mode, const char *buf,
 		return !!mkdir(path, 0777);
 	}
 
-	if (S_ISLNK(mode) && symlink_allowed(buf, -1, path))
+	if (has_symlinks && S_ISLNK(mode))
 		/* Although buf:size is counted string, it also is NUL
 		 * terminated.
 		 */
-		return !!symlink(buf, path);
+		return !!safe_symlink(buf, path);
 
 	fd = open(path, O_CREAT | O_EXCL | O_WRONLY, (mode & 0100) ? 0777 : 0666);
 	if (fd < 0)

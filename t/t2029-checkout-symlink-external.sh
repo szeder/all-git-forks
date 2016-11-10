@@ -21,24 +21,24 @@ create_symlink() {
 check_symlink () {
 	symlink=$1
 	config=$2
-	expect=$3
+	outcome=$3
+	expect=$4
 
-	test_expect_success "check symlink  ($symlink, $config)" "
+	if test "$outcome" = "allow"
+	then
+		fail=
+		: ${expect:=test_cmp ../target}
+	else
+		fail=test_must_fail
+		: ${expect:=! cat}
+	fi
+
+	test_expect_success " check symlink ($symlink, $config -> $outcome)" "
 		rm -f $symlink &&
-		git -c core.allowExternalSymlinks=$config \
+		$fail git -c core.allowExternalSymlinks=$config \\
 			checkout-index -- $symlink &&
 		$expect $symlink
 	"
-}
-
-expect_content () {
-	echo content >expect &&
-	test_cmp expect "$1"
-}
-
-expect_target () {
-	git cat-file blob :"$1" >expect &&
-	test_cmp expect "$1"
 }
 
 # we want to try breaking out of the repository,
@@ -53,33 +53,32 @@ test_expect_success 'set up repository' '
 '
 
 create_symlink in-repo in-repo-target
-check_symlink in-repo false expect_content
+check_symlink in-repo false allow
 
 create_symlink subdir/in-repo ../in-repo-target
-check_symlink subdir/in-repo false expect_content
+check_symlink subdir/in-repo false allow
 
 create_symlink absolute "$TRASH_DIRECTORY/target"
-check_symlink absolute true expect_content
-check_symlink absolute false expect_target
+check_symlink absolute true allow
+check_symlink absolute false forbid
 
 create_symlink relative "../target"
-check_symlink relative true expect_content
-check_symlink relative false expect_target
+check_symlink relative true allow
+check_symlink relative false forbid
 
 create_symlink curdir .
-check_symlink curdir false test_path_is_dir
+check_symlink curdir false allow test_path_is_dir
 create_symlink sneaky curdir/../target
-check_symlink sneaky true expect_content
-check_symlink sneaky false expect_target
+check_symlink sneaky true allow
+check_symlink sneaky false forbid
 
 test_expect_success 'applying a patch checks symlink config' '
 	git diff-index -p --cached HEAD -- relative >patch &&
 	rm -f relative &&
 	git -c core.allowExternalSymlinks=true apply <patch &&
-	expect_content relative &&
+	test_cmp ../target relative &&
 	rm -f relative &&
-	git -c core.allowExternalSymlinks=false apply <patch &&
-	expect_target relative
+	test_must_fail git -c core.allowExternalSymlinks=false apply <patch
 '
 
 test_expect_success 'merge-recursive checks symlinks config' '
@@ -99,11 +98,10 @@ test_expect_success 'merge-recursive checks symlinks config' '
 	git commit -am rename &&
 
 	git -c core.allowExternalSymlinks=true merge master &&
-	expect_content two &&
+	test_cmp ../target two &&
 
 	git reset --hard HEAD^ &&
-	git -c core.allowExternalSymlinks=false merge master &&
-	expect_target two
+	test_must_fail git -c core.allowExternalSymlinks=false merge master
 '
 
 test_done

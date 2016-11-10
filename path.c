@@ -1319,25 +1319,15 @@ static int symlink_leaves_repo(const char *target, const char *linkpath)
 	return 0;
 }
 
-int symlink_allowed(const char *target, size_t len, const char *linkpath)
+int safe_symlink(const char *target, const char *linkpath)
 {
-	if (!has_symlinks)
-		return 0;
-
-	if (!allow_external_symlinks) {
-		char *to_free = NULL;
-		int r;
-
-		if (len != (size_t)-1)
-			target = to_free = xmemdupz(target, len);
-		r = symlink_leaves_repo(target, linkpath);
-		free(to_free);
-
-		if (r)
-			return 0;
+	if (!allow_external_symlinks &&
+	    symlink_leaves_repo(target, linkpath)) {
+		errno = EPERM;
+		return -1;
 	}
 
-	return 1;
+	return symlink(target, linkpath);
 }
 
 char *xdg_config_home(const char *filename)

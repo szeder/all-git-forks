@@ -165,9 +165,8 @@ static int write_entry(struct cache_entry *ce,
 			return error("unable to read sha1 file of %s (%s)",
 				path, oid_to_hex(&ce->oid));
 
-		if (ce_mode_s_ifmt == S_IFLNK && !to_tempfile &&
-		    symlink_allowed(new, -1, path)) {
-			ret = symlink(new, path);
+		if (ce_mode_s_ifmt == S_IFLNK && has_symlinks && !to_tempfile) {
+			ret = safe_symlink(new, path);
 			free(new);
 			if (ret)
 				return error_errno("unable to create symlink %s",
