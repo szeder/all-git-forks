@@ -2862,7 +2862,7 @@ int diff_populate_filespec(struct diff_filespec *s, unsigned int flags)
 		s->size = xsize_t(st.st_size);
 		if (!s->size)
 			goto empty;
-		if (S_ISLNK(st.st_mode)) {
+		if (S_ISLNK(s->mode)) {
 			struct strbuf sb = STRBUF_INIT;
 
 			if (strbuf_readlink(&sb, s->path, s->size))
@@ -2871,6 +2871,10 @@ int diff_populate_filespec(struct diff_filespec *s, unsigned int flags)
 			s->data = strbuf_detach(&sb, NULL);
 			s->should_free = 1;
 			return 0;
+		}
+		if (S_ISLNK(st.st_mode)) {
+			stat(s->path, &st);
+			s->size = xsize_t(st.st_size);
 		}
 		if (size_only)
 			return 0;
@@ -3920,7 +3924,9 @@ int diff_opt_parse(struct diff_options *options,
 	else if (!strcmp(arg, "--no-follow")) {
 		DIFF_OPT_CLR(options, FOLLOW_RENAMES);
 		DIFF_OPT_CLR(options, DEFAULT_FOLLOW_RENAMES);
-	} else if (!strcmp(arg, "--color"))
+	} else if (!strcmp(arg, "--follow-symlinks"))
+		DIFF_OPT_SET(options, FOLLOW_SYMLINKS);
+	else if (!strcmp(arg, "--color"))
 		options->use_color = 1;
 	else if (skip_prefix(arg, "--color=", &arg)) {
 		int value = git_config_colorbool(NULL, arg);
