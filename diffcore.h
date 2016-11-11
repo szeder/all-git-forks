@@ -37,6 +37,7 @@ struct diff_filespec {
 				  * if false, use the name and read from
 				  * the filesystem.
 				  */
+	unsigned follow_symlinks : 1;
 #define DIFF_FILE_VALID(spec) (((spec)->mode) != 0)
 	unsigned should_free : 1; /* data should be free()'ed */
 	unsigned should_munmap : 1; /* data should be munmap()'ed */

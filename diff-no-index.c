@@ -75,7 +75,8 @@ static int populate_from_stdin(struct diff_filespec *s)
 	return 0;
 }
 
-static struct diff_filespec *noindex_filespec(const char *name, int mode)
+static struct diff_filespec *noindex_filespec(const char *name, int mode,
+			struct diff_options *o)
 {
 	struct diff_filespec *s;
 
@@ -85,6 +86,8 @@ static struct diff_filespec *noindex_filespec(const char *name, int mode)
 	fill_filespec(s, null_sha1, 0, mode);
 	if (name == file_from_standard_input)
 		populate_from_stdin(s);
+	if (DIFF_OPT_TST(o, FOLLOW_SYMLINKS))
+		s->follow_symlinks = 1;
 	return s;
 }
 
@@ -101,14 +104,14 @@ static int queue_diff(struct diff_options *o,
 
 		if (S_ISDIR(mode1)) {
 			/* 2 is file that is created */
-			d1 = noindex_filespec(NULL, 0);
-			d2 = noindex_filespec(name2, mode2);
+			d1 = noindex_filespec(NULL, 0, o);
+			d2 = noindex_filespec(name2, mode2, o);
 			name2 = NULL;
 			mode2 = 0;
 		} else {
 			/* 1 is file that is deleted */
-			d1 = noindex_filespec(name1, mode1);
-			d2 = noindex_filespec(NULL, 0);
+			d1 = noindex_filespec(name1, mode1, o);
+			d2 = noindex_filespec(NULL, 0, o);
 			name1 = NULL;
 			mode1 = 0;
 		}
@@ -191,8 +194,8 @@ static int queue_diff(struct diff_options *o,
 			tmp_c = name1; name1 = name2; name2 = tmp_c;
 		}
 
-		d1 = noindex_filespec(name1, mode1);
-		d2 = noindex_filespec(name2, mode2);
+		d1 = noindex_filespec(name1, mode1, o);
+		d2 = noindex_filespec(name2, mode2, o);
 		diff_queue(&diff_queued_diff, d1, d2);
 		return 0;
 	}
