@@ -212,6 +212,10 @@ struct match_attr {
 
 static const char blank[] = " \t\r\n";
 
+/* Flags usable in read_attr() and parse_attr_line() family of functions. */
+#define READ_ATTR_MACRO_OK (1<<0)
+#define READ_ATTR_NOFOLLOW (1<<1)
+
 /*
  * Parse a whitespace-delimited attribute state (i.e., "attr",
  * "-attr", "!attr", or "attr=value") from the string starting at src.
@@ -265,7 +269,7 @@ static const char *parse_attr(const char *src, int lineno, const char *cp,
 }
 
 static struct match_attr *parse_attr_line(const char *line, const char *src,
-					  int lineno, int macro_ok)
+					  int lineno, unsigned flags)
 {
 	int namelen;
 	int num_attr, i;
@@ -289,7 +293,7 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 
 	if (strlen(ATTRIBUTE_MACRO_PREFIX) < namelen &&
 	    starts_with(name, ATTRIBUTE_MACRO_PREFIX)) {
-		if (!macro_ok) {
+		if (!(flags & READ_ATTR_MACRO_OK)) {
 			fprintf(stderr, "%s not allowed: %s:%d\n",
 				name, src, lineno);
 			goto fail_return;
@@ -419,11 +423,11 @@ static void handle_attr_line(struct attr_stack *res,
 			     const char *line,
 			     const char *src,
 			     int lineno,
-			     int macro_ok)
+			     unsigned flags)
 {
 	struct match_attr *a;
 
-	a = parse_attr_line(line, src, lineno, macro_ok);
+	a = parse_attr_line(line, src, lineno, flags);
 	if (!a)
 		return;
 	ALLOC_GROW(res->attrs, res->num_matches + 1, res->alloc);
@@ -438,7 +442,8 @@ static struct attr_stack *read_attr_from_array(const char **list)
 
 	res = xcalloc(1, sizeof(*res));
 	while ((line = *(list++)) != NULL)
-		handle_attr_line(res, line, "[builtin]", ++lineno, 1);
+		handle_attr_line(res, line, "[builtin]", ++lineno,
+				 READ_ATTR_MACRO_OK);
 	return res;
 }
 
@@ -463,30 +468,38 @@ static struct attr_stack *read_attr_from_array(const char **list)
 static enum git_attr_direction direction;
 static struct index_state *use_index;
 
-static struct attr_stack *read_attr_from_file(const char *path, int macro_ok)
+static struct attr_stack *read_attr_from_file(const char *path, unsigned flags)
 {
-	FILE *fp = fopen(path, "r");
+	int fd;
+	FILE *fp;
 	struct attr_stack *res;
 	char buf[2048];
 	int lineno = 0;
 
-	if (!fp) {
+	if (flags & READ_ATTR_NOFOLLOW)
+		fd = open_nofollow(path, O_RDONLY);
+	else
+		fd = open(path, O_RDONLY);
+
+	if (fd < 0) {
 		if (errno != ENOENT && errno != ENOTDIR)
 			warn_on_inaccessible(path);
 		return NULL;
 	}
+	fp = xfdopen(fd, "r");
+
 	res = xcalloc(1, sizeof(*res));
 	while (fgets(buf, sizeof(buf), fp)) {
 		char *bufp = buf;
 		if (!lineno)
 			skip_utf8_bom(&bufp, strlen(bufp));
-		handle_attr_line(res, bufp, path, ++lineno, macro_ok);
+		handle_attr_line(res, bufp, path, ++lineno, flags);
 	}
 	fclose(fp);
 	return res;
 }
 
-static struct attr_stack *read_attr_from_index(const char *path, int macro_ok)
+static struct attr_stack *read_attr_from_index(const char *path, unsigned flags)
 {
 	struct attr_stack *res;
 	char *buf, *sp;
@@ -504,34 +517,34 @@ static struct attr_stack *read_attr_from_index(const char *path, int macro_ok)
 		ep = strchrnul(sp, '\n');
 		more = (*ep == '\n');
 		*ep = '\0';
-		handle_attr_line(res, sp, path, ++lineno, macro_ok);
+		handle_attr_line(res, sp, path, ++lineno, flags);
 		sp = ep + more;
 	}
 	free(buf);
 	return res;
 }
 
-static struct attr_stack *read_attr(const char *path, int macro_ok)
+static struct attr_stack *read_attr(const char *path, unsigned flags)
 {
 	struct attr_stack *res;
 
 	if (direction == GIT_ATTR_CHECKOUT) {
-		res = read_attr_from_index(path, macro_ok);
+		res = read_attr_from_index(path, flags);
 		if (!res)
-			res = read_attr_from_file(path, macro_ok);
+			res = read_attr_from_file(path, flags);
 	}
 	else if (direction == GIT_ATTR_CHECKIN) {
-		res = read_attr_from_file(path, macro_ok);
+		res = read_attr_from_file(path, flags);
 		if (!res)
 			/*
 			 * There is no checked out .gitattributes file there, but
 			 * we might have it in the index.  We allow operation in a
 			 * sparsely checked out work tree, so read from it.
 			 */
-			res = read_attr_from_index(path, macro_ok);
+			res = read_attr_from_index(path, flags);
 	}
 	else
-		res = read_attr_from_index(path, macro_ok);
+		res = read_attr_from_index(path, flags);
 	if (!res)
 		res = xcalloc(1, sizeof(*res));
 	return res;
@@ -615,6 +628,7 @@ static void push_stack(struct attr_stack **attr_stack_p,
 static void bootstrap_attr_stack(struct git_attr_check *check)
 {
 	struct attr_stack *elem;
+	unsigned flags = READ_ATTR_MACRO_OK;
 
 	if (check->attr_stack)
 		return;
@@ -624,24 +638,24 @@ static void bootstrap_attr_stack(struct git_attr_check *check)
 
 	if (git_attr_system())
 		push_stack(&check->attr_stack,
-			   read_attr_from_file(git_etc_gitattributes(), 1),
+			   read_attr_from_file(git_etc_gitattributes(), flags),
 			   NULL, 0);
 
 	if (!git_attributes_file)
 		git_attributes_file = xdg_config_home("attributes");
 	if (git_attributes_file)
 		push_stack(&check->attr_stack,
-			   read_attr_from_file(git_attributes_file, 1),
+			   read_attr_from_file(git_attributes_file, flags),
 			   NULL, 0);
 
 	if (!is_bare_repository() || direction == GIT_ATTR_INDEX) {
-		elem = read_attr(GITATTRIBUTES_FILE, 1);
+		elem = read_attr(GITATTRIBUTES_FILE, flags | READ_ATTR_NOFOLLOW);
 		push_stack(&check->attr_stack, elem, xstrdup(""), 0);
 		debug_push(elem);
 	}
 
 	if (startup_info->have_repository)
-		elem = read_attr_from_file(git_path_info_attributes(), 1);
+		elem = read_attr_from_file(git_path_info_attributes(), flags);
 	else
 		elem = NULL;
 
@@ -724,7 +738,7 @@ static void prepare_attr_stack(const char *path, int dirlen,
 			strbuf_addf(&pathbuf,
 				    "%.*s/%s", (int)(cp - path), path,
 				    GITATTRIBUTES_FILE);
-			elem = read_attr(pathbuf.buf, 0);
+			elem = read_attr(pathbuf.buf, READ_ATTR_NOFOLLOW);
 			strbuf_setlen(&pathbuf, cp - path);
 			origin = strbuf_detach(&pathbuf, &len);
 			push_stack(&check->attr_stack, elem, origin, len);
