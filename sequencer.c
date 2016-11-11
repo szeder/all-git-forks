@@ -16,6 +16,7 @@
 #include "refs.h"
 #include "argv-array.h"
 #include "quote.h"
+#include "trailer.h"
 #include "log-tree.h"
 #include "wt-status.h"
 
@@ -120,30 +121,6 @@ static const char *get_todo_path(const struct replay_opts *opts)
 	return git_path_todo_file();
 }
 
-static int is_rfc2822_line(const char *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++) {
-		int ch = buf[i];
-		if (ch == ':')
-			return 1;
-		if (!isalnum(ch) && ch != '-')
-			break;
-	}
-
-	return 0;
-}
-
-static int is_cherry_picked_from_line(const char *buf, int len)
-{
-	/*
-	 * We only care that it looks roughly like (cherry picked from ...)
-	 */
-	return len > strlen(cherry_picked_prefix) + 1 &&
-		starts_with(buf, cherry_picked_prefix) && buf[len - 1] == ')';
-}
-
 /*
  * Returns 0 for non-conforming footer
  * Returns 1 for conforming footer
@@ -153,49 +130,25 @@ static int is_cherry_picked_from_line(const char *buf, int len)
 static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	int ignore_footer)
 {
-	char prev;
-	int i, k;
-	int len = sb->len - ignore_footer;
-	const char *buf = sb->buf;
-	int found_sob = 0;
+	struct trailer_info info;
+	int i;
+	int found_sob = 0, found_sob_last = 0;
 
-	/* footer must end with newline */
-	if (!len || buf[len - 1] != '\n')
+	trailer_info_get(&info, sb->buf);
+
+	if (info.trailer_start == info.trailer_end)
 		return 0;
 
-	prev = '\0';
-	for (i = len - 1; i > 0; i--) {
-		char ch = buf[i];
-		if (prev == '\n' && ch == '\n') /* paragraph break */
-			break;
-		prev = ch;
-	}
+	for (i = 0; i < info.trailer_nr; i++)
+		if (sob && !strncmp(info.trailers[i], sob->buf, sob->len)) {
+			found_sob = 1;
+			if (i == info.trailer_nr - 1)
+				found_sob_last = 1;
+		}
 
-	/* require at least one blank line */
-	if (prev != '\n' || buf[i] != '\n')
-		return 0;
+	trailer_info_release(&info);
 
-	/* advance to start of last paragraph */
-	while (i < len - 1 && buf[i] == '\n')
-		i++;
-
-	for (; i < len; i = k) {
-		int found_rfc2822;
-
-		for (k = i; k < len && buf[k] != '\n'; k++)
-			; /* do nothing */
-		k++;
-
-		found_rfc2822 = is_rfc2822_line(buf + i, k - i - 1);
-		if (found_rfc2822 && sob &&
-		    !strncmp(buf + i, sob->buf, sob->len))
-			found_sob = k;
-
-		if (!(found_rfc2822 ||
-		      is_cherry_picked_from_line(buf + i, k - i - 1)))
-			return 0;
-	}
-	if (found_sob == i)
+	if (found_sob_last)
 		return 3;
 	if (found_sob)
 		return 2;
@@ -321,6 +274,10 @@ static int write_message(const void *buf, size_t len, const char *filename,
 	if (append_eol && write(msg_fd, "\n", 1) < 0) {
 		rollback_lock_file(&msg_file);
 		return error_errno(_("could not write eol to '%s"), filename);
+	}
+	if (append_eol && write(msg_fd, "\n", 1) < 0) {
+		rollback_lock_file(&msg_file);
+		return error_errno(_("Could not write eol to '%s"), filename);
 	}
 	if (commit_lock_file(&msg_file) < 0) {
 		rollback_lock_file(&msg_file);
@@ -722,7 +679,7 @@ static const char *todo_command_strings[] = {
 
 static const char *command_to_string(const enum todo_command command)
 {
-	if (command < ARRAY_SIZE(todo_command_strings))
+	if ((size_t)command < ARRAY_SIZE(todo_command_strings))
 		return todo_command_strings[command];
 	die("Unknown command: %d", command);
 }
@@ -854,7 +811,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
+		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0, 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -1237,6 +1194,16 @@ static int read_populate_todo(struct todo_list *todo_list,
 				return error(_("cannot revert during a cherry-pick."));
 	}
 
+	return 0;
+}
+
+static int git_config_string_dup(char **dest,
+				 const char *var, const char *value)
+{
+	if (!value)
+		return config_error_nonbool(var);
+	free(*dest);
+	*dest = xstrdup(value);
 	return 0;
 }
 
@@ -1791,7 +1758,7 @@ int sequencer_continue(struct replay_opts *opts)
 		if (res)
 			goto release_todo_list;
 	}
-	if (index_differs_from("HEAD", 0)) {
+	if (index_differs_from("HEAD", 0, 0)) {
 		res = error_dirty_index(opts);
 		goto release_todo_list;
 	}
