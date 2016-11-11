@@ -37,8 +37,10 @@ test_expect_success 'access alternate via absolute path' '
 	EOF
 '
 
+sep=:
+test_have_prereq !MINGW || sep=\;
 test_expect_success 'access multiple alternates' '
-	check_obj "$(pwd)/one.git/objects:$(pwd)/two.git/objects" <<-EOF
+	check_obj "$(pwd)/one.git/objects$sep$(pwd)/two.git/objects" <<-EOF
 	$one blob
 	$two blob
 	EOF
