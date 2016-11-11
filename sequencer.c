@@ -16,7 +16,8 @@
 #include "refs.h"
 #include "argv-array.h"
 #include "quote.h"
-#include "trailer.h"
+#include "log-tree.h"
+#include "wt-status.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
@@ -29,6 +30,49 @@ static GIT_PATH_FUNC(git_path_todo_file, "sequencer/todo")
 static GIT_PATH_FUNC(git_path_opts_file, "sequencer/opts")
 static GIT_PATH_FUNC(git_path_head_file, "sequencer/head")
 
+static GIT_PATH_FUNC(rebase_path, "rebase-merge")
+/*
+ * The file containing rebase commands, comments, and empty lines.
+ * This file is created by "git rebase -i" then edited by the user. As
+ * the lines are processed, they are removed from the front of this
+ * file and written to the tail of 'done'.
+ */
+static GIT_PATH_FUNC(rebase_path_todo, "rebase-merge/git-rebase-todo")
+/*
+ * The rebase command lines that have already been processed. A line
+ * is moved here when it is first handled, before any associated user
+ * actions.
+ */
+static GIT_PATH_FUNC(rebase_path_done, "rebase-merge/done")
+/*
+ * The commit message that is planned to be used for any changes that
+ * need to be committed following a user interaction.
+ */
+static GIT_PATH_FUNC(rebase_path_message, "rebase-merge/message")
+/*
+ * The file into which is accumulated the suggested commit message for
+ * squash/fixup commands. When the first of a series of squash/fixups
+ * is seen, the file is created and the commit message from the
+ * previous commit and from the first squash/fixup commit are written
+ * to it. The commit message for each subsequent squash/fixup commit
+ * is appended to the file as it is processed.
+ *
+ * The first line of the file is of the form
+ *     # This is a combination of $count commits.
+ * where $count is the number of commits whose messages have been
+ * written to the file so far (including the initial "pick" commit).
+ * Each time that a commit message is processed, this line is read and
+ * updated. It is deleted just before the combined commit is made.
+ */
+static GIT_PATH_FUNC(rebase_path_squash_msg, "rebase-merge/message-squash")
+/*
+ * If the current series of squash/fixups has not yet included a squash
+ * command, then this file exists and holds the commit message of the
+ * original "pick" commit.  (If the series ends without a "squash"
+ * command, then this can be used as the commit message of the combined
+ * commit without opening the editor.)
+ */
+static GIT_PATH_FUNC(rebase_path_fixup_msg, "rebase-merge/message-fixup")
 /*
  * A script to set the GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
  * GIT_AUTHOR_DATE that will be used for the commit that is currently
@@ -36,25 +80,68 @@ static GIT_PATH_FUNC(git_path_head_file, "sequencer/head")
  */
 static GIT_PATH_FUNC(rebase_path_author_script, "rebase-merge/author-script")
 /*
+ * When an "edit" rebase command is being processed, the SHA1 of the
+ * commit to be edited is recorded in this file.  When "git rebase
+ * --continue" is executed, if there are any staged changes then they
+ * will be amended to the HEAD commit, but only provided the HEAD
+ * commit is still the commit to be edited.  When any other rebase
+ * command is processed, this file is deleted.
+ */
+static GIT_PATH_FUNC(rebase_path_amend, "rebase-merge/amend")
+/*
+ * When we stop at a given patch via the "edit" command, this file contains
+ * the long commit name of the corresponding patch.
+ */
+static GIT_PATH_FUNC(rebase_path_stopped_sha, "rebase-merge/stopped-sha")
+/*
  * The following files are written by git-rebase just after parsing the
  * command-line (and are only consumed, not modified, by the sequencer).
  */
 static GIT_PATH_FUNC(rebase_path_gpg_sign_opt, "rebase-merge/gpg_sign_opt")
+static GIT_PATH_FUNC(rebase_path_orig_head, "rebase-merge/orig-head")
+static GIT_PATH_FUNC(rebase_path_verbose, "rebase-merge/verbose")
 
-/* We will introduce the 'interactive rebase' mode later */
 static inline int is_rebase_i(const struct replay_opts *opts)
 {
-	return 0;
+	return opts->action == REPLAY_INTERACTIVE_REBASE;
 }
 
 static const char *get_dir(const struct replay_opts *opts)
 {
+	if (is_rebase_i(opts))
+		return rebase_path();
 	return git_path_seq_dir();
 }
 
 static const char *get_todo_path(const struct replay_opts *opts)
 {
+	if (is_rebase_i(opts))
+		return rebase_path_todo();
 	return git_path_todo_file();
+}
+
+static int is_rfc2822_line(const char *buf, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++) {
+		int ch = buf[i];
+		if (ch == ':')
+			return 1;
+		if (!isalnum(ch) && ch != '-')
+			break;
+	}
+
+	return 0;
+}
+
+static int is_cherry_picked_from_line(const char *buf, int len)
+{
+	/*
+	 * We only care that it looks roughly like (cherry picked from ...)
+	 */
+	return len > strlen(cherry_picked_prefix) + 1 &&
+		starts_with(buf, cherry_picked_prefix) && buf[len - 1] == ')';
 }
 
 /*
@@ -66,25 +153,49 @@ static const char *get_todo_path(const struct replay_opts *opts)
 static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	int ignore_footer)
 {
-	struct trailer_info info;
-	int i;
-	int found_sob = 0, found_sob_last = 0;
+	char prev;
+	int i, k;
+	int len = sb->len - ignore_footer;
+	const char *buf = sb->buf;
+	int found_sob = 0;
 
-	trailer_info_get(&info, sb->buf);
-
-	if (info.trailer_start == info.trailer_end)
+	/* footer must end with newline */
+	if (!len || buf[len - 1] != '\n')
 		return 0;
 
-	for (i = 0; i < info.trailer_nr; i++)
-		if (sob && !strncmp(info.trailers[i], sob->buf, sob->len)) {
-			found_sob = 1;
-			if (i == info.trailer_nr - 1)
-				found_sob_last = 1;
-		}
+	prev = '\0';
+	for (i = len - 1; i > 0; i--) {
+		char ch = buf[i];
+		if (prev == '\n' && ch == '\n') /* paragraph break */
+			break;
+		prev = ch;
+	}
 
-	trailer_info_release(&info);
+	/* require at least one blank line */
+	if (prev != '\n' || buf[i] != '\n')
+		return 0;
 
-	if (found_sob_last)
+	/* advance to start of last paragraph */
+	while (i < len - 1 && buf[i] == '\n')
+		i++;
+
+	for (; i < len; i = k) {
+		int found_rfc2822;
+
+		for (k = i; k < len && buf[k] != '\n'; k++)
+			; /* do nothing */
+		k++;
+
+		found_rfc2822 = is_rfc2822_line(buf + i, k - i - 1);
+		if (found_rfc2822 && sob &&
+		    !strncmp(buf + i, sob->buf, sob->len))
+			found_sob = k;
+
+		if (!(found_rfc2822 ||
+		      is_cherry_picked_from_line(buf + i, k - i - 1)))
+			return 0;
+	}
+	if (found_sob == i)
 		return 3;
 	if (found_sob)
 		return 2;
@@ -121,7 +232,15 @@ int sequencer_remove_state(struct replay_opts *opts)
 
 static const char *action_name(const struct replay_opts *opts)
 {
-	return opts->action == REPLAY_REVERT ? N_("revert") : N_("cherry-pick");
+	switch (opts->action) {
+	case REPLAY_REVERT:
+		return N_("revert");
+	case REPLAY_PICK:
+		return N_("cherry-pick");
+	case REPLAY_INTERACTIVE_REBASE:
+		return N_("rebase -i");
+	}
+	die(_("Unknown action: %d"), opts->action);
 }
 
 struct commit_message {
@@ -348,7 +467,10 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 
 	if (active_cache_changed &&
 	    write_locked_index(&the_index, &index_lock, COMMIT_LOCK))
-		/* TRANSLATORS: %s will be "revert" or "cherry-pick" */
+		/*
+		 * TRANSLATORS: %s will be "revert", "cherry-pick" or
+		 * "rebase -i".
+		 */
 		return error(_("%s: Unable to write new index file"),
 			_(action_name(opts)));
 	rollback_lock_file(&index_lock);
@@ -570,33 +692,154 @@ static int allow_empty(struct replay_opts *opts, struct commit *commit)
 		return 1;
 }
 
+/*
+ * Note that ordering matters in this enum. Not only must it match the mapping
+ * below, it is also divided into several sections that matter.  When adding
+ * new commands, make sure you add it in the right section.
+ */
 enum todo_command {
+	/* commands that handle commits */
 	TODO_PICK = 0,
-	TODO_REVERT
+	TODO_REVERT,
+	TODO_EDIT,
+	TODO_FIXUP,
+	TODO_SQUASH,
+	/* commands that do something else than handling a single commit */
+	TODO_EXEC,
+	/* commands that do nothing but are counted for reporting progress */
+	TODO_NOOP
 };
 
 static const char *todo_command_strings[] = {
 	"pick",
-	"revert"
+	"revert",
+	"edit",
+	"fixup",
+	"squash",
+	"exec",
+	"noop"
 };
 
 static const char *command_to_string(const enum todo_command command)
 {
-	if ((size_t)command < ARRAY_SIZE(todo_command_strings))
+	if (command < ARRAY_SIZE(todo_command_strings))
 		return todo_command_strings[command];
 	die("Unknown command: %d", command);
 }
 
+static int is_fixup(enum todo_command command)
+{
+	return command == TODO_FIXUP || command == TODO_SQUASH;
+}
+
+static int update_squash_messages(enum todo_command command,
+		struct commit *commit, struct replay_opts *opts)
+{
+	struct strbuf buf = STRBUF_INIT;
+	int count, res;
+	const char *message, *body;
+
+	if (file_exists(rebase_path_squash_msg())) {
+		char *p, *p2;
+
+		if (strbuf_read_file(&buf, rebase_path_squash_msg(), 2048) <= 0)
+			return error(_("could not read '%s'"),
+				rebase_path_squash_msg());
+
+		if (buf.buf[0] == '\n' || !skip_prefix(buf.buf + 1,
+				" This is a combination of ",
+				(const char **)&p))
+			return error(_("unexpected 1st line of squash message:"
+				       "\n\n\t%.*s"),
+				     (int)(strchrnul(buf.buf, '\n') - buf.buf),
+				     buf.buf);
+		count = strtol(p, &p2, 10);
+
+		if (count < 1 || *p2 != ' ')
+			return error(_("invalid 1st line of squash message:\n"
+				       "\n\t%.*s"),
+				     (int)(strchrnul(buf.buf, '\n') - buf.buf),
+				     buf.buf);
+
+		sprintf((char *)p, "%d", ++count);
+		if (!*p2)
+			*p2 = ' ';
+		else {
+			*(++p2) = 'c';
+			strbuf_insert(&buf, p2 - buf.buf, " ", 1);
+		}
+	}
+	else {
+		unsigned char head[20];
+		struct commit *head_commit;
+		const char *head_message, *body;
+
+		if (get_sha1("HEAD", head))
+			return error(_("need a HEAD to fixup"));
+		if (!(head_commit = lookup_commit_reference(head)))
+			return error(_("could not read HEAD"));
+		if (!(head_message = get_commit_buffer(head_commit, NULL)))
+			return error(_("could not read HEAD's commit message"));
+
+		body = strstr(head_message, "\n\n");
+		if (!body)
+			body = "";
+		else
+			body = skip_blank_lines(body + 2);
+		if (write_message(body, strlen(body),
+				  rebase_path_fixup_msg(), 0))
+			return error(_("cannot write '%s'"),
+				     rebase_path_fixup_msg());
+
+		count = 2;
+		strbuf_addf(&buf, _("%c This is a combination of 2 commits.\n"
+				    "%c The first commit's message is:\n\n%s"),
+			    comment_line_char, comment_line_char, body);
+
+		unuse_commit_buffer(head_commit, head_message);
+	}
+
+	if (!(message = get_commit_buffer(commit, NULL)))
+		return error(_("could not read commit message of %s"),
+			     oid_to_hex(&commit->object.oid));
+	body = strstr(message, "\n\n");
+	if (!body)
+		body = "";
+	else
+		body = skip_blank_lines(body + 2);
+
+	if (command == TODO_SQUASH) {
+		unlink(rebase_path_fixup_msg());
+		strbuf_addf(&buf, _("\n%c This is the commit message #%d:\n"
+				    "\n%s"),
+			    comment_line_char, count, body);
+	}
+	else if (command == TODO_FIXUP) {
+		strbuf_addf(&buf, _("\n%c The commit message #%d "
+				    "will be skipped:\n\n"),
+			    comment_line_char, count);
+		strbuf_add_commented_lines(&buf, body, strlen(body));
+	}
+	else
+		return error(_("unknown command: %d"), command);
+	unuse_commit_buffer(commit, message);
+
+	res = write_message(buf.buf, buf.len, rebase_path_squash_msg(), 0);
+	strbuf_release(&buf);
+	return res;
+}
 
 static int do_pick_commit(enum todo_command command, struct commit *commit,
-		struct replay_opts *opts)
+		struct replay_opts *opts, int final_fixup)
 {
+	int edit = opts->edit, cleanup_commit_message = 0;
+	const char *msg_file = edit ? NULL : git_path_merge_msg();
 	unsigned char head[20];
 	struct commit *base, *next, *parent;
 	const char *base_label, *next_label;
 	struct commit_message msg = { NULL, NULL, NULL, NULL };
 	struct strbuf msgbuf = STRBUF_INIT;
-	int res, unborn = 0, allow;
+	int res, unborn = 0, amend = 0, allow;
 
 	if (opts->no_commit) {
 		/*
@@ -611,7 +854,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		unborn = get_sha1("HEAD", head);
 		if (unborn)
 			hashcpy(head, EMPTY_TREE_SHA1_BIN);
-		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0, 0))
+		if (index_differs_from(unborn ? EMPTY_TREE_SHA1_HEX : "HEAD", 0))
 			return error_dirty_index(opts);
 	}
 	discard_cache();
@@ -642,7 +885,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 	else
 		parent = commit->parents->item;
 
-	if (opts->allow_ff &&
+	if (opts->allow_ff && !is_fixup(command) &&
 	    ((parent && !hashcmp(parent->object.oid.hash, head)) ||
 	     (!parent && unborn)))
 		return fast_forward_to(commit->object.oid.hash, head, unborn, opts);
@@ -706,6 +949,28 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		}
 	}
 
+	if (is_fixup(command)) {
+		if (update_squash_messages(command, commit, opts))
+			return -1;
+		amend = 1;
+		if (!final_fixup)
+			msg_file = rebase_path_squash_msg();
+		else if (file_exists(rebase_path_fixup_msg())) {
+			cleanup_commit_message = 1;
+			msg_file = rebase_path_fixup_msg();
+		}
+		else {
+			const char *dest = git_path("SQUASH_MSG");
+			unlink(dest);
+			if (copy_file(dest, rebase_path_squash_msg(), 0666))
+				return error(_("could not rename '%s' to '%s'"),
+					     rebase_path_squash_msg(), dest);
+			unlink(git_path("MERGE_MSG"));
+			msg_file = dest;
+			edit = 1;
+		}
+	}
+
 	if (!opts->strategy || !strcmp(opts->strategy, "recursive") || command == TODO_REVERT) {
 		res = do_recursive_merge(base, next, base_label, next_label,
 					 head, &msgbuf, opts);
@@ -761,8 +1026,13 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		goto leave;
 	}
 	if (!opts->no_commit)
-		res = run_git_commit(opts->edit ? NULL : git_path_merge_msg(),
-				     opts, allow, opts->edit, 0, 0);
+		res = run_git_commit(msg_file, opts, allow, edit, amend,
+				     cleanup_commit_message);
+
+	if (!res && final_fixup) {
+		unlink(rebase_path_fixup_msg());
+		unlink(rebase_path_squash_msg());
+	}
 
 leave:
 	free_message(commit, &msg);
@@ -847,6 +1117,14 @@ static int parse_insn_line(struct todo_item *item, const char *bol, char *eol)
 	/* left-trim */
 	bol += strspn(bol, " \t");
 
+	if (bol == eol || *bol == '\r' || *bol == comment_line_char) {
+		item->command = TODO_NOOP;
+		item->commit = NULL;
+		item->arg = bol;
+		item->arg_len = eol - bol;
+		return 0;
+	}
+
 	for (i = 0; i < ARRAY_SIZE(todo_command_strings); i++)
 		if (skip_prefix(bol, todo_command_strings[i], &bol)) {
 			item->command = i;
@@ -855,11 +1133,24 @@ static int parse_insn_line(struct todo_item *item, const char *bol, char *eol)
 	if (i >= ARRAY_SIZE(todo_command_strings))
 		return -1;
 
+	if (item->command == TODO_NOOP) {
+		item->commit = NULL;
+		item->arg = bol;
+		item->arg_len = eol - bol;
+		return 0;
+	}
+
 	/* Eat up extra spaces/ tabs before object name */
 	padding = strspn(bol, " \t");
 	if (!padding)
 		return -1;
 	bol += padding;
+
+	if (item->command == TODO_EXEC) {
+		item->arg = bol;
+		item->arg_len = (int)(eol - bol);
+		return 0;
+	}
 
 	end_of_object_name = (char *) bol + strcspn(bol, " \t\n");
 	saved = *end_of_object_name;
@@ -881,7 +1172,7 @@ static int parse_insn_buffer(char *buf, struct todo_list *todo_list)
 {
 	struct todo_item *item;
 	char *p = buf, *next_p;
-	int i, res = 0;
+	int i, res = 0, fixup_okay = file_exists(rebase_path_done());
 
 	for (i = 1; *p; i++, p = next_p) {
 		char *eol = strchrnul(p, '\n');
@@ -896,8 +1187,16 @@ static int parse_insn_buffer(char *buf, struct todo_list *todo_list)
 		if (parse_insn_line(item, p, eol)) {
 			res = error(_("invalid line %d: %.*s"),
 				i, (int)(eol - p), p);
-			item->command = -1;
+			item->command = TODO_NOOP;
 		}
+
+		if (fixup_okay)
+			; /* do nothing */
+		else if (is_fixup(item->command))
+			return error(_("cannot '%s' without a previous commit"),
+				command_to_string(item->command));
+		else if (item->command != TODO_NOOP)
+			fixup_okay = 1;
 	}
 	if (!todo_list->nr)
 		return error(_("no commits parsed."));
@@ -938,16 +1237,6 @@ static int read_populate_todo(struct todo_list *todo_list,
 				return error(_("cannot revert during a cherry-pick."));
 	}
 
-	return 0;
-}
-
-static int git_config_string_dup(char **dest,
-				 const char *var, const char *value)
-{
-	if (!value)
-		return config_error_nonbool(var);
-	free(*dest);
-	*dest = xstrdup(value);
 	return 0;
 }
 
@@ -1010,6 +1299,9 @@ static int read_populate_opts(struct replay_opts *opts)
 			}
 		}
 		strbuf_release(&buf);
+
+		if (file_exists(rebase_path_verbose()))
+			opts->verbose = 1;
 
 		return 0;
 	}
@@ -1167,6 +1459,9 @@ static int save_todo(struct todo_list *todo_list, struct replay_opts *opts)
 	const char *todo_path = get_todo_path(opts);
 	int next = todo_list->current, offset, fd;
 
+	if (is_rebase_i(opts))
+		next++;
+
 	fd = hold_lock_file_for_update(&todo_lock, todo_path, 0);
 	if (fd < 0)
 		return error_errno(_("could not lock '%s'"), todo_path);
@@ -1177,6 +1472,20 @@ static int save_todo(struct todo_list *todo_list, struct replay_opts *opts)
 		return error_errno(_("could not write to '%s'"), todo_path);
 	if (commit_lock_file(&todo_lock) < 0)
 		return error(_("failed to finalize '%s'."), todo_path);
+
+	if (is_rebase_i(opts)) {
+		const char *done_path = rebase_path_done();
+		int fd = open(done_path, O_CREAT | O_WRONLY | O_APPEND, 0666);
+		int prev_offset = !next ? 0 :
+			todo_list->items[next - 1].offset_in_buf;
+
+		if (offset > prev_offset && write_in_full(fd,
+				todo_list->buf.buf + prev_offset,
+				offset - prev_offset) < 0)
+			return error_errno(_("could not write to '%s'"),
+					   done_path);
+		close(fd);
+	}
 	return 0;
 }
 
@@ -1215,9 +1524,157 @@ static int save_opts(struct replay_opts *opts)
 	return res;
 }
 
+static int make_patch(struct commit *commit, struct replay_opts *opts)
+{
+	struct strbuf buf = STRBUF_INIT;
+	struct rev_info log_tree_opt;
+	const char *commit_buffer = get_commit_buffer(commit, NULL), *subject, *p;
+	int res = 0;
+
+	p = short_commit_name(commit);
+	if (write_message(p, strlen(p), rebase_path_stopped_sha(), 1) < 0)
+		return -1;
+
+	strbuf_addf(&buf, "%s/patch", get_dir(opts));
+	memset(&log_tree_opt, 0, sizeof(log_tree_opt));
+	init_revisions(&log_tree_opt, NULL);
+	log_tree_opt.abbrev = 0;
+	log_tree_opt.diff = 1;
+	log_tree_opt.diffopt.output_format = DIFF_FORMAT_PATCH;
+	log_tree_opt.disable_stdin = 1;
+	log_tree_opt.no_commit_id = 1;
+	log_tree_opt.diffopt.file = fopen(buf.buf, "w");
+	log_tree_opt.diffopt.use_color = GIT_COLOR_NEVER;
+	if (!log_tree_opt.diffopt.file)
+		res |= error_errno(_("could not open '%s'"), buf.buf);
+	else {
+		res |= log_tree_commit(&log_tree_opt, commit);
+		fclose(log_tree_opt.diffopt.file);
+	}
+	strbuf_reset(&buf);
+
+	strbuf_addf(&buf, "%s/message", get_dir(opts));
+	if (!file_exists(buf.buf)) {
+		find_commit_subject(commit_buffer, &subject);
+		res |= write_message(subject, strlen(subject), buf.buf, 1);
+		unuse_commit_buffer(commit, commit_buffer);
+	}
+	strbuf_release(&buf);
+
+	return res;
+}
+
+static int intend_to_amend(void)
+{
+	unsigned char head[20];
+	char *p;
+
+	if (get_sha1("HEAD", head))
+		return error(_("cannot read HEAD"));
+
+	p = sha1_to_hex(head);
+	return write_message(p, strlen(p), rebase_path_amend(), 1);
+}
+
+static int error_with_patch(struct commit *commit,
+	const char *subject, int subject_len,
+	struct replay_opts *opts, int exit_code, int to_amend)
+{
+	if (make_patch(commit, opts))
+		return -1;
+
+	if (to_amend) {
+		if (intend_to_amend())
+			return -1;
+
+		fprintf(stderr, "You can amend the commit now, with\n"
+			"\n"
+			"  git commit --amend %s\n"
+			"\n"
+			"Once you are satisfied with your changes, run\n"
+			"\n"
+			"  git rebase --continue\n", gpg_sign_opt_quoted(opts));
+	}
+	else if (exit_code)
+		fprintf(stderr, "Could not apply %s... %.*s\n",
+			short_commit_name(commit), subject_len, subject);
+
+	return exit_code;
+}
+
+static int error_failed_squash(struct commit *commit,
+	struct replay_opts *opts, int subject_len, const char *subject)
+{
+	if (rename(rebase_path_squash_msg(), rebase_path_message()))
+		return error(_("could not rename '%s' to '%s'"),
+			rebase_path_squash_msg(), rebase_path_message());
+	unlink(rebase_path_fixup_msg());
+	unlink(git_path("MERGE_MSG"));
+	if (copy_file(git_path("MERGE_MSG"), rebase_path_message(), 0666))
+		return error(_("could not copy '%s' to '%s'"),
+			     rebase_path_message(), git_path("MERGE_MSG"));
+	return error_with_patch(commit, subject, subject_len, opts, 1, 0);
+}
+
+static int do_exec(const char *command_line)
+{
+	const char *child_argv[] = { NULL, NULL };
+	int dirty, status;
+
+	fprintf(stderr, "Executing: %s\n", command_line);
+	child_argv[0] = command_line;
+	status = run_command_v_opt(child_argv, RUN_USING_SHELL);
+
+	/* force re-reading of the cache */
+	if (discard_cache() < 0 || read_cache() < 0)
+		return error(_("could not read index"));
+
+	dirty = require_clean_work_tree("rebase", NULL, 1, 1);
+
+	if (status) {
+		warning(_("execution failed: %s\n%s"
+			  "You can fix the problem, and then run\n"
+			  "\n"
+			  "  git rebase --continue\n"
+			  "\n"),
+			command_line,
+			dirty ? N_("and made changes to the index and/or the "
+				"working tree\n") : "");
+		if (status == 127)
+			/* command not found */
+			status = 1;
+	}
+	else if (dirty) {
+		warning(_("execution succeeded: %s\nbut "
+			  "left changes to the index and/or the working tree\n"
+			  "Commit or stash your changes, and then run\n"
+			  "\n"
+			  "  git rebase --continue\n"
+			  "\n"), command_line);
+		status = 1;
+	}
+
+	return status;
+}
+
+static int is_final_fixup(struct todo_list *todo_list)
+{
+	int i = todo_list->current;
+
+	if (!is_fixup(todo_list->items[i].command))
+		return 0;
+
+	while (++i < todo_list->nr)
+		if (is_fixup(todo_list->items[i].command))
+			return 0;
+		else if (todo_list->items[i].command < TODO_NOOP)
+			break;
+	return 1;
+}
+
 static int pick_commits(struct todo_list *todo_list, struct replay_opts *opts)
 {
-	int res;
+	int res = 0;
 
 	setenv(GIT_REFLOG_ACTION, action_name(opts), 0);
 	if (opts->allow_ff)
@@ -1230,10 +1687,69 @@ static int pick_commits(struct todo_list *todo_list, struct replay_opts *opts)
 		struct todo_item *item = todo_list->items + todo_list->current;
 		if (save_todo(todo_list, opts))
 			return -1;
-		res = do_pick_commit(item->command, item->commit, opts);
+		if (is_rebase_i(opts)) {
+			unlink(rebase_path_message());
+			unlink(rebase_path_author_script());
+			unlink(rebase_path_stopped_sha());
+			unlink(rebase_path_amend());
+		}
+		if (item->command <= TODO_SQUASH) {
+			res = do_pick_commit(item->command, item->commit,
+					opts, is_final_fixup(todo_list));
+			if (item->command == TODO_EDIT) {
+				struct commit *commit = item->commit;
+				if (!res)
+					warning(_("stopped at %s... %.*s"),
+						short_commit_name(commit),
+						item->arg_len, item->arg);
+				return error_with_patch(commit,
+					item->arg, item->arg_len, opts, res,
+					!res);
+			}
+			if (res && is_fixup(item->command)) {
+				if (res == 1)
+					intend_to_amend();
+				return error_failed_squash(item->commit, opts,
+					item->arg_len, item->arg);
+			}
+		}
+		else if (item->command == TODO_EXEC) {
+			char *end_of_arg = (char *)(item->arg + item->arg_len);
+			int saved = *end_of_arg;
+
+			*end_of_arg = '\0';
+			res = do_exec(item->arg);
+			*end_of_arg = saved;
+		}
+		else if (item->command != TODO_NOOP)
+			return error(_("unknown command %d"), item->command);
+
 		todo_list->current++;
 		if (res)
 			return res;
+	}
+
+	if (is_rebase_i(opts)) {
+		struct strbuf buf = STRBUF_INIT;
+
+		/* Stopped in the middle, as planned? */
+		if (todo_list->current < todo_list->nr)
+			return 0;
+
+		if (opts->verbose) {
+			const char *argv[] = {
+				"diff-tree", "--stat", NULL, NULL
+			};
+
+			if (!read_oneliner(&buf, rebase_path_orig_head(), 0))
+				return error(_("could not read '%s'"),
+					rebase_path_orig_head());
+			strbuf_addstr(&buf, "..HEAD");
+			argv[2] = buf.buf;
+			run_command_v_opt(argv, RUN_GIT_CMD);
+			strbuf_reset(&buf);
+		}
+		strbuf_release(&buf);
 	}
 
 	/*
@@ -1275,7 +1791,7 @@ int sequencer_continue(struct replay_opts *opts)
 		if (res)
 			goto release_todo_list;
 	}
-	if (index_differs_from("HEAD", 0, 0)) {
+	if (index_differs_from("HEAD", 0)) {
 		res = error_dirty_index(opts);
 		goto release_todo_list;
 	}
@@ -1290,7 +1806,7 @@ static int single_pick(struct commit *cmit, struct replay_opts *opts)
 {
 	setenv(GIT_REFLOG_ACTION, action_name(opts), 0);
 	return do_pick_commit(opts->action == REPLAY_PICK ?
-		TODO_PICK : TODO_REVERT, cmit, opts);
+		TODO_PICK : TODO_REVERT, cmit, opts, 0);
 }
 
 int sequencer_pick_revisions(struct replay_opts *opts)
