@@ -9,6 +9,7 @@
  */
 #include "cache.h"
 #include "dir.h"
+#include "attr.h"
 #include "refs.h"
 #include "wildmatch.h"
 #include "pathspec.h"
@@ -139,7 +140,8 @@ static size_t common_prefix_len(const struct pathspec *pathspec)
 		       PATHSPEC_LITERAL |
 		       PATHSPEC_GLOB |
 		       PATHSPEC_ICASE |
-		       PATHSPEC_EXCLUDE);
+		       PATHSPEC_EXCLUDE |
+		       PATHSPEC_ATTR);
 
 	for (n = 0; n < pathspec->nr; n++) {
 		size_t i = 0, len = 0, item_len;
@@ -207,6 +209,37 @@ int within_depth(const char *name, int namelen,
 	return 1;
 }
 
+static int match_attrs(const char *name, int namelen,
+		       const struct pathspec_item *item)
+{
+	int i;
+	struct git_attr_result *res = git_attr_result_alloc(item->attr_check);
+
+	git_check_attr(name, item->attr_check, res);
+	for (i = 0; i < item->attr_match_nr; i++) {
+		const char *value;
+		int matched;
+		enum attr_match_mode match_mode;
+
+		value = res[i].value;
+		match_mode = item->attr_match[i].match_mode;
+
+		if (ATTR_TRUE(value))
+			matched = (match_mode == MATCH_SET);
+		else if (ATTR_FALSE(value))
+			matched = (match_mode == MATCH_UNSET);
+		else if (ATTR_UNSET(value))
+			matched = (match_mode == MATCH_UNSPECIFIED);
+		else
+			matched = (match_mode == MATCH_VALUE &&
+				   !strcmp(item->attr_match[i].value, value));
+		if (!matched)
+			return 0;
+	}
+
+	return 1;
+}
+
 #define DO_MATCH_EXCLUDE   (1<<0)
 #define DO_MATCH_DIRECTORY (1<<1)
 #define DO_MATCH_SUBMODULE (1<<2)
@@ -261,6 +294,9 @@ static int match_pathspec_item(const struct pathspec_item *item, int prefix,
 	 */
 	if (item->prefix && (item->magic & PATHSPEC_ICASE) &&
 	    strncmp(item->match, name - prefix, item->prefix))
+		return 0;
+
+	if (item->attr_match_nr && !match_attrs(name, namelen, item))
 		return 0;
 
 	/* If the match was just the prefix, we matched */
@@ -341,7 +377,8 @@ static int do_match_pathspec(const struct pathspec *ps,
 		       PATHSPEC_LITERAL |
 		       PATHSPEC_GLOB |
 		       PATHSPEC_ICASE |
-		       PATHSPEC_EXCLUDE);
+		       PATHSPEC_EXCLUDE |
+		       PATHSPEC_ATTR);
 
 	if (!ps->nr) {
 		if (!ps->recursive ||
