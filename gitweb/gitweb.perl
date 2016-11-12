@@ -1383,7 +1383,7 @@ sub href {
 
 		# since we destructively absorb parameters, we keep this
 		# boolean that remembers if we're handling a snapshot
-		my $is_snapshot = $params{'action'} eq 'snapshot';
+		my $is_snapshot = ($params{'action'} || '' ) eq 'snapshot';
 
 		# Summary just uses the project path URL, any other action is
 		# added to the URL
