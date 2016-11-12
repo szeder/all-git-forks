@@ -45,6 +45,7 @@ static void write_tempfile_record(const char *name, const char *prefix)
 
 static int checkout_file(const char *name, const char *prefix)
 {
+	fprintf(stderr, "checkout_file\n");
 	int namelen = strlen(name);
 	int pos = cache_name_pos(name, namelen);
 	int has_same_name = 0;
@@ -53,6 +54,7 @@ static int checkout_file(const char *name, const char *prefix)
 
 	if (pos < 0)
 		pos = -pos - 1;
+
 
 	while (pos < active_nr) {
 		struct cache_entry *ce = active_cache[pos];
@@ -92,6 +94,7 @@ static int checkout_file(const char *name, const char *prefix)
 
 static void checkout_all(const char *prefix, int prefix_length)
 {
+	fprintf(stderr, "checkout_all\n");
 	int i, errs = 0;
 	struct cache_entry *last_ce = NULL;
 

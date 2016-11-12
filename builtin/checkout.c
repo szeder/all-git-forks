@@ -157,6 +157,7 @@ static int check_stages(unsigned stages, const struct cache_entry *ce, int pos)
 static int checkout_stage(int stage, const struct cache_entry *ce, int pos,
 			  const struct checkout *state)
 {
+	fprintf(stderr, "checkout_stage\n");
 	while (pos < active_nr &&
 	       !strcmp(active_cache[pos]->name, ce->name)) {
 		if (ce_stage(active_cache[pos]) == stage)
@@ -171,6 +172,7 @@ static int checkout_stage(int stage, const struct cache_entry *ce, int pos,
 
 static int checkout_merged(int pos, const struct checkout *state)
 {
+	fprintf(stderr, "checkout_merged\n");
 	struct cache_entry *ce = active_cache[pos];
 	const char *path = ce->name;
 	mmfile_t ancestor, ours, theirs;
@@ -238,6 +240,7 @@ static int checkout_merged(int pos, const struct checkout *state)
 static int checkout_paths(const struct checkout_opts *opts,
 			  const char *revision)
 {
+	fprintf(stderr, "checkout_paths\n");
 	int pos;
 	struct checkout state = CHECKOUT_INIT;
 	static char *ps_matched;

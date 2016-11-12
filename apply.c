@@ -3334,6 +3334,7 @@ static void prepare_fn_table(struct apply_state *state, struct patch *patch)
 static int checkout_target(struct index_state *istate,
 			   struct cache_entry *ce, struct stat *st)
 {
+	fprintf(stderr, "checkout_target\n");
 	struct checkout costate = CHECKOUT_INIT;
 
 	costate.refresh_cache = 1;
@@ -4308,6 +4309,7 @@ static int build_fake_ancestor(struct apply_state *state, struct patch *list)
  */
 static int try_create_file(const char *path, unsigned int mode, const char *buf, unsigned long size)
 {
+	fprintf(stderr, "try_create_file");
 	int fd, res;
 	struct strbuf nbuf = STRBUF_INIT;
 

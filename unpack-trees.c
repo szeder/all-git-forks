@@ -221,6 +221,7 @@ static void unlink_entry(const struct cache_entry *ce)
 static int check_updates(struct unpack_trees_options *o,
 			 const struct checkout *state)
 {
+	fprintf(stderr, "check_updates\n");
 	unsigned cnt = 0, total = 0;
 	struct progress *progress = NULL;
 	struct index_state *index = &o->result;
@@ -255,6 +256,7 @@ static int check_updates(struct unpack_trees_options *o,
 	remove_scheduled_dirs();
 
 	for (i = 0; i < index->cache_nr; i++) {
+		fprintf(stderr, ".");
 		struct cache_entry *ce = index->cache[i];
 
 		if (ce->ce_flags & CE_UPDATE) {
@@ -264,7 +266,8 @@ static int check_updates(struct unpack_trees_options *o,
 			display_progress(progress, ++cnt);
 			ce->ce_flags &= ~CE_UPDATE;
 			if (o->update && !o->dry_run) {
-				errs |= checkout_entry(ce, state, NULL);
+			 	checkout_entry(ce, state, NULL);
+			 	checkout_entry(ce, state, NULL);
 			}
 		}
 	}

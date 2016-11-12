@@ -139,6 +139,7 @@ static int streaming_write_entry(const struct cache_entry *ce, char *path,
 static int write_entry(struct cache_entry *ce,
 		       char *path, const struct checkout *state, int to_tempfile)
 {
+	fprintf(stderr, "write_entry\n");
 	unsigned int ce_mode_s_ifmt = ce->ce_mode & S_IFMT;
 	int fd, ret, fstat_done = 0;
 	char *new;
@@ -248,6 +249,7 @@ static int check_path(const char *path, int len, struct stat *st, int skiplen)
 int checkout_entry(struct cache_entry *ce,
 		   const struct checkout *state, char *topath)
 {
+	fprintf(stderr, "checkout_entry\n");
 	static struct strbuf path = STRBUF_INIT;
 	struct stat st;
 
@@ -289,5 +291,7 @@ int checkout_entry(struct cache_entry *ce,
 		return 0;
 
 	create_directories(path.buf, path.len, state);
-	return write_entry(ce, path.buf, state, 0);
+	 // write_entry(ce, path.buf, state, 0);
+
+	 return write_entry(ce, path.buf, state, 0);
 }
