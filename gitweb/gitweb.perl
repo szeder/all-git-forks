@@ -819,6 +819,7 @@ our @cgi_param_mapping = (
 	ctag => "by_tag",
 	diff_style => "ds",
 	project_filter => "pf",
+	ignore_whitespace => "w",
 	# this must be last entry (for manipulation from JavaScript)
 	javascript => "js"
 );
@@ -880,6 +881,7 @@ sub evaluate_query_params {
 			$input_params{$name} = decode_utf8($cgi->param($symbol));
 		}
 	}
+	push @diff_opts, '-w' if $input_params{ignore_whitespace};
 }
 
 # now read PATH_INFO and update the parameter list for missing parameters
@@ -6718,11 +6720,13 @@ sub git_blame_common {
 	} elsif ($format eq 'data') {
 		# run git-blame --incremental
 		open $fd, "-|", git_cmd(), "blame", "--incremental",
+			$input_params{ignore_whitespace} ? '-w' : (),
 			$hash_base, "--", $file_name
 			or die_error(500, "Open git-blame --incremental failed");
 	} else {
 		# run git-blame --porcelain
 		open $fd, "-|", git_cmd(), "blame", '-p',
+			$input_params{ignore_whitespace} ? '-w' : (),
 			$hash_base, '--', $file_name
 			or die_error(500, "Open git-blame --porcelain failed");
 	}
