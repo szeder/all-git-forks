@@ -1,0 +1,9 @@
+SECURITY
+--------
+The fetch and push protocols are not designed to prevent a malicious
+server from stealing data from your repository that you did not intend to
+share. The possible attacks are similar to the ones described in the
+"SECURITY" section of linkgit:gitnamespaces[7]. If you have private data
+that you need to protect from the server, keep it in a separate
+repository.
+
