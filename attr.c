@@ -107,7 +107,7 @@ static struct git_attr *git_attr_internal(const char *name, int len)
 	return a;
 }
 
-struct git_attr *git_attr(const char *name)
+static struct git_attr *git_attr(const char *name)
 {
 	return git_attr_internal(name, strlen(name));
 }
