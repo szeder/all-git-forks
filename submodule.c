@@ -531,6 +531,14 @@ static int submodule_has_commits(const char *path, struct sha1_array *commits)
 static int submodule_needs_pushing(const char *path, struct sha1_array *commits)
 {
 	if (!submodule_has_commits(path, commits))
+		/* NEEDSWORK: The correct answer here is "We do not
+		 * know" instead of "No push needed". We currently
+		 * proceed pushing here as if the submodules commits are
+		 * available on a remote. Since we can not check the
+		 * remote availability for this submodule we should
+		 * consider changing this behavior to: Stop here and
+		 * tell the user how to skip this check if wanted.
+		 */
 		return 0;
 
 	if (for_each_remote_ref_submodule(path, has_remote, NULL) > 0) {
