@@ -7,15 +7,21 @@ test_description='checkout can handle submodules'
 
 test_expect_success 'setup' '
 	mkdir submodule &&
-	(cd submodule &&
-	 git init &&
-	 test_commit first) &&
-	git add submodule &&
+	(
+		cd submodule &&
+		git init &&
+		test_commit first
+	) &&
+	echo first >file &&
+	git add file submodule &&
 	test_tick &&
 	git commit -m superproject &&
-	(cd submodule &&
-	 test_commit second) &&
-	git add submodule &&
+	(
+		cd submodule &&
+		test_commit second
+	) &&
+	echo second > file &&
+	git add file submodule &&
 	test_tick &&
 	git commit -m updated.superproject
 '
@@ -37,7 +43,8 @@ test_expect_success '"checkout <submodule>" updates the index only' '
 	git checkout HEAD^ submodule &&
 	test_must_fail git diff-files --quiet &&
 	git checkout HEAD submodule &&
-	git diff-files --quiet
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD
 '
 
 test_expect_success '"checkout <submodule>" honors diff.ignoreSubmodules' '
@@ -63,8 +70,310 @@ test_expect_success '"checkout <submodule>" honors submodule.*.ignore from .git/
 	! test -s actual
 '
 
+# TODO: hardcode $2
+# use flag instead of checking for directory.
+submodule_creation_must_succeed() {
+	# checkout base ($1)
+	git checkout -f --recurse-submodules $1 &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached $1 &&
+
+	# checkout target ($2)
+	if test -d submodule; then
+		echo change >>submodule/first.t &&
+		test_must_fail git checkout --recurse-submodules $2 &&
+		git checkout -f --recurse-submodules $2
+	else
+		git checkout --recurse-submodules $2
+	fi &&
+	test -e submodule/.git &&
+	test -f submodule/first.t &&
+	test -f submodule/second.t &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached $2
+}
+
+# TODO: inline this:
+submodule_removal_must_succeed() {
+
+	# checkout base ($1)
+	git checkout -f --recurse-submodules $1 &&
+	git submodule update -f . &&
+	test -e submodule/.git &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached $1 &&
+
+	# checkout target ($2)
+	echo change >>submodule/first.t &&
+	test_must_fail git checkout --recurse-submodules $2 &&
+	git checkout -f --recurse-submodules $2 &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached $2 &&
+	! test -d submodule
+}
+
+test_expect_success '"check --recurse-submodules" removes deleted submodule' '
+	# first some setup:
+	git config -f .gitmodules submodule.submodule.path submodule &&
+	git config -f .gitmodules submodule.submodule.url ./submodule.bare &&
+	git -C submodule clone --bare . ../submodule.bare &&
+	echo submodule.bare >>.gitignore &&
+	git add .gitignore .gitmodules submodule &&
+	git commit -m "submodule registered with a gitmodules file" &&
+
+	# for testing this case, do it in a fresh clone with the submodules
+	# git dir inside the superprojects .git/modules dir.
+	git clone --recurse-submodules . super &&
+	(
+		cd super &&
+		git checkout -b base &&
+		git checkout -b delete_submodule &&
+		rm -rf submodule &&
+		git rm submodule &&
+		git commit -m "submodule deleted" &&
+		submodule_removal_must_succeed base delete_submodule
+	)
+'
+
+test_expect_success '"checkout --recurse-submodules" does not delete submodule with .git dir inside' '
+	git fetch super delete_submodule &&
+	git checkout --recurse-submodules FETCH_HEAD 2>output.err &&
+	test_i18ngrep "cannot remove submodule" output.err &&
+	test -d submodule/.git
+'
+
+test_expect_success '"checkout --recurse-submodules" repopulates submodule' '
+	(
+		cd super &&
+		submodule_creation_must_succeed delete_submodule base
+	)
+'
+
+test_expect_success '"checkout --recurse-submodules" repopulates submodule in existing directory' '
+	(
+		cd super &&
+		git checkout --recurse-submodules delete_submodule &&
+		mkdir submodule &&
+		submodule_creation_must_succeed delete_submodule base
+	)
+'
+
+test_expect_success '"checkout --recurse-submodules" replaces submodule with files' '
+	(
+		cd super
+		git checkout -f base &&
+		git checkout -b replace_submodule_with_file &&
+		git rm -f submodule &&
+		echo "file instead" >submodule &&
+		git add submodule &&
+		git commit -m "submodule replaced" &&
+		git checkout -f base &&
+		git submodule update -f . &&
+		git checkout --recurse-submodules replace_submodule_with_file &&
+		test -f submodule
+	)
+'
+
+test_expect_success '"checkout --recurse-submodules" removes files and repopulates submodule' '
+	(
+		cd super &&
+		submodule_creation_must_succeed replace_submodule_with_file base
+	)
+'
+
+test_expect_success '"checkout --recurse-submodules" replaces submodule with a directory' '
+	(
+		cd super
+		git checkout -f base &&
+		git checkout -b replace_submodule_with_dir &&
+		git rm -f submodule &&
+		mkdir -p submodule/dir &&
+		echo content >submodule/dir/file &&
+		git add submodule &&
+		git commit -m "submodule replaced with a directory (file inside)" &&
+		git checkout -f base &&
+		git submodule update -f . &&
+		git checkout --recurse-submodules replace_submodule_with_dir &&
+		test -d submodule &&
+		! test -e submodule/.git &&
+		! test -f submodule/first.t &&
+		! test -f submodule/second.t &&
+		test -d submodule/dir
+	)
+'
+
+test_expect_success '"checkout --recurse-submodules" removes the directory and repopulates submodule' '
+	(
+		cd super
+		submodule_creation_must_succeed replace_submodule_with_dir base
+	)
+'
+
+test_expect_success SYMLINKS '"checkout --recurse-submodules" replaces submodule with a link' '
+	(
+		cd super
+		git checkout -f base &&
+		git checkout -b replace_submodule_with_link &&
+		git rm -f submodule &&
+		ln -s submodule &&
+		git add submodule &&
+		git commit -m "submodule replaced with a link" &&
+		git checkout -f base &&
+		git submodule update -f . &&
+		git checkout --recurse-submodules replace_submodule_with_link &&
+		test -L submodule
+	)
+'
+
+test_expect_success SYMLINKS '"checkout --recurse-submodules" removes the link and repopulates submodule' '
+	(
+		cd super
+		submodule_creation_must_succeed replace_submodule_with_link base
+	)
+'
+
+test_expect_success '"checkout --recurse-submodules" updates the submodule' '
+	(
+		cd super
+		git checkout --recurse-submodules base &&
+		git diff-files --quiet &&
+		git diff-index --quiet --cached HEAD &&
+		git checkout -b updated_submodule &&
+		(
+			cd submodule &&
+			echo x >>first.t &&
+			git add first.t &&
+			test_commit third
+		) &&
+		git add submodule &&
+		test_tick &&
+		git commit -m updated.superproject &&
+		git checkout --recurse-submodules base &&
+		git diff-files --quiet &&
+		git diff-index --quiet --cached HEAD
+	)
+'
+
+test_expect_failure 'untracked file is not deleted' '
+	(
+		cd super &&
+		git checkout --recurse-submodules base &&
+		echo important >submodule/untracked &&
+		test_must_fail git checkout --recurse-submodules delete_submodule &&
+		git checkout -f --recurse-submodules delete_submodule
+	)
+'
+
+test_expect_success 'ignored file works just fine' '
+	(
+		cd super &&
+		git checkout --recurse-submodules base &&
+		echo important >submodule/ignored &&
+		echo ignored >.git/modules/submodule/info/exclude &&
+		git checkout --recurse-submodules delete_submodule
+	)
+'
+
+test_expect_success 'dirty file file is not deleted' '
+	(
+		cd super &&
+		git checkout --recurse-submodules base &&
+		echo important >submodule/first.t &&
+		test_must_fail git checkout --recurse-submodules delete_submodule &&
+		git checkout -f --recurse-submodules delete_submodule
+	)
+'
+
+test_expect_success 'added to index is not deleted' '
+	(
+		cd super &&
+		git checkout --recurse-submodules base &&
+		echo important >submodule/to_index &&
+		git -C submodule add to_index &&
+		test_must_fail git checkout --recurse-submodules delete_submodule &&
+		git checkout -f --recurse-submodules delete_submodule
+	)
+'
+
+# This is ok in theory, we just need to make sure
+# the garbage collection doesn't eat the commit.
+test_expect_success 'different commit prevents from deleting' '
+	(
+		cd super &&
+		git checkout --recurse-submodules base &&
+		echo important >submodule/to_index &&
+		git -C submodule add to_index &&
+		test_must_fail git checkout --recurse-submodules delete_submodule &&
+		git checkout -f --recurse-submodules delete_submodule
+	)
+'
+
+test_expect_failure '"checkout --recurse-submodules" needs -f to update a modifed submodule commit' '
+	(
+		cd submodule &&
+		git checkout --recurse-submodules HEAD^
+	) &&
+	test_must_fail git checkout --recurse-submodules master &&
+	test_must_fail git diff-files --quiet submodule &&
+	git diff-files --quiet file &&
+	git checkout --recurse-submodules -f master &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD
+'
+
+test_expect_failure '"checkout --recurse-submodules" needs -f to update modifed submodule content' '
+	echo modified >submodule/second.t &&
+	test_must_fail git checkout --recurse-submodules HEAD^ &&
+	test_must_fail git diff-files --quiet submodule &&
+	git diff-files --quiet file &&
+	git checkout --recurse-submodules -f HEAD^ &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD &&
+	git checkout --recurse-submodules -f master &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD
+'
+
+test_expect_failure '"checkout --recurse-submodules" ignores modified submodule content that would not be changed' '
+	echo modified >expected &&
+	cp expected submodule/first.t &&
+	git checkout --recurse-submodules HEAD^ &&
+	test_cmp expected submodule/first.t &&
+	test_must_fail git diff-files --quiet submodule &&
+	git diff-index --quiet --cached HEAD &&
+	git checkout --recurse-submodules -f master &&
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD
+'
+
+test_expect_failure '"checkout --recurse-submodules" does not care about untracked submodule content' '
+	echo untracked >submodule/untracked &&
+	git checkout --recurse-submodules master &&
+	git diff-files --quiet --ignore-submodules=untracked &&
+	git diff-index --quiet --cached HEAD &&
+	rm submodule/untracked
+'
+
+test_expect_failure '"checkout --recurse-submodules" needs -f when submodule commit is not present (but does fail anyway)' '
+	git checkout --recurse-submodules -b bogus_commit master &&
+	git update-index --cacheinfo 160000 0123456789012345678901234567890123456789 submodule &&
+	BOGUS_TREE=$(git write-tree) &&
+	BOGUS_COMMIT=$(echo "bogus submodule commit" | git commit-tree $BOGUS_TREE) &&
+	git commit -m "bogus submodule commit" &&
+	git checkout --recurse-submodules -f master &&
+	test_must_fail git checkout --recurse-submodules bogus_commit &&
+	git diff-files --quiet &&
+	test_must_fail git checkout --recurse-submodules -f bogus_commit &&
+	test_must_fail git diff-files --quiet submodule &&
+	git diff-files --quiet file &&
+	git diff-index --quiet --cached HEAD &&
+	git checkout --recurse-submodules -f master
+'
+
+KNOWN_FAILURE_RECURSE_SUBMODULE_SERIES_BREAKS_REPLACE_SUBMODULE_TEST=1
 test_submodule_switch "git checkout"
 
+KNOWN_FAILURE_RECURSE_SUBMODULE_SERIES_BREAKS_REPLACE_SUBMODULE_TEST=
 test_submodule_forced_switch "git checkout -f"
 
 test_done
