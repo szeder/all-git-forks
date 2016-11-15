@@ -74,6 +74,8 @@ extern unsigned is_submodule_modified(const char *path, int ignore_untracked);
 extern int is_submodule_populated(const char *path);
 extern int submodule_uses_gitfile(const char *path);
 extern int ok_to_remove_submodule(const char *path);
+extern int is_submodule_checkout_safe(const char *path,
+				      const struct object_id *oid);
 extern int merge_submodule(unsigned char result[20], const char *path,
 			   const unsigned char base[20],
 			   const unsigned char a[20],

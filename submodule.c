@@ -1201,6 +1201,28 @@ int ok_to_remove_submodule(const char *path)
 	return ok_to_remove;
 }
 
+int is_submodule_checkout_safe(const char *path, const struct object_id *oid)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+
+	if (!is_submodule_populated(path))
+		/* The submodule is not populated, it's safe to check it out */
+		/*
+		 * TODO: When git learns to re-populate submodules, a check must be
+		 * added here to assert that no local files will be overwritten.
+		 */
+		return 1;
+
+	argv_array_pushl(&cp.args, "read-tree", "-n", "-m", "HEAD",
+			 sha1_to_hex(oid->hash), NULL);
+
+	prepare_submodule_repo_env(&cp.env_array);
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.dir = path;
+	return run_command(&cp) == 0;
+}
+
 static int find_first_merges(struct object_array *result, const char *path,
 		struct commit *a, struct commit *b)
 {
