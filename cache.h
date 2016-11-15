@@ -2018,4 +2018,6 @@ void sleep_millisec(int millisec);
  */
 void safe_create_dir(const char *dir, int share);
 
+void remove_subtree_or_die(const char *path);
+
 #endif /* CACHE_H */

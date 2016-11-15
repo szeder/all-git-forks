@@ -65,6 +65,7 @@ extern void set_config_update_recurse_submodules(int value);
  */
 extern int submodule_is_interesting(const char *path, const unsigned char *sha1);
 extern int submodules_interesting_for_update(void);
+extern int depopulate_submodule(const char *path);
 extern void check_for_new_submodule_commits(unsigned char new_sha1[20]);
 extern int fetch_populated_submodules(const struct argv_array *options,
 			       const char *prefix, int command_line_option,
