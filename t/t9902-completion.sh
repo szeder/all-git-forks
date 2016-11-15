@@ -447,6 +447,7 @@ test_expect_success 'double dash "git checkout"' '
 	--conflict=
 	--orphan Z
 	--patch Z
+	--recurse-submodules Z
 	EOF
 '
 
