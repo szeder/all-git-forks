@@ -543,7 +543,9 @@ static void wt_status_collect_updated_cb(struct diff_queue_struct *q,
 static void wt_status_collect_changes_worktree(struct wt_status *s)
 {
 	struct rev_info rev;
+	uint64_t start_time;
 
+	start_time = getnanotime();
 	init_revisions(&rev, NULL);
 	setup_revisions(0, NULL, &rev, NULL);
 	rev.diffopt.output_format |= DIFF_FORMAT_CALLBACK;
@@ -558,13 +560,16 @@ static void wt_status_collect_changes_worktree(struct wt_status *s)
 	rev.diffopt.format_callback_data = s;
 	copy_pathspec(&rev.prune_data, &s->pathspec);
 	run_diff_files(&rev, 0);
+	trace_performance_since(start_time, "wt-status:worktree");
 }
 
 static void wt_status_collect_changes_index(struct wt_status *s)
 {
 	struct rev_info rev;
 	struct setup_revision_opt opt;
+	uint64_t start_time;
 
+	start_time = getnanotime();
 	init_revisions(&rev, NULL);
 	memset(&opt, 0, sizeof(opt));
 	opt.def = s->is_initial ? EMPTY_TREE_SHA1_HEX : s->reference;
@@ -593,12 +598,15 @@ static void wt_status_collect_changes_index(struct wt_status *s)
 	rev.diffopt.break_opt = 0;
 	copy_pathspec(&rev.prune_data, &s->pathspec);
 	run_diff_index(&rev, 1);
+	trace_performance_since(start_time, "wt-status:index");
 }
 
 static void wt_status_collect_changes_initial(struct wt_status *s)
 {
 	int i;
+	uint64_t start_time;
 
+	start_time = getnanotime();
 	for (i = 0; i < active_nr; i++) {
 		struct string_list_item *it;
 		struct wt_status_change_data *d;
@@ -627,6 +635,7 @@ static void wt_status_collect_changes_initial(struct wt_status *s)
 			hashcpy(d->oid_index.hash, ce->sha1);
 		}
 	}
+	trace_performance_since(start_time, "wt-status:initial");
 }
 
 static void wt_status_collect_untracked(struct wt_status *s)
@@ -634,10 +643,12 @@ static void wt_status_collect_untracked(struct wt_status *s)
 	int i;
 	struct dir_struct dir;
 	uint64_t t_begin = getnanotime();
+	uint64_t start_time;
 
 	if (!s->show_untracked_files)
 		return;
 
+	start_time = getnanotime();
 	memset(&dir, 0, sizeof(dir));
 	if (s->show_untracked_files != SHOW_ALL_UNTRACKED_FILES)
 		dir.flags |=
@@ -647,9 +658,13 @@ static void wt_status_collect_untracked(struct wt_status *s)
 	else
 		dir.untracked = the_index.untracked;
 	setup_standard_excludes(&dir);
+	trace_performance_since(start_time, "wt-status:untracked:setup");
 
+	start_time = getnanotime();
 	fill_directory(&dir, &s->pathspec);
+	trace_performance_since(start_time, "wt-status:untracked:fill-directory");
 
+	start_time = getnanotime();
 	for (i = 0; i < dir.nr; i++) {
 		struct dir_entry *ent = dir.entries[i];
 		if (cache_name_is_other(ent->name, ent->len) &&
@@ -657,7 +672,9 @@ static void wt_status_collect_untracked(struct wt_status *s)
 			string_list_insert(&s->untracked, ent->name);
 		free(ent);
 	}
+	trace_performance_since(start_time, "wt-status:untracked:loop-1");
 
+	start_time = getnanotime();
 	for (i = 0; i < dir.ignored_nr; i++) {
 		struct dir_entry *ent = dir.ignored[i];
 		if (cache_name_is_other(ent->name, ent->len) &&
@@ -665,13 +682,16 @@ static void wt_status_collect_untracked(struct wt_status *s)
 			string_list_insert(&s->ignored, ent->name);
 		free(ent);
 	}
+	trace_performance_since(start_time, "wt-status:untracked:loop-2");
 
+	start_time = getnanotime();
 	free(dir.entries);
 	free(dir.ignored);
 	clear_directory(&dir);
 
 	if (advice_status_u_option)
 		s->untracked_in_ms = (getnanotime() - t_begin) / 1000000;
+	trace_performance_since(start_time, "wt-status:untracked:cleanup");
 }
 
 void wt_status_collect(struct wt_status *s)

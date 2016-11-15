@@ -8,6 +8,9 @@ static volatile long enabled;
 static struct hashmap map;
 static CRITICAL_SECTION mutex;
 
+int fscache_sum_take_mutex;
+int fscache_sum_create_event;
+
 /*
  * An entry in the file system cache. Used for both entire directory listings
  * and file entries.
@@ -171,6 +174,13 @@ static struct fsentry *fsentry_create_list(const struct fsentry *dir)
 	int wlen;
 	struct fsentry *list, **phead;
 	DWORD err;
+	static int sum_calls = 0;
+	int value;
+	DWORD dw_thread;
+
+	value = InterlockedIncrement(&sum_calls);
+	dw_thread = GetCurrentThreadId();
+	trace_printf("fsentry_create_list[0x%08x] [%07d]: [%.*s]\n", dw_thread, value, dir->len, dir->name);
 
 	/* convert name to UTF-16 and check length */
 	if ((wlen = xutftowcs_path_ex(pattern, dir->name, MAX_LONG_PATH,
@@ -180,6 +190,9 @@ static struct fsentry *fsentry_create_list(const struct fsentry *dir)
 	/*
 	 * append optional '\' and wildcard '*'. Note: we need to use '\' as
 	 * Windows doesn't translate '/' to '\' for "\\?\"-prefixed paths.
+	 *
+	 * BUGBUG: the value in dir->name has forward slashes in it, so either
+	 * BUGBUG: the above comment is wrong, or we are not using "\\?\" paths.
 	 */
 	if (wlen)
 		pattern[wlen++] = '\\';
@@ -277,6 +290,7 @@ static struct fsentry *fscache_get_wait(struct fsentry *key)
 
 	/* create an event and link our key to the future entry */
 	key->hwait = CreateEvent(NULL, TRUE, FALSE, NULL);
+	fscache_sum_create_event++;
 	key->next = fse->next;
 	fse->next = key;
 
@@ -285,6 +299,7 @@ static struct fsentry *fscache_get_wait(struct fsentry *key)
 	WaitForSingleObject(key->hwait, INFINITE);
 	CloseHandle(key->hwait);
 	EnterCriticalSection(&mutex);
+	fscache_sum_take_mutex++;
 
 	/* repeat cache lookup */
 	return hashmap_get(&map, key, NULL);
@@ -298,6 +313,8 @@ static struct fsentry *fscache_get(struct fsentry *key)
 	struct fsentry *fse, *future, *waiter;
 
 	EnterCriticalSection(&mutex);
+	fscache_sum_take_mutex++;
+
 	/* check if entry is in cache */
 	fse = fscache_get_wait(key);
 	if (fse) {
@@ -326,6 +343,7 @@ static struct fsentry *fscache_get(struct fsentry *key)
 	LeaveCriticalSection(&mutex);
 	fse = fsentry_create_list(future);
 	EnterCriticalSection(&mutex);
+	fscache_sum_take_mutex++;
 
 	/* remove future entry and signal waiting threads */
 	hashmap_remove(&map, future, NULL);
@@ -389,6 +407,7 @@ int fscache_enable(int enable)
 		opendir = dirent_opendir;
 		lstat = mingw_lstat;
 		EnterCriticalSection(&mutex);
+		fscache_sum_take_mutex++;
 		fscache_clear();
 		LeaveCriticalSection(&mutex);
 	}

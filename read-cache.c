@@ -1209,12 +1209,15 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	const char *typechange_fmt;
 	const char *added_fmt;
 	const char *unmerged_fmt;
+	uint64_t start_time;
+	int sum_replaced = 0;
 
 	modified_fmt = (in_porcelain ? "M\t%s\n" : "%s: needs update\n");
 	deleted_fmt = (in_porcelain ? "D\t%s\n" : "%s: needs update\n");
 	typechange_fmt = (in_porcelain ? "T\t%s\n" : "%s needs update\n");
 	added_fmt = (in_porcelain ? "A\t%s\n" : "%s needs update\n");
 	unmerged_fmt = (in_porcelain ? "U\t%s\n" : "%s: needs merge\n");
+	start_time = getnanotime();
 	for (i = 0; i < istate->cache_nr; i++) {
 		struct cache_entry *ce, *new;
 		int cache_errno = 0;
@@ -1277,7 +1280,9 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 		}
 
 		replace_index_entry(istate, i, new);
+		sum_replaced++;
 	}
+	trace_performance_since(start_time, "refresh_index: [replaced %d]", sum_replaced);
 	return has_errors;
 }
 
@@ -1377,15 +1382,18 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	git_SHA_CTX c;
 	unsigned char sha1[20];
 	int hdr_version;
+	uint64_t start_time;
 
 	if (hdr->hdr_signature != htonl(CACHE_SIGNATURE))
 		return error("bad signature");
 	hdr_version = ntohl(hdr->hdr_version);
 	if (hdr_version < INDEX_FORMAT_LB || INDEX_FORMAT_UB < hdr_version)
 		return error("bad index version %d", hdr_version);
+	start_time = getnanotime();
 	git_SHA1_Init(&c);
 	git_SHA1_Update(&c, hdr, size - 20);
 	git_SHA1_Final(sha1, &c);
+	trace_performance_since(start_time, "do_read_index:SHA1:verify_hdr");
 	if (hashcmp(sha1, (unsigned char *)hdr + size - 20))
 		return error("bad index file sha1 signature");
 	return 0;
@@ -1578,6 +1586,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	void *mmap;
 	size_t mmap_size;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+	uint64_t start_time;
 
 	if (istate->initialized)
 		return istate->cache_nr;
@@ -1620,6 +1629,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		previous_name = NULL;
 
 	src_offset = sizeof(*hdr);
+	start_time = getnanotime();
 	for (i = 0; i < istate->cache_nr; i++) {
 		struct ondisk_cache_entry *disk_ce;
 		struct cache_entry *ce;
@@ -1631,10 +1641,12 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 
 		src_offset += consumed;
 	}
+	trace_performance_since(start_time, "do_read_index:parse_entries");
 	strbuf_release(&previous_name_buf);
 	istate->timestamp.sec = st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 
+	start_time = getnanotime();
 	while (src_offset <= mmap_size - 20 - 8) {
 		/* After an array of active_nr index entries,
 		 * there can be arbitrary number of extended
@@ -1653,6 +1665,7 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		src_offset += 8;
 		src_offset += extsize;
 	}
+	trace_performance_since(start_time, "do_read_index:parse_extensions");
 	munmap(mmap, mmap_size);
 	return istate->cache_nr;
 
@@ -2025,7 +2038,9 @@ static int do_write_index(struct index_state *istate, int newfd,
 	int entries = istate->cache_nr;
 	struct stat st;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+	uint64_t start_time;
 
+	start_time = getnanotime();
 	for (i = removed = extended = 0; i < entries; i++) {
 		if (cache[i]->ce_flags & CE_REMOVE)
 			removed++;
@@ -2080,7 +2095,9 @@ static int do_write_index(struct index_state *istate, int newfd,
 			return -1;
 	}
 	strbuf_release(&previous_name_buf);
+	trace_performance_since(start_time, "do_write_index:cache_entries");
 
+	start_time = getnanotime();
 	/* Write extension data here */
 	if (!strip_extensions && istate->split_index) {
 		struct strbuf sb = STRBUF_INIT;
@@ -2128,6 +2145,8 @@ static int do_write_index(struct index_state *istate, int newfd,
 
 	if (ce_flush(&c, newfd, istate->sha1) || fstat(newfd, &st))
 		return -1;
+	trace_performance_since(start_time, "do_write_index:extensions");
+
 	istate->timestamp.sec = (unsigned int)st.st_mtime;
 	istate->timestamp.nsec = ST_MTIME_NSEC(st);
 	return 0;
