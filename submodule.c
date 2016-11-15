@@ -914,6 +914,17 @@ out:
 	return spf.result;
 }
 
+int is_submodule_populated(const char *path)
+{
+	int retval = 0;
+	struct strbuf gitdir = STRBUF_INIT;
+	strbuf_addf(&gitdir, "%s/.git", path);
+	if (resolve_gitdir(gitdir.buf))
+		retval = 1;
+	strbuf_release(&gitdir);
+	return retval;
+}
+
 unsigned is_submodule_modified(const char *path, int ignore_untracked)
 {
 	ssize_t len;
