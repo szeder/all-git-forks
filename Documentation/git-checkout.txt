@@ -260,8 +260,9 @@ section of linkgit:git-add[1] to learn how to operate the `--patch` mode.
 	Using --recurse-submodules will update the content of all initialized
 	submodules according to the commit recorded in the superproject. If
 	local modifications in a submodule would be overwritten the checkout
-	will fail until `-f` is used. If nothing (or --no-recurse-submodules)
-	is used, the work trees of submodules will not be updated.
+	will fail until `-f` is used. If `--no-recurse-submodules` is used,
+	the work trees of submodules will not be updated. If no command line
+	argument is given, `checkout.recurseSubmodules` is used as a default.
 
 <branch>::
 	Branch to checkout; if it refers to a branch (i.e., a name that,

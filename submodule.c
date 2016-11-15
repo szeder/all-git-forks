@@ -160,10 +160,10 @@ int submodule_config(const char *var, const char *value, void *cb)
 		return 0;
 	} else if (starts_with(var, "submodule."))
 		return parse_submodule_config_option(var, value);
-	else if (!strcmp(var, "fetch.recursesubmodules")) {
+	else if (!strcmp(var, "fetch.recursesubmodules"))
 		config_fetch_recurse_submodules = parse_fetch_recurse_submodules_arg(var, value);
-		return 0;
-	}
+	else if (!strcmp(var, "checkout.recursesubmodules"))
+		config_update_recurse_submodules = parse_update_recurse_submodules_arg(var, value);
 	return 0;
 }
 
