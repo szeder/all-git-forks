@@ -91,7 +91,9 @@ static void rehash(struct hashmap *map, unsigned int newsize)
 {
 	unsigned int i, oldsize = map->tablesize;
 	struct hashmap_entry **oldtable = map->table;
+	uint64_t start_time;
 
+	start_time = getnanotime();
 	alloc_table(map, newsize);
 	for (i = 0; i < oldsize; i++) {
 		struct hashmap_entry *e = oldtable[i];
@@ -104,6 +106,7 @@ static void rehash(struct hashmap *map, unsigned int newsize)
 		}
 	}
 	free(oldtable);
+	trace_performance_since(start_time, "hashmap:rehash [old %d][new %d]", oldsize, newsize);
 }
 
 static inline struct hashmap_entry **find_entry_ptr(const struct hashmap *map,
