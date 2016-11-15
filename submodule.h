@@ -94,4 +94,8 @@ extern int parallel_submodules(void);
  */
 extern void prepare_submodule_repo_env(struct argv_array *out);
 
+extern void schedule_submodule_for_update(const struct cache_entry *ce,
+					  int new);
+extern int update_submodules(int force);
+
 #endif

@@ -308,6 +308,75 @@ static void print_submodule_summary(struct rev_info *rev, FILE *f,
 	strbuf_release(&sb);
 }
 
+static int update_submodule(const char *path, const struct object_id *oid,
+			    int force, int is_new)
+{
+	const char *git_dir;
+	struct child_process cp = CHILD_PROCESS_INIT;
+	const struct submodule *sub = submodule_from_path(null_sha1, path);
+
+	if (!sub || !sub->name)
+		return -1;
+
+	git_dir = resolve_gitdir(git_common_path("modules/%s", sub->name));
+
+	if (!git_dir)
+		return -1;
+
+	if (is_new)
+		connect_work_tree_and_git_dir(path, git_dir);
+
+	/* update index via `read-tree --reset sha1` */
+	argv_array_pushl(&cp.args, "read-tree",
+				   force ? "--reset" : "-m",
+				   "-u", sha1_to_hex(oid->hash), NULL);
+	prepare_submodule_repo_env(&cp.env_array);
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.dir = path;
+	if (run_command(&cp)) {
+		warning(_("reading the index in submodule '%s' failed"), path);
+		child_process_clear(&cp);
+		return -1;
+	}
+
+	/* write index to working dir */
+	child_process_clear(&cp);
+	child_process_init(&cp);
+	argv_array_pushl(&cp.args, "checkout-index", "-a", NULL);
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.dir = path;
+	if (force)
+		argv_array_push(&cp.args, "-f");
+
+	if (run_command(&cp)) {
+		warning(_("populating the working directory in submodule '%s' failed"), path);
+		child_process_clear(&cp);
+		return -1;
+	}
+
+	/* get the HEAD right */
+	child_process_clear(&cp);
+	child_process_init(&cp);
+	argv_array_pushl(&cp.args, "checkout", "--recurse-submodules", NULL);
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.dir = path;
+	if (force)
+		argv_array_push(&cp.args, "-f");
+	argv_array_push(&cp.args, sha1_to_hex(oid->hash));
+
+	if (run_command(&cp)) {
+		warning(_("setting the HEAD in submodule '%s' failed"), path);
+		child_process_clear(&cp);
+		return -1;
+	}
+
+	child_process_clear(&cp);
+	return 0;
+}
+
 int depopulate_submodule(const char *path)
 {
 	int ret = 0;
@@ -1335,4 +1404,52 @@ void prepare_submodule_repo_env(struct argv_array *out)
 			argv_array_push(out, *var);
 	}
 	argv_array_push(out, "GIT_DIR=.git");
+}
+
+struct scheduled_submodules_update_type {
+	const char *path;
+	const struct object_id *oid;
+	/*
+	 * Do we need to perform a complete checkout or just incremental
+	 * update?
+	 */
+	unsigned is_new:1;
+} *scheduled_submodules;
+#define SCHEDULED_SUBMODULES_INIT {NULL, NULL}
+
+int scheduled_submodules_nr, scheduled_submodules_alloc;
+
+void schedule_submodule_for_update(const struct cache_entry *ce, int is_new)
+{
+	struct scheduled_submodules_update_type *ssu;
+	ALLOC_GROW(scheduled_submodules,
+		   scheduled_submodules_nr + 1,
+		   scheduled_submodules_alloc);
+	ssu = &scheduled_submodules[scheduled_submodules_nr++];
+	ssu->path = ce->name;
+	ssu->oid = &ce->oid;
+	ssu->is_new = !!is_new;
+}
+
+int update_submodules(int force)
+{
+	int i;
+	gitmodules_config();
+
+	/*
+	 * NEEDSWORK: As submodule updates can potentially take some
+	 * time each and they do not overlap (i.e. no d/f conflicts;
+	 * this can be parallelized using the run_commands.h API.
+	 */
+	for (i = 0; i < scheduled_submodules_nr; i++) {
+		struct scheduled_submodules_update_type *ssu =
+			&scheduled_submodules[i];
+
+		if (submodule_is_interesting(ssu->path, null_sha1))
+			update_submodule(ssu->path, ssu->oid,
+					 force, ssu->is_new);
+	}
+
+	scheduled_submodules_nr = 0;
+	return 0;
 }
