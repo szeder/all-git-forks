@@ -74,16 +74,15 @@ static struct dir_entry *hash_dir_entry(struct index_state *istate,
 		}
 	}
 	
-	if (!use_precomputed_hash) {
-		/* get length of parent directory */
-		while (namelen > 0 && !is_dir_sep(ce->name[namelen - 1]))
-			namelen--;
-		if (namelen <= 0)
-			return NULL;
+	/* get length of parent directory */
+	while (namelen > 0 && !is_dir_sep(ce->name[namelen - 1]))
 		namelen--;
+	if (namelen <= 0)
+		return NULL;
+	namelen--;
 
+	if (!use_precomputed_hash)
 		hash = memihash(ce->name, namelen);
-	}
 
 	/* lookup existing entry for that directory */
 	dir = find_dir_entry__hash(istate, ce->name, namelen, hash);

@@ -116,7 +116,7 @@ static void rehash(struct hashmap *map, unsigned int newsize)
 	struct hashmap_entry **oldtable = map->table;
 	uint64_t start_time;
 
-#if 1
+#if 0
 	{
 		int * pa = (int *)xcalloc(oldsize, sizeof(int));
 		unsigned int k, j;
