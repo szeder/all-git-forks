@@ -58,9 +58,11 @@ extern int fscache_sum_create_event;
  * Note that these hashes will be used by
  * wt_status_collect_untracked() as it scans the worktree
  * and maps observed paths back to the index (optionally
- * ignoring case).  Therefore, we probably only need to
+ * ignoring case).  Therefore, we probably only *NEED* to
  * precompute this for non-skip-worktree items (since
- * status should not observe skipped items).
+ * status should not observe skipped items), but because
+ * lazy_init_name_hash() hashes everything, we force it
+ * here.
  */ 
 static void precompute_istate_hashes(struct cache_entry *ce)
 {
@@ -79,6 +81,13 @@ static void precompute_istate_hashes(struct cache_entry *ce)
 			ce_namelen(ce) - namelen);
 		ce->preload_hash_state =
 			CE_PRELOAD_HASH_STATE__SET | CE_PRELOAD_HASH_STATE__DIR;
+#if 0
+		trace_printf("precompute: [0x%08x,0x%08x] [0x%08x]\n",
+					 ce->preload_hash_dir,
+					 ce->preload_hash_name,
+					 memihash(ce->name, ce_namelen(ce)));
+#endif
+
 	}
 }
 
@@ -101,6 +110,8 @@ static void *preload_thread(void *_data)
 	do {
 		struct cache_entry *ce = *cep++;
 		struct stat st;
+
+		precompute_istate_hashes(ce);
 
 		if (ce_stage(ce))
 			continue;
@@ -125,8 +136,6 @@ static void *preload_thread(void *_data)
 		p->sum_try_lstat++;
 		if (lstat(ce->name, &st))
 			continue;
-
-		precompute_istate_hashes(ce);
 
 		p->sum_try_match_stat++;
 		if (ie_match_stat(index, ce, &st, CE_MATCH_RACY_IS_DIRTY))

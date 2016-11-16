@@ -116,6 +116,27 @@ static void rehash(struct hashmap *map, unsigned int newsize)
 	struct hashmap_entry **oldtable = map->table;
 	uint64_t start_time;
 
+#if 1
+	{
+		int * pa = (int *)xcalloc(oldsize, sizeof(int));
+		unsigned int k, j;
+		for (k=0; k<oldsize; k++) {
+			unsigned int len = 0;
+			struct hashmap_entry *e = oldtable[k];
+			while (e) {
+				len++; /* compute length of bucket[k] */
+				e = e->next;
+			}
+			trace_printf("rehash: (bucket, len) %8d %8d\n", k, len);
+			pa[len]++; /* histogram on bucket length */
+		}
+		for (j=0; j<oldsize; j++) {
+			if (pa[j])
+				trace_printf("histograph: (len, count) %8d %8d\n", j, pa[j]);
+		}
+	}
+#endif
+
 	start_time = getnanotime();
 	alloc_table(map, newsize);
 	for (i = 0; i < oldsize; i++) {

@@ -131,9 +131,10 @@ static void hash_index_entry(struct index_state *istate, struct cache_entry *ce)
 		return;
 	ce->ce_flags |= CE_HASHED;
 
-	h = (ce->preload_hash_state & CE_PRELOAD_HASH_STATE__SET) ?
-		ce->preload_hash_name :
-		memihash(ce->name, ce_namelen(ce));
+	if (ce->preload_hash_state & CE_PRELOAD_HASH_STATE__SET)
+		h = ce->preload_hash_name;
+	else
+		h = memihash(ce->name, ce_namelen(ce));
 	hashmap_entry_init(ce, h);
 	hashmap_add(&istate->name_hash, ce);
 
