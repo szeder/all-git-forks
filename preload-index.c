@@ -43,6 +43,45 @@ struct thread_data {
 extern int fscache_sum_take_mutex;
 extern int fscache_sum_create_event;
 
+/*
+ * Precompute the hash values for this cache_entry
+ * for use in the istate.name_hash and istate.dir_hash.
+ *
+ * If the item is in the root directory, just compute the
+ * hash value (for istate.name_hash) on the full path.
+ *
+ * If the item is in a subdirectory, first compute the
+ * hash value for the immediate parent directory (for
+ * istate.dir_hash) and then the hash value for the full
+ * path by continuing the computation.
+ *
+ * Note that these hashes will be used by
+ * wt_status_collect_untracked() as it scans the worktree
+ * and maps observed paths back to the index (optionally
+ * ignoring case).  Therefore, we probably only need to
+ * precompute this for non-skip-worktree items (since
+ * status should not observe skipped items).
+ */ 
+static void precompute_istate_hashes(struct cache_entry *ce)
+{
+	int namelen = ce_namelen(ce);
+
+	while (namelen > 0 && !is_dir_sep(ce->name[namelen - 1]))
+		namelen--;
+	if (namelen <= 0) {
+		ce->preload_hash_name = memihash(ce->name, ce_namelen(ce));
+		ce->preload_hash_state = CE_PRELOAD_HASH_STATE__SET;
+	} else {
+		namelen--;
+		ce->preload_hash_dir = memihash(ce->name, namelen);
+		ce->preload_hash_name = memihash2(
+			ce->preload_hash_dir, &ce->name[namelen],
+			ce_namelen(ce) - namelen);
+		ce->preload_hash_state =
+			CE_PRELOAD_HASH_STATE__SET | CE_PRELOAD_HASH_STATE__DIR;
+	}
+}
+
 static void *preload_thread(void *_data)
 {
 	int nr;
@@ -86,6 +125,8 @@ static void *preload_thread(void *_data)
 		p->sum_try_lstat++;
 		if (lstat(ce->name, &st))
 			continue;
+
+		precompute_istate_hashes(ce);
 
 		p->sum_try_match_stat++;
 		if (ie_match_stat(index, ce, &st, CE_MATCH_RACY_IS_DIRTY))

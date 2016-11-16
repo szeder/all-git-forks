@@ -50,16 +50,42 @@ static struct dir_entry *hash_dir_entry(struct index_state *istate,
 	 */
 	struct dir_entry *dir;
 	unsigned int hash;
+	int use_precomputed_hash = 0;
 
-	/* get length of parent directory */
-	while (namelen > 0 && !is_dir_sep(ce->name[namelen - 1]))
+	if (ce->preload_hash_state & CE_PRELOAD_HASH_STATE__SET) {
+		/*
+		 * preload-index tried to precompute hashes for us.
+		 *
+		 * if __DIR is not set, we already know the cache-entry
+		 * is in the root directory and does not have a parent
+		 * directory.
+		 *
+		 * preload-index only computes the directory hash for
+		 * the immediate parent directory (not recursive), so
+		 * we are given the full path, we are the outer-most
+		 * call in the recursion and can use the hash.
+		 */
+		if (!(ce->preload_hash_state & CE_PRELOAD_HASH_STATE__DIR))
+			return NULL;
+
+		if (namelen == ce_namelen(ce)) {
+			use_precomputed_hash = 1;
+			hash = ce->preload_hash_dir;
+		}
+	}
+	
+	if (!use_precomputed_hash) {
+		/* get length of parent directory */
+		while (namelen > 0 && !is_dir_sep(ce->name[namelen - 1]))
+			namelen--;
+		if (namelen <= 0)
+			return NULL;
 		namelen--;
-	if (namelen <= 0)
-		return NULL;
-	namelen--;
+
+		hash = memihash(ce->name, namelen);
+	}
 
 	/* lookup existing entry for that directory */
-	hash = memihash(ce->name, namelen);
 	dir = find_dir_entry__hash(istate, ce->name, namelen, hash);
 	if (!dir) {
 		/* not found, create it and add to hash table */
@@ -99,10 +125,16 @@ static void remove_dir_entry(struct index_state *istate, struct cache_entry *ce)
 
 static void hash_index_entry(struct index_state *istate, struct cache_entry *ce)
 {
+	unsigned int h;
+
 	if (ce->ce_flags & CE_HASHED)
 		return;
 	ce->ce_flags |= CE_HASHED;
-	hashmap_entry_init(ce, memihash(ce->name, ce_namelen(ce)));
+
+	h = (ce->preload_hash_state & CE_PRELOAD_HASH_STATE__SET) ?
+		ce->preload_hash_name :
+		memihash(ce->name, ce_namelen(ce));
+	hashmap_entry_init(ce, h);
 	hashmap_add(&istate->name_hash, ce);
 
 	if (ignore_case)

@@ -173,6 +173,11 @@ struct cache_entry {
 	unsigned int ce_flags;
 	unsigned int ce_namelen;
 	unsigned int index;	/* for link extension */
+
+	unsigned int preload_hash_state;
+	unsigned int preload_hash_name;
+	unsigned int preload_hash_dir;
+
 	unsigned char sha1[20];
 	char name[FLEX_ARRAY]; /* more */
 };
@@ -197,6 +202,7 @@ struct cache_entry {
 #define CE_ADDED             (1 << 19)
 
 #define CE_HASHED            (1 << 20)
+
 #define CE_WT_REMOVE         (1 << 22) /* remove in work directory */
 #define CE_CONFLICTED        (1 << 23)
 
@@ -232,6 +238,24 @@ struct cache_entry {
 /* Forward structure decls */
 struct pathspec;
 struct child_process;
+
+/*
+ * Bit set if preload-index precomputed the hash value(s)
+ * for this cache-entry.
+ */ 
+#define CE_PRELOAD_HASH_STATE__SET   (1 << 0)
+/*
+ * Bit set if preload-index also precomputed the hash value
+ * for the parent directory.
+ */ 
+#define CE_PRELOAD_HASH_STATE__DIR   (1 << 1)
+
+// memihash() called during preload-index. Only indicates
+// that cache_entry.preload_hash was computed.  Entry not
+// present in actual index_state.name_hash unless CE_HASHED
+// is set.
+#define CE_PRELOAD_HASH      (1 << 21)
+
 
 /*
  * Copy the sha1 and stat state of a cache entry from one to
