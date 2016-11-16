@@ -1865,6 +1865,7 @@ extern void fprintf_or_die(FILE *, const char *fmt, ...);
 extern int copy_fd(int ifd, int ofd);
 extern int copy_file(const char *dst, const char *src, int mode);
 extern int copy_file_with_time(const char *dst, const char *src, int mode);
+extern int copy_dir_recursively(const char *source, const char *dest);
 
 extern void write_or_die(int fd, const void *buf, size_t count);
 extern void fsync_or_die(int fd, const char *);
