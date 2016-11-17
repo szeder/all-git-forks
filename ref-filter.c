@@ -1542,12 +1542,12 @@ static int cmp_ref_sorting(struct ref_sorting *s, struct ref_array_item *a, stru
 	if (s->version)
 		cmp = versioncmp(va->s, vb->s);
 	else if (cmp_type == FIELD_STR)
-		cmp = strcmp(va->s, vb->s);
+		cmp = s->strcmp(va->s, vb->s);
 	else {
 		if (va->ul < vb->ul)
 			cmp = -1;
 		else if (va->ul == vb->ul)
-			cmp = strcmp(a->refname, b->refname);
+			cmp = s->strcmp(a->refname, b->refname);
 		else
 			cmp = 1;
 	}
@@ -1646,6 +1646,7 @@ struct ref_sorting *ref_default_sorting(void)
 
 	sorting->next = NULL;
 	sorting->atom = parse_ref_filter_atom(cstr_name, cstr_name + strlen(cstr_name));
+	sorting->strcmp = strcmp;
 	return sorting;
 }
 
@@ -1660,6 +1661,7 @@ int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset)
 
 	s = xcalloc(1, sizeof(*s));
 	s->next = *sorting_tail;
+	s->strcmp = strcmp;
 	*sorting_tail = s;
 
 	if (*arg == '-') {
@@ -1669,6 +1671,8 @@ int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset)
 	if (skip_prefix(arg, "version:", &arg) ||
 	    skip_prefix(arg, "v:", &arg))
 		s->version = 1;
+	else if (skip_prefix(arg, "icase:", &arg))
+		s->strcmp = strcasecmp;
 	len = strlen(arg);
 	s->atom = parse_ref_filter_atom(arg, arg+len);
 	return 0;

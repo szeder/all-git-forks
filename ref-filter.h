@@ -30,6 +30,7 @@ struct ref_sorting {
 	int atom; /* index into used_atom array (internal) */
 	unsigned reverse : 1,
 		version : 1;
+	int (*strcmp)(const char *, const char *);
 };
 
 struct ref_array_item {
