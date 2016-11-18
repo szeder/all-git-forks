@@ -232,14 +232,17 @@ static int update_one(struct cache_tree *it,
 	int missing_ok = flags & WRITE_TREE_MISSING_OK;
 	int dryrun = flags & WRITE_TREE_DRY_RUN;
 	int repair = flags & WRITE_TREE_REPAIR;
+	int toplevel = flags & WRITE_TREE_TOPLEVEL;
 	int to_invalidate = 0;
 	int i;
 
 	assert(!(dryrun && repair));
 
+	flags &= ~WRITE_TREE_TOPLEVEL;
 	*skip_count = 0;
 
-	if (0 <= it->entry_count && has_sha1_file(it->sha1))
+	if (0 <= it->entry_count &&
+	    (toplevel ? freshen_object : has_sha1_file)(it->sha1))
 		return it->entry_count;
 
 	/*
