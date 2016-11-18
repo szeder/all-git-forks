@@ -1411,3 +1411,106 @@ out:
 	free(real_sub_git_dir);
 	free(real_common_git_dir);
 }
+
+static struct scheduled_submodules_update_type {
+	const char *path;
+	const struct object_id *oid;
+	/*
+	 * Do we need to perform a complete checkout or just incremental
+	 * update?
+	 */
+	unsigned is_new:1;
+} *scheduled_submodules;
+#define SCHEDULED_SUBMODULES_INIT {NULL, NULL, 0}
+
+static int scheduled_submodules_nr, scheduled_submodules_alloc;
+
+void schedule_submodule_for_update(const struct cache_entry *ce, int is_new)
+{
+	struct scheduled_submodules_update_type *ssu;
+
+	if (!is_interesting_submodule(ce))
+		return;
+
+	ALLOC_GROW(scheduled_submodules,
+		   scheduled_submodules_nr + 1,
+		   scheduled_submodules_alloc);
+	ssu = &scheduled_submodules[scheduled_submodules_nr++];
+	ssu->path = ce->name;
+	ssu->oid = &ce->oid;
+	ssu->is_new = !!is_new;
+}
+
+static int update_submodule(const char *path, const struct object_id *oid,
+			    int force, int is_new)
+{
+	const char *git_dir;
+	struct child_process cp = CHILD_PROCESS_INIT;
+	const struct submodule *sub = submodule_from_path(null_sha1, path);
+
+	if (!sub || !sub->name)
+		return -1;
+
+	git_dir = resolve_gitdir(git_common_path("modules/%s", sub->name));
+
+	if (!git_dir)
+		return -1;
+
+	if (is_new)
+		connect_work_tree_and_git_dir(path, git_dir);
+
+	/* get the HEAD right */
+	prepare_submodule_repo_env(&cp.env_array);
+	argv_array_pushl(&cp.args, "checkout", "--recurse-submodules", NULL);
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.dir = path;
+	if (force || is_new)
+		argv_array_push(&cp.args, "-f");
+	argv_array_push(&cp.args, sha1_to_hex(oid->hash));
+
+	if (run_command(&cp)) {
+		warning(_("checking out the submodule '%s' failed"), path);
+		child_process_clear(&cp);
+		return -1;
+	}
+
+	child_process_clear(&cp);
+	return 0;
+}
+
+int update_submodules(int force)
+{
+	int i;
+	gitmodules_config();
+
+	/*
+	 * NEEDSWORK: As submodule updates can potentially take some
+	 * time each and they do not overlap (i.e. no d/f conflicts;
+	 * this can be parallelized using the run_commands.h API.
+	 */
+	for (i = 0; i < scheduled_submodules_nr; i++) {
+		const struct submodule *sub;
+		struct scheduled_submodules_update_type *ssu =
+			&scheduled_submodules[i];
+
+
+		sub = submodule_from_path(null_sha1, ssu->path);
+
+		switch (sub->update_strategy.type) {
+		case SM_UPDATE_UNSPECIFIED: /* fall thru */
+		case SM_UPDATE_CHECKOUT:
+			update_submodule(ssu->path, ssu->oid,
+					 force, ssu->is_new);
+			break;
+		case SM_UPDATE_REBASE:
+		case SM_UPDATE_MERGE:
+		case SM_UPDATE_NONE:
+		case SM_UPDATE_COMMAND:
+			warning("update strategy for submodule '%s' not supported", ssu->path);
+		}
+	}
+
+	scheduled_submodules_nr = 0;
+	return 0;
+}

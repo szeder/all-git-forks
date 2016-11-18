@@ -96,4 +96,9 @@ extern void prepare_submodule_repo_env(struct argv_array *out);
 extern void absorb_git_dir_into_superproject(const char *prefix,
 					     const char *path,
 					     unsigned flags);
+
+extern void schedule_submodule_for_update(const struct cache_entry *ce,
+					  int new);
+extern int update_submodules(int force);
+
 #endif
