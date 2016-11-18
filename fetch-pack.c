@@ -353,8 +353,10 @@ static int find_common(struct fetch_pack_args *args,
 
 	if (is_repository_shallow())
 		write_shallow_commits(&req_buf, 1, NULL);
-	if (args->depth > 0)
+	if (args->depth > 0) {
 		packet_buf_write(&req_buf, "deepen %d", args->depth);
+		trace_printf("writing: deepen %d", args->depth);
+	}
 	if (args->deepen_since) {
 		unsigned long max_age = approxidate(args->deepen_since);
 		packet_buf_write(&req_buf, "deepen-since %lu", max_age);
@@ -366,6 +368,7 @@ static int find_common(struct fetch_pack_args *args,
 			packet_buf_write(&req_buf, "deepen-not %s", s->string);
 		}
 	}
+	trace_printf("flushing packet");
 	packet_buf_flush(&req_buf);
 	state_len = req_buf.len;
 
