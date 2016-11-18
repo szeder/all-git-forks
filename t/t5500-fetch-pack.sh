@@ -436,6 +436,8 @@ test_expect_success 'setup tests for the --stdin parameter' '
 	) >input.dup
 '
 
+perl -ne 'print sprintf( "%04x", length($_) + 4 ), $_; END { print sprintf( "%04x", 0 ); } ' input >input.pkt || exit 1
+
 test_expect_success 'fetch refs from cmdline' '
 	(
 		cd client &&
@@ -448,7 +450,7 @@ test_expect_success 'fetch refs from cmdline' '
 test_expect_success 'fetch refs from stdin' '
 	(
 		cd client &&
-		git fetch-pack --stdin --no-progress .. <../input
+		git fetch-pack --stdin --stateless-rpc --no-progress .. <../input.pkt
 	) >output &&
 	cut -d " " -f 2 <output | sort >actual &&
 	test_cmp expect actual
