@@ -138,6 +138,7 @@ The placeholders are:
 - '%s': subject
 - '%f': sanitized subject line, suitable for a filename
 - '%b': body
+- '%bT': trailers of body as interpreted by linkgit:git-interpret-trailers[1]
 - '%B': raw body (unwrapped subject and body)
 ifndef::git-rev-list[]
 - '%N': commit notes
