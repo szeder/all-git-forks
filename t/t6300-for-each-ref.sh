@@ -624,4 +624,13 @@ test_expect_success 'Verify usage of %(symref:base) atom' '
 	test_cmp expected actual
 '
 
+test_expect_success 'do not dereference NULL upon %(HEAD) on unborn branch' '
+	test_when_finished "git checkout master" &&
+	git for-each-ref --format="%(HEAD) %(refname:short)" refs/heads/ >actual &&
+	sed -e "s/^\* /  /" actual >expect &&
+	git checkout --orphan HEAD &&
+	git for-each-ref --format="%(HEAD) %(refname:short)" refs/heads/ >actual &&
+	test_cmp expect actual
+'
+
 test_done
