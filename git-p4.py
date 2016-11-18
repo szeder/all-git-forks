@@ -1115,10 +1115,10 @@ class GitLFS(LargeFileSystem):
                 '# Git LFS (see https://git-lfs.github.com/)\n',
                 '#\n',
             ] +
-            ['*.' + self.escapeGitAttributePath(f) + ' filter=lfs -text\n'
+            ['*.' + self.escapeGitAttributePath(f) + ' filter=lfs diff=lfs merge=lfs -text\n'
                 for f in sorted(gitConfigList('git-p4.largeFileExtensions'))
             ] +
-            ['/' + self.escapeGitAttributePath(f) + ' filter=lfs -text\n'
+            ['/' + self.escapeGitAttributePath(f) + ' filter=lfs diff=lfs merge=lfs -text\n'
                 for f in sorted(self.largeFiles) if not self.hasLargeFileExtension(f)
             ]
         )
