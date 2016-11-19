@@ -10,6 +10,7 @@
 #include "attr.h"
 #include "split-index.h"
 #include "dir.h"
+#include "submodule.h"
 
 /*
  * Error messages expected by scripts out of plumbing commands such as
@@ -45,6 +46,9 @@ static const char *unpack_plumbing_errors[NB_UNPACK_TREES_ERROR_TYPES] = {
 
 	/* ERROR_WOULD_LOSE_ORPHANED_REMOVED */
 	"Working tree file '%s' would be removed by sparse checkout update.",
+
+	/* ERROR_WOULD_LOSE_UNTRACKED_SUBMODULE */
+	"Submodule '%s' cannot be deleted as it contains untracked files.",
 };
 
 #define ERRORMSG(o,type) \
@@ -126,6 +130,8 @@ void setup_unpack_trees_porcelain(struct unpack_trees_options *opts,
 		_("The following working tree files would be overwritten by sparse checkout update:\n%s");
 	msgs[ERROR_WOULD_LOSE_ORPHANED_REMOVED] =
 		_("The following working tree files would be removed by sparse checkout update:\n%s");
+	msgs[ERROR_WOULD_LOSE_UNTRACKED_SUBMODULE] =
+		_("Submodule '%s' cannot be deleted as it contains untracked files.");
 
 	opts->show_all_errors = 1;
 	/* rejected paths may not have a static buffer */
@@ -1316,17 +1322,27 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 	if (!lstat(ce->name, &st)) {
 		int flags = CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE;
 		unsigned changed = ie_match_stat(o->src_index, ce, &st, flags);
+
+		if (is_interesting_submodule(ce)) {
+			trace_printf("verify_uptodate_1 %s\n", oid_to_hex(&ce->oid));
+			if (submodule_go_from_to(ce->name,
+					"HEAD", oid_to_hex(&ce->oid), 1, 0))
+				return o->gently ? -1 :
+					add_rejected_path(o, error_type, ce->name);
+			else
+				return 0;
+		}
+
 		if (!changed)
 			return 0;
 		/*
-		 * NEEDSWORK: the current default policy is to allow
-		 * submodule to be out of sync wrt the superproject
-		 * index.  This needs to be tightened later for
-		 * submodules that are marked to be automatically
-		 * checked out.
+		 * Historic default policy was to allow submodule to be out
+		 * of sync wrt the superproject index. If the submodule was
+		 * not considered interesting above, we don't care here.
 		 */
 		if (S_ISGITLINK(ce->ce_mode))
 			return 0;
+
 		errno = 0;
 	}
 	if (errno == ENOENT)
@@ -1365,10 +1381,18 @@ static void invalidate_ce_path(const struct cache_entry *ce,
  * Currently, git does not checkout subprojects during a superproject
  * checkout, so it is not going to overwrite anything.
  */
-static int verify_clean_submodule(const struct cache_entry *ce,
+static int verify_clean_submodule(const char *old_sha1,
+				  const struct cache_entry *ce,
 				  enum unpack_trees_error_types error_type,
 				  struct unpack_trees_options *o)
 {
+	if (!is_interesting_submodule(ce))
+		return 0;
+
+	if (submodule_go_from_to(ce->name, old_sha1,
+				    oid_to_hex(&ce->oid), 1, o->reset))
+		return o->gently ? -1 :
+			add_rejected_path(o, ERROR_WOULD_LOSE_UNTRACKED_SUBMODULE, ce->name);
 	return 0;
 }
 
@@ -1385,16 +1409,18 @@ static int verify_clean_subdirectory(const struct cache_entry *ce,
 	struct dir_struct d;
 	char *pathbuf;
 	int cnt = 0;
-	unsigned char sha1[20];
 
-	if (S_ISGITLINK(ce->ce_mode) &&
-	    resolve_gitlink_ref(ce->name, "HEAD", sha1) == 0) {
-		/* If we are not going to update the submodule, then
+	if (S_ISGITLINK(ce->ce_mode)) {
+		unsigned char sha1[20];
+		int no_HEAD = resolve_gitlink_ref(ce->name, "HEAD", sha1);
+		/*
+		 * If we are not going to update the submodule, then
 		 * we don't care.
 		 */
-		if (!hashcmp(sha1, ce->oid.hash))
+		if (!no_HEAD && !hashcmp(sha1, ce->oid.hash))
 			return 0;
-		return verify_clean_submodule(ce, error_type, o);
+		return verify_clean_submodule(no_HEAD ? NULL : sha1_to_hex(sha1),
+					      ce, error_type, o);
 	}
 
 	/*
@@ -1543,9 +1569,15 @@ static int verify_absent_1(const struct cache_entry *ce,
 			return error_errno("cannot stat '%s'", ce->name);
 		return 0;
 	} else {
-		return check_ok_to_remove(ce->name, ce_namelen(ce),
-					  ce_to_dtype(ce), ce, &st,
-					  error_type, o);
+		if (is_interesting_submodule(ce)) {
+			if (submodule_go_from_to(ce->name, NULL, oid_to_hex(&ce->oid), 1 , 0))
+				return -1;
+			return 0;
+		} else {
+			return check_ok_to_remove(ce->name, ce_namelen(ce),
+						  ce_to_dtype(ce), ce, &st,
+						  error_type, o);
+		}
 	}
 }
 
@@ -1598,6 +1630,10 @@ static int merged_entry(const struct cache_entry *ce,
 			return -1;
 		}
 		invalidate_ce_path(merge, o);
+
+		if (is_interesting_submodule(ce))
+			submodule_go_from_to(ce->name, NULL, oid_to_hex(&ce->oid), 0, o->reset);
+
 	} else if (!(old->ce_flags & CE_CONFLICTED)) {
 		/*
 		 * See if we can re-use the old CE directly?
@@ -1640,6 +1676,9 @@ static int deleted_entry(const struct cache_entry *ce,
 			return -1;
 		return 0;
 	}
+	if (is_interesting_submodule(ce))
+		return submodule_go_from_to(ce->name, oid_to_hex(&old->oid), NULL, 0, o->reset);
+
 	if (!(old->ce_flags & CE_CONFLICTED) && verify_uptodate(old, o))
 		return -1;
 	add_entry(o, ce, CE_REMOVE, 0);
