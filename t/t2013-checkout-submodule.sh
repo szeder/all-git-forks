@@ -7,15 +7,21 @@ test_description='checkout can handle submodules'
 
 test_expect_success 'setup' '
 	mkdir submodule &&
-	(cd submodule &&
-	 git init &&
-	 test_commit first) &&
-	git add submodule &&
+	(
+		cd submodule &&
+		git init &&
+		test_commit first
+	) &&
+	echo first >file &&
+	git add file submodule &&
 	test_tick &&
 	git commit -m superproject &&
-	(cd submodule &&
-	 test_commit second) &&
-	git add submodule &&
+	(
+		cd submodule &&
+		test_commit second
+	) &&
+	echo second > file &&
+	git add file submodule &&
 	test_tick &&
 	git commit -m updated.superproject
 '
@@ -37,7 +43,8 @@ test_expect_success '"checkout <submodule>" updates the index only' '
 	git checkout HEAD^ submodule &&
 	test_must_fail git diff-files --quiet &&
 	git checkout HEAD submodule &&
-	git diff-files --quiet
+	git diff-files --quiet &&
+	git diff-index --quiet --cached HEAD
 '
 
 test_expect_success '"checkout <submodule>" honors diff.ignoreSubmodules' '
