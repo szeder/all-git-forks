@@ -93,6 +93,17 @@ test_expect_success 'error message contains blob reference' '
 	)
 '
 
+test_expect_success 'using tree sha1 works' '
+	(
+		cd super &&
+		tree=$(git rev-parse HEAD^{tree}) &&
+		commit=$(git rev-parse HEAD^{commit}) &&
+		test-submodule-config $commit b >expect &&
+		test-submodule-config $tree b >actual &&
+		test_cmp expect actual
+	)
+'
+
 cat >super/expect_url <<EOF
 Submodule url: 'git@somewhere.else.net:a.git' for path 'b'
 Submodule url: 'git@somewhere.else.net:submodule.git' for path 'submodule'
