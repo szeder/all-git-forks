@@ -324,6 +324,34 @@ void prepare_submodule_repo_env(struct argv_array *out)
 	argv_array_push(out, "GIT_DIR=.git");
 }
 
+int depopulate_submodule(const char *path)
+{
+	int ret = 0;
+	struct strbuf pathbuf = STRBUF_INIT;
+	char *dot_git = xstrfmt("%s/.git", path);
+
+	/* Is it populated? */
+	if (!resolve_gitdir(dot_git))
+		goto out;
+
+	/* Does it have a .git directory? */
+	if (!submodule_uses_gitfile(path)) {
+		warning(_("cannot remove submodule '%s' because it (or one of "
+			  "its nested submodules) uses a .git directory"),
+			  path);
+		ret = -1;
+		goto out;
+	}
+
+	strbuf_addstr(&pathbuf, path);
+	remove_directory_or_die(&pathbuf);
+
+out:
+	strbuf_release(&pathbuf);
+	free(dot_git);
+	return ret;
+}
+
 /* Helper function to display the submodule header line prior to the full
  * summary output. If it can locate the submodule objects directory it will
  * attempt to lookup both the left and right commits and put them into the

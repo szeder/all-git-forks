@@ -2018,4 +2018,6 @@ void sleep_millisec(int millisec);
  */
 void safe_create_dir(const char *dir, int share);
 
+extern void remove_directory_or_die(struct strbuf *path);
+
 #endif /* CACHE_H */
