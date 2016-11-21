@@ -1284,6 +1284,13 @@ static int submodule_has_dirty_index(const struct submodule *sub)
 	return ret;
 }
 
+/**
+ * Moves a submodule at a given path from a given head to another new head.
+ * For edge cases (a submodule coming into existence or removing a submodule)
+ * pass NULL for old or new respectively.
+ *
+ * TODO: move dryrun and forced to flags.
+ */
 int submodule_go_from_to(const char *path,
 			 const char *old,
 			 const char *new,
@@ -1351,28 +1358,30 @@ int submodule_go_from_to(const char *path,
 		goto out;
 	}
 
-	/* also set the HEAD accordingly */
-	cp.git_cmd = 1;
-	cp.no_stdin = 1;
-	argv_array_clear(&cp.args);
-	cp.argv = NULL;
-	argv_array_pushl(&cp.args, "update-ref", "HEAD",
-			 new ? new : EMPTY_TREE_SHA1_HEX, NULL);
+	if (!dry_run) {
+		/* also set the HEAD accordingly */
+		cp.git_cmd = 1;
+		cp.no_stdin = 1;
+		argv_array_clear(&cp.args);
+		cp.argv = NULL;
+		argv_array_pushl(&cp.args, "update-ref", "HEAD",
+				 new ? new : EMPTY_TREE_SHA1_HEX, NULL);
 
-	if (run_command(&cp)) {
-		ret = -1;
-		goto out;
-	}
+		if (run_command(&cp)) {
+			ret = -1;
+			goto out;
+		}
 
-	if (!new && !dry_run) {
-		struct strbuf sb = STRBUF_INIT;
+		if (!new) {
+			struct strbuf sb = STRBUF_INIT;
 
-		strbuf_addf(&sb, "%s/.git", path);
-		unlink_or_warn(sb.buf);
-		strbuf_release(&sb);
+			strbuf_addf(&sb, "%s/.git", path);
+			unlink_or_warn(sb.buf);
+			strbuf_release(&sb);
 
-		if (is_empty_dir(path))
-			rmdir_or_warn(path);
+			if (is_empty_dir(path))
+				rmdir_or_warn(path);
+		}
 	}
 out:
 	return ret;
