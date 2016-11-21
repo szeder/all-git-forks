@@ -1147,6 +1147,43 @@ int ok_to_remove_submodule(const char *path)
 	return ok_to_remove;
 }
 
+/**
+ * Check if a submodule update to a given sha1 is safe.
+ * Return 1 if it is safe, 0 when it is not.
+ *
+ * If the submodule is not populated, we need to check
+ */
+int is_submodule_checkout_safe(const char *path,
+			       const struct object_id *new_hash)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+
+	argv_array_pushl(&cp.args, "read-tree", "-n", "-m", "HEAD",
+			sha1_to_hex(new_hash->hash), NULL);
+
+	if (!is_submodule_populated(path)) {
+		const struct submodule *sub;
+
+		/* See if we have the submodule configured already: */
+		sub = submodule_from_path(null_sha1, path);
+
+		prepare_submodule_repo_env_no_git_dir(&cp.env_array);
+		argv_array_pushf(&cp.env_array, "GIT_DIR=%s",
+				 sub ? sub->name : path);
+		argv_array_pushf(&cp.env_array, "GIT_WORK_TREE=%s", path);
+	} else {
+		prepare_submodule_repo_env(&cp.env_array);
+	}
+
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.no_stdout = 1;
+	cp.no_stderr = 1;
+	cp.dir = path;
+
+	return run_command(&cp) == 0;
+}
+
 static int find_first_merges(struct object_array *result, const char *path,
 		struct commit *a, struct commit *b)
 {
