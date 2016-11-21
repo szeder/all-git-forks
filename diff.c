@@ -2960,7 +2960,7 @@ static void prep_temp_blob(const char *path, struct diff_tempfile *temp,
 	if (fd < 0)
 		die_errno("unable to create temp-file");
 	if (convert_to_working_tree(path,
-			(const char *)blob, (size_t)size, &buf)) {
+			(const char *)blob, (size_t)size, &buf, NULL)) {
 		blob = buf.buf;
 		size = buf.len;
 	}
