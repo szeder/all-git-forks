@@ -121,6 +121,8 @@ test_expect_success '"check --recurse-submodules" removes deleted submodule' '
 	git add .gitignore .gitmodules submodule &&
 	git commit -m "submodule registered with a gitmodules file" &&
 
+	git submodule intern-git-dirs
+
 	# for testing this case, do it in a fresh clone with the submodules
 	# git dir inside the superprojects .git/modules dir.
 	git clone --recurse-submodules . super &&
