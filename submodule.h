@@ -75,4 +75,6 @@ int parallel_submodules(void);
  */
 void prepare_submodule_repo_env(struct argv_array *out);
 
+extern void migrate_submodule_gitdir(const char *prefix,
+				     const char *path, int recursive);
 #endif
