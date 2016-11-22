@@ -2,6 +2,7 @@
 #include "exec_cmd.h"
 #include "help.h"
 #include "run-command.h"
+#include "dir.h"
 
 const char git_usage_string[] =
 	"git [--version] [--help] [-C <path>] [-c name=value]\n"
@@ -542,6 +543,22 @@ static void strip_extension(const char **argv)
 #define strip_extension(cmd)
 #endif
 
+static int use_builtin_difftool(void)
+{
+	static int initialized, use;
+
+	if (!initialized) {
+		struct strbuf buf = STRBUF_INIT;
+		strbuf_addf(&buf, "%s/%s", git_exec_path(),
+			    "use-builtin-difftool");
+		use = file_exists(buf.buf);
+		strbuf_release(&buf);
+		initialized = 1;
+	}
+
+	return use;
+}
+
 static void handle_builtin(int argc, const char **argv)
 {
 	struct argv_array args = ARGV_ARRAY_INIT;
@@ -550,6 +567,9 @@ static void handle_builtin(int argc, const char **argv)
 
 	strip_extension(argv);
 	cmd = argv[0];
+
+	if (!strcmp("difftool", cmd) && use_builtin_difftool())
+		cmd = "builtin-difftool";
 
 	/* Turn "git cmd --help" into "git help --exclude-guides cmd" */
 	if (argc > 1 && !strcmp(argv[1], "--help")) {

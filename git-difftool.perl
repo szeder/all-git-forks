@@ -23,6 +23,13 @@ use File::Temp qw(tempdir);
 use Getopt::Long qw(:config pass_through);
 use Git;
 
+if (-e Git::exec_path() . '/use-builtin-difftool') {
+	unshift(@ARGV, "builtin-difftool");
+	unshift(@ARGV, "git");
+	exec(@ARGV);
+	die("Could not execute builtin difftool");
+}
+
 sub usage
 {
 	my $exitcode = shift;
