@@ -1377,31 +1377,18 @@ static int verify_uptodate_submodule(const struct cache_entry *old,
 	if (!submodule_is_interesting(new->name))
 		return 0;
 
-	if (!lstat(old->name, &st)) {
-		unsigned changed = ie_match_stat(o->src_index, old, &st,
-						 CE_MATCH_IGNORE_VALID|
-						 CE_MATCH_IGNORE_SKIP_WORKTREE);
-		if (!changed) {
-			/* old is always a submodule */
-			if (S_ISGITLINK(new->ce_mode)) {
-				if (is_submodule_checkout_safe(new->name, &new->oid))
-					return 0;
-			} else {
-				if (ok_to_remove_submodule(old->name))
-					return 0;
-			}
-		} else {
-			if (S_ISGITLINK(new->ce_mode))
-				return !is_submodule_checkout_safe(new->name, &new->oid);
-			else
-				return !ok_to_remove_submodule(old->name);
-		}
-		errno = 0;
+	if (lstat(old->name, &st)) {
+		if (errno == ENOENT)
+			return 0;
+		return o->gently ? -1 :
+			add_rejected_path(o, ERROR_NOT_UPTODATE_SUBMODULE,
+					  old->name);
 	}
-	if (errno == ENOENT)
-		return 0;
-	return o->gently ? -1 :
-		add_rejected_path(o, ERROR_NOT_UPTODATE_SUBMODULE, old->name);
+
+	if (S_ISGITLINK(new->ce_mode))
+		return !is_submodule_checkout_safe(new->name, &new->oid);
+	else
+		return !ok_to_remove_submodule(old->name);
 }
 
 static void invalidate_ce_path(const struct cache_entry *ce,
