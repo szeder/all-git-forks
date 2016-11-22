@@ -451,7 +451,7 @@ static void record_df_conflict_files(struct merge_options *o,
 		string_list_append(&df_sorted_entries, next->string)->util =
 				   next->util;
 	}
-	qsort(df_sorted_entries.items, entries->nr, sizeof(*entries->items),
+	QSORT(df_sorted_entries.items, entries->nr,
 	      string_list_df_name_compare);
 
 	string_list_clear(&o->df_conflict_file_set, 1);
