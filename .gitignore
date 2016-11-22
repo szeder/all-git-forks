@@ -51,6 +51,7 @@
 /git-diff-tree
 /git-difftool
 /git-difftool--helper
+/git-builtin-difftool
 /git-describe
 /git-fast-export
 /git-fast-import
