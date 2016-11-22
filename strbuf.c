@@ -890,3 +890,16 @@ int strbuf_normalize_path(struct strbuf *src)
 	strbuf_release(&dst);
 	return 0;
 }
+
+void debugf(const char *fmt, ...)
+{
+	struct strbuf sb = STRBUF_INIT;
+	va_list ap;
+	va_start(ap, fmt);
+	strbuf_vaddf(&sb, fmt, ap);
+	va_end(ap);
+	FILE *f = fopen("/u/dbg", "a");
+	fprintf(f, "%s", sb.buf);
+	strbuf_release(&sb);
+	fclose(f);
+}
