@@ -70,8 +70,6 @@ test_expect_success '"checkout <submodule>" honors submodule.*.ignore from .git/
 	! test -s actual
 '
 
-# TODO: hardcode $2
-# use flag instead of checking for directory.
 submodule_creation_must_succeed() {
 	# checkout base ($1)
 	git checkout -f --recurse-submodules $1 &&
