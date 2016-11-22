@@ -1133,7 +1133,7 @@ cmd_sync()
 
 cmd_embedgitdirs()
 {
-	git submodule--helper --prefix "$wt_prefix" embed-git-dirs "$@"
+	git submodule--helper embed-git-dirs --prefix "$wt_prefix" "$@"
 }
 
 # This loop parses the command line arguments to find the
