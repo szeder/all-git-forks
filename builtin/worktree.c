@@ -434,6 +434,13 @@ static void measure_widths(struct worktree **wt, int *abbrev, int *maxlen)
 	}
 }
 
+static int compare_worktree(const void *a_, const void *b_)
+{
+	const struct worktree *const *a = a_;
+	const struct worktree *const *b = b_;
+	return fspathcmp((*a)->path, (*b)->path);
+}
+
 static int list(int ac, const char **av, const char *prefix)
 {
 	int porcelain = 0;
@@ -448,10 +455,19 @@ static int list(int ac, const char **av, const char *prefix)
 		usage_with_options(worktree_usage, options);
 	else {
 		struct worktree **worktrees = get_worktrees();
-		int path_maxlen = 0, abbrev = DEFAULT_ABBREV, i;
+		int path_maxlen = 0, abbrev = DEFAULT_ABBREV, i, nr;
 
 		if (!porcelain)
 			measure_widths(worktrees, &abbrev, &path_maxlen);
+
+		for (i = nr = 0; worktrees[i]; i++)
+			nr++;
+
+		/*
+		 * don't sort the first item (main worktree), which will
+		 * always be the first
+		 */
+		QSORT(worktrees + 1, nr - 1, compare_worktree);
 
 		for (i = 0; worktrees[i]; i++) {
 			if (porcelain)
