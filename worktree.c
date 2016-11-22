@@ -89,7 +89,7 @@ static struct worktree *get_main_worktree(void)
 	strbuf_addf(&path, "%s/HEAD", get_git_common_dir());
 
 	if (parse_ref(path.buf, &head_ref, &is_detached) < 0)
-		goto done;
+		strbuf_reset(&head_ref);
 
 	worktree = xcalloc(1, sizeof(*worktree));
 	worktree->path = strbuf_detach(&worktree_path, NULL);
@@ -97,7 +97,6 @@ static struct worktree *get_main_worktree(void)
 	worktree->is_detached = is_detached;
 	add_head_info(&head_ref, worktree);
 
-done:
 	strbuf_release(&path);
 	strbuf_release(&worktree_path);
 	strbuf_release(&head_ref);
@@ -173,8 +172,7 @@ struct worktree **get_worktrees(void)
 
 	list = xmalloc(alloc * sizeof(struct worktree *));
 
-	if ((list[counter] = get_main_worktree()))
-		counter++;
+	list[counter++] = get_main_worktree();
 
 	strbuf_addf(&path, "%s/worktrees", get_git_common_dir());
 	dir = opendir(path.buf);
