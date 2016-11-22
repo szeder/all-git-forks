@@ -236,13 +236,10 @@ test_expect_success '"checkout --recurse-submodules" updates the submodule' '
 '
 
 test_expect_failure 'untracked file is not deleted' '
-	(
-		cd super &&
-		git checkout --recurse-submodules base &&
-		echo important >submodule/untracked &&
-		test_must_fail git checkout --recurse-submodules delete_submodule &&
-		git checkout -f --recurse-submodules delete_submodule
-	)
+	git checkout --recurse-submodules base &&
+	echo important >submodule/untracked &&
+	test_must_fail git checkout --recurse-submodules delete_submodule &&
+	git checkout -f --recurse-submodules delete_submodule
 '
 
 test_expect_success 'ignored file works just fine' '
