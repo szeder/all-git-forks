@@ -235,7 +235,7 @@ test_expect_success '"checkout --recurse-submodules" updates the submodule' '
 	git diff-index --quiet --cached HEAD
 '
 
-test_expect_failure 'untracked file is not deleted' '
+test_expect_success 'untracked file is not deleted' '
 	git checkout --recurse-submodules base &&
 	echo important >submodule/untracked &&
 	test_must_fail git checkout --recurse-submodules delete_submodule &&
