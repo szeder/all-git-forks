@@ -2314,13 +2314,31 @@ static int too_many_not_shared_entries(struct index_state *istate)
 	return istate->cache_nr * max_split < not_shared * 100;
 }
 
+static int is_main_index(struct lock_file *lock)
+{
+	int res = 1;
+	struct strbuf filename = STRBUF_INIT;
+
+	strbuf_addstr(&filename, get_index_file());
+	strbuf_addstr(&filename, LOCK_SUFFIX);
+
+	if (strcmp(lock->tempfile.filename.buf, filename.buf)) {
+		resolve_symlink(&filename);
+		res = !strcmp(lock->tempfile.filename.buf, filename.buf);
+	}
+
+	strbuf_release(&filename);
+	return res;
+}
+
 int write_locked_index(struct index_state *istate, struct lock_file *lock,
 		       unsigned flags)
 {
 	struct split_index *si = istate->split_index;
 
 	if (!si || alternate_index_output ||
-	    (istate->cache_changed & ~EXTMASK)) {
+	    (istate->cache_changed & ~EXTMASK) ||
+	    !is_main_index(lock)) {
 		if (si)
 			hashclr(si->base_sha1);
 		return do_write_locked_index(istate, lock, flags);
