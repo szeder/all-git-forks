@@ -1685,13 +1685,15 @@ unmap:
 	die("index file corrupt");
 }
 
+/*
+ * Signal that the shared index is used by updating its mtime.
+ *
+ * This way, shared index can be removed if they have not been used
+ * for some time. It's ok to fail to update the mtime if we are on a
+ * read only file system.
+ */
 void freshen_shared_index(char *base_sha1_hex)
 {
-	/*
-	 * Signal that the shared index is used by updating its
-	 * mtime. It's ok to fail to update for example if we are on a
-	 * read only file system.
-	 */
 	const char *shared_index = git_path("sharedindex.%s", base_sha1_hex);
 	check_and_freshen_file(shared_index, 1);
 }
