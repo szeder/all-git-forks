@@ -1051,9 +1051,17 @@ static void handle_fetch_head(struct commit_list **remotes, struct strbuf *merge
 			continue; /* not-for-merge */
 		else {
 			char saved = merge_names->buf[pos + 40];
+			char eol = ptr ? *ptr : '\0';
 			merge_names->buf[pos + 40] = '\0';
+			if (ptr)
+				*ptr = '\0';
 			commit = get_merge_parent(merge_names->buf + pos);
+			set_merge_remote_desc(commit,
+					merge_names->buf + pos + 40 + 2,
+					merge_remote_util(commit)->obj);
 			merge_names->buf[pos + 40] = saved;
+			if (ptr)
+				*ptr = eol;
 		}
 		if (!commit) {
 			if (ptr)

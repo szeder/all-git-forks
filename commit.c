@@ -1582,6 +1582,7 @@ void set_merge_remote_desc(struct commit *commit,
 	struct merge_remote_desc *desc;
 	FLEX_ALLOC_STR(desc, name, name);
 	desc->obj = obj;
+	free(commit->util);
 	commit->util = desc;
 }
 
