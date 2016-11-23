@@ -45,7 +45,7 @@ static void trim_last_path_component(struct strbuf *path)
  * either be left unmodified or will name a different symlink in a
  * symlink chain that started with the original path.
  */
-static void resolve_symlink(struct strbuf *path)
+void resolve_symlink(struct strbuf *path)
 {
 	int depth = MAXDEPTH;
 	static struct strbuf link = STRBUF_INIT;

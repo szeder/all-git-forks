@@ -290,4 +290,7 @@ static inline void rollback_lock_file(struct lock_file *lk)
 	delete_tempfile(&lk->tempfile);
 }
 
+/* Helper: attempt to overwrite a path that might be a symlink */
+extern void resolve_symlink(struct strbuf *path);
+
 #endif /* LOCKFILE_H */
