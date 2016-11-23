@@ -1728,6 +1728,7 @@ int read_index_from(struct index_state *istate, const char *path)
 		    base_sha1_hex,
 		    git_path("sharedindex.%s", base_sha1_hex),
 		    sha1_to_hex(split_index->base->sha1));
+	freshen_shared_index(base_sha1_hex);
 	merge_base_index(istate);
 	post_read_index_from(istate);
 	return ret;
