@@ -224,7 +224,7 @@ static void unlink_entry(const struct cache_entry *ce)
 	if (S_ISGITLINK(ce->ce_mode)) {
 		if (submodule_is_interesting(ce->name)
 		    && depopulate_submodule(ce->name))
-		    return;
+			return;
 	} else if (remove_or_warn(ce->ce_mode, ce->name))
 		return;
 	schedule_dir_for_removal(ce->name, ce_namelen(ce));
