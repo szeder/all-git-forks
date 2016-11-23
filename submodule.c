@@ -343,6 +343,11 @@ int depopulate_submodule(const char *path)
 		goto out;
 	}
 
+	//~ if (!ok_to_remove_submodule(path)) {
+		//~ warning(_("cannot remove submodule '%s' because it's dirty"), path);
+		//~ goto out;
+	//~ }
+
 	strbuf_addstr(&pathbuf, path);
 	remove_directory_or_die(&pathbuf);
 
