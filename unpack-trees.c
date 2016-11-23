@@ -1249,6 +1249,22 @@ int unpack_trees(unsigned len, struct tree_desc *t, struct unpack_trees_options 
 		}
 	}
 
+	//~ if (!o->reset) {
+		for (i = 0; i < o->result.cache_nr; i++) {
+			struct cache_entry *ce = o->result.cache[i];
+			if (ce->ce_flags & CE_REMOVE && S_ISGITLINK(ce->ce_mode)) {
+				if (!ok_to_remove_submodule(ce->name)) {
+					if (!o->gently) {
+						add_rejected_path(o, ERROR_NOT_UPTODATE_SUBMODULE, ce->name);
+						ret = -1;
+					}
+					if (!o->show_all_errors)
+						goto return_failed;
+				}
+			}
+		}
+	//~ }
+
 	o->src_index = NULL;
 	ret = check_updates(o, &state) ? (-2) : 0;
 	if (o->dst_index) {
@@ -1368,6 +1384,8 @@ static int verify_uptodate_submodule(const struct cache_entry *old,
 				     struct unpack_trees_options *o)
 {
 	struct stat st;
+
+	debugf("verify_uptodate_submodule %s %s\n", oid_to_hex(&old->oid), oid_to_hex(&new->oid));
 
 	if (o->index_only ||
 	    (!((old->ce_flags & CE_VALID) || ce_skip_worktree(old)) &&
