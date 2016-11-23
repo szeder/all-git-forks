@@ -1685,6 +1685,19 @@ unmap:
 	die("index file corrupt");
 }
 
+/*
+ * Signal that the shared index is used by updating its mtime.
+ *
+ * This way, shared index can be removed if they have not been used
+ * for some time. It's ok to fail to update the mtime if we are on a
+ * read only file system.
+ */
+void freshen_shared_index(char *base_sha1_hex)
+{
+	const char *shared_index = git_path("sharedindex.%s", base_sha1_hex);
+	check_and_freshen_file(shared_index, 1);
+}
+
 int read_index_from(struct index_state *istate, const char *path)
 {
 	struct split_index *split_index;
@@ -2314,18 +2327,6 @@ static int too_many_not_shared_entries(struct index_state *istate)
 	return istate->cache_nr * max_split < not_shared * 100;
 }
 
-void freshen_shared_index(unsigned char *base_sha1)
-{
-	/*
-	 * Signal that the shared index is used by updating its
-	 * mtime. It's ok to fail to update for example if we are on a
-	 * read only file system.
-	 */
-	const char *shared_index = git_path("sharedindex.%s",
-					    sha1_to_hex(base_sha1));
-	check_and_freshen_file(shared_index, 1);
-}
-
 int write_locked_index(struct index_state *istate, struct lock_file *lock,
 		       unsigned flags)
 {
@@ -2350,7 +2351,7 @@ int write_locked_index(struct index_state *istate, struct lock_file *lock,
 		if (ret)
 			return ret;
 	} else {
-		freshen_shared_index(si->base_sha1);
+		freshen_shared_index(sha1_to_hex(si->base_sha1));
 	}
 
 	return write_split_index(istate, lock, flags);
