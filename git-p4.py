@@ -2552,6 +2552,8 @@ class P4Sync(Command, P4UserMap):
             contents = [ text ]
 
         if self.largeFileSystem and sum(len(d) for d in contents) > 0:
+            if type_base == 'text' and gitConfigBool('git-p4.largeFileTextLineEndCRLF'):
+                contents = [d.replace('\n', '\r\n') for d in contents]
             (git_mode, contents) = self.largeFileSystem.processContent(git_mode, relPath, contents)
 
         self.writeToGitStream(git_mode, relPath, contents)
