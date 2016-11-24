@@ -2605,6 +2605,8 @@ class P4Sync(Command, P4UserMap):
                 print 'Path with non-ASCII characters detected. Used %s to encode: %s ' % (encoding, relPath)
 
         if self.largeFileSystem:
+            if type_base == 'text' and gitConfigBool('git-p4.largeFileTextLineEndCRLF'):
+                contents = [d.replace('\n', '\r\n') for d in contents]
             (git_mode, contents) = self.largeFileSystem.processContent(git_mode, relPath, contents)
 
         self.writeToGitStream(git_mode, relPath, contents)
