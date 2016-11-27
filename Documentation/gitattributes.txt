@@ -227,11 +227,10 @@ From a clean working directory:
 
 -------------------------------------------------
 $ echo "* text=auto" >.gitattributes
-$ rm .git/index     # Remove the index to force Git to
-$ git reset         # re-scan the working directory
+$ git ls-files --eol | egrep "i/(crlf|mixed)" # find not normalized files
+$ rm .git/index     # Remove the index to re-scan the working directory
+$ git add .
 $ git status        # Show files that will be normalized
-$ git add -u
-$ git add .gitattributes
 $ git commit -m "Introduce end-of-line normalization"
 -------------------------------------------------
 
