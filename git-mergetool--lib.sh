@@ -125,16 +125,7 @@ setup_user_tool () {
 	}
 
 	merge_cmd () {
-		trust_exit_code=$(git config --bool \
-			"mergetool.$1.trustExitCode" || echo false)
-		if test "$trust_exit_code" = "false"
-		then
-			touch "$BACKUP"
-			( eval $merge_tool_cmd )
-			check_unchanged
-		else
-			( eval $merge_tool_cmd )
-		fi
+		( eval $merge_tool_cmd )
 	}
 }
 
@@ -225,7 +216,20 @@ run_diff_cmd () {
 
 # Run a either a configured or built-in merge tool
 run_merge_cmd () {
+	touch "$BACKUP"
+
 	merge_cmd "$1"
+	status=$?
+
+	trust_exit_code=$(git config --bool \
+		"mergetool.$1.trustExitCode" || echo false)
+	if test "$trust_exit_code" = "false"
+	then
+		check_unchanged
+		status=$?
+	fi
+
+	return $status
 }
 
 list_merge_tool_candidates () {
