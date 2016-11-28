@@ -33,6 +33,7 @@ void init_grep_defaults(void)
 	opt->max_depth = -1;
 	opt->pattern_type_option = GREP_PATTERN_TYPE_UNSPECIFIED;
 	opt->extended_regexp_option = 0;
+	color_set(opt->color_branch, "");
 	color_set(opt->color_context, "");
 	color_set(opt->color_filename, "");
 	color_set(opt->color_function, "");
@@ -96,6 +97,8 @@ int grep_config(const char *var, const char *value, void *cb)
 
 	if (!strcmp(var, "color.grep"))
 		opt->color = git_config_colorbool(var, value);
+	else if (!strcmp(var, "color.grep.branch"))
+		color = opt->color_branch;
 	else if (!strcmp(var, "color.grep.context"))
 		color = opt->color_context;
 	else if (!strcmp(var, "color.grep.filename"))
@@ -153,6 +156,7 @@ void grep_init(struct grep_opt *opt, const char *prefix)
 	opt->regflags = def->regflags;
 	opt->relative = def->relative;
 
+	color_set(opt->color_branch, def->color_branch);
 	color_set(opt->color_context, def->color_context);
 	color_set(opt->color_filename, def->color_filename);
 	color_set(opt->color_function, def->color_function);
@@ -877,8 +881,19 @@ static void output_sep(struct grep_opt *opt, char sign)
 		output_color(opt, &sign, 1, opt->color_sep);
 }
 
-static void show_name(struct grep_opt *opt, const char *name)
+static void output_tree_name(struct grep_opt *opt, const char *tree_name,
+			     const char *color)
 {
+	if (tree_name) {
+		output_color(opt, tree_name, strlen(tree_name), color);
+		output_sep(opt, ':');
+	}
+}
+
+static void show_name(struct grep_opt *opt, const char *name,
+		      const char *tree_name)
+{
+	output_tree_name(opt, tree_name, opt->color_branch);
 	output_color(opt, name, strlen(name), opt->color_filename);
 	opt->output(opt, opt->null_following_name ? "\0" : "\n", 1);
 }
@@ -1133,7 +1148,8 @@ static int next_match(struct grep_opt *opt, char *bol, char *eol,
 }
 
 static void show_line(struct grep_opt *opt, char *bol, char *eol,
-		      const char *name, unsigned lno, char sign)
+		      const char *name, const char *tree_name,
+		      unsigned lno, char sign)
 {
 	int rest = eol - bol;
 	const char *match_color, *line_color = NULL;
@@ -1153,12 +1169,14 @@ static void show_line(struct grep_opt *opt, char *bol, char *eol,
 		}
 	}
 	if (opt->heading && opt->last_shown == 0) {
+		output_tree_name(opt, tree_name, opt->color_branch);
 		output_color(opt, name, strlen(name), opt->color_filename);
 		opt->output(opt, "\n", 1);
 	}
 	opt->last_shown = lno;
 
 	if (!opt->heading && opt->pathname) {
+		output_tree_name(opt, tree_name, opt->color_branch);
 		output_color(opt, name, strlen(name), opt->color_filename);
 		output_sep(opt, sign);
 	}
@@ -1273,7 +1291,8 @@ static void show_funcname_line(struct grep_opt *opt, struct grep_source *gs,
 			break;
 
 		if (match_funcname(opt, gs, bol, eol)) {
-			show_line(opt, bol, eol, gs->name, lno, '=');
+			show_line(opt, bol, eol, gs->name, gs->tree_name, lno,
+				  '=');
 			break;
 		}
 	}
@@ -1317,7 +1336,7 @@ static void show_pre_context(struct grep_opt *opt, struct grep_source *gs,
 
 		while (*eol != '\n')
 			eol++;
-		show_line(opt, bol, eol, gs->name, cur, sign);
+		show_line(opt, bol, eol, gs->name, gs->tree_name, cur, sign);
 		bol = eol + 1;
 		cur++;
 	}
@@ -1566,13 +1585,15 @@ static int grep_source_1(struct grep_opt *opt, struct grep_source *gs, int colle
 			if (opt->status_only)
 				return 1;
 			if (opt->name_only) {
-				show_name(opt, gs->name);
+				show_name(opt, gs->name, gs->tree_name);
 				return 1;
 			}
 			if (opt->count)
 				goto next_line;
 			if (binary_match_only) {
 				opt->output(opt, "Binary file ", 12);
+				output_tree_name(opt, gs->tree_name,
+						 opt->color_branch);
 				output_color(opt, gs->name, strlen(gs->name),
 					     opt->color_filename);
 				opt->output(opt, " matches\n", 9);
@@ -1585,7 +1606,8 @@ static int grep_source_1(struct grep_opt *opt, struct grep_source *gs, int colle
 				show_pre_context(opt, gs, bol, eol, lno);
 			else if (opt->funcname)
 				show_funcname_line(opt, gs, bol, lno);
-			show_line(opt, bol, eol, gs->name, lno, ':');
+			show_line(opt, bol, eol, gs->name, gs->tree_name, lno,
+				  ':');
 			last_hit = lno;
 			if (opt->funcbody)
 				show_function = 1;
@@ -1614,7 +1636,8 @@ static int grep_source_1(struct grep_opt *opt, struct grep_source *gs, int colle
 			/* If the last hit is within the post context,
 			 * we need to show this line.
 			 */
-			show_line(opt, bol, eol, gs->name, lno, '-');
+			show_line(opt, bol, eol, gs->name, gs->tree_name, lno,
+				  '-');
 		}
 
 	next_line:
@@ -1632,7 +1655,7 @@ static int grep_source_1(struct grep_opt *opt, struct grep_source *gs, int colle
 		return 0;
 	if (opt->unmatch_name_only) {
 		/* We did not see any hit, so we want to show this */
-		show_name(opt, gs->name);
+		show_name(opt, gs->name, gs->tree_name);
 		return 1;
 	}
 
@@ -1647,6 +1670,8 @@ static int grep_source_1(struct grep_opt *opt, struct grep_source *gs, int colle
 	if (opt->count && count) {
 		char buf[32];
 		if (opt->pathname) {
+			output_tree_name(opt, gs->tree_name,
+					 opt->color_branch);
 			output_color(opt, gs->name, strlen(gs->name),
 				     opt->color_filename);
 			output_sep(opt, ':');
@@ -1710,7 +1735,7 @@ int grep_buffer(struct grep_opt *opt, char *buf, unsigned long size)
 	struct grep_source gs;
 	int r;
 
-	grep_source_init(&gs, GREP_SOURCE_BUF, NULL, NULL, NULL);
+	grep_source_init(&gs, GREP_SOURCE_BUF, NULL, NULL, NULL, NULL);
 	gs.buf = buf;
 	gs.size = size;
 
@@ -1721,11 +1746,12 @@ int grep_buffer(struct grep_opt *opt, char *buf, unsigned long size)
 }
 
 void grep_source_init(struct grep_source *gs, enum grep_source_type type,
-		      const char *name, const char *path,
-		      const void *identifier)
+		      const char *name, const char *tree_name,
+		      const char *path, const void *identifier)
 {
 	gs->type = type;
 	gs->name = xstrdup_or_null(name);
+	gs->tree_name = xstrdup_or_null(tree_name);
 	gs->path = xstrdup_or_null(path);
 	gs->buf = NULL;
 	gs->size = 0;
@@ -1748,6 +1774,8 @@ void grep_source_clear(struct grep_source *gs)
 {
 	free(gs->name);
 	gs->name = NULL;
+	free(gs->tree_name);
+	gs->tree_name = NULL;
 	free(gs->path);
 	gs->path = NULL;
 	free(gs->identifier);

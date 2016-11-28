@@ -1001,6 +1001,8 @@ color.grep.<slot>::
 	part of the line to use the specified color, and is one of
 +
 --
+`branch`;;
+	reference name prefix
 `context`;;
 	non-matching text in context lines (when using `-A`, `-B`, or `-C`)
 `filename`;;

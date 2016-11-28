@@ -87,7 +87,8 @@ static pthread_cond_t cond_result;
 static int skip_first_line;
 
 static void add_work(struct grep_opt *opt, enum grep_source_type type,
-		     const char *name, const char *path, const void *id)
+		     const char *name, const char *tree_name,
+		     const char *path, const void *id)
 {
 	grep_lock();
 
@@ -95,7 +96,8 @@ static void add_work(struct grep_opt *opt, enum grep_source_type type,
 		pthread_cond_wait(&cond_write, &grep_mutex);
 	}
 
-	grep_source_init(&todo[todo_end].source, type, name, path, id);
+	grep_source_init(&todo[todo_end].source, type, name, tree_name, path,
+			 id);
 	if (opt->binary != GREP_BINARY_TEXT)
 		grep_source_load_driver(&todo[todo_end].source);
 	todo[todo_end].done = 0;
@@ -296,18 +298,23 @@ static int grep_sha1(struct grep_opt *opt, const unsigned char *sha1,
 		     const char *path)
 {
 	struct strbuf pathbuf = STRBUF_INIT;
+	struct strbuf treebuf = STRBUF_INIT;
+
+	if (tree_name_len)
+		strbuf_add(&treebuf, filename, tree_name_len - 1);
 
 	if (opt->relative && opt->prefix_length) {
 		quote_path_relative(filename + tree_name_len, opt->prefix, &pathbuf);
-		strbuf_insert(&pathbuf, 0, filename, tree_name_len);
 	} else {
-		strbuf_addstr(&pathbuf, filename);
+		strbuf_addstr(&pathbuf, filename + tree_name_len);
 	}
 
 #ifndef NO_PTHREADS
 	if (num_threads) {
-		add_work(opt, GREP_SOURCE_SHA1, pathbuf.buf, path, sha1);
+		add_work(opt, GREP_SOURCE_SHA1, pathbuf.buf, treebuf.buf, path,
+			 sha1);
 		strbuf_release(&pathbuf);
+		strbuf_release(&treebuf);
 		return 0;
 	} else
 #endif
@@ -315,8 +322,10 @@ static int grep_sha1(struct grep_opt *opt, const unsigned char *sha1,
 		struct grep_source gs;
 		int hit;
 
-		grep_source_init(&gs, GREP_SOURCE_SHA1, pathbuf.buf, path, sha1);
+		grep_source_init(&gs, GREP_SOURCE_SHA1, pathbuf.buf,
+				 treebuf.buf, path, sha1);
 		strbuf_release(&pathbuf);
+		strbuf_release(&treebuf);
 		hit = grep_source(opt, &gs);
 
 		grep_source_clear(&gs);
@@ -335,7 +344,8 @@ static int grep_file(struct grep_opt *opt, const char *filename)
 
 #ifndef NO_PTHREADS
 	if (num_threads) {
-		add_work(opt, GREP_SOURCE_FILE, buf.buf, filename, filename);
+		add_work(opt, GREP_SOURCE_FILE, buf.buf, NULL, filename,
+			 filename);
 		strbuf_release(&buf);
 		return 0;
 	} else
@@ -344,7 +354,8 @@ static int grep_file(struct grep_opt *opt, const char *filename)
 		struct grep_source gs;
 		int hit;
 
-		grep_source_init(&gs, GREP_SOURCE_FILE, buf.buf, filename, filename);
+		grep_source_init(&gs, GREP_SOURCE_FILE, buf.buf, NULL,
+				 filename, filename);
 		strbuf_release(&buf);
 		hit = grep_source(opt, &gs);
 
