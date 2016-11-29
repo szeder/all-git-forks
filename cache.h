@@ -244,6 +244,7 @@ struct cache_entry {
 #define CE_PRECOMPUTE_HASH_STATE__DIR   (1 << 1)
 
 void precompute_istate_hashes(struct cache_entry *ce);
+void precompute_istate_hashes2(struct index_state *index, int offset, int nr);
 
 /* Forward structure decls */
 struct pathspec;

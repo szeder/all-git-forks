@@ -326,3 +326,49 @@ void precompute_istate_hashes(struct cache_entry *ce)
 			CE_PRECOMPUTE_HASH_STATE__SET | CE_PRECOMPUTE_HASH_STATE__DIR;
 	}
 }
+
+void precompute_istate_hashes2(struct index_state *index, int offset, int nr)
+{
+	struct cache_entry **cep = index->cache + offset;
+	struct cache_entry *ce_prev = NULL;
+	int dir_namelen_prev = -1;
+
+	if (offset + nr > index->cache_nr)
+		nr = index->cache_nr - offset;
+
+	do {
+		struct cache_entry *ce = *cep++;
+		int dir_namelen = ce_namelen(ce);
+
+		while (dir_namelen > 0 && !is_dir_sep(ce->name[dir_namelen - 1]))
+			dir_namelen--;
+
+		if (dir_namelen <= 0) {
+			/* A root-level entry, so no parent directory hash. */
+			ce->precompute_hash_name = memihash(ce->name, ce_namelen(ce));
+			ce->precompute_hash_state = CE_PRECOMPUTE_HASH_STATE__SET;
+		} else {
+			dir_namelen--;
+			/*
+			 * If the directory portion of this entry is the same as that
+			 * of the previous entry, we can re-use the directory hash.
+			 */
+			if (ce_prev
+				&& (ce_prev->precompute_hash_state & CE_PRECOMPUTE_HASH_STATE__DIR)
+				&& (dir_namelen_prev == dir_namelen)
+				&& (memcmp(ce_prev->name, ce->name, dir_namelen) == 0))
+				ce->precompute_hash_dir = ce_prev->precompute_hash_dir;
+			else
+				ce->precompute_hash_dir = memihash(ce->name, dir_namelen);
+			
+			ce->precompute_hash_name = memihash_cont(
+				ce->precompute_hash_dir, &ce->name[dir_namelen],
+				ce_namelen(ce) - dir_namelen);
+			ce->precompute_hash_state =
+				CE_PRECOMPUTE_HASH_STATE__SET | CE_PRECOMPUTE_HASH_STATE__DIR;
+		}
+
+		ce_prev = ce;
+		dir_namelen_prev = dir_namelen;
+	} while (--nr > 0);
+}

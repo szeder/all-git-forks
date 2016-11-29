@@ -38,6 +38,8 @@ static void *preload_thread(void *_data)
 	struct cache_entry **cep = index->cache + p->offset;
 	struct cache_def cache = CACHE_DEF_INIT;
 
+	precompute_istate_hashes2(p->index, p->offset, p->nr);
+
 	nr = p->nr;
 	if (nr + p->offset > index->cache_nr)
 		nr = index->cache_nr - p->offset;
@@ -46,7 +48,7 @@ static void *preload_thread(void *_data)
 		struct cache_entry *ce = *cep++;
 		struct stat st;
 
-		precompute_istate_hashes(ce);
+//		precompute_istate_hashes(ce);
 
 		if (ce_stage(ce))
 			continue;
