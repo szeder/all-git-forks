@@ -1,5 +1,3 @@
---indent-heuristic::
---no-indent-heuristic::
 --compaction-heuristic::
 --no-compaction-heuristic::
 	These are to help debugging and tuning experimental heuristics
