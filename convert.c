@@ -286,7 +286,9 @@ static int crlf_to_git(const char *path, const char *src, size_t len,
 			checksafe = SAFE_CRLF_FALSE;
 		else if (has_cr_in_index(path))
 			convert_crlf_into_lf = 0;
-	}
+	} else if (checksafe == SAFE_CRLF_RENORMALIZE)
+		checksafe = SAFE_CRLF_FALSE;
+
 	if (checksafe && len) {
 		struct text_stat new_stats;
 		memcpy(&new_stats, &stats, sizeof(new_stats));
