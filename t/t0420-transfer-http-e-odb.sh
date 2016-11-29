@@ -53,7 +53,8 @@ HELPER="\"$PWD\"/odb-http-helper"
 
 test_expect_success 'setup repo with a root commit and the helper' '
 	test_commit zero &&
-	git config odb.magic.command "$HELPER"
+	git config odb.magic.command "$HELPER" &&
+	git config odb.magic.plainObjects "true"
 '
 
 test_expect_success 'setup another repo from the first one' '
@@ -110,6 +111,7 @@ test_expect_success 'update other repo from the first one' '
 	 git fetch origin "refs/odbs/magic/*:refs/odbs/magic/*" &&
 	 test_must_fail git cat-file blob "$hash1" &&
 	 git config odb.magic.command "$HELPER" &&
+	 git config odb.magic.plainObjects "true" &&
 	 git cat-file blob "$hash1" &&
 	 git pull origin master)
 '
