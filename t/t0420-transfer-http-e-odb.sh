@@ -114,33 +114,6 @@ test_expect_success 'update other repo from the first one' '
 	 git pull origin master)
 '
 
-exit 1
-
-
-test_expect_success 'new blobs are transfered to the http server' '
-	test_commit one &&
-	hash1=$(git ls-tree HEAD | grep one.t | cut -f1 | cut -d\  -f3) &&
-	ls "$FILES_DIR/$hash1*" > actual
-'
-
-test_expect_success 'other repo gets the blobs from object store' '
-	(cd other-repo &&
-	 git fetch origin "refs/odbs/magic/*:refs/odbs/magic/*" &&
-	 test_must_fail git cat-file blob "$hash1" &&
-	 test_must_fail git cat-file blob "$hash2" &&
-	 git config odb.magic.command "$HELPER2" &&
-	 git cat-file blob "$hash1" &&
-	 git cat-file blob "$hash2"
-	)
-'
-
-test_expect_success 'other repo gets everything else' '
-	(cd other-repo &&
-	 git fetch origin &&
-	 content=$(git show "$hash1") &&
-	 test "$content" = "one" &&
-	 content=$(git show "$hash2") &&
-	 test "$content" = "two")
-'
+stop_httpd
 
 test_done
