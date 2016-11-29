@@ -153,8 +153,9 @@ int odb_helper_has_object(struct odb_helper *o, const unsigned char *sha1)
 	return !!odb_helper_lookup(o, sha1);
 }
 
-int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
-			   int fd)
+static int odb_helper_fetch_plain_object(struct odb_helper *o,
+					 const unsigned char *sha1,
+					 int fd)
 {
 	struct odb_helper_object *obj;
 	struct odb_helper_cmd cmd;
@@ -250,8 +251,9 @@ int odb_helper_read_object(struct odb_helper *o, const unsigned char *sha1,
 	return 0;
 }
 
-int odb_helper_fetch_object(struct odb_helper *o, const unsigned char *sha1,
-			    int fd)
+static int odb_helper_fetch_git_object(struct odb_helper *o,
+				       const unsigned char *sha1,
+				       int fd)
 {
 	struct odb_helper_object *obj;
 	struct odb_helper_cmd cmd;
@@ -337,6 +339,16 @@ int odb_helper_fetch_object(struct odb_helper *o, const unsigned char *sha1,
 	}
 
 	return 0;
+}
+
+int odb_helper_fetch_object(struct odb_helper *o,
+			    const unsigned char *sha1,
+			    int fd)
+{
+	if (o->store_plain_objects)
+		return odb_helper_fetch_plain_object(o, sha1, fd);
+	else
+		return odb_helper_fetch_git_object(o, sha1, fd);
 }
 
 int odb_helper_for_each_object(struct odb_helper *o,

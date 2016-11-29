@@ -36,6 +36,8 @@ static int external_odb_config(const char *var, const char *value, void *data)
 
 	if (!strcmp(key, "command"))
 		return git_config_string(&o->cmd, var, value);
+	if (!strcmp(key, "plainobjects"))
+		o->store_plain_objects = git_config_bool(var, value);
 
 	return 0;
 }
@@ -100,7 +102,7 @@ int external_odb_fetch_object(const unsigned char *sha1)
 			return -1;
 		}
 
-		if (odb_helper_read_object(o, sha1, fd) < 0) {
+		if (odb_helper_fetch_object(o, sha1, fd) < 0) {
 			close(fd);
 			unlink(tmpfile.buf);
 			strbuf_release(&tmpfile);
