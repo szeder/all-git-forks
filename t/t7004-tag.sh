@@ -27,6 +27,23 @@ test_expect_success 'listing all tags in an empty tree should output nothing' '
 	test $(git tag | wc -l) -eq 0
 '
 
+test_expect_success 'sort tags, ignore case' '
+	(
+		git init sort &&
+		cd sort &&
+		test_commit initial &&
+		git tag tag-one &&
+		git tag TAG-two &&
+		git tag -l -i >actual &&
+		cat >expected <<-\EOF &&
+		initial
+		tag-one
+		TAG-two
+		EOF
+		test_cmp expected actual
+	)
+'
+
 test_expect_success 'looking for a tag in an empty tree should fail' \
 	'! (tag_exists mytag)'
 
@@ -80,6 +97,9 @@ test_expect_success 'listing all tags if one exists should output that tag' '
 
 test_expect_success 'listing a tag using a matching pattern should succeed' \
 	'git tag -l mytag'
+
+test_expect_success 'listing a tag using a matching pattern should succeed' \
+	'git tag -l --ignore-case MYTAG'
 
 test_expect_success \
 	'listing a tag using a matching pattern should output that tag' \
