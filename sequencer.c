@@ -248,7 +248,7 @@ static int write_message(const void *buf, size_t len, const char *filename,
 	}
 	if (append_eol && write(msg_fd, "\n", 1) < 0) {
 		rollback_lock_file(&msg_file);
-		return error_errno(_("could not write eol to '%s"), filename);
+		return error_errno(_("could not write eol to '%s'"), filename);
 	}
 	if (commit_lock_file(&msg_file) < 0) {
 		rollback_lock_file(&msg_file);
@@ -629,7 +629,7 @@ static const char *todo_command_strings[] = {
 
 static const char *command_to_string(const enum todo_command command)
 {
-	if (command < ARRAY_SIZE(todo_command_strings))
+	if ((size_t)command < ARRAY_SIZE(todo_command_strings))
 		return todo_command_strings[command];
 	die("Unknown command: %d", command);
 }
