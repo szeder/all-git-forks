@@ -392,9 +392,6 @@ static int fetch_with_fetch(struct transport *transport,
 
 	for (i = 0; i < nr_heads; i++) {
 		const struct ref *posn = to_fetch[i];
-		if (posn->status & REF_STATUS_UPTODATE)
-			continue;
-
 		strbuf_addf(&buf, "fetch %s %s\n",
 			    oid_to_hex(&posn->old_oid),
 			    posn->symref ? posn->symref : posn->name);
@@ -492,9 +489,6 @@ static int fetch_with_import(struct transport *transport,
 
 	for (i = 0; i < nr_heads; i++) {
 		posn = to_fetch[i];
-		if (posn->status & REF_STATUS_UPTODATE)
-			continue;
-
 		strbuf_addf(&buf, "import %s\n",
 			    posn->symref ? posn->symref : posn->name);
 		sendline(data, &buf);
@@ -531,8 +525,6 @@ static int fetch_with_import(struct transport *transport,
 	for (i = 0; i < nr_heads; i++) {
 		char *private, *name;
 		posn = to_fetch[i];
-		if (posn->status & REF_STATUS_UPTODATE)
-			continue;
 		name = posn->symref ? posn->symref : posn->name;
 		if (data->refspecs)
 			private = apply_refspecs(data->refspecs, data->refspec_nr, name);
@@ -649,20 +641,11 @@ static int fetch(struct transport *transport,
 		 int nr_heads, struct ref **to_fetch)
 {
 	struct helper_data *data = transport->data;
-	int i, count;
 
 	if (process_connect(transport, 0)) {
 		do_take_over(transport);
 		return transport->fetch(transport, nr_heads, to_fetch);
 	}
-
-	count = 0;
-	for (i = 0; i < nr_heads; i++)
-		if (!(to_fetch[i]->status & REF_STATUS_UPTODATE))
-			count++;
-
-	if (!count)
-		return 0;
 
 	if (data->check_connectivity &&
 	    data->transport_options.check_self_contained_and_connected)
@@ -1009,23 +992,6 @@ static int push_refs(struct transport *transport,
 	return -1;
 }
 
-
-static int has_attribute(const char *attrs, const char *attr) {
-	int len;
-	if (!attrs)
-		return 0;
-
-	len = strlen(attr);
-	for (;;) {
-		const char *space = strchrnul(attrs, ' ');
-		if (len == space - attrs && !strncmp(attrs, attr, len))
-			return 1;
-		if (!*space)
-			return 0;
-		attrs = space + 1;
-	}
-}
-
 static struct ref *get_refs_list(struct transport *transport, int for_push)
 {
 	struct helper_data *data = transport->data;
@@ -1067,15 +1033,6 @@ static struct ref *get_refs_list(struct transport *transport, int for_push)
 			(*tail)->symref = xstrdup(buf.buf + 1);
 		else if (buf.buf[0] != '?')
 			get_oid_hex(buf.buf, &(*tail)->old_oid);
-		if (eon) {
-			if (has_attribute(eon + 1, "unchanged")) {
-				(*tail)->status |= REF_STATUS_UPTODATE;
-				if (read_ref((*tail)->name,
-					     (*tail)->old_oid.hash) < 0)
-					die(_("Could not read ref %s"),
-					    (*tail)->name);
-			}
-		}
 		tail = &((*tail)->next);
 	}
 	if (debug)
