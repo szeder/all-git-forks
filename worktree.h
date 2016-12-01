@@ -26,6 +26,11 @@ struct worktree {
 extern struct worktree **get_worktrees(void);
 
 /*
+ * Get the worktrees of a submodule named by `path`.
+ */
+extern struct worktree **get_submodule_worktrees(const char *path);
+
+/*
  * Return git dir of the worktree. Note that the path may be relative.
  * If wt is NULL, git dir of current worktree is returned.
  */
