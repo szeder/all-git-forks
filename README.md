@@ -1,5 +1,6 @@
 [![Stories in Ready](https://badge.waffle.io/xaxadmin/git.png?label=ready&title=Ready)](https://waffle.io/xaxadmin/git)
 [![Stories in Ready](https://badge.waffle.io/xaxadmin/git.png?label=ready&title=Ready)](https://waffle.io/xaxadmin/git)
+[![Stories in Ready](https://badge.waffle.io/xaxadmin/git.png?label=ready&title=Ready)](https://waffle.io/xaxadmin/git)
 Git - fast, scalable, distributed revision control system
 =========================================================
 
