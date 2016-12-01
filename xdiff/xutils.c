@@ -264,6 +264,10 @@ static unsigned long xdl_hash_record_with_whitespace(char const **data,
 	return ha;
 }
 
+#ifdef __x86_64__
+#define XDL_FAST_HASH
+#endif
+
 #ifdef XDL_FAST_HASH
 
 #define REPEAT_BYTE(x)  ((~0ul / 0xff) * (x))
