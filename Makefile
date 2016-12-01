@@ -279,6 +279,9 @@ all::
 # is a simplified version of the merge sort used in glibc. This is
 # recommended if Git triggers O(n^2) behavior in your platform's qsort().
 #
+# Define HAVE_QSORT_S if your platform provides a qsort_s() that's
+# compatible with the one described in C11 Annex K.
+#
 # Define UNRELIABLE_FSTAT if your system's fstat does not return the same
 # information on a not yet closed file that lstat would return for the same
 # file after it was closed.
@@ -1423,6 +1426,13 @@ ifdef INTERNAL_QSORT
 	COMPAT_CFLAGS += -DINTERNAL_QSORT
 	COMPAT_OBJS += compat/qsort.o
 endif
+
+ifdef HAVE_QSORT_S
+	COMPAT_CFLAGS += -DHAVE_QSORT_S
+else
+	COMPAT_OBJS += compat/qsort_s.o
+endif
+
 ifdef RUNTIME_PREFIX
 	COMPAT_CFLAGS += -DRUNTIME_PREFIX
 endif
