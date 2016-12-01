@@ -2593,13 +2593,20 @@ class P4Sync(Command, P4UserMap):
                         self.stream_file['depotFile'], err
                     )
 
-            if (gitConfigBool('git-p4.ignoreMissingFiles') and
-                re.search(
-                    r'^Librarian checkout .+ failed\.\n' +
-                     'RCS checkout .+ failed!\n' +
-                     'RCS no revision after .+!$',
-                    err, re.MULTILINE
-                )
+            if (gitConfigBool('git-p4.ignoreMissingFiles') and (
+                    re.search(
+                        r'^Librarian checkout .+ failed\.\n' +
+                         'RCS checkout .+ failed!\n' +
+                         'RCS no revision after .+!$',
+                        err, re.MULTILINE
+                ) or (
+                    # http://answers.perforce.com/articles/KB/12124
+                    re.search(
+                        r'^Fatal client error; disconnecting!\n' +
+                        'Operation \'client-OutputBinary\' failed\.\n' +
+                        'Required parameter \'data\' not set!$',
+                        err, re.MULTILINE)
+                ))
             ):
                 sys.stdout.write(err_message)
                 sys.stdout.flush()
