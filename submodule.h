@@ -74,5 +74,4 @@ int parallel_submodules(void);
  * retaining any config in the environment.
  */
 void prepare_submodule_repo_env(struct argv_array *out);
-
 #endif
