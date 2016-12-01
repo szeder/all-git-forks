@@ -341,7 +341,6 @@ all::
 # Define XDL_FAST_HASH to use an alternative line-hashing method in
 # the diff algorithm.  It gives a nice speedup if your processor has
 # fast unaligned word loads.  Does NOT work on big-endian systems!
-# Enabled by default on x86_64.
 #
 # Define GIT_USER_AGENT if you want to change how git identifies itself during
 # network interactions.  The default is "git/$(GIT_VERSION)".
