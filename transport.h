@@ -153,10 +153,11 @@ extern int transport_summary_width(const struct ref *refs);
 struct transport *transport_get(struct remote *, const char *);
 
 /*
- * Check whether a transport is allowed by the environment. Type should
- * generally be the URL scheme, as described in Documentation/git.txt
+ * Check whether a transport is allowed by the environment. Setting 'redirect'
+ * can be used to querry if the transport can be used in a redirect.  Type
+ * should generally be the URL scheme, as described in Documentation/git.txt
  */
-int is_transport_allowed(const char *type);
+int is_transport_allowed(const char *type, int redirect);
 
 /*
  * Check whether a transport is allowed by the environment,
