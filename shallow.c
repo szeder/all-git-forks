@@ -513,7 +513,7 @@ static void paint_down(struct paint_info *info, const unsigned char *sha1,
 							  p->item);
 			if (p->item->object.flags & SEEN)
 				continue;
-			if (*p_refs == NULL || *p_refs == *refs)
+			if (*p_refs == NULL)
 				*p_refs = *refs;
 			commit_list_insert(p->item, &head);
 		}
