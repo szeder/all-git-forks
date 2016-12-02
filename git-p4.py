@@ -2594,10 +2594,9 @@ class P4Sync(Command, P4UserMap):
                     )
 
             if (gitConfigBool('git-p4.ignoreMissingFiles') and (
+                    # http://answers.perforce.com/articles/KB/3642
                     re.search(
-                        r'^Librarian checkout .+ failed\.\n' +
-                         'RCS checkout .+ failed!\n' +
-                         'RCS no revision after .+!$',
+                        r'^Librarian checkout .+ failed\.\n',
                         err, re.MULTILINE
                 ) or (
                     # http://answers.perforce.com/articles/KB/12124
