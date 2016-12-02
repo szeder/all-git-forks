@@ -444,7 +444,7 @@ static uint32_t *paint_alloc(struct paint_info *info)
 	unsigned nr = (info->nr_bits + 31) / 32;
 	unsigned size = nr * sizeof(uint32_t);
 	void *p;
-	if (!info->slab_count || info->free + size > info->end) {
+	if (!info->slab_count || size > info->end - info->free) {
 		unsigned alloc_size = size < COMMIT_SLAB_SIZE ?
 			COMMIT_SLAB_SIZE : size;
 		info->slab_count++;
