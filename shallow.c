@@ -445,11 +445,13 @@ static uint32_t *paint_alloc(struct paint_info *info)
 	unsigned size = nr * sizeof(uint32_t);
 	void *p;
 	if (!info->slab_count || info->free + size > info->end) {
+		unsigned alloc_size = size < COMMIT_SLAB_SIZE ?
+			COMMIT_SLAB_SIZE : size;
 		info->slab_count++;
 		REALLOC_ARRAY(info->slab, info->slab_count);
-		info->free = xmalloc(COMMIT_SLAB_SIZE);
+		info->free = xmalloc(alloc_size);
 		info->slab[info->slab_count - 1] = info->free;
-		info->end = info->free + COMMIT_SLAB_SIZE;
+		info->end = info->free + alloc_size;
 	}
 	p = info->free;
 	info->free += size;
