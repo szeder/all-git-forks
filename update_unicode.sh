@@ -10,12 +10,8 @@ if ! test -d unicode; then
 	mkdir unicode
 fi &&
 ( cd unicode &&
-	if ! test -f UnicodeData.txt; then
-		wget http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
-	fi &&
-	if ! test -f EastAsianWidth.txt; then
-		wget http://www.unicode.org/Public/UCD/latest/ucd/EastAsianWidth.txt
-	fi &&
+	wget -N http://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt \
+		http://www.unicode.org/Public/UCD/latest/ucd/EastAsianWidth.txt &&
 	if ! test -d uniset; then
 		git clone https://github.com/depp/uniset.git
 	fi &&
