@@ -30,7 +30,7 @@ fi &&
 		  grep -v plane)
 	};
 	static const struct interval double_width[] = {
-		$(uniset/uniset --32 eaw:F,W)
+		$(uniset/uniset --32 eaw:F,W | grep -v plane)
 	};
 	EOF
 )
