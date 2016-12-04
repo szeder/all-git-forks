@@ -37,5 +37,8 @@ int main(int argc, const char **argv)
 
 	restore_sigpipe_to_default();
 
+	if (getenv(GIT_QUARANTINE_ENVIRONMENT))
+		alt_odb_max_depth++;
+
 	return cmd_main(argc, argv);
 }

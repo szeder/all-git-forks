@@ -337,7 +337,7 @@ static void link_alt_odb_entries(const char *alt, int len, int sep,
 	int i;
 	struct strbuf objdirbuf = STRBUF_INIT;
 
-	if (depth > 5) {
+	if (depth > alt_odb_max_depth) {
 		error("%s: ignoring alternate object stores, nesting too deep.",
 				relative_base);
 		return;
