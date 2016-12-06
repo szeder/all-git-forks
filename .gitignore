@@ -115,6 +115,7 @@
 /git-read-tree
 /git-rebase
 /git-rebase--am
+/git-rebase--helper
 /git-rebase--interactive
 /git-rebase--merge
 /git-receive-pack
@@ -218,5 +219,10 @@
 *.user
 *.idb
 *.pdb
+*.ilk
+.vs/
 /Debug/
 /Release/
+/.vagrant/
+/vagrant2[0-9][0-9][0-9]*-*-*
+/d2[0-9][0-9][0-9]*-*-*
