@@ -72,7 +72,7 @@ static void add_head_info(struct strbuf *head_ref, struct worktree *worktree)
 /**
  * get the main worktree
  */
-static struct worktree *get_main_worktree(void)
+static struct worktree *get_main_worktree(const char *git_common_dir)
 {
 	struct worktree *worktree = NULL;
 	struct strbuf path = STRBUF_INIT;
@@ -81,35 +81,28 @@ static struct worktree *get_main_worktree(void)
 	int is_bare = 0;
 	int is_detached = 0;
 
-	strbuf_add_absolute_path(&worktree_path, get_git_common_dir());
+	strbuf_add_absolute_path(&worktree_path, git_common_dir);
 	is_bare = !strbuf_strip_suffix(&worktree_path, "/.git");
 	if (is_bare)
 		strbuf_strip_suffix(&worktree_path, "/.");
 
-	strbuf_addf(&path, "%s/HEAD", get_git_common_dir());
+	strbuf_addf(&path, "%s/HEAD", git_common_dir);
 
-	if (parse_ref(path.buf, &head_ref, &is_detached) < 0)
-		goto done;
-
-	worktree = xmalloc(sizeof(struct worktree));
+	worktree = xcalloc(1, sizeof(*worktree));
 	worktree->path = strbuf_detach(&worktree_path, NULL);
-	worktree->id = NULL;
 	worktree->is_bare = is_bare;
-	worktree->head_ref = NULL;
 	worktree->is_detached = is_detached;
-	worktree->is_current = 0;
-	add_head_info(&head_ref, worktree);
-	worktree->lock_reason = NULL;
-	worktree->lock_reason_valid = 0;
+	if (!parse_ref(path.buf, &head_ref, &is_detached))
+		add_head_info(&head_ref, worktree);
 
-done:
 	strbuf_release(&path);
 	strbuf_release(&worktree_path);
 	strbuf_release(&head_ref);
 	return worktree;
 }
 
-static struct worktree *get_linked_worktree(const char *id)
+static struct worktree *get_linked_worktree(const char *git_common_dir,
+					    const char *id)
 {
 	struct worktree *worktree = NULL;
 	struct strbuf path = STRBUF_INIT;
@@ -120,7 +113,7 @@ static struct worktree *get_linked_worktree(const char *id)
 	if (!id)
 		die("Missing linked worktree name");
 
-	strbuf_git_common_path(&path, "worktrees/%s/gitdir", id);
+	strbuf_addf(&path, "%s/worktrees/%s/gitdir", git_common_dir, id);
 	if (strbuf_read_file(&worktree_path, path.buf, 0) <= 0)
 		/* invalid gitdir file */
 		goto done;
@@ -133,21 +126,16 @@ static struct worktree *get_linked_worktree(const char *id)
 	}
 
 	strbuf_reset(&path);
-	strbuf_addf(&path, "%s/worktrees/%s/HEAD", get_git_common_dir(), id);
+	strbuf_addf(&path, "%s/worktrees/%s/HEAD", git_common_dir, id);
 
 	if (parse_ref(path.buf, &head_ref, &is_detached) < 0)
 		goto done;
 
-	worktree = xmalloc(sizeof(struct worktree));
+	worktree = xcalloc(1, sizeof(*worktree));
 	worktree->path = strbuf_detach(&worktree_path, NULL);
 	worktree->id = xstrdup(id);
-	worktree->is_bare = 0;
-	worktree->head_ref = NULL;
 	worktree->is_detached = is_detached;
-	worktree->is_current = 0;
 	add_head_info(&head_ref, worktree);
-	worktree->lock_reason = NULL;
-	worktree->lock_reason_valid = 0;
 
 done:
 	strbuf_release(&path);
@@ -173,7 +161,15 @@ static void mark_current_worktree(struct worktree **worktrees)
 	free(git_dir);
 }
 
-struct worktree **get_worktrees(void)
+static int compare_worktree(const void *a_, const void *b_)
+{
+	const struct worktree *const *a = a_;
+	const struct worktree *const *b = b_;
+	return fspathcmp((*a)->path, (*b)->path);
+}
+
+static struct worktree **get_worktrees_internal(const char *git_common_dir,
+						unsigned flags)
 {
 	struct worktree **list = NULL;
 	struct strbuf path = STRBUF_INIT;
@@ -183,10 +179,9 @@ struct worktree **get_worktrees(void)
 
 	list = xmalloc(alloc * sizeof(struct worktree *));
 
-	if ((list[counter] = get_main_worktree()))
-		counter++;
+	list[counter++] = get_main_worktree(git_common_dir);
 
-	strbuf_addf(&path, "%s/worktrees", get_git_common_dir());
+	strbuf_addf(&path, "%s/worktrees", git_common_dir);
 	dir = opendir(path.buf);
 	strbuf_release(&path);
 	if (dir) {
@@ -195,7 +190,7 @@ struct worktree **get_worktrees(void)
 			if (is_dot_or_dotdot(d->d_name))
 				continue;
 
-			if ((linked = get_linked_worktree(d->d_name))) {
+			if ((linked = get_linked_worktree(git_common_dir, d->d_name))) {
 				ALLOC_GROW(list, counter + 1, alloc);
 				list[counter++] = linked;
 			}
@@ -205,8 +200,40 @@ struct worktree **get_worktrees(void)
 	ALLOC_GROW(list, counter + 1, alloc);
 	list[counter] = NULL;
 
+	if (flags & GWT_SORT_LINKED)
+		/*
+		 * don't sort the first item (main worktree), which will
+		 * always be the first
+		 */
+		QSORT(list + 1, counter - 1, compare_worktree);
+
 	mark_current_worktree(list);
 	return list;
+}
+
+struct worktree **get_worktrees(unsigned flags)
+{
+	return get_worktrees_internal(get_git_common_dir(), flags);
+}
+
+struct worktree **get_submodule_worktrees(const char *path, unsigned flags)
+{
+	char *submodule_gitdir;
+	const char *submodule_common_dir;
+	struct strbuf sb = STRBUF_INIT;
+	struct worktree **ret;
+
+	submodule_gitdir = git_pathdup_submodule(path, "%s", "");
+	if (!submodule_gitdir)
+		return NULL;
+
+	/* the env would be set for the superproject */
+	get_common_dir_noenv(&sb, submodule_gitdir);
+	submodule_common_dir = strbuf_detach(&sb, NULL);
+	ret = get_worktrees_internal(submodule_common_dir, flags);
+
+	free(submodule_gitdir);
+	return ret;
 }
 
 const char *get_worktree_git_dir(const struct worktree *wt)
@@ -341,7 +368,7 @@ const struct worktree *find_shared_symref(const char *symref,
 
 	if (worktrees)
 		free_worktrees(worktrees);
-	worktrees = get_worktrees();
+	worktrees = get_worktrees(0);
 
 	for (i = 0; worktrees[i]; i++) {
 		struct worktree *wt = worktrees[i];

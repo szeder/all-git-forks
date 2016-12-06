@@ -2,7 +2,7 @@
 #define ATTR_H
 
 /*
- * Must be called on platforms that do not support static initialisation
+ * Must be called on platforms that do not support static initialization
  * of mutexes.
  */
 extern void attr_start(void);

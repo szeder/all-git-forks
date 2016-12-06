@@ -418,9 +418,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	if (!only && !pathspec.nr) {
 		hold_locked_index(&index_lock, 1);
 		refresh_cache_or_die(refresh_flags);
-		if (active_cache_changed
-		    || !cache_tree_fully_valid(active_cache_tree))
-			update_main_cache_tree(WRITE_TREE_SILENT);
+		update_main_cache_tree(WRITE_TREE_SILENT);
 		if (active_cache_changed) {
 			if (write_locked_index(&the_index, &index_lock,
 					       COMMIT_LOCK))
@@ -1206,7 +1204,7 @@ static int parse_and_validate_options(int argc, const char *argv[],
 
 	if (also + only + all + interactive > 1)
 		die(_("Only one of --include/--only/--all/--interactive/--patch can be used."));
-	if (argc == 0 && (also || (only && !amend)))
+	if (argc == 0 && (also || (only && !amend && !allow_empty)))
 		die(_("No paths with --include/--only does not make sense."));
 	if (argc == 0 && only && amend)
 		only_include_assumed = _("Clever... amending the last one with dirty index.");

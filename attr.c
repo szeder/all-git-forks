@@ -135,7 +135,7 @@ static void report_invalid_attr(const char *name, size_t len,
 	strbuf_release(&err);
 }
 
-struct git_attr *git_attr_counted(const char *name, size_t len)
+static struct git_attr *git_attr_internal(const char *name, int len)
 {
 	unsigned hval = hash_name(name, len);
 	unsigned pos = hval % HASHSIZE;
@@ -171,7 +171,7 @@ struct git_attr *git_attr_counted(const char *name, size_t len)
 
 struct git_attr *git_attr(const char *name)
 {
-	return git_attr_counted(name, strlen(name));
+	return git_attr_internal(name, strlen(name));
 }
 
 /* What does a matched pattern decide? */
@@ -263,7 +263,7 @@ static const char *parse_attr(const char *src, int lineno, const char *cp,
 		else {
 			e->setto = xmemdupz(equals + 1, ep - equals - 1);
 		}
-		e->attr = git_attr_counted(cp, len);
+		e->attr = git_attr_internal(cp, len);
 	}
 	return ep + strspn(ep, blank);
 }
@@ -324,7 +324,7 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 		      sizeof(struct attr_state) * num_attr +
 		      (is_macro ? 0 : namelen + 1));
 	if (is_macro) {
-		res->u.attr = git_attr_counted(name, namelen);
+		res->u.attr = git_attr_internal(name, namelen);
 		res->u.attr->maybe_macro = 1;
 	} else {
 		char *p = (char *)&(res->state[num_attr]);

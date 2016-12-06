@@ -253,7 +253,9 @@ leave out at most one of A and B, in which case it defaults to HEAD.
 	started.
 
 --forget::
-	Abort the rebase operation but leave HEAD where it is.
+	Abort the rebase operation but HEAD is not reset back to the
+	original branch. The index and working tree are also left
+	unchanged as a result.
 
 --keep-empty::
 	Keep the commits that do not change anything from its

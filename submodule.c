@@ -198,6 +198,56 @@ void gitmodules_config(void)
 	}
 }
 
+void gitmodules_config_sha1(const unsigned char *commit_sha1)
+{
+	struct strbuf rev = STRBUF_INIT;
+	unsigned char sha1[20];
+
+	if (gitmodule_sha1_from_commit(commit_sha1, sha1, &rev)) {
+		git_config_from_blob_sha1(submodule_config, rev.buf,
+					  sha1, NULL);
+	}
+	strbuf_release(&rev);
+}
+
+/*
+ * Determine if a submodule has been initialized at a given 'path'
+ */
+int is_submodule_initialized(const char *path)
+{
+	int ret = 0;
+	const struct submodule *module = NULL;
+
+	module = submodule_from_path(null_sha1, path);
+
+	if (module) {
+		char *key = xstrfmt("submodule.%s.url", module->name);
+		char *value = NULL;
+
+		ret = !git_config_get_string(key, &value);
+
+		free(value);
+		free(key);
+	}
+
+	return ret;
+}
+
+/*
+ * Determine if a submodule has been populated at a given 'path'
+ */
+int is_submodule_populated(const char *path)
+{
+	int ret = 0;
+	char *gitdir = xstrfmt("%s/.git", path);
+
+	if (resolve_gitdir(gitdir))
+		ret = 1;
+
+	free(gitdir);
+	return ret;
+}
+
 int parse_submodule_update_strategy(const char *value,
 		struct submodule_update_strategy *dst)
 {
@@ -500,37 +550,48 @@ static int has_remote(const char *refname, const struct object_id *oid,
 	return 1;
 }
 
-static int append_hash_to_argv(const unsigned char sha1[20], void *data)
+static int append_sha1_to_argv(const unsigned char sha1[20], void *data)
 {
-	struct argv_array *argv = (struct argv_array *) data;
+	struct argv_array *argv = data;
 	argv_array_push(argv, sha1_to_hex(sha1));
 	return 0;
 }
 
-static int check_has_hash(const unsigned char sha1[20], void *data)
+static int check_has_commit(const unsigned char sha1[20], void *data)
 {
-	int *has_hash = (int *) data;
+	int *has_commit = data;
 
 	if (!lookup_commit_reference(sha1))
-		*has_hash = 0;
+		*has_commit = 0;
 
 	return 0;
 }
 
-static int submodule_has_hashes(const char *path, struct sha1_array *hashes)
+static int submodule_has_commits(const char *path, struct sha1_array *commits)
 {
-	int has_hash = 1;
+	int has_commit = 1;
 
 	if (add_submodule_odb(path))
 		return 0;
 
-	sha1_array_for_each_unique(hashes, check_has_hash, &has_hash);
-	return has_hash;
+	sha1_array_for_each_unique(commits, check_has_commit, &has_commit);
+	return has_commit;
 }
 
-static int submodule_needs_pushing(const char *path, struct sha1_array *hashes)
+static int submodule_needs_pushing(const char *path, struct sha1_array *commits)
 {
-	if (!submodule_has_hashes(path, hashes))
+	if (!submodule_has_commits(path, commits))
+		/*
+		 * NOTE: We do consider it safe to return "no" here. The
+		 * correct answer would be "We do not know" instead of
+		 * "No push needed", but it is quite hard to change
+		 * the submodule pointer without having the submodule
+		 * around. If a user did however change the submodules
+		 * without having the submodule around, this indicates
+		 * an expert who knows what they are doing or a
+		 * maintainer integrating work from other people. In
+		 * both cases it should be safe to skip this check.
+		 */
 		return 0;
 
 	if (for_each_remote_ref_submodule(path, has_remote, NULL) > 0) {
@@ -539,7 +600,7 @@ static int submodule_needs_pushing(const char *path, struct sha1_array *hashes)
 		int needs_pushing = 0;
 
 		argv_array_push(&cp.args, "rev-list");
-		sha1_array_for_each_unique(hashes, append_hash_to_argv, &cp.args);
+		sha1_array_for_each_unique(commits, append_sha1_to_argv, &cp.args);
 		argv_array_pushl(&cp.args, "--not", "--remotes", "-n", "1" , NULL);
 
 		prepare_submodule_repo_env(&cp.env_array);
@@ -548,7 +609,7 @@ static int submodule_needs_pushing(const char *path, struct sha1_array *hashes)
 		cp.out = -1;
 		cp.dir = path;
 		if (start_command(&cp))
-			die("Could not run 'git rev-list <hashes> --not --remotes -n 1' command in submodule %s",
+			die("Could not run 'git rev-list <commits> --not --remotes -n 1' command in submodule %s",
 					path);
 		if (strbuf_read(&buf, cp.out, 41))
 			needs_pushing = 1;
@@ -561,8 +622,8 @@ static int submodule_needs_pushing(const char *path, struct sha1_array *hashes)
 	return 0;
 }
 
-static struct sha1_array *get_sha1s_from_list(struct string_list *submodules,
-		const char *path)
+static struct sha1_array *submodule_commits(struct string_list *submodules,
+					    const char *path)
 {
 	struct string_list_item *item;
 
@@ -584,11 +645,11 @@ static void collect_submodules_from_diff(struct diff_queue_struct *q,
 
 	for (i = 0; i < q->nr; i++) {
 		struct diff_filepair *p = q->queue[i];
-		struct sha1_array *hashes;
+		struct sha1_array *commits;
 		if (!S_ISGITLINK(p->two->mode))
 			continue;
-		hashes = get_sha1s_from_list(submodules, p->two->path);
-		sha1_array_append(hashes, p->two->oid.hash);
+		commits = submodule_commits(submodules, p->two->path);
+		sha1_array_append(commits, p->two->oid.hash);
 	}
 }
 
@@ -606,29 +667,26 @@ static void find_unpushed_submodule_commits(struct commit *commit,
 
 static void free_submodules_sha1s(struct string_list *submodules)
 {
-	int i;
-	for (i = 0; i < submodules->nr; i++) {
-		struct string_list_item *item = &submodules->items[i];
-		struct sha1_array *hashes = (struct sha1_array *) item->util;
-		sha1_array_clear(hashes);
-	}
+	struct string_list_item *item;
+	for_each_string_list_item(item, submodules)
+		sha1_array_clear((struct sha1_array *) item->util);
 	string_list_clear(submodules, 1);
 }
 
-int find_unpushed_submodules(struct sha1_array *hashes,
+int find_unpushed_submodules(struct sha1_array *commits,
 		const char *remotes_name, struct string_list *needs_pushing)
 {
 	struct rev_info rev;
 	struct commit *commit;
-	int i;
 	struct string_list submodules = STRING_LIST_INIT_DUP;
+	struct string_list_item *submodule;
 	struct argv_array argv = ARGV_ARRAY_INIT;
 
 	init_revisions(&rev, NULL);
 
 	/* argv.argv[0] will be ignored by setup_revisions */
 	argv_array_push(&argv, "find_unpushed_submodules");
-	sha1_array_for_each_unique(hashes, append_hash_to_argv, &argv);
+	sha1_array_for_each_unique(commits, append_sha1_to_argv, &argv);
 	argv_array_push(&argv, "--not");
 	argv_array_pushf(&argv, "--remotes=%s", remotes_name);
 
@@ -642,11 +700,10 @@ int find_unpushed_submodules(struct sha1_array *hashes,
 	reset_revision_walk();
 	argv_array_clear(&argv);
 
-	for (i = 0; i < submodules.nr; i++) {
-		struct string_list_item *submodule = &submodules.items[i];
-		struct sha1_array *hashes = (struct sha1_array *) submodule->util;
+	for_each_string_list_item(submodule, &submodules) {
+		struct sha1_array *commits = (struct sha1_array *) submodule->util;
 
-		if (submodule_needs_pushing(submodule->string, hashes))
+		if (submodule_needs_pushing(submodule->string, commits))
 			string_list_insert(needs_pushing, submodule->string);
 	}
 	free_submodules_sha1s(&submodules);
@@ -654,16 +711,17 @@ int find_unpushed_submodules(struct sha1_array *hashes,
 	return needs_pushing->nr;
 }
 
-static int push_submodule(const char *path)
+static int push_submodule(const char *path, int dry_run)
 {
 	if (add_submodule_odb(path))
 		return 1;
 
 	if (for_each_remote_ref_submodule(path, has_remote, NULL) > 0) {
 		struct child_process cp = CHILD_PROCESS_INIT;
-		const char *argv[] = {"push", NULL};
+		argv_array_push(&cp.args, "push");
+		if (dry_run)
+			argv_array_push(&cp.args, "--dry-run");
 
-		cp.argv = argv;
 		prepare_submodule_repo_env(&cp.env_array);
 		cp.git_cmd = 1;
 		cp.no_stdin = 1;
@@ -676,18 +734,20 @@ static int push_submodule(const char *path)
 	return 1;
 }
 
-int push_unpushed_submodules(struct sha1_array *hashes, const char *remotes_name)
+int push_unpushed_submodules(struct sha1_array *commits,
+			     const char *remotes_name,
+			     int dry_run)
 {
 	int i, ret = 1;
 	struct string_list needs_pushing = STRING_LIST_INIT_DUP;
 
-	if (!find_unpushed_submodules(hashes, remotes_name, &needs_pushing))
+	if (!find_unpushed_submodules(commits, remotes_name, &needs_pushing))
 		return 1;
 
 	for (i = 0; i < needs_pushing.nr; i++) {
 		const char *path = needs_pushing.items[i].string;
 		fprintf(stderr, "Pushing submodule '%s'\n", path);
-		if (!push_submodule(path)) {
+		if (!push_submodule(path, dry_run)) {
 			fprintf(stderr, "Unable to push submodule '%s'\n", path);
 			ret = 0;
 		}
@@ -1291,23 +1351,25 @@ void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
 {
 	struct strbuf file_name = STRBUF_INIT;
 	struct strbuf rel_path = STRBUF_INIT;
-	const char *real_work_tree = xstrdup(real_path(work_tree));
+	char *real_git_dir = xstrdup(real_path(git_dir));
+	char *real_work_tree = xstrdup(real_path(work_tree));
 
 	/* Update gitfile */
 	strbuf_addf(&file_name, "%s/.git", work_tree);
 	write_file(file_name.buf, "gitdir: %s",
-		   relative_path(git_dir, real_work_tree, &rel_path));
+		   relative_path(real_git_dir, real_work_tree, &rel_path));
 
 	/* Update core.worktree setting */
 	strbuf_reset(&file_name);
-	strbuf_addf(&file_name, "%s/config", git_dir);
+	strbuf_addf(&file_name, "%s/config", real_git_dir);
 	git_config_set_in_file(file_name.buf, "core.worktree",
-			       relative_path(real_work_tree, git_dir,
+			       relative_path(real_work_tree, real_git_dir,
 					     &rel_path));
 
 	strbuf_release(&file_name);
 	strbuf_release(&rel_path);
-	free((void *)real_work_tree);
+	free(real_work_tree);
+	free(real_git_dir);
 }
 
 int parallel_submodules(void)

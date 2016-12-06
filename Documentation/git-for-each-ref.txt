@@ -152,7 +152,10 @@ align::
 	"width=" and/or "position=" prefixes may be omitted, and bare
 	<width> and <position> used instead.  For instance,
 	`%(align:<width>,<position>)`. If the contents length is more
-	than the width then no alignment is performed.
+	than the width then no alignment is performed. If used with
+	`--quote` everything in between %(align:...) and %(end) is
+	quoted, but if nested then only the topmost level performs
+	quoting.
 
 if::
 	Used as %(if)...%(then)...(%end) or
@@ -192,6 +195,8 @@ of all lines of the commit message up to the first blank line.  The next
 line is 'contents:body', where body is all of the lines after the first
 blank line.  The optional GPG signature is `contents:signature`.  The
 first `N` lines of the message is obtained using `contents:lines=N`.
+Additionally, the trailers as interpreted by linkgit:git-interpret-trailers[1]
+are obtained as 'contents:trailers'.
 
 For sorting purposes, fields with numeric values sort in numeric order
 (`objectsize`, `authordate`, `committerdate`, `creatordate`, `taggerdate`).

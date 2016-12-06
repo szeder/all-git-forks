@@ -160,7 +160,23 @@ test_expect_success 'fail on multiple attr specifiers in one pathspec item' '
 '
 
 test_expect_success 'checking attributes in a multithreaded process' '
-	git status ":(attr:labelB)"
+	cat <<-EOF >expect &&
+	fileA:A
+	EOF
+	echo A >fileA &&
+	echo A >fileB &&
+	git grep A -- ":(attr:labelA)" >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success 'fail if attr magic is used places not implemented' '
+	# The main purpose of this test is to check that we actually fail
+	# when you attempt to use attr magic in commands that do not implement
+	# attr magic. This test does not advocate git-add to stay that way,
+	# though, but git-add is convenient as it has its own internal pathspec
+	# parsing.
+	test_must_fail git add ":(attr:labelB)" 2>actual &&
+	test_i18ngrep "unsupported magic" actual
 '
 
 test_expect_success 'abort on giving invalid label on the command line' '

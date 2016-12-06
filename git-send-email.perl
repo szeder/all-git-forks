@@ -585,12 +585,13 @@ sub is_format_patch_arg {
 		if (defined($format_patch)) {
 			return $format_patch;
 		}
-		die sprintf(__(
-"File '%s' exists but it could also be the range of commits
+		die sprintf(__ <<EOF, $f, $f);
+File '%s' exists but it could also be the range of commits
 to produce patches for.  Please disambiguate by...
 
-    * Saying \"./%s\" if you mean a file; or
-    * Giving --format-patch option if you mean a range."), $f, $f);
+    * Saying "./%s" if you mean a file; or
+    * Giving --format-patch option if you mean a range.
+EOF
 	} catch Git::Error::Command with {
 		# Not a valid revision.  Treat it as a filename.
 		return 0;
@@ -654,7 +655,7 @@ sub get_patch_subject {
 		return "GIT: $1\n";
 	}
 	close $fh;
-	die sprintf(__("No subject line in %s ?"), $fn);
+	die sprintf(__("No subject line in %s?"), $fn);
 }
 
 if ($compose) {
@@ -671,18 +672,20 @@ if ($compose) {
 	my $tpl_subject = $initial_subject || '';
 	my $tpl_reply_to = $initial_reply_to || '';
 
-	print $c <<EOT;
+	print $c <<EOT1, Git::prefix_lines("GIT: ", __ <<EOT2), <<EOT3;
 From $tpl_sender # This line is ignored.
-GIT: Lines beginning in "GIT:" will be removed.
-GIT: Consider including an overall diffstat or table of contents
-GIT: for the patch you are writing.
-GIT:
-GIT: Clear the body content if you don't wish to send a summary.
+EOT1
+Lines beginning in "GIT:" will be removed.
+Consider including an overall diffstat or table of contents
+for the patch you are writing.
+
+Clear the body content if you don't wish to send a summary.
+EOT2
 From: $tpl_sender
 Subject: $tpl_subject
 In-Reply-To: $tpl_reply_to
 
-EOT
+EOT3
 	for my $f (@files) {
 		print $c get_patch_subject($f);
 	}
@@ -695,10 +698,10 @@ EOT
 	}
 
 	open my $c2, ">", $compose_filename . ".final"
-		or die sprintf(__("Failed to open %s.final : %s"), $compose_filename, $!);
+		or die sprintf(__("Failed to open %s.final: %s"), $compose_filename, $!);
 
 	open $c, "<", $compose_filename
-		or die sprintf(__("Failed to open %s : %s"), $compose_filename, $!);
+		or die sprintf(__("Failed to open %s: %s"), $compose_filename, $!);
 
 	my $need_8bit_cte = file_has_nonascii($compose_filename);
 	my $in_body = 0;
@@ -1302,8 +1305,8 @@ Message-Id: $message_id
 		if ($needs_confirm eq "inform") {
 			$confirm_unconfigured = 0; # squelch this message for the rest of this run
 			$ask_default = "y"; # assume yes on EOF since user hasn't explicitly asked for confirmation
-			print __(
-"    The Cc list above has been expanded by additional
+			print __ <<EOF ;
+    The Cc list above has been expanded by additional
     addresses found in the patch commit message. By default
     send-email prompts before sending whenever this occurs.
     This behavior is controlled by the sendemail.confirm
@@ -1311,7 +1314,9 @@ Message-Id: $message_id
 
     For additional information, run 'git send-email --help'.
     To retain the current behavior, but squelch this message,
-    run 'git config --global sendemail.confirm auto'."), "\n\n";
+    run 'git config --global sendemail.confirm auto'.
+
+EOF
 		}
 		# TRANSLATORS: Make sure to include [y] [n] [q] [a] in your
 		# translation. The program will only accept English input

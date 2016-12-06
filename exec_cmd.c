@@ -38,21 +38,17 @@ char *system_path(const char *path)
 	return strbuf_detach(&d, NULL);
 }
 
-const char *git_extract_argv0_path(const char *argv0)
+void git_extract_argv0_path(const char *argv0)
 {
 	const char *slash;
 
 	if (!argv0 || !*argv0)
-		return NULL;
+		return;
 
 	slash = find_last_dir_sep(argv0);
 
-	if (slash) {
+	if (slash)
 		argv0_path = xstrndup(argv0, slash - argv0);
-		return slash + 1;
-	}
-
-	return argv0;
 }
 
 void git_set_argv_exec_path(const char *exec_path)
@@ -69,6 +65,7 @@ void git_set_argv_exec_path(const char *exec_path)
 const char *git_exec_path(void)
 {
 	const char *env;
+	static char *system_exec_path;
 
 	if (argv_exec_path)
 		return argv_exec_path;
@@ -78,7 +75,9 @@ const char *git_exec_path(void)
 		return env;
 	}
 
-	return system_path(GIT_EXEC_PATH);
+	if (!system_exec_path)
+		system_exec_path = system_path(GIT_EXEC_PATH);
+	return system_exec_path;
 }
 
 static void add_path(struct strbuf *out, const char *path)

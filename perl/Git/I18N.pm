@@ -74,7 +74,7 @@ Git::I18N - Perl interface to Git's Gettext localizations
 
 	printf __("The following error occurred: %s\n"), $error;
 
-	printf __n("commited %d file", "commited %d files\n", $files), $files;
+	printf __n("commited %d file\n", "commited %d files\n", $files), $files;
 
 
 =head1 DESCRIPTION
@@ -95,12 +95,14 @@ L<Locale::Messages>'s gettext function if all goes well, otherwise our
 passthrough fallback function.
 
 =head2 __n($$$)
+
 L<Locale::Messages>'s ngettext function or passthrough fallback function.
 
 =head2 N__($)
-No-op that only returns its argument. Use this if you want xgettext to
-extract the text to the pot template but do not want to trigger retrival of
-the translation at run time.
+
+No-operation that only returns its argument. Use this if you want xgettext to
+extract the text to the pot template but do not want to trigger retrival of the
+translation at run time.
 
 =head1 AUTHOR
 

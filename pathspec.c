@@ -232,6 +232,7 @@ static void eat_long_magic(struct pathspec_item *item, const char *elt,
 			char *attr_body = xmemdupz(body, len - strlen("attr:"));
 			parse_pathspec_attr_match(item, attr_body);
 			free(attr_body);
+			*magic |= PATHSPEC_ATTR;
 			continue;
 		}
 

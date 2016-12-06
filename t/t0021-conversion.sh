@@ -4,7 +4,7 @@ test_description='blob conversion via gitattributes'
 
 . ./test-lib.sh
 
-TEST_ROOT="$(pwd)"
+TEST_ROOT="$PWD"
 PATH=$TEST_ROOT:$PATH
 
 write_script <<\EOF "$TEST_ROOT/rot13.sh"
@@ -29,8 +29,7 @@ file_size () {
 
 filter_git () {
 	rm -f rot13-filter.log &&
-	git "$@" 2>git-stderr.log &&
-	rm -f git-stderr.log
+	git "$@"
 }
 
 # Compare two files and ensure that `clean` and `smudge` respectively are
@@ -351,10 +350,9 @@ test_expect_success PERL 'required process filter should filter data' '
 		cd repo &&
 		git init &&
 
-		echo "git-stderr.log" >.gitignore &&
 		echo "*.r filter=protocol" >.gitattributes &&
 		git add . &&
-		git commit . -m "test commit 1" &&
+		git commit -m "test commit 1" &&
 		git branch empty-branch &&
 
 		cp "$TEST_ROOT/test.o" test.r &&
@@ -379,7 +377,7 @@ test_expect_success PERL 'required process filter should filter data' '
 		EOF
 		test_cmp_count expected.log rot13-filter.log &&
 
-		filter_git commit . -m "test commit 2" &&
+		filter_git commit -m "test commit 2" &&
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
