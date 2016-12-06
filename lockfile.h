@@ -129,9 +129,15 @@ struct lock_file {
 /*
  * If a lock is already taken for the file, `die()` with an error
  * message. If this flag is not specified, trying to lock a file that
- * is already locked returns -1 to the caller.
+ * is already locked gives the same error message and returns -1 to
+ * the caller.
  */
 #define LOCK_DIE_ON_ERROR 1
+/*
+ * ... or the function can be told to be totally silent and return
+ * -1 to the caller upon error with this flag
+ */
+#define LOCK_SILENT_ON_ERROR 2
 
 /*
  * Usually symbolic links in the destination path are resolved. This
