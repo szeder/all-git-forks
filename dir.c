@@ -1787,25 +1787,24 @@ static int cmp_name(const void *p1, const void *p2)
 	return name_compare(e1->name, e1->len, e2->name, e2->len);
 }
 
-static struct path_simplify *create_simplify(const char **pathspec)
+static struct path_simplify *create_simplify(const struct pathspec *pathspec)
 {
-	int nr, alloc = 0;
+	int i;
 	struct path_simplify *simplify = NULL;
 
-	if (!pathspec)
+	if (!pathspec || !pathspec->nr)
 		return NULL;
 
-	for (nr = 0 ; ; nr++) {
+	ALLOC_ARRAY(simplify, pathspec->nr + 1);
+	for (i = 0; i < pathspec->nr; i++) {
 		const char *match;
-		ALLOC_GROW(simplify, nr + 1, alloc);
-		match = *pathspec++;
-		if (!match)
-			break;
-		simplify[nr].path = match;
-		simplify[nr].len = simple_length(match);
+		match = pathspec->items[i].match;
+		simplify[i].path = match;
+		simplify[i].len = pathspec->items[i].nowildcard_len;
 	}
-	simplify[nr].path = NULL;
-	simplify[nr].len = 0;
+	simplify[i].path = NULL;
+	simplify[i].len = 0;
+
 	return simplify;
 }
 
@@ -2036,7 +2035,7 @@ int read_directory(struct dir_struct *dir, const char *path, int len, const stru
 	 * subset of positive ones, which has no impacts on
 	 * create_simplify().
 	 */
-	simplify = create_simplify(pathspec ? pathspec->_raw : NULL);
+	simplify = create_simplify(pathspec);
 	untracked = validate_untracked_cache(dir, len, pathspec);
 	if (!untracked)
 		/*
