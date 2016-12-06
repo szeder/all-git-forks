@@ -235,8 +235,6 @@ static int add_cacheinfo(struct merge_options *o,
 		struct cache_entry *nce;
 
 		nce = refresh_cache_entry(ce, CE_MATCH_REFRESH | CE_MATCH_IGNORE_MISSING);
-		if (!nce)
-			return err(o, _("addinfo_cache failed for path '%s'"), path);
 		if (nce != ce)
 			ret = add_cache_entry(nce, options);
 	}
@@ -298,7 +296,8 @@ struct tree *write_tree_from_memory(struct merge_options *o)
 	if (!active_cache_tree)
 		active_cache_tree = cache_tree();
 
-	if (cache_tree_update(&the_index, 0) < 0) {
+	if (!cache_tree_fully_valid(active_cache_tree) &&
+	    cache_tree_update(&the_index, 0) < 0) {
 		err(o, _("error building trees"));
 		return NULL;
 	}
@@ -389,10 +388,12 @@ static struct string_list *get_unmerged(void)
 	return unmerged;
 }
 
-static int string_list_df_name_compare(const char *one, const char *two)
+static int string_list_df_name_compare(const void *a, const void *b)
 {
-	int onelen = strlen(one);
-	int twolen = strlen(two);
+	const struct string_list_item *one = a;
+	const struct string_list_item *two = b;
+	int onelen = strlen(one->string);
+	int twolen = strlen(two->string);
 	/*
 	 * Here we only care that entries for D/F conflicts are
 	 * adjacent, in particular with the file of the D/F conflict
@@ -405,8 +406,8 @@ static int string_list_df_name_compare(const char *one, const char *two)
 	 * since in other cases any changes in their order due to
 	 * sorting cause no problems for us.
 	 */
-	int cmp = df_name_compare(one, onelen, S_IFDIR,
-				  two, twolen, S_IFDIR);
+	int cmp = df_name_compare(one->string, onelen, S_IFDIR,
+				  two->string, twolen, S_IFDIR);
 	/*
 	 * Now that 'foo' and 'foo/bar' compare equal, we have to make sure
 	 * that 'foo' comes before 'foo/bar'.
@@ -450,8 +451,8 @@ static void record_df_conflict_files(struct merge_options *o,
 		string_list_append(&df_sorted_entries, next->string)->util =
 				   next->util;
 	}
-	df_sorted_entries.cmp = string_list_df_name_compare;
-	string_list_sort(&df_sorted_entries);
+	qsort(df_sorted_entries.items, entries->nr, sizeof(*entries->items),
+	      string_list_df_name_compare);
 
 	string_list_clear(&o->df_conflict_file_set, 1);
 	for (i = 0; i < df_sorted_entries.nr; i++) {
@@ -663,13 +664,7 @@ static char *unique_path(struct merge_options *o, const char *path, const char *
 	return strbuf_detach(&newpath, NULL);
 }
 
-/**
- * Check whether a directory in the index is in the way of an incoming
- * file.  Return 1 if so.  If check_working_copy is non-zero, also
- * check the working directory.  If empty_ok is non-zero, also return
- * 0 in the case where the working-tree dir exists but is empty.
- */
-static int dir_in_way(const char *path, int check_working_copy, int empty_ok)
+static int dir_in_way(const char *path, int check_working_copy)
 {
 	int pos;
 	struct strbuf dirpath = STRBUF_INIT;
@@ -689,8 +684,7 @@ static int dir_in_way(const char *path, int check_working_copy, int empty_ok)
 	}
 
 	strbuf_release(&dirpath);
-	return check_working_copy && !lstat(path, &st) && S_ISDIR(st.st_mode) &&
-		!(empty_ok && is_empty_dir(path));
+	return check_working_copy && !lstat(path, &st) && S_ISDIR(st.st_mode);
 }
 
 static int was_tracked(const char *path)
@@ -1068,7 +1062,7 @@ static int handle_change_delete(struct merge_options *o,
 {
 	char *renamed = NULL;
 	int ret = 0;
-	if (dir_in_way(path, !o->call_depth, 0)) {
+	if (dir_in_way(path, !o->call_depth)) {
 		renamed = unique_path(o, path, a_oid ? o->branch1 : o->branch2);
 	}
 
@@ -1201,7 +1195,7 @@ static int handle_file(struct merge_options *o,
 		remove_file(o, 0, rename->path, 0);
 		dst_name = unique_path(o, rename->path, cur_branch);
 	} else {
-		if (dir_in_way(rename->path, !o->call_depth, 0)) {
+		if (dir_in_way(rename->path, !o->call_depth)) {
 			dst_name = unique_path(o, rename->path, cur_branch);
 			output(o, 1, _("%s is a directory in %s adding as %s instead"),
 			       rename->path, other_branch, dst_name);
@@ -1710,8 +1704,7 @@ static int merge_content(struct merge_options *o,
 			 o->branch2 == rename_conflict_info->branch1) ?
 			pair1->two->path : pair1->one->path;
 
-		if (dir_in_way(path, !o->call_depth,
-			       S_ISGITLINK(pair1->two->mode)))
+		if (dir_in_way(path, !o->call_depth))
 			df_conflict_remains = 1;
 	}
 	if (merge_file_special_markers(o, &one, &a, &b,
@@ -1869,8 +1862,7 @@ static int process_entry(struct merge_options *o,
 			oid = b_oid;
 			conf = _("directory/file");
 		}
-		if (dir_in_way(path, !o->call_depth,
-			       S_ISGITLINK(a_mode))) {
+		if (dir_in_way(path, !o->call_depth)) {
 			char *new_path = unique_path(o, path, add_branch);
 			clean_merge = 0;
 			output(o, 1, _("CONFLICT (%s): There is a directory with name %s in %s. "
