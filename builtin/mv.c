@@ -56,9 +56,8 @@ static const char **internal_copy_pathspec(const char *prefix,
 
 	/* Copy the pathspec and free the old intermediate strings */
 	for (i = 0; i < count; i++) {
-		const char *match = xstrdup(ps.items[i].match);
 		free((char *) result[i]);
-		result[i] = match;
+		result[i] = xstrdup(ps.items[i].match);
 	}
 
 	clear_pathspec(&ps);
