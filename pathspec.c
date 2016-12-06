@@ -68,7 +68,7 @@ static struct pathspec_magic {
 	const char *name;
 } pathspec_magic[] = {
 	{ PATHSPEC_FROMTOP, '/', "top" },
-	{ PATHSPEC_LITERAL,   0, "literal" },
+	{ PATHSPEC_LITERAL,'\0', "literal" },
 	{ PATHSPEC_GLOB,   '\0', "glob" },
 	{ PATHSPEC_ICASE,  '\0', "icase" },
 	{ PATHSPEC_EXCLUDE, '!', "exclude" },
@@ -102,7 +102,6 @@ static void prefix_short_magic(struct strbuf *sb, int prefixlen,
  * string cannot express such a case.
  */
 static unsigned prefix_pathspec(struct pathspec_item *item,
-				unsigned *p_short_magic,
 				unsigned flags,
 				const char *prefix, int prefixlen,
 				const char *elt)
@@ -210,7 +209,6 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	}
 
 	magic |= short_magic;
-	*p_short_magic = short_magic;
 
 	/* --noglob-pathspec adds :(literal) _unless_ :(glob) is specified */
 	if (noglob_global && !(magic & PATHSPEC_GLOB))
@@ -329,8 +327,7 @@ static int pathspec_item_cmp(const void *a_, const void *b_)
 }
 
 static void NORETURN unsupported_magic(const char *pattern,
-				       unsigned magic,
-				       unsigned short_magic)
+				       unsigned magic)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int i;
@@ -340,8 +337,9 @@ static void NORETURN unsupported_magic(const char *pattern,
 			continue;
 		if (sb.len)
 			strbuf_addch(&sb, ' ');
-		if (short_magic & m->bit)
-			strbuf_addf(&sb, "'%c'", m->mnemonic);
+
+		if (m->mnemonic)
+			strbuf_addf(&sb, "'(%c)%s'", m->mnemonic, m->name);
 		else
 			strbuf_addf(&sb, "'%s'", m->name);
 	}
@@ -413,10 +411,9 @@ void parse_pathspec(struct pathspec *pathspec,
 	prefixlen = prefix ? strlen(prefix) : 0;
 
 	for (i = 0; i < n; i++) {
-		unsigned short_magic;
 		entry = argv[i];
 
-		item[i].magic = prefix_pathspec(item + i, &short_magic,
+		item[i].magic = prefix_pathspec(item + i,
 						flags,
 						prefix, prefixlen, entry);
 		if ((flags & PATHSPEC_LITERAL_PATH) &&
@@ -426,8 +423,7 @@ void parse_pathspec(struct pathspec *pathspec,
 			nr_exclude++;
 		if (item[i].magic & magic_mask)
 			unsupported_magic(entry,
-					  item[i].magic & magic_mask,
-					  short_magic);
+					  item[i].magic & magic_mask);
 
 		if ((flags & PATHSPEC_SYMLINK_LEADING_PATH) &&
 		    has_symlink_leading_path(item[i].match, item[i].len)) {
