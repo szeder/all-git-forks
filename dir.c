@@ -15,6 +15,7 @@
 #include "utf8.h"
 #include "varint.h"
 #include "ewah/ewok.h"
+#include "submodule.h"
 
 struct path_simplify {
 	int len;
