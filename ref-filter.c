@@ -1649,14 +1649,10 @@ struct ref_sorting *ref_default_sorting(void)
 	return sorting;
 }
 
-int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset)
+void parse_sorting_string(const char *arg, struct ref_sorting **sorting_tail)
 {
-	struct ref_sorting **sorting_tail = opt->value;
 	struct ref_sorting *s;
 	int len;
-
-	if (!arg) /* should --no-sort void the list ? */
-		return -1;
 
 	s = xcalloc(1, sizeof(*s));
 	s->next = *sorting_tail;
@@ -1671,6 +1667,16 @@ int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset)
 		s->version = 1;
 	len = strlen(arg);
 	s->atom = parse_ref_filter_atom(arg, arg+len);
+}
+
+int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset)
+{
+	struct ref_sorting **sorting_tail = opt->value;
+
+	if (!arg) /* should --no-sort void the list ? */
+		return -1;
+
+	parse_sorting_string(arg, sorting_tail);
 	return 0;
 }
 

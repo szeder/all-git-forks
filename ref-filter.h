@@ -100,6 +100,8 @@ int verify_ref_format(const char *format);
 void ref_array_sort(struct ref_sorting *sort, struct ref_array *array);
 /*  Print the ref using the given format and quote_style */
 void show_ref_array_item(struct ref_array_item *info, const char *format, int quote_style);
+/* Parse given arg and append it to the ref_sorting list */
+void parse_sorting_string(const char *arg, struct ref_sorting **sorting_tail);
 /*  Callback function for parsing the sort option */
 int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset);
 /*  Default sort option based on refname */
