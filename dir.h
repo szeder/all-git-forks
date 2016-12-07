@@ -335,4 +335,7 @@ struct untracked_cache *read_untracked_extension(const void *data, unsigned long
 void write_untracked_extension(struct strbuf *out, struct untracked_cache *untracked);
 void add_untracked_cache(struct index_state *istate);
 void remove_untracked_cache(struct index_state *istate);
+extern int relocate_gitdir(const char *path, const char *old_git_dir,
+			   const char *new_git_dir, const char *displaypath,
+			   struct strbuf *err);
 #endif
