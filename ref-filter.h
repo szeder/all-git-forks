@@ -94,6 +94,10 @@ int filter_refs(struct ref_array *array, struct ref_filter *filter, unsigned int
 void ref_array_clear(struct ref_array *array);
 /*  Parse format string and sort specifiers */
 int parse_ref_filter_atom(const char *atom, const char *ep);
+static inline int parse_ref_filter_atom_from_string(const char *atom)
+{
+	return parse_ref_filter_atom(atom, atom+strlen(atom));
+}
 /*  Used to verify if the given format is correct and to parse out the used atoms */
 int verify_ref_format(const char *format);
 /*  Sort the given ref_array as per the ref_sorting provided */
