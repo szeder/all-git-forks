@@ -312,13 +312,13 @@ static int reject_entry(const unsigned char *sha1, struct strbuf *base,
 	return ret;
 }
 
-static int path_exists(struct tree *tree, const char *path)
+static int path_exists(struct tree *tree, const char *prefix, const char *path)
 {
 	const char *paths[] = { path, NULL };
 	struct pathspec pathspec;
 	int ret;
 
-	parse_pathspec(&pathspec, 0, 0, "", paths);
+	parse_pathspec(&pathspec, 0, 0, prefix, paths);
 	pathspec.recursive = 1;
 	ret = read_tree_recursive(tree, "", 0, 0, &pathspec,
 				  reject_entry, &pathspec);
@@ -326,8 +326,9 @@ static int path_exists(struct tree *tree, const char *path)
 	return ret != 0;
 }
 
-static void parse_pathspec_arg(const char **pathspec,
-		struct archiver_args *ar_args)
+static void parse_pathspec_arg(const char *prefix,
+			       const char **pathspec,
+			       struct archiver_args *ar_args)
 {
 	/*
 	 * must be consistent with parse_pathspec in path_exists()
@@ -336,11 +337,11 @@ static void parse_pathspec_arg(const char **pathspec,
 	 */
 	parse_pathspec(&ar_args->pathspec, 0,
 		       PATHSPEC_PREFER_FULL,
-		       "", pathspec);
+		       prefix, pathspec);
 	ar_args->pathspec.recursive = 1;
 	if (pathspec) {
 		while (*pathspec) {
-			if (**pathspec && !path_exists(ar_args->tree, *pathspec))
+			if (**pathspec && !path_exists(ar_args->tree, prefix, *pathspec))
 				die(_("pathspec '%s' did not match any files"), *pathspec);
 			pathspec++;
 		}
@@ -385,18 +386,6 @@ static void parse_treeish_arg(const char **argv,
 	if (tree == NULL)
 		die("not a tree object");
 
-	if (prefix) {
-		struct object_id tree_oid;
-		unsigned int mode;
-		int err;
-
-		err = get_tree_entry(tree->object.oid.hash, prefix,
-				     tree_oid.hash, &mode);
-		if (err || !S_ISDIR(mode))
-			die("current working directory is untracked");
-
-		tree = parse_tree_indirect(tree_oid.hash);
-	}
 	ar_args->tree = tree;
 	ar_args->commit_sha1 = commit_sha1;
 	ar_args->commit = commit;
@@ -526,7 +515,7 @@ int write_archive(int argc, const char **argv, const char *prefix,
 	}
 
 	parse_treeish_arg(argv, &args, prefix, remote);
-	parse_pathspec_arg(argv + 1, &args);
+	parse_pathspec_arg(prefix, argv + 1, &args);
 
 	return ar->write_archive(ar, &args);
 }
