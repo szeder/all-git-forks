@@ -75,4 +75,11 @@ int parallel_submodules(void);
  */
 void prepare_submodule_repo_env(struct argv_array *out);
 
+/*
+ * Embed a git dir of the submodule given by path.
+ */
+#define RELOCATE_GITDIR_RECURSE_SUBMODULES (1<<0)
+extern int submodule_embed_git_dir(const char *prefix,
+				   const char *path,
+				   unsigned flags);
 #endif

@@ -2748,3 +2748,30 @@ void untracked_cache_add_to_index(struct index_state *istate,
 {
 	untracked_cache_invalidate_path(istate, path);
 }
+
+/*
+ * Migrate the git directory of the given `path` from `old_git_dir` to
+ * `new_git_dir`. If an error occurs, append it to `err` and return the
+ * error code.
+ */
+int relocate_gitdir(const char *path, const char *old_git_dir,
+		    const char *new_git_dir, const char *displaypath,
+		    struct strbuf *err)
+{
+	int ret = 0;
+
+	printf("Migrating git directory of '%s' from\n'%s' to\n'%s'\n",
+		displaypath, old_git_dir, new_git_dir);
+
+	if (rename(old_git_dir, new_git_dir) < 0) {
+		ret = errno;
+		strbuf_addf(err,
+			_("could not migrate git directory from '%s' to '%s'"),
+			old_git_dir, new_git_dir);
+		return ret;
+	}
+
+	connect_work_tree_and_git_dir(path, new_git_dir);
+
+	return ret;
+}
