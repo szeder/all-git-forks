@@ -8,18 +8,30 @@
 
 static FILE *error_handle;
 
+static void show_line(FILE *fh, const char *prefix, const char *line, int len)
+{
+	fprintf(fh, "%s%.*s\n", prefix, len, line);
+}
+
 void vreportf(const char *prefix, const char *err, va_list params)
 {
 	char msg[4096];
 	FILE *fh = error_handle ? error_handle : stderr;
+	const char *base;
 	char *p;
 
 	vsnprintf(msg, sizeof(msg), err, params);
+
+	base = msg;
 	for (p = msg; *p; p++) {
-		if (iscntrl(*p) && *p != '\t' && *p != '\n')
+		if (*p == '\n') {
+			show_line(fh, prefix, base, p - base);
+			base = p + 1;
+		} else if (iscntrl(*p) && *p != '\t')
 			*p = '?';
 	}
-	fprintf(fh, "%s%s\n", prefix, msg);
+
+	show_line(fh, prefix, base, p - base);
 }
 
 static NORETURN void usage_builtin(const char *err, va_list params)
