@@ -2748,3 +2748,29 @@ void untracked_cache_add_to_index(struct index_state *istate,
 {
 	untracked_cache_invalidate_path(istate, path);
 }
+
+/* Update gitfile and core.worktree setting to connect work tree and git dir */
+void connect_work_tree_and_git_dir(const char *work_tree, const char *git_dir)
+{
+	struct strbuf file_name = STRBUF_INIT;
+	struct strbuf rel_path = STRBUF_INIT;
+	char *real_git_dir = xstrdup(real_path(git_dir));
+	char *real_work_tree = xstrdup(real_path(work_tree));
+
+	/* Update gitfile */
+	strbuf_addf(&file_name, "%s/.git", work_tree);
+	write_file(file_name.buf, "gitdir: %s",
+		   relative_path(real_git_dir, real_work_tree, &rel_path));
+
+	/* Update core.worktree setting */
+	strbuf_reset(&file_name);
+	strbuf_addf(&file_name, "%s/config", real_git_dir);
+	git_config_set_in_file(file_name.buf, "core.worktree",
+			       relative_path(real_work_tree, real_git_dir,
+					     &rel_path));
+
+	strbuf_release(&file_name);
+	strbuf_release(&rel_path);
+	free(real_work_tree);
+	free(real_git_dir);
+}
