@@ -406,3 +406,27 @@ const struct worktree *find_shared_symref(const char *symref,
 
 	return existing;
 }
+
+static int uses_worktree_internal(struct worktree **worktrees)
+{
+	int i;
+	for (i = 0; worktrees[i]; i++)
+		; /* nothing */
+
+	free_worktrees(worktrees);
+	return i > 1;
+}
+
+int uses_worktrees(void)
+{
+	return uses_worktree_internal(get_worktrees(0));
+}
+
+int submodule_uses_worktrees(const char *path)
+{
+	struct worktree **worktrees = get_submodule_worktrees(path, 0);
+	if (!worktrees)
+		return 0;
+
+	return uses_worktree_internal(worktrees);
+}
