@@ -263,11 +263,7 @@ static inline void strbuf_addstr(struct strbuf *sb, const char *s)
 /**
  * Copy the contents of another buffer at the end of the current one.
  */
-static inline void strbuf_addbuf(struct strbuf *sb, const struct strbuf *sb2)
-{
-	strbuf_grow(sb, sb2->len);
-	strbuf_add(sb, sb2->buf, sb2->len);
-}
+extern void strbuf_addbuf(struct strbuf *sb, const struct strbuf *sb2);
 
 /**
  * Copy part of the buffer from a given position till a given length to the
@@ -377,6 +373,8 @@ extern ssize_t strbuf_read_once(struct strbuf *, int fd, size_t hint);
 /**
  * Read the contents of a file, specified by its path. The third argument
  * can be used to give a hint about the file size, to avoid reallocs.
+ * Return the number of bytes read or a negative value if some error
+ * occurred while opening or reading the file.
  */
 extern ssize_t strbuf_read_file(struct strbuf *sb, const char *path, size_t hint);
 
@@ -444,6 +442,14 @@ extern int strbuf_getcwd(struct strbuf *sb);
  * resolved.
  */
 extern void strbuf_add_absolute_path(struct strbuf *sb, const char *path);
+
+
+/**
+ * Normalize in-place the path contained in the strbuf. See
+ * normalize_path_copy() for details. If an error occurs, the contents of "sb"
+ * are left untouched, and -1 is returned.
+ */
+extern int strbuf_normalize_path(struct strbuf *sb);
 
 /**
  * Strip whitespace from a buffer. The second parameter controls if

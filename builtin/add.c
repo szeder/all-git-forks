@@ -30,6 +30,21 @@ struct update_callback_data {
 	int add_errors;
 };
 
+static void chmod_pathspec(struct pathspec *pathspec, int force_mode)
+{
+	int i;
+
+	for (i = 0; i < active_nr; i++) {
+		struct cache_entry *ce = active_cache[i];
+
+		if (pathspec && !ce_path_match(ce, pathspec, NULL))
+			continue;
+
+		if (chmod_cache_entry(ce, force_mode) < 0)
+			fprintf(stderr, "cannot chmod '%s'", ce->name);
+	}
+}
+
 static int fix_unmerged_status(struct diff_filepair *p,
 			       struct update_callback_data *data)
 {
@@ -65,7 +80,7 @@ static void update_callback(struct diff_queue_struct *q,
 			die(_("unexpected diff status %c"), p->status);
 		case DIFF_STATUS_MODIFIED:
 		case DIFF_STATUS_TYPE_CHANGED:
-			if (add_file_to_index(&the_index, path, data->flags)) {
+			if (add_file_to_index(&the_index, path,	data->flags)) {
 				if (!(data->flags & ADD_CACHE_IGNORE_ERRORS))
 					die(_("updating files failed"));
 				data->add_errors++;
@@ -238,6 +253,8 @@ static int ignore_add_errors, intent_to_add, ignore_missing;
 static int addremove = ADDREMOVE_DEFAULT;
 static int addremove_explicit = -1; /* unspecified */
 
+static char *chmod_arg;
+
 static int ignore_removal_cb(const struct option *opt, const char *arg, int unset)
 {
 	/* if we are told to ignore, we are not adding removals */
@@ -263,6 +280,7 @@ static struct option builtin_add_options[] = {
 	OPT_BOOL( 0 , "refresh", &refresh_only, N_("don't add, only refresh the index")),
 	OPT_BOOL( 0 , "ignore-errors", &ignore_add_errors, N_("just skip files which cannot be added because of errors")),
 	OPT_BOOL( 0 , "ignore-missing", &ignore_missing, N_("check if - even missing - files are ignored in dry run")),
+	OPT_STRING( 0 , "chmod", &chmod_arg, N_("(+/-)x"), N_("override the executable bit of the listed files")),
 	OPT_END(),
 };
 
@@ -289,7 +307,7 @@ static int add_files(struct dir_struct *dir, int flags)
 	}
 
 	for (i = 0; i < dir->nr; i++)
-		if (add_file_to_cache(dir->entries[i]->name, flags)) {
+		if (add_file_to_index(&the_index, dir->entries[i]->name, flags)) {
 			if (!ignore_add_errors)
 				die(_("adding files failed"));
 			exit_status = 1;
@@ -335,6 +353,10 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 
 	if (!show_only && ignore_missing)
 		die(_("Option --ignore-missing can only be used together with --dry-run"));
+
+	if (chmod_arg && ((chmod_arg[0] != '-' && chmod_arg[0] != '+') ||
+			  chmod_arg[1] != 'x' || chmod_arg[2]))
+		die(_("--chmod param '%s' must be either -x or +x"), chmod_arg);
 
 	add_new_files = !take_worktree_changes && !refresh_only;
 	require_pathspec = !(take_worktree_changes || (0 < addremove_explicit));
@@ -431,6 +453,8 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	if (add_new_files)
 		exit_status |= add_files(&dir, flags);
 
+	if (chmod_arg && pathspec.nr)
+		chmod_pathspec(&pathspec, chmod_arg[0]);
 	unplug_bulk_checkin();
 
 finish:
