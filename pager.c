@@ -43,7 +43,7 @@ static int core_pager_config(const char *var, const char *value, void *data)
 	return 0;
 }
 
-const char *git_pager(int stdout_is_tty)
+const char *git_pager(int stdout_is_tty, int discover_git_dir)
 {
 	const char *pager;
 
@@ -53,7 +53,8 @@ const char *git_pager(int stdout_is_tty)
 	pager = getenv("GIT_PAGER");
 	if (!pager) {
 		if (!pager_program)
-			read_early_config(core_pager_config, NULL);
+			read_early_config(core_pager_config, NULL,
+					  discover_git_dir);
 		pager = pager_program;
 	}
 	if (!pager)
@@ -100,9 +101,9 @@ void prepare_pager_args(struct child_process *pager_process, const char *pager)
 	setup_pager_env(&pager_process->env_array);
 }
 
-void setup_pager(void)
+void setup_pager(int discover_git_dir)
 {
-	const char *pager = git_pager(isatty(1));
+	const char *pager = git_pager(isatty(1), discover_git_dir);
 
 	if (!pager)
 		return;
@@ -208,7 +209,7 @@ static int pager_command_config(const char *var, const char *value, void *vdata)
 }
 
 /* returns 0 for "no pager", 1 for "use pager", and -1 for "not specified" */
-int check_pager_config(const char *cmd)
+int check_pager_config(const char *cmd, int discover_git_dir)
 {
 	struct pager_command_config_data data;
 
@@ -216,7 +217,7 @@ int check_pager_config(const char *cmd)
 	data.want = -1;
 	data.value = NULL;
 
-	read_early_config(pager_command_config, &data);
+	read_early_config(pager_command_config, &data, discover_git_dir);
 
 	if (data.value)
 		pager_program = data.value;

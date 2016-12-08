@@ -61,13 +61,13 @@ static void restore_env(int external_alias)
 	}
 }
 
-static void commit_pager_choice(void) {
+static void commit_pager_choice(int discover_git_dir) {
 	switch (use_pager) {
 	case 0:
 		setenv("GIT_PAGER", "cat", 1);
 		break;
 	case 1:
-		setup_pager();
+		setup_pager(discover_git_dir);
 		break;
 	default:
 		break;
@@ -261,7 +261,7 @@ static int handle_alias(int *argcp, const char ***argv)
 		if (alias_string[0] == '!') {
 			struct child_process child = CHILD_PROCESS_INIT;
 
-			commit_pager_choice();
+			commit_pager_choice(1);
 			restore_env(1);
 
 			child.use_shell = 1;
@@ -349,7 +349,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 		}
 
 		if (use_pager == -1 && p->option & (RUN_SETUP | RUN_SETUP_GENTLY))
-			use_pager = check_pager_config(p->cmd);
+			use_pager = check_pager_config(p->cmd, !(p->option & CREATES_GIT_DIR));
 		if (use_pager == -1 && p->option & USE_PAGER)
 			use_pager = 1;
 
@@ -357,7 +357,7 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 		    startup_info->have_repository) /* get_git_dir() may set up repo, avoid that */
 			trace_repo_setup(prefix);
 	}
-	commit_pager_choice();
+	commit_pager_choice(!(p->option & CREATES_GIT_DIR));
 
 	if (!help && get_super_prefix()) {
 		if (!(p->option & SUPPORT_SUPER_PREFIX))
@@ -584,8 +584,8 @@ static void execv_dashed_external(const char **argv)
 		die("%s doesn't support --super-prefix", argv[0]);
 
 	if (use_pager == -1)
-		use_pager = check_pager_config(argv[0]);
-	commit_pager_choice();
+		use_pager = check_pager_config(argv[0], 1);
+	commit_pager_choice(1);
 
 	strbuf_addf(&cmd, "git-%s", argv[0]);
 
@@ -688,7 +688,7 @@ int cmd_main(int argc, const char **argv)
 		skip_prefix(argv[0], "--", &argv[0]);
 	} else {
 		/* The user didn't specify a command; give them help */
-		commit_pager_choice();
+		commit_pager_choice(1);
 		printf("usage: %s\n\n", git_usage_string);
 		list_common_cmds_help();
 		printf("\n%s\n", _(git_more_info_string));

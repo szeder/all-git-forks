@@ -1325,7 +1325,7 @@ extern const char *fmt_name(const char *name, const char *email);
 extern const char *ident_default_name(void);
 extern const char *ident_default_email(void);
 extern const char *git_editor(void);
-extern const char *git_pager(int stdout_is_tty);
+extern const char *git_pager(int stdout_is_tty, int discover_git_dir);
 extern int git_ident_config(const char *, const char *, void *);
 extern void reset_ident_date(void);
 
@@ -1692,7 +1692,8 @@ extern int git_config_from_mem(config_fn_t fn, const enum config_origin_type,
 					const char *name, const char *buf, size_t len, void *data);
 extern void git_config_push_parameter(const char *text);
 extern int git_config_from_parameters(config_fn_t fn, void *data);
-extern void read_early_config(config_fn_t cb, void *data);
+extern void read_early_config(config_fn_t cb, void *data,
+			      int discover_git_dir);
 extern void git_config(config_fn_t fn, void *);
 extern int git_config_with_options(config_fn_t fn, void *,
 				   struct git_config_source *config_source,
@@ -1888,12 +1889,12 @@ __attribute__((format (printf, 2, 3)))
 extern void write_file(const char *path, const char *fmt, ...);
 
 /* pager.c */
-extern void setup_pager(void);
+extern void setup_pager(int discover_git_dir);
 extern int pager_in_use(void);
 extern int pager_use_color;
 extern int term_columns(void);
 extern int decimal_width(uintmax_t);
-extern int check_pager_config(const char *cmd);
+extern int check_pager_config(const char *cmd, int discover_git_dir);
 extern void prepare_pager_args(struct child_process *, const char *pager);
 
 extern const char *editor_program;

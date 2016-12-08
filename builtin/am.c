@@ -1791,7 +1791,7 @@ static int do_interactive(struct am_state *state)
 			}
 			strbuf_release(&msg);
 		} else if (*reply == 'v' || *reply == 'V') {
-			const char *pager = git_pager(1);
+			const char *pager = git_pager(1, 1);
 			struct child_process cp = CHILD_PROCESS_INIT;
 
 			if (!pager)

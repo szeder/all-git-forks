@@ -203,7 +203,7 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 	if (rev->line_level_traverse)
 		line_log_init(rev, line_cb.prefix, &line_cb.args);
 
-	setup_pager();
+	setup_pager(1);
 }
 
 static void cmd_log_init(int argc, const char **argv, const char *prefix,
@@ -1600,7 +1600,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	if (!use_stdout)
 		output_directory = set_outdir(prefix, output_directory);
 	else
-		setup_pager();
+		setup_pager(1);
 
 	if (output_directory) {
 		if (rev.diffopt.use_color != GIT_COLOR_ALWAYS)

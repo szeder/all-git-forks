@@ -2913,7 +2913,7 @@ parse_done:
 	assign_blame(&sb, opt);
 
 	if (!incremental)
-		setup_pager();
+		setup_pager(1);
 
 	free(final_commit_name);
 

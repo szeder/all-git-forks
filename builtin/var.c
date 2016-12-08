@@ -19,7 +19,7 @@ static const char *editor(int flag)
 
 static const char *pager(int flag)
 {
-	const char *pgm = git_pager(1);
+	const char *pgm = git_pager(1, 1);
 
 	if (!pgm)
 		pgm = "cat";

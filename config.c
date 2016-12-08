@@ -1385,7 +1385,7 @@ static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
 	}
 }
 
-void read_early_config(config_fn_t cb, void *data)
+void read_early_config(config_fn_t cb, void *data, int discover_git_dir)
 {
 	git_config_with_options(cb, data, NULL, 1);
 
@@ -1407,7 +1407,7 @@ void read_early_config(config_fn_t cb, void *data)
 	 * valid repository), and would rarely make things worse (i.e., you do
 	 * not generally have a .git/config file sitting around).
 	 */
-	if (!have_git_dir()) {
+	if (discover_git_dir && !have_git_dir()) {
 		struct git_config_source repo_config;
 
 		memset(&repo_config, 0, sizeof(repo_config));
