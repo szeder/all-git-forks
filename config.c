@@ -1385,35 +1385,64 @@ static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
 	}
 }
 
+/*
+ * Note that this is a really dirty hack that replicates what the
+ * setup_git_directory() function does, without changing the current
+ * working directory. The crux of the problem is that we cannot run
+ * setup_git_directory() early on in git's setup, so we have to
+ * duplicate the work that setup_git_directory() would otherwise do.
+ */
+static int discover_git_directory_gently(struct strbuf *result)
+{
+	const char *p;
+
+	if (strbuf_getcwd(result) < 0)
+		return -1;
+	p = real_path_if_valid(result->buf);
+	if (!p)
+		return -1;
+	strbuf_reset(result);
+	strbuf_addstr(result, p);
+	for (;;) {
+		int len = result->len, i;
+
+		strbuf_addstr(result, "/" DEFAULT_GIT_DIR_ENVIRONMENT);
+		p = read_gitfile_gently(result->buf, &i);
+		if (p) {
+			strbuf_reset(result);
+			strbuf_addstr(result, p);
+			return 0;
+		}
+		if (is_git_directory(result->buf))
+			return 0;
+		strbuf_setlen(result, len);
+		if (is_git_directory(result->buf))
+			return 0;
+		for (i = len; i > 0; )
+			if (is_dir_sep(result->buf[--i]))
+				break;
+		if (!i)
+			return -1;
+		strbuf_setlen(result, i);
+	}
+}
+
 void read_early_config(config_fn_t cb, void *data, int discover_git_dir)
 {
+	struct strbuf buf = STRBUF_INIT;
+
 	git_config_with_options(cb, data, NULL, 1);
 
-	/*
-	 * Note that this is a really dirty hack that does the wrong thing in
-	 * many cases. The crux of the problem is that we cannot run
-	 * setup_git_directory() early on in git's setup, so we have no idea if
-	 * we are in a repository or not, and therefore are not sure whether
-	 * and how to read repository-local config.
-	 *
-	 * So if we _aren't_ in a repository (or we are but we would reject its
-	 * core.repositoryformatversion), we'll read whatever is in .git/config
-	 * blindly. Similarly, if we _are_ in a repository, but not at the
-	 * root, we'll fail to find .git/config (because it's really
-	 * ../.git/config, etc). See t7006 for a complete set of failures.
-	 *
-	 * However, we have historically provided this hack because it does
-	 * work some of the time (namely when you are at the top-level of a
-	 * valid repository), and would rarely make things worse (i.e., you do
-	 * not generally have a .git/config file sitting around).
-	 */
-	if (discover_git_dir && !have_git_dir()) {
+	if (discover_git_dir && !have_git_dir() &&
+	    !discover_git_directory_gently(&buf)) {
 		struct git_config_source repo_config;
 
 		memset(&repo_config, 0, sizeof(repo_config));
-		repo_config.file = ".git/config";
+		strbuf_addstr(&buf, "/config");
+		repo_config.file = buf.buf;
 		git_config_with_options(cb, data, &repo_config, 1);
 	}
+	strbuf_release(&buf);
 }
 
 static void git_config_check_init(void);
