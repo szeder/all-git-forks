@@ -571,6 +571,12 @@ def isValidGitDir(path):
     if (os.path.exists(path + "/HEAD")
         and os.path.exists(path + "/refs") and os.path.exists(path + "/objects")):
         return True;
+
+    # secondary working tree managed by "git worktree"?
+    if (os.path.exists(path + "/HEAD")
+        and os.path.exists(path + "/gitdir")):
+        return True
+
     return False
 
 def parseRevision(ref):
