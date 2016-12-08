@@ -3234,9 +3234,15 @@ if {!$use_ttk} {
 	.vpane.files paneconfigure .vpane.files.index -sticky news
 }
 
+proc run_difftool {} {
+    global current_diff_path
+    git difftool -y $current_diff_path
+}
+
 foreach i [list $ui_index $ui_workdir] {
 	rmsel_tag $i
 	$i tag conf in_diff -background [$i tag cget in_sel -background]
+	bind $i <Double-1> { run_difftool; break }
 }
 unset i
 
