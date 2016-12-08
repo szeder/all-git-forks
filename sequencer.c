@@ -27,7 +27,7 @@ GIT_PATH_FUNC(git_path_seq_dir, "sequencer")
 static GIT_PATH_FUNC(git_path_todo_file, "sequencer/todo")
 static GIT_PATH_FUNC(git_path_opts_file, "sequencer/opts")
 static GIT_PATH_FUNC(git_path_head_file, "sequencer/head")
-static GIT_PATH_FUNC(git_path_curr_file, "sequencer/current")
+static GIT_PATH_FUNC(git_path_current_file, "sequencer/current")
 
 /*
  * A script to set the GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
@@ -311,7 +311,7 @@ static int error_dirty_index(struct replay_opts *opts)
 	return -1;
 }
 
-static void update_curr_file()
+static void update_current_file(void)
 {
 	struct object_id head;
 
@@ -320,9 +320,9 @@ static void update_curr_file()
 		return;
 
 	if (!get_oid("HEAD", &head))
-		write_file(git_path_curr_file(), "%s", oid_to_hex(&head));
+		write_file(git_path_current_file(), "%s", oid_to_hex(&head));
 	else
-		write_file(git_path_curr_file(), "%s", "");
+		write_file(git_path_current_file(), "%s", "");
 }
 
 static int fast_forward_to(const unsigned char *to, const unsigned char *from,
@@ -354,7 +354,7 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 	strbuf_release(&sb);
 	strbuf_release(&err);
 	ref_transaction_free(transaction);
-	update_curr_file();
+	update_current_file();
 	return 0;
 }
 
@@ -829,7 +829,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 
 leave:
 	free_message(commit, &msg);
-	update_curr_file();
+	update_current_file();
 
 	return res;
 }
@@ -1149,23 +1149,23 @@ static int save_head(const char *head)
 	return 0;
 }
 
-static int rollback_is_safe()
+static int rollback_is_safe(void)
 {
 	struct strbuf sb = STRBUF_INIT;
 	struct object_id expected_head, actual_head;
 
-	if (strbuf_read_file(&sb, git_path_curr_file(), 0) >= 0) {
+	if (strbuf_read_file(&sb, git_path_current_file(), 0) >= 0) {
 		strbuf_trim(&sb);
 		if (get_oid_hex(sb.buf, &expected_head)) {
 			strbuf_release(&sb);
-			die(_("could not parse %s"), git_path_curr_file());
+			die(_("could not parse %s"), git_path_current_file());
 		}
 		strbuf_release(&sb);
 	}
 	else if (errno == ENOENT)
 		oidclr(&expected_head);
 	else
-		die_errno(_("could not read '%s'"), git_path_curr_file());
+		die_errno(_("could not read '%s'"), git_path_current_file());
 
 	if (get_oid("HEAD", &actual_head))
 		oidclr(&actual_head);
@@ -1441,7 +1441,7 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 		return -1;
 	if (save_opts(opts))
 		return -1;
-	update_curr_file();
+	update_current_file();
 	res = pick_commits(&todo_list, opts);
 	todo_list_release(&todo_list);
 	return res;
