@@ -1386,6 +1386,37 @@ static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
 }
 
 /*
+ * A "string_list_each_func_t" function that canonicalizes an entry
+ * from GIT_CEILING_DIRECTORIES using real_path_if_valid(), or
+ * discards it if unusable.  The presence of an empty entry in
+ * GIT_CEILING_DIRECTORIES turns off canonicalization for all
+ * subsequent entries.
+ */
+static int canonicalize_ceiling_entry(struct string_list_item *item,
+				      void *cb_data)
+{
+	int *empty_entry_found = cb_data;
+	char *ceil = item->string;
+
+	if (!*ceil) {
+		*empty_entry_found = 1;
+		return 0;
+	} else if (!is_absolute_path(ceil)) {
+		return 0;
+	} else if (*empty_entry_found) {
+		/* Keep entry but do not canonicalize it */
+		return 1;
+	} else {
+		const char *real_path = real_path_if_valid(ceil);
+		if (!real_path)
+			return 0;
+		free(item->string);
+		item->string = xstrdup(real_path);
+		return 1;
+	}
+}
+
+/*
  * Note that this is a really dirty hack that replicates what the
  * setup_git_directory() function does, without changing the current
  * working directory. The crux of the problem is that we cannot run
@@ -1394,6 +1425,8 @@ static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
  */
 static int discover_git_directory_gently(struct strbuf *result)
 {
+	const char *env_ceiling_dirs = getenv(CEILING_DIRECTORIES_ENVIRONMENT);
+	int ceiling_offset = -1;
 	const char *p;
 
 	if (strbuf_getcwd(result) < 0)
@@ -1403,6 +1436,23 @@ static int discover_git_directory_gently(struct strbuf *result)
 		return -1;
 	strbuf_reset(result);
 	strbuf_addstr(result, p);
+
+	if (env_ceiling_dirs) {
+		struct string_list ceiling_dirs = STRING_LIST_INIT_DUP;
+		int empty_entry_found = 0;
+
+		string_list_split(&ceiling_dirs, env_ceiling_dirs, PATH_SEP,
+				  -1);
+		filter_string_list(&ceiling_dirs, 0, canonicalize_ceiling_entry,
+				   &empty_entry_found);
+		ceiling_offset = longest_ancestor_length(result->buf,
+							 &ceiling_dirs);
+		string_list_clear(&ceiling_dirs, 0);
+	}
+
+	if (ceiling_offset < 0 && has_dos_drive_prefix(result->buf))
+		ceiling_offset = 1;
+
 	for (;;) {
 		int len = result->len, i;
 
@@ -1418,10 +1468,10 @@ static int discover_git_directory_gently(struct strbuf *result)
 		strbuf_setlen(result, len);
 		if (is_git_directory(result->buf))
 			return 0;
-		for (i = len; i > 0; )
-			if (is_dir_sep(result->buf[--i]))
+		for (i = len; --i > ceiling_offset; )
+			if (is_dir_sep(result->buf[i]))
 				break;
-		if (!i)
+		if (i <= ceiling_offset)
 			return -1;
 		strbuf_setlen(result, i);
 	}
