@@ -815,6 +815,15 @@ if (!$force) {
 				. "Pass --force if you really want to send.\n";
 		}
 	}
+	my @hook = ( $ENV{GIT_DIR}.'hooks/send-email', $f )
+	if( -x $hook[0] ) {
+		unless( system( @hook ) == 0 )
+		{
+			die "Refusing to send because the patch\n\t$f\n"
+				. "was refused by the send-email hook."
+				. "Pass --force if you really want to send.\n";
+		}
+	}
 }
 
 if (defined $sender) {
