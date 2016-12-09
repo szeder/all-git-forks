@@ -206,4 +206,52 @@ test_expect_success 'describe --contains with the exact tags' '
 	test_cmp expect actual
 '
 
+#
+# A---B*--D master
+#  \     /
+#   .---C topic
+#
+
+test_expect_failure 'backdated commit' '(
+	test_tick &&
+	b=$GIT_COMMITTER_DATE && test_tick &&
+	test_create_repo backdated-commit &&
+	cd backdated-commit &&
+	git commit --allow-empty -m A && test_tick &&
+	GIT_COMMITTER_DATE=$b git commit --allow-empty -m B && test_tick &&
+	git checkout -b topic :/A &&
+	git commit --allow-empty -m C && test_tick &&
+	git checkout master &&
+	git merge -m D topic && test_tick &&
+	git tag -m B B :/B && test_tick &&
+	git describe :/D >tmp &&
+	sed s/-g.\*// tmp >actual &&
+	echo B-2 >expected &&
+	test_cmp expected actual
+)'
+
+#
+# A---B*--D master
+#        /
+#       C* other
+#
+
+test_expect_failure 'multiple roots' '(
+	test_tick &&
+	test_create_repo multiple-roots &&
+	cd multiple-roots &&
+	git commit --allow-empty -m A && test_tick &&
+	git commit --allow-empty -m B && test_tick &&
+	git checkout --orphan other &&
+	git commit --allow-empty -m C && test_tick &&
+	git checkout master &&
+	git merge --allow-unrelated-histories -m D other && test_tick &&
+	git tag -m B B :/B && test_tick &&
+	git tag -m C C :/C && test_tick &&
+	git describe :/D >tmp &&
+	sed s/-g.\*// tmp >actual &&
+	echo B-2 >expected &&
+	test_cmp expected actual
+)'
+
 test_done
