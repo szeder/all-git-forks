@@ -13,6 +13,7 @@
 #include "utf8.h"
 #include "git-compat-util.h"
 #include "version.h"
+#include "trailer.h"
 #include "wt-status.h"
 
 static struct ref_msg {
@@ -79,7 +80,7 @@ static struct used_atom {
 			unsigned int nobracket : 1;
 		} remote_ref;
 		struct {
-			enum { C_BARE, C_BODY, C_BODY_DEP, C_LINES, C_SIG, C_SUB } option;
+			enum { C_BARE, C_BODY, C_BODY_DEP, C_LINES, C_SIG, C_SUB, C_TRAILERS } option;
 			unsigned int nlines;
 		} contents;
 		struct {
@@ -171,6 +172,13 @@ static void subject_atom_parser(struct used_atom *atom, const char *arg)
 	atom->u.contents.option = C_SUB;
 }
 
+static void trailers_atom_parser(struct used_atom *atom, const char *arg)
+{
+	if (arg)
+		die(_("%%(trailers) does not take arguments"));
+	atom->u.contents.option = C_TRAILERS;
+}
+
 static void contents_atom_parser(struct used_atom *atom, const char *arg)
 {
 	if (!arg)
@@ -181,6 +189,8 @@ static void contents_atom_parser(struct used_atom *atom, const char *arg)
 		atom->u.contents.option = C_SIG;
 	else if (!strcmp(arg, "subject"))
 		atom->u.contents.option = C_SUB;
+	else if (!strcmp(arg, "trailers"))
+		atom->u.contents.option = C_TRAILERS;
 	else if (skip_prefix(arg, "lines=", &arg)) {
 		atom->u.contents.option = C_LINES;
 		if (strtoul_ui(arg, 10, &atom->u.contents.nlines))
@@ -307,6 +317,7 @@ static struct {
 	{ "creatordate", FIELD_TIME },
 	{ "subject", FIELD_STR, subject_atom_parser },
 	{ "body", FIELD_STR, body_atom_parser },
+	{ "trailers", FIELD_STR, trailers_atom_parser },
 	{ "contents", FIELD_STR, contents_atom_parser },
 	{ "upstream", FIELD_STR, remote_ref_atom_parser },
 	{ "push", FIELD_STR, remote_ref_atom_parser },
@@ -1014,6 +1025,7 @@ static void grab_sub_body_contents(struct atom_value *val, int deref, struct obj
 			name++;
 		if (strcmp(name, "subject") &&
 		    strcmp(name, "body") &&
+		    strcmp(name, "trailers") &&
 		    !starts_with(name, "contents"))
 			continue;
 		if (!subpos)
@@ -1037,6 +1049,14 @@ static void grab_sub_body_contents(struct atom_value *val, int deref, struct obj
 			/*  Size is the length of the message after removing the signature */
 			append_lines(&s, subpos, contents_end - subpos, atom->u.contents.nlines);
 			v->s = strbuf_detach(&s, NULL);
+		} else if (atom->u.contents.option == C_TRAILERS) {
+			struct trailer_info info;
+
+			/* Search for trailer info */
+			trailer_info_get(&info, subpos);
+			v->s = xmemdupz(info.trailer_start,
+					info.trailer_end - info.trailer_start);
+			trailer_info_release(&info);
 		} else if (atom->u.contents.option == C_BARE)
 			v->s = xstrdup(subpos);
 	}
