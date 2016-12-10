@@ -49,6 +49,13 @@ defaultLabelRegexp = r'[a-zA-Z0-9_\-.]+$'
 # Grab changes in blocks of this many revisions, unless otherwise requested
 defaultBlockSize = 512
 
+def gitdir():
+    d = read_pipe("git rev-parse --git-dir").strip()
+    if not d or len(d) == 0:
+        return None
+    else:
+        return d
+
 def p4_build_cmd(cmd):
     """Build a suitable p4 command line.
 
@@ -561,12 +568,6 @@ def currentGitBranch():
         return None
     else:
         return read_pipe(["git", "name-rev", "HEAD"]).split(" ")[1].strip()
-
-def isValidGitDir(path):
-    if (os.path.exists(path + "/HEAD")
-        and os.path.exists(path + "/refs") and os.path.exists(path + "/objects")):
-        return True;
-    return False
 
 def parseRevision(ref):
     return read_pipe("git rev-parse %s" % ref).strip()
@@ -3462,7 +3463,7 @@ class P4Sync(Command, P4UserMap):
         if self.tempBranches != []:
             for branch in self.tempBranches:
                 read_pipe("git update-ref -d %s" % branch)
-            os.rmdir(os.path.join(os.environ.get("GIT_DIR", ".git"), self.tempBranchLocation))
+            os.rmdir(os.path.join(gitdir(), self.tempBranchLocation))
 
         # Create a symbolic ref p4/HEAD pointing to p4/<branch> to allow
         # a convenient shortcut refname "p4".
@@ -3678,23 +3679,27 @@ def main():
     (cmd, args) = parser.parse_args(sys.argv[2:], cmd);
     global verbose
     verbose = cmd.verbose
-    if cmd.needsGit:
-        if cmd.gitdir == None:
-            cmd.gitdir = os.path.abspath(".git")
-            if not isValidGitDir(cmd.gitdir):
-                cmd.gitdir = read_pipe("git rev-parse --git-dir").strip()
-                if os.path.exists(cmd.gitdir):
-                    cdup = read_pipe("git rev-parse --show-cdup").strip()
-                    if len(cdup) > 0:
-                        chdir(cdup);
 
-        if not isValidGitDir(cmd.gitdir):
-            if isValidGitDir(cmd.gitdir + "/.git"):
-                cmd.gitdir += "/.git"
-            else:
+    if cmd.needsGit:
+        if cmd.gitdir:
+            os.environ["GIT_DIR"] = cmd.gitdir
+
+            # did we get a valid git dir on the command line or via $GIT_DIR?
+            if not gitdir():
                 die("fatal: cannot locate git repository at %s" % cmd.gitdir)
 
-        os.environ["GIT_DIR"] = cmd.gitdir
+        else:
+            # already in a git directory?
+            if not gitdir():
+                die("fatal: not in a valid git repository")
+
+        cdup = read_pipe("git rev-parse --show-cdup").strip()
+        if len(cdup) > 0:
+            chdir(cdup);
+
+        # ensure subshells spawned in the p4 repo directory
+        # get the correct GIT_DIR
+        os.environ["GIT_DIR"] = os.path.abspath(gitdir())
 
     if not cmd.run(args):
         parser.print_help()
