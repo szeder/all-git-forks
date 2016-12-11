@@ -732,6 +732,28 @@ test_cmp_rev () {
 	test_cmp expect.rev actual.rev
 }
 
+_test_rev_multi_compare () {
+	error="$1"
+	contained="$(git rev-parse --verify "$2")" || return
+	shift 2
+	git rev-parse --verify "$@" | grep -e "$contained" >/dev/null && return
+	printf "$error\n" "$contained" >&2
+	printf " '%s'\n" "$@" >&2
+	return 1
+}
+
+# Tests if the expected rev (first argument) is contained in
+# a list of actual revs (remaining arguments)
+test_revs_have_expected () {
+	_test_rev_multi_compare "The expected '%s' is not found in:" "$@"
+}
+
+# Tests if the actual rev (first argument) is contained in
+# a list of expected revs (remaining arguments)
+test_rev_among_expected () {
+	_test_rev_multi_compare "Revision '%s' is not found among expected ones:" "$@"
+}
+
 # Print a sequence of integers in increasing order, either with
 # two arguments (start and end):
 #
