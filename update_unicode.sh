@@ -14,6 +14,11 @@ fi &&
 		http://www.unicode.org/Public/UCD/latest/ucd/EastAsianWidth.txt &&
 	if ! test -d uniset; then
 		git clone https://github.com/depp/uniset.git
+	else
+	(
+		cd uniset &&
+		git pull
+	)
 	fi &&
 	(
 		cd uniset &&
