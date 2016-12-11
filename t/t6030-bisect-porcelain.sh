@@ -13,17 +13,18 @@ add_line_into_file()
 	_line=$1
 	_file=$2
 
-	if [ -f "$_file" ]; then
-		echo "$_line" >> $_file || return $?
+	if test -f "$_file"
+	then
+		echo "$_line" >>"$_file" || return $?
 		MSG="Add <$_line> into <$_file>."
 	else
-		echo "$_line" > $_file || return $?
-		git add $_file || return $?
+		echo "$_line" >"$_file" || return $?
+		git add "$_file" || return $?
 		MSG="Create file <$_file> with <$_line> inside."
 	fi
 
 	test_tick
-	git commit --quiet -m "$MSG" $_file
+	git commit --quiet -m "$MSG" "$_file"
 }
 
 HASH1=
@@ -84,8 +85,8 @@ test_expect_success 'bisect fails if given any junk instead of revs' '
 
 test_expect_success 'bisect reset: back in the master branch' '
 	git bisect reset &&
-	echo "* master" > branch.expect &&
-	git branch > branch.output &&
+	echo "* master" >branch.expect &&
+	git branch >branch.output &&
 	cmp branch.expect branch.output
 '
 
@@ -95,15 +96,15 @@ test_expect_success 'bisect reset: back in another branch' '
 	git bisect good $HASH1 &&
 	git bisect bad $HASH3 &&
 	git bisect reset &&
-	echo "  master" > branch.expect &&
-	echo "* other" >> branch.expect &&
-	git branch > branch.output &&
+	echo "  master" >branch.expect &&
+	echo "* other" >>branch.expect &&
+	git branch >branch.output &&
 	cmp branch.expect branch.output
 '
 
 test_expect_success 'bisect reset when not bisecting' '
 	git bisect reset &&
-	git branch > branch.output &&
+	git branch >branch.output &&
 	cmp branch.expect branch.output
 '
 
@@ -132,22 +133,22 @@ test_expect_success 'bisect reset removes bisect state after --no-checkout' '
 '
 
 test_expect_success 'bisect start: back in good branch' '
-	git branch > branch.output &&
-	grep "* other" branch.output > /dev/null &&
+	git branch >branch.output &&
+	grep "* other" branch.output >/dev/null &&
 	git bisect start $HASH4 $HASH1 -- &&
 	git bisect good &&
 	git bisect start $HASH4 $HASH1 -- &&
 	git bisect bad &&
 	git bisect reset &&
-	git branch > branch.output &&
-	grep "* other" branch.output > /dev/null
+	git branch >branch.output &&
+	grep "* other" branch.output >/dev/null
 '
 
 test_expect_success 'bisect start: no ".git/BISECT_START" created if junk rev' '
 	git bisect reset &&
 	test_must_fail git bisect start $HASH4 foo -- &&
-	git branch > branch.output &&
-	grep "* other" branch.output > /dev/null &&
+	git branch >branch.output &&
+	grep "* other" branch.output >/dev/null &&
 	test_must_fail test -e .git/BISECT_START
 '
 
@@ -156,25 +157,25 @@ test_expect_success 'bisect start: existing ".git/BISECT_START" not modified if 
 	git bisect good &&
 	cp .git/BISECT_START saved &&
 	test_must_fail git bisect start $HASH4 foo -- &&
-	git branch > branch.output &&
-	test_i18ngrep "* (no branch, bisect started on other)" branch.output > /dev/null &&
+	git branch >branch.output &&
+	test_i18ngrep "* (no branch, bisect started on other)" branch.output >/dev/null &&
 	test_cmp saved .git/BISECT_START
 '
 test_expect_success 'bisect start: no ".git/BISECT_START" if mistaken rev' '
 	git bisect start $HASH4 $HASH1 -- &&
 	git bisect good &&
 	test_must_fail git bisect start $HASH1 $HASH4 -- &&
-	git branch > branch.output &&
-	grep "* other" branch.output > /dev/null &&
+	git branch >branch.output &&
+	grep "* other" branch.output >/dev/null &&
 	test_must_fail test -e .git/BISECT_START
 '
 
 test_expect_success 'bisect start: no ".git/BISECT_START" if checkout error' '
-	echo "temp stuff" > hello &&
+	echo "temp stuff" >hello &&
 	test_must_fail git bisect start $HASH4 $HASH1 -- &&
 	git branch &&
-	git branch > branch.output &&
-	grep "* other" branch.output > /dev/null &&
+	git branch >branch.output &&
+	grep "* other" branch.output >/dev/null &&
 	test_must_fail test -e .git/BISECT_START &&
 	test -z "$(git for-each-ref "refs/bisect/*")" &&
 	git checkout HEAD hello
@@ -188,7 +189,7 @@ test_expect_success 'bisect skip: successful result' '
 	git bisect reset &&
 	git bisect start $HASH4 $HASH1 &&
 	git bisect skip &&
-	git bisect bad > my_bisect_log.txt &&
+	git bisect bad >my_bisect_log.txt &&
 	grep "$HASH2 is the first bad commit" my_bisect_log.txt
 '
 
@@ -245,14 +246,14 @@ test_expect_success 'bisect skip: with commit both bad and skipped' '
 # We want to automatically find the commit that
 # introduced "Another" into hello.
 test_expect_success '"git bisect run" simple case' '
-	echo "#"\!"/bin/sh" > test_script.sh &&
-	echo "grep Another hello > /dev/null" >> test_script.sh &&
-	echo "test \$? -ne 0" >> test_script.sh &&
+	echo "#"\!"/bin/sh" >test_script.sh &&
+	echo "grep Another hello >/dev/null" >>test_script.sh &&
+	echo "test \$? -ne 0" >>test_script.sh &&
 	chmod +x test_script.sh &&
 	git bisect start &&
 	git bisect good $HASH1 &&
 	git bisect bad $HASH4 &&
-	git bisect run ./test_script.sh > my_bisect_log.txt &&
+	git bisect run ./test_script.sh >my_bisect_log.txt &&
 	grep "$HASH3 is the first bad commit" my_bisect_log.txt &&
 	git bisect reset
 '
@@ -260,12 +261,12 @@ test_expect_success '"git bisect run" simple case' '
 # We want to automatically find the commit that
 # introduced "Ciao" into hello.
 test_expect_success '"git bisect run" with more complex "git bisect start"' '
-	echo "#"\!"/bin/sh" > test_script.sh &&
-	echo "grep Ciao hello > /dev/null" >> test_script.sh &&
-	echo "test \$? -ne 0" >> test_script.sh &&
+	echo "#"\!"/bin/sh" >test_script.sh &&
+	echo "grep Ciao hello >/dev/null" >>test_script.sh &&
+	echo "test \$? -ne 0" >>test_script.sh &&
 	chmod +x test_script.sh &&
 	git bisect start $HASH4 $HASH1 &&
-	git bisect run ./test_script.sh > my_bisect_log.txt &&
+	git bisect run ./test_script.sh >my_bisect_log.txt &&
 	grep "$HASH4 is the first bad commit" my_bisect_log.txt &&
 	git bisect reset
 '
@@ -279,14 +280,14 @@ test_expect_success 'bisect skip: add line and then a new test' '
 	HASH5=$(git rev-parse --verify HEAD) &&
 	git bisect start $HASH5 $HASH1 &&
 	git bisect skip &&
-	git bisect good > my_bisect_log.txt &&
+	git bisect good >my_bisect_log.txt &&
 	grep "$HASH5 is the first bad commit" my_bisect_log.txt &&
-	git bisect log > log_to_replay.txt &&
+	git bisect log >log_to_replay.txt &&
 	git bisect reset
 '
 
 test_expect_success 'bisect skip and bisect replay' '
-	git bisect replay log_to_replay.txt > my_bisect_log.txt &&
+	git bisect replay log_to_replay.txt >my_bisect_log.txt &&
 	grep "$HASH5 is the first bad commit" my_bisect_log.txt &&
 	git bisect reset
 '
@@ -295,13 +296,13 @@ HASH6=
 test_expect_success 'bisect run & skip: cannot tell between 2' '
 	add_line_into_file "6: Yet a line." hello &&
 	HASH6=$(git rev-parse --verify HEAD) &&
-	echo "#"\!"/bin/sh" > test_script.sh &&
-	echo "sed -ne \\\$p hello | grep Ciao > /dev/null && exit 125" >> test_script.sh &&
-	echo "grep line hello > /dev/null" >> test_script.sh &&
-	echo "test \$? -ne 0" >> test_script.sh &&
+	echo "#"\!"/bin/sh" >test_script.sh &&
+	echo "sed -ne \\\$p hello | grep Ciao >/dev/null && exit 125" >>test_script.sh &&
+	echo "grep line hello >/dev/null" >>test_script.sh &&
+	echo "test \$? -ne 0" >>test_script.sh &&
 	chmod +x test_script.sh &&
 	git bisect start $HASH6 $HASH1 &&
-	if git bisect run ./test_script.sh > my_bisect_log.txt
+	if git bisect run ./test_script.sh >my_bisect_log.txt
 	then
 		echo Oops, should have failed.
 		false
@@ -320,14 +321,14 @@ test_expect_success 'bisect run & skip: find first bad' '
 	git bisect reset &&
 	add_line_into_file "7: Should be the last line." hello &&
 	HASH7=$(git rev-parse --verify HEAD) &&
-	echo "#"\!"/bin/sh" > test_script.sh &&
-	echo "sed -ne \\\$p hello | grep Ciao > /dev/null && exit 125" >> test_script.sh &&
-	echo "sed -ne \\\$p hello | grep day > /dev/null && exit 125" >> test_script.sh &&
-	echo "grep Yet hello > /dev/null" >> test_script.sh &&
-	echo "test \$? -ne 0" >> test_script.sh &&
+	echo "#"\!"/bin/sh" >test_script.sh &&
+	echo "sed -ne \\\$p hello | grep Ciao >/dev/null && exit 125" >>test_script.sh &&
+	echo "sed -ne \\\$p hello | grep day >/dev/null && exit 125" >>test_script.sh &&
+	echo "grep Yet hello >/dev/null" >>test_script.sh &&
+	echo "test \$? -ne 0" >>test_script.sh &&
 	chmod +x test_script.sh &&
 	git bisect start $HASH7 $HASH1 &&
-	git bisect run ./test_script.sh > my_bisect_log.txt &&
+	git bisect run ./test_script.sh >my_bisect_log.txt &&
 	grep "$HASH6 is the first bad commit" my_bisect_log.txt
 '
 
@@ -336,7 +337,7 @@ test_expect_success 'bisect skip only one range' '
 	git bisect start $HASH7 $HASH1 &&
 	git bisect skip $HASH1..$HASH5 &&
 	test_cmp_rev HEAD $HASH6 &&
-	test_must_fail git bisect bad > my_bisect_log.txt &&
+	test_must_fail git bisect bad >my_bisect_log.txt &&
 	grep "first bad commit could be any of" my_bisect_log.txt
 '
 
@@ -345,7 +346,7 @@ test_expect_success 'bisect skip many ranges' '
 	test_cmp_rev HEAD $HASH4 &&
 	git bisect skip $HASH2 $HASH2.. ..$HASH5 &&
 	test_cmp_rev HEAD $HASH6 &&
-	test_must_fail git bisect bad > my_bisect_log.txt &&
+	test_must_fail git bisect bad >my_bisect_log.txt &&
 	grep "first bad commit could be any of" my_bisect_log.txt
 '
 
@@ -361,7 +362,7 @@ test_expect_success 'bisect starting with a detached HEAD' '
 
 test_expect_success 'bisect errors out if bad and good are mistaken' '
 	git bisect reset &&
-	test_must_fail git bisect start $HASH2 $HASH4 2> rev_list_error &&
+	test_must_fail git bisect start $HASH2 $HASH4 2>rev_list_error &&
 	test_i18ngrep "mistook good and bad" rev_list_error &&
 	git bisect reset
 '
@@ -375,7 +376,7 @@ test_expect_success 'bisect does not create a "bisect" branch' '
 	git bisect good &&
 	git branch bisect &&
 	test_cmp_rev HEAD $HASH6 &&
-	git bisect good > my_bisect_log.txt &&
+	git bisect good >my_bisect_log.txt &&
 	grep "$HASH7 is the first bad commit" my_bisect_log.txt &&
 	git bisect reset &&
 	test_cmp_rev bisect $HASH6 &&
@@ -400,29 +401,29 @@ test_expect_success 'side branch creation' '
 '
 
 test_expect_success 'good merge base when good and bad are siblings' '
-	git bisect start "$HASH7" "$SIDE_HASH7" > my_bisect_log.txt &&
+	git bisect start "$HASH7" "$SIDE_HASH7" >my_bisect_log.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
 	grep $HASH4 my_bisect_log.txt &&
-	git bisect good > my_bisect_log.txt &&
+	git bisect good >my_bisect_log.txt &&
 	test_must_fail grep "merge base must be tested" my_bisect_log.txt &&
 	grep $HASH6 my_bisect_log.txt &&
 	git bisect reset
 '
 test_expect_success 'skipped merge base when good and bad are siblings' '
-	git bisect start "$SIDE_HASH7" "$HASH7" > my_bisect_log.txt &&
+	git bisect start "$SIDE_HASH7" "$HASH7" >my_bisect_log.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
 	grep $HASH4 my_bisect_log.txt &&
-	git bisect skip > my_bisect_log.txt 2>&1 &&
+	git bisect skip >my_bisect_log.txt 2>&1 &&
 	grep "warning" my_bisect_log.txt &&
 	grep $SIDE_HASH6 my_bisect_log.txt &&
 	git bisect reset
 '
 
 test_expect_success 'bad merge base when good and bad are siblings' '
-	git bisect start "$HASH7" HEAD > my_bisect_log.txt &&
+	git bisect start "$HASH7" HEAD >my_bisect_log.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
 	grep $HASH4 my_bisect_log.txt &&
-	test_must_fail git bisect bad > my_bisect_log.txt 2>&1 &&
+	test_must_fail git bisect bad >my_bisect_log.txt 2>&1 &&
 	test_i18ngrep "merge base $HASH4 is bad" my_bisect_log.txt &&
 	test_i18ngrep "fixed between $HASH4 and \[$SIDE_HASH7\]" my_bisect_log.txt &&
 	git bisect reset
@@ -449,16 +450,16 @@ test_expect_success 'many merge bases creation' '
 	git checkout side &&
 	git merge -m "merge HASH7 and SIDE_HASH7" "$HASH7" &&
 	B_HASH=$(git rev-parse --verify HEAD) &&
-	git merge-base --all "$A_HASH" "$B_HASH" > merge_bases.txt &&
+	git merge-base --all "$A_HASH" "$B_HASH" >merge_bases.txt &&
 	test_line_count = 2 merge_bases.txt &&
 	grep "$HASH5" merge_bases.txt &&
 	grep "$SIDE_HASH5" merge_bases.txt
 '
 
 test_expect_success 'good merge bases when good and bad are siblings' '
-	git bisect start "$B_HASH" "$A_HASH" > my_bisect_log.txt &&
+	git bisect start "$B_HASH" "$A_HASH" >my_bisect_log.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
-	git bisect good > my_bisect_log2.txt &&
+	git bisect good >my_bisect_log2.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log2.txt &&
 	{
 		{
@@ -473,14 +474,14 @@ test_expect_success 'good merge bases when good and bad are siblings' '
 '
 
 test_expect_success 'optimized merge base checks' '
-	git bisect start "$HASH7" "$SIDE_HASH7" > my_bisect_log.txt &&
+	git bisect start "$HASH7" "$SIDE_HASH7" >my_bisect_log.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log.txt &&
 	grep "$HASH4" my_bisect_log.txt &&
-	git bisect good > my_bisect_log2.txt &&
+	git bisect good >my_bisect_log2.txt &&
 	test -f ".git/BISECT_ANCESTORS_OK" &&
 	test_cmp_rev HEAD $HASH6 &&
-	git bisect bad > my_bisect_log3.txt &&
-	git bisect good "$A_HASH" > my_bisect_log4.txt &&
+	git bisect bad >my_bisect_log3.txt &&
+	git bisect good "$A_HASH" >my_bisect_log4.txt &&
 	test_i18ngrep "merge base must be tested" my_bisect_log4.txt &&
 	test_must_fail test -f ".git/BISECT_ANCESTORS_OK"
 '
@@ -522,7 +523,7 @@ test_expect_success 'restricting bisection on one dir' '
 	git bisect reset &&
 	git bisect start HEAD $HASH1 -- dir1 &&
 	test_cmp_rev HEAD "$PARA_HASH1" &&
-	git bisect bad > my_bisect_log.txt &&
+	git bisect bad >my_bisect_log.txt &&
 	grep "$PARA_HASH1 is the first bad commit" my_bisect_log.txt
 '
 
@@ -536,7 +537,7 @@ test_expect_success 'restricting bisection on one dir and a file' '
 	test_cmp_rev HEAD $HASH4 &&
 	git bisect good &&
 	test_cmp_rev HEAD "$PARA_HASH1" &&
-	git bisect good > my_bisect_log.txt &&
+	git bisect good >my_bisect_log.txt &&
 	grep "$PARA_HASH4 is the first bad commit" my_bisect_log.txt
 '
 
@@ -550,7 +551,7 @@ test_expect_success 'skipping away from skipped commit' '
 '
 
 test_expect_success 'erroring out when using bad path parameters' '
-	test_must_fail git bisect start $PARA_HASH7 $HASH1 -- foobar 2> error.txt &&
+	test_must_fail git bisect start $PARA_HASH7 $HASH1 -- foobar 2>error.txt &&
 	test_i18ngrep "bad path parameters" error.txt
 '
 
@@ -600,7 +601,7 @@ test_expect_success 'broken branch creation' '
 	add_line_into_file "5(broken): first line on a broken branch" hello2 &&
 	git tag BROKEN_HASH5 &&
 	mkdir missing &&
-	:> missing/MISSING &&
+	:>missing/MISSING &&
 	git add missing/MISSING &&
 	git commit -m "6(broken): Added file that will be deleted" &&
 	git tag BROKEN_HASH6 &&
@@ -614,8 +615,8 @@ test_expect_success 'broken branch creation' '
 	rm .git/objects/39/f7e61a724187ab767d2e08442d9b6b9dab587d
 '
 
-echo "" > expected.ok
-cat > expected.missing-tree.default <<EOF
+echo "" >expected.ok
+cat >expected.missing-tree.default <<EOF
 fatal: unable to read tree 39f7e61a724187ab767d2e08442d9b6b9dab587d
 EOF
 
@@ -695,7 +696,7 @@ test_expect_success 'bisect: demonstrate identification of damage boundary' "
 	git bisect reset
 "
 
-cat > expected.bisect-log <<EOF
+cat >expected.bisect-log <<EOF
 # bad: [32a594a3fdac2d57cf6d02987e30eec68511498c] Add <4: Ciao for now> into <hello>.
 # good: [7b7f204a749c3125d5224ed61ea2ae1187ad046f] Add <2: A new day for git> into <hello>.
 git bisect start '32a594a3fdac2d57cf6d02987e30eec68511498c' '7b7f204a749c3125d5224ed61ea2ae1187ad046f'
@@ -713,7 +714,7 @@ test_expect_success 'bisect log: successful result' '
 	git bisect reset
 '
 
-cat > expected.bisect-skip-log <<EOF
+cat >expected.bisect-skip-log <<EOF
 # bad: [32a594a3fdac2d57cf6d02987e30eec68511498c] Add <4: Ciao for now> into <hello>.
 # good: [7b7f204a749c3125d5224ed61ea2ae1187ad046f] Add <2: A new day for git> into <hello>.
 git bisect start '32a594a3fdac2d57cf6d02987e30eec68511498c' '7b7f204a749c3125d5224ed61ea2ae1187ad046f'
