@@ -5,6 +5,12 @@
 #Mn Nonspacing_Mark a nonspacing combining mark (zero advance width)
 #Cf Format          a format control character
 #
+
+dec_to_hex() {
+	# convert any decimal numbers to 4-digit hex
+	perl -pe 's/(\d+)/sprintf("0x%04X", $1)/ge'
+}
+
 UNICODEWIDTH_H=../unicode_width.h
 if ! test -d unicode; then
 	mkdir unicode
@@ -29,7 +35,7 @@ fi &&
 		make
 	) &&
 	UNICODE_DIR=. && export UNICODE_DIR &&
-	cat >$UNICODEWIDTH_H <<-EOF
+	dec_to_hex >$UNICODEWIDTH_H <<-EOF
 	static const struct interval zero_width[] = {
 		$(uniset/uniset --32 cat:Me,Mn,Cf + U+1160..U+11FF - U+00AD)
 	};
