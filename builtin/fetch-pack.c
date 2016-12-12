@@ -3,28 +3,39 @@
 #include "fetch-pack.h"
 #include "remote.h"
 #include "connect.h"
+#include "sha1-array.h"
 
 static const char fetch_pack_usage[] =
-"git fetch-pack [--all] [--stdin] [--quiet|-q] [--keep|-k] [--thin] "
+"git fetch-pack [--all] [--stdin] [--quiet | -q] [--keep | -k] [--thin] "
 "[--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] "
-"[--no-progress] [-v] [<host>:]<directory> [<refs>...]";
+"[--no-progress] [--diag-url] [-v] [<host>:]<directory> [<refs>...]";
 
-static void add_sought_entry_mem(struct ref ***sought, int *nr, int *alloc,
-				 const char *name, int namelen)
+static void add_sought_entry(struct ref ***sought, int *nr, int *alloc,
+			     const char *name)
 {
-	struct ref *ref = xcalloc(1, sizeof(*ref) + namelen + 1);
+	struct ref *ref;
+	struct object_id oid;
 
-	memcpy(ref->name, name, namelen);
-	ref->name[namelen] = '\0';
+	if (!get_oid_hex(name, &oid)) {
+		if (name[GIT_SHA1_HEXSZ] == ' ') {
+			/* <sha1> <ref>, find refname */
+			name += GIT_SHA1_HEXSZ + 1;
+		} else if (name[GIT_SHA1_HEXSZ] == '\0') {
+			; /* <sha1>, leave sha1 as name */
+		} else {
+			/* <ref>, clear cruft from oid */
+			oidclr(&oid);
+		}
+	} else {
+		/* <ref>, clear cruft from get_oid_hex */
+		oidclr(&oid);
+	}
+
+	ref = alloc_ref(name);
+	oidcpy(&ref->old_oid, &oid);
 	(*nr)++;
 	ALLOC_GROW(*sought, *nr, *alloc);
 	(*sought)[*nr - 1] = ref;
-}
-
-static void add_sought_entry(struct ref ***sought, int *nr, int *alloc,
-			     const char *string)
-{
-	add_sought_entry_mem(sought, nr, alloc, string, strlen(string));
 }
 
 int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
@@ -39,6 +50,8 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	char **pack_lockfile_ptr = NULL;
 	struct child_process *conn;
 	struct fetch_pack_args args;
+	struct sha1_array shallow = SHA1_ARRAY_INIT;
+	struct string_list deepen_not = STRING_LIST_INIT_DUP;
 
 	packet_trace_identity("fetch-pack");
 
@@ -48,12 +61,12 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	for (i = 1; i < argc && *argv[i] == '-'; i++) {
 		const char *arg = argv[i];
 
-		if (!prefixcmp(arg, "--upload-pack=")) {
-			args.uploadpack = arg + 14;
+		if (skip_prefix(arg, "--upload-pack=", &arg)) {
+			args.uploadpack = arg;
 			continue;
 		}
-		if (!prefixcmp(arg, "--exec=")) {
-			args.uploadpack = arg + 7;
+		if (skip_prefix(arg, "--exec=", &arg)) {
+			args.uploadpack = arg;
 			continue;
 		}
 		if (!strcmp("--quiet", arg) || !strcmp("-q", arg)) {
@@ -81,12 +94,28 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.stdin_refs = 1;
 			continue;
 		}
+		if (!strcmp("--diag-url", arg)) {
+			args.diag_url = 1;
+			continue;
+		}
 		if (!strcmp("-v", arg)) {
 			args.verbose = 1;
 			continue;
 		}
-		if (!prefixcmp(arg, "--depth=")) {
-			args.depth = strtol(arg + 8, NULL, 0);
+		if (skip_prefix(arg, "--depth=", &arg)) {
+			args.depth = strtol(arg, NULL, 0);
+			continue;
+		}
+		if (skip_prefix(arg, "--shallow-since=", &arg)) {
+			args.deepen_since = xstrdup(arg);
+			continue;
+		}
+		if (skip_prefix(arg, "--shallow-exclude=", &arg)) {
+			string_list_append(&deepen_not, arg);
+			continue;
+		}
+		if (!strcmp(arg, "--deepen-relative")) {
+			args.deepen_relative = 1;
 			continue;
 		}
 		if (!strcmp("--no-progress", arg)) {
@@ -106,8 +135,18 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			args.check_self_contained_and_connected = 1;
 			continue;
 		}
+		if (!strcmp("--cloning", arg)) {
+			args.cloning = 1;
+			continue;
+		}
+		if (!strcmp("--update-shallow", arg)) {
+			args.update_shallow = 1;
+			continue;
+		}
 		usage(fetch_pack_usage);
 	}
+	if (deepen_not.nr)
+		args.deepen_not = &deepen_not;
 
 	if (i < argc)
 		dest = argv[i++];
@@ -135,7 +174,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		else {
 			/* read from stdin one ref per line, until EOF */
 			struct strbuf line = STRBUF_INIT;
-			while (strbuf_getline(&line, stdin, '\n') != EOF)
+			while (strbuf_getline_lf(&line, stdin) != EOF)
 				add_sought_entry(&sought, &nr_sought, &alloc_sought, line.buf);
 			strbuf_release(&line);
 		}
@@ -146,14 +185,18 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		fd[0] = 0;
 		fd[1] = 1;
 	} else {
+		int flags = args.verbose ? CONNECT_VERBOSE : 0;
+		if (args.diag_url)
+			flags |= CONNECT_DIAG_URL;
 		conn = git_connect(fd, dest, args.uploadpack,
-				   args.verbose ? CONNECT_VERBOSE : 0);
+				   flags);
+		if (!conn)
+			return args.diag_url ? 0 : 1;
 	}
+	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
 
-	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL);
-
-	ref = fetch_pack(&args, fd, conn, ref, dest,
-			 sought, nr_sought, pack_lockfile_ptr);
+	ref = fetch_pack(&args, fd, conn, ref, dest, sought, nr_sought,
+			 &shallow, pack_lockfile_ptr);
 	if (pack_lockfile) {
 		printf("lock %s\n", pack_lockfile);
 		fflush(stdout);
@@ -185,7 +228,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 
 	while (ref) {
 		printf("%s %s\n",
-		       sha1_to_hex(ref->old_sha1), ref->name);
+		       oid_to_hex(&ref->old_oid), ref->name);
 		ref = ref->next;
 	}
 

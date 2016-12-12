@@ -34,7 +34,7 @@ valid_tool() {
 	firefox | iceweasel | seamonkey | iceape | \
 	chrome | google-chrome | chromium | chromium-browser | \
 	konqueror | opera | w3m | elinks | links | lynx | dillo | open | \
-	start | cygstart)
+	start | cygstart | xdg-open)
 		;; # happy
 	*)
 		valid_custom_tool "$1" || return 1
@@ -59,7 +59,7 @@ do
 	-b|--browser*|-t|--tool*)
 		case "$#,$1" in
 		*,*=*)
-			browser=`expr "z$1" : 'z-[^=]*=\(.*\)'`
+			browser=$(expr "z$1" : 'z-[^=]*=\(.*\)')
 			;;
 		1,*)
 			usage ;;
@@ -71,7 +71,7 @@ do
 	-c|--config*)
 		case "$#,$1" in
 		*,*=*)
-			conf=`expr "z$1" : 'z-[^=]*=\(.*\)'`
+			conf=$(expr "z$1" : 'z-[^=]*=\(.*\)')
 			;;
 		1,*)
 			usage ;;
@@ -100,7 +100,7 @@ then
 	for opt in "$conf" "web.browser"
 	do
 		test -z "$opt" && continue
-		browser="`git config $opt`"
+		browser="$(git config $opt)"
 		test -z "$browser" || break
 	done
 	if test -n "$browser" && ! valid_tool "$browser"; then
@@ -112,7 +112,7 @@ fi
 
 if test -z "$browser" ; then
 	if test -n "$DISPLAY"; then
-		browser_candidates="firefox iceweasel google-chrome chrome chromium chromium-browser konqueror opera seamonkey iceape w3m elinks links lynx dillo"
+		browser_candidates="firefox iceweasel google-chrome chrome chromium chromium-browser konqueror opera seamonkey iceape w3m elinks links lynx dillo xdg-open"
 		if test "$KDE_FULL_SESSION" = "true"; then
 			browser_candidates="konqueror $browser_candidates"
 		fi
@@ -179,7 +179,7 @@ konqueror)
 		;;
 	esac
 	;;
-w3m|elinks|links|lynx|open|cygstart)
+w3m|elinks|links|lynx|open|cygstart|xdg-open)
 	"$browser_path" "$@"
 	;;
 start)

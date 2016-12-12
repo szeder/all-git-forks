@@ -10,6 +10,7 @@
 
 typedef struct rev_name {
 	const char *tip_name;
+	unsigned long taggerdate;
 	int generation;
 	int distance;
 } rev_name;
@@ -20,24 +21,21 @@ static long cutoff = LONG_MAX;
 #define MERGE_TRAVERSAL_WEIGHT 65535
 
 static void name_rev(struct commit *commit,
-		const char *tip_name, int generation, int distance,
+		const char *tip_name, unsigned long taggerdate,
+		int generation, int distance,
 		int deref)
 {
 	struct rev_name *name = (struct rev_name *)commit->util;
 	struct commit_list *parents;
 	int parent_number = 1;
 
-	if (!commit->object.parsed)
-		parse_commit(commit);
+	parse_commit(commit);
 
 	if (commit->date < cutoff)
 		return;
 
 	if (deref) {
-		char *new_name = xmalloc(strlen(tip_name)+3);
-		strcpy(new_name, tip_name);
-		strcat(new_name, "^0");
-		tip_name = new_name;
+		tip_name = xstrfmt("%s^0", tip_name);
 
 		if (generation)
 			die("generation: %d, but deref?", generation);
@@ -47,9 +45,12 @@ static void name_rev(struct commit *commit,
 		name = xmalloc(sizeof(rev_name));
 		commit->util = name;
 		goto copy_data;
-	} else if (name->distance > distance) {
+	} else if (name->taggerdate > taggerdate ||
+			(name->taggerdate == taggerdate &&
+			 name->distance > distance)) {
 copy_data:
 		name->tip_name = tip_name;
+		name->taggerdate = taggerdate;
 		name->generation = generation;
 		name->distance = distance;
 	} else
@@ -59,26 +60,22 @@ copy_data:
 			parents;
 			parents = parents->next, parent_number++) {
 		if (parent_number > 1) {
-			int len = strlen(tip_name);
-			char *new_name = xmalloc(len +
-				1 + decimal_length(generation) +  /* ~<n> */
-				1 + 2 +				  /* ^NN */
-				1);
+			size_t len;
+			char *new_name;
 
-			if (len > 2 && !strcmp(tip_name + len - 2, "^0"))
-				len -= 2;
+			strip_suffix(tip_name, "^0", &len);
 			if (generation > 0)
-				sprintf(new_name, "%.*s~%d^%d", len, tip_name,
-						generation, parent_number);
+				new_name = xstrfmt("%.*s~%d^%d", (int)len, tip_name,
+						   generation, parent_number);
 			else
-				sprintf(new_name, "%.*s^%d", len, tip_name,
-						parent_number);
+				new_name = xstrfmt("%.*s^%d", (int)len, tip_name,
+						   parent_number);
 
-			name_rev(parents->item, new_name, 0,
+			name_rev(parents->item, new_name, taggerdate, 0,
 				distance + MERGE_TRAVERSAL_WEIGHT, 0);
 		} else {
-			name_rev(parents->item, tip_name, generation + 1,
-				distance + 1, 0);
+			name_rev(parents->item, tip_name, taggerdate,
+				generation + 1, distance + 1, 0);
 		}
 	}
 }
@@ -88,7 +85,7 @@ static int subpath_matches(const char *path, const char *filter)
 	const char *subpath = path;
 
 	while (subpath) {
-		if (!fnmatch(filter, subpath, 0))
+		if (!wildmatch(filter, subpath, 0, NULL))
 			return subpath - path;
 		subpath = strchr(subpath, '/');
 		if (subpath)
@@ -101,9 +98,9 @@ static const char *name_ref_abbrev(const char *refname, int shorten_unambiguous)
 {
 	if (shorten_unambiguous)
 		refname = shorten_unambiguous_ref(refname, 0);
-	else if (!prefixcmp(refname, "refs/heads/"))
+	else if (starts_with(refname, "refs/heads/"))
 		refname = refname + 11;
-	else if (!prefixcmp(refname, "refs/"))
+	else if (starts_with(refname, "refs/"))
 		refname = refname + 5;
 	return refname;
 }
@@ -142,14 +139,15 @@ static int tipcmp(const void *a_, const void *b_)
 	return hashcmp(a->sha1, b->sha1);
 }
 
-static int name_ref(const char *path, const unsigned char *sha1, int flags, void *cb_data)
+static int name_ref(const char *path, const struct object_id *oid, int flags, void *cb_data)
 {
-	struct object *o = parse_object(sha1);
+	struct object *o = parse_object(oid->hash);
 	struct name_ref_data *data = cb_data;
 	int can_abbreviate_output = data->tags_only && data->name_only;
 	int deref = 0;
+	unsigned long taggerdate = ULONG_MAX;
 
-	if (data->tags_only && prefixcmp(path, "refs/tags/"))
+	if (data->tags_only && !starts_with(path, "refs/tags/"))
 		return 0;
 
 	if (data->ref_filter) {
@@ -164,20 +162,21 @@ static int name_ref(const char *path, const unsigned char *sha1, int flags, void
 		}
 	}
 
-	add_to_tip_table(sha1, path, can_abbreviate_output);
+	add_to_tip_table(oid->hash, path, can_abbreviate_output);
 
 	while (o && o->type == OBJ_TAG) {
 		struct tag *t = (struct tag *) o;
 		if (!t->tagged)
 			break; /* broken repository */
-		o = parse_object(t->tagged->sha1);
+		o = parse_object(t->tagged->oid.hash);
 		deref = 1;
+		taggerdate = t->date;
 	}
 	if (o && o->type == OBJ_COMMIT) {
 		struct commit *commit = (struct commit *)o;
 
 		path = name_ref_abbrev(path, can_abbreviate_output);
-		name_rev(commit, xstrdup(path), 0, 0, deref);
+		name_rev(commit, xstrdup(path), taggerdate, 0, 0, deref);
 	}
 	return 0;
 }
@@ -196,12 +195,11 @@ static const char *get_exact_ref_match(const struct object *o)
 		return NULL;
 
 	if (!tip_table.sorted) {
-		qsort(tip_table.table, tip_table.nr, sizeof(*tip_table.table),
-		      tipcmp);
+		QSORT(tip_table.table, tip_table.nr, tipcmp);
 		tip_table.sorted = 1;
 	}
 
-	found = sha1_pos(o->sha1, tip_table.table, tip_table.nr,
+	found = sha1_pos(o->oid.hash, tip_table.table, tip_table.nr,
 			 nth_tip_table_ent);
 	if (0 <= found)
 		return tip_table.table[found].refname;
@@ -240,25 +238,25 @@ static void show_name(const struct object *obj,
 		      int always, int allow_undefined, int name_only)
 {
 	const char *name;
-	const unsigned char *sha1 = obj->sha1;
+	const struct object_id *oid = &obj->oid;
 
 	if (!name_only)
-		printf("%s ", caller_name ? caller_name : sha1_to_hex(sha1));
+		printf("%s ", caller_name ? caller_name : oid_to_hex(oid));
 	name = get_rev_name(obj);
 	if (name)
 		printf("%s\n", name);
 	else if (allow_undefined)
 		printf("undefined\n");
 	else if (always)
-		printf("%s\n", find_unique_abbrev(sha1, DEFAULT_ABBREV));
+		printf("%s\n", find_unique_abbrev(oid->hash, DEFAULT_ABBREV));
 	else
-		die("cannot describe '%s'", sha1_to_hex(sha1));
+		die("cannot describe '%s'", oid_to_hex(oid));
 }
 
 static char const * const name_rev_usage[] = {
-	N_("git name-rev [options] <commit>..."),
-	N_("git name-rev [options] --all"),
-	N_("git name-rev [options] --stdin"),
+	N_("git name-rev [<options>] <commit>..."),
+	N_("git name-rev [<options>] --all"),
+	N_("git name-rev [<options>] --stdin"),
 	NULL
 };
 

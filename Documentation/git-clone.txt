@@ -12,10 +12,10 @@ SYNOPSIS
 'git clone' [--template=<template_directory>]
 	  [-l] [-s] [--no-hardlinks] [-q] [-n] [--bare] [--mirror]
 	  [-o <name>] [-b <name>] [-u <upload-pack>] [--reference <repository>]
-	  [--separate-git-dir <git dir>]
+	  [--dissociate] [--separate-git-dir <git dir>]
 	  [--depth <depth>] [--[no-]single-branch]
-	  [--recursive | --recurse-submodules] [--] <repository>
-	  [<directory>]
+	  [--recursive | --recurse-submodules] [--[no-]shallow-submodules]
+	  [--jobs <n>] [--] <repository> [<directory>]
 
 DESCRIPTION
 -----------
@@ -55,15 +55,12 @@ repository is specified as a URL, then this flag is ignored (and we
 never use the local optimizations).  Specifying `--no-local` will
 override the default when `/path/to/repo` is given, using the regular
 Git transport instead.
-+
-To force copying instead of hardlinking (which may be desirable if you
-are trying to make a back-up of your repository), but still avoid the
-usual "Git aware" transport mechanism, `--no-hardlinks` can be used.
 
 --no-hardlinks::
-	Optimize the cloning process from a repository on a
-	local filesystem by copying files under `.git/objects`
-	directory.
+	Force the cloning process from a repository on a local
+	filesystem to copy the files under the `.git/objects`
+	directory instead of using hardlinks. This may be desirable
+	if you are trying to make a back-up of your repository.
 
 --shared::
 -s::
@@ -93,21 +90,35 @@ If you want to break the dependency of a repository cloned with `-s` on
 its source repository, you can simply run `git repack -a` to copy all
 objects from the source repository into a pack in the cloned repository.
 
---reference <repository>::
+--reference[-if-able] <repository>::
 	If the reference repository is on the local machine,
 	automatically setup `.git/objects/info/alternates` to
 	obtain objects from the reference repository.  Using
 	an already existing repository as an alternate will
 	require fewer objects to be copied from the repository
 	being cloned, reducing network and local storage costs.
+	When using the `--reference-if-able`, a non existing
+	directory is skipped with a warning instead of aborting
+	the clone.
 +
-*NOTE*: see the NOTE for the `--shared` option.
+*NOTE*: see the NOTE for the `--shared` option, and also the
+`--dissociate` option.
+
+--dissociate::
+	Borrow the objects from reference repositories specified
+	with the `--reference` options only to reduce network
+	transfer, and stop borrowing from them after a clone is made
+	by making necessary local copies of borrowed objects.  This
+	option can also be used when cloning locally from a
+	repository that already borrows objects from another
+	repository--the new repository will borrow objects from the
+	same repository, and this option can be used to stop the
+	borrowing.
 
 --quiet::
 -q::
 	Operate quietly.  Progress is not reported to the standard
-	error stream. This flag is also passed to the `rsync'
-	command when given.
+	error stream.
 
 --verbose::
 -v::
@@ -181,20 +192,23 @@ objects from the source repository into a pack in the cloned repository.
 
 --depth <depth>::
 	Create a 'shallow' clone with a history truncated to the
-	specified number of revisions.  A shallow repository has a
-	number of limitations (you cannot clone or fetch from
-	it, nor push from nor into it), but is adequate if you
-	are only interested in the recent history of a large project
-	with a long history, and would want to send in fixes
-	as patches.
+	specified number of commits. Implies `--single-branch` unless
+	`--no-single-branch` is given to fetch the histories near the
+	tips of all branches. If you want to clone submodules shallowly,
+	also pass `--shallow-submodules`.
+
+--shallow-since=<date>::
+	Create a shallow clone with a history after the specified time.
+
+--shallow-exclude=<revision>::
+	Create a shallow clone with a history, excluding commits
+	reachable from a specified remote branch or tag.  This option
+	can be specified multiple times.
 
 --[no-]single-branch::
 	Clone only the history leading to the tip of a single branch,
 	either specified by the `--branch` option or the primary
-	branch remote's `HEAD` points at. When creating a shallow
-	clone with the `--depth` option, this is the default, unless
-	`--no-single-branch` is given to fetch the histories near the
-	tips of all branches.
+	branch remote's `HEAD` points at.
 	Further fetches into the resulting repository will only update the
 	remote-tracking branch for the branch this option was used for the
 	initial cloning.  If the HEAD at the remote did not point at any
@@ -210,13 +224,20 @@ objects from the source repository into a pack in the cloned repository.
 	repository does not have a worktree/checkout (i.e. if any of
 	`--no-checkout`/`-n`, `--bare`, or `--mirror` is given)
 
+--[no-]shallow-submodules::
+	All submodules which are cloned will be shallow with a depth of 1.
+
 --separate-git-dir=<git dir>::
 	Instead of placing the cloned repository where it is supposed
 	to be, place the cloned repository at the specified directory,
-	then make a filesytem-agnostic Git symbolic link to there.
+	then make a filesystem-agnostic Git symbolic link to there.
 	The result is Git repository can be separated from working
 	tree.
 
+-j <n>::
+--jobs <n>::
+	The number of submodules fetched at the same time.
+	Defaults to the `submodule.fetchJobs` option.
 
 <repository>::
 	The (possibly remote) repository to clone from.  See the

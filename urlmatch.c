@@ -43,11 +43,11 @@ static int append_normalized_escapes(struct strbuf *buf,
 		from_len--;
 		if (ch == '%') {
 			if (from_len < 2 ||
-			    !isxdigit((unsigned char)from[0]) ||
-			    !isxdigit((unsigned char)from[1]))
+			    !isxdigit(from[0]) ||
+			    !isxdigit(from[1]))
 				return 0;
-			ch = hexval_table[(unsigned char)*from++] << 4;
-			ch |= hexval_table[(unsigned char)*from++];
+			ch = hexval(*from++) << 4;
+			ch |= hexval(*from++);
 			from_len -= 2;
 			was_esc = 1;
 		}
@@ -281,9 +281,11 @@ char *url_normalize(const char *url, struct url_info *out_info)
 		url_len--;
 	}
 	for (;;) {
-		const char *seg_start = norm.buf + norm.len;
+		const char *seg_start;
+		size_t seg_start_off = norm.len;
 		const char *next_slash = url + strcspn(url, "/?#");
 		int skip_add_slash = 0;
+
 		/*
 		 * RFC 3689 indicates that any . or .. segments should be
 		 * unescaped before being checked for.
@@ -297,6 +299,8 @@ char *url_normalize(const char *url, struct url_info *out_info)
 			strbuf_release(&norm);
 			return NULL;
 		}
+
+		seg_start = norm.buf + seg_start_off;
 		if (!strcmp(seg_start, ".")) {
 			/* ignore a . segment; be careful not to remove initial '/' */
 			if (seg_start == path_start + 1) {
@@ -408,9 +412,9 @@ static size_t url_match_prefix(const char *url,
 	return 0;
 }
 
-int match_urls(const struct url_info *url,
-	       const struct url_info *url_prefix,
-	       int *exactusermatch)
+static int match_urls(const struct url_info *url,
+		      const struct url_info *url_prefix,
+		      int *exactusermatch)
 {
 	/*
 	 * url_prefix matches url if the scheme, host and port of url_prefix
@@ -479,8 +483,7 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
 	int user_matched = 0;
 	int retval;
 
-	key = skip_prefix(var, collect->section);
-	if (!key || *(key++) != '.') {
+	if (!skip_prefix(var, collect->section, &key) || *(key++) != '.') {
 		if (collect->cascade_fn)
 			return collect->cascade_fn(var, value, cb);
 		return 0; /* not interested */

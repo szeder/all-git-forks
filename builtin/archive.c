@@ -47,19 +47,19 @@ static int run_remote_archiver(int argc, const char **argv,
 	if (name_hint) {
 		const char *format = archive_format_from_filename(name_hint);
 		if (format)
-			packet_write(fd[1], "argument --format=%s\n", format);
+			packet_write_fmt(fd[1], "argument --format=%s\n", format);
 	}
 	for (i = 1; i < argc; i++)
-		packet_write(fd[1], "argument %s\n", argv[i]);
+		packet_write_fmt(fd[1], "argument %s\n", argv[i]);
 	packet_flush(fd[1]);
 
 	buf = packet_read_line(fd[0], NULL);
 	if (!buf)
 		die(_("git archive: expected ACK/NAK, got EOF"));
 	if (strcmp(buf, "ACK")) {
-		if (!prefixcmp(buf, "NACK "))
+		if (starts_with(buf, "NACK "))
 			die(_("git archive: NACK %s"), buf + 5);
-		if (!prefixcmp(buf, "ERR "))
+		if (starts_with(buf, "ERR "))
 			die(_("remote error: %s"), buf + 4);
 		die(_("git archive: protocol error"));
 	}
@@ -85,8 +85,8 @@ int cmd_archive(int argc, const char **argv, const char *prefix)
 	const char *output = NULL;
 	const char *remote = NULL;
 	struct option local_opts[] = {
-		OPT_STRING('o', "output", &output, N_("file"),
-			N_("write the archive to this file")),
+		OPT_FILENAME('o', "output", &output,
+			     N_("write the archive to this file")),
 		OPT_STRING(0, "remote", &remote, N_("repo"),
 			N_("retrieve the archive from remote repository <repo>")),
 		OPT_STRING(0, "exec", &exec, N_("command"),
@@ -105,5 +105,5 @@ int cmd_archive(int argc, const char **argv, const char *prefix)
 
 	setvbuf(stderr, NULL, _IOLBF, BUFSIZ);
 
-	return write_archive(argc, argv, prefix, 1, output, 0);
+	return write_archive(argc, argv, prefix, output, 0);
 }

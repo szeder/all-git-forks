@@ -115,7 +115,7 @@ EOF
 
 git config core.excludesFile excludes-file
 
-git status | grep "^#	" > output
+git -c status.displayCommentPrefix=true status | grep "^#	" > output
 
 cat > expect << EOF
 #	.gitignore
@@ -294,7 +294,7 @@ one/a.1
 one/two/a.1
 three/a.1
 EOF
-	git ls-files -o -i --exclude "**/a.1" >actual
+	git ls-files -o -i --exclude "**/a.1" >actual &&
 	test_cmp expect actual
 '
 

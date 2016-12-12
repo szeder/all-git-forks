@@ -3,6 +3,7 @@
  */
 #include "cache.h"
 #include "pathspec.h"
+#include "dir.h"
 
 #ifdef NO_PTHREADS
 static void preload_index(struct index_state *index,
@@ -36,9 +37,8 @@ static void *preload_thread(void *_data)
 	struct thread_data *p = _data;
 	struct index_state *index = p->index;
 	struct cache_entry **cep = index->cache + p->offset;
-	struct cache_def cache;
+	struct cache_def cache = CACHE_DEF_INIT;
 
-	memset(&cache, 0, sizeof(cache));
 	nr = p->nr;
 	if (nr + p->offset > index->cache_nr)
 		nr = index->cache_nr - p->offset;
@@ -53,7 +53,7 @@ static void *preload_thread(void *_data)
 			continue;
 		if (ce_uptodate(ce))
 			continue;
-		if (!ce_path_match(ce, &p->pathspec))
+		if (!ce_path_match(ce, &p->pathspec, NULL))
 			continue;
 		if (threaded_has_symlink_leading_path(&cache, ce->name, ce_namelen(ce)))
 			continue;
@@ -63,6 +63,7 @@ static void *preload_thread(void *_data)
 			continue;
 		ce_mark_uptodate(ce);
 	} while (--nr > 0);
+	cache_def_clear(&cache);
 	return NULL;
 }
 

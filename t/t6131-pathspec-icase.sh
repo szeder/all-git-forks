@@ -69,7 +69,7 @@ test_expect_success 'tree_entry_interesting matches :(icase)bar with empty prefi
 	test_cmp expect actual
 '
 
-test_expect_success 'match_pathspec_depth matches :(icase)bar' '
+test_expect_success 'match_pathspec matches :(icase)bar' '
 	cat <<-EOF >expect &&
 	BAR
 	bAr
@@ -79,7 +79,7 @@ test_expect_success 'match_pathspec_depth matches :(icase)bar' '
 	test_cmp expect actual
 '
 
-test_expect_success 'match_pathspec_depth matches :(icase)bar with prefix' '
+test_expect_success 'match_pathspec matches :(icase)bar with prefix' '
 	cat <<-EOF >expect &&
 	fOo/BAR
 	fOo/bAr
@@ -89,7 +89,7 @@ test_expect_success 'match_pathspec_depth matches :(icase)bar with prefix' '
 	test_cmp expect actual
 '
 
-test_expect_success 'match_pathspec_depth matches :(icase)bar with empty prefix' '
+test_expect_success 'match_pathspec matches :(icase)bar with empty prefix' '
 	cat <<-EOF >expect &&
 	bar
 	fOo/BAR
@@ -97,6 +97,12 @@ test_expect_success 'match_pathspec_depth matches :(icase)bar with empty prefix'
 	fOo/bar
 	EOF
 	( cd fOo && git ls-files --full-name ":(icase)bar" ../bar ) >actual &&
+	test_cmp expect actual
+'
+
+test_expect_success '"git diff" can take magic :(icase) pathspec' '
+	echo FOO/BAR >expect &&
+	git diff --name-only HEAD^ HEAD -- ":(icase)foo/bar" >actual &&
 	test_cmp expect actual
 '
 

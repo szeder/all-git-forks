@@ -430,10 +430,10 @@ sub req_validrequests
 
     $log->debug("req_validrequests");
 
-    $log->debug("SEND : Valid-requests " . join(" ",keys %$methods));
+    $log->debug("SEND : Valid-requests " . join(" ",sort keys %$methods));
     $log->debug("SEND : ok");
 
-    print "Valid-requests " . join(" ",keys %$methods) . "\n";
+    print "Valid-requests " . join(" ",sort keys %$methods) . "\n";
     print "ok\n";
 }
 
@@ -1156,7 +1156,7 @@ sub prepDirForOutput
     # FUTURE: This would more accurately emulate CVS by sending
     #   another copy of sticky after processing the files in that
     #   directory.  Or intermediate: perhaps send all sticky's for
-    #   $seendirs after after processing all files.
+    #   $seendirs after processing all files.
 }
 
 # update \n
@@ -2124,7 +2124,7 @@ sub req_diff
             print "M retrieving revision $meta2->{revision}\n"
         }
         print "M diff ";
-        foreach my $opt ( keys %{$state->{opt}} )
+        foreach my $opt ( sort keys %{$state->{opt}} )
         {
             if ( ref $state->{opt}{$opt} eq "ARRAY" )
             {
@@ -2664,7 +2664,7 @@ sub argsfromdir
     #   co  # Obtain list directly.
     #   remove # HERE: TEST: MAYBE client does the recursion for us,
     #          # since it only makes sense to remove stuff already in
-    #          # the sandobx?
+    #          # the sandbox?
     #   ci # HERE: Similar to remove...
     #      # Don't try to implement the confusing/weird
     #      # ci -r bug er.."feature".
@@ -2824,7 +2824,7 @@ sub statecleanup
 }
 
 # Return working directory CVS revision "1.X" out
-# of the the working directory "entries" state, for the given filename.
+# of the working directory "entries" state, for the given filename.
 # This is prefixed with a dash if the file is scheduled for removal
 # when it is committed.
 sub revparse
@@ -2935,7 +2935,7 @@ sub filecleanup
     return $filename;
 }
 
-# Remove prependdir from the path, so that is is relative to the directory
+# Remove prependdir from the path, so that it is relative to the directory
 # the CVS client was started from, rather than the top of the project.
 # Essentially the inverse of filecleanup().
 sub remove_prependdir
@@ -4050,7 +4050,7 @@ sub update
             close FILELIST;
 
             # Detect deleted files
-            foreach my $file ( keys %$head )
+            foreach my $file ( sort keys %$head )
             {
                 unless ( exists $seen_files->{$file} or $head->{$file}{filehash} eq "deleted" )
                 {
@@ -4078,7 +4078,7 @@ sub update
     }
 
     $self->delete_head();
-    foreach my $file ( keys %$head )
+    foreach my $file ( sort keys %$head )
     {
         $self->insert_head(
             $file,
@@ -4167,7 +4167,7 @@ sub convertToDbMode
     #  this half-converted form, but it isn't currently worth the
     #  backwards compatibility headaches.
 
-    $mode=~/^\d\d(\d)\d{3}$/;
+    $mode=~/^\d{3}(\d)\d\d$/;
     my $userBits=$1;
 
     my $dbMode = "";
@@ -4338,7 +4338,7 @@ sub getAnyHead
 =head2 getRevisionDirMap
 
 A "revision dir map" contains all the plain-file filenames associated
-with a particular revision (treeish), organized by directory:
+with a particular revision (tree-ish), organized by directory:
 
   $type = $out->{$dir}{$fullName}
 
