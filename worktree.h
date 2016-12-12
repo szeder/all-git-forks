@@ -16,6 +16,7 @@ struct worktree {
 /* Functions for acting on the information about worktrees. */
 
 #define GWT_SORT_LINKED (1 << 0) /* keeps linked worktrees sorted */
+#define GWT_LINKED_ONLY (1 << 1) /* do not include the main worktree */
 
 /*
  * Get the worktrees.  The primary worktree will always be the first returned,
@@ -26,6 +27,12 @@ struct worktree {
  * worktree(s).
  */
 extern struct worktree **get_worktrees(unsigned flags);
+
+/*
+ * Returns 1 if linked worktrees exist, 0 otherwise.
+ */
+extern int uses_worktrees(void);
+extern int submodule_uses_worktrees(const char *path);
 
 /*
  * Return git dir of the worktree. Note that the path may be relative.
