@@ -15,6 +15,7 @@ SYNOPSIS
 	[--[no-]rerere-autoupdate] [-m <msg>] [<commit>...]
 'git merge' <msg> HEAD <commit>...
 'git merge' --abort
+'git merge' --continue
 
 DESCRIPTION
 -----------
@@ -61,6 +62,9 @@ reconstruct the original (pre-merge) changes. Therefore:
 discouraged: while possible, it may leave you in a state that is hard to
 back out of in the case of a conflict.
 
+The fourth syntax ("`git merge --continue`") can only be run after the
+merge has resulted in conflicts. 'git merge --continue' will take the
+currently staged changes and complete the merge.
 
 OPTIONS
 -------
@@ -97,6 +101,12 @@ reconstruct these changes. It is therefore recommended to always
 commit or stash your changes before running 'git merge'.
 +
 'git merge --abort' is equivalent to 'git reset --merge' when
+`MERGE_HEAD` is present.
+
+--continue::
+	Take the currently staged changes and complete the merge.
++
+'git merge --continue' is equivalent to 'git commit' when
 `MERGE_HEAD` is present.
 
 <commit>...::
@@ -277,7 +287,8 @@ After seeing a conflict, you can do two things:
 
  * Resolve the conflicts.  Git will mark the conflicts in
    the working tree.  Edit the files into shape and
-   'git add' them to the index.  Use 'git commit' to seal the deal.
+   'git add' them to the index.  Use 'git merge --continue' to seal the
+   deal.
 
 You can work through the conflict with a number of tools:
 
