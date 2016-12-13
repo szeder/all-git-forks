@@ -6,7 +6,82 @@
 static int initialized;
 static volatile long enabled;
 static struct hashmap map;
+static struct hashmap map_nfd; /* not found directories */
 static CRITICAL_SECTION mutex;
+
+struct nfd_entry
+{
+	struct hashmap_entry ent;
+	int namelen;
+	char *name;
+	char buf[FLEX_ARRAY];
+};
+
+static void nfd_init(struct nfd_entry *nfd, const char *name, size_t namelen, unsigned int hash)
+{
+	nfd->namelen = namelen;
+	nfd->name = name; /* borrow buffer from caller */
+	hashmap_entry_init(&nfd->ent, hash);
+}
+
+static struct nfd_entry *nfd_alloc(const char *name, size_t namelen, unsigned int hash)
+{
+	struct nfd_entry *nfd = xcalloc(1, sizeof(struct nfd_entry) + namelen + 1);
+	hashmap_entry_init(&nfd->ent, hash);
+	nfd->namelen = namelen;
+	nfd->name = nfd->buf;
+	memcpy(nfd->buf, name, namelen+1);
+	return nfd;
+}
+
+static struct nfd_entry *nfd_find(const char *name, size_t namelen, unsigned int hash)
+{
+	struct nfd_entry nfd_test;
+	struct nfd_entry *nfd;
+
+	nfd_init(&nfd_test, name, namelen, hash);
+	nfd = hashmap_get(&map_nfd, &nfd_test, NULL);
+
+	return nfd;
+}
+
+static struct nfd_entry *nfd_add(const char *name, size_t namelen, unsigned int hash)
+{
+	struct nfd_entry nfd_test;
+	struct nfd_entry *nfd;
+
+	nfd = nfd_find(name, namelen, hash);
+	if (!nfd) {
+		nfd = nfd_alloc(name, namelen, hash);
+		hashmap_add(&map_nfd, nfd);
+	}
+	return nfd;
+}
+
+static void nfd_remove(struct nfd_entry *nfd)
+{
+	hashmap_remove(&map_nfd, nfd, NULL);
+}
+
+static void nfd_clear(void)
+{
+	struct hashmap_iter iter;
+	struct nfd_entry *nfd;
+	while ((nfd = hashmap_iter_first(&map_nfd, &iter))) {
+		nfd_remove(nfd);
+		free(nfd);
+	}
+}
+
+static int nfd_cmp(const struct nfd_entry *nfd1, const struct nfd_entry *nfd2)
+{
+	int max;
+
+	if (nfd1 == nfd2)
+		return 0;
+	max = ((nfd1->namelen >= nfd2->namelen) ? nfd1->namelen : nfd2->namelen);
+	return memcmp(nfd1->name, nfd2->name, max);
+}
 
 /*
  * An entry in the file system cache. Used for both entire directory listings
@@ -163,7 +238,7 @@ static struct fsentry *fseentry_create_entry(struct fsentry *list,
  * Dir should not contain trailing '/'. Use an empty string for the current
  * directory (not "."!).
  */
-static struct fsentry *fsentry_create_list(const struct fsentry *dir)
+static struct fsentry *fsentry_create_list(const struct fsentry *dir, int *dir_not_found)
 {
 	wchar_t pattern[MAX_LONG_PATH + 2]; /* + 2 for "\*" */
 	WIN32_FIND_DATAW fdata;
@@ -171,6 +246,8 @@ static struct fsentry *fsentry_create_list(const struct fsentry *dir)
 	int wlen;
 	struct fsentry *list, **phead;
 	DWORD err;
+
+	*dir_not_found = 0;
 
 	/* convert name to UTF-16 and check length */
 	if ((wlen = xutftowcs_path_ex(pattern, dir->name, MAX_LONG_PATH,
@@ -190,6 +267,7 @@ static struct fsentry *fsentry_create_list(const struct fsentry *dir)
 	h = FindFirstFileW(pattern, &fdata);
 	if (h == INVALID_HANDLE_VALUE) {
 		err = GetLastError();
+		*dir_not_found = 1;
 		errno = (err == ERROR_DIRECTORY) ? ENOTDIR : err_win_to_posix(err);
 		return NULL;
 	}
@@ -296,6 +374,7 @@ static struct fsentry *fscache_get_wait(struct fsentry *key)
 static struct fsentry *fscache_get(struct fsentry *key)
 {
 	struct fsentry *fse, *future, *waiter;
+	int dir_not_found;
 
 	EnterCriticalSection(&mutex);
 	/* check if entry is in cache */
@@ -313,6 +392,11 @@ static struct fsentry *fscache_get(struct fsentry *key)
 			/* dir entry without file entry -> file doesn't exist */
 			errno = ENOENT;
 			return NULL;
+		} else if (nfd_find(key->list->name, key->list->len, key->list->ent.hash)) {
+			/* The parent directory does not exist, so neither does the file. */
+			LeaveCriticalSection(&mutex);
+			errno = ENOENT;
+			return NULL;
 		}
 	}
 
@@ -324,7 +408,7 @@ static struct fsentry *fscache_get(struct fsentry *key)
 
 	/* create the directory listing (outside mutex!) */
 	LeaveCriticalSection(&mutex);
-	fse = fsentry_create_list(future);
+	fse = fsentry_create_list(future, &dir_not_found);
 	EnterCriticalSection(&mutex);
 
 	/* remove future entry and signal waiting threads */
@@ -338,6 +422,8 @@ static struct fsentry *fscache_get(struct fsentry *key)
 
 	/* leave on error (errno set by fsentry_create_list) */
 	if (!fse) {
+		if (dir_not_found && key->list)
+			nfd_add(key->list->name, key->list->len, key->list->ent.hash);
 		LeaveCriticalSection(&mutex);
 		return NULL;
 	}
@@ -374,6 +460,7 @@ int fscache_enable(int enable)
 
 		InitializeCriticalSection(&mutex);
 		hashmap_init(&map, (hashmap_cmp_fn) fsentry_cmp, 0);
+		hashmap_init(&map_nfd, (hashmap_cmp_fn) nfd_cmp, 0);
 		initialized = 1;
 	}
 
@@ -390,6 +477,7 @@ int fscache_enable(int enable)
 		lstat = mingw_lstat;
 		EnterCriticalSection(&mutex);
 		fscache_clear();
+		nfd_clear();
 		LeaveCriticalSection(&mutex);
 	}
 	return result;
