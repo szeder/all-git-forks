@@ -961,7 +961,7 @@ const char *remove_leading_path(const char *in, const char *prefix)
  *
  * Performs the following normalizations on src, storing the result in dst:
  * - Ensures that components are separated by '/' (Windows only)
- * - Squashes sequences of '/'.
+ * - Squashes sequences of '/' except "//server/share" on Windows
  * - Removes "." components.
  * - Removes ".." components, and the components the precede them.
  * Returns failure (non-zero) if a ".." component appears as first path
@@ -984,17 +984,23 @@ const char *remove_leading_path(const char *in, const char *prefix)
 int normalize_path_copy_len(char *dst, const char *src, int *prefix_len)
 {
 	char *dst0;
-	int i;
+	int offset;
 
-	for (i = has_dos_drive_prefix(src); i > 0; i--)
-		*dst++ = *src++;
+	/*
+	 * Handle initial part of absolute path: "/", "C:/", "\\server\share/".
+	 */
+	offset = offset_1st_component(src);
+	if (offset) {
+		/* Convert the trailing separator to '/' on Windows. */
+		memcpy(dst, src, offset - 1);
+		dst += offset - 1;
+		*dst++ = '/';
+		src += offset;
+	}
 	dst0 = dst;
 
-	if (is_dir_sep(*src)) {
-		*dst++ = '/';
-		while (is_dir_sep(*src))
-			src++;
-	}
+	while (is_dir_sep(*src))
+		src++;
 
 	for (;;) {
 		char c = *src;
