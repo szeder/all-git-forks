@@ -2641,3 +2641,12 @@ cover_db: coverage-report
 cover_db_html: cover_db
 	cover -report html -outputdir cover_db_html cover_db
 
+.PHONY: cppcheck
+
+CPPCHECK_FLAGS = --force --quiet --inline-suppr $(if $(CPPCHECK_ADD),--enable=$(CPPCHECK_ADD))
+
+cppcheck:
+	@cppcheck --version
+	$(FIND_SOURCE_FILES) | \
+	grep -v '\.sh' | \
+	xargs cppcheck $(CPPCHECK_FLAGS)
