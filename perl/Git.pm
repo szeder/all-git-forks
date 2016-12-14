@@ -1438,6 +1438,30 @@ sub END {
 
 } # %TEMP_* Lexical Context
 
+=item prefix_lines ( PREFIX, STRING [, STRING... ])
+
+Prefixes lines in C<STRING> with C<PREFIX>.
+
+=cut
+
+sub prefix_lines {
+	my $prefix = shift;
+	my $string = join("\n", @_);
+	$string =~ s/^/$prefix/mg;
+	return $string;
+}
+
+=item comment_lines ( STRING [, STRING... ])
+
+Comments lines following core.commentchar configuration.
+
+=cut
+
+sub comment_lines {
+	my $comment_line_char = config("core.commentchar") || '#';
+	return prefix_lines("$comment_line_char ", @_);
+}
+
 =back
 
 =head1 ERROR HANDLING
