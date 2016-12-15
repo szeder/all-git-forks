@@ -1,0 +1,8 @@
+memleak:compat/regex/regcomp.c:3086
+memleak:compat/regex/regcomp.c:3634
+memleak:compat/regex/regcomp.c:3086
+memleak:compat/regex/regcomp.c:3634
+uninitvar:compat/regex/regcomp.c:2802
+uninitvar:compat/regex/regcomp.c:2803
+uninitvar:compat/regex/regcomp.c:2805
+memleak:compat/regex/regcomp.c:532

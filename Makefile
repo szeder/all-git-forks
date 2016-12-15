@@ -2643,7 +2643,12 @@ cover_db_html: cover_db
 
 .PHONY: cppcheck
 
-CPPCHECK_FLAGS = --force --quiet --inline-suppr $(if $(CPPCHECK_ADD),--enable=$(CPPCHECK_ADD))
+CPPCHECK_SUPP = --suppressions-list=compat/nedmalloc/nedmalloc.supp \
+	--suppressions-list=compat/regex/regcomp.supp
+
+CPPCHECK_FLAGS = --force --quiet --inline-suppr \
+	$(if $(CPPCHECK_ADD),--enable=$(CPPCHECK_ADD)) \
+	$(CPPCHECK_SUPP)
 
 cppcheck:
 	@cppcheck --version
