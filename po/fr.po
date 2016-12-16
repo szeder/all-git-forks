@@ -5314,7 +5314,7 @@ msgid ""
 "\n"
 msgstr ""
 "\n"
-"Si vous vouliez que '%s' suive '%s', faîtes ceci :\n"
+"Si vous vouliez que '%s' suive '%s', faites ceci :\n"
 "\n"
 
 #: builtin/bundle.c:51
