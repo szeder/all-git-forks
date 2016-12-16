@@ -1083,7 +1083,8 @@ static int add_object_entry(const unsigned char *sha1, enum object_type type,
 	if (!want_object_in_pack(sha1, exclude, &found_pack, &found_offset)) {
 		/* The pack is missing an object, so it will not have closure */
 		if (write_bitmap_index) {
-			warning(_(no_closure_warning));
+			if (!incremental)
+				warning(_(no_closure_warning));
 			write_bitmap_index = 0;
 		}
 		return 0;

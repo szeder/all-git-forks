@@ -247,6 +247,18 @@ test_expect_success 'pack-objects respects --incremental' '
 	test_cmp 4.objects objects
 '
 
+test_expect_success 'incremental repack does not create bitmaps' '
+	test_commit 11 &&
+	ls .git/objects/pack/ | grep bitmap >existing_bitmaps &&
+	ls .git/objects/pack/ | grep -v bitmap >existing_packs &&
+	git repack -d 2>err &&
+	test_line_count = 0 err &&
+	ls .git/objects/pack/ | grep bitmap >output &&
+	ls .git/objects/pack/ | grep -v bitmap >post_packs &&
+	test_cmp existing_bitmaps output &&
+	! test_cmp existing_packs post_packs
+'
+
 test_expect_success 'pack with missing blob' '
 	rm $(objpath $blob) &&
 	git pack-objects --stdout --revs <revs >/dev/null
