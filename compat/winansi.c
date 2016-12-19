@@ -586,7 +586,7 @@ int winansi_isatty(int fd)
 		 *
 		 * https://msdn.microsoft.com/en-us/library/f4s0ddew.aspx
 		 */
-		HANDLE handle = (HANDLE)_get_osfhandle(fd);
+		HANDLE handle = winansi_get_osfhandle(fd);
 		if (fd == STDIN_FILENO) {
 			DWORD dummy;
 
