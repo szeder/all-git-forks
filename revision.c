@@ -1933,6 +1933,10 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 		revs->topo_order = 1;
 		revs->rewrite_parents = 1;
 		revs->graph = graph_init(revs);
+	} else if (skip_prefix(arg, "--graph=", &arg)) {
+		revs->topo_order = 1;
+		revs->rewrite_parents = 1;
+		revs->graph = graph_init_with_options(revs, arg);
 	} else if (!strcmp(arg, "--root")) {
 		revs->show_root_diff = 1;
 	} else if (!strcmp(arg, "--no-commit-id")) {

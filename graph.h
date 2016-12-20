@@ -40,7 +40,13 @@ void graph_set_column_colors(const char **colors, unsigned short colors_max);
 /*
  * Create a new struct git_graph.
  */
-struct git_graph *graph_init(struct rev_info *opt);
+struct git_graph *graph_init_with_options(struct rev_info *opt, const char *arg);
+
+static inline struct git_graph *graph_init(struct rev_info *opt)
+{
+	return graph_init_with_options(opt, NULL);
+}
+
 
 /*
  * Update a git_graph with a new commit.

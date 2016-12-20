@@ -825,7 +825,7 @@ you would get an output like this:
 	-xxxxxxx... 1st on a
 -----------------------------------------------------------------------
 
---graph::
+--graph[=<options>]::
 	Draw a text-based graphical representation of the commit history
 	on the left hand side of the output.  This may cause extra lines
 	to be printed in between commits, in order for the graph history
@@ -836,6 +836,9 @@ This enables parent rewriting, see 'History Simplification' below.
 +
 This implies the `--topo-order` option by default, but the
 `--date-order` option may also be specified.
++
+The only supported option is `256colors` which allows more than 16
+colors for drawing the commit history.
 
 --show-linear-break[=<barrier>]::
 	When --graph is not used, all history branches are flattened

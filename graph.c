@@ -78,6 +78,7 @@ static void graph_show_line_prefix(const struct diff_options *diffopt)
 
 static const char **column_colors;
 static unsigned short column_colors_max;
+static int column_colors_step;
 
 void graph_set_column_colors(const char **colors, unsigned short colors_max)
 {
@@ -234,10 +235,24 @@ void graph_setup_line_prefix(struct diff_options *diffopt)
 }
 
 
-struct git_graph *graph_init(struct rev_info *opt)
+struct git_graph *graph_init_with_options(struct rev_info *opt, const char *arg)
 {
 	struct git_graph *graph = xmalloc(sizeof(struct git_graph));
 
+	if (arg && !strcmp(arg, "256colors")) {
+		int i, start = 17, stop = 232;
+		column_colors_max = stop - start;
+		column_colors =
+			xmalloc((column_colors_max + 1) * sizeof(*column_colors));
+		for (i = start; i < stop; i++) {
+			struct strbuf sb = STRBUF_INIT;
+			strbuf_addf(&sb, "\033[38;5;%dm", i);
+			column_colors[i - start] = strbuf_detach(&sb, NULL);
+		}
+		column_colors[column_colors_max] = xstrdup(GIT_COLOR_RESET);
+		/* ignore the closet 16 colors on either side for the next line */
+		column_colors_step = 16;
+	}
 	if (!column_colors)
 		graph_set_column_colors(column_colors_ansi,
 					column_colors_ansi_max);
@@ -382,6 +397,20 @@ static unsigned short graph_get_current_column_color(const struct git_graph *gra
  */
 static void graph_increment_column_color(struct git_graph *graph)
 {
+	if (column_colors_step) {
+		static int random_initialized;
+		int v;
+
+		if (!random_initialized) {
+			srand((unsigned int)getpid());
+			random_initialized = 1;
+		}
+		v = rand() % (column_colors_max - column_colors_step * 2);
+		graph->default_column_color += column_colors_step + v;
+		graph->default_column_color %= column_colors_max;
+		return;
+	}
+
 	graph->default_column_color = (graph->default_column_color + 1) %
 		column_colors_max;
 }
