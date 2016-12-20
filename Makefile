@@ -338,11 +338,6 @@ all::
 #
 # Define NATIVE_CRLF if your platform uses CRLF for line endings.
 #
-# Define XDL_FAST_HASH to use an alternative line-hashing method in
-# the diff algorithm.  It gives a nice speedup if your processor has
-# fast unaligned word loads.  Does NOT work on big-endian systems!
-# Enabled by default on x86_64.
-#
 # Define GIT_USER_AGENT if you want to change how git identifies itself during
 # network interactions.  The default is "git/$(GIT_VERSION)".
 #
@@ -1485,10 +1480,6 @@ ifndef NO_MSGFMT_EXTENDED_OPTIONS
 	MSGFMT += --check --statistics
 endif
 
-ifneq (,$(XDL_FAST_HASH))
-	BASIC_CFLAGS += -DXDL_FAST_HASH
-endif
-
 ifdef GMTIME_UNRELIABLE_ERRORS
 	COMPAT_OBJS += compat/gmtime.o
 	BASIC_CFLAGS += -DGMTIME_UNRELIABLE_ERRORS
@@ -2149,9 +2140,22 @@ endif
 po/build/locale/%/LC_MESSAGES/git.mo: po/%.po
 	$(QUIET_MSGFMT)mkdir -p $(dir $@) && $(MSGFMT) -o $@ $<
 
-FIND_SOURCE_FILES = ( git ls-files '*.[hcS]' 2>/dev/null || \
-			$(FIND) . \( -name .git -type d -prune \) \
-				-o \( -name '*.[hcS]' -type f -print \) )
+FIND_SOURCE_FILES = ( \
+	git ls-files \
+		'*.[hcS]' \
+		'*.sh' \
+		':!*[tp][0-9][0-9][0-9][0-9]*' \
+		':!contrib' \
+		2>/dev/null || \
+	$(FIND) . \
+		\( -name .git -type d -prune \) \
+		-o \( -name '[tp][0-9][0-9][0-9][0-9]*' -prune \) \
+		-o \( -name contrib -type d -prune \) \
+		-o \( -name build -type d -prune \) \
+		-o \( -name 'trash*' -type d -prune \) \
+		-o \( -name '*.[hcS]' -type f -print \) \
+		-o \( -name '*.sh' -type f -print \) \
+	)
 
 $(ETAGS_TARGET): FORCE
 	$(RM) $(ETAGS_TARGET)

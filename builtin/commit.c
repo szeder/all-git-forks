@@ -351,7 +351,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 
 	if (interactive) {
 		char *old_index_env = NULL;
-		hold_locked_index(&index_lock, 1);
+		hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
 
 		refresh_cache_or_die(refresh_flags);
 
@@ -396,7 +396,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * (B) on failure, rollback the real index.
 	 */
 	if (all || (also && pathspec.nr)) {
-		hold_locked_index(&index_lock, 1);
+		hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
 		add_files_to_cache(also ? prefix : NULL, &pathspec, 0);
 		refresh_cache_or_die(refresh_flags);
 		update_main_cache_tree(WRITE_TREE_SILENT);
@@ -416,7 +416,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * We still need to refresh the index here.
 	 */
 	if (!only && !pathspec.nr) {
-		hold_locked_index(&index_lock, 1);
+		hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
 		refresh_cache_or_die(refresh_flags);
 		if (active_cache_changed
 		    || !cache_tree_fully_valid(active_cache_tree))
@@ -468,7 +468,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	if (read_cache() < 0)
 		die(_("cannot read the index"));
 
-	hold_locked_index(&index_lock, 1);
+	hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
 	add_remove_files(&partial);
 	refresh_cache(REFRESH_QUIET);
 	update_main_cache_tree(WRITE_TREE_SILENT);
@@ -790,7 +790,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		strbuf_stripspace(&sb, 0);
 
 	if (signoff)
-		append_signoff(&sb, ignore_non_trailer(&sb), 0);
+		append_signoff(&sb, ignore_non_trailer(sb.buf, sb.len), 0);
 
 	if (fwrite(sb.buf, 1, sb.len, s->fp) < sb.len)
 		die_errno(_("could not write commit template"));
@@ -1206,10 +1206,8 @@ static int parse_and_validate_options(int argc, const char *argv[],
 
 	if (also + only + all + interactive > 1)
 		die(_("Only one of --include/--only/--all/--interactive/--patch can be used."));
-	if (argc == 0 && (also || (only && !amend)))
+	if (argc == 0 && (also || (only && !amend && !allow_empty)))
 		die(_("No paths with --include/--only does not make sense."));
-	if (argc == 0 && only && amend)
-		only_include_assumed = _("Clever... amending the last one with dirty index.");
 	if (argc > 0 && !also && !only)
 		only_include_assumed = _("Explicit paths specified without -i or -o; assuming --only paths...");
 	if (!cleanup_arg || !strcmp(cleanup_arg, "default"))
