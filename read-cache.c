@@ -18,6 +18,7 @@
 #include "varint.h"
 #include "split-index.h"
 #include "utf8.h"
+#include "pathspec.h"
 
 #ifndef NO_PTHREADS
 #include <pthread.h>
@@ -1271,7 +1272,7 @@ static void show_file(const char * fmt, const char * name, int in_porcelain,
 	printf(fmt, name);
 }
 
-int refresh_index(struct index_state *istate, unsigned int flags,
+int singlethreaded_refresh_index(struct index_state *istate, unsigned int flags,
 		  const struct pathspec *pathspec,
 		  char *seen, const char *header_msg)
 {
@@ -1292,6 +1293,8 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	const char *typechange_fmt;
 	const char *added_fmt;
 	const char *unmerged_fmt;
+
+	uint64_t start_time = getnanotime();
 
 	modified_fmt = (in_porcelain ? "M\t%s\n" : "%s: needs update\n");
 	deleted_fmt = (in_porcelain ? "D\t%s\n" : "%s: needs update\n");
@@ -1361,6 +1364,9 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 
 		replace_index_entry(istate, i, new);
 	}
+
+	trace_performance_since(start_time, "refresh_index");
+
 	return has_errors;
 }
 
@@ -2491,3 +2497,272 @@ void stat_validity_update(struct stat_validity *sv, int fd)
 		fill_stat_data(sv->sd, &st);
 	}
 }
+
+#ifndef NO_PTHREADS
+
+#define RI_THREAD_COST 500
+
+enum ri_fmt_enum {
+	RIF_MODIFIED   = 0,
+	RIF_DELETED    = 1,
+	RIF_TYPECHANGE = 2,
+	RIF_ADDED      = 3,
+	RIF_UNMERGED   = 4,
+	RIF_COUNT /* must be last */
+};
+static const char *ri_fmts[RIF_COUNT][2] = {
+	{ "%s: needs update\n", "M\t%s\n" },
+	{ "%s: needs update\n", "D\t%s\n" },
+	{ "%s: needs update\n", "T\t%s\n" },
+	{ "%s: needs update\n", "A\t%s\n" },
+	{ "%s: needs merge\n",  "U\t%s\n" } 
+};
+enum ri_action_enum {
+	RIA_NONE       = 0x00,
+	RIA_SHOW_FILE  = 0x01,
+	RIA_REPLACE    = 0x02,
+};
+struct ri_per_ce_data {
+	struct cache_entry *ce_new;
+	enum ri_action_enum action;
+	enum ri_fmt_enum    fmt;
+	int position;
+};
+struct ri_per_thread_data {
+	struct index_state *istate;
+	const struct pathspec *pathspec;
+	struct ri_per_ce_data *per_ce_data;
+	char *seen;
+	pthread_t pthread;
+
+	unsigned int flags;
+	int first_entry;
+	int end_entry;
+	int has_errors;
+	int sum_todo;
+	int cache_changed;
+};
+
+static void *refresh_index_thread_proc(void *data)
+{
+	struct ri_per_thread_data *td = data;
+	int i, fmt, spot;
+	uint64_t start_time = getnanotime();
+
+	int really = (td->flags & REFRESH_REALLY) != 0;
+	int allow_unmerged = (td->flags & REFRESH_UNMERGED) != 0;
+	int quiet = (td->flags & REFRESH_QUIET) != 0;
+	int not_new = (td->flags & REFRESH_IGNORE_MISSING) != 0;
+	int ignore_submodules = (td->flags & REFRESH_IGNORE_SUBMODULES) != 0;
+	unsigned int options = (CE_MATCH_REFRESH |
+				(really ? CE_MATCH_IGNORE_VALID : 0) |
+				(not_new ? CE_MATCH_IGNORE_MISSING : 0));
+
+	for (i = td->first_entry; i < td->end_entry; i++) {
+		struct cache_entry *ce, *new;
+		int cache_errno = 0;
+		int changed = 0;
+		int filtered = 0;
+
+		ce = td->istate->cache[i];
+		if (ignore_submodules && S_ISGITLINK(ce->ce_mode))
+			continue;
+
+		if (td->pathspec && !ce_path_match(ce, td->pathspec, td->seen))
+			filtered = 1;
+
+		if (ce_stage(ce)) {
+			while ((i < td->end_entry) &&
+			       ! strcmp(td->istate->cache[i]->name, ce->name))
+				i++;
+			i--;
+			if (allow_unmerged)
+				continue;
+			if (!filtered) {
+				spot = td->sum_todo++;
+				td->per_ce_data[spot].position = i;
+				td->per_ce_data[spot].action |= RIA_SHOW_FILE;
+				td->per_ce_data[spot].fmt = RIF_UNMERGED;
+			}
+			td->has_errors++;
+			continue;
+		}
+
+		if (filtered)
+			continue;
+
+		/*
+		 * Inspect the cache-entry and if necessary, read/clean/SHA
+		 * the current contents of the file on disk.  It *IS* allowed
+		 * to alter the ce->ce_flags of the existing cache-entry, but
+		 * it IS NOT allowed to alter istate->cache_changed.
+		 */
+		new = refresh_cache_ent(td->istate, ce, options, &cache_errno, &changed);
+		if (new == ce)
+			continue;
+		if (!new) {
+			if (really && cache_errno == EINVAL) {
+				/* If we are doing --really-refresh that
+				 * means the index is not valid anymore.
+				 */
+				ce->ce_flags &= ~CE_VALID;
+				ce->ce_flags |= CE_UPDATE_IN_BASE;
+
+				/* defer writing to "istate->cache_changed" */
+				td->cache_changed |= CE_ENTRY_CHANGED;
+			}
+			if (quiet)
+				continue;
+
+			if (cache_errno == ENOENT)
+				fmt = RIF_DELETED;
+			else if (ce_intent_to_add(ce))
+				fmt = RIF_ADDED; /* must be before other checks */
+			else if (changed & TYPE_CHANGED)
+				fmt = RIF_TYPECHANGE;
+			else
+				fmt = RIF_MODIFIED;
+			spot = td->sum_todo++;
+			td->per_ce_data[spot].position = i;
+			td->per_ce_data[spot].action |= RIA_SHOW_FILE;
+			td->per_ce_data[spot].fmt = fmt;
+			td->has_errors++;
+			continue;
+		}
+
+		spot = td->sum_todo++;
+		td->per_ce_data[spot].position = i;
+		td->per_ce_data[spot].ce_new = new;
+		td->per_ce_data[spot].action |= RIA_REPLACE;
+	}
+
+	trace_performance_since(
+		start_time,
+		"refresh_index_thread_proc: [rng %d,%d) [sum %d][err %d]\n",
+		td->first_entry, td->end_entry,
+		td->sum_todo, td->has_errors);
+
+	return NULL;
+}
+
+int multithreaded_refresh_index(
+	struct index_state *istate, unsigned int flags,
+	const struct pathspec *pathspec,
+	char *seen, const char *header_msg)
+{
+	int max_threads, nr_threads;
+	int t, offset, chunk, end;
+	int has_errors = 0;
+	int first = 1;
+	struct ri_per_thread_data *thread_data = NULL;
+	uint64_t start_time = getnanotime();
+
+	int in_porcelain = (flags & REFRESH_IN_PORCELAIN) != 0;
+
+	nr_threads = istate->cache_nr / RI_THREAD_COST;
+	if (nr_threads < 2)
+		return singlethreaded_refresh_index(istate, flags, pathspec, seen, header_msg);
+	max_threads = online_cpus();
+	if (nr_threads > max_threads)
+		nr_threads = max_threads;
+	offset = 0;
+	chunk = DIV_ROUND_UP(istate->cache_nr, nr_threads);
+
+	thread_data = xcalloc(nr_threads, sizeof(struct ri_per_thread_data));
+
+	for (t = 0; t < nr_threads; t++) {
+		struct ri_per_thread_data *td = &thread_data[t];
+
+		/*
+		 * Give each thread READ-ONLY (mutex-free) copies of these.
+		 */
+		td->istate = istate;
+		td->flags = flags;
+		td->pathspec = pathspec;
+
+		/*
+		 * Choose the range of cache-entries each thread should own.
+		 * Adjust the end point to include any unmerged peers of the
+		 * suggested end point into the current thread.
+		 */
+		end = offset + chunk;
+		if (end > istate->cache_nr)
+			end = istate->cache_nr;
+		while (end < istate->cache_nr && ce_stage(istate->cache[end - 1]))
+			end++;
+		td->first_entry = offset;
+		td->end_entry = end;
+		offset = end;
+
+		/*
+		 * Give each thread a vector of per-cache-entry data so
+		 * that it can compute partial results (mutex-free) and
+		 * defer updating the actual istate/index vector until
+		 * after the join.  The size is set to the size of the
+		 * range of cache-entries that the thread owns.
+		 */
+		td->per_ce_data = xcalloc(
+			td->end_entry - td->first_entry, sizeof(struct ri_per_ce_data));
+
+		/*
+		 * Give each thread a private seen[] and allow it to
+		 * accumulate data mutex-free.  These will be OR'd together
+		 * after the join.
+		 */
+		if (seen && pathspec && pathspec->nr)
+			td->seen = xcalloc(pathspec->nr, 1);
+
+		if (pthread_create(&td->pthread, NULL, refresh_index_thread_proc, td))
+			die("unable create refresh_index thread");
+	}
+
+	/*
+	 * Join with each thread IN-ORDER so that show_file() calls
+	 * are properly ordered.
+	 */
+	for (t = 0; t < nr_threads; t++) {
+		struct ri_per_thread_data *td = &thread_data[t];
+		if (pthread_join(td->pthread, NULL))
+			die("unable to join refresh_index thread");
+	}
+
+	/*
+	 * Let the single foreground thread combine the results
+	 * into the index.  This may be overkill for refresh_index()
+	 * because it does not do adds/removes, but it may become
+	 * important later.
+	 */
+	for (t = 0; t < nr_threads; t++) {
+		struct ri_per_thread_data *td = &thread_data[t];
+		int k;
+
+		for (k = 0; k < td->sum_todo; k++) {
+			struct ri_per_ce_data *cd = &td->per_ce_data[k];
+			if (cd->action & RIA_SHOW_FILE) {
+				struct cache_entry *ce = istate->cache[cd->position];
+				show_file(ri_fmts[cd->fmt][in_porcelain], ce->name,
+						  in_porcelain, &first, header_msg);
+			}
+			if (cd->action & RIA_REPLACE)
+				replace_index_entry(istate, cd->position, cd->ce_new);
+		}
+
+		has_errors += td->has_errors;
+
+		if (seen && pathspec)
+			for (k = 0; k < pathspec->nr; k++)
+				seen[k] |= td->seen[k];
+
+		istate->cache_changed |= td->cache_changed;
+
+		if (td->seen)
+			free(td->seen);
+		free(td->per_ce_data);
+	}
+
+	trace_performance_since(start_time, "refresh_index");
+
+	return has_errors > 0;
+}
+
+#endif
