@@ -1522,18 +1522,20 @@ out:
 
 static struct scheduled_submodules_update_type {
 	const char *path;
-	const struct object_id *oid;
+	struct object_id oid;
 	/*
 	 * Do we need to perform a complete checkout or just incremental
 	 * update?
 	 */
 	unsigned is_new:1;
+	unsigned force:1;
 } *scheduled_submodules;
 #define SCHEDULED_SUBMODULES_INIT {NULL, NULL, 0}
 
 static int scheduled_submodules_nr, scheduled_submodules_alloc;
 
-void schedule_submodule_for_update(const struct cache_entry *ce, int is_new)
+void schedule_submodule_for_update(const struct cache_entry *ce,
+				   int is_new, int force)
 {
 	struct scheduled_submodules_update_type *ssu;
 
@@ -1544,17 +1546,18 @@ void schedule_submodule_for_update(const struct cache_entry *ce, int is_new)
 		   scheduled_submodules_nr + 1,
 		   scheduled_submodules_alloc);
 	ssu = &scheduled_submodules[scheduled_submodules_nr++];
-	ssu->path = ce->name;
-	ssu->oid = &ce->oid;
+	ssu->path = xstrdup(ce->name);
+	memcpy(&ssu->oid, &ce->oid, sizeof(ce->oid));
 	ssu->is_new = !!is_new;
+	ssu->force = !!force;
 }
 
-static int update_submodule(const char *path, const struct object_id *oid,
-			    int force, int is_new)
+static int update_submodule(struct scheduled_submodules_update_type *ssu,
+			    int force)
 {
 	const char *git_dir;
 	struct child_process cp = CHILD_PROCESS_INIT;
-	const struct submodule *sub = submodule_from_path(null_sha1, path);
+	const struct submodule *sub = submodule_from_path(null_sha1, ssu->path);
 
 	if (!sub || !sub->name)
 		return -1;
@@ -1564,21 +1567,23 @@ static int update_submodule(const char *path, const struct object_id *oid,
 	if (!git_dir)
 		return -1;
 
-	if (is_new)
-		connect_work_tree_and_git_dir(path, git_dir);
+	if (ssu->is_new)
+		connect_work_tree_and_git_dir(ssu->path, git_dir);
 
 	/* get the HEAD right */
 	prepare_submodule_repo_env(&cp.env_array);
 	argv_array_pushl(&cp.args, "checkout", "--recurse-submodules", NULL);
 	cp.git_cmd = 1;
+	cp.no_stdout = 1;
+	cp.no_stderr = 1;
 	cp.no_stdin = 1;
-	cp.dir = path;
-	if (force || is_new)
+	cp.dir = ssu->path;
+	if (ssu->force || ssu->is_new)
 		argv_array_push(&cp.args, "-f");
-	argv_array_push(&cp.args, sha1_to_hex(oid->hash));
+	argv_array_push(&cp.args, sha1_to_hex(ssu->oid.hash));
 
 	if (run_command(&cp)) {
-		warning(_("checking out the submodule '%s' failed"), path);
+		warning(_("checking out the submodule '%s' failed"), ssu->path);
 		child_process_clear(&cp);
 		return -1;
 	}
@@ -1602,14 +1607,16 @@ int update_submodules(int force)
 		struct scheduled_submodules_update_type *ssu =
 			&scheduled_submodules[i];
 
-
 		sub = submodule_from_path(null_sha1, ssu->path);
+
+		if (!sub)
+			die(_("could not lookup submodule '%s'"), ssu->path);
 
 		switch (sub->update_strategy.type) {
 		case SM_UPDATE_UNSPECIFIED: /* fall thru */
 		case SM_UPDATE_CHECKOUT:
-			update_submodule(ssu->path, ssu->oid,
-					 force, ssu->is_new);
+			if (update_submodule(ssu, force) < 0)
+				die(_("could not update submodule '%s'"), ssu->path);
 			break;
 		case SM_UPDATE_REBASE:
 		case SM_UPDATE_MERGE:
