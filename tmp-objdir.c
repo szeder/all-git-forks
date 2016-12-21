@@ -173,8 +173,10 @@ static int pack_copy_priority(const char *name)
 	return 4;
 }
 
-static int pack_copy_cmp(const char *a, const char *b)
+static int pack_copy_cmp(const void *one, const void *two)
 {
+	const struct string_list_item *item_one = one, *item_two = two;
+	const char *a = item_one->string, *b = item_two->string;
 	return pack_copy_priority(a) - pack_copy_priority(b);
 }
 

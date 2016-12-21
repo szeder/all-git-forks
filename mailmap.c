@@ -61,9 +61,10 @@ static void free_mailmap_entry(void *p, const char *s)
  * namemap.cmp until we know no systems that matter have such an
  * "unusual" string.h.
  */
-static int namemap_cmp(const char *a, const char *b)
+static int namemap_cmp(const void *one, const void *two)
 {
-	return strcasecmp(a, b);
+	const struct string_list_item *item_one = one, *item_two = two;
+	return strcasecmp(item_one->string, item_two->string);
 }
 
 static void add_mapping(struct string_list *map,

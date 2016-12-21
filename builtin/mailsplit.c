@@ -147,8 +147,11 @@ out:
 	return ret;
 }
 
-static int maildir_filename_cmp(const char *a, const char *b)
+static int maildir_filename_cmp(const void *one, const void *two)
 {
+	const struct string_list_item *item_one = one, *item_two = two;
+	const char *a = item_one->string, *b = item_two->string;
+
 	while (*a && *b) {
 		if (isdigit(*a) && isdigit(*b)) {
 			long int na, nb;

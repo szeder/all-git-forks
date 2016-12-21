@@ -390,8 +390,10 @@ static struct string_list *get_unmerged(void)
 	return unmerged;
 }
 
-static int string_list_df_name_compare(const char *one, const char *two)
+static int string_list_df_name_compare(const void *a, const void *b)
 {
+	const struct string_list_item *item_a = a, *item_b = b;
+	const char *one = item_a->string, *two = item_b->string;
 	int onelen = strlen(one);
 	int twolen = strlen(two);
 	/*
