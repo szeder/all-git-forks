@@ -1184,6 +1184,8 @@ int submodule_go_from_to(const char *path,
 	struct child_process cp = CHILD_PROCESS_INIT;
 	const struct submodule *sub;
 
+	trace_printf("submodule_go_from_to %s %s %d %d \n", old, new, dry_run, force);
+
 	sub = submodule_from_path(null_sha1, path);
 
 	if (!old && !dry_run) {
@@ -1206,12 +1208,12 @@ int submodule_go_from_to(const char *path,
 		/* Check if the submodule has a dirty index. */
 		if (submodule_has_dirty_index(sub)) {
 			/* print a thing here? */
+			trace_printf("submodule_has_dirty_index is true, ret -1");
 			return -1;
 		}
 	}
 
 	prepare_submodule_repo_env_no_git_dir(&cp.env_array);
-
 	argv_array_pushf(&cp.env_array, "GIT_WORK_TREE=%s", path);
 	argv_array_pushf(&cp.env_array, "GIT_DIR=%s/modules/%s",
 					get_git_common_dir(), sub->name);
@@ -1247,6 +1249,7 @@ int submodule_go_from_to(const char *path,
 		if (is_empty_dir(path))
 			rmdir_or_warn(path);
 	}
+	trace_printf("submodule_go_from_to %d", ret);
 	return ret;
 }
 

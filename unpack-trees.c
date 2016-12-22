@@ -1389,6 +1389,8 @@ static int verify_clean_submodule(const char *old_sha1,
 	if (!is_interesting_submodule(ce))
 		return 0;
 
+	trace_printf("verify_clean_submodule %s %s\n",  old_sha1,
+				    oid_to_hex(&ce->oid));
 	if (submodule_go_from_to(ce->name, old_sha1,
 				    oid_to_hex(&ce->oid), 1, o->reset))
 		return o->gently ? -1 :
@@ -1570,6 +1572,7 @@ static int verify_absent_1(const struct cache_entry *ce,
 		return 0;
 	} else {
 		if (is_interesting_submodule(ce)) {
+			trace_printf("verify_absent_1 %s \n", oid_to_hex(&ce->oid));
 			if (submodule_go_from_to(ce->name, NULL, oid_to_hex(&ce->oid), 1 , 0))
 				return -1;
 			return 0;
@@ -1683,8 +1686,10 @@ static int deleted_entry(const struct cache_entry *ce,
 			return -1;
 		return 0;
 	}
-	if (is_interesting_submodule(ce))
+	if (is_interesting_submodule(ce)) {
+		trace_printf("deleted_entry\n");
 		return submodule_go_from_to(ce->name, oid_to_hex(&old->oid), NULL, 0, o->reset);
+	}
 
 	if (!(old->ce_flags & CE_CONFLICTED) && verify_uptodate(old, o))
 		return -1;
