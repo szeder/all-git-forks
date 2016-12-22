@@ -295,10 +295,10 @@ test_expect_success 'setup modification in submodule file in last commit' '
 '
 
 test_expect_success '"checkout --recurse-submodules" needs -f to update modifed submodule content' '
-	echo modified >submodule/second.t &&
+	echo modified >expected &&
+	cp expected submodule/second.t &&
 	test_must_fail git checkout --recurse-submodules HEAD^ &&
-	test_must_fail git diff-files --quiet submodule &&
-	git diff-files --quiet file &&
+	test_cmp expected submodule/second.t &&
 	git checkout --recurse-submodules -f HEAD^ &&
 	git diff-files --quiet &&
 	git diff-index --quiet --cached HEAD &&
@@ -312,14 +312,13 @@ test_expect_success 'setup unrelated modification in submodule file in last comm
 '
 
 test_expect_success '"checkout --recurse-submodules" ignores modified submodule content that would not be changed' '
+	cp submodule/first.t expected2 &&
 	echo modified >expected &&
 	cp expected submodule/first.t &&
-
 	git checkout --recurse-submodules HEAD^ &&
 	test_cmp expected submodule/first.t &&
-	test_must_fail git diff-files --quiet submodule &&
-	git diff-index --quiet --cached HEAD &&
 	git checkout --recurse-submodules -f HEAD &&
+	test_cmp expected2 submodule/first.t &&
 	git diff-files --quiet &&
 	git diff-index --quiet --cached HEAD
 '
@@ -330,11 +329,6 @@ test_expect_success '"checkout --recurse-submodules" does not care about untrack
 	git checkout --recurse-submodules master &&
 	git diff-files --quiet --ignore-submodules=untracked &&
 	git diff-index --quiet --cached HEAD
-
-	# this:
-	#~ git checkout --recurse-submodules base &&
-	#~ git status --porcelain -uno --ignore-submodules=none >out &&
-	#~ test_must_be_empty out
 '
 
 test_expect_success '"checkout --recurse-submodules" needs -f when submodule commit is not present (but does fail anyway)' '
