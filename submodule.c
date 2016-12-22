@@ -1538,7 +1538,7 @@ static struct scheduled_submodules_update_type {
 static int scheduled_submodules_nr, scheduled_submodules_alloc;
 
 void schedule_submodule_for_update(const struct cache_entry *ce,
-				   int is_new, int force)
+				   int is_new)
 {
 	struct scheduled_submodules_update_type *ssu;
 
@@ -1552,7 +1552,6 @@ void schedule_submodule_for_update(const struct cache_entry *ce,
 	ssu->path = xstrdup(ce->name);
 	memcpy(&ssu->oid, &ce->oid, sizeof(ce->oid));
 	ssu->is_new = !!is_new;
-	ssu->force = !!force;
 }
 
 static int update_submodule(struct scheduled_submodules_update_type *ssu,
@@ -1581,7 +1580,7 @@ static int update_submodule(struct scheduled_submodules_update_type *ssu,
 	cp.no_stderr = 1;
 	cp.no_stdin = 1;
 	cp.dir = ssu->path;
-	if (ssu->force || ssu->is_new)
+	if (force || ssu->is_new)
 		argv_array_push(&cp.args, "-f");
 	argv_array_push(&cp.args, sha1_to_hex(ssu->oid.hash));
 

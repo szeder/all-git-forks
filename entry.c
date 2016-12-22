@@ -204,7 +204,7 @@ static int write_entry(struct cache_entry *ce,
 			return error("cannot create temporary submodule %s", path);
 		if (mkdir(path, 0777) < 0)
 			return error("cannot create submodule directory %s", path);
-		schedule_submodule_for_update(ce, 1, 0);
+		schedule_submodule_for_update(ce, 1);
 		break;
 	default:
 		return error("unknown file mode for %s in index", path);
@@ -280,7 +280,7 @@ int checkout_entry(struct cache_entry *ce,
 		 */
 		if (S_ISDIR(st.st_mode)) {
 			if (is_interesting_submodule(ce))
-				schedule_submodule_for_update(ce, 1, 0);
+				schedule_submodule_for_update(ce, 0);
 			/* If it is a gitlink, leave it alone! */
 			if (S_ISGITLINK(ce->ce_mode))
 				return 0;

@@ -1635,7 +1635,7 @@ static int merged_entry(const struct cache_entry *ce,
 		invalidate_ce_path(merge, o);
 
 		if (is_interesting_submodule(ce))
-			schedule_submodule_for_update(ce, 1, o->reset);
+			schedule_submodule_for_update(ce, 1);
 
 	} else if (!(old->ce_flags & CE_CONFLICTED)) {
 		/*

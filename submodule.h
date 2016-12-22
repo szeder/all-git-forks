@@ -103,7 +103,7 @@ extern void absorb_git_dir_into_superproject(const char *prefix,
 					     unsigned flags);
 
 extern void schedule_submodule_for_update(const struct cache_entry *ce,
-					  int new, int force);
+					  int new);
 extern int update_submodules(int force);
 
 #endif
