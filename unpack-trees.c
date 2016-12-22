@@ -1419,8 +1419,10 @@ static int verify_clean_subdirectory(const struct cache_entry *ce,
 		 * If we are not going to update the submodule, then
 		 * we don't care.
 		 */
-		if (!no_HEAD && !hashcmp(sha1, ce->oid.hash))
+		if (!no_HEAD && !hashcmp(sha1, ce->oid.hash)) {
+			trace_printf("verify_clean_subdirectory early out.\n");
 			return 0;
+		}
 		return verify_clean_submodule(no_HEAD ? NULL : sha1_to_hex(sha1),
 					      ce, error_type, o);
 	}
