@@ -353,6 +353,8 @@ test_expect_success '"checkout --recurse-submodules" needs -f when submodule com
 	git checkout --recurse-submodules -f master
 '
 
+test_expect_success '-----------------------------' ' true && true '
+
 test_submodule_switch "git checkout"
 
 test_submodule_forced_switch "git checkout -f"
