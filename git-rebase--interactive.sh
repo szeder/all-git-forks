@@ -1220,6 +1220,7 @@ do
 	if test t != "$preserve_merges"
 	then
 		printf '%s\n' "${comment_out}pick $sha1 $rest" >>"$todo"
+		git diff --stat $sha1^..$sha1 |sed s/^/"$comment_char"/ >>"$todo"
 	else
 		if test -z "$rebase_root"
 		then
@@ -1238,6 +1239,7 @@ do
 		then
 			touch "$rewritten"/$sha1
 			printf '%s\n' "${comment_out}pick $sha1 $rest" >>"$todo"
+			git diff --stat $sha1^..$sha1 |sed s/^/"$comment_char"/ >>"$todo"
 		fi
 	fi
 done
