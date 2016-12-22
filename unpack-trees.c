@@ -1634,16 +1634,9 @@ static int merged_entry(const struct cache_entry *ce,
 		}
 		invalidate_ce_path(merge, o);
 
-		//~ trace_printf("pretend to merged_entry -> schedule_submodule_for_update\n");
-		if (is_interesting_submodule(ce)) {
-			trace_printf("merged_entry -> check schedule_submodule_for_update\n");
-			/*
-			 * Todo: This ought to be a dry run only and the
-			 * actual work should be done later, but when?
-			 */
-			submodule_go_from_to(ce->name, NULL, oid_to_hex(&ce->oid), 0, o->reset);
-			//~ schedule_submodule_for_update(ce, 1, o->reset);
-		}
+		if (is_interesting_submodule(ce))
+			schedule_submodule_for_update(ce, 1, o->reset);
+
 	} else if (!(old->ce_flags & CE_CONFLICTED)) {
 		/*
 		 * See if we can re-use the old CE directly?
