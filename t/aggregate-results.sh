@@ -22,7 +22,7 @@ do
 			failed=$(($failed + $value))
 			if test $value != 0
 			then
-				testnum=$(expr "$file" : 'test-results/\(t[0-9]*\)-')
+				testnum=$(echo "$file" | sed 's,\(.*/\)\?test-results/\(t[0-9]*\)-.*,\2,')
 				failed_tests="$failed_tests $testnum"
 			fi
 			;;
