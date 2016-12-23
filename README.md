@@ -15,8 +15,8 @@ Please read the file [INSTALL][] for installation instructions.
 Many Git online resources are accessible from http://git-scm.com/
 including full documentation and Git related tools.
 
-See [Documentation/gittutorial.txt][] to get started, then see
-[Documentation/giteveryday.txt][] for a useful minimum set of commands, and
+See [Documentation/gittutorial.txt][0] to get started, then see
+[Documentation/giteveryday.txt][1] for a useful minimum set of commands, and
 Documentation/git-<commandname>.txt for documentation of each command.
 If git has been correctly installed, then the tutorial can also be
 read with `man gittutorial` or `git help tutorial`, and the
