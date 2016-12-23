@@ -1,4 +1,4 @@
-Git - fast, scalable, distributed revision control system
+Git -  fast, scalable, distributed revision control system
 =========================================================
 
 Git is a fast, scalable, distributed revision control system with an
