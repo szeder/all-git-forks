@@ -87,12 +87,18 @@ run_sub_test_lib_test_err () {
 	_run_sub_test_lib_test_common '!' "$@"
 }
 
+_decode_text () {
+	# Remove the primitive encoding that we use to protect
+	# here-doc text's white space
+	sed -e 's/^> //' -e 's/Z$//'
+}
+
 check_sub_test_lib_test () {
 	name="$1" # stdin is the expected output from the test
 	(
 		cd "$name" &&
 		! test -s err &&
-		sed -e 's/^> //' -e 's/Z$//' >expect &&
+		_decode_text >expect &&
 		test_cmp expect out
 	)
 }
@@ -102,9 +108,9 @@ check_sub_test_lib_test_err () {
 	# expected error output is in descriptior 3
 	(
 		cd "$name" &&
-		sed -e 's/^> //' -e 's/Z$//' >expect.out &&
+		_decode_text >expect.out &&
 		test_cmp expect.out out &&
-		sed -e 's/^> //' -e 's/Z$//' <&3 >expect.err &&
+		_decode_text <&3 >expect.err &&
 		test_cmp expect.err err
 	)
 }
@@ -113,7 +119,7 @@ check_sub_test_lib_test_counts () {
 	name="$1" # stdin contains the expected counts
 	(
 		cd "$name" &&
-		sed -e 's/^> //' -e 's/Z$//' | sort >expect-counts &&
+		_decode_text | sort >expect-counts &&
 		grep -v "^$" "test-results/$name.counts" | sort >actual-counts &&
 		test_cmp expect-counts actual-counts
 	)
