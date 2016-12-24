@@ -34,7 +34,45 @@ then
 	# elsewhere
 	TEST_OUTPUT_DIRECTORY=$TEST_DIRECTORY
 fi
+TEST_RESULTS_DIR="$TEST_OUTPUT_DIRECTORY/test-results"
+base=${0##*/}
+TEST_RESULTS_PATH="$TEST_RESULTS_DIR/${base%.sh}.counts"
 GIT_BUILD_DIR="$TEST_DIRECTORY"/..
+
+# Assume failure, in case the script aborts (e.g. due to a syntax error or
+# explicit "exit" call) before it has a chance to write the real test counts.
+#
+# If it *doesn't* abort, test_done() will overwrite $TEST_RESULTS_PATH with
+# the real counts.
+#
+# Why bother?  So that the user isn't faced with this self-contradictory
+# output:
+#     fixed   0
+#     success 10243
+#     failed  0
+#     broken  0
+#     total   10243
+#     ...
+#     make: *** [test] Error 2
+#     make: Target `all' not remade because of errors.
+#
+# It's not ideal, giving an exploding test script the same weight as a single
+# failed test_assume_whatever(), but there's no better category to count it
+# in.
+
+if test -z "$HARNESS_ACTIVE"
+then
+	mkdir -p "$TEST_RESULTS_DIR"
+	cat >"$TEST_RESULTS_PATH" <<-EOF
+	total 1
+	success 0
+	fixed 0
+	broken 0
+	failed 1
+
+	EOF
+fi
+
 
 ################################################################
 # It appears that people try to run tests without building...
@@ -55,8 +93,8 @@ done,*)
 	# do not redirect again
 	;;
 *' --tee '*|*' --va'*)
-	mkdir -p "$TEST_OUTPUT_DIRECTORY/test-results"
-	BASE="$TEST_OUTPUT_DIRECTORY/test-results/$(basename "$0" .sh)"
+	mkdir -p "$TEST_RESULTS_DIR"
+	BASE="$TEST_RESULTS_DIR/$(basename "$0" .sh)"
 	(GIT_TEST_TEE_STARTED=done ${SHELL_PATH} "$0" "$@" 2>&1;
 	 echo $? > $BASE.exit) | tee $BASE.out
 	test "$(cat $BASE.exit)" = 0
@@ -685,12 +723,7 @@ test_done () {
 
 	if test -z "$HARNESS_ACTIVE"
 	then
-		test_results_dir="$TEST_OUTPUT_DIRECTORY/test-results"
-		mkdir -p "$test_results_dir"
-		base=${0##*/}
-		test_results_path="$test_results_dir/${base%.sh}.counts"
-
-		cat >"$test_results_path" <<-EOF
+		cat >"$TEST_RESULTS_PATH" <<-EOF
 		total $test_count
 		success $test_success
 		fixed $test_fixed

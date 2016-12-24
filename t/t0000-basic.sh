@@ -267,6 +267,52 @@ test_expect_success 'pretend we have a pass, fail, and known breakage' "
 	EOF
 "
 
+test_expect_success 'pretend we have a completely misbehaving test suite' "
+	test_must_fail run_sub_test_lib_test \
+		broken-suite1 'syntax error in test suite' <<-\\EOF &&
+	breakme() {				# Intentional syntax error
+	test_done
+	EOF
+	check_sub_test_lib_test_err broken-suite1 \
+		<<-\\EOF_OUT 3<<-\\EOF_ERR &&
+	> FATAL: Unexpected exit with code 2
+	EOF_OUT
+	> ./broken-suite1.sh: 13: ./broken-suite1.sh: Syntax error: end of file unexpected (expecting \"}\")
+	EOF_ERR
+	check_sub_test_lib_test_counts broken-suite1 <<-\\EOF
+	> success 0
+	> failed 1
+	> broken 0
+	> fixed 0
+	> total 1
+	EOF
+"
+
+test_expect_success 'pretend we have a partially misbehaving test suite' "
+	test_must_fail run_sub_test_lib_test \
+		broken-suite2 'syntax error in test suite' <<-\\EOF &&
+	test_expect_success 'passing test #1' 'true'
+	breakme() {				# Intentional syntax error
+	test_done
+	EOF
+	check_sub_test_lib_test_err broken-suite2 \
+		<<-\\EOF_OUT 3<<-\\EOF_ERR &&
+	> ok 1 - passing test #1
+	> FATAL: Unexpected exit with code 2
+	EOF_OUT
+	> ./broken-suite2.sh: 14: ./broken-suite2.sh: Syntax error: end of file unexpected (expecting \"}\")
+	EOF_ERR
+	# XXX These aren't correct; they should be (success,failed,total) == (1,1,2)
+	# But at least failed!=0, which it used to be...
+	check_sub_test_lib_test_counts broken-suite2 <<-\\EOF
+	> success 0
+	> failed 1
+	> broken 0
+	> fixed 0
+	> total 1
+	EOF
+"
+
 test_expect_success 'pretend we have a mix of all possible results' "
 	test_must_fail run_sub_test_lib_test \
 		mixed-results2 'mixed results #2' <<-\\EOF &&
