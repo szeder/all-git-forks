@@ -115,13 +115,17 @@ check_sub_test_lib_test_err () {
 	)
 }
 
+_check_sub_test_lib_test_counts_common () {
+	_decode_text | sort >expect-counts &&
+	grep -v "^$" "$2" | sed "s/  */ /g" | sort >actual-counts &&
+	test_cmp expect-counts actual-counts
+}
+
 check_sub_test_lib_test_counts () {
 	name="$1" # stdin contains the expected counts
 	(
 		cd "$name" &&
-		_decode_text | sort >expect-counts &&
-		grep -v "^$" "test-results/$name.counts" | sort >actual-counts &&
-		test_cmp expect-counts actual-counts
+		_check_sub_test_lib_test_counts_common "$name" "test-results/$name.counts"
 	)
 }
 
@@ -404,6 +408,52 @@ test_expect_success 'test --verbose-only' '
 	> # failed 1 among 3 test(s)
 	> 1..3
 	EOF
+'
+
+test_expect_success 'aggregator gets counts right' '
+	name="aggregator-counts" &&
+	mkdir "$name" &&
+	(
+		cd "$name" &&
+		mkdir test-results &&
+		test_write_lines >test-results/t0090-faketest1.counts \
+			"success 2" "failed 0" "broken 0" "fixed 0" "total 2" &&
+		test_write_lines >test-results/t0091-faketest2.counts \
+			"success 1" "failed 1" "broken 1" "fixed 2" "total 5" &&
+		test_write_lines >expect.totals \
+			"success 3" "failed 1" "broken 1" "fixed 2" "total 7" &&
+		ls test-results/* | "$TEST_DIRECTORY/aggregate-results.sh" >out 2>err &&
+		grep -v "failed test(s):" <out >totals &&	# checked separately
+		_check_sub_test_lib_test_counts_common "$name" totals <expect.totals
+	)
+'
+
+test_expect_success 'aggregator lists failing tests' '
+	name="aggregator-list-default" &&
+	mkdir "$name" &&
+	(
+		cd "$name" &&
+		mkdir test-results &&
+		test_write_lines >test-results/t0090-faketest1.counts \
+			"success 0" "failed 1" "broken 0" "fixed 0" "total 1" &&
+		ls test-results/* | "$TEST_DIRECTORY/aggregate-results.sh" >out 2>err &&
+		grep "failed test" <out >list
+		test_write_lines "failed test(s): t0090" >expect.list &&
+		test_cmp expect.list list
+		)
+'
+
+test_expect_success 'no failing-tests line when no failed tests' '
+	name="aggregator-list-no-failures" &&
+	mkdir "$name" &&
+	(
+		cd "$name" &&
+		mkdir test-results &&
+		test_write_lines >test-results/t0090-faketest1.counts \
+			"success 1" "failed 0" "broken 0" "fixed 0" "total 1" &&
+		ls test-results/* | "$TEST_DIRECTORY/aggregate-results.sh" >out 2>err &&
+		test_must_fail grep "failed test" <out >list
+	)
 '
 
 test_expect_success 'GIT_SKIP_TESTS' "
