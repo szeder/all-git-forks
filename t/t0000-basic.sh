@@ -443,6 +443,28 @@ test_expect_success 'aggregator lists failing tests' '
 		)
 '
 
+test_expect_success 'aggregator lists failing tests with TEST_OUTPUT_DIRECTORY' '
+	name="aggregator-list-with-outputdir" &&
+	mkdir "$name" &&
+	(
+		cd "$name" &&
+
+		TEST_OUTPUT_DIRECTORY="$(pwd)/test-output-subdir" &&
+		export TEST_OUTPUT_DIRECTORY &&
+		RESULTSDIR="$TEST_OUTPUT_DIRECTORY/test-results" &&
+		mkdir -p "$RESULTSDIR" &&
+
+		test_write_lines >"$RESULTSDIR/t0090-faketest1.counts" \
+			"success 0" "failed 1" "broken 0" "fixed 0" "total 1" &&
+
+		ls "$RESULTSDIR"/* | "$TEST_DIRECTORY/aggregate-results.sh" >out 2>err &&
+		grep "failed test" <out >list &&
+
+		test_write_lines "failed test(s): t0090" >expect.list &&
+		test_cmp expect.list list
+	)
+'
+
 test_expect_success 'no failing-tests line when no failed tests' '
 	name="aggregator-list-no-failures" &&
 	mkdir "$name" &&
