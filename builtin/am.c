@@ -154,6 +154,8 @@ static void am_state_init(struct am_state *state, const char *dir)
 
 	git_config_get_bool("am.messageid", &state->message_id);
 
+	git_config_get_bool("am.signoff", &state->signoff);
+
 	state->scissors = SCISSORS_UNSET;
 
 	argv_array_init(&state->git_apply_opts);
