@@ -313,8 +313,11 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 	}
 
 	/* sanity checks, pathspec matchers assume these are sane */
-	assert(item->nowildcard_len <= item->len &&
-	       item->prefix         <= item->len);
+	if (item->nowildcard_len <= item->len &&
+	    item->prefix         <= item->len)
+		die (_("Path leads inside submodule '%s', but the submodule "
+		       "was not recognized, i.e. not initialized or deleted"),
+		       ce->name);
 	return magic;
 }
 
