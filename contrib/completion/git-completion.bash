@@ -2556,17 +2556,41 @@ _git_submodule ()
 	__git_has_doubledash && return
 
 	local subcommands="add status init deinit update summary foreach sync"
-	if [ -z "$(__git_find_on_cmdline "$subcommands")" ]; then
-		case "$cur" in
-		--*)
-			__gitcomp "--quiet --cached"
-			;;
-		*)
-			__gitcomp "$subcommands"
-			;;
-		esac
-		return
-	fi
+	local subcommand="$(__git_find_on_cmdline "$subcommands")"
+
+	case "$subcommand,$cur" in
+	,--*)
+		__gitcomp "--quiet"
+		;;
+	,*)
+		__gitcomp "$subcommands --quiet"
+		;;
+	add,--*)
+		__gitcomp "--force --name --reference --depth"
+		;;
+	status,--*)
+		__gitcomp "--cached --recursive"
+		;;
+	deinit,--*)
+		__gitcomp "--force --all"
+		;;
+	update,--*)
+		__gitcomp "
+			--init --remote --no-fetch --no-recommended-shallow
+			--recommended-shallow --force --rebase --merge --reference
+			--depth --recursive --jobs
+			"
+		;;
+	summary,--*)
+		__gitcomp "--cached --files --summary-limit"
+		;;
+	summary,*)
+		__gitcomp_nl "$(__git_refs)"
+		;;
+	foreach,--*|sync,--*)
+		__gitcomp "--recursive"
+		;;
+	esac
 }
 
 _git_svn ()
