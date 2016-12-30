@@ -53,6 +53,10 @@ matrix:
    #  script: ci/test-documentation.sh
    #  after_failure:
 
+    - env: TEST_OUTPUT_DIRECTORY="$TRAVIS_BUILD_DIR/t/test-output-directory"
+      os: linux
+      compiler: clang
+
 before_install:
   - >
     case "${TRAVIS_OS_NAME:-linux}" in
