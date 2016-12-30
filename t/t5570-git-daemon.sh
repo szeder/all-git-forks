@@ -35,6 +35,21 @@ test_expect_success 'clone git repository' '
 	test_cmp file clone/file
 '
 
+test_expect_success 'list refs from outside any repository' '
+	cat >expect <<-EOF &&
+	$(git rev-parse master)	HEAD
+	$(git rev-parse master)	refs/heads/master
+	EOF
+	mkdir lsremote-root &&
+	(
+		GIT_CEILING_DIRECTORIES=$(pwd) &&
+		export GIT_CEILING_DIRECTORIES &&
+		cd lsremote-root &&
+		git ls-remote "$GIT_DAEMON_URL/repo.git" >../actual
+	) &&
+	test_cmp expect actual
+'
+
 test_expect_success 'fetch changes via git protocol' '
 	echo content >>file &&
 	git commit -a -m two &&
