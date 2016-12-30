@@ -144,7 +144,7 @@ static int branch_merged(int kind, const char *name,
 				"         '%s', but not yet merged to HEAD."),
 				name, reference_name);
 		else
-			warning(_("not deleting branch '%s' that is not yet merged to\n"
+			warning_(_("not deleting branch '%s' that is not yet merged to\n"
 				"         '%s', even though it is merged to HEAD."),
 				name, reference_name);
 	}
@@ -162,7 +162,7 @@ static int check_branch_commit(const char *branchname, const char *refname,
 		return -1;
 	}
 	if (!force && !branch_merged(kinds, branchname, rev, head_rev)) {
-		error(_("The branch '%s' is not fully merged.\n"
+		error_(_("The branch '%s' is not fully merged.\n"
 		      "If you are sure you want to delete it, "
 		      "run 'git branch -D %s'."), branchname, branchname);
 		return -1;
@@ -223,7 +223,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 			const struct worktree *wt =
 				find_shared_symref("HEAD", name);
 			if (wt) {
-				error(_("Cannot delete branch '%s' "
+				error_(_("Cannot delete branch '%s' "
 					"checked out at '%s'"),
 				      bname.buf, wt->path);
 				ret = 1;
@@ -732,7 +732,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 
 	if (delete) {
 		if (!argc)
-			die(_("branch name required"));
+			die_(_("branch name required"));
 		return delete_branches(argc, argv, delete > 1, filter.kind, quiet);
 	} else if (list) {
 		/*  git branch --local also shows HEAD when it is detached */
