@@ -8,11 +8,11 @@ cache:
 
 os:
   - linux
-  - osx
+  # osx
 
 compiler:
   - clang
-  - gcc
+  # gcc
 
 addons:
   apt:
@@ -40,18 +40,18 @@ env:
 
 matrix:
   include:
-    - env: Documentation
-      os: linux
-      compiler: clang
-      addons:
-        apt:
-          packages:
-          - asciidoc
-          - xmlto
-      before_install:
-      before_script:
-      script: ci/test-documentation.sh
-      after_failure:
+   #- env: Documentation
+   #  os: linux
+   #  compiler: clang
+   #  addons:
+   #    apt:
+   #      packages:
+   #      - asciidoc
+   #      - xmlto
+   #  before_install:
+   #  before_script:
+   #  script: ci/test-documentation.sh
+   #  after_failure:
 
 before_install:
   - >
