@@ -144,7 +144,7 @@ static int branch_merged(int kind, const char *name,
 				"         '%s', but not yet merged to HEAD."),
 				name, reference_name);
 		else
-			warning(_("not deleting branch '%s' that is not yet merged to\n"
+			warning_(_("not deleting branch '%s' that is not yet merged to\n"
 				"         '%s', even though it is merged to HEAD."),
 				name, reference_name);
 	}
@@ -162,7 +162,7 @@ static int check_branch_commit(const char *branchname, const char *refname,
 		return -1;
 	}
 	if (!force && !branch_merged(kinds, branchname, rev, head_rev)) {
-		error(_("The branch '%s' is not fully merged.\n"
+		error_(_("The branch '%s' is not fully merged.\n"
 		      "If you are sure you want to delete it, "
 		      "run 'git branch -D %s'."), branchname, branchname);
 		return -1;
@@ -175,7 +175,7 @@ static void delete_branch_config(const char *branchname)
 	struct strbuf buf = STRBUF_INIT;
 	strbuf_addf(&buf, "branch.%s", branchname);
 	if (git_config_rename_section(buf.buf, NULL) < 0)
-		warning(_("Update of config-file failed"));
+		warning_(_("Update of config-file failed"));
 	strbuf_release(&buf);
 }
 
@@ -203,13 +203,13 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 		fmt = "refs/heads/%s";
 		break;
 	default:
-		die(_("cannot use -a with -d"));
+		die_(_("cannot use -a with -d"));
 	}
 
 	if (!force) {
 		head_rev = lookup_commit_reference(head_sha1);
 		if (!head_rev)
-			die(_("Couldn't look up commit object for HEAD"));
+			die_(_("Couldn't look up commit object for HEAD"));
 	}
 	for (i = 0; i < argc; i++, strbuf_release(&bname)) {
 		char *target = NULL;
@@ -223,7 +223,7 @@ static int delete_branches(int argc, const char **argv, int force, int kinds,
 			const struct worktree *wt =
 				find_shared_symref("HEAD", name);
 			if (wt) {
-				error(_("Cannot delete branch '%s' "
+				error_(_("Cannot delete branch '%s' "
 					"checked out at '%s'"),
 				      bname.buf, wt->path);
 				ret = 1;
@@ -551,7 +551,7 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 	int clobber_head_ok;
 
 	if (!oldname)
-		die(_("cannot rename the current branch while not on any."));
+		die_(_("cannot rename the current branch while not on any."));
 
 	if (strbuf_check_branch_ref(&oldref, oldname)) {
 		/*
@@ -578,7 +578,7 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 		 oldref.buf, newref.buf);
 
 	if (rename_ref(oldref.buf, newref.buf, logmsg.buf))
-		die(_("Branch rename failed"));
+		die_(_("Branch rename failed"));
 	strbuf_release(&logmsg);
 
 	if (recovery)
@@ -592,7 +592,7 @@ static void rename_branch(const char *oldname, const char *newname, int force)
 	strbuf_addf(&newsection, "branch.%s", newref.buf + 11);
 	strbuf_release(&newref);
 	if (git_config_rename_section(oldsection.buf, newsection.buf) < 0)
-		die(_("Branch is renamed, but update of config-file failed"));
+		die_(_("Branch is renamed, but update of config-file failed"));
 	strbuf_release(&oldsection);
 	strbuf_release(&newsection);
 }
@@ -695,11 +695,11 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 
 	head = resolve_refdup("HEAD", 0, head_sha1, NULL);
 	if (!head)
-		die(_("Failed to resolve HEAD as a valid ref."));
+		die_(_("Failed to resolve HEAD as a valid ref."));
 	if (!strcmp(head, "HEAD"))
 		filter.detached = 1;
 	else if (!skip_prefix(head, "refs/heads/", &head))
-		die(_("HEAD not found below refs/heads!"));
+		die_(_("HEAD not found below refs/heads!"));
 
 	argc = parse_options(argc, argv, prefix, options, builtin_branch_usage,
 			     0);
@@ -721,7 +721,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	finalize_colopts(&colopts, -1);
 	if (filter.verbose) {
 		if (explicitly_enable_column(colopts))
-			die(_("--column and --verbose are incompatible"));
+			die_(_("--column and --verbose are incompatible"));
 		colopts = 0;
 	}
 
@@ -732,7 +732,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 
 	if (delete) {
 		if (!argc)
-			die(_("branch name required"));
+			die_(_("branch name required"));
 		return delete_branches(argc, argv, delete > 1, filter.kind, quiet);
 	} else if (list) {
 		/*  git branch --local also shows HEAD when it is detached */
@@ -760,12 +760,12 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 
 		if (!argc) {
 			if (filter.detached)
-				die(_("Cannot give description to detached HEAD"));
+				die_(_("Cannot give description to detached HEAD"));
 			branch_name = head;
 		} else if (argc == 1)
 			branch_name = argv[0];
 		else
-			die(_("cannot edit description of more than one branch"));
+			die_(_("cannot edit description of more than one branch"));
 
 		strbuf_addf(&branch_ref, "refs/heads/%s", branch_name);
 		if (!ref_exists(branch_ref.buf)) {
@@ -784,18 +784,18 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			return 1;
 	} else if (rename) {
 		if (!argc)
-			die(_("branch name required"));
+			die_(_("branch name required"));
 		else if (argc == 1)
 			rename_branch(head, argv[0], rename > 1);
 		else if (argc == 2)
 			rename_branch(argv[0], argv[1], rename > 1);
 		else
-			die(_("too many branches for a rename operation"));
+			die_(_("too many branches for a rename operation"));
 	} else if (new_upstream) {
 		struct branch *branch = branch_get(argv[0]);
 
 		if (argc > 1)
-			die(_("too many branches to set new upstream"));
+			die_(_("too many branches to set new upstream"));
 
 		if (!branch) {
 			if (!argc || !strcmp(argv[0], "HEAD"))
@@ -818,12 +818,11 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		struct strbuf buf = STRBUF_INIT;
 
 		if (argc > 1)
-			die(_("too many branches to unset upstream"));
+			die_(_("too many branches to unset upstream"));
 
 		if (!branch) {
 			if (!argc || !strcmp(argv[0], "HEAD"))
-				die(_("could not unset upstream of HEAD when "
-				      "it does not point to any branch."));
+				die_(_("could not unset upstream of HEAD when " "it does not point to any branch."));
 			die(_("no such branch '%s'"), argv[0]);
 		}
 
@@ -842,13 +841,13 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		struct strbuf buf = STRBUF_INIT;
 
 		if (!strcmp(argv[0], "HEAD"))
-			die(_("it does not make sense to create 'HEAD' manually"));
+			die_(_("it does not make sense to create 'HEAD' manually"));
 
 		if (!branch)
 			die(_("no such branch '%s'"), argv[0]);
 
 		if (filter.kind != FILTER_REFS_BRANCHES)
-			die(_("-a and -r options to 'git branch' do not make sense with a branch name"));
+			die_(_("-a and -r options to 'git branch' do not make sense with a branch name"));
 
 		if (track == BRANCH_TRACK_OVERRIDE)
 			fprintf(stderr, _("The --set-upstream flag is deprecated and will be removed. Consider using --track or --set-upstream-to\n"));

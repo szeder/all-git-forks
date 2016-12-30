@@ -1143,7 +1143,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	}
 
 	if (!opt.pattern_list)
-		die(_("no pattern given."));
+		die_(_("no pattern given."));
 	if (!opt.fixed && opt.ignore_case)
 		opt.regflags |= REG_ICASE;
 
@@ -1212,7 +1212,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	}
 
 	if (show_in_pager && (cached || list.nr))
-		die(_("--open-files-in-pager only works on the worktree"));
+		die_(_("--open-files-in-pager only works on the worktree"));
 
 	if (show_in_pager && opt.pattern_list && !opt.pattern_list->next) {
 		const char *pager = path_list.items[0].string;
@@ -1235,21 +1235,21 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	}
 
 	if (recurse_submodules && (!use_index || untracked))
-		die(_("option not supported with --recurse-submodules."));
+		die_(_("option not supported with --recurse-submodules."));
 
 	if (!show_in_pager && !opt.status_only)
 		setup_pager();
 
 	if (!use_index && (untracked || cached))
-		die(_("--cached or --untracked cannot be used with --no-index."));
+		die_(_("--cached or --untracked cannot be used with --no-index."));
 
 	if (!use_index || untracked) {
 		int use_exclude = (opt_exclude < 0) ? use_index : !!opt_exclude;
 		if (list.nr)
-			die(_("--no-index or --untracked cannot be used with revs."));
+			die_(_("--no-index or --untracked cannot be used with revs."));
 		hit = grep_directory(&opt, &pathspec, use_exclude, use_index);
 	} else if (0 <= opt_exclude) {
-		die(_("--[no-]exclude-standard cannot be used for tracked contents."));
+		die_(_("--[no-]exclude-standard cannot be used for tracked contents."));
 	} else if (!list.nr) {
 		if (!cached)
 			setup_work_tree();
@@ -1257,7 +1257,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		hit = grep_cache(&opt, &pathspec, cached);
 	} else {
 		if (cached)
-			die(_("both --cached and trees are given."));
+			die_(_("both --cached and trees are given."));
 		hit = grep_objects(&opt, &pathspec, &list);
 	}
 

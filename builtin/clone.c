@@ -247,8 +247,7 @@ static char *guess_dir_name(const char *repo, int is_bundle, int is_bare)
 	strip_suffix_mem(start, &len, is_bundle ? ".bundle" : ".git");
 
 	if (!len || (len == 1 && *start == '/'))
-		die(_("No directory name could be guessed.\n"
-		      "Please specify a directory on the command line"));
+		die_(_("No directory name could be guessed.\n" "Please specify a directory on the command line"));
 
 	if (is_bare)
 		dir = xstrfmt("%.*s.git", (int)len, start);
@@ -629,7 +628,7 @@ static void update_remote_refs(const struct ref *refs,
 		opt.progress = transport->progress;
 
 		if (check_connected(iterate_ref_map, &rm, &opt))
-			die(_("remote did not send all necessary objects"));
+			die_(_("remote did not send all necessary objects"));
 	}
 
 	if (refs) {
@@ -657,7 +656,7 @@ static void update_head(const struct ref *our, const struct ref *remote,
 	if (our && skip_prefix(our->name, "refs/heads/", &head)) {
 		/* Local default branch link */
 		if (create_symref("HEAD", our->name, NULL) < 0)
-			die(_("unable to update HEAD"));
+			die_(_("unable to update HEAD"));
 		if (!option_bare) {
 			update_ref(msg, "HEAD", our->old_oid.hash, NULL, 0,
 				   UPDATE_REFS_DIE_ON_ERR);
@@ -694,8 +693,7 @@ static int checkout(int submodule_progress)
 
 	head = resolve_refdup("HEAD", RESOLVE_REF_READING, sha1, NULL);
 	if (!head) {
-		warning(_("remote HEAD refers to nonexistent ref, "
-			  "unable to checkout.\n"));
+		warning_(_("remote HEAD refers to nonexistent ref, " "unable to checkout.\n"));
 		return 0;
 	}
 	if (!strcmp(head, "HEAD")) {
@@ -703,7 +701,7 @@ static int checkout(int submodule_progress)
 			detach_advice(sha1_to_hex(sha1));
 	} else {
 		if (!starts_with(head, "refs/heads/"))
-			die(_("HEAD not found below refs/heads!"));
+			die_(_("HEAD not found below refs/heads!"));
 	}
 	free(head);
 
@@ -725,10 +723,10 @@ static int checkout(int submodule_progress)
 	parse_tree(tree);
 	init_tree_desc(&t, tree->buffer, tree->size);
 	if (unpack_trees(1, &t, &opts) < 0)
-		die(_("unable to checkout working tree"));
+		die_(_("unable to checkout working tree"));
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write new index file"));
+		die_(_("unable to write new index file"));
 
 	err |= run_hook_le(NULL, "post-checkout", sha1_to_hex(null_sha1),
 			   sha1_to_hex(sha1), "1", NULL);
@@ -765,7 +763,7 @@ static void write_config(struct string_list *config)
 	for (i = 0; i < config->nr; i++) {
 		if (git_config_parse_parameter(config->items[i].string,
 					       write_one_config, NULL) < 0)
-			die(_("unable to write parameters to config file"));
+			die_(_("unable to write parameters to config file"));
 	}
 }
 
@@ -828,9 +826,9 @@ static void dissociate_from_references(void)
 
 	if (!access(alternates, F_OK)) {
 		if (run_command_v_opt(argv, RUN_GIT_CMD|RUN_COMMAND_NO_STDIN))
-			die(_("cannot repack to clean up"));
+			die_(_("cannot repack to clean up"));
 		if (unlink(alternates) && errno != ENOENT)
-			die_errno(_("cannot unlink temporary alternates file"));
+			die_errno_(_("cannot unlink temporary alternates file"));
 	}
 	free(alternates);
 }
@@ -883,7 +881,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			die(_("--bare and --origin %s options are incompatible."),
 			    option_origin);
 		if (real_git_dir)
-			die(_("--bare and --separate-git-dir are incompatible."));
+			die_(_("--bare and --separate-git-dir are incompatible."));
 		option_no_checkout = 1;
 	}
 
@@ -960,8 +958,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	if (option_recursive) {
 		if (option_required_reference.nr &&
 		    option_optional_reference.nr)
-			die(_("clone --recursive is not compatible with "
-			      "both --reference and --reference-if-able"));
+			die_(_("clone --recursive is not compatible with " "both --reference and --reference-if-able"));
 		else if (option_required_reference.nr) {
 			string_list_append(&option_config,
 				"submodule.alternateLocation=superproject");
@@ -1016,19 +1013,19 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	is_local = option_local != 0 && path && !is_bundle;
 	if (is_local) {
 		if (option_depth)
-			warning(_("--depth is ignored in local clones; use file:// instead."));
+			warning_(_("--depth is ignored in local clones; use file:// instead."));
 		if (option_since)
-			warning(_("--shallow-since is ignored in local clones; use file:// instead."));
+			warning_(_("--shallow-since is ignored in local clones; use file:// instead."));
 		if (option_not.nr)
-			warning(_("--shallow-exclude is ignored in local clones; use file:// instead."));
+			warning_(_("--shallow-exclude is ignored in local clones; use file:// instead."));
 		if (!access(mkpath("%s/shallow", path), F_OK)) {
 			if (option_local > 0)
-				warning(_("source repository is shallow, ignoring --local"));
+				warning_(_("source repository is shallow, ignoring --local"));
 			is_local = 0;
 		}
 	}
 	if (option_local > 0 && !is_local)
-		warning(_("--local is ignored"));
+		warning_(_("--local is ignored"));
 	transport->cloning = 1;
 
 	if (!transport->get_refs_list || (!is_local && !transport->fetch))
@@ -1098,7 +1095,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			die(_("Remote branch %s not found in upstream %s"),
 					option_branch, option_origin);
 
-		warning(_("You appear to have cloned an empty repository."));
+		warning_(_("You appear to have cloned an empty repository."));
 		mapped_refs = NULL;
 		our_head_points_at = NULL;
 		remote_head_points_at = NULL;

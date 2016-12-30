@@ -894,15 +894,13 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 		dir.flags |= DIR_SHOW_IGNORED;
 
 	if (ignored && ignored_only)
-		die(_("-x and -X cannot be used together"));
+		die_(_("-x and -X cannot be used together"));
 
 	if (!interactive && !dry_run && !force) {
 		if (config_set)
-			die(_("clean.requireForce set to true and neither -i, -n, nor -f given; "
-				  "refusing to clean"));
+			die_(_("clean.requireForce set to true and neither -i, -n, nor -f given; " "refusing to clean"));
 		else
-			die(_("clean.requireForce defaults to true and neither -i, -n, nor -f given;"
-				  " refusing to clean"));
+			die_(_("clean.requireForce defaults to true and neither -i, -n, nor -f given;" " refusing to clean"));
 	}
 
 	if (force > 1)
@@ -911,7 +909,7 @@ int cmd_clean(int argc, const char **argv, const char *prefix)
 	dir.flags |= DIR_SHOW_OTHER_DIRECTORIES;
 
 	if (read_cache() < 0)
-		die(_("index file corrupt"));
+		die_(_("index file corrupt"));
 
 	if (!ignored)
 		setup_standard_excludes(&dir);

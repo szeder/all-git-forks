@@ -80,15 +80,15 @@ int git_default_advice_config(const char *var, const char *value)
 int error_resolve_conflict(const char *me)
 {
 	if (!strcmp(me, "cherry-pick"))
-		error(_("Cherry-picking is not possible because you have unmerged files."));
+		error_(_("Cherry-picking is not possible because you have unmerged files."));
 	else if (!strcmp(me, "commit"))
-		error(_("Committing is not possible because you have unmerged files."));
+		error_(_("Committing is not possible because you have unmerged files."));
 	else if (!strcmp(me, "merge"))
-		error(_("Merging is not possible because you have unmerged files."));
+		error_(_("Merging is not possible because you have unmerged files."));
 	else if (!strcmp(me, "pull"))
-		error(_("Pulling is not possible because you have unmerged files."));
+		error_(_("Pulling is not possible because you have unmerged files."));
 	else if (!strcmp(me, "revert"))
-		error(_("Reverting is not possible because you have unmerged files."));
+		error_(_("Reverting is not possible because you have unmerged files."));
 	else
 		error(_("It is not possible to %s because you have unmerged files."),
 			me);
@@ -106,15 +106,15 @@ int error_resolve_conflict(const char *me)
 void NORETURN die_resolve_conflict(const char *me)
 {
 	error_resolve_conflict(me);
-	die(_("Exiting because of an unresolved conflict."));
+	die_(_("Exiting because of an unresolved conflict."));
 }
 
 void NORETURN die_conclude_merge(void)
 {
-	error(_("You have not concluded your merge (MERGE_HEAD exists)."));
+	error_(_("You have not concluded your merge (MERGE_HEAD exists)."));
 	if (advice_resolve_conflict)
 		advise(_("Please, commit your changes before merging."));
-	die(_("Exiting because of unfinished merge."));
+	die_(_("Exiting because of unfinished merge."));
 }
 
 void detach_advice(const char *new_name)

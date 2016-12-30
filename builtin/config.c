@@ -324,7 +324,7 @@ static void get_color(const char *var, const char *def_color)
 
 	if (!get_color_found && def_color) {
 		if (color_parse(def_color, parsed_color) < 0)
-			die(_("unable to parse default color value"));
+			die_(_("unable to parse default color value"));
 	}
 
 	fputs(parsed_color, stdout);

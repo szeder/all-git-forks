@@ -276,8 +276,8 @@ static void *fill(int min)
 				sizeof(input_buffer) - input_len);
 		if (ret <= 0) {
 			if (!ret)
-				die(_("early EOF"));
-			die_errno(_("read error on input"));
+				die_(_("early EOF"));
+			die_errno_(_("read error on input"));
 		}
 		input_len += ret;
 		if (from_stdin)
@@ -289,17 +289,17 @@ static void *fill(int min)
 static void use(int bytes)
 {
 	if (bytes > input_len)
-		die(_("used more bytes than were available"));
+		die_(_("used more bytes than were available"));
 	input_crc32 = crc32(input_crc32, input_buffer + input_offset, bytes);
 	input_len -= bytes;
 	input_offset += bytes;
 
 	/* make sure off_t is sufficiently large not to wrap */
 	if (signed_add_overflows(consumed_bytes, bytes))
-		die(_("pack too large for current definition of off_t"));
+		die_(_("pack too large for current definition of off_t"));
 	consumed_bytes += bytes;
 	if (max_input_size && consumed_bytes > max_input_size)
-		die(_("pack exceeds maximum allowed size"));
+		die_(_("pack exceeds maximum allowed size"));
 }
 
 static const char *open_pack_file(const char *pack_name)
@@ -333,7 +333,7 @@ static void parse_pack_header(void)
 
 	/* Header consistency check */
 	if (hdr->hdr_signature != htonl(PACK_SIGNATURE))
-		die(_("pack signature mismatch"));
+		die_(_("pack signature mismatch"));
 	if (!pack_version_ok(hdr->hdr_version))
 		die(_("pack version %"PRIu32" unsupported"),
 			ntohl(hdr->hdr_version));
@@ -571,7 +571,7 @@ static void *unpack_data(struct object_entry *obj,
 		ssize_t n = (len < 64*1024) ? (ssize_t)len : 64*1024;
 		n = xpread(get_thread_data()->pack_fd, inbuf, n, from);
 		if (n < 0)
-			die_errno(_("cannot pread pack file"));
+			die_errno_(_("cannot pread pack file"));
 		if (!n)
 			die(Q_("premature end of pack file, %"PRIuMAX" byte missing",
 			       "premature end of pack file, %"PRIuMAX" bytes missing",
@@ -599,7 +599,7 @@ static void *unpack_data(struct object_entry *obj,
 
 	/* This has been inflated OK when first encountered, so... */
 	if (status != Z_STREAM_END || stream.total_out != obj->size)
-		die(_("serious inflate inconsistency"));
+		die_(_("serious inflate inconsistency"));
 
 	git_inflate_end(&stream);
 	free(inbuf);
@@ -847,7 +847,7 @@ static void sha1_object(const void *data, struct object_entry *obj_entry,
 				die(_("invalid %s"), typename(type));
 			if (do_fsck_object &&
 			    fsck_object(obj, buf, size, &fsck_options))
-				die(_("Error in object"));
+				die_(_("Error in object"));
 			if (fsck_walk(obj, NULL, &fsck_options))
 				die(_("Not all child objects of %s are reachable"), oid_to_hex(&obj->oid));
 
@@ -1154,15 +1154,15 @@ static void parse_pack_objects(unsigned char *sha1)
 	flush();
 	git_SHA1_Final(sha1, &input_ctx);
 	if (hashcmp(fill(20), sha1))
-		die(_("pack is corrupted (SHA1 mismatch)"));
+		die_(_("pack is corrupted (SHA1 mismatch)"));
 	use(20);
 
 	/* If input_fd is a file, we should have reached its end now. */
 	if (fstat(input_fd, &st))
-		die_errno(_("cannot fstat packfile"));
+		die_errno_(_("cannot fstat packfile"));
 	if (S_ISREG(st.st_mode) &&
 			lseek(input_fd, 0, SEEK_CUR) - input_len != st.st_size)
-		die(_("pack has junk at the end"));
+		die_(_("pack has junk at the end"));
 
 	for (i = 0; i < nr_objects; i++) {
 		struct object_entry *obj = &objects[i];
@@ -1173,7 +1173,7 @@ static void parse_pack_objects(unsigned char *sha1)
 		nr_delays--;
 	}
 	if (nr_delays)
-		die(_("confusion beyond insanity in parse_pack_objects()"));
+		die_(_("confusion beyond insanity in parse_pack_objects()"));
 }
 
 /*
@@ -1249,7 +1249,7 @@ static void conclude_pack(int fix_thin_pack, const char *curr_pack, unsigned cha
 		int nr_unresolved = nr_ofs_deltas + nr_ref_deltas - nr_resolved_deltas;
 		int nr_objects_initial = nr_objects;
 		if (nr_unresolved <= 0)
-			die(_("confusion beyond insanity"));
+			die_(_("confusion beyond insanity"));
 		REALLOC_ARRAY(objects, nr_objects + nr_unresolved + 1);
 		memset(objects + nr_objects + 1, 0,
 		       nr_unresolved * sizeof(*objects));
@@ -1395,7 +1395,7 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 		fsync_or_die(output_fd, curr_pack_name);
 		err = close(output_fd);
 		if (err)
-			die_errno(_("error while closing pack file"));
+			die_errno_(_("error while closing pack file"));
 	}
 
 	if (keep_msg) {
@@ -1429,7 +1429,7 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 			final_pack_name = name;
 		}
 		if (finalize_object_file(curr_pack_name, final_pack_name))
-			die(_("cannot store pack file"));
+			die_(_("cannot store pack file"));
 	} else if (from_stdin)
 		chmod(final_pack_name, 0444);
 
@@ -1440,7 +1440,7 @@ static void final(const char *final_pack_name, const char *curr_pack_name,
 			final_index_name = name;
 		}
 		if (finalize_object_file(curr_index_name, final_index_name))
-			die(_("cannot store index file"));
+			die_(_("cannot store index file"));
 	} else
 		chmod(final_index_name, 0444);
 
@@ -1640,7 +1640,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	reset_pack_idx_option(&opts);
 	git_config(git_index_pack_config, &opts);
 	if (prefix && chdir(prefix))
-		die(_("Cannot come back to cwd"));
+		die_(_("Cannot come back to cwd"));
 
 	for (i = 1; i < argc; i++) {
 		const char *arg = argv[i];
@@ -1731,9 +1731,9 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 	if (!pack_name && !from_stdin)
 		usage(index_pack_usage);
 	if (fix_thin_pack && !from_stdin)
-		die(_("--fix-thin cannot be used without --stdin"));
+		die_(_("--fix-thin cannot be used without --stdin"));
 	if (from_stdin && !startup_info->have_repository)
-		die(_("--stdin requires a git repository"));
+		die_(_("--stdin requires a git repository"));
 	if (!index_name && pack_name)
 		index_name = derive_filename(pack_name, ".idx", &index_name_buf);
 	if (keep_msg && !keep_name && pack_name)
@@ -1741,7 +1741,7 @@ int cmd_index_pack(int argc, const char **argv, const char *prefix)
 
 	if (verify) {
 		if (!index_name)
-			die(_("--verify with no packfile name given"));
+			die_(_("--verify with no packfile name given"));
 		read_idx_option(&opts, index_name);
 		opts.flags |= WRITE_IDX_VERIFY | WRITE_IDX_STRICT;
 	}

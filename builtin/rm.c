@@ -295,7 +295,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 	hold_locked_index(&lock_file, LOCK_DIE_ON_ERROR);
 
 	if (read_cache() < 0)
-		die(_("index file corrupt"));
+		die_(_("index file corrupt"));
 
 	parse_pathspec(&pathspec, 0,
 		       PATHSPEC_PREFER_CWD |
@@ -314,7 +314,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 		list.entry[list.nr].is_submodule = S_ISGITLINK(ce->ce_mode);
 		if (list.entry[list.nr++].is_submodule &&
 		    !is_staging_gitmodules_ok())
-			die (_("Please stage your changes to .gitmodules or stash them to proceed"));
+			die_(_("Please stage your changes to .gitmodules or stash them to proceed"));
 	}
 
 	if (pathspec.nr) {
@@ -428,7 +428,7 @@ int cmd_rm(int argc, const char **argv, const char *prefix)
 
 	if (active_cache_changed) {
 		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
-			die(_("Unable to write new index file"));
+			die_(_("Unable to write new index file"));
 	}
 
 	return 0;

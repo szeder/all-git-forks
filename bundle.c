@@ -160,7 +160,7 @@ int verify_bundle(struct bundle_header *header, int verbose)
 	revs.leak_pending = 1;
 
 	if (prepare_revision_walk(&revs))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 
 	i = req_nr;
 	while (i && (commit = get_revision(&revs)))
@@ -448,7 +448,7 @@ int create_bundle(struct bundle_header *header, const char *path,
 
 	ref_count = write_bundle_refs(bundle_fd, &revs);
 	if (!ref_count)
-		die(_("Refusing to create empty bundle."));
+		die_(_("Refusing to create empty bundle."));
 	else if (ref_count < 0)
 		goto err;
 

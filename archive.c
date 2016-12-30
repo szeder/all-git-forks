@@ -458,11 +458,11 @@ static int parse_archive_args(int argc, const char **argv,
 	argc = parse_options(argc, argv, NULL, opts, archive_usage, 0);
 
 	if (remote)
-		die(_("Unexpected option --remote"));
+		die_(_("Unexpected option --remote"));
 	if (exec)
-		die(_("Option --exec can only be used together with --remote"));
+		die_(_("Option --exec can only be used together with --remote"));
 	if (output)
-		die(_("Unexpected option --output"));
+		die_(_("Unexpected option --output"));
 
 	if (!base)
 		base = "";

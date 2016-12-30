@@ -345,7 +345,7 @@ static int cmd_log_walk(struct rev_info *rev)
 		setup_early_output(rev);
 
 	if (prepare_revision_walk(rev))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 
 	if (rev->early_output)
 		finish_early_output(rev);
@@ -736,7 +736,7 @@ static int git_format_config(const char *var, const char *value, void *cb)
 {
 	if (!strcmp(var, "format.headers")) {
 		if (!value)
-			die(_("format.headers without value"));
+			die_(_("format.headers without value"));
 		add_header(value);
 		return 0;
 	}
@@ -865,7 +865,7 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 	unsigned flags1, flags2;
 
 	if (rev->pending.nr != 2)
-		die(_("Need exactly one range."));
+		die_(_("Need exactly one range."));
 
 	o1 = rev->pending.objects[0].item;
 	o2 = rev->pending.objects[1].item;
@@ -875,7 +875,7 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 	c2 = lookup_commit_reference(o2->oid.hash);
 
 	if ((flags1 & UNINTERESTING) == (flags2 & UNINTERESTING))
-		die(_("Not a range."));
+		die_(_("Not a range."));
 
 	init_patch_ids(ids);
 
@@ -887,7 +887,7 @@ static void get_patch_ids(struct rev_info *rev, struct patch_ids *ids)
 	add_pending_object(&check_rev, o1, "o1");
 	add_pending_object(&check_rev, o2, "o2");
 	if (prepare_revision_walk(&check_rev))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 
 	while ((commit = get_revision(&check_rev)) != NULL) {
 		add_commit_patch_id(commit, ids);
@@ -981,7 +981,7 @@ static void make_cover_letter(struct rev_info *rev, int use_stdout,
 	struct commit *head = list[0];
 
 	if (!cmit_fmt_is_mail(rev->commit_format))
-		die(_("Cover letter needs email format"));
+		die_(_("Cover letter needs email format"));
 
 	committer = git_committer_info(0);
 
@@ -1138,7 +1138,7 @@ static int output_directory_callback(const struct option *opt, const char *arg,
 {
 	const char **dir = (const char **)opt->value;
 	if (*dir)
-		die(_("Two output directories?"));
+		die_(_("Two output directories?"));
 	*dir = arg;
 	return 0;
 }
@@ -1260,13 +1260,11 @@ static struct commit *get_base_commit(const char *base_commit,
 			base_list = get_merge_bases_many(commit, total, list);
 			/* There should be one and only one merge base. */
 			if (!base_list || base_list->next)
-				die(_("Could not find exact merge base."));
+				die_(_("Could not find exact merge base."));
 			base = base_list->item;
 			free_commit_list(base_list);
 		} else {
-			die(_("Failed to get upstream, if you want to record base commit automatically,\n"
-			      "please use git branch --set-upstream-to to track a remote branch.\n"
-			      "Or you could specify base commit by --base=<base-commit-id> manually."));
+			die_(_("Failed to get upstream, if you want to record base commit automatically,\n" "please use git branch --set-upstream-to to track a remote branch.\n" "Or you could specify base commit by --base=<base-commit-id> manually."));
 		}
 	}
 
@@ -1284,7 +1282,7 @@ static struct commit *get_base_commit(const char *base_commit,
 			struct commit_list *merge_base;
 			merge_base = get_merge_bases(rev[2 * i], rev[2 * i + 1]);
 			if (!merge_base || merge_base->next)
-				die(_("Failed to find exact merge base"));
+				die_(_("Failed to find exact merge base"));
 
 			rev[i] = merge_base->item;
 		}
@@ -1295,11 +1293,11 @@ static struct commit *get_base_commit(const char *base_commit,
 	}
 
 	if (!in_merge_bases(base, rev[0]))
-		die(_("base commit should be the ancestor of revision list"));
+		die_(_("base commit should be the ancestor of revision list"));
 
 	for (i = 0; i < total; i++) {
 		if (base == list[i])
-			die(_("base commit shouldn't be in revision list"));
+			die_(_("base commit shouldn't be in revision list"));
 	}
 
 	free(rev);
@@ -1337,7 +1335,7 @@ static void prepare_bases(struct base_tree_info *bases,
 	add_pending_object(&revs, &base->object, "base");
 
 	if (prepare_revision_walk(&revs))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 	/*
 	 * Traverse the commits list, get prerequisite patch ids
 	 * and stuff them in bases structure.
@@ -1348,7 +1346,7 @@ static void prepare_bases(struct base_tree_info *bases,
 		if (commit->util)
 			continue;
 		if (commit_patch_id(commit, &diffopt, oid.hash, 0))
-			die(_("cannot get patch id"));
+			die_(_("cannot get patch id"));
 		ALLOC_GROW(bases->patch_id, bases->nr_patch_id + 1, bases->alloc_patch_id);
 		patch_id = bases->patch_id + bases->nr_patch_id;
 		oidcpy(patch_id, &oid);
@@ -1562,9 +1560,9 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		numbered = 0;
 
 	if (numbered && keep_subject)
-		die (_("-n and -k are mutually exclusive."));
+		die_(_("-n and -k are mutually exclusive."));
 	if (keep_subject && subject_prefix)
-		die (_("--subject-prefix/--rfc and -k are mutually exclusive."));
+		die_(_("--subject-prefix/--rfc and -k are mutually exclusive."));
 	rev.preserve_subject = keep_subject;
 
 	argc = setup_revisions(argc, argv, &rev, &s_r_opt);
@@ -1572,11 +1570,11 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		die (_("unrecognized argument: %s"), argv[1]);
 
 	if (rev.diffopt.output_format & DIFF_FORMAT_NAME)
-		die(_("--name-only does not make sense"));
+		die_(_("--name-only does not make sense"));
 	if (rev.diffopt.output_format & DIFF_FORMAT_NAME_STATUS)
-		die(_("--name-status does not make sense"));
+		die_(_("--name-status does not make sense"));
 	if (rev.diffopt.output_format & DIFF_FORMAT_CHECKDIFF)
-		die(_("--check does not make sense"));
+		die_(_("--check does not make sense"));
 
 	if (!use_patch_format &&
 		(!rev.diffopt.output_format ||
@@ -1606,7 +1604,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 		if (rev.diffopt.use_color != GIT_COLOR_ALWAYS)
 			rev.diffopt.use_color = GIT_COLOR_NEVER;
 		if (use_stdout)
-			die(_("standard output, or directory, which one?"));
+			die_(_("standard output, or directory, which one?"));
 		if (mkdir(output_directory, 0777) < 0 && errno != EEXIST)
 			die_errno(_("Could not create directory '%s'"),
 				  output_directory);
@@ -1663,7 +1661,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 	}
 
 	if (prepare_revision_walk(&rev))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 	rev.boundary = 1;
 	while ((commit = get_revision(&rev)) != NULL) {
 		if (commit->object.flags & BOUNDARY) {
@@ -1774,7 +1772,7 @@ int cmd_format_patch(int argc, const char **argv, const char *prefix)
 
 		if (!use_stdout &&
 		    open_next_file(rev.numbered_files ? NULL : commit, NULL, &rev, quiet))
-			die(_("Failed to create output files"));
+			die_(_("Failed to create output files"));
 		shown = log_tree_commit(&rev, commit);
 		free_commit_buffer(commit);
 
@@ -1906,7 +1904,7 @@ int cmd_cherry(int argc, const char **argv, const char *prefix)
 
 	/* reverse the list of commits */
 	if (prepare_revision_walk(&revs))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 	while ((commit = get_revision(&revs)) != NULL) {
 		commit_list_insert(commit, &list);
 	}

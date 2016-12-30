@@ -842,7 +842,7 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 			}
 			if (!strcmp(arg, "--shared-index-path")) {
 				if (read_cache() < 0)
-					die(_("Could not read the index"));
+					die_(_("Could not read the index"));
 				if (the_index.split_index) {
 					const unsigned char *sha1 = the_index.split_index->base_sha1;
 					puts(git_path("sharedindex.%s", sha1_to_hex(sha1)));

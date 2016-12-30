@@ -178,9 +178,9 @@ static int add(int argc, const char **argv)
 		usage_with_options(builtin_remote_add_usage, options);
 
 	if (mirror && master)
-		die(_("specifying a master branch makes no sense with --mirror"));
+		die_(_("specifying a master branch makes no sense with --mirror"));
 	if (mirror && !(mirror & MIRROR_FETCH) && track.nr)
-		die(_("specifying branches to track makes sense only with fetch mirrors"));
+		die_(_("specifying branches to track makes sense only with fetch mirrors"));
 
 	name = argv[0];
 	url = argv[1];
@@ -1439,7 +1439,7 @@ static int set_branches(int argc, const char **argv)
 	argc = parse_options(argc, argv, NULL, options,
 			     builtin_remote_setbranches_usage, 0);
 	if (argc == 0) {
-		error(_("no remote specified"));
+		error_(_("no remote specified"));
 		usage_with_options(builtin_remote_setbranches_usage, options);
 	}
 	argv[argc] = NULL;
@@ -1523,7 +1523,7 @@ static int set_url(int argc, const char **argv)
 			     PARSE_OPT_KEEP_ARGV0);
 
 	if (add_mode && delete_mode)
-		die(_("--add --delete doesn't make sense"));
+		die_(_("--add --delete doesn't make sense"));
 
 	if (argc < 3 || argc > 4 || ((add_mode || delete_mode) && argc != 3))
 		usage_with_options(builtin_remote_seturl_usage, options);
@@ -1574,7 +1574,7 @@ static int set_url(int argc, const char **argv)
 	if (!delete_mode && !matches)
 		die(_("No such URL found: %s"), oldurl);
 	if (delete_mode && !negative_matches && !push_mode)
-		die(_("Will not delete all non-push URLs"));
+		die_(_("Will not delete all non-push URLs"));
 
 	regfree(&old_regex);
 

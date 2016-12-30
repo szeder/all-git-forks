@@ -148,7 +148,7 @@ static void write_commented_object(int fd, const unsigned char *object)
 		    sha1_to_hex(object));
 
 	if (strbuf_read(&buf, show.out, 0) < 0)
-		die_errno(_("could not read 'show' output"));
+		die_errno_(_("could not read 'show' output"));
 	strbuf_add_commented_lines(&cbuf, buf.buf, buf.len);
 	write_or_die(fd, cbuf.buf, cbuf.len);
 
@@ -191,7 +191,7 @@ static void prepare_note_data(const unsigned char *object, struct note_data *d,
 		strbuf_reset(&d->buf);
 
 		if (launch_editor(d->edit_path, &d->buf, NULL)) {
-			die(_("please supply the note contents using either -m or -F option"));
+			die_(_("please supply the note contents using either -m or -F option"));
 		}
 		strbuf_stripspace(&d->buf, 1);
 	}
@@ -200,7 +200,7 @@ static void prepare_note_data(const unsigned char *object, struct note_data *d,
 static void write_note_data(struct note_data *d, unsigned char *sha1)
 {
 	if (write_sha1_file(d->buf.buf, d->buf.len, blob_type, sha1)) {
-		error(_("unable to write note object"));
+		error_(_("unable to write note object"));
 		if (d->edit_path)
 			error(_("the note contents have been left in %s"),
 				d->edit_path);
@@ -362,7 +362,7 @@ static int list(int argc, const char **argv, const char *prefix)
 				     git_notes_list_usage, 0);
 
 	if (1 < argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(git_notes_list_usage, options);
 	}
 
@@ -417,7 +417,7 @@ static int add(int argc, const char **argv, const char *prefix)
 			     PARSE_OPT_KEEP_ARGV0);
 
 	if (2 < argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(git_notes_add_usage, options);
 	}
 
@@ -493,7 +493,7 @@ static int copy(int argc, const char **argv, const char *prefix)
 
 	if (from_stdin || rewrite_cmd) {
 		if (argc) {
-			error(_("too many parameters"));
+			error_(_("too many parameters"));
 			usage_with_options(git_notes_copy_usage, options);
 		} else {
 			return notes_copy_from_stdin(force, rewrite_cmd);
@@ -501,11 +501,11 @@ static int copy(int argc, const char **argv, const char *prefix)
 	}
 
 	if (argc < 2) {
-		error(_("too few parameters"));
+		error_(_("too few parameters"));
 		usage_with_options(git_notes_copy_usage, options);
 	}
 	if (2 < argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(git_notes_copy_usage, options);
 	}
 
@@ -581,7 +581,7 @@ static int append_edit(int argc, const char **argv, const char *prefix)
 			     PARSE_OPT_KEEP_ARGV0);
 
 	if (2 < argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(usage, options);
 	}
 
@@ -649,7 +649,7 @@ static int show(int argc, const char **argv, const char *prefix)
 			     0);
 
 	if (1 < argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(git_notes_show_usage, options);
 	}
 
@@ -706,11 +706,11 @@ static int merge_commit(struct notes_merge_options *o)
 	 */
 
 	if (get_sha1("NOTES_MERGE_PARTIAL", sha1))
-		die(_("failed to read ref NOTES_MERGE_PARTIAL"));
+		die_(_("failed to read ref NOTES_MERGE_PARTIAL"));
 	else if (!(partial = lookup_commit_reference(sha1)))
-		die(_("could not find commit from NOTES_MERGE_PARTIAL."));
+		die_(_("could not find commit from NOTES_MERGE_PARTIAL."));
 	else if (parse_commit(partial))
-		die(_("could not parse commit from NOTES_MERGE_PARTIAL."));
+		die_(_("could not parse commit from NOTES_MERGE_PARTIAL."));
 
 	if (partial->parents)
 		hashcpy(parent_sha1, partial->parents->item->object.oid.hash);
@@ -723,10 +723,10 @@ static int merge_commit(struct notes_merge_options *o)
 	o->local_ref = local_ref_to_free =
 		resolve_refdup("NOTES_MERGE_REF", 0, sha1, NULL);
 	if (!o->local_ref)
-		die(_("failed to resolve NOTES_MERGE_REF"));
+		die_(_("failed to resolve NOTES_MERGE_REF"));
 
 	if (notes_merge_commit(o, t, partial, sha1))
-		die(_("failed to finalize notes merge"));
+		die_(_("failed to finalize notes merge"));
 
 	/* Reuse existing commit message in reflog message */
 	memset(&pretty_ctx, 0, sizeof(pretty_ctx));
@@ -791,15 +791,15 @@ static int merge(int argc, const char **argv, const char *prefix)
 	if (strategy || do_commit + do_abort == 0)
 		do_merge = 1;
 	if (do_merge + do_commit + do_abort != 1) {
-		error(_("cannot mix --commit, --abort or -s/--strategy"));
+		error_(_("cannot mix --commit, --abort or -s/--strategy"));
 		usage_with_options(git_notes_merge_usage, options);
 	}
 
 	if (do_merge && argc != 1) {
-		error(_("must specify a notes ref to merge"));
+		error_(_("must specify a notes ref to merge"));
 		usage_with_options(git_notes_merge_usage, options);
 	} else if (!do_merge && argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(git_notes_merge_usage, options);
 	}
 
@@ -946,7 +946,7 @@ static int prune(int argc, const char **argv, const char *prefix)
 			     0);
 
 	if (argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(git_notes_prune_usage, options);
 	}
 
@@ -967,7 +967,7 @@ static int get_ref(int argc, const char **argv, const char *prefix)
 			     git_notes_get_ref_usage, 0);
 
 	if (argc) {
-		error(_("too many parameters"));
+		error_(_("too many parameters"));
 		usage_with_options(git_notes_get_ref_usage, options);
 	}
 

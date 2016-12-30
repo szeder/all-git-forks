@@ -223,7 +223,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 
 	type = sha1_object_info(object, NULL);
 	if (type <= OBJ_NONE)
-	    die(_("bad object type."));
+	    die_(_("bad object type."));
 
 	header_len = snprintf(header_buf, sizeof(header_buf),
 			  "object %s\n"
@@ -236,7 +236,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 			  git_committer_info(IDENT_STRICT));
 
 	if (header_len > sizeof(header_buf) - 1)
-		die(_("tag header too big."));
+		die_(_("tag header too big."));
 
 	if (!opt->message_given) {
 		int fd;
@@ -272,7 +272,7 @@ static void create_tag(const unsigned char *object, const char *tag,
 		strbuf_stripspace(buf, opt->cleanup_mode == CLEANUP_ALL);
 
 	if (!opt->message_given && !buf->len)
-		die(_("no tag message?"));
+		die_(_("no tag message?"));
 
 	strbuf_insert(buf, 0, header_buf, header_len);
 
@@ -398,7 +398,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	finalize_colopts(&colopts, -1);
 	if (cmdmode == 'l' && filter.lines != -1) {
 		if (explicitly_enable_column(colopts))
-			die(_("--column and -n are incompatible"));
+			die_(_("--column and -n are incompatible"));
 		colopts = 0;
 	}
 	if (!sorting)
@@ -420,13 +420,13 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		return ret;
 	}
 	if (filter.lines != -1)
-		die(_("-n option is only allowed with -l."));
+		die_(_("-n option is only allowed with -l."));
 	if (filter.with_commit)
-		die(_("--contains option is only allowed with -l."));
+		die_(_("--contains option is only allowed with -l."));
 	if (filter.points_at.nr)
-		die(_("--points-at option is only allowed with -l."));
+		die_(_("--points-at option is only allowed with -l."));
 	if (filter.merge_commit)
-		die(_("--merged and --no-merged option are only allowed with -l"));
+		die_(_("--merged and --no-merged option are only allowed with -l"));
 	if (cmdmode == 'd')
 		return for_each_tag_name(argv, delete_tag);
 	if (cmdmode == 'v')
@@ -434,7 +434,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 
 	if (msg.given || msgfile) {
 		if (msg.given && msgfile)
-			die(_("only one -F or -m option is allowed."));
+			die_(_("only one -F or -m option is allowed."));
 		if (msg.given)
 			strbuf_addbuf(&buf, &(msg.buf));
 		else {
@@ -453,7 +453,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 
 	object_ref = argc == 2 ? argv[1] : "HEAD";
 	if (argc > 2)
-		die(_("too many params"));
+		die_(_("too many params"));
 
 	if (get_sha1(object_ref, object))
 		die(_("Failed to resolve '%s' as a valid ref."), object_ref);

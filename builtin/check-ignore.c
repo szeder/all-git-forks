@@ -151,25 +151,25 @@ int cmd_check_ignore(int argc, const char **argv, const char *prefix)
 
 	if (stdin_paths) {
 		if (argc > 0)
-			die(_("cannot specify pathnames with --stdin"));
+			die_(_("cannot specify pathnames with --stdin"));
 	} else {
 		if (nul_term_line)
-			die(_("-z only makes sense with --stdin"));
+			die_(_("-z only makes sense with --stdin"));
 		if (argc == 0)
-			die(_("no path specified"));
+			die_(_("no path specified"));
 	}
 	if (quiet) {
 		if (argc > 1)
-			die(_("--quiet is only valid with a single pathname"));
+			die_(_("--quiet is only valid with a single pathname"));
 		if (verbose)
-			die(_("cannot have both --quiet and --verbose"));
+			die_(_("cannot have both --quiet and --verbose"));
 	}
 	if (show_non_matching && !verbose)
-		die(_("--non-matching is only valid with --verbose"));
+		die_(_("--non-matching is only valid with --verbose"));
 
 	/* read_cache() is only necessary so we can watch out for submodules. */
 	if (!no_index && read_cache() < 0)
-		die(_("index file corrupt"));
+		die_(_("index file corrupt"));
 
 	memset(&dir, 0, sizeof(dir));
 	setup_standard_excludes(&dir);

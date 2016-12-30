@@ -2651,7 +2651,7 @@ parse_done:
 
 	if (incremental || (output_option & OUTPUT_PORCELAIN)) {
 		if (show_progress > 0)
-			die(_("--progress can't be used with --incremental or porcelain formats"));
+			die_(_("--progress can't be used with --incremental or porcelain formats"));
 		show_progress = 0;
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
@@ -2777,7 +2777,7 @@ parse_done:
 		sb.commits.compare = compare_commits_by_commit_date;
 	}
 	else if (contents_from)
-		die(_("--contents and --reverse do not blend well."));
+		die_(_("--contents and --reverse do not blend well."));
 	else {
 		final_commit_name = prepare_initial(&sb);
 		sb.commits.compare = compare_commits_by_reverse_commit_date;
@@ -2797,12 +2797,12 @@ parse_done:
 		add_pending_object(&revs, &(sb.final->object), ":");
 	}
 	else if (contents_from)
-		die(_("cannot use --contents with final commit object name"));
+		die_(_("cannot use --contents with final commit object name"));
 
 	if (reverse && revs.first_parent_only) {
 		final_commit = find_single_final(sb.revs, NULL);
 		if (!final_commit)
-			die(_("--reverse and --first-parent together require specified latest commit"));
+			die_(_("--reverse and --first-parent together require specified latest commit"));
 	}
 
 	/*
@@ -2811,7 +2811,7 @@ parse_done:
 	 * uninteresting.
 	 */
 	if (prepare_revision_walk(&revs))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 
 	if (reverse && revs.first_parent_only) {
 		struct commit *c = final_commit;
@@ -2829,7 +2829,7 @@ parse_done:
 		}
 
 		if (oidcmp(&c->object.oid, &sb.final->object.oid))
-			die(_("--reverse --first-parent together require range along first-parent chain"));
+			die_(_("--reverse --first-parent together require range along first-parent chain"));
 	}
 
 	if (is_null_oid(&sb.final->object.oid)) {

@@ -399,7 +399,7 @@ static int create_graft(int argc, const char **argv, int force)
 
 	if (remove_signature(&buf)) {
 		warning(_("the original commit '%s' has a gpg signature."), old_ref);
-		warning(_("the signature will be removed in the replacement commit!"));
+		warning_(_("the signature will be removed in the replacement commit!"));
 	}
 
 	check_mergetags(commit, argc, argv);

@@ -69,7 +69,7 @@ static void prepare_move_submodule(const char *src, int first,
 	if (!S_ISGITLINK(active_cache[first]->ce_mode))
 		die(_("Directory %s is in index and no submodule?"), src);
 	if (!is_staging_gitmodules_ok())
-		die(_("Please stage your changes to .gitmodules or stash them to proceed"));
+		die_(_("Please stage your changes to .gitmodules or stash them to proceed"));
 	strbuf_addf(&submodule_dotgit, "%s/.git", src);
 	*submodule_gitfile = read_gitfile(submodule_dotgit.buf);
 	if (*submodule_gitfile)
@@ -128,7 +128,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 
 	hold_locked_index(&lock_file, LOCK_DIE_ON_ERROR);
 	if (read_cache() < 0)
-		die(_("index file corrupt"));
+		die_(_("index file corrupt"));
 
 	source = internal_copy_pathspec(prefix, argv, argc, 0);
 	modes = xcalloc(argc, sizeof(enum update_mode));
@@ -283,7 +283,7 @@ int cmd_mv(int argc, const char **argv, const char *prefix)
 
 	if (active_cache_changed &&
 	    write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
-		die(_("Unable to write new index file"));
+		die_(_("Unable to write new index file"));
 
 	return 0;
 }

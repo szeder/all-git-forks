@@ -2274,7 +2274,7 @@ int require_clean_work_tree(const char *action, const char *hint, int ignore_sub
 
 	if (has_uncommitted_changes(ignore_submodules)) {
 		if (err)
-			error(_("additionally, your index contains uncommitted changes."));
+			error_(_("additionally, your index contains uncommitted changes."));
 		else
 			error(_("cannot %s: Your index contains uncommitted changes."),
 			      _(action));

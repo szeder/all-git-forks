@@ -82,7 +82,7 @@ static void update_callback(struct diff_queue_struct *q,
 		case DIFF_STATUS_TYPE_CHANGED:
 			if (add_file_to_index(&the_index, path,	data->flags)) {
 				if (!(data->flags & ADD_CACHE_IGNORE_ERRORS))
-					die(_("updating files failed"));
+					die_(_("updating files failed"));
 				data->add_errors++;
 			}
 			break;
@@ -206,7 +206,7 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 	git_config(git_diff_basic_config, NULL); /* no "diff" UI options */
 
 	if (read_cache() < 0)
-		die(_("Could not read the index"));
+		die_(_("Could not read the index"));
 
 	init_revisions(&rev, prefix);
 	rev.diffopt.context = 7;
@@ -221,15 +221,15 @@ static int edit_patch(int argc, const char **argv, const char *prefix)
 	rev.diffopt.file = xfdopen(out, "w");
 	rev.diffopt.close_file = 1;
 	if (run_diff_files(&rev, 0))
-		die(_("Could not write patch"));
+		die_(_("Could not write patch"));
 
 	if (launch_editor(file, NULL, NULL))
-		die(_("editing patch failed"));
+		die_(_("editing patch failed"));
 
 	if (stat(file, &st))
 		die_errno(_("Could not stat '%s'"), file);
 	if (!st.st_size)
-		die(_("Empty patch. Aborted."));
+		die_(_("Empty patch. Aborted."));
 
 	child.git_cmd = 1;
 	child.argv = apply_argv;
@@ -309,7 +309,7 @@ static int add_files(struct dir_struct *dir, int flags)
 	for (i = 0; i < dir->nr; i++)
 		if (add_file_to_index(&the_index, dir->entries[i]->name, flags)) {
 			if (!ignore_add_errors)
-				die(_("adding files failed"));
+				die_(_("adding files failed"));
 			exit_status = 1;
 		}
 	return exit_status;
@@ -345,14 +345,14 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 		addremove = 0; /* "-u" was given but not "-A" */
 
 	if (addremove && take_worktree_changes)
-		die(_("-A and -u are mutually incompatible"));
+		die_(_("-A and -u are mutually incompatible"));
 
 	if (!take_worktree_changes && addremove_explicit < 0 && argc)
 		/* Turn "git add pathspec..." to "git add -A pathspec..." */
 		addremove = 1;
 
 	if (!show_only && ignore_missing)
-		die(_("Option --ignore-missing can only be used together with --dry-run"));
+		die_(_("Option --ignore-missing can only be used together with --dry-run"));
 
 	if (chmod_arg && ((chmod_arg[0] != '-' && chmod_arg[0] != '+') ||
 			  chmod_arg[1] != 'x' || chmod_arg[2]))
@@ -377,7 +377,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 	}
 
 	if (read_cache() < 0)
-		die(_("index file corrupt"));
+		die_(_("index file corrupt"));
 
 	/*
 	 * Check the "pathspec '%s' did not match any files" block
@@ -460,7 +460,7 @@ int cmd_add(int argc, const char **argv, const char *prefix)
 finish:
 	if (active_cache_changed) {
 		if (write_locked_index(&the_index, &lock_file, COMMIT_LOCK))
-			die(_("Unable to write new index file"));
+			die_(_("Unable to write new index file"));
 	}
 
 	return exit_status;

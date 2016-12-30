@@ -411,7 +411,7 @@ static void am_load(struct am_state *state)
 	state->last = strtol(sb.buf, NULL, 10);
 
 	if (read_author_script(state) < 0)
-		die(_("could not parse author script"));
+		die_(_("could not parse author script"));
 
 	read_commit_msg(state);
 
@@ -592,7 +592,7 @@ static int is_mail(FILE *fp)
 	int ret = 1;
 
 	if (fseek(fp, 0L, SEEK_SET))
-		die_errno(_("fseek failed"));
+		die_errno_(_("fseek failed"));
 
 	if (regcomp(&regex, header_regex, REG_NOSUB | REG_EXTENDED))
 		die("invalid pattern: %s", header_regex);
@@ -990,7 +990,7 @@ static void am_setup(struct am_state *state, enum patch_format patch_format,
 
 	if (split_mail(state, patch_format, paths, keep_cr) < 0) {
 		am_destroy(state);
-		die(_("Failed to split patches."));
+		die_(_("Failed to split patches."));
 	}
 
 	if (state->rebasing)
@@ -1122,7 +1122,7 @@ static void refresh_and_write_cache(void)
 	hold_locked_index(lock_file, LOCK_DIE_ON_ERROR);
 	refresh_cache(REFRESH_QUIET);
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write index file"));
+		die_(_("unable to write index file"));
 }
 
 /**
@@ -1683,7 +1683,7 @@ static void do_commit(const struct am_state *state)
 		exit(1);
 
 	if (write_cache_as_tree(tree.hash, 0, NULL))
-		die(_("git write-tree failed to write a tree"));
+		die_(_("git write-tree failed to write a tree"));
 
 	if (!get_sha1_commit("HEAD", parent.hash)) {
 		old_oid = &parent;
@@ -1703,7 +1703,7 @@ static void do_commit(const struct am_state *state)
 
 	if (commit_tree(state->msg, state->msg_len, tree.hash, parents, commit.hash,
 				author, state->sign_commit))
-		die(_("failed to write commit object"));
+		die_(_("failed to write commit object"));
 
 	reflog_msg = getenv("GIT_REFLOG_ACTION");
 	if (!reflog_msg)
@@ -1756,7 +1756,7 @@ static int do_interactive(struct am_state *state)
 	assert(state->msg);
 
 	if (!isatty(0))
-		die(_("cannot be interactive without stdin connected to a terminal."));
+		die_(_("cannot be interactive without stdin connected to a terminal."));
 
 	for (;;) {
 		const char *reply;
@@ -1997,7 +1997,7 @@ static int fast_forward_to(struct tree *head, struct tree *remote, int reset)
 	}
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write new index file"));
+		die_(_("unable to write new index file"));
 
 	return 0;
 }
@@ -2032,7 +2032,7 @@ static int merge_tree(struct tree *tree)
 	}
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write new index file"));
+		die_(_("unable to write new index file"));
 
 	return 0;
 }
@@ -2100,7 +2100,7 @@ static void am_skip(struct am_state *state)
 		hashcpy(head.hash, EMPTY_TREE_SHA1_BIN);
 
 	if (clean_index(&head, &head))
-		die(_("failed to clean index"));
+		die_(_("failed to clean index"));
 
 	am_next(state);
 	am_load(state);
@@ -2134,8 +2134,7 @@ static int safe_to_abort(const struct am_state *state)
 	if (!oidcmp(&head, &abort_safety))
 		return 1;
 
-	warning(_("You seem to have moved HEAD since the last 'am' failure.\n"
-		"Not rewinding to ORIG_HEAD"));
+	warning_(_("You seem to have moved HEAD since the last 'am' failure.\n" "Not rewinding to ORIG_HEAD"));
 
 	return 0;
 }
@@ -2338,7 +2337,7 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 	git_committer_info(IDENT_STRICT);
 
 	if (read_index_preload(&the_index, NULL) < 0)
-		die(_("failed to read the index"));
+		die_(_("failed to read the index"));
 
 	if (in_progress) {
 		/*
@@ -2383,7 +2382,7 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 		}
 
 		if (resume)
-			die(_("Resolve operation not in progress, we are not resuming."));
+			die_(_("Resolve operation not in progress, we are not resuming."));
 
 		for (i = 0; i < argc; i++) {
 			if (is_absolute_path(argv[i]) || !prefix)

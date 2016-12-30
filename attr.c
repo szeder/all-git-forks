@@ -260,8 +260,7 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 				      &res->u.pat.flags,
 				      &res->u.pat.nowildcardlen);
 		if (res->u.pat.flags & EXC_FLAG_NEGATIVE) {
-			warning(_("Negative patterns are ignored in git attributes\n"
-				  "Use '\\!' for literal leading exclamation."));
+			warning_(_("Negative patterns are ignored in git attributes\n" "Use '\\!' for literal leading exclamation."));
 			return NULL;
 		}
 	}

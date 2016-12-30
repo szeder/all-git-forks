@@ -1863,7 +1863,7 @@ static const char *get_ident_string(void)
 	if (sb.len)
 		return sb.buf;
 	if (uname(&uts) < 0)
-		die_errno(_("failed to get kernel name and information"));
+		die_errno_(_("failed to get kernel name and information"));
 	strbuf_addf(&sb, "Location %s, system %s", get_git_work_tree(),
 		    uts.sysname);
 	return sb.buf;
@@ -1982,7 +1982,7 @@ static struct untracked_cache_dir *validate_untracked_cache(struct dir_struct *d
 		return NULL;
 
 	if (!ident_in_untracked(dir->untracked)) {
-		warning(_("Untracked cache is disabled on this system or location."));
+		warning_(_("Untracked cache is disabled on this system or location."));
 		return NULL;
 	}
 

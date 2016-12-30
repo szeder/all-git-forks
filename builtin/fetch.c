@@ -392,7 +392,7 @@ static struct ref *get_ref_map(struct transport *transport,
 		} else {
 			ref_map = get_remote_ref(remote_refs, "HEAD");
 			if (!ref_map)
-				die(_("Couldn't find remote ref HEAD"));
+				die_(_("Couldn't find remote ref HEAD"));
 			ref_map->fetch_head_status = FETCH_HEAD_MERGE;
 			tail = &ref_map->next;
 		}
@@ -1251,8 +1251,7 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 	int exit_code;
 
 	if (!remote)
-		die(_("No remote repository specified.  Please, specify either a URL or a\n"
-		    "remote name from which new revisions should be fetched."));
+		die_(_("No remote repository specified.  Please, specify either a URL or a\n" "remote name from which new revisions should be fetched."));
 
 	gtransport = prepare_transport(remote, 1);
 
@@ -1274,7 +1273,7 @@ static int fetch_one(struct remote *remote, int argc, const char **argv)
 			if (!strcmp(argv[i], "tag")) {
 				i++;
 				if (i >= argc)
-					die(_("You need to specify a tag name."));
+					die_(_("You need to specify a tag name."));
 				refs[j++] = xstrfmt("refs/tags/%s:refs/tags/%s",
 						    argv[i], argv[i]);
 			} else
@@ -1316,16 +1315,16 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	if (deepen_relative) {
 		if (deepen_relative < 0)
-			die(_("Negative depth in --deepen is not supported"));
+			die_(_("Negative depth in --deepen is not supported"));
 		if (depth)
-			die(_("--deepen and --depth are mutually exclusive"));
+			die_(_("--deepen and --depth are mutually exclusive"));
 		depth = xstrfmt("%d", deepen_relative);
 	}
 	if (unshallow) {
 		if (depth)
-			die(_("--depth and --unshallow cannot be used together"));
+			die_(_("--depth and --unshallow cannot be used together"));
 		else if (!is_repository_shallow())
-			die(_("--unshallow on a complete repository does not make sense"));
+			die_(_("--unshallow on a complete repository does not make sense"));
 		else
 			depth = xstrfmt("%d", INFINITE_DEPTH);
 	}
@@ -1347,9 +1346,9 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 
 	if (all) {
 		if (argc == 1)
-			die(_("fetch --all does not take a repository argument"));
+			die_(_("fetch --all does not take a repository argument"));
 		else if (argc > 1)
-			die(_("fetch --all does not make sense with refspecs"));
+			die_(_("fetch --all does not make sense with refspecs"));
 		(void) for_each_remote(get_one_remote_for_fetch, &list);
 		result = fetch_multiple(&list);
 	} else if (argc == 0) {
@@ -1368,7 +1367,7 @@ int cmd_fetch(int argc, const char **argv, const char *prefix)
 		if (list.nr > 1) {
 			/* More than one remote */
 			if (argc > 1)
-				die(_("Fetching a group and specifying refspecs does not make sense"));
+				die_(_("Fetching a group and specifying refspecs does not make sense"));
 			result = fetch_multiple(&list);
 		} else {
 			/* Zero or one remotes */

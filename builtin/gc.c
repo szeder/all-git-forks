@@ -438,8 +438,7 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 		clean_pack_garbage();
 
 	if (auto_gc && too_many_loose_objects())
-		warning(_("There are too many unreachable loose objects; "
-			"run 'git prune' to remove them."));
+		warning_(_("There are too many unreachable loose objects; " "run 'git prune' to remove them."));
 
 	return 0;
 }

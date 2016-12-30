@@ -130,7 +130,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 		noglob_global = git_env_bool(GIT_NOGLOB_PATHSPECS_ENVIRONMENT, 0);
 
 	if (glob_global && noglob_global)
-		die(_("global 'glob' and 'noglob' pathspec settings are incompatible"));
+		die_(_("global 'glob' and 'noglob' pathspec settings are incompatible"));
 
 
 	if (icase_global < 0)
@@ -140,8 +140,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 
 	if ((global_magic & PATHSPEC_LITERAL) &&
 	    (global_magic & ~PATHSPEC_LITERAL))
-		die(_("global 'literal' pathspec setting is incompatible "
-		      "with all other global pathspec settings"));
+		die_(_("global 'literal' pathspec setting is incompatible " "with all other global pathspec settings"));
 
 	if (flags & PATHSPEC_LITERAL_PATH)
 		global_magic = 0;
@@ -174,7 +173,7 @@ static unsigned prefix_pathspec(struct pathspec_item *item,
 					pathspec_prefix = strtol(copyfrom + 7,
 								 &endptr, 10);
 					if (endptr - copyfrom != len)
-						die(_("invalid parameter for pathspec magic 'prefix'"));
+						die_(_("invalid parameter for pathspec magic 'prefix'"));
 					/* "i" would be wrong, but it does not matter */
 					break;
 				}
@@ -405,8 +404,7 @@ void parse_pathspec(struct pathspec *pathspec,
 	warn_empty_string = 1;
 	while (argv[n]) {
 		if (*argv[n] == '\0' && warn_empty_string) {
-			warning(_("empty strings as pathspecs will be made invalid in upcoming releases. "
-				  "please use . instead if you meant to match all paths"));
+			warning_(_("empty strings as pathspecs will be made invalid in upcoming releases. " "please use . instead if you meant to match all paths"));
 			warn_empty_string = 0;
 		}
 		n++;
@@ -446,8 +444,7 @@ void parse_pathspec(struct pathspec *pathspec,
 	}
 
 	if (nr_exclude == n)
-		die(_("There is nothing to exclude from by :(exclude) patterns.\n"
-		      "Perhaps you forgot to add either ':/' or '.' ?"));
+		die_(_("There is nothing to exclude from by :(exclude) patterns.\n" "Perhaps you forgot to add either ':/' or '.' ?"));
 
 
 	if (pathspec->magic & PATHSPEC_MAXDEPTH) {

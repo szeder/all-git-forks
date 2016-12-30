@@ -62,7 +62,7 @@ int update_path_in_gitmodules(const char *oldpath, const char *newpath)
 		return -1;
 
 	if (gitmodules_is_unmerged)
-		die(_("Cannot change unmerged .gitmodules, resolve merge conflicts first"));
+		die_(_("Cannot change unmerged .gitmodules, resolve merge conflicts first"));
 
 	submodule = submodule_from_path(null_sha1, oldpath);
 	if (!submodule || !submodule->name) {
@@ -96,7 +96,7 @@ int remove_path_from_gitmodules(const char *path)
 		return -1;
 
 	if (gitmodules_is_unmerged)
-		die(_("Cannot change unmerged .gitmodules, resolve merge conflicts first"));
+		die_(_("Cannot change unmerged .gitmodules, resolve merge conflicts first"));
 
 	submodule = submodule_from_path(null_sha1, path);
 	if (!submodule || !submodule->name) {
@@ -118,7 +118,7 @@ int remove_path_from_gitmodules(const char *path)
 void stage_updated_gitmodules(void)
 {
 	if (add_file_to_cache(".gitmodules", 0))
-		die(_("staging updated .gitmodules failed"));
+		die_(_("staging updated .gitmodules failed"));
 }
 
 static int add_submodule_odb(const char *path)
@@ -156,7 +156,7 @@ int submodule_config(const char *var, const char *value, void *cb)
 	if (!strcmp(var, "submodule.fetchjobs")) {
 		parallel_jobs = git_config_int(var, value);
 		if (parallel_jobs < 0)
-			die(_("negative values not allowed for submodule.fetchJobs"));
+			die_(_("negative values not allowed for submodule.fetchJobs"));
 		return 0;
 	} else if (starts_with(var, "submodule."))
 		return parse_submodule_config_option(var, value);

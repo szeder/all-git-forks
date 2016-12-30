@@ -763,7 +763,7 @@ static const char *setup_nongit(const char *cwd, int *nongit_ok)
 	if (!nongit_ok)
 		die(_("Not a git repository (or any of the parent directories): %s"), DEFAULT_GIT_DIR_ENVIRONMENT);
 	if (chdir(cwd))
-		die_errno(_("Cannot come back to cwd"));
+		die_errno_(_("Cannot come back to cwd"));
 	*nongit_ok = 1;
 	return NULL;
 }
@@ -845,7 +845,7 @@ static const char *setup_git_directory_gently_1(int *nongit_ok)
 		*nongit_ok = 0;
 
 	if (strbuf_getcwd(&cwd))
-		die_errno(_("Unable to read current working directory"));
+		die_errno_(_("Unable to read current working directory"));
 	offset = cwd.len;
 
 	/*
@@ -915,7 +915,7 @@ static const char *setup_git_directory_gently_1(int *nongit_ok)
 			if (parent_device != current_device) {
 				if (nongit_ok) {
 					if (chdir(cwd.buf))
-						die_errno(_("Cannot come back to cwd"));
+						die_errno_(_("Cannot come back to cwd"));
 					*nongit_ok = 1;
 					return NULL;
 				}

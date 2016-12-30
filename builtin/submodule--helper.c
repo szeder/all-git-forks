@@ -241,7 +241,7 @@ static int module_list_compute(int argc, const char **argv,
 		ps_matched = xcalloc(pathspec->nr, 1);
 
 	if (read_cache() < 0)
-		die(_("index file corrupt"));
+		die_(_("index file corrupt"));
 
 	for (i = 0; i < active_nr; i++) {
 		const struct cache_entry *ce = active_cache[i];
@@ -432,7 +432,7 @@ static int module_name(int argc, const char **argv, const char *prefix)
 	const struct submodule *sub;
 
 	if (argc != 2)
-		usage(_("git submodule--helper name <path>"));
+		usage_(_("git submodule--helper name <path>"));
 
 	gitmodules_config();
 	sub = submodule_from_path(null_sha1, argv[1]);
@@ -991,7 +991,7 @@ static int update_clone(int argc, const char **argv, const char *prefix)
 
 	if (update)
 		if (parse_submodule_update_strategy(update, &suc.update) < 0)
-			die(_("bad value for update parameter"));
+			die_(_("bad value for update parameter"));
 
 	if (module_list_compute(argc, argv, prefix, &pathspec, &suc.list) < 0)
 		return 1;
@@ -1153,8 +1153,7 @@ int cmd_submodule__helper(int argc, const char **argv, const char *prefix)
 {
 	int i;
 	if (argc < 2)
-		die(_("submodule--helper subcommand must be "
-		      "called with a subcommand"));
+		die_(_("submodule--helper subcommand must be " "called with a subcommand"));
 
 	for (i = 0; i < ARRAY_SIZE(commands); i++) {
 		if (!strcmp(argv[1], commands[i].cmd)) {

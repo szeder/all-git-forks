@@ -210,7 +210,7 @@ static void consume_shallow_list(struct fetch_pack_args *args, int fd)
 				continue;
 			if (starts_with(line, "unshallow "))
 				continue;
-			die(_("git fetch-pack: expected shallow list"));
+			die_(_("git fetch-pack: expected shallow list"));
 		}
 	}
 }
@@ -222,7 +222,7 @@ static enum ack_type get_ack(int fd, unsigned char *result_sha1)
 	const char *arg;
 
 	if (!len)
-		die(_("git fetch-pack: expected ACK/NAK, got EOF"));
+		die_(_("git fetch-pack: expected ACK/NAK, got EOF"));
 	if (!strcmp(line, "NAK"))
 		return NAK;
 	if (skip_prefix(line, "ACK ", &arg)) {
@@ -292,7 +292,7 @@ static int find_common(struct fetch_pack_args *args,
 	size_t state_len = 0;
 
 	if (args->stateless_rpc && multi_ack == 1)
-		die(_("--stateless-rpc requires multi_ack_detailed"));
+		die_(_("--stateless-rpc requires multi_ack_detailed"));
 	if (marked)
 		for_each_ref(clear_marks, NULL);
 	marked = 1;
@@ -732,7 +732,7 @@ static int get_pack(struct fetch_pack_args *args,
 		demux.out = -1;
 		demux.isolate_sigpipe = 1;
 		if (start_async(&demux))
-			die(_("fetch-pack: unable to fork off sideband demultiplexer"));
+			die_(_("fetch-pack: unable to fork off sideband demultiplexer"));
 	}
 	else
 		demux.out = xd[0];
@@ -740,7 +740,7 @@ static int get_pack(struct fetch_pack_args *args,
 	if (!args->keep_pack && unpack_limit) {
 
 		if (read_pack_header(demux.out, &header))
-			die(_("protocol error: bad pack header"));
+			die_(_("protocol error: bad pack header"));
 		pass_header = 1;
 		if (ntohl(header.hdr_entries) < unpack_limit)
 			do_keep = 0;
@@ -814,7 +814,7 @@ static int get_pack(struct fetch_pack_args *args,
 	else
 		die(_("%s failed"), cmd_name);
 	if (use_sideband && finish_async(&demux))
-		die(_("error in sideband demultiplexer"));
+		die_(_("error in sideband demultiplexer"));
 	return 0;
 }
 
@@ -841,7 +841,7 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	QSORT(sought, nr_sought, cmp_ref_by_name);
 
 	if ((args->depth > 0 || is_repository_shallow()) && !server_supports("shallow"))
-		die(_("Server does not support shallow clients"));
+		die_(_("Server does not support shallow clients"));
 	if (args->depth > 0 || args->deepen_since || args->deepen_not)
 		args->deepen = 1;
 	if (server_supports("multi_ack_detailed")) {
@@ -893,13 +893,13 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	if (server_supports("deepen-since"))
 		deepen_since_ok = 1;
 	else if (args->deepen_since)
-		die(_("Server does not support --shallow-since"));
+		die_(_("Server does not support --shallow-since"));
 	if (server_supports("deepen-not"))
 		deepen_not_ok = 1;
 	else if (args->deepen_not)
-		die(_("Server does not support --shallow-exclude"));
+		die_(_("Server does not support --shallow-exclude"));
 	if (!server_supports("deepen-relative") && args->deepen_relative)
-		die(_("Server does not support --deepen"));
+		die_(_("Server does not support --deepen"));
 
 	if (everything_local(args, &ref, sought, nr_sought)) {
 		packet_flush(fd[1]);
@@ -910,7 +910,7 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 			/* When cloning, it is not unusual to have
 			 * no common commit.
 			 */
-			warning(_("no common commits"));
+			warning_(_("no common commits"));
 
 	if (args->stateless_rpc)
 		packet_flush(fd[1]);
@@ -922,7 +922,7 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	else
 		alternate_shallow_file = NULL;
 	if (get_pack(args, fd, pack_lockfile))
-		die(_("git fetch-pack: fetch failed."));
+		die_(_("git fetch-pack: fetch failed."));
 
  all_done:
 	return ref;
@@ -1084,7 +1084,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 
 	if (!ref) {
 		packet_flush(fd[1]);
-		die(_("no matching remote head"));
+		die_(_("no matching remote head"));
 	}
 	prepare_shallow_info(&si, shallow);
 	ref_cpy = do_fetch_pack(args, fd, ref, sought, nr_sought,

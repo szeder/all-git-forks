@@ -427,7 +427,7 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 	save_commit_buffer = 0;
 
 	if (longformat && abbrev == 0)
-		die(_("--long is incompatible with --abbrev=0"));
+		die_(_("--long is incompatible with --abbrev=0"));
 
 	if (contains) {
 		struct argv_array args;
@@ -453,7 +453,7 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 	hashmap_init(&names, (hashmap_cmp_fn) commit_name_cmp, 0);
 	for_each_rawref(get_name, NULL);
 	if (!names.size && !always)
-		die(_("No names found, cannot describe anything."));
+		die_(_("No names found, cannot describe anything."));
 
 	if (argc == 0) {
 		if (dirty) {
@@ -473,7 +473,7 @@ int cmd_describe(int argc, const char **argv, const char *prefix)
 		}
 		describe("HEAD", 1);
 	} else if (dirty) {
-		die(_("--dirty is incompatible with commit-ishes"));
+		die_(_("--dirty is incompatible with commit-ishes"));
 	} else {
 		while (argc-- > 0)
 			describe(*argv++, argc == 0);

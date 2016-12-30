@@ -38,7 +38,7 @@ void commit_notes(struct notes_tree *t, const char *msg)
 	if (!t)
 		t = &default_notes_tree;
 	if (!t->initialized || !t->update_ref || !*t->update_ref)
-		die(_("Cannot commit uninitialized/unreferenced notes tree"));
+		die_(_("Cannot commit uninitialized/unreferenced notes tree"));
 	if (!t->dirty)
 		return; /* don't have to commit an unchanged tree */
 

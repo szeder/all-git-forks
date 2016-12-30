@@ -751,7 +751,7 @@ static int run_rebase(const unsigned char *curr_head,
 		argv_array_push(&args, "--autostash");
 	if (opt_verify_signatures &&
 	    !strcmp(opt_verify_signatures, "--verify-signatures"))
-		warning(_("ignoring --verify-signatures for rebase"));
+		warning_(_("ignoring --verify-signatures for rebase"));
 
 	argv_array_push(&args, "--onto");
 	argv_array_push(&args, sha1_to_hex(merge_head));
@@ -798,7 +798,7 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 		hashclr(orig_head);
 
 	if (!opt_rebase && opt_autostash != -1)
-		die(_("--[no-]autostash option is only valid with --rebase."));
+		die_(_("--[no-]autostash option is only valid with --rebase."));
 
 	if (opt_rebase) {
 		int autostash = config_autostash;
@@ -806,7 +806,7 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 			autostash = opt_autostash;
 
 		if (is_null_sha1(orig_head) && !is_cache_unborn())
-			die(_("Updating an unborn branch with changes added to the index."));
+			die_(_("Updating an unborn branch with changes added to the index."));
 
 		if (!autostash)
 			require_clean_work_tree(N_("pull with rebase"),
@@ -855,11 +855,11 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 
 	if (is_null_sha1(orig_head)) {
 		if (merge_heads.nr > 1)
-			die(_("Cannot merge multiple branches into empty head."));
+			die_(_("Cannot merge multiple branches into empty head."));
 		return pull_into_void(*merge_heads.sha1, curr_head);
 	}
 	if (opt_rebase && merge_heads.nr > 1)
-		die(_("Cannot rebase onto multiple branches."));
+		die_(_("Cannot rebase onto multiple branches."));
 
 	if (opt_rebase) {
 		struct commit_list *list = NULL;

@@ -700,8 +700,7 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			 *
 			 * Also --all and --remotes do not make sense either.
 			 */
-			die(_("--reflog is incompatible with --all, --remotes, "
-			      "--independent or --merge-base"));
+			die_(_("--reflog is incompatible with --all, --remotes, " "--independent or --merge-base"));
 	}
 
 	/* If nothing is specified, show all branches by default */
@@ -724,10 +723,10 @@ int cmd_show_branch(int ac, const char **av, const char *prefix)
 			av = fake_av;
 			ac = 1;
 			if (!*av)
-				die(_("no branches given, and HEAD is not valid"));
+				die_(_("no branches given, and HEAD is not valid"));
 		}
 		if (ac != 1)
-			die(_("--reflog option needs one branch name"));
+			die_(_("--reflog option needs one branch name"));
 
 		if (MAX_REVS < reflog)
 			die(Q_("only %d entry can be shown at one time.",

@@ -189,7 +189,7 @@ int cmd_revert(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 	res = run_sequencer(argc, argv, &opts);
 	if (res < 0)
-		die(_("revert failed"));
+		die_(_("revert failed"));
 	return res;
 }
 
@@ -202,6 +202,6 @@ int cmd_cherry_pick(int argc, const char **argv, const char *prefix)
 	git_config(git_default_config, NULL);
 	res = run_sequencer(argc, argv, &opts);
 	if (res < 0)
-		die(_("cherry-pick failed"));
+		die_(_("cherry-pick failed"));
 	return res;
 }

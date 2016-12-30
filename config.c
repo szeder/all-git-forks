@@ -1325,7 +1325,7 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 
 	current_parsing_scope = CONFIG_SCOPE_CMDLINE;
 	if (git_config_from_parameters(fn, data) < 0)
-		die(_("unable to parse command-line config"));
+		die_(_("unable to parse command-line config"));
 
 	current_parsing_scope = CONFIG_SCOPE_UNKNOWN;
 	free(xdg_config);
@@ -1375,7 +1375,7 @@ static void git_config_raw(config_fn_t fn, void *data)
 		 * something went really wrong and we should stop
 		 * immediately.
 		 */
-		die(_("unknown error occurred while reading the configuration files"));
+		die_(_("unknown error occurred while reading the configuration files"));
 }
 
 static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)

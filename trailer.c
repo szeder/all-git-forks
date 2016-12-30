@@ -722,7 +722,7 @@ static void read_input_file(struct strbuf *sb, const char *file)
 			die_errno(_("could not read input file '%s'"), file);
 	} else {
 		if (strbuf_read(sb, fileno(stdin), 0) < 0)
-			die_errno(_("could not read from stdin"));
+			die_errno_(_("could not read from stdin"));
 	}
 }
 
@@ -962,7 +962,7 @@ static FILE *create_in_place_tempfile(const char *file)
 	strbuf_release(&template);
 	outfile = fdopen_tempfile(&trailers_tempfile, "w");
 	if (!outfile)
-		die_errno(_("could not open temporary file"));
+		die_errno_(_("could not open temporary file"));
 
 	return outfile;
 }

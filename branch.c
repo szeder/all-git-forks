@@ -116,7 +116,7 @@ int install_branch_config(int flag, const char *local, const char *origin, const
 
 out_err:
 	strbuf_release(&key);
-	error(_("Unable to write upstream branch configuration"));
+	error_(_("Unable to write upstream branch configuration"));
 
 	advise(_(tracking_advice),
 	       origin ? origin : "",
@@ -195,7 +195,7 @@ int validate_new_branchname(const char *name, struct strbuf *ref,
 
 		head = resolve_ref_unsafe("HEAD", 0, sha1, NULL);
 		if (!is_bare_repository() && head && !strcmp(head, ref->buf))
-			die(_("Cannot force update the current branch."));
+			die_(_("Cannot force update the current branch."));
 	}
 	return 1;
 }

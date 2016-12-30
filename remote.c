@@ -759,7 +759,7 @@ static void handle_duplicate(struct ref *ref1, struct ref *ref2)
 			 * FETCH_HEAD_IGNORE entries always appear at
 			 * the end of the list.
 			 */
-			die(_("Internal error"));
+			die_(_("Internal error"));
 		}
 	}
 	free(ref2->peer_ref);

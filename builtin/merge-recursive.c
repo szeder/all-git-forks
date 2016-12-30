@@ -60,7 +60,7 @@ int cmd_merge_recursive(int argc, const char **argv, const char *prefix)
 				(int)ARRAY_SIZE(bases)-1, argv[i]);
 	}
 	if (argc - i != 3) /* "--" "<head>" "<remote>" */
-		die(_("not handling anything other than two heads merge."));
+		die_(_("not handling anything other than two heads merge."));
 
 	o.branch1 = argv[++i];
 	o.branch2 = argv[++i];

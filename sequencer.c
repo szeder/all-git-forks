@@ -1068,7 +1068,7 @@ static int walk_revs_populate_todo(struct todo_list *todo_list,
 static int create_seq_dir(void)
 {
 	if (file_exists(git_path_seq_dir())) {
-		error(_("a cherry-pick or revert is already in progress"));
+		error_(_("a cherry-pick or revert is already in progress"));
 		advise(_("try \"git cherry-pick (--continue | --quit | --abort)\""));
 		return -1;
 	}
@@ -1181,14 +1181,13 @@ int sequencer_rollback(struct replay_opts *opts)
 		goto fail;
 	}
 	if (is_null_sha1(sha1)) {
-		error(_("cannot abort from a branch yet to be born"));
+		error_(_("cannot abort from a branch yet to be born"));
 		goto fail;
 	}
 
 	if (!rollback_is_safe()) {
 		/* Do not error, just do not rollback */
-		warning(_("You seem to have moved HEAD. "
-			  "Not rewinding, check your HEAD!"));
+		warning_(_("You seem to have moved HEAD. " "Not rewinding, check your HEAD!"));
 	} else
 	if (reset_for_rollback(sha1))
 		goto fail;

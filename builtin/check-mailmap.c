@@ -44,7 +44,7 @@ int cmd_check_mailmap(int argc, const char **argv, const char *prefix)
 	argc = parse_options(argc, argv, prefix, check_mailmap_options,
 			     check_mailmap_usage, 0);
 	if (argc == 0 && !use_stdin)
-		die(_("no contacts specified"));
+		die_(_("no contacts specified"));
 
 	read_mailmap(&mailmap, NULL);
 

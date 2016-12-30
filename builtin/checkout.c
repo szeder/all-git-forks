@@ -371,7 +371,7 @@ static int checkout_paths(const struct checkout_opts *opts,
 	}
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write new index file"));
+		die_(_("unable to write new index file"));
 
 	read_ref_full("HEAD", 0, rev.hash, NULL);
 	head = lookup_commit_reference_gently(rev.hash, 1);
@@ -491,7 +491,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 		refresh_cache(REFRESH_QUIET);
 
 		if (unmerged_cache()) {
-			error(_("you need to resolve your current index first"));
+			error_(_("you need to resolve your current index first"));
 			return 1;
 		}
 
@@ -585,7 +585,7 @@ static int merge_working_tree(const struct checkout_opts *opts,
 		cache_tree_update(&the_index, WRITE_TREE_SILENT | WRITE_TREE_REPAIR);
 
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
-		die(_("unable to write new index file"));
+		die_(_("unable to write new index file"));
 
 	if (!opts->force && !opts->quiet)
 		show_local_changes(&new->commit->object, &opts->diff_options);
@@ -664,7 +664,7 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 		}
 	} else if (new->path) {	/* Switch branches. */
 		if (create_symref("HEAD", new->path, msg.buf) < 0)
-			die(_("unable to update HEAD"));
+			die_(_("unable to update HEAD"));
 		if (!opts->quiet) {
 			if (old->path && !strcmp(new->path, old->path)) {
 				if (opts->new_branch_force)
@@ -791,7 +791,7 @@ static void orphaned_commit_warning(struct commit *old, struct commit *new)
 	revs.leak_pending = 1;
 
 	if (prepare_revision_walk(&revs))
-		die(_("internal error in revision walk"));
+		die_(_("internal error in revision walk"));
 	if (!(old->object.flags & UNINTERESTING))
 		suggest_reattach(old, &revs);
 	else
@@ -822,7 +822,7 @@ static int switch_branches(const struct checkout_opts *opts,
 		new->name = "HEAD";
 		new->commit = old.commit;
 		if (!new->commit)
-			die(_("You are on a branch yet to be born"));
+			die_(_("You are on a branch yet to be born"));
 		parse_commit_or_die(new->commit);
 	}
 
@@ -1061,7 +1061,7 @@ static int switch_unborn_to_new_branch(const struct checkout_opts *opts)
 	struct strbuf branch_ref = STRBUF_INIT;
 
 	if (!opts->new_branch)
-		die(_("You are on a branch yet to be born"));
+		die_(_("You are on a branch yet to be born"));
 	strbuf_addf(&branch_ref, "refs/heads/%s", opts->new_branch);
 	status = create_symref("HEAD", branch_ref.buf, "checkout -b");
 	strbuf_release(&branch_ref);
@@ -1075,7 +1075,7 @@ static int checkout_branch(struct checkout_opts *opts,
 			   struct branch_info *new)
 {
 	if (opts->pathspec.nr)
-		die(_("paths cannot be used with switching branches"));
+		die_(_("paths cannot be used with switching branches"));
 
 	if (opts->patch_mode)
 		die(_("'%s' cannot be used with switching branches"),
@@ -1191,7 +1191,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	}
 
 	if ((!!opts.new_branch + !!opts.new_branch_force + !!opts.new_orphan_branch) > 1)
-		die(_("-b, -B and --orphan are mutually exclusive"));
+		die_(_("-b, -B and --orphan are mutually exclusive"));
 
 	/*
 	 * From here on, new_branch will contain the branch to be checked out,
@@ -1208,12 +1208,12 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 	if (opts.track != BRANCH_TRACK_UNSPECIFIED && !opts.new_branch) {
 		const char *argv0 = argv[0];
 		if (!argc || !strcmp(argv0, "--"))
-			die (_("--track needs a branch name"));
+			die_(_("--track needs a branch name"));
 		skip_prefix(argv0, "refs/", &argv0);
 		skip_prefix(argv0, "remotes/", &argv0);
 		argv0 = strchr(argv0, '/');
 		if (!argv0 || !argv0[1])
-			die (_("Missing branch name; try -b"));
+			die_(_("Missing branch name; try -b"));
 		opts.new_branch = argv0 + 1;
 	}
 
@@ -1249,7 +1249,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 			       prefix, argv);
 
 		if (!opts.pathspec.nr)
-			die(_("invalid path specification"));
+			die_(_("invalid path specification"));
 
 		/*
 		 * Try to give more helpful suggestion.
@@ -1265,8 +1265,7 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 			    argv[0]);
 
 		if (1 < !!opts.writeout_stage + !!opts.force + !!opts.merge)
-			die(_("git checkout: --ours/--theirs, --force and --merge are incompatible when\n"
-			      "checking out of the index."));
+			die_(_("git checkout: --ours/--theirs, --force and --merge are incompatible when\n" "checking out of the index."));
 	}
 
 	if (opts.new_branch) {

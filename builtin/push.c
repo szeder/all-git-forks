@@ -97,7 +97,7 @@ static void set_refspecs(const char **refs, int nr, const char *repo)
 		if (!strcmp("tag", ref)) {
 			struct strbuf tagref = STRBUF_INIT;
 			if (nr <= ++i)
-				die(_("tag shorthand without <tag>"));
+				die_(_("tag shorthand without <tag>"));
 			ref = refs[i];
 			if (deleterefs)
 				strbuf_addf(&tagref, ":refs/tags/%s", ref);
@@ -107,7 +107,7 @@ static void set_refspecs(const char **refs, int nr, const char *repo)
 		} else if (deleterefs) {
 			struct strbuf delref = STRBUF_INIT;
 			if (strchr(ref, ':'))
-				die(_("--delete only accepts plain target ref names"));
+				die_(_("--delete only accepts plain target ref names"));
 			strbuf_addf(&delref, ":%s", ref);
 			ref = strbuf_detach(&delref, NULL);
 		} else if (!strchr(ref, ':')) {
@@ -253,8 +253,7 @@ static void setup_default_push_refspecs(struct remote *remote)
 		break;
 
 	case PUSH_DEFAULT_NOTHING:
-		die(_("You didn't specify any refspecs to push, and "
-		    "push.default is \"nothing\"."));
+		die_(_("You didn't specify any refspecs to push, and " "push.default is \"nothing\"."));
 		break;
 	}
 }
@@ -378,14 +377,7 @@ static int do_push(const char *repo, int flags,
 	if (!remote) {
 		if (repo)
 			die(_("bad repository '%s'"), repo);
-		die(_("No configured push destination.\n"
-		    "Either specify the URL from the command-line or configure a remote repository using\n"
-		    "\n"
-		    "    git remote add <name> <url>\n"
-		    "\n"
-		    "and then push using the remote name\n"
-		    "\n"
-		    "    git push <name>\n"));
+		die_(_("No configured push destination.\n" "Either specify the URL from the command-line or configure a remote repository using\n" "\n" "    git remote add <name> <url>\n" "\n" "and then push using the remote name\n" "\n" "    git push <name>\n"));
 	}
 
 	if (remote->mirror)
@@ -574,9 +566,9 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 	set_push_cert_flags(&flags, push_cert);
 
 	if (deleterefs && (tags || (flags & (TRANSPORT_PUSH_ALL | TRANSPORT_PUSH_MIRROR))))
-		die(_("--delete is incompatible with --all, --mirror and --tags"));
+		die_(_("--delete is incompatible with --all, --mirror and --tags"));
 	if (deleterefs && argc < 2)
-		die(_("--delete doesn't make sense without any refs"));
+		die_(_("--delete doesn't make sense without any refs"));
 
 	if (recurse_submodules == RECURSE_SUBMODULES_CHECK)
 		flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
@@ -593,7 +585,7 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 
 	for_each_string_list_item(item, &push_options)
 		if (strchr(item->string, '\n'))
-			die(_("push options must not have new line characters"));
+			die_(_("push options must not have new line characters"));
 
 	rc = do_push(repo, flags, &push_options);
 	if (rc == -1)

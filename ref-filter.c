@@ -53,7 +53,7 @@ static int need_color_reset_at_eol;
 static void color_atom_parser(struct used_atom *atom, const char *color_value)
 {
 	if (!color_value)
-		die(_("expected format: %%(color:<color>)"));
+		die_(_("expected format: %%(color:<color>)"));
 	if (color_parse(color_value, atom->u.color) < 0)
 		die(_("unrecognized color: %%(color:%s)"), color_value);
 }
@@ -75,21 +75,21 @@ static void remote_ref_atom_parser(struct used_atom *atom, const char *arg)
 static void body_atom_parser(struct used_atom *atom, const char *arg)
 {
 	if (arg)
-		die(_("%%(body) does not take arguments"));
+		die_(_("%%(body) does not take arguments"));
 	atom->u.contents.option = C_BODY_DEP;
 }
 
 static void subject_atom_parser(struct used_atom *atom, const char *arg)
 {
 	if (arg)
-		die(_("%%(subject) does not take arguments"));
+		die_(_("%%(subject) does not take arguments"));
 	atom->u.contents.option = C_SUB;
 }
 
 static void trailers_atom_parser(struct used_atom *atom, const char *arg)
 {
 	if (arg)
-		die(_("%%(trailers) does not take arguments"));
+		die_(_("%%(trailers) does not take arguments"));
 	atom->u.contents.option = C_TRAILERS;
 }
 
@@ -142,7 +142,7 @@ static void align_atom_parser(struct used_atom *atom, const char *arg)
 	unsigned int width = ~0U;
 
 	if (!arg)
-		die(_("expected format: %%(align:<width>,<position>)"));
+		die_(_("expected format: %%(align:<width>,<position>)"));
 
 	align->position = ALIGN_LEFT;
 
@@ -168,7 +168,7 @@ static void align_atom_parser(struct used_atom *atom, const char *arg)
 	}
 
 	if (width == ~0U)
-		die(_("positive width expected with the %%(align) atom"));
+		die_(_("positive width expected with the %%(align) atom"));
 	align->width = width;
 	string_list_clear(&params, 0);
 }
@@ -380,7 +380,7 @@ static void end_atom_handler(struct atom_value *atomv, struct ref_formatting_sta
 	struct strbuf s = STRBUF_INIT;
 
 	if (!current->at_end)
-		die(_("format: %%(end) atom used without corresponding atom"));
+		die_(_("format: %%(end) atom used without corresponding atom"));
 	current->at_end(current);
 
 	/*
@@ -895,7 +895,7 @@ static const char *strip_ref_components(const char *refname, const char *nr_arg)
 	const char *start = refname;
 
 	if (nr < 1 || *end != '\0')
-		die(_(":strip= requires a positive integer argument"));
+		die_(_(":strip= requires a positive integer argument"));
 
 	while (remaining) {
 		switch (*start++) {
@@ -1491,7 +1491,7 @@ static void do_merge_filter(struct ref_filter_cbdata *ref_cbdata)
 
 	revs.limited = 1;
 	if (prepare_revision_walk(&revs))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 
 	old_nr = array->nr;
 	array->nr = 0;
@@ -1664,7 +1664,7 @@ void show_ref_array_item(struct ref_array_item *info, const char *format, int qu
 		append_atom(&resetv, &state);
 	}
 	if (state.stack->prev)
-		die(_("format: %%(end) atom missing"));
+		die_(_("format: %%(end) atom missing"));
 	final_buf = &state.stack->output;
 	fwrite(final_buf->buf, 1, final_buf->len, stdout);
 	pop_stack_element(&state.stack);

@@ -232,7 +232,7 @@ static void parse_args(struct pathspec *pathspec,
 	*rev_ret = rev;
 
 	if (read_cache() < 0)
-		die(_("index file corrupt"));
+		die_(_("index file corrupt"));
 
 	parse_pathspec(pathspec, 0,
 		       PATHSPEC_PREFER_FULL |
@@ -319,7 +319,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 
 	if (patch_mode) {
 		if (reset_type != NONE)
-			die(_("--patch is incompatible with --{hard,mixed,soft}"));
+			die_(_("--patch is incompatible with --{hard,mixed,soft}"));
 		return run_add_interactive(rev, "--patch=reset", &pathspec);
 	}
 
@@ -328,7 +328,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 	 * affecting the working tree nor HEAD. */
 	if (pathspec.nr) {
 		if (reset_type == MIXED)
-			warning(_("--mixed with paths is deprecated; use 'git reset -- <paths>' instead."));
+			warning_(_("--mixed with paths is deprecated; use 'git reset -- <paths>' instead."));
 		else if (reset_type != NONE)
 			die(_("Cannot do %s reset with paths."),
 					_(reset_type_names[reset_type]));
@@ -344,7 +344,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 		    _(reset_type_names[reset_type]));
 
 	if (intent_to_add && reset_type != MIXED)
-		die(_("-N can only be used with --mixed"));
+		die_(_("-N can only be used with --mixed"));
 
 	/* Soft reset does not touch the index file nor the working tree
 	 * at all, but requires them in a good order.  Other resets reset
@@ -371,7 +371,7 @@ int cmd_reset(int argc, const char **argv, const char *prefix)
 		}
 
 		if (write_locked_index(&the_index, lock, COMMIT_LOCK))
-			die(_("Could not write new index file."));
+			die_(_("Could not write new index file."));
 	}
 
 	if (!pathspec.nr && !unborn) {

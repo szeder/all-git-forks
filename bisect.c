@@ -944,7 +944,7 @@ int bisect_next_all(const char *prefix, int no_checkout)
 
 	read_bisect_terms(&term_bad, &term_good);
 	if (read_bisect_refs())
-		die(_("reading bisect refs failed"));
+		die_(_("reading bisect refs failed"));
 
 	check_good_are_ancestors_of_bad(prefix, no_checkout);
 

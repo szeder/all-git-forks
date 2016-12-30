@@ -255,12 +255,12 @@ static int save_state(unsigned char *stash)
 	cp.git_cmd = 1;
 
 	if (start_command(&cp))
-		die(_("could not run stash."));
+		die_(_("could not run stash."));
 	len = strbuf_read(&buffer, cp.out, 1024);
 	close(cp.out);
 
 	if (finish_command(&cp) || len < 0)
-		die(_("stash failed"));
+		die_(_("stash failed"));
 	else if (!len)		/* no changes */
 		return -1;
 	strbuf_setlen(&buffer, buffer.len-1);
@@ -284,7 +284,7 @@ static void read_empty(unsigned const char *sha1, int verbose)
 	args[i] = NULL;
 
 	if (run_command_v_opt(args, RUN_GIT_CMD))
-		die(_("read-tree failed"));
+		die_(_("read-tree failed"));
 }
 
 static void reset_hard(unsigned const char *sha1, int verbose)
@@ -301,7 +301,7 @@ static void reset_hard(unsigned const char *sha1, int verbose)
 	args[i] = NULL;
 
 	if (run_command_v_opt(args, RUN_GIT_CMD))
-		die(_("read-tree failed"));
+		die_(_("read-tree failed"));
 }
 
 static void restore_state(const unsigned char *head,
@@ -356,7 +356,7 @@ static void squash_message(struct commit *commit, struct commit_list *remotehead
 
 	setup_revisions(0, NULL, &rev, NULL);
 	if (prepare_revision_walk(&rev))
-		die(_("revision walk setup failed"));
+		die_(_("revision walk setup failed"));
 
 	ctx.abbrev = rev.abbrev;
 	ctx.date_mode = rev.date_mode;
@@ -628,7 +628,7 @@ static int read_tree_trivial(unsigned char *common, unsigned char *head,
 static void write_tree_trivial(unsigned char *sha1)
 {
 	if (write_cache_as_tree(sha1, 0, NULL))
-		die(_("git write-tree failed to write a tree"));
+		die_(_("git write-tree failed to write a tree"));
 }
 
 static int try_merge_strategy(const char *strategy, struct commit_list *common,
@@ -653,7 +653,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 		struct commit_list *j;
 
 		if (remoteheads->next) {
-			error(_("Not handling anything other than two heads merge."));
+			error_(_("Not handling anything other than two heads merge."));
 			return 2;
 		}
 
@@ -799,7 +799,7 @@ static int merge_trivial(struct commit *head, struct commit_list *remoteheads)
 	prepare_to_commit(remoteheads);
 	if (commit_tree(merge_msg.buf, merge_msg.len, result_tree, parents,
 			result_commit, NULL, sign_commit))
-		die(_("failed to write commit object"));
+		die_(_("failed to write commit object"));
 	finish(head, remoteheads, result_commit, "In-index merge");
 	drop_save();
 	return 0;
@@ -824,7 +824,7 @@ static int finish_automerge(struct commit *head,
 	prepare_to_commit(remoteheads);
 	if (commit_tree(merge_msg.buf, merge_msg.len, result_tree, parents,
 			result_commit, NULL, sign_commit))
-		die(_("failed to write commit object"));
+		die_(_("failed to write commit object"));
 	strbuf_addf(&buf, "Merge made by the '%s' strategy.", wt_strategy);
 	finish(head, remoteheads, result_commit, buf.buf);
 	strbuf_release(&buf);
@@ -887,11 +887,11 @@ static int setup_with_upstream(const char ***argv)
 	const char **args;
 
 	if (!branch)
-		die(_("No current branch."));
+		die_(_("No current branch."));
 	if (!branch->remote_name)
-		die(_("No remote for the current branch."));
+		die_(_("No remote for the current branch."));
 	if (!branch->merge_nr)
-		die(_("No default upstream defined for the current branch."));
+		die_(_("No default upstream defined for the current branch."));
 
 	args = xcalloc(st_add(branch->merge_nr, 1), sizeof(char *));
 	for (i = 0; i < branch->merge_nr; i++) {
@@ -1149,7 +1149,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			      builtin_merge_usage, builtin_merge_options);
 
 		if (!file_exists(git_path_merge_head()))
-			die(_("There is no merge to abort (MERGE_HEAD missing)."));
+			die_(_("There is no merge to abort (MERGE_HEAD missing)."));
 
 		/* Invoke 'git reset --merge' */
 		ret = cmd_reset(nargc, nargv, prefix);
@@ -1165,7 +1165,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 			      builtin_merge_usage, builtin_merge_options);
 
 		if (!file_exists(git_path_merge_head()))
-			die(_("There is no merge in progress (MERGE_HEAD missing)."));
+			die_(_("There is no merge in progress (MERGE_HEAD missing)."));
 
 		/* Invoke 'git commit' */
 		ret = cmd_commit(nargc, nargv, prefix);
@@ -1181,17 +1181,15 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		 * add/rm <file>', just 'git commit'.
 		 */
 		if (advice_resolve_conflict)
-			die(_("You have not concluded your merge (MERGE_HEAD exists).\n"
-				  "Please, commit your changes before you merge."));
+			die_(_("You have not concluded your merge (MERGE_HEAD exists).\n" "Please, commit your changes before you merge."));
 		else
-			die(_("You have not concluded your merge (MERGE_HEAD exists)."));
+			die_(_("You have not concluded your merge (MERGE_HEAD exists)."));
 	}
 	if (file_exists(git_path_cherry_pick_head())) {
 		if (advice_resolve_conflict)
-			die(_("You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists).\n"
-			    "Please, commit your changes before you merge."));
+			die_(_("You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists).\n" "Please, commit your changes before you merge."));
 		else
-			die(_("You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists)."));
+			die_(_("You have not concluded your cherry-pick (CHERRY_PICK_HEAD exists)."));
 	}
 	resolve_undo_clear();
 
@@ -1200,7 +1198,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 
 	if (squash) {
 		if (fast_forward == FF_NO)
-			die(_("You cannot combine --squash with --no-ff."));
+			die_(_("You cannot combine --squash with --no-ff."));
 		option_commit = 0;
 	}
 
@@ -1208,7 +1206,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		if (default_to_upstream)
 			argc = setup_with_upstream(&argv);
 		else
-			die(_("No commit specified and merge.defaultToUpstream not set."));
+			die_(_("No commit specified and merge.defaultToUpstream not set."));
 	} else if (argc == 1 && !strcmp(argv[0], "-")) {
 		argv[0] = "@{-1}";
 	}
@@ -1225,16 +1223,15 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		 */
 		unsigned char *remote_head_sha1;
 		if (squash)
-			die(_("Squash commit into empty head not supported yet"));
+			die_(_("Squash commit into empty head not supported yet"));
 		if (fast_forward == FF_NO)
-			die(_("Non-fast-forward commit does not make sense into "
-			    "an empty head"));
+			die_(_("Non-fast-forward commit does not make sense into " "an empty head"));
 		remoteheads = collect_parents(head_commit, &head_subsumed,
 					      argc, argv, NULL);
 		if (!remoteheads)
 			die(_("%s - not something we can merge"), argv[0]);
 		if (remoteheads->next)
-			die(_("Can merge only exactly one commit into empty head"));
+			die_(_("Can merge only exactly one commit into empty head"));
 		remote_head_sha1 = remoteheads->item->object.oid.hash;
 		read_empty(remote_head_sha1, 0);
 		update_ref("initial pull", "HEAD", remote_head_sha1,
@@ -1339,7 +1336,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	if (remoteheads && !common) {
 		/* No common ancestors found. */
 		if (!allow_unrelated_histories)
-			die(_("refusing to merge unrelated histories"));
+			die_(_("refusing to merge unrelated histories"));
 		/* otherwise, we need a real merge. */
 	} else if (!remoteheads ||
 		 (!remoteheads->next && !common->next &&
@@ -1437,7 +1434,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	}
 
 	if (fast_forward == FF_ONLY)
-		die(_("Not possible to fast-forward, aborting."));
+		die_(_("Not possible to fast-forward, aborting."));
 
 	/* We are going to make a new commit. */
 	git_committer_info(IDENT_STRICT);

@@ -294,7 +294,7 @@ static int generate_push_cert(struct strbuf *req_buf,
 		goto free_return;
 
 	if (sign_buffer(&cert, &cert, signing_key))
-		die(_("failed to sign the push certificate"));
+		die_(_("failed to sign the push certificate"));
 
 	packet_buf_write(req_buf, "push-cert%c%s", 0, cap_string);
 	for (cp = cert.buf; cp < cert.buf + cert.len; cp = np) {
@@ -407,11 +407,9 @@ int send_pack(struct send_pack_args *args,
 			reject_invalid_nonce(push_cert_nonce, len);
 			push_cert_nonce = xmemdupz(push_cert_nonce, len);
 		} else if (args->push_cert == SEND_PACK_PUSH_CERT_ALWAYS) {
-			die(_("the receiving end does not support --signed push"));
+			die_(_("the receiving end does not support --signed push"));
 		} else if (args->push_cert == SEND_PACK_PUSH_CERT_IF_ASKED) {
-			warning(_("not sending a push certificate since the"
-				  " receiving end does not support --signed"
-				  " push"));
+			warning_(_("not sending a push certificate since the" " receiving end does not support --signed" " push"));
 		}
 	}
 
@@ -421,12 +419,12 @@ int send_pack(struct send_pack_args *args,
 		return 0;
 	}
 	if (args->atomic && !atomic_supported)
-		die(_("the receiving end does not support --atomic push"));
+		die_(_("the receiving end does not support --atomic push"));
 
 	use_atomic = atomic_supported && args->atomic;
 
 	if (args->push_options && !push_options_supported)
-		die(_("the receiving end does not support push options"));
+		die_(_("the receiving end does not support push options"));
 
 	use_push_options = push_options_supported && args->push_options;
 

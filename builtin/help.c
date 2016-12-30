@@ -350,7 +350,7 @@ static void show_man_page(const char *git_cmd)
 	if (fallback)
 		exec_viewer(fallback, page);
 	exec_viewer("man", page);
-	die(_("no man viewer handled the request"));
+	die_(_("no man viewer handled the request"));
 }
 
 static void show_info_page(const char *git_cmd)
@@ -358,7 +358,7 @@ static void show_info_page(const char *git_cmd)
 	const char *page = cmd_to_page(git_cmd);
 	setenv("INFOPATH", system_path(GIT_INFO_PATH), 1);
 	execlp("info", "info", "gitman", page, (char *)NULL);
-	die(_("no info viewer handled the request"));
+	die_(_("no info viewer handled the request"));
 }
 
 static void get_html_page_path(struct strbuf *page_path, const char *page)

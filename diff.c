@@ -3411,7 +3411,7 @@ void diff_setup_done(struct diff_options *options)
 	if (options->output_format & DIFF_FORMAT_NO_OUTPUT)
 		count++;
 	if (count > 1)
-		die(_("--name-only, --name-status, --check and -s are mutually exclusive"));
+		die_(_("--name-only, --name-status, --check and -s are mutually exclusive"));
 
 	/*
 	 * Most of the time we can say "there are changes"
@@ -3501,7 +3501,7 @@ void diff_setup_done(struct diff_options *options)
 	options->diff_path_counter = 0;
 
 	if (DIFF_OPT_TST(options, FOLLOW_RENAMES) && options->pathspec.nr != 1)
-		die(_("--follow requires exactly one pathspec"));
+		die_(_("--follow requires exactly one pathspec"));
 }
 
 static int opt_arg(const char *arg, int arg_short, const char *arg_long, int *val)
@@ -4713,9 +4713,9 @@ N_("you may want to set your %s variable to at least "
 void diff_warn_rename_limit(const char *varname, int needed, int degraded_cc)
 {
 	if (degraded_cc)
-		warning(_(degrade_cc_to_c_warning));
+		warning_(_(degrade_cc_to_c_warning));
 	else if (needed)
-		warning(_(rename_limit_warning));
+		warning_(_(rename_limit_warning));
 	else
 		return;
 	if (0 < needed && needed < 32767)

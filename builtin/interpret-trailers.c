@@ -39,7 +39,7 @@ int cmd_interpret_trailers(int argc, const char **argv, const char *prefix)
 			process_trailers(argv[i], in_place, trim_empty, &trailers);
 	} else {
 		if (in_place)
-			die(_("no input file given for in-place editing"));
+			die_(_("no input file given for in-place editing"));
 		process_trailers(NULL, in_place, trim_empty, &trailers);
 	}
 

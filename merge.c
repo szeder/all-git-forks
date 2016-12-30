@@ -38,7 +38,7 @@ int try_merge_command(const char *strategy, size_t xopts_nr,
 
 	discard_cache();
 	if (read_cache() < 0)
-		die(_("failed to read the cache"));
+		die_(_("failed to read the cache"));
 	resolve_undo_clear();
 
 	return ret;

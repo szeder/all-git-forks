@@ -4515,7 +4515,7 @@ static int write_out_one_reject(struct apply_state *state, struct patch *patch)
 	 * contents are marked "rejected" at the patch level.
 	 */
 	if (!patch->new_name)
-		die(_("internal error"));
+		die_(_("internal error"));
 
 	/* Say this even without --verbose */
 	strbuf_addf(&sb, Q_("Applying patch %%s with %d reject...",
@@ -4673,7 +4673,7 @@ static int apply_patch(struct apply_state *state,
 	}
 
 	if (!list && !skipped_patch) {
-		error(_("unrecognized input"));
+		error_(_("unrecognized input"));
 		res = -128;
 		goto end;
 	}
@@ -4692,7 +4692,7 @@ static int apply_patch(struct apply_state *state,
 	}
 
 	if (state->check_index && read_apply_cache(state) < 0) {
-		error(_("unable to read index file"));
+		error_(_("unable to read index file"));
 		res = -128;
 		goto end;
 	}
@@ -4885,7 +4885,7 @@ int apply_all_patches(struct apply_state *state,
 	if (state->update_index) {
 		res = write_locked_index(&the_index, state->lock_file, COMMIT_LOCK);
 		if (res) {
-			error(_("Unable to write new index file"));
+			error_(_("Unable to write new index file"));
 			res = -128;
 			goto end;
 		}
