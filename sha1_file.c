@@ -2608,6 +2608,12 @@ const unsigned char *nth_packed_object_sha1(struct packed_git *p,
 	}
 }
 
+const struct object_id *nth_packed_object_oid(struct packed_git *p,
+					      uint32_t n)
+{
+	return (const struct object_id *)nth_packed_object_sha1(p, n);
+}
+
 void check_pack_index_ptr(const struct packed_git *p, const void *vptr)
 {
 	const unsigned char *ptr = vptr;
@@ -3768,13 +3774,13 @@ static int for_each_object_in_pack(struct packed_git *p, each_packed_object_fn c
 	int r = 0;
 
 	for (i = 0; i < p->num_objects; i++) {
-		const unsigned char *sha1 = nth_packed_object_sha1(p, i);
+		const struct object_id *oid = nth_packed_object_oid(p, i);
 
-		if (!sha1)
+		if (!oid)
 			return error("unable to get sha1 of object %u in %s",
 				     i, p->pack_name);
 
-		r = cb(sha1, p, i, data);
+		r = cb(oid->hash, p, i, data);
 		if (r)
 			break;
 	}
