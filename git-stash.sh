@@ -10,7 +10,7 @@ USAGE="list [<options>]
    or: $dashless [save [--patch] [-k|--[no-]keep-index] [-q|--quiet]
 		       [-u|--include-untracked] [-a|--all] [<message>]]
    or: $dashless clear
-   or: $dashless create [<message>]
+   or: $dashless create [-u|--[no-]include-untracked] [<message>]
    or: $dashless store [-m|--message <message>] [-q|--quiet] <commit>"
 
 SUBDIRECTORY_OK=Yes
@@ -629,7 +629,17 @@ clear)
 	;;
 create)
 	shift
-	create_stash "$*" && echo "$w_commit"
+	case "$1" in
+	-u|--include-untracked)
+		untracked=untracked
+		shift
+		;;
+	--no-include-untracked)
+		untracked=
+		shift
+		;;
+	esac
+	create_stash "$*" "$untracked" && echo "$w_commit"
 	;;
 store)
 	shift
