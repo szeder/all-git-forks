@@ -28,6 +28,7 @@ static int non_ascii_used = 0;
 static HANDLE hthread, hread, hwrite;
 static HANDLE hconsole1, hconsole2;
 
+/*
 #ifdef __MINGW32__
 #if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 5
 typedef struct _CONSOLE_FONT_INFOEX {
@@ -40,6 +41,7 @@ typedef struct _CONSOLE_FONT_INFOEX {
 } CONSOLE_FONT_INFOEX, *PCONSOLE_FONT_INFOEX;
 #endif
 #endif
+*/
 
 typedef BOOL (WINAPI *PGETCURRENTCONSOLEFONTEX)(HANDLE, BOOL,
 		PCONSOLE_FONT_INFOEX);
