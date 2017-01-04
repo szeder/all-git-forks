@@ -456,6 +456,7 @@ main () {
 
 	if test $# -eq 0 && test -e "$GIT_DIR/MERGE_RR"
 	then
+		cd_to_toplevel
 		set -- $(git rerere remaining)
 		if test $# -eq 0
 		then
