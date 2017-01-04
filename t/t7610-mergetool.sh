@@ -182,10 +182,29 @@ test_expect_success 'mergetool skips autoresolved' '
 	git reset --hard
 '
 
-test_expect_success 'mergetool merges all from subdir' '
+test_expect_success 'mergetool merges all from subdir (rerere disabled)' '
 	git reset --hard &&
 	git checkout -b test$test_count branch1 &&
 	test_config rerere.enabled false &&
+	(
+		cd subdir &&
+		test_must_fail git merge master &&
+		( yes "r" | git mergetool ../submod ) &&
+		( yes "d" "d" | git mergetool --no-prompt ) &&
+		test "$(cat ../file1)" = "master updated" &&
+		test "$(cat ../file2)" = "master new" &&
+		test "$(cat file3)" = "master new sub" &&
+		( cd .. && git submodule update -N ) &&
+		test "$(cat ../submod/bar)" = "master submodule" &&
+		git commit -m "branch2 resolved by mergetool from subdir"
+	)
+'
+
+test_expect_failure 'mergetool merges all from subdir (rerere enabled)' '
+	git reset --hard &&
+	git checkout -b test$test_count branch1 &&
+	test_config rerere.enabled true &&
+	rm -rf .git/rr-cache &&
 	(
 		cd subdir &&
 		test_must_fail git merge master &&
