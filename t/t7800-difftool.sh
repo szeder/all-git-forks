@@ -7,6 +7,7 @@ test_description='git-difftool
 
 Testing basic diff tool invocation
 '
+TEST_CREATE_SUBMODULE=Yes
 
 . ./test-lib.sh
 
@@ -534,7 +535,8 @@ test_expect_success PERL 'difftool --no-symlinks detects conflict ' '
 '
 
 test_expect_success PERL 'difftool properly honors gitlink and core.worktree' '
-	git submodule add ./. submod/ule &&
+	git submodule add ./pretzel.bare submod/ule &&
+	test_commit -C submod/ule second_commit &&
 	test_config -C submod/ule diff.tool checktrees &&
 	test_config -C submod/ule difftool.checktrees.cmd '\''
 		test -d "$LOCAL" && test -d "$REMOTE" && echo good

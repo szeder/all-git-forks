@@ -1,6 +1,7 @@
 #!/bin/sh
 
 test_description='verbose commit template'
+TEST_CREATE_SUBMODULE=yes
 . ./test-lib.sh
 
 write_script "check-for-diff" <<\EOF &&
@@ -74,11 +75,12 @@ test_expect_success 'diff in message is retained with -v' '
 
 test_expect_success 'submodule log is stripped out too with -v' '
 	git config diff.submodule log &&
-	git submodule add ./. sub &&
+	git submodule add ./pretzel.bare sub &&
 	git commit -m "sub added" &&
 	(
 		cd sub &&
 		echo "more" >>file &&
+		git add file &&
 		git commit -a -m "submodule commit"
 	) &&
 	(

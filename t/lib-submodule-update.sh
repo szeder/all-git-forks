@@ -44,6 +44,8 @@ create_lib_submodule_repo () {
 		git branch "no_submodule" &&
 
 		git checkout -b "add_sub1" &&
+		# Adding the repo itself as a submodule is a hack.
+		# Do not imitate this.
 		git submodule add ./. sub1 &&
 		git config -f .gitmodules submodule.sub1.ignore all &&
 		git config submodule.sub1.ignore all &&
