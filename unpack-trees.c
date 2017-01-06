@@ -218,6 +218,26 @@ static void unlink_entry(const struct cache_entry *ce)
 	schedule_dir_for_removal(ce->name, ce_namelen(ce));
 }
 
+static int remove_workingtree_files(struct unpack_trees_options *o,
+				    struct progress *progress)
+{
+	int i;
+	unsigned cnt = 0;
+	struct index_state *index = &o->result;
+
+	for (i = 0; i < index->cache_nr; i++) {
+		const struct cache_entry *ce = index->cache[i];
+
+		if (ce->ce_flags & CE_WT_REMOVE) {
+			display_progress(progress, ++cnt);
+			if (o->update && !o->dry_run)
+				unlink_entry(ce);
+		}
+	}
+
+	return cnt;
+}
+
 static struct progress *get_progress(struct unpack_trees_options *o)
 {
 	unsigned cnt = 0, total = 0;
@@ -254,15 +274,8 @@ static int check_updates(struct unpack_trees_options *o)
 
 	if (o->update)
 		git_attr_set_direction(GIT_ATTR_CHECKOUT, index);
-	for (i = 0; i < index->cache_nr; i++) {
-		const struct cache_entry *ce = index->cache[i];
 
-		if (ce->ce_flags & CE_WT_REMOVE) {
-			display_progress(progress, ++cnt);
-			if (o->update && !o->dry_run)
-				unlink_entry(ce);
-		}
-	}
+	cnt = remove_workingtree_files(o, progress);
 	remove_marked_cache_entries(index);
 	remove_scheduled_dirs();
 
