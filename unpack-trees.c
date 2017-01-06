@@ -256,12 +256,13 @@ static struct progress *get_progress(struct unpack_trees_options *o)
 				    total, 50, 1);
 }
 
-static int check_updates(struct unpack_trees_options *o)
+static int update_working_tree_files(struct unpack_trees_options *o,
+				     struct progress *progress,
+				     unsigned start_cnt)
 {
-	unsigned cnt = 0;
+	unsigned cnt = start_cnt;
 	int i, errs = 0;
 
-	struct progress *progress = NULL;
 	struct index_state *index = &o->result;
 	struct checkout state = CHECKOUT_INIT;
 
@@ -269,15 +270,6 @@ static int check_updates(struct unpack_trees_options *o)
 	state.quiet = 1;
 	state.refresh_cache = 1;
 	state.istate = index;
-
-	progress = get_progress(o);
-
-	if (o->update)
-		git_attr_set_direction(GIT_ATTR_CHECKOUT, index);
-
-	cnt = remove_workingtree_files(o, progress);
-	remove_marked_cache_entries(index);
-	remove_scheduled_dirs();
 
 	for (i = 0; i < index->cache_nr; i++) {
 		struct cache_entry *ce = index->cache[i];
@@ -288,11 +280,31 @@ static int check_updates(struct unpack_trees_options *o)
 				    ce->name);
 			display_progress(progress, ++cnt);
 			ce->ce_flags &= ~CE_UPDATE;
-			if (o->update && !o->dry_run) {
+			if (o->update && !o->dry_run)
 				errs |= checkout_entry(ce, &state, NULL);
-			}
 		}
 	}
+
+	return errs;
+}
+
+static int check_updates(struct unpack_trees_options *o)
+{
+	struct progress *progress = NULL;
+	struct index_state *index = &o->result;
+	int errs;
+	unsigned total_removed;
+
+	progress = get_progress(o);
+
+	if (o->update)
+		git_attr_set_direction(GIT_ATTR_CHECKOUT, index);
+
+	total_removed = remove_workingtree_files(o, progress);
+	remove_marked_cache_entries(index);
+	remove_scheduled_dirs();
+	errs = update_working_tree_files(o, progress, total_removed);
+
 	stop_progress(&progress);
 	if (o->update)
 		git_attr_set_direction(GIT_ATTR_CHECKIN, NULL);
