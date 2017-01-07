@@ -251,7 +251,9 @@ __gitcomp_nl_append ()
 __gitcomp_nl ()
 {
 	COMPREPLY=()
-	__gitcomp_nl_append "$@"
+	tput sc
+	__gitcomp_nl_append $(echo "$@" | fzf)
+	tput rc
 }
 
 # Generates completion reply with compgen from newline-separated possible
