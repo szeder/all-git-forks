@@ -25,7 +25,6 @@ import stat
 import zipfile
 import zlib
 import ctypes
-import fnmatch
 import threading
 import Queue
 
@@ -961,10 +960,10 @@ class LargeFileSystem(object):
     def waitForPushes(self):
         pass
 
-    def matchesLargeFileGlob(self, relPath):
+    def matchesLargeFileRegex(self, relPath):
         return reduce(
             lambda a, b: a or b,
-            [fnmatch.fnmatch(relPath, e) for e in gitConfigList('git-p4.largeFileGlob')],
+            [re.compile(e).match(relPath) for e in gitConfigList('git-p4.largeFileRegex')],
             False
         )
 
@@ -1018,7 +1017,7 @@ class LargeFileSystem(object):
            steps."""
         if self.exceedsLargeFileThreshold(relPath, contents) or \
            self.hasLargeFileExtension(relPath) or \
-           self.matchesLargeFileGlob(relPath):
+           self.matchesLargeFileRegex(relPath):
             contentTempFile = self.generateTempFile(contents)
             (git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
 
@@ -1136,15 +1135,11 @@ class GitLFS(LargeFileSystem):
                 '# Git LFS (see https://git-lfs.github.com/)\n',
                 '#\n',
             ] +
-            [f + ' filter=lfs diff=lfs merge=lfs -text\n'
-                for f in sorted(gitConfigList('git-p4.largeFileGlob'))
-            ] +
             ['*.' + self.escapeGitAttributePath(f) + ' filter=lfs diff=lfs merge=lfs -text\n'
                 for f in sorted(gitConfigList('git-p4.largeFileExtensions'))
             ] +
             ['/' + self.escapeGitAttributePath(f) + ' filter=lfs diff=lfs merge=lfs -text\n'
-                for f in sorted(self.largeFiles)
-                    if not (self.hasLargeFileExtension(f) or self.matchesLargeFileGlob(f))
+                for f in sorted(self.largeFiles) if not self.hasLargeFileExtension(f)
             ]
         )
 

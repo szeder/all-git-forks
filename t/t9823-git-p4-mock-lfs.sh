@@ -118,7 +118,7 @@ test_expect_success 'Store files in Mock LFS based on extension (dat)' '
 	)
 '
 
-test_expect_success 'Store files in Mock LFS based on file glob pattern' '
+test_expect_success 'Store files in Mock LFS based on file regex pattern' '
 	client_view "//depot/... //client/..." &&
 	test_when_finished cleanup_git &&
 	(
@@ -126,7 +126,7 @@ test_expect_success 'Store files in Mock LFS based on file glob pattern' '
 		git init . &&
 		git config git-p4.useClientSpec true &&
 		git config git-p4.largeFileSystem MockLFS &&
-		git config git-p4.largeFileGlob "*[0-9].bin" &&
+		git config git-p4.largeFileRegex ".*[0-9]+\.bin$" &&
 		git config git-p4.largeFilePush True &&
 		git p4 clone --destination="$git" //depot@all &&
 
