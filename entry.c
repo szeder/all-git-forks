@@ -2,6 +2,14 @@
 #include "blob.h"
 #include "dir.h"
 #include "streaming.h"
+#include "list.h"
+
+static LIST_HEAD(delayed_cache_entry_queue_head);
+
+struct delayed_cache_entry {
+	struct cache_entry *ce;
+	struct list_head node;
+};
 
 static void create_directories(const char *path, int path_len,
 			       const struct checkout *state)
@@ -140,12 +148,13 @@ static int write_entry(struct cache_entry *ce,
 		       char *path, const struct checkout *state, int to_tempfile)
 {
 	unsigned int ce_mode_s_ifmt = ce->ce_mode & S_IFMT;
-	int fd, ret, fstat_done = 0;
+	int fd, ret, fstat_done = 0, delayed = 0;
 	char *new;
 	struct strbuf buf = STRBUF_INIT;
 	unsigned long size;
 	size_t wrote, newsize = 0;
 	struct stat st;
+	struct delayed_cache_entry *delayed_ce;
 
 	if (ce_mode_s_ifmt == S_IFREG) {
 		struct stream_filter *filter = get_stream_filter(ce->name,
@@ -178,10 +187,17 @@ static int write_entry(struct cache_entry *ce,
 		 * Convert from git internal format to working tree format
 		 */
 		if (ce_mode_s_ifmt == S_IFREG &&
-		    convert_to_working_tree(ce->name, new, size, &buf)) {
+		    convert_to_working_tree(ce->name, new, size, &buf, &delayed)) {
 			free(new);
-			new = strbuf_detach(&buf, &newsize);
-			size = newsize;
+			if (delayed) {
+				delayed_ce = xmalloc(sizeof(*delayed_ce));
+				delayed_ce->ce = ce;
+				list_add_tail(&delayed_ce->node, &delayed_cache_entry_queue_head);
+				goto finish;
+			} else {
+				new = strbuf_detach(&buf, &newsize);
+				size = newsize;
+			}
 		}
 
 		fd = open_output_fd(path, ce, to_tempfile);
@@ -290,4 +306,20 @@ int checkout_entry(struct cache_entry *ce,
 
 	create_directories(path.buf, path.len, state);
 	return write_entry(ce, path.buf, state, 0);
+}
+
+int checkout_delayed_entries(const struct checkout *state)
+{
+	struct delayed_cache_entry *head;
+	int errs = 0;
+
+	while (!list_empty(&delayed_cache_entry_queue_head)) {
+		head = list_first_entry(&delayed_cache_entry_queue_head,
+			struct delayed_cache_entry, node);
+		list_del(&head->node);
+		head->ce->ce_flags &= ~CE_UPDATE;
+		errs |= checkout_entry(head->ce, state, NULL);
+	}
+
+	return errs;
 }
