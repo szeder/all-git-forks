@@ -1101,6 +1101,7 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 	int ignore_valid = options & CE_MATCH_IGNORE_VALID;
 	int ignore_skip_worktree = options & CE_MATCH_IGNORE_SKIP_WORKTREE;
 	int ignore_missing = options & CE_MATCH_IGNORE_MISSING;
+	int assume_content_unchanged = options & CE_MATCH_REFRESH_STAT_ONLY;
 
 	if (!refresh || ce_uptodate(ce))
 		return ce;
@@ -1161,7 +1162,7 @@ static struct cache_entry *refresh_cache_ent(struct index_state *istate,
 		}
 	}
 
-	if (ie_modified(istate, ce, &st, options)) {
+	if (!assume_content_unchanged && ie_modified(istate, ce, &st, options)) {
 		if (err)
 			*err = EINVAL;
 		return NULL;
@@ -1206,11 +1207,13 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	int quiet = (flags & REFRESH_QUIET) != 0;
 	int not_new = (flags & REFRESH_IGNORE_MISSING) != 0;
 	int ignore_submodules = (flags & REFRESH_IGNORE_SUBMODULES) != 0;
+	int refresh_stat_only = (flags & REFRESH_STAT_ONLY) != 0;
 	int first = 1;
 	int in_porcelain = (flags & REFRESH_IN_PORCELAIN);
 	unsigned int options = (CE_MATCH_REFRESH |
 				(really ? CE_MATCH_IGNORE_VALID : 0) |
-				(not_new ? CE_MATCH_IGNORE_MISSING : 0));
+				(not_new ? CE_MATCH_IGNORE_MISSING : 0) |
+				(refresh_stat_only ? CE_MATCH_REFRESH_STAT_ONLY : 0));
 	const char *modified_fmt;
 	const char *deleted_fmt;
 	const char *typechange_fmt;

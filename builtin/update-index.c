@@ -777,6 +777,12 @@ static int really_refresh_callback(const struct option *opt,
 	return refresh(opt->value, REFRESH_REALLY);
 }
 
+static int refresh_stat_callback(const struct option *opt,
+				const char *arg, int unset)
+{
+	return refresh(opt->value, REFRESH_STAT_ONLY);
+}
+
 static int chmod_callback(const struct option *opt,
 				const char *arg, int unset)
 {
@@ -934,6 +940,10 @@ int cmd_update_index(int argc, const char **argv, const char *prefix)
 			N_("refresh stat information"),
 			PARSE_OPT_NOARG | PARSE_OPT_NONEG,
 			refresh_callback},
+		{OPTION_CALLBACK, 0, "refresh-stat", &refresh_args, NULL,
+			N_("refresh only stat information (assume content has not changed)"),
+			PARSE_OPT_NOARG | PARSE_OPT_NONEG,
+			refresh_stat_callback},
 		{OPTION_CALLBACK, 0, "really-refresh", &refresh_args, NULL,
 			N_("like --refresh, but ignore assume-unchanged setting"),
 			PARSE_OPT_NOARG | PARSE_OPT_NONEG,
