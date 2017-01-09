@@ -234,7 +234,7 @@ test_expect_success 'mergetool merges all from subdir (rerere disabled)' '
 	)
 '
 
-test_expect_failure 'mergetool merges all from subdir (rerere enabled)' '
+test_expect_success 'mergetool merges all from subdir (rerere enabled)' '
 	test_when_finished "git reset --hard" &&
 	git checkout -b test$test_count branch1 &&
 	test_config rerere.enabled true &&

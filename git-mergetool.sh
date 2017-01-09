@@ -456,6 +456,28 @@ main () {
 
 	if test $# -eq 0 && test -e "$GIT_DIR/MERGE_RR"
 	then
+		# The pathnames output by the 'git rerere remaining'
+		# command below are relative to the top-level
+		# directory but the 'git diff --name-only' command
+		# further below expects the pathnames to be relative
+		# to the current working directory.  Thus, we cd to
+		# the top-level directory before running 'git diff
+		# --name-only'.  We change directories even earlier
+		# (before running 'git rerere remaining') in case 'git
+		# rerere remaining' is ever changed to output
+		# pathnames relative to the current working directory.
+		#
+		# Changing directories breaks a relative $orderfile
+		# pathname argument, so fix it up to be relative to
+		# the top-level directory.
+
+		prefix=$(git rev-parse --show-prefix) || exit 1
+		cd_to_toplevel
+		if test -n "$orderfile"
+		then
+			orderfile=$(git rev-parse --prefix "$prefix" "$orderfile") || exit 1
+		fi
+
 		set -- $(git rerere remaining)
 		if test $# -eq 0
 		then
@@ -463,6 +485,16 @@ main () {
 		fi
 	fi
 
+	# Note:  The pathnames output by 'git diff --name-only' are
+	# relative to the top-level directory, but it expects input
+	# pathnames to be relative to the current working directory.
+	# Thus:
+	#   * Either cd_to_toplevel must not be run before this or all
+	#     relative input pathnames must be converted to be
+	#     relative to the top-level directory (or absolute).
+	#   * Either cd_to_toplevel must be run after this or all
+	#     relative output pathnames must be converted to be
+	#     relative to the current working directory (or absolute).
 	files=$(git -c core.quotePath=false \
 		diff --name-only --diff-filter=U \
 		${orderfile:+"-O$orderfile"} -- "$@")
