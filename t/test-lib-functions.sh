@@ -800,6 +800,22 @@ test_create_repo () {
 		error "cannot run git init -- have you built things yet?"
 		mv .git/hooks .git/hooks-disabled
 	) || exit
+	if test -n "$TEST_CREATE_SUBMODULE"
+	then
+		(
+			cd "$repo"
+			TEST_CREATE_SUBMODULE=
+			export TEST_CREATE_SUBMODULE
+			test_create_repo "pretzel.nonbare"
+			test_commit -C "pretzel.nonbare" \
+				"create submodule" "submodule-file" \
+				"submodule-content" "submodule-tag" >&3 2>&4 ||
+				error "cannot run test_commit"
+			git clone --bare "pretzel.nonbare" \
+				  "pretzel.bare" >&3 2>&4 ||
+				  error "cannot clone into bare"
+		)
+	fi
 }
 
 # This function helps on symlink challenged file systems when it is not

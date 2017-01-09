@@ -1,6 +1,7 @@
 #!/bin/sh
 
 test_description='git mv in subdirs'
+TEST_CREATE_SUBMODULE=yes
 . ./test-lib.sh
 
 test_expect_success \
@@ -288,12 +289,12 @@ rm -f moved symlink
 test_expect_success 'setup submodule' '
 	git commit -m initial &&
 	git reset --hard &&
-	git submodule add ./. sub &&
+	git submodule add ./pretzel.bare sub &&
 	echo content >file &&
 	git add file &&
 	git commit -m "added sub and file" &&
 	mkdir -p deep/directory/hierarchy &&
-	git submodule add ./. deep/directory/hierarchy/sub &&
+	git submodule add ./pretzel.bare deep/directory/hierarchy/sub &&
 	git commit -m "added another submodule" &&
 	git branch submodule
 '
