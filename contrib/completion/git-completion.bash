@@ -1297,6 +1297,23 @@ _git_fetch ()
 	__git_complete_remote_or_refspec
 }
 
+__git_filter_branch_options="
+	--env-filter --tree-filter --index-filter --parent-filter --msg-filter
+	--commit-filter --tag-name-filter --subdirectory-filter --prune-empty
+	--original --force
+"
+_git_filter_branch ()
+{
+	__git_has_doubledash && __git_complete_rev_list_command && return
+
+	case "$cur" in
+	--*)
+		__gitcomp "$__git_filter_branch_options"
+		return
+		;;
+	esac
+}
+
 __git_format_patch_options="
 	--stdout --attach --no-attach --thread --thread= --no-thread
 	--numbered --start-number --numbered-files --keep-subject --signoff
