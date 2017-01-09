@@ -2430,6 +2430,36 @@ _git_revert ()
 	__gitcomp_nl "$(__git_refs)"
 }
 
+__git_rev_list_options="
+ --max-count= --skip= --max-age= --min-age= --sparse --merges --no-merges
+ --min-parents= --no-min-parents --max-parents= --no-max-parents --first-parent
+ --remove-empty --full-history --not --all --branches= --tags= --remotes=
+ --glob= --ignore-missing --stdin --quiet --topo-order --parents --timestamp
+ --left-right --left-only --right-only --cherry-mark --cherry-pick --encoding=
+ --author= --committer= --grep= --regexp-ignore-case --extended-regexp
+ --fixed-strings --date= --objects --objects-edge --objects-edge-aggressive
+ --unpacked --pretty --header --bisect --bisect-vars --bisect-all --merge
+ --reverse --walk-reflogs --no-walk --do-walk --count --use-bitmap-index
+"
+
+__git_complete_rev_list_command ()
+{
+	case "$cur" in
+	--*)
+		__gitcomp "$__git_rev_list_options"
+		return 0
+		;;
+	esac
+	return 1
+}
+
+_git_rev_list ()
+{
+	__git_has_doubledash && return
+
+	__git_complete_rev_list_command || __gitcomp_nl "$(__git_refs)"
+}
+
 _git_rm ()
 {
 	case "$cur" in
