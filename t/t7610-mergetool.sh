@@ -678,6 +678,11 @@ test_expect_success 'diff.orderFile configuration is honored' '
 		b
 		a
 	EOF
+
+	# make sure "order-file" that is ambiguous between
+	# rev and path is understood correctly.
+	git branch order-file HEAD &&
+
 	git mergetool --no-prompt --tool myecho >output &&
 	git grep --no-index -h -A2 Merging: output >actual &&
 	test_cmp expect actual
