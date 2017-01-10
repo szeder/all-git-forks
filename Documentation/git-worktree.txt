@@ -167,6 +167,12 @@ want to share to all working directories:
    you are sure you always use sparse checkout for all working
    directories.
 
+When `git config --worktree` is used to set a configuration variable
+in multiple working directory setup, `extensions.worktreeConfig` will
+be automatically set. The two variables `core.worktree` and
+`core.bare` if present will be moved to `config.worktree` of the main
+working tree.
+
 DETAILS
 -------
 Each linked working tree has a private sub-directory in the repository's

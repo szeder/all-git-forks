@@ -76,4 +76,10 @@ extern const char *worktree_git_path(const struct worktree *wt,
 				     const char *fmt, ...)
 	__attribute__((format (printf, 2, 3)));
 
+/*
+ * Called to add extensions.worktreeConfig to $GIT_DIR/config and move
+ * main worktree specific config variables to $GIT_DIR/config.worktree.
+ */
+extern void migrate_worktree_config(void);
+
 #endif

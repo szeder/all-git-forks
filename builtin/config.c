@@ -533,7 +533,8 @@ int cmd_config(int argc, const char **argv, const char *prefix)
 		if (repository_format_worktree_config)
 			given_config_source.file = git_pathdup("config.worktree");
 		else if (worktrees[0] && worktrees[1]) {
-			die("BUG: migration is not supported yet");
+			migrate_worktree_config();
+			given_config_source.file = git_pathdup("config.worktree");
 		} else
 			given_config_source.file = git_pathdup("config");
 		free_worktrees(worktrees);
