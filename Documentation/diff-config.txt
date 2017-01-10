@@ -100,7 +100,8 @@ diff.noprefix::
 
 diff.orderFile::
 	File indicating how to order files within a diff, using
-	one shell glob pattern per line.
+	one glob pattern per line.
+	See linkgit:gitignore[5] for the pattern format.
 	If `diff.orderFile` is a relative pathname, it is treated as
 	relative to the top of the work tree.
 	Can be overridden by the '-O' option to linkgit:git-diff[1].
