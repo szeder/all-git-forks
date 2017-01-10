@@ -49,6 +49,7 @@ strict = $(or $(rebasing), $(head), $(private))
 ifeq ($(strict),)
   CFLAGS += -Wno-error
   CFLAGS += -Wno-cpp
+  NO_OPENSSL = NotForOldBuilds
 endif
 ifeq ($(filter-out %maint, $(head)),)
   CFLAGS += -Wno-unused-value -Wno-strict-prototypes
