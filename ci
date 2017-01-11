@@ -1,0 +1,49 @@
+#!/bin/sh
+
+WORKTREE_ROOT=Meta/tmp-ci
+
+test=$1
+test -z "$test" && test=default
+
+enter_worktree() {
+	test -d "$1" ||
+	git worktree add --detach "$1" ||
+	return 1
+
+	test -e "$1/config.mak" ||
+	ln -s "$(echo "$1" | sed 's/[^/]*/../g')/config.mak" "$1/config.mak" ||
+	return 1
+
+	cd "$1"
+}
+
+test_one() {
+	if ! branch=$(git symbolic-ref --short HEAD 2>/dev/null); then
+		echo >&2 "skipping tests on a detached HEAD"
+		return 0
+	fi
+	if ! git rev-parse --verify "$branch@{u}" >/dev/null 2>&1; then
+		echo >&2 "skipping tests on branch without upstream: $branch"
+		return 0
+	fi
+
+	(
+		enter_worktree "$WORKTREE_ROOT/$branch" &&
+	        git test range -t "$1" "$branch@{u}..$branch"
+	)
+}
+
+handle_outcome() {
+	script=$(git config --get-all "test.$1.on$2" 2>/dev/null)
+	eval "$script"
+}
+
+while true; do
+	echo "==> $(date)"
+	if test_one "$test"; then
+		handle_outcome "$test" success
+	else
+		handle_outcome "$test" failure
+	fi
+	sleep 30
+done
