@@ -30,19 +30,8 @@ static const char git_attr__unknown[] = "(builtin)unknown";
 
 struct git_attr {
 	int attr_nr; /* unique attribute number */
-	int maybe_macro;
-	int maybe_real;
 	char name[FLEX_ARRAY]; /* attribute name */
 };
-
-/*
- * NEEDSWORK: maybe-real, maybe-macro are not property of
- * an attribute, as it depends on what .gitattributes are
- * read.  Once we introduce per git_attr_check attr_stack
- * and check_all_attr, the optimization based on them will
- * become unnecessary and can go away.  So is this variable.
- */
-static int cannot_trust_maybe_real;
 
 const char *git_attr_name(const struct git_attr *attr)
 {
@@ -182,6 +171,7 @@ static void all_attrs_init(struct attr_hashmap *map, struct attr_check *check)
 	 */
 	for (i = 0; i < check->all_attrs_nr; i++) {
 		check->all_attrs[i].value = ATTR__UNKNOWN;
+		check->all_attrs[i].macro = NULL;
 	}
 }
 
@@ -233,8 +223,6 @@ static struct git_attr *git_attr_internal(const char *name, int namelen)
 	if (!a) {
 		FLEX_ALLOC_MEM(a, name, name, namelen);
 		a->attr_nr = g_attr_hashmap.map.size;
-		a->maybe_real = 0;
-		a->maybe_macro = 0;
 
 		attr_hashmap_add(&g_attr_hashmap, a->name, namelen, a);
 		assert(a->attr_nr == (g_attr_hashmap.map.size - 1));
@@ -397,7 +385,6 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 		      (is_macro ? 0 : namelen + 1));
 	if (is_macro) {
 		res->u.attr = git_attr_internal(name, namelen);
-		res->u.attr->maybe_macro = 1;
 	} else {
 		char *p = (char *)&(res->state[num_attr]);
 		memcpy(p, name, namelen);
@@ -418,10 +405,6 @@ static struct match_attr *parse_attr_line(const char *line, const char *src,
 	/* Second pass to fill the attr_states */
 	for (cp = states, i = 0; *cp; i++) {
 		cp = parse_attr(src, lineno, cp, &(res->state[i]));
-		if (!is_macro)
-			res->state[i].attr->maybe_real = 1;
-		if (res->state[i].attr->maybe_macro)
-			cannot_trust_maybe_real = 1;
 	}
 
 	strbuf_release(&pattern);
@@ -826,7 +809,7 @@ static int path_matches(const char *pathname, int pathlen,
 static int macroexpand_one(struct attr_check_item *all_attrs, int nr, int rem);
 
 static int fill_one(const char *what, struct attr_check_item *all_attrs,
-		    struct match_attr *a, int rem)
+		    const struct match_attr *a, int rem)
 {
 	int i;
 
@@ -867,24 +850,34 @@ static int fill(const char *path, int pathlen, int basename_offset,
 
 static int macroexpand_one(struct attr_check_item *all_attrs, int nr, int rem)
 {
-	struct attr_stack *stk;
-	int i;
+	const struct attr_check_item *item = &all_attrs[nr];
 
-	if (all_attrs[nr].value != ATTR__TRUE ||
-	    !all_attrs[nr].attr->maybe_macro)
+	if (item->macro && item->value == ATTR__TRUE)
+		return fill_one("expand", all_attrs, item->macro, rem);
+	else
 		return rem;
+}
 
-	for (stk = attr_stack; stk; stk = stk->prev) {
-		for (i = stk->num_matches - 1; 0 <= i; i--) {
-			struct match_attr *ma = stk->attrs[i];
-			if (!ma->is_macro)
-				continue;
-			if (ma->u.attr->attr_nr == nr)
-				return fill_one("expand", all_attrs, ma, rem);
+/*
+ * Marks the attributes which are macros based on the attribute stack.
+ * This prevents having to search through the attribute stack each time
+ * a macro needs to be expanded during the fill stage.
+ */
+static void determine_macros(struct attr_check_item *all_attrs,
+			     const struct attr_stack *stack)
+{
+	for (; stack; stack = stack->prev) {
+		int i;
+		for (i = stack->num_matches - 1; i >= 0; i--) {
+			const struct match_attr *ma = stack->attrs[i];
+			if (ma->is_macro) {
+				int n = ma->u.attr->attr_nr;
+				if (!all_attrs[n].macro) {
+					all_attrs[n].macro = ma;
+				}
+			}
 		}
 	}
-
-	return rem;
 }
 
 /*
@@ -914,15 +907,15 @@ static void collect_some_attrs(const char *path, struct attr_check *check)
 
 	prepare_attr_stack(path, dirlen);
 	all_attrs_init(&g_attr_hashmap, check);
+	determine_macros(check->all_attrs, attr_stack);
 
-	if (check->check_nr && !cannot_trust_maybe_real) {
+	if (check->check_nr) {
 		rem = 0;
 		for (i = 0; i < check->check_nr; i++) {
-			const struct git_attr *a = check->check[i].attr;
-			if (!a->maybe_real) {
-				struct attr_check_item *c;
-				c = check->all_attrs + a->attr_nr;
-				c->value = ATTR__UNSET;
+			int n = check->check[i].attr->attr_nr;
+			struct attr_check_item *item = &check->all_attrs[n];
+			if (item->macro) {
+				item->value = ATTR__UNSET;
 				rem++;
 			}
 		}
