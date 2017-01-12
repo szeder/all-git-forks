@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w -s
+#!/usr/bin/perl
 # Copyright (C) 2012
 #     Charles Roussel <charles.roussel@ensimag.imag.fr>
 #     Simon Cathebras <simon.cathebras@ensimag.imag.fr>
@@ -21,6 +21,9 @@
 #     "delete_page"
 #     "edit_page"
 #     "getallpagename"
+
+use strict;
+use warnings;
 
 use MediaWiki::API;
 use Getopt::Long;
