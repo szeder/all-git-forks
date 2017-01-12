@@ -1,4 +1,6 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
+
+use warnings;
 
 my @menu = ();
 my $output = $ARGV[0];

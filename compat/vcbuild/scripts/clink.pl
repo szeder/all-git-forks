@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 ######################################################################
 # Compiles or links files
 #
@@ -10,6 +10,7 @@
 # Copyright (C) 2009 Marius Storm-Olsen <mstormo@gmail.com>
 ######################################################################
 use strict;
+use warnings;
 my @args = ();
 my @cflags = ();
 my $is_linking = 0;

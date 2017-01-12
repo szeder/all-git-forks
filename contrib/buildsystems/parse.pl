@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl
 ######################################################################
 # Do not call this script directly!
 #
@@ -8,6 +8,7 @@
 # Copyright (C) 2009 Marius Storm-Olsen <mstormo@gmail.com>
 ######################################################################
 use strict;
+use warnings;
 use File::Basename;
 use Cwd;
 
