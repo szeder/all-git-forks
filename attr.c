@@ -209,7 +209,7 @@ static void report_invalid_attr(const char *name, size_t len,
  * dictionary.  If no entry is found, create a new attribute and store it in
  * the dictionary.
  */
-static struct git_attr *git_attr_internal(const char *name, int namelen)
+static const struct git_attr *git_attr_internal(const char *name, int namelen)
 {
 	struct git_attr *a;
 
@@ -233,14 +233,14 @@ static struct git_attr *git_attr_internal(const char *name, int namelen)
 	return a;
 }
 
-struct git_attr *git_attr(const char *name)
+const struct git_attr *git_attr(const char *name)
 {
 	return git_attr_internal(name, strlen(name));
 }
 
 /* What does a matched pattern decide? */
 struct attr_state {
-	struct git_attr *attr;
+	const struct git_attr *attr;
 	const char *setto;
 };
 
@@ -267,7 +267,7 @@ struct pattern {
 struct match_attr {
 	union {
 		struct pattern pat;
-		struct git_attr *attr;
+		const struct git_attr *attr;
 	} u;
 	char is_macro;
 	unsigned num_attr;
@@ -814,7 +814,7 @@ static int fill_one(const char *what, struct attr_check_item *all_attrs,
 	int i;
 
 	for (i = a->num_attr - 1; rem > 0 && i >= 0; i--) {
-		struct git_attr *attr = a->state[i].attr;
+		const struct git_attr *attr = a->state[i].attr;
 		const char **n = &(all_attrs[attr->attr_nr].value);
 		const char *v = a->state[i].setto;
 
@@ -838,7 +838,7 @@ static int fill(const char *path, int pathlen, int basename_offset,
 	const char *base = stk->origin ? stk->origin : "";
 
 	for (i = stk->num_matches - 1; 0 < rem && 0 <= i; i--) {
-		struct match_attr *a = stk->attrs[i];
+		const struct match_attr *a = stk->attrs[i];
 		if (a->is_macro)
 			continue;
 		if (path_matches(path, pathlen, basename_offset,
@@ -988,7 +988,7 @@ struct attr_check *attr_check_initl(const char *one, ...)
 	check->check[0].attr = git_attr(one);
 	va_start(params, one);
 	for (cnt = 1; cnt < check->check_nr; cnt++) {
-		struct git_attr *attr;
+		const struct git_attr *attr;
 		param = va_arg(params, const char *);
 		if (!param)
 			die("BUG: counted %d != ended at %d",
