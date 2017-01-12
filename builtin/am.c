@@ -124,6 +124,7 @@ struct am_state {
 	int keep; /* enum keep_type */
 	int message_id;
 	int scissors; /* enum scissors_type */
+	int keep_cr;
 	struct argv_array git_apply_opts;
 	const char *resolvemsg;
 	int committer_date_is_author_date;
@@ -143,6 +144,7 @@ static void am_state_init(struct am_state *state, const char *dir)
 
 	memset(state, 0, sizeof(*state));
 
+	state->keep_cr = -1;
 	assert(dir);
 	state->dir = xstrdup(dir);
 
@@ -697,7 +699,7 @@ done:
  * a mbox file or a Maildir. Returns 0 on success, -1 on failure.
  */
 static int split_mail_mbox(struct am_state *state, const char **paths,
-				int keep_cr, int mboxrd)
+				int mboxrd)
 {
 	struct child_process cp = CHILD_PROCESS_INIT;
 	struct strbuf last = STRBUF_INIT;
@@ -707,7 +709,7 @@ static int split_mail_mbox(struct am_state *state, const char **paths,
 	argv_array_pushf(&cp.args, "-d%d", state->prec);
 	argv_array_pushf(&cp.args, "-o%s", state->dir);
 	argv_array_push(&cp.args, "-b");
-	if (keep_cr)
+	if (state->keep_cr)
 		argv_array_push(&cp.args, "--keep-cr");
 	if (mboxrd)
 		argv_array_push(&cp.args, "--mboxrd");
@@ -737,7 +739,7 @@ typedef int (*mail_conv_fn)(FILE *out, FILE *in, int keep_cr);
  * Returns 0 on success, -1 on failure.
  */
 static int split_mail_conv(mail_conv_fn fn, struct am_state *state,
-			const char **paths, int keep_cr)
+			const char **paths)
 {
 	static const char *stdin_only[] = {"-", NULL};
 	int i;
@@ -766,7 +768,7 @@ static int split_mail_conv(mail_conv_fn fn, struct am_state *state,
 			return error_errno(_("could not open '%s' for writing"),
 					   mail);
 
-		ret = fn(out, in, keep_cr);
+		ret = fn(out, in, state->keep_cr);
 
 		fclose(out);
 		fclose(in);
@@ -826,8 +828,7 @@ static int stgit_patch_to_mail(FILE *out, FILE *in, int keep_cr)
  *
  * Returns 0 on success, -1 on failure.
  */
-static int split_mail_stgit_series(struct am_state *state, const char **paths,
-					int keep_cr)
+static int split_mail_stgit_series(struct am_state *state, const char **paths)
 {
 	const char *series_dir;
 	char *series_dir_buf;
@@ -857,7 +858,7 @@ static int split_mail_stgit_series(struct am_state *state, const char **paths,
 	strbuf_release(&sb);
 	free(series_dir_buf);
 
-	ret = split_mail_conv(stgit_patch_to_mail, state, patches.argv, keep_cr);
+	ret = split_mail_conv(stgit_patch_to_mail, state, patches.argv);
 
 	argv_array_clear(&patches);
 	return ret;
@@ -937,30 +938,27 @@ static int hg_patch_to_mail(FILE *out, FILE *in, int keep_cr)
  * state->cur will be set to the index of the first mail, and state->last will
  * be set to the index of the last mail.
  *
- * Set keep_cr to 0 to convert all lines ending with \r\n to end with \n, 1
- * to disable this behavior, -1 to use the default configured setting.
- *
  * Returns 0 on success, -1 on failure.
  */
 static int split_mail(struct am_state *state, enum patch_format patch_format,
-			const char **paths, int keep_cr)
+			const char **paths)
 {
-	if (keep_cr < 0) {
-		keep_cr = 0;
-		git_config_get_bool("am.keepcr", &keep_cr);
+	if (state->keep_cr < 0) {
+		state->keep_cr = 0;
+		git_config_get_bool("am.keepcr", &state->keep_cr);
 	}
 
 	switch (patch_format) {
 	case PATCH_FORMAT_MBOX:
-		return split_mail_mbox(state, paths, keep_cr, 0);
+		return split_mail_mbox(state, paths, 0);
 	case PATCH_FORMAT_STGIT:
-		return split_mail_conv(stgit_patch_to_mail, state, paths, keep_cr);
+		return split_mail_conv(stgit_patch_to_mail, state, paths);
 	case PATCH_FORMAT_STGIT_SERIES:
-		return split_mail_stgit_series(state, paths, keep_cr);
+		return split_mail_stgit_series(state, paths);
 	case PATCH_FORMAT_HG:
-		return split_mail_conv(hg_patch_to_mail, state, paths, keep_cr);
+		return split_mail_conv(hg_patch_to_mail, state, paths);
 	case PATCH_FORMAT_MBOXRD:
-		return split_mail_mbox(state, paths, keep_cr, 1);
+		return split_mail_mbox(state, paths, 1);
 	default:
 		die("BUG: invalid patch_format");
 	}
@@ -971,7 +969,7 @@ static int split_mail(struct am_state *state, enum patch_format patch_format,
  * Setup a new am session for applying patches
  */
 static void am_setup(struct am_state *state, enum patch_format patch_format,
-			const char **paths, int keep_cr)
+			const char **paths)
 {
 	struct object_id curr_head;
 	const char *str;
@@ -988,7 +986,7 @@ static void am_setup(struct am_state *state, enum patch_format patch_format,
 	if (mkdir(state->dir, 0777) < 0 && errno != EEXIST)
 		die_errno(_("failed to create directory '%s'"), state->dir);
 
-	if (split_mail(state, patch_format, paths, keep_cr) < 0) {
+	if (split_mail(state, patch_format, paths) < 0) {
 		am_destroy(state);
 		die(_("Failed to split patches."));
 	}
@@ -1275,6 +1273,8 @@ static int parse_mail(struct am_state *state, const char *mail)
 	default:
 		die("BUG: invalid value for state->scissors");
 	}
+
+	mi.keep_cr = state->keep_cr;
 
 	mi.input = fopen(mail, "r");
 	if (!mi.input)
@@ -2224,7 +2224,6 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 {
 	struct am_state state;
 	int binary = -1;
-	int keep_cr = -1;
 	int patch_format = PATCH_FORMAT_UNKNOWN;
 	enum resume_mode resume = RESUME_FALSE;
 	int in_progress;
@@ -2254,10 +2253,10 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 			N_("pass -b flag to git-mailinfo"), KEEP_NON_PATCH),
 		OPT_BOOL('m', "message-id", &state.message_id,
 			N_("pass -m flag to git-mailinfo")),
-		{ OPTION_SET_INT, 0, "keep-cr", &keep_cr, NULL,
+		{ OPTION_SET_INT, 0, "keep-cr", &state.keep_cr, NULL,
 		  N_("pass --keep-cr flag to git-mailsplit for mbox format"),
 		  PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL, 1},
-		{ OPTION_SET_INT, 0, "no-keep-cr", &keep_cr, NULL,
+		{ OPTION_SET_INT, 0, "no-keep-cr", &state.keep_cr, NULL,
 		  N_("do not pass --keep-cr flag to git-mailsplit independent of am.keepcr"),
 		  PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL, 0},
 		OPT_BOOL('c', "scissors", &state.scissors,
@@ -2392,7 +2391,7 @@ int cmd_am(int argc, const char **argv, const char *prefix)
 				argv_array_push(&paths, mkpath("%s/%s", prefix, argv[i]));
 		}
 
-		am_setup(&state, patch_format, paths.argv, keep_cr);
+		am_setup(&state, patch_format, paths.argv);
 
 		argv_array_clear(&paths);
 	}

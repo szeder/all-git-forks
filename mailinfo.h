@@ -12,6 +12,7 @@ struct mailinfo {
 	struct strbuf email;
 	int keep_subject;
 	int keep_non_patch_brackets_in_subject;
+	int keep_cr;
 	int add_message_id;
 	int use_scissors;
 	int use_inbody_headers;

@@ -812,6 +812,12 @@ static void handle_patch(struct mailinfo *mi, const struct strbuf *line)
 
 static void handle_filter(struct mailinfo *mi, struct strbuf *line)
 {
+	if (!mi->keep_cr && line->len > 1 &&
+			line->buf[line->len - 1] == '\n' &&
+			line->buf[line->len - 2] == '\r') {
+		strbuf_setlen(line, line->len - 2);
+		strbuf_addch(line, '\n');
+	}
 	switch (mi->filter_stage) {
 	case 0:
 		if (!handle_commit_msg(mi, line))
