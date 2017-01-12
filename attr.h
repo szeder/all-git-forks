@@ -33,6 +33,8 @@ struct attr_check {
 	int check_nr;
 	int check_alloc;
 	struct attr_check_item *check;
+	int all_attrs_nr;
+	struct attr_check_item *all_attrs;
 };
 
 extern struct attr_check *attr_check_alloc(void);
