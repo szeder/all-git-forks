@@ -99,6 +99,36 @@ test_expect_success '--cherry-pick bar does not come up empty (II)' '
 	test_cmp actual.named expect
 '
 
+test_expect_success 'name-rev multiple --refs combine inclusive' '
+	git rev-list --left-right --cherry-pick F...E -- bar > actual &&
+	git name-rev --stdin --name-only --refs="*tags/F" --refs="*tags/E" \
+		< actual > actual.named &&
+	test_cmp actual.named expect
+'
+
+cat >expect <<EOF
+<tags/F
+$(git rev-list --left-right --right-only --cherry-pick F...E -- bar)
+EOF
+
+test_expect_success 'name-rev --refs excludes non-matched patterns' '
+	git rev-list --left-right --cherry-pick F...E -- bar > actual &&
+	git name-rev --stdin --name-only --refs="*tags/F" \
+		< actual > actual.named &&
+	test_cmp actual.named expect
+'
+
+cat >expect <<EOF
+$(git rev-list --left-right --cherry-pick F...E -- bar)
+EOF
+
+test_expect_success 'name-rev --no-refs clears the refs list' '
+	git rev-list --left-right --cherry-pick F...E -- bar > actual &&
+	git name-rev --stdin --name-only --refs="*tags/F" --refs="*tags/E" --no-refs --refs="*tags/G" \
+		< actual > actual.named &&
+	test_cmp actual.named expect
+'
+
 cat >expect <<EOF
 +tags/F
 =tags/D
