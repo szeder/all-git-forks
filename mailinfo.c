@@ -332,7 +332,7 @@ static void cleanup_subject(struct mailinfo *mi, struct strbuf *subject)
 
 #define MAX_HDR_PARSED 10
 static const char *header[MAX_HDR_PARSED] = {
-	"From","Subject","Date",
+	"From","Subject","Date","Sent","To",
 };
 
 static inline int cmp_header(const struct strbuf *line, const char *hdr)
@@ -683,6 +683,13 @@ static int is_scissors_line(const char *line)
 			perforation += 2;
 			scissors += 2;
 			c++;
+			continue;
+		}
+		if (!memcmp(c, "Original Message", 16)) {
+			in_perforation = 1;
+			perforation += 16;
+			scissors += 16;
+			c += 15;
 			continue;
 		}
 		in_perforation = 0;
