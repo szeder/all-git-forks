@@ -712,7 +712,7 @@ test_expect_success HIGHLIGHT \
 test_expect_success HIGHLIGHT \
 	'syntax highlighting (highlighter language autodetection)' \
 	'git config gitweb.highlight yes &&
-	 echo "#!/usr/bin/perl" > test &&
+	 echo "#!/usr/bin/env perl" > test &&
 	 git add test &&
 	 git commit -m "Add test" &&
 	 gitweb_run "p=.git;a=blob;f=test"'

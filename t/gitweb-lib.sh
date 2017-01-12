@@ -7,7 +7,7 @@
 gitweb_init () {
 	safe_pwd="$(perl -MPOSIX=getcwd -e 'print quotemeta(getcwd)')"
 	cat >gitweb_config.perl <<EOF
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # gitweb configuration for tests
 

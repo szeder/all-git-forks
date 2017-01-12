@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 ######################################################################
 # Do not call this script directly!
 #

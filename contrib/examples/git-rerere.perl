@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # REuse REcorded REsolve.  This tool records a conflicted automerge
 # result and its hand resolution, and helps to resolve future

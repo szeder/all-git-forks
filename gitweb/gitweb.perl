@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # gitweb - simple web interface to track changes in git repositories
 #
