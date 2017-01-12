@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Test t0000..t9999.sh for non portable shell scripts
 # This script can be called with one or more filenames as parameters

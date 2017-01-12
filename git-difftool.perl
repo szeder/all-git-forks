@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 # Copyright (c) 2009, 2010 David Aguilar
 # Copyright (c) 2012 Tim Henigan
 #
