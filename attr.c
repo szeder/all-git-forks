@@ -777,9 +777,7 @@ static int macroexpand_one(int nr, int rem)
  * check_all_attr. If num is non-zero, only attributes in check[] are
  * collected. Otherwise all attributes are collected.
  */
-static void collect_some_attrs(const char *path, int num,
-			       struct attr_check_item *check)
-
+static void collect_some_attrs(const char *path, struct attr_check *check)
 {
 	struct attr_stack *stk;
 	int i, pathlen, rem, dirlen;
@@ -802,17 +800,18 @@ static void collect_some_attrs(const char *path, int num,
 	prepare_attr_stack(path, dirlen);
 	for (i = 0; i < attr_nr; i++)
 		check_all_attr[i].value = ATTR__UNKNOWN;
-	if (num && !cannot_trust_maybe_real) {
+	if (check->check_nr && !cannot_trust_maybe_real) {
 		rem = 0;
-		for (i = 0; i < num; i++) {
-			if (!check[i].attr->maybe_real) {
+		for (i = 0; i < check->check_nr; i++) {
+			const struct git_attr *a = check->check[i].attr;
+			if (!a->maybe_real) {
 				struct attr_check_item *c;
-				c = check_all_attr + check[i].attr->attr_nr;
+				c = check_all_attr + a->attr_nr;
 				c->value = ATTR__UNSET;
 				rem++;
 			}
 		}
-		if (rem == num)
+		if (rem == check->check_nr)
 			return;
 	}
 
@@ -821,18 +820,17 @@ static void collect_some_attrs(const char *path, int num,
 		rem = fill(path, pathlen, basename_offset, stk, rem);
 }
 
-static int git_check_attrs(const char *path, int num,
-			   struct attr_check_item *check)
+int git_check_attr(const char *path, struct attr_check *check)
 {
 	int i;
 
-	collect_some_attrs(path, num, check);
+	collect_some_attrs(path, check);
 
-	for (i = 0; i < num; i++) {
-		const char *value = check_all_attr[check[i].attr->attr_nr].value;
+	for (i = 0; i < check->check_nr; i++) {
+		const char *value = check_all_attr[check->check[i].attr->attr_nr].value;
 		if (value == ATTR__UNKNOWN)
 			value = ATTR__UNSET;
-		check[i].value = value;
+		check->check[i].value = value;
 	}
 
 	return 0;
@@ -843,7 +841,7 @@ void git_all_attrs(const char *path, struct attr_check *check)
 	int i;
 
 	attr_check_reset(check);
-	collect_some_attrs(path, check->check_nr, check->check);
+	collect_some_attrs(path, check);
 
 	for (i = 0; i < attr_nr; i++) {
 		const char *name = check_all_attr[i].attr->name;
@@ -854,11 +852,6 @@ void git_all_attrs(const char *path, struct attr_check *check)
 		item = attr_check_append(check, git_attr(name));
 		item->value = value;
 	}
-}
-
-int git_check_attr(const char *path, struct attr_check *check)
-{
-	return git_check_attrs(path, check->check_nr, check->check);
 }
 
 struct attr_check *attr_check_alloc(void)
