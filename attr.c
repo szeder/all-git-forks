@@ -591,25 +591,29 @@ static struct attr_stack *read_attr_from_index(const char *path, int macro_ok)
 
 static struct attr_stack *read_attr(const char *path, int macro_ok)
 {
-	struct attr_stack *res;
+	struct attr_stack *res = NULL;
 
-	if (direction == GIT_ATTR_CHECKOUT) {
+	if (direction == GIT_ATTR_INDEX) {
 		res = read_attr_from_index(path, macro_ok);
-		if (!res)
-			res = read_attr_from_file(path, macro_ok);
-	}
-	else if (direction == GIT_ATTR_CHECKIN) {
-		res = read_attr_from_file(path, macro_ok);
-		if (!res)
-			/*
-			 * There is no checked out .gitattributes file there, but
-			 * we might have it in the index.  We allow operation in a
-			 * sparsely checked out work tree, so read from it.
-			 */
+	} else if (!is_bare_repository()) {
+		if (direction == GIT_ATTR_CHECKOUT) {
 			res = read_attr_from_index(path, macro_ok);
+			if (!res)
+				res = read_attr_from_file(path, macro_ok);
+		}
+		else if (direction == GIT_ATTR_CHECKIN) {
+			res = read_attr_from_file(path, macro_ok);
+			if (!res)
+				/*
+				 * There is no checked out .gitattributes file
+				 * there, but we might have it in the index.
+				 * We allow operation in a sparsely checked out
+				 * work tree, so read from it.
+				 */
+				res = read_attr_from_index(path, macro_ok);
+		}
 	}
-	else
-		res = read_attr_from_index(path, macro_ok);
+
 	if (!res)
 		res = xcalloc(1, sizeof(*res));
 	return res;
@@ -796,11 +800,7 @@ static const struct attr_stack *core_attr_stack(void)
 		}
 
 		/* root directory */
-		if (!is_bare_repository() || direction == GIT_ATTR_INDEX) {
-			e = read_attr(GITATTRIBUTES_FILE, 1);
-		} else {
-			e = xcalloc(1, sizeof(struct attr_stack));
-		}
+		e = read_attr(GITATTRIBUTES_FILE, 1);
 		key = "";
 		push_stack(&core, e, key, strlen(key));
 	}
