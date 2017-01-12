@@ -118,6 +118,13 @@ test_expect_success 'name-rev --refs excludes non-matched patterns' '
 	test_cmp actual.named expect
 '
 
+test_expect_success 'name-rev --discard excludes matched patterns' '
+	git rev-list --left-right --cherry-pick F...E -- bar > actual &&
+	git name-rev --stdin --name-only --refs="*tags/*" --discard="*E" \
+		< actual > actual.named &&
+	test_cmp actual.named expect
+'
+
 cat >expect <<EOF
 $(git rev-list --left-right --cherry-pick F...E -- bar)
 EOF

@@ -30,6 +30,13 @@ OPTIONS
 	given multiple times, use refs whose names match any of the given shell
 	patterns. Use `--no-refs` to clear any previous ref patterns given.
 
+--discard=<pattern>::
+	Do not use any ref whose name matches a given shell pattern. The
+	pattern can be one of branch name, tag name or fully qualified ref
+	name. If given multiple times, discard refs that match any of the given
+	shell patterns. Use `--no-discards` to clear the list of discard
+	patterns.
+
 --all::
 	List all commits reachable from all refs
 
