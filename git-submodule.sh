@@ -606,7 +606,12 @@ cmd_update()
 		if test $just_cloned -eq 1
 		then
 			subsha1=
-			update_module=checkout
+			if test "$update_module" = "merge" ||
+			   test "$update_module" = "rebase" ||
+			   test "$update_module" = "none"
+			then
+				update_module=checkout
+			fi
 		else
 			subsha1=$(sanitize_submodule_env; cd "$sm_path" &&
 				git rev-parse --verify HEAD) ||
