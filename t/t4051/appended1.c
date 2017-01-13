@@ -1,5 +1,6 @@
 
-int appended(void) // Begin of first part
+// Begin of first part
+int appended(void)
 {
 	int i;
 	char *s = "a string";

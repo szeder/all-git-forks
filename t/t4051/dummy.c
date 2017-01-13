@@ -1,5 +1,6 @@
 
-static int dummy(void)	// Begin of dummy
+// Begin of dummy
+static int dummy(void)
 {
 	int rc = 0;
 

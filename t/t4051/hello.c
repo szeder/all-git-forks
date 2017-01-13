@@ -1,5 +1,6 @@
 
-static void hello(void)	// Begin of hello
+// Begin of hello
+static void hello(void)
 {
 	/*
 	 * Classic.
