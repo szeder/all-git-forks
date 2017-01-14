@@ -79,6 +79,49 @@ static void graph_show_line_prefix(const struct diff_options *diffopt)
 static const char **column_colors;
 static unsigned short column_colors_max;
 
+static void set_column_colors(void)
+{
+	static char **colors;
+	static int colors_max, colors_alloc;
+	char *string = NULL;
+	const char *end, *start;
+	int i;
+
+	for (i = 0; i < colors_max; i++)
+		free(colors[i]);
+	if (colors)
+		free(colors[colors_max]);
+	colors_max = 0;
+
+	if (git_config_get_string("log.graphcolors", &string)) {
+		graph_set_column_colors(column_colors_ansi,
+					column_colors_ansi_max);
+		return;
+	}
+
+	start = string;
+	end = string + strlen(string);
+	while (start < end) {
+		const char *comma = strchrnul(start, ',');
+		char color[COLOR_MAXLEN];
+
+		while (start < comma && isspace(*start))
+			start++;
+
+		if (!color_parse_mem(start, comma - start, color)) {
+			ALLOC_GROW(colors, colors_max + 1, colors_alloc);
+			colors[colors_max++] = xstrdup(color);
+		} else
+			warning(_("ignore invalid color '%.*s' in log.graphColors"),
+				(int)(comma - start), start);
+		start = comma + 1;
+	}
+	free(string);
+	ALLOC_GROW(colors, colors_max + 1, colors_alloc);
+	colors[colors_max] = xstrdup(GIT_COLOR_RESET);
+	graph_set_column_colors((const char **)colors, colors_max);
+}
+
 void graph_set_column_colors(const char **colors, unsigned short colors_max)
 {
 	column_colors = colors;
@@ -239,8 +282,7 @@ struct git_graph *graph_init(struct rev_info *opt)
 	struct git_graph *graph = xmalloc(sizeof(struct git_graph));
 
 	if (!column_colors)
-		graph_set_column_colors(column_colors_ansi,
-					column_colors_ansi_max);
+		set_column_colors();
 
 	graph->commit = NULL;
 	graph->revs = opt;
