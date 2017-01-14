@@ -1013,6 +1013,13 @@ Usually it is easier to configure any desired options through your
 personal `.ssh/config` file.  Please consult your ssh documentation
 for further details.
 
+`GIT_SSH_VARIANT`::
+	If this environment variable is set, it overrides the autodetection
+	of plink/tortoiseplink in the SSH command that 'git fetch' and 'git push'
+	use. It can be set to either `ssh`, `plink`, `putty` or `tortoiseplink`.
+	Any other value will be treated as normal ssh. This is useful in case
+	that Git gets this wrong.
+
 `GIT_ASKPASS`::
 	If this environment variable is set, then Git commands which need to
 	acquire passwords or passphrases (e.g. for HTTP or IMAP authentication)

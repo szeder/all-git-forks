@@ -691,6 +691,28 @@ static const char *get_ssh_command(void)
 	return NULL;
 }
 
+static int get_ssh_variant(int *putty, int *tortoiseplink)
+{
+	const char *variant;
+
+	if (!(variant = getenv("GIT_SSH_VARIANT")) &&
+		git_config_get_string_const("ssh.variant", &variant))
+		return 0;
+
+	if (!strcmp(variant, "tortoiseplink")) {
+		*putty = 1;
+		*tortoiseplink = 1;
+	} else if (!strcmp(variant, "plink") || !strcmp(variant, "putty")) {
+		*putty = 1;
+		*tortoiseplink = 0;
+	} else {
+		*putty = 0;
+		*tortoiseplink = 0;
+	}
+
+	return 1;
+}
+
 /*
  * This returns a dummy child_process if the transport protocol does not
  * need fork(2), or a struct child_process object if it does.  Once done,
@@ -816,7 +838,7 @@ struct child_process *git_connect(int fd[2], const char *url,
 				ssh_argv0 = xstrdup(ssh);
 			}
 
-			if (ssh_argv0) {
+			if (!get_ssh_variant(&putty, &tortoiseplink) && ssh_argv0) {
 				const char *base = basename(ssh_argv0);
 
 				tortoiseplink = !strcasecmp(base, "tortoiseplink") ||
@@ -824,9 +846,9 @@ struct child_process *git_connect(int fd[2], const char *url,
 				putty = tortoiseplink ||
 					!strcasecmp(base, "plink") ||
 					!strcasecmp(base, "plink.exe");
-
-				free(ssh_argv0);
 			}
+
+			free(ssh_argv0);
 
 			argv_array_push(&conn->args, ssh);
 			if (flags & CONNECT_IPV4)
