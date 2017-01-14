@@ -71,6 +71,7 @@ static int allow_unrelated_histories;
 static int show_progress = -1;
 static int default_to_upstream = 1;
 static const char *sign_commit;
+static int signoff;
 
 static struct strategy all_strategy[] = {
 	{ "recursive",  DEFAULT_TWOHEAD | NO_TRIVIAL },
@@ -206,6 +207,7 @@ static struct option builtin_merge_options[] = {
 		N_("create a single commit instead of doing a merge")),
 	OPT_BOOL(0, "commit", &option_commit,
 		N_("perform a commit if the merge succeeds (default)")),
+	OPT_BOOL(0, "signoff", &signoff, N_("add Signed-off-by:")),
 	OPT_BOOL('e', "edit", &option_edit,
 		N_("edit message before committing")),
 	OPT_SET_INT(0, "ff", &fast_forward, N_("allow fast-forward (default)"), FF_ALLOW),
@@ -762,6 +764,11 @@ static void prepare_to_commit(struct commit_list *remoteheads)
 	strbuf_addch(&msg, '\n');
 	if (0 < option_edit)
 		strbuf_commented_addf(&msg, _(merge_editor_comment), comment_line_char);
+
+	if (signoff) {
+		append_signoff(&msg, ignore_non_trailer(msg.buf, msg.len), 0);
+	}
+
 	write_file_buf(git_path_merge_msg(), msg.buf, msg.len);
 	if (run_commit_hook(0 < option_edit, get_index_file(), "prepare-commit-msg",
 			    git_path_merge_msg(), "merge", NULL))
@@ -1221,6 +1228,15 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		if (fast_forward == FF_NO)
 			die(_("You cannot combine --squash with --no-ff."));
 		option_commit = 0;
+	}
+
+	if (signoff) {
+		if (!option_commit)
+			die(_("You cannot combine --no-commit with --signoff."));
+
+		if (fast_forward != FF_NO) {
+			die(_("--signoff doesn't make sense with a possible fast-forward merge"));
+		}
 	}
 
 	if (!argc) {

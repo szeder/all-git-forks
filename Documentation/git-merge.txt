@@ -12,7 +12,7 @@ SYNOPSIS
 'git merge' [-n] [--stat] [--no-commit] [--squash] [--[no-]edit]
 	[-s <strategy>] [-X <strategy-option>] [-S[<keyid>]]
 	[--[no-]allow-unrelated-histories]
-	[--[no-]rerere-autoupdate] [-m <msg>] [<commit>...]
+	[--[no-]rerere-autoupdate] [-m <msg>] [--signoff] [<commit>...]
 'git merge' <msg> HEAD <commit>...
 'git merge' --abort
 'git merge' --continue
@@ -85,6 +85,15 @@ will be appended to the specified message.
 The 'git fmt-merge-msg' command can be
 used to give a good default for automated 'git merge'
 invocations. The automated message can include the branch description.
+
+--signoff::
+	Add Signed-off-by line by the committer at the end of the commit
+	log message.  The meaning of a signoff depends on the project,
+	but it typically certifies that committer has
+	the rights to submit this work under the same license and
+	agrees to a Developer Certificate of Origin
+	(see http://developercertificate.org/ for more information).
+
 
 --[no-]rerere-autoupdate::
 	Allow the rerere mechanism to update the index with the
