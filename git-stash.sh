@@ -41,7 +41,7 @@ no_changes () {
 untracked_files () {
 	excl_opt=--exclude-standard
 	test "$untracked" = "all" && excl_opt=
-	git ls-files -o -z $excl_opt
+	git ls-files -o -z $excl_opt -- $1
 }
 
 clear_stash () {
@@ -56,6 +56,23 @@ clear_stash () {
 }
 
 create_stash () {
+	files=
+	while test $# != 0
+	do
+		case "$1" in
+		--)
+			shift
+			break
+			;;
+		--files)
+			;;
+		*)
+			files="$1 $files"
+			;;
+		esac
+		shift
+	done
+
 	stash_msg="$1"
 	untracked="$2"
 
@@ -92,7 +109,7 @@ create_stash () {
 		# Untracked files are stored by themselves in a parentless commit, for
 		# ease of unpacking later.
 		u_commit=$(
-			untracked_files | (
+			untracked_files $files | (
 				GIT_INDEX_FILE="$TMPindex" &&
 				export GIT_INDEX_FILE &&
 				rm -f "$TMPindex" &&
@@ -115,7 +132,7 @@ create_stash () {
 			git read-tree --index-output="$TMPindex" -m $i_tree &&
 			GIT_INDEX_FILE="$TMPindex" &&
 			export GIT_INDEX_FILE &&
-			git diff-index --name-only -z HEAD -- >"$TMP-stagenames" &&
+			git diff-index --name-only -z HEAD -- $files >"$TMP-stagenames" &&
 			git update-index -z --add --remove --stdin <"$TMP-stagenames" &&
 			git write-tree &&
 			rm -f "$TMPindex"
@@ -129,7 +146,7 @@ create_stash () {
 
 		# find out what the user wants
 		GIT_INDEX_FILE="$TMP-index" \
-			git add--interactive --patch=stash -- &&
+			git add--interactive --patch=stash -- $files &&
 
 		# state of the working tree
 		w_tree=$(GIT_INDEX_FILE="$TMP-index" git write-tree) ||
@@ -193,6 +210,7 @@ save_stash () {
 	keep_index=
 	patch_mode=
 	untracked=
+	files=
 	while test $# != 0
 	do
 		case "$1" in
@@ -215,6 +233,10 @@ save_stash () {
 			;;
 		-a|--all)
 			untracked=all
+			;;
+		--file)
+			shift
+			files="$files $1"
 			;;
 		--help)
 			show_help
@@ -262,18 +284,25 @@ save_stash () {
 	git reflog exists $ref_stash ||
 		clear_stash || die "$(gettext "Cannot initialize stash")"
 
-	create_stash "$stash_msg" $untracked
+	create_stash --files $files -- "$stash_msg" "$untracked"
 	store_stash -m "$stash_msg" -q $w_commit ||
 	die "$(gettext "Cannot save the current status")"
 	say "$(eval_gettext "Saved working directory and index state \$stash_msg")"
 
 	if test -z "$patch_mode"
 	then
-		git reset --hard ${GIT_QUIET:+-q}
+		if test -n "$files"
+		then
+			git reset -- $files
+			git checkout HEAD -- $(git ls-files --modified -- $files)
+			git clean --force --quiet -- $(git ls-files --others -- $files)
+		else
+			git reset --hard ${GIT_QUIET:+-q}
+		fi
 		test "$untracked" = "all" && CLEAN_X_OPTION=-x || CLEAN_X_OPTION=
 		if test -n "$untracked"
 		then
-			git clean --force --quiet -d $CLEAN_X_OPTION
+			git clean --force --quiet -d $CLEAN_X_OPTION -- $files
 		fi
 
 		if test "$keep_index" = "t" && test -n "$i_tree"
@@ -627,7 +656,7 @@ clear)
 	;;
 create)
 	shift
-	create_stash "$*" && echo "$w_commit"
+	create_stash -- "$*" && echo "$w_commit"
 	;;
 store)
 	shift
