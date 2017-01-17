@@ -29,7 +29,12 @@ test_one() {
 
 	(
 		enter_worktree "$WORKTREE_ROOT/$branch" &&
-	        git test run -t "$1" "$branch@{u}..$branch"
+		# we only care about "bad". "good" etc are obviously
+		# fine. "known-bad" is a failure, but one we already
+		# knew about, and so we avoid triggering the failure
+		# actions.
+		! git test run -t "$1" "$branch@{u}..$branch" |
+		grep ' bad$'
 	)
 }
 
