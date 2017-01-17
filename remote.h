@@ -15,7 +15,7 @@ struct remote {
 	struct hashmap_entry ent;  /* must be first */
 
 	const char *name;
-	int origin;
+	int origin, configured;
 
 	const char *foreign_vcs;
 

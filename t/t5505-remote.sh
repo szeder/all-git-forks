@@ -764,7 +764,7 @@ test_expect_success 'rename a remote with name prefix of other remote' '
 	)
 '
 
-test_expect_failure 'rename succeeds with existing remote.<target>.prune' '
+test_expect_success 'rename succeeds with existing remote.<target>.prune' '
 	git clone one four.four &&
 	(
 		cd four.four &&

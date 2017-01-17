@@ -255,6 +255,7 @@ static void read_remotes_file(struct remote *remote)
 
 	if (!f)
 		return;
+	remote->configured = 1;
 	remote->origin = REMOTE_REMOTES;
 	while (strbuf_getline(&buf, f) != EOF) {
 		const char *v;
@@ -289,6 +290,7 @@ static void read_branches_file(struct remote *remote)
 		return;
 	}
 
+	remote->configured = 1;
 	remote->origin = REMOTE_BRANCHES;
 
 	/*
@@ -384,21 +386,25 @@ static int handle_config(const char *key, const char *value, void *cb)
 		if (git_config_string(&v, key, value))
 			return -1;
 		add_url(remote, v);
+		remote->configured = 1;
 	} else if (!strcmp(subkey, "pushurl")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
 			return -1;
 		add_pushurl(remote, v);
+		remote->configured = 1;
 	} else if (!strcmp(subkey, "push")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
 			return -1;
 		add_push_refspec(remote, v);
+		remote->configured = 1;
 	} else if (!strcmp(subkey, "fetch")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
 			return -1;
 		add_fetch_refspec(remote, v);
+		remote->configured = 1;
 	} else if (!strcmp(subkey, "receivepack")) {
 		const char *v;
 		if (git_config_string(&v, key, value))
@@ -427,6 +433,7 @@ static int handle_config(const char *key, const char *value, void *cb)
 		return git_config_string((const char **)&remote->http_proxy_authmethod,
 					 key, value);
 	} else if (!strcmp(subkey, "vcs")) {
+		remote->configured = 1;
 		return git_config_string(&remote->foreign_vcs, key, value);
 	}
 	return 0;
@@ -716,7 +723,7 @@ struct remote *pushremote_get(const char *name)
 
 int remote_is_configured(struct remote *remote)
 {
-	return remote && remote->origin;
+	return remote && remote->configured;
 }
 
 int for_each_remote(each_remote_fn fn, void *priv)
