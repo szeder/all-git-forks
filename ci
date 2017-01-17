@@ -45,5 +45,9 @@ while true; do
 	else
 		handle_outcome "$test" failure
 	fi
-	sleep 30
+
+	gitdir=$(git rev-parse --git-dir)
+	# We need delete_self to pick up changes to HEAD (since it gets renamed
+	# over), and "move" to pick up changes in the refs directories.
+	inotifywait -qq -t 60 -e delete_self -e move -r "$gitdir/HEAD" "$gitdir/refs"
 done
