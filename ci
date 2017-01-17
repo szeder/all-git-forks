@@ -29,7 +29,7 @@ test_one() {
 
 	(
 		enter_worktree "$WORKTREE_ROOT/$branch" &&
-	        git test range -t "$1" "$branch@{u}..$branch"
+	        git test run -t "$1" "$branch@{u}..$branch"
 	)
 }
 
