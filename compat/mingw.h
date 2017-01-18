@@ -446,6 +446,9 @@ extern int (*lstat)(const char *file_name, struct stat *buf);
 
 int mingw_utime(const char *file_name, const struct utimbuf *times);
 #define utime mingw_utime
+size_t mingw_strftime(char *s, size_t max,
+		   const char *format, const struct tm *tm);
+#define strftime mingw_strftime
 
 pid_t mingw_spawnvpe(const char *cmd, const char **argv, char **env,
 		     const char *dir,
@@ -504,6 +507,8 @@ int mingw_offset_1st_component(const char *path);
 #define PATH_SEP ';'
 extern char *mingw_query_user_email(void);
 #define query_user_email mingw_query_user_email
+extern const char *program_data_config(void);
+#define git_program_data_config program_data_config
 #if !defined(__MINGW64_VERSION_MAJOR) && (!defined(_MSC_VER) || _MSC_VER < 1800)
 #define PRIuMAX "I64u"
 #define PRId64 "I64d"
