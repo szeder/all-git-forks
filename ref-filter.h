@@ -116,4 +116,11 @@ char *get_head_description(void);
 /*  Set up translated strings in the output. */
 void setup_ref_filter_porcelain_msg(void);
 
+/*
+ * Print a single ref, outside of any ref-filter. Note that the
+ * name must be a fully qualified refname.
+ */
+void pretty_print_ref(const char *name, const unsigned char *sha1,
+		const char *format);
+
 #endif /*  REF_FILTER_H  */
