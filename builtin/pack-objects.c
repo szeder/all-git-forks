@@ -896,17 +896,15 @@ static void write_pack_file(void)
 
 static int no_try_delta(const char *path)
 {
-	static struct git_attr_check *check;
-	int ret = 0;
-	struct git_attr_result result[1];
+	static struct attr_check *check;
 
-	git_attr_check_initl(&check, "delta", NULL);
-
-	if (!git_check_attr(path, check, result)) {
-		if (ATTR_FALSE(result[0].value))
-			ret = 1;
-	}
-	return ret;
+	if (!check)
+		check = attr_check_initl("delta", NULL);
+	if (git_check_attr(path, check))
+		return 0;
+	if (ATTR_FALSE(check->check[0].value))
+		return 1;
+	return 0;
 }
 
 /*

@@ -73,15 +73,15 @@ unsigned parse_whitespace_rule(const char *string)
 
 unsigned whitespace_rule(const char *pathname)
 {
-	static struct git_attr_check *attr_whitespace_rule;
-	struct git_attr_result result[1];
+	static struct attr_check *attr_whitespace_rule;
 
-	git_attr_check_initl(&attr_whitespace_rule, "whitespace", NULL);
+	if (!attr_whitespace_rule)
+		attr_whitespace_rule = attr_check_initl("whitespace", NULL);
 
-	if (!git_check_attr(pathname, attr_whitespace_rule, result)) {
+	if (!git_check_attr(pathname, attr_whitespace_rule)) {
 		const char *value;
 
-		value = result[0].value;
+		value = attr_whitespace_rule->check[0].value;
 		if (ATTR_TRUE(value)) {
 			/* true (whitespace) */
 			unsigned all_rule = ws_tab_width(whitespace_rule_cfg);

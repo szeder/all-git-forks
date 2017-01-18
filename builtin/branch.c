@@ -37,12 +37,12 @@ static unsigned char head_sha1[20];
 
 static int branch_use_color = -1;
 static char branch_colors[][COLOR_MAXLEN] = {
-	"%(color:reset)",
-	"%(color:reset)",	/* PLAIN */
-	"%(color:red)",		/* REMOTE */
-	"%(color:reset)",	/* LOCAL */
-	"%(color:green)",	/* CURRENT */
-	"%(color:blue)",	/* UPSTREAM */
+	GIT_COLOR_RESET,
+	GIT_COLOR_NORMAL,       /* PLAIN */
+	GIT_COLOR_RED,          /* REMOTE */
+	GIT_COLOR_NORMAL,       /* LOCAL */
+	GIT_COLOR_GREEN,        /* CURRENT */
+	GIT_COLOR_BLUE,         /* UPSTREAM */
 };
 enum color_branch {
 	BRANCH_COLOR_RESET = 0,
@@ -306,16 +306,36 @@ static int calc_maxwidth(struct ref_array *refs, int remote_bonus)
 	return max;
 }
 
+static const char *quote_literal_for_format(const char *s)
+{
+	static struct strbuf buf = STRBUF_INIT;
+
+	strbuf_reset(&buf);
+	while (*s) {
+		const char *ep = strchrnul(s, '%');
+		if (s < ep)
+			strbuf_add(&buf, s, ep - s);
+		if (*ep == '%') {
+			strbuf_addstr(&buf, "%%");
+			s = ep + 1;
+		} else {
+			s = ep;
+		}
+	}
+	return buf.buf;
+}
+
 static char *build_format(struct ref_filter *filter, int maxwidth, const char *remote_prefix)
 {
 	struct strbuf fmt = STRBUF_INIT;
 	struct strbuf local = STRBUF_INIT;
 	struct strbuf remote = STRBUF_INIT;
 
-	strbuf_addf(&fmt, "%%(if)%%(HEAD)%%(then)* %s%%(else)  %%(end)", branch_get_color(BRANCH_COLOR_CURRENT));
+	strbuf_addf(&fmt, "%%(if)%%(HEAD)%%(then)* %s%%(else)  %%(end)",
+		    branch_get_color(BRANCH_COLOR_CURRENT));
 
 	if (filter->verbose) {
-		strbuf_addf(&local, "%%(align:%d,left)%%(refname:strip=2)%%(end)", maxwidth);
+		strbuf_addf(&local, "%%(align:%d,left)%%(refname:lstrip=2)%%(end)", maxwidth);
 		strbuf_addf(&local, "%s", branch_get_color(BRANCH_COLOR_RESET));
 		strbuf_addf(&local, " %%(objectname:short=7) ");
 
@@ -326,18 +346,19 @@ static char *build_format(struct ref_filter *filter, int maxwidth, const char *r
 		else
 			strbuf_addf(&local, "%%(if)%%(upstream:track)%%(then)%%(upstream:track) %%(end)%%(contents:subject)");
 
-		strbuf_addf(&remote, "%s%%(align:%d,left)%s%%(refname:strip=2)%%(end)%s%%(if)%%(symref)%%(then) -> %%(symref:short)"
+		strbuf_addf(&remote, "%s%%(align:%d,left)%s%%(refname:lstrip=2)%%(end)%s%%(if)%%(symref)%%(then) -> %%(symref:short)"
 			    "%%(else) %%(objectname:short=7) %%(contents:subject)%%(end)",
-			    branch_get_color(BRANCH_COLOR_REMOTE), maxwidth,
-			    remote_prefix, branch_get_color(BRANCH_COLOR_RESET));
-	} else {
-		strbuf_addf(&local, "%%(refname:strip=2)%s%%(if)%%(symref)%%(then) -> %%(symref:short)%%(end)",
+			    branch_get_color(BRANCH_COLOR_REMOTE), maxwidth, quote_literal_for_format(remote_prefix),
 			    branch_get_color(BRANCH_COLOR_RESET));
-		strbuf_addf(&remote, "%s%s%%(refname:strip=2)%s%%(if)%%(symref)%%(then) -> %%(symref:short)%%(end)",
-			    branch_get_color(BRANCH_COLOR_REMOTE), remote_prefix, branch_get_color(BRANCH_COLOR_RESET));
+	} else {
+		strbuf_addf(&local, "%%(refname:lstrip=2)%s%%(if)%%(symref)%%(then) -> %%(symref:short)%%(end)",
+			    branch_get_color(BRANCH_COLOR_RESET));
+		strbuf_addf(&remote, "%s%s%%(refname:lstrip=2)%s%%(if)%%(symref)%%(then) -> %%(symref:short)%%(end)",
+			    branch_get_color(BRANCH_COLOR_REMOTE), quote_literal_for_format(remote_prefix),
+			    branch_get_color(BRANCH_COLOR_RESET));
 	}
 
-	strbuf_addf(&fmt, "%%(if:notequals=remotes)%%(refname:base)%%(then)%s%%(else)%s%%(end)", local.buf, remote.buf);
+	strbuf_addf(&fmt, "%%(if:notequals=refs/remotes)%%(refname:rstrip=-2)%%(then)%s%%(else)%s%%(end)", local.buf, remote.buf);
 
 	strbuf_release(&local);
 	strbuf_release(&remote);
@@ -372,15 +393,6 @@ static void print_ref_list(struct ref_filter *filter, struct ref_sorting *sortin
 		format = to_free = build_format(filter, maxwidth, remote_prefix);
 	verify_ref_format(format);
 
-	/*
-	 * If no sorting parameter is given then we default to sorting
-	 * by 'refname'. This would give us an alphabetically sorted
-	 * array with the 'HEAD' ref at the beginning followed by
-	 * local branches 'refs/heads/...' and finally remote-tacking
-	 * branches 'refs/remotes/...'.
-	 */
-	if (!sorting)
-		sorting = ref_default_sorting();
 	ref_array_sort(sorting, &array);
 
 	for (i = 0; i < array.nr; i++) {
@@ -516,6 +528,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 	const char *new_upstream = NULL;
 	enum branch_track track;
 	struct ref_filter filter;
+	int icase = 0;
 	static struct ref_sorting *sorting = NULL, **sorting_tail = &sorting;
 	const char *format = NULL;
 
@@ -558,6 +571,7 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 			OPTION_CALLBACK, 0, "points-at", &filter.points_at, N_("object"),
 			N_("print only branches of the object"), 0, parse_opt_object_name
 		},
+		OPT_BOOL('i', "ignore-case", &icase, N_("sorting and filtering are case insensitive")),
 		OPT_STRING(  0 , "format", &format, N_("format"), N_("format to use for the output")),
 		OPT_END(),
 	};
@@ -598,6 +612,8 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 
 	if (filter.abbrev == -1)
 		filter.abbrev = DEFAULT_ABBREV;
+	filter.ignore_case = icase;
+
 	finalize_colopts(&colopts, -1);
 	if (filter.verbose) {
 		if (explicitly_enable_column(colopts))
@@ -619,6 +635,16 @@ int cmd_branch(int argc, const char **argv, const char *prefix)
 		if ((filter.kind & FILTER_REFS_BRANCHES) && filter.detached)
 			filter.kind |= FILTER_REFS_DETACHED_HEAD;
 		filter.name_patterns = argv;
+		/*
+		 * If no sorting parameter is given then we default to sorting
+		 * by 'refname'. This would give us an alphabetically sorted
+		 * array with the 'HEAD' ref at the beginning followed by
+		 * local branches 'refs/heads/...' and finally remote-tacking
+		 * branches 'refs/remotes/...'.
+		 */
+		if (!sorting)
+			sorting = ref_default_sorting();
+		sorting->ignore_case = icase;
 		print_ref_list(&filter, sorting, format);
 		print_columns(&output, colopts, NULL);
 		string_list_clear(&output, 0);

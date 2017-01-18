@@ -155,7 +155,7 @@ test_expect_success 'grep tree and more pathspecs' '
 	test_cmp expect actual
 '
 
-test_expect_success 'grep recurse submodule colon in name' '
+test_expect_success !MINGW 'grep recurse submodule colon in name' '
 	git init parent &&
 	test_when_finished "rm -rf parent" &&
 	echo "foobar" >"parent/fi:le" &&

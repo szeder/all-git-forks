@@ -28,10 +28,9 @@ struct worktree {
 extern struct worktree **get_worktrees(unsigned flags);
 
 /*
- * Get the worktrees of a submodule named by `path`.
+ * Returns 1 if linked worktrees exist, 0 otherwise.
  */
-extern struct worktree **get_submodule_worktrees(const char *path,
-						 unsigned flags);
+extern int submodule_uses_worktrees(const char *path);
 
 /*
  * Return git dir of the worktree. Note that the path may be relative.
@@ -57,6 +56,17 @@ extern int is_main_worktree(const struct worktree *wt);
  * otherwise.
  */
 extern const char *is_worktree_locked(struct worktree *wt);
+
+/*
+ * Return zero if the worktree is in good condition.
+ */
+extern int validate_worktree(const struct worktree *wt, int quiet);
+
+/*
+ * Update worktrees/xxx/gitdir with the new path.
+ */
+extern int update_worktree_location(struct worktree *wt,
+				    const char *path_);
 
 /*
  * Free up the memory for worktree(s)

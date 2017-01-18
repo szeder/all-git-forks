@@ -1138,7 +1138,6 @@ _git_clone ()
 			--single-branch
 			--branch
 			--recurse-submodules
-			--init-submodule
 			"
 		return
 		;;
@@ -1553,7 +1552,7 @@ _git_merge ()
 	case "$cur" in
 	--*)
 		__gitcomp "$__git_merge_options
-			--rerere-autoupdate --no-rerere-autoupdate --abort"
+			--rerere-autoupdate --no-rerere-autoupdate --abort --continue"
 		return
 	esac
 	__gitcomp_nl "$(__git_refs)"
@@ -1735,10 +1734,10 @@ _git_rebase ()
 {
 	local dir="$(__gitdir)"
 	if [ -f "$dir"/rebase-merge/interactive ]; then
-		__gitcomp "--continue --skip --abort --forget --edit-todo"
+		__gitcomp "--continue --skip --abort --quit --edit-todo"
 		return
 	elif [ -d "$dir"/rebase-apply ] || [ -d "$dir"/rebase-merge ]; then
-		__gitcomp "--continue --skip --abort --forget"
+		__gitcomp "--continue --skip --abort --quit"
 		return
 	fi
 	__git_complete_strategy && return
@@ -2716,7 +2715,7 @@ _git_whatchanged ()
 
 _git_worktree ()
 {
-	local subcommands="add list lock prune unlock"
+	local subcommands="add list lock move prune remove unlock"
 	local subcommand="$(__git_find_on_cmdline "$subcommands")"
 	if [ -z "$subcommand" ]; then
 		__gitcomp "$subcommands"
@@ -2733,6 +2732,9 @@ _git_worktree ()
 			;;
 		prune,--*)
 			__gitcomp "--dry-run --expire --verbose"
+			;;
+		remove,--*)
+			__gitcomp "--force"
 			;;
 		*)
 			;;

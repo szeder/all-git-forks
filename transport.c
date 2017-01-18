@@ -1017,7 +1017,9 @@ int transport_push(struct transport *transport,
 			if (run_pre_push_hook(transport, remote_refs))
 				return -1;
 
-		if ((flags & TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND) && !is_bare_repository()) {
+		if ((flags & (TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND |
+			      TRANSPORT_RECURSE_SUBMODULES_ONLY)) &&
+		    !is_bare_repository()) {
 			struct ref *ref = remote_refs;
 			struct sha1_array commits = SHA1_ARRAY_INIT;
 
@@ -1035,7 +1037,8 @@ int transport_push(struct transport *transport,
 		}
 
 		if (((flags & TRANSPORT_RECURSE_SUBMODULES_CHECK) ||
-		     ((flags & TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND) &&
+		     ((flags & (TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND |
+				TRANSPORT_RECURSE_SUBMODULES_ONLY)) &&
 		      !pretend)) && !is_bare_repository()) {
 			struct ref *ref = remote_refs;
 			struct string_list needs_pushing = STRING_LIST_INIT_DUP;
@@ -1054,7 +1057,10 @@ int transport_push(struct transport *transport,
 			sha1_array_clear(&commits);
 		}
 
-		push_ret = transport->push_refs(transport, remote_refs, flags);
+		if (!(flags & TRANSPORT_RECURSE_SUBMODULES_ONLY))
+			push_ret = transport->push_refs(transport, remote_refs, flags);
+		else
+			push_ret = 0;
 		err = push_had_errors(remote_refs);
 		ret = push_ret | err;
 
@@ -1066,7 +1072,8 @@ int transport_push(struct transport *transport,
 		if (flags & TRANSPORT_PUSH_SET_UPSTREAM)
 			set_upstreams(transport, remote_refs, pretend);
 
-		if (!(flags & TRANSPORT_PUSH_DRY_RUN)) {
+		if (!(flags & (TRANSPORT_PUSH_DRY_RUN |
+			       TRANSPORT_RECURSE_SUBMODULES_ONLY))) {
 			struct ref *ref;
 			for (ref = remote_refs; ref; ref = ref->next)
 				transport_update_tracking_ref(transport->remote, ref, verbose);
@@ -1216,7 +1223,7 @@ static int refs_from_alternate_cb(struct alternate_object_database *e,
 	const struct ref *extra;
 	struct alternate_refs_data *cb = data;
 
-	other = xstrdup(real_path(e->path));
+	other = real_pathdup(e->path);
 	len = strlen(other);
 
 	while (other[len-1] == '/')

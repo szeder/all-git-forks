@@ -46,7 +46,7 @@ my ($diff_new_color) =
 my $normal_color = $repo->get_color("", "reset");
 
 my $diff_algorithm = $repo->config('diff.algorithm');
-my $diff_compaction_heuristic = $repo->config_bool('diff.compactionheuristic');
+my $diff_indent_heuristic = $repo->config_bool('diff.indentheuristic');
 my $diff_filter = $repo->config('interactive.difffilter');
 
 my $use_readkey = 0;
@@ -739,8 +739,8 @@ sub parse_diff {
 	if (defined $diff_algorithm) {
 		splice @diff_cmd, 1, 0, "--diff-algorithm=${diff_algorithm}";
 	}
-	if ($diff_compaction_heuristic) {
-		splice @diff_cmd, 1, 0, "--compaction-heuristic";
+	if ($diff_indent_heuristic) {
+		splice @diff_cmd, 1, 0, "--indent-heuristic";
 	}
 	if (defined $patch_mode_revision) {
 		push @diff_cmd, get_diff_reference($patch_mode_revision);
@@ -1069,7 +1069,7 @@ sub edit_hunk_manually {
 	print $fh @$oldtext;
 	my $is_reverse = $patch_mode_flavour{IS_REVERSE};
 	my ($remove_plus, $remove_minus) = $is_reverse ? ('-', '+') : ('+', '-');
-	my $comment_line_char = Git::config("core.commentchar") || '#';
+	my $comment_line_char = Git::get_comment_line_char;
 	print $fh Git::comment_lines sprintf(__ <<EOF, $remove_minus, $remove_plus, $comment_line_char),
 ---
 To remove '%s' lines, make them ' ' lines (context).

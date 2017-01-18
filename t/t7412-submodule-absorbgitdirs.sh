@@ -1,8 +1,8 @@
 #!/bin/sh
 
-test_description='Test submodule embedgitdirs
+test_description='Test submodule absorbgitdirs
 
-This test verifies that `git submodue embedgitdirs` moves a submodules git
+This test verifies that `git submodue absorbgitdirs` moves a submodules git
 directory into the superproject.
 '
 
@@ -16,14 +16,14 @@ test_expect_success 'setup a real submodule' '
 	git commit -m superproject
 '
 
-test_expect_success 'embed the git dir' '
+test_expect_success 'absorb the git dir' '
 	>expect.1 &&
 	>expect.2 &&
 	>actual.1 &&
 	>actual.2 &&
 	git status >expect.1 &&
 	git -C sub1 rev-parse HEAD >expect.2 &&
-	git submodule embedgitdirs &&
+	git submodule absorbgitdirs &&
 	git fsck &&
 	test -f sub1/.git &&
 	test -d .git/modules/sub1 &&
@@ -33,13 +33,13 @@ test_expect_success 'embed the git dir' '
 	test_cmp expect.2 actual.2
 '
 
-test_expect_success 'embedding does not fail for deinitalized submodules' '
+test_expect_success 'absorbing does not fail for deinitalized submodules' '
 	test_when_finished "git submodule update --init" &&
 	git submodule deinit --all &&
-	git submodule embedgitdirs &&
+	git submodule absorbgitdirs &&
 	test -d .git/modules/sub1 &&
-	! test -f sub1/.git &&
-	test -d sub1
+	test -d sub1 &&
+	! test -e sub1/.git
 '
 
 test_expect_success 'setup nested submodule' '
@@ -52,10 +52,10 @@ test_expect_success 'setup nested submodule' '
 	git commit -m "sub1 to include nested submodule"
 '
 
-test_expect_success 'embed the git dir in a nested submodule' '
+test_expect_success 'absorb the git dir in a nested submodule' '
 	git status >expect.1 &&
 	git -C sub1/nested rev-parse HEAD >expect.2 &&
-	git submodule embedgitdirs &&
+	git submodule absorbgitdirs &&
 	test -f sub1/nested/.git &&
 	test -d .git/modules/sub1/modules/nested &&
 	git status >actual.1 &&
@@ -71,10 +71,10 @@ test_expect_success 'setup a gitlink with missing .gitmodules entry' '
 	git commit -m superproject
 '
 
-test_expect_success 'embedding the git dir fails for incomplete submodules' '
+test_expect_success 'absorbing the git dir fails for incomplete submodules' '
 	git status >expect.1 &&
 	git -C sub2 rev-parse HEAD >expect.2 &&
-	test_must_fail git submodule embedgitdirs &&
+	test_must_fail git submodule absorbgitdirs &&
 	git -C sub2 fsck &&
 	test -d sub2/.git &&
 	git status >actual &&
@@ -93,8 +93,8 @@ test_expect_success 'setup a submodule with multiple worktrees' '
 	git -C sub3 worktree add ../sub3_second_work_tree
 '
 
-test_expect_success 'embed a submodule with multiple worktrees' '
-	test_must_fail git submodule embedgitdirs sub3 2>error &&
+test_expect_success 'absorbing fails for a submodule with multiple worktrees' '
+	test_must_fail git submodule absorbgitdirs sub3 2>error &&
 	test_i18ngrep "not supported" error
 '
 

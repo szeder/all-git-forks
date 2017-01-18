@@ -29,6 +29,7 @@ struct cache_tree_sub *cache_tree_sub(struct cache_tree *, const char *);
 void cache_tree_write(struct strbuf *, struct cache_tree *root);
 struct cache_tree *cache_tree_read(const char *buffer, unsigned long size);
 
+int cache_tree_fully_valid(struct cache_tree *);
 int cache_tree_update(struct index_state *, int);
 
 int update_main_cache_tree(int);
@@ -39,7 +40,6 @@ int update_main_cache_tree(int);
 #define WRITE_TREE_DRY_RUN 4
 #define WRITE_TREE_SILENT 8
 #define WRITE_TREE_REPAIR 16
-#define WRITE_TREE_TOPLEVEL 32
 
 /* error return codes */
 #define WRITE_TREE_UNREADABLE_INDEX (-1)

@@ -1,24 +1,14 @@
 #ifndef ATTR_H
 #define ATTR_H
 
-/*
- * Must be called on platforms that do not support static initialization
- * of mutexes.
- */
-extern void attr_start(void);
-
 /* An attribute is a pointer to this opaque structure */
 struct git_attr;
 
 /*
- * Return the name of the attribute represented by the argument.  The
- * return value is a pointer to a null-delimited string that is part
- * of the internal data structure; it should not be modified or freed.
+ * Given a string, return the gitattribute object that
+ * corresponds to it.
  */
-extern const char *git_attr_name(const struct git_attr *);
-
-extern int attr_name_valid(const char *name, size_t namelen);
-extern void invalid_attr_name_message(struct strbuf *, const char *, int);
+const struct git_attr *git_attr(const char *);
 
 /* Internal use */
 extern const char git_attr__true[];
@@ -29,56 +19,63 @@ extern const char git_attr__false[];
 #define ATTR_FALSE(v) ((v) == git_attr__false)
 #define ATTR_UNSET(v) ((v) == NULL)
 
-struct git_attr_check {
-	struct hashmap_entry entry;
-	int finalized;
+/*
+ * Send one or more git_attr_check to git_check_attrs(), and
+ * each 'value' member tells what its value is.
+ * Unset one is returned as NULL.
+ */
+struct attr_check_item {
+	const struct git_attr *attr;
+	const char *value;
+	/*
+	 * If 'macro' is non-NULL, indicates that 'attr' is a macro based on
+	 * the current attribute stack and contains a pointer to the match_attr
+	 * definition of the macro
+	 */
+	const struct match_attr *macro;
+};
+
+struct attr_check {
 	int check_nr;
 	int check_alloc;
-	const struct git_attr **attr;
-	struct attr_stack *attr_stack;
+	struct attr_check_item *check;
+	int all_attrs_nr;
+	struct attr_check_item *all_attrs;
 };
-#define GIT_ATTR_CHECK_INIT {HASHMAP_ENTRY_INIT, 0, 0, 0, NULL, NULL}
 
-struct git_attr_result {
-	const char *value;
-};
+extern struct attr_check *attr_check_alloc(void);
+extern struct attr_check *attr_check_initl(const char *, ...);
+
+extern struct attr_check_item *attr_check_append(struct attr_check *check,
+						 const struct git_attr *attr);
+
+extern void attr_check_reset(struct attr_check *check);
+extern void attr_check_clear(struct attr_check *check);
+extern void attr_check_free(struct attr_check *check);
 
 /*
- * Initialize the `git_attr_check` via one of the following three functions:
- *
- * git_all_attrs         allocates a check and fills in all attributes and
- *                       results that are set for the given path.
- * git_attr_check_initl  takes a pointer to where the check will be initialized,
- *                       followed by all attributes that are to be checked.
- * git_attr_check_initv  takes a pointer to where the check will be initialized,
- *                       and a NULL terminated array of attributes.
- *
- * All initialization methods are thread safe.
- * To allocate memory for the result of a given check,
- * use git_attr_result_alloc.
+ * Return the name of the attribute represented by the argument.  The
+ * return value is a pointer to a null-delimited string that is part
+ * of the internal data structure; it should not be modified or freed.
  */
-extern void git_attr_check_initl(struct git_attr_check **,
-				 const char *, ...);
-extern void git_attr_check_initv(struct git_attr_check **,
-				 const char **);
-extern void git_all_attrs(const char *path,
-			  struct git_attr_check *,
-			  struct git_attr_result **);
-extern struct git_attr_result *git_attr_result_alloc(struct git_attr_check *check);
+extern const char *git_attr_name(const struct git_attr *);
 
-/* Query a path for its attributes */
-extern int git_check_attr(const char *path,
-			  struct git_attr_check *,
-			  struct git_attr_result *result);
+extern int git_check_attr(const char *path, struct attr_check *check);
 
-extern void git_attr_check_clear(struct git_attr_check *);
-extern void git_attr_result_free(struct git_attr_result *);
+/*
+ * Retrieve all attributes that apply to the specified path.
+ * check holds the attributes and their values.
+ */
+void git_all_attrs(const char *path, struct attr_check *check);
 
 enum git_attr_direction {
 	GIT_ATTR_CHECKIN,
 	GIT_ATTR_CHECKOUT,
 	GIT_ATTR_INDEX
 };
-void git_attr_set_direction(enum git_attr_direction, struct index_state *);
+void git_attr_set_direction(enum git_attr_direction new_direction,
+			    struct index_state *istate);
+
+extern void attr_start(void);
 
 #endif /* ATTR_H */

@@ -888,11 +888,9 @@ int xdl_change_compact(xdfile_t *xdf, xdfile_t *xdfo, long flags) {
 				if (group_previous(xdfo, &go))
 					xdl_bug("group sync broken sliding to match");
 			}
-		} else if (flags & XDF_COMPACTION_HEURISTIC) {
+		} else if (flags & XDF_INDENT_HEURISTIC) {
 			/*
-			 * Heuristic based on the indentation level.
-			 *
-			 * A group of pure add/delete lines
+			 * Indent heuristic: a group of pure add/delete lines
 			 * implies two splits, one between the end of the "before"
 			 * context and the start of the group, and another between
 			 * the end of the group and the beginning of the "after"

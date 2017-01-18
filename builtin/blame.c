@@ -1700,13 +1700,23 @@ static void get_commit_info(struct commit *commit,
 }
 
 /*
+ * Write out any suspect information which depends on the path. This must be
+ * handled separately from emit_one_suspect_detail(), because a given commit
+ * may have changes in multiple paths. So this needs to appear each time
+ * we mention a new group.
+ *
  * To allow LF and other nonportable characters in pathnames,
  * they are c-style quoted as needed.
  */
-static void write_filename_info(const char *path)
+static void write_filename_info(struct origin *suspect)
 {
+	if (suspect->previous) {
+		struct origin *prev = suspect->previous;
+		printf("previous %s ", oid_to_hex(&prev->commit->object.oid));
+		write_name_quoted(prev->path, stdout, '\n');
+	}
 	printf("filename ");
-	write_name_quoted(path, stdout, '\n');
+	write_name_quoted(suspect->path, stdout, '\n');
 }
 
 /*
@@ -1735,11 +1745,6 @@ static int emit_one_suspect_detail(struct origin *suspect, int repeat)
 	printf("summary %s\n", ci.summary.buf);
 	if (suspect->commit->object.flags & UNINTERESTING)
 		printf("boundary\n");
-	if (suspect->previous) {
-		struct origin *prev = suspect->previous;
-		printf("previous %s ", oid_to_hex(&prev->commit->object.oid));
-		write_name_quoted(prev->path, stdout, '\n');
-	}
 
 	commit_info_destroy(&ci);
 
@@ -1760,7 +1765,7 @@ static void found_guilty_entry(struct blame_entry *ent,
 		       oid_to_hex(&suspect->commit->object.oid),
 		       ent->s_lno + 1, ent->lno + 1, ent->num_lines);
 		emit_one_suspect_detail(suspect, 0);
-		write_filename_info(suspect->path);
+		write_filename_info(suspect);
 		maybe_flush_or_die(stdout, "stdout");
 	}
 	pi->blamed_lines += ent->num_lines;
@@ -1884,7 +1889,7 @@ static void emit_porcelain_details(struct origin *suspect, int repeat)
 {
 	if (emit_one_suspect_detail(suspect, repeat) ||
 	    (suspect->commit->object.flags & MORE_THAN_ONE_PATH))
-		write_filename_info(suspect->path);
+		write_filename_info(suspect);
 }
 
 static void emit_porcelain(struct scoreboard *sb, struct blame_entry *ent,
@@ -2596,7 +2601,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		 * and are only included here to get included in the "-h"
 		 * output:
 		 */
-		{ OPTION_LOWLEVEL_CALLBACK, 0, "compaction-heuristic", NULL, NULL, N_("Use an experimental blank-line-based heuristic to improve diffs"), PARSE_OPT_NOARG, parse_opt_unknown_cb },
+		{ OPTION_LOWLEVEL_CALLBACK, 0, "indent-heuristic", NULL, NULL, N_("Use an experimental heuristic to improve diffs"), PARSE_OPT_NOARG, parse_opt_unknown_cb },
 
 		OPT_BIT(0, "minimal", &xdl_opts, N_("Spend extra cycles to find better match"), XDF_NEED_MINIMAL),
 		OPT_STRING('S', NULL, &revs_file, N_("file"), N_("Use revisions from <file> instead of calling git-rev-list")),
@@ -2644,7 +2649,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	}
 parse_done:
 	no_whole_file_rename = !DIFF_OPT_TST(&revs.diffopt, FOLLOW_RENAMES);
-	xdl_opts |= revs.diffopt.xdl_opts & XDF_COMPACTION_HEURISTIC;
+	xdl_opts |= revs.diffopt.xdl_opts & XDF_INDENT_HEURISTIC;
 	DIFF_OPT_CLR(&revs.diffopt, FOLLOW_RENAMES);
 	argc = parse_options_end(&ctx);
 
@@ -2655,9 +2660,11 @@ parse_done:
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
 
-	if (0 < abbrev)
+	if (0 < abbrev && abbrev < GIT_SHA1_HEXSZ)
 		/* one more abbrev length is needed for the boundary commit */
 		abbrev++;
+	else if (!abbrev)
+		abbrev = GIT_SHA1_HEXSZ;
 
 	if (revs_file && read_ancestry(revs_file))
 		die_errno("reading graft file '%s' failed", revs_file);
@@ -2762,13 +2769,12 @@ parse_done:
 		argv[argc - 1] = "--";
 
 		setup_work_tree();
+		if (!file_exists(path))
+			die_errno("cannot stat path '%s'", path);
 	}
 
 	revs.disable_stdin = 1;
 	setup_revisions(argc, argv, &revs, NULL);
-	if (!revs.pending.nr && !file_exists(path))
-		die_errno("cannot stat path '%s'", path);
-
 	memset(&sb, 0, sizeof(sb));
 
 	sb.revs = &revs;

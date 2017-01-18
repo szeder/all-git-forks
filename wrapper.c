@@ -680,14 +680,6 @@ void sleep_millisec(int millisec)
 	poll(NULL, 0, millisec);
 }
 
-#ifndef O_NOFOLLOW
-#define O_NOFOLLOW 0
-#endif
-int open_nofollow(const char *path, int flags)
-{
-	return open(path, flags | O_NOFOLLOW);
-}
-
 int is_empty_or_missing_file(const char *filename)
 {
 	struct stat st;

@@ -24,18 +24,46 @@
 static const struct string_list *prereleases;
 static int initialized;
 
+struct suffix_match {
+	int conf_pos;
+	int start;
+	int len;
+};
+
+static void find_better_matching_suffix(const char *tagname, const char *suffix,
+					int suffix_len, int start, int conf_pos,
+					struct suffix_match *match)
+{
+	/*
+	 * A better match either starts earlier or starts at the same offset
+	 * but is longer.
+	 */
+	int end = match->len < suffix_len ? match->start : match->start-1;
+	int i;
+	for (i = start; i <= end; i++)
+		if (starts_with(tagname + i, suffix)) {
+			match->conf_pos = conf_pos;
+			match->start = i;
+			match->len = suffix_len;
+			break;
+		}
+}
+
 /*
  * off is the offset of the first different character in the two strings
- * s1 and s2. If either s1 or s2 contains a prerelease suffix starting
- * at that offset or the character at that offset is part of a
- * prerelease suffix, then that string will be forced to be on top.
+ * s1 and s2. If either s1 or s2 contains a prerelease suffix containing
+ * that offset or a suffix ends right before that offset, then that
+ * string will be forced to be on top.
  *
- * If both s1 and s2 contain a (different) suffix at that position, the
- * order is determined by config file.
- *
- * Note that we don't have to deal with the situation when both s1 and
- * s2 contain the same suffix because the common part is already
- * consumed by the caller.
+ * If both s1 and s2 contain a (different) suffix around that position,
+ * their order is determined by the order of those two suffixes in the
+ * configuration.
+ * If any of the strings contains more than one different suffixes around
+ * that position, then that string is sorted according to the contained
+ * suffix which starts at the earliest offset in that string.
+ * If more than one different contained suffixes start at that earliest
+ * offset, then that string is sorted according to the longest of those
+ * suffixes.
  *
  * Return non-zero if *diff contains the return value for versioncmp()
  */
@@ -44,35 +72,35 @@ static int swap_prereleases(const char *s1,
 			    int off,
 			    int *diff)
 {
-	int i, i1 = -1, i2 = -1;
+	int i;
+	struct suffix_match match1 = { -1, off, -1 };
+	struct suffix_match match2 = { -1, off, -1 };
 
 	for (i = 0; i < prereleases->nr; i++) {
 		const char *suffix = prereleases->items[i].string;
-		int j, start, suffix_len = strlen(suffix);
+		int start, suffix_len = strlen(suffix);
 		if (suffix_len < off)
-			start = off - suffix_len + 1;
+			start = off - suffix_len;
 		else
 			start = 0;
-		for (j = start; j <= off; j++) {
-			if (i1 == -1 && starts_with(s1 + j, suffix)) {
-				i1 = i;
-				break;
-			}
-		}
-		for (j = start; j <= off; j++) {
-			if (i2 == -1 && starts_with(s2 + j, suffix)) {
-				i2 = i;
-				break;
-			}
-		}
+		find_better_matching_suffix(s1, suffix, suffix_len, start,
+					    i, &match1);
+		find_better_matching_suffix(s2, suffix, suffix_len, start,
+					    i, &match2);
 	}
-	if (i1 == -1 && i2 == -1)
+	if (match1.conf_pos == -1 && match2.conf_pos == -1)
 		return 0;
-	if (i1 >= 0 && i2 >= 0)
-		*diff = i1 - i2;
-	else if (i1 >= 0)
+	if (match1.conf_pos == match2.conf_pos)
+		/* Found the same suffix in both, e.g. "-rc" in "v1.0-rcX"
+		 * and "v1.0-rcY": the caller should decide based on "X"
+		 * and "Y". */
+		return 0;
+
+	if (match1.conf_pos >= 0 && match2.conf_pos >= 0)
+		*diff = match1.conf_pos - match2.conf_pos;
+	else if (match1.conf_pos >= 0)
 		*diff = -1;
-	else /* if (i2 >= 0) */
+	else /* if (match2.conf_pos >= 0) */
 		*diff = 1;
 	return 1;
 }
@@ -131,8 +159,15 @@ int versioncmp(const char *s1, const char *s2)
 	}
 
 	if (!initialized) {
+		const struct string_list *deprecated_prereleases;
 		initialized = 1;
-		prereleases = git_config_get_value_multi("versionsort.prereleasesuffix");
+		prereleases = git_config_get_value_multi("versionsort.suffix");
+		deprecated_prereleases = git_config_get_value_multi("versionsort.prereleasesuffix");
+		if (prereleases) {
+			if (deprecated_prereleases)
+				warning("ignoring versionsort.prereleasesuffix because versionsort.suffix is set");
+		} else
+			prereleases = deprecated_prereleases;
 	}
 	if (prereleases && swap_prereleases(s1, s2, (const char *) p1 - s1 - 1,
 					    &diff))

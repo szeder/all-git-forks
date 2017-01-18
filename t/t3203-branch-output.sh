@@ -37,14 +37,6 @@ test_expect_success 'git branch --list shows local branches' '
 	test_cmp expect actual
 '
 
-test_expect_success 'same, but on an unborn branch' '
-	test_when_finished "git checkout master" &&
-	git checkout --orphan naster &&
-	git branch --list >actual &&
-	sed -e "s/\* /  /" expect >expect-unborn &&
-	test_cmp expect-unborn actual
-'
-
 cat >expect <<'EOF'
   branch-one
   branch-two
@@ -94,6 +86,11 @@ one
 EOF
 test_expect_success 'git branch --list -v pattern shows branch summaries' '
 	git branch --list -v branch* >tmp &&
+	awk "{print \$NF}" <tmp >actual &&
+	test_cmp expect actual
+'
+test_expect_success 'git branch --ignore-case --list -v pattern shows branch summaries' '
+	git branch --list --ignore-case -v BRANCH* >tmp &&
 	awk "{print \$NF}" <tmp >actual &&
 	test_cmp expect actual
 '
@@ -202,6 +199,30 @@ test_expect_success 'local-branch symrefs shortened properly' '
 	git branch >actual.raw &&
 	grep ref-to <actual.raw >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'sort branches, ignore case' '
+	(
+		git init sort-icase &&
+		cd sort-icase &&
+		test_commit initial &&
+		git branch branch-one &&
+		git branch BRANCH-two &&
+		git branch --list | awk "{print \$NF}" >actual &&
+		cat >expected <<-\EOF &&
+		BRANCH-two
+		branch-one
+		master
+		EOF
+		test_cmp expected actual &&
+		git branch --list -i | awk "{print \$NF}" >actual &&
+		cat >expected <<-\EOF &&
+		branch-one
+		BRANCH-two
+		master
+		EOF
+		test_cmp expected actual
+	)
 '
 
 test_expect_success 'git branch --format option' '

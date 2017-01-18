@@ -73,8 +73,10 @@ static int parse_index_info(char *p, int *mode1, int *mode2,
 	if (*p != ' ')
 		return error("expected ' ', got '%c'", *p);
 	*status = *++p;
-	if (!status || p[1])
-		return error("unexpected trailer: '%s'", p);
+	if (!*status)
+		return error("missing status");
+	if (p[1] && !isdigit(p[1]))
+		return error("unexpected trailer: '%s'", p + 1);
 	return 0;
 }
 
@@ -107,7 +109,8 @@ static int use_wt_file(const char *workdir, const char *name,
 		struct object_id wt_oid;
 		int fd = open(buf.buf, O_RDONLY);
 
-		if (!index_fd(wt_oid.hash, fd, &st, OBJ_BLOB, name, 0)) {
+		if (fd >= 0 &&
+		    !index_fd(wt_oid.hash, fd, &st, OBJ_BLOB, name, 0)) {
 			if (is_null_oid(oid)) {
 				oidcpy(oid, &wt_oid);
 				use = 1;
@@ -162,7 +165,7 @@ static void add_left_or_right(struct hashmap *map, const char *path,
 		e->left[0] = e->right[0] = '\0';
 		hashmap_add(map, e);
 	}
-	strcpy(is_right ? e->right : e->left, content);
+	strlcpy(is_right ? e->right : e->left, content, PATH_MAX);
 }
 
 struct path_entry {
@@ -170,7 +173,7 @@ struct path_entry {
 	char path[FLEX_ARRAY];
 };
 
-int path_entry_cmp(struct path_entry *a, struct path_entry *b, void *key)
+static int path_entry_cmp(struct path_entry *a, struct path_entry *b, void *key)
 {
 	return strcmp(a->path, key ? key : b->path);
 }
@@ -423,17 +426,16 @@ static int run_dir_diff(const char *extcmd, int symlinks, const char *prefix,
 				struct cache_entry *ce2 =
 					make_cache_entry(rmode, roid.hash,
 							 dst_path, 0, 0);
-				ce_mode_from_stat(ce2, rmode);
 
 				add_index_entry(&wtindex, ce2,
 						ADD_CACHE_JUST_APPEND);
 
-				add_path(&wtdir, wtdir_len, dst_path);
 				add_path(&rdir, rdir_len, dst_path);
 				if (ensure_leading_directories(rdir.buf))
 					return error("could not create "
 						     "directory for '%s'",
 						     dst_path);
+				add_path(&wtdir, wtdir_len, dst_path);
 				if (symlinks) {
 					if (symlink(wtdir.buf, rdir.buf)) {
 						ret = error_errno("could not symlink '%s' to '%s'", wtdir.buf, rdir.buf);
@@ -614,30 +616,6 @@ static int run_file_diff(int prompt, const char *prefix,
 	exit(ret);
 }
 
-/*
- * NEEDSWORK: this function can go once the legacy-difftool Perl script is
- * retired.
- *
- * We intentionally avoid reading the config directly here, to avoid messing up
- * the GIT_* environment variables when we need to fall back to exec()ing the
- * Perl script.
- */
-static int use_builtin_difftool(void) {
-	struct child_process cp = CHILD_PROCESS_INIT;
-	struct strbuf out = STRBUF_INIT;
-	int ret;
-
-	argv_array_pushl(&cp.args,
-			 "config", "--bool", "difftool.usebuiltin", NULL);
-	cp.git_cmd = 1;
-	if (capture_command(&cp, &out, 6))
-		return 0;
-	strbuf_trim(&out);
-	ret = !strcmp("true", out.buf);
-	strbuf_release(&out);
-	return ret;
-}
-
 int cmd_difftool(int argc, const char **argv, const char *prefix)
 {
 	int use_gui_tool = 0, dir_diff = 0, prompt = -1, symlinks = 0,
@@ -669,23 +647,6 @@ int cmd_difftool(int argc, const char **argv, const char *prefix)
 		OPT_END()
 	};
 
-	/*
-	 * NEEDSWORK: Once the builtin difftool has been tested enough
-	 * and git-legacy-difftool.perl is retired to contrib/, this preamble
-	 * can be removed.
-	 */
-	if (!use_builtin_difftool()) {
-		const char *path = mkpath("%s/git-legacy-difftool",
-					  git_exec_path());
-
-		if (sane_execvp(path, (char **)argv) < 0)
-			die_errno("could not exec %s", path);
-
-		return 0;
-	}
-	prefix = setup_git_directory();
-	trace_repo_setup(prefix);
-	setup_work_tree();
 	/* NEEDSWORK: once we no longer spawn anything, remove this */
 	setenv(GIT_DIR_ENVIRONMENT, absolute_path(get_git_dir()), 1);
 	setenv(GIT_WORK_TREE_ENVIRONMENT, absolute_path(get_git_work_tree()), 1);

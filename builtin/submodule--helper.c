@@ -317,8 +317,12 @@ static void init_submodule(const char *path, const char *prefix, int quiet)
 	/* Only loads from .gitmodules, no overlay with .git/config */
 	gitmodules_config();
 
-	if (prefix) {
-		strbuf_addf(&sb, "%s%s", prefix, path);
+	if (prefix && get_super_prefix())
+		die("BUG: cannot have prefix and superprefix");
+	else if (prefix)
+		displaypath = xstrdup(relative_path(path, prefix, &sb));
+	else if (get_super_prefix()) {
+		strbuf_addf(&sb, "%s%s", get_super_prefix(), path);
 		displaypath = strbuf_detach(&sb, NULL);
 	} else
 		displaypath = xstrdup(path);
@@ -403,9 +407,6 @@ static int module_init(int argc, const char **argv, const char *prefix)
 	int i;
 
 	struct option module_init_options[] = {
-		OPT_STRING(0, "prefix", &prefix,
-			   N_("path"),
-			   N_("alternative anchor for relative paths")),
 		OPT__QUIET(&quiet, N_("Suppress output for initializing a submodule")),
 		OPT_END()
 	};
@@ -498,9 +499,9 @@ static int add_possible_reference_from_superproject(
 
 	/*
 	 * If the alternate object store is another repository, try the
-	 * standard layout with .git/modules/<name>/objects
+	 * standard layout with .git/(modules/<name>)+/objects
 	 */
-	if (ends_with(alt->path, ".git/objects")) {
+	if (ends_with(alt->path, "/objects")) {
 		char *sm_alternate;
 		struct strbuf sb = STRBUF_INIT;
 		struct strbuf err = STRBUF_INIT;
@@ -583,6 +584,7 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 	struct strbuf rel_path = STRBUF_INIT;
 	struct strbuf sb = STRBUF_INIT;
 	struct string_list reference = STRING_LIST_INIT_NODUP;
+	char *sm_alternate = NULL, *error_strategy = NULL;
 
 	struct option module_clone_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
@@ -672,6 +674,20 @@ static int module_clone(int argc, const char **argv, const char *prefix)
 		die(_("could not get submodule directory for '%s'"), path);
 	git_config_set_in_file(p, "core.worktree",
 			       relative_path(path, sm_gitdir, &rel_path));
+
+	/* setup alternateLocation and alternateErrorStrategy in the cloned submodule if needed */
+	git_config_get_string("submodule.alternateLocation", &sm_alternate);
+	if (sm_alternate)
+		git_config_set_in_file(p, "submodule.alternateLocation",
+					   sm_alternate);
+	git_config_get_string("submodule.alternateErrorStrategy", &error_strategy);
+	if (error_strategy)
+		git_config_set_in_file(p, "submodule.alternateErrorStrategy",
+					   error_strategy);
+
+	free(sm_alternate);
+	free(error_strategy);
+
 	strbuf_release(&sb);
 	strbuf_release(&rel_path);
 	free(sm_gitdir);
@@ -1076,19 +1092,19 @@ static int resolve_remote_submodule_branch(int argc, const char **argv,
 	return 0;
 }
 
-static int embed_git_dir(int argc, const char **argv, const char *prefix)
+static int absorb_git_dirs(int argc, const char **argv, const char *prefix)
 {
 	int i;
 	struct pathspec pathspec;
 	struct module_list list = MODULE_LIST_INIT;
-	unsigned flags = RELOCATE_GITDIR_RECURSE_SUBMODULES;
+	unsigned flags = ABSORB_GITDIR_RECURSE_SUBMODULES;
 
 	struct option embed_gitdir_options[] = {
 		OPT_STRING(0, "prefix", &prefix,
 			   N_("path"),
 			   N_("path into the working tree")),
 		OPT_BIT(0, "--recursive", &flags, N_("recurse into submodules"),
-			RELOCATE_GITDIR_RECURSE_SUBMODULES),
+			ABSORB_GITDIR_RECURSE_SUBMODULES),
 		OPT_END()
 	};
 
@@ -1106,31 +1122,9 @@ static int embed_git_dir(int argc, const char **argv, const char *prefix)
 	if (module_list_compute(argc, argv, prefix, &pathspec, &list) < 0)
 		return 1;
 
-	for (i = 0; i < list.nr; i++) {
-		const char *path = list.entries[i]->name, *sub_git_dir, *v;
-		char *real_sub_git_dir = NULL, *real_common_git_dir = NULL;
-		struct strbuf gitdir = STRBUF_INIT;
-
-		strbuf_addf(&gitdir, "%s/.git", path);
-		sub_git_dir = resolve_gitdir(gitdir.buf);
-
-		/* not populated? */
-		if (!sub_git_dir)
-			goto free_and_continue;
-
-		/* Is it already embedded? */
-		real_sub_git_dir = xstrdup(real_path(sub_git_dir));
-		real_common_git_dir = xstrdup(real_path(get_git_common_dir()));
-		if (skip_prefix(real_sub_git_dir, real_common_git_dir, &v), NULL)
-			goto free_and_continue;
-
-		relocate_gitdir(prefix, path, flags);
-
-free_and_continue:
-		strbuf_release(&gitdir);
-		free(real_sub_git_dir);
-		free(real_common_git_dir);
-	}
+	for (i = 0; i < list.nr; i++)
+		absorb_git_dir_into_superproject(prefix,
+				list.entries[i]->name, flags);
 
 	return 0;
 }
@@ -1140,7 +1134,7 @@ free_and_continue:
 struct cmd_struct {
 	const char *cmd;
 	int (*fn)(int, const char **, const char *);
-	int option;
+	unsigned option;
 };
 
 static struct cmd_struct commands[] = {
@@ -1151,9 +1145,9 @@ static struct cmd_struct commands[] = {
 	{"relative-path", resolve_relative_path, 0},
 	{"resolve-relative-url", resolve_relative_url, 0},
 	{"resolve-relative-url-test", resolve_relative_url_test, 0},
-	{"init", module_init, 0},
+	{"init", module_init, SUPPORT_SUPER_PREFIX},
 	{"remote-branch", resolve_remote_submodule_branch, 0},
-	{"embed-git-dirs", embed_git_dir, SUPPORT_SUPER_PREFIX}
+	{"absorb-git-dirs", absorb_git_dirs, SUPPORT_SUPER_PREFIX},
 };
 
 int cmd_submodule__helper(int argc, const char **argv, const char *prefix)
@@ -1167,7 +1161,7 @@ int cmd_submodule__helper(int argc, const char **argv, const char *prefix)
 		if (!strcmp(argv[1], commands[i].cmd)) {
 			if (get_super_prefix() &&
 			    !(commands[i].option & SUPPORT_SUPER_PREFIX))
-				die("%s doesn't support --super-prefix",
+				die(_("%s doesn't support --super-prefix"),
 				    commands[i].cmd);
 			return commands[i].fn(argc - 1, argv + 1, prefix);
 		}

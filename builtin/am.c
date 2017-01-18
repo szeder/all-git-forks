@@ -1103,7 +1103,7 @@ static void refresh_and_write_cache(void)
 {
 	struct lock_file *lock_file = xcalloc(1, sizeof(struct lock_file));
 
-	hold_locked_index(lock_file, 1);
+	hold_locked_index(lock_file, LOCK_DIE_ON_ERROR);
 	refresh_cache(REFRESH_QUIET);
 	if (write_locked_index(&the_index, lock_file, COMMIT_LOCK))
 		die(_("unable to write index file"));
@@ -1960,7 +1960,7 @@ static int fast_forward_to(struct tree *head, struct tree *remote, int reset)
 		return -1;
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
-	hold_locked_index(lock_file, 1);
+	hold_locked_index(lock_file, LOCK_DIE_ON_ERROR);
 
 	refresh_cache(REFRESH_QUIET);
 
@@ -2000,7 +2000,7 @@ static int merge_tree(struct tree *tree)
 		return -1;
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
-	hold_locked_index(lock_file, 1);
+	hold_locked_index(lock_file, LOCK_DIE_ON_ERROR);
 
 	memset(&opts, 0, sizeof(opts));
 	opts.head_idx = 1;
@@ -2108,7 +2108,7 @@ static int safe_to_abort(const struct am_state *state)
 
 	if (read_state_file(&sb, state, "abort-safety", 1) > 0) {
 		if (get_oid_hex(sb.buf, &abort_safety))
-			die(_("could not parse %s"), am_path(state, "abort_safety"));
+			die(_("could not parse %s"), am_path(state, "abort-safety"));
 	} else
 		oidclr(&abort_safety);
 
@@ -2118,7 +2118,7 @@ static int safe_to_abort(const struct am_state *state)
 	if (!oidcmp(&head, &abort_safety))
 		return 1;
 
-	error(_("You seem to have moved HEAD since the last 'am' failure.\n"
+	warning(_("You seem to have moved HEAD since the last 'am' failure.\n"
 		"Not rewinding to ORIG_HEAD"));
 
 	return 0;

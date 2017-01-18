@@ -338,11 +338,6 @@ all::
 #
 # Define NATIVE_CRLF if your platform uses CRLF for line endings.
 #
-# Define XDL_FAST_HASH to use an alternative line-hashing method in
-# the diff algorithm.  It gives a nice speedup if your processor has
-# fast unaligned word loads.  Does NOT work on big-endian systems!
-# Enabled by default on x86_64.
-#
 # Define GIT_USER_AGENT if you want to change how git identifies itself during
 # network interactions.  The default is "git/$(GIT_VERSION)".
 #
@@ -527,7 +522,6 @@ SCRIPT_LIB += git-sh-setup
 SCRIPT_LIB += git-sh-i18n
 
 SCRIPT_PERL += git-add--interactive.perl
-SCRIPT_PERL += git-legacy-difftool.perl
 SCRIPT_PERL += git-archimport.perl
 SCRIPT_PERL += git-cvsexportcommit.perl
 SCRIPT_PERL += git-cvsimport.perl
@@ -1486,10 +1480,6 @@ ifndef NO_MSGFMT_EXTENDED_OPTIONS
 	MSGFMT += --check --statistics
 endif
 
-ifneq (,$(XDL_FAST_HASH))
-	BASIC_CFLAGS += -DXDL_FAST_HASH
-endif
-
 ifdef GMTIME_UNRELIABLE_ERRORS
 	COMPAT_OBJS += compat/gmtime.o
 	BASIC_CFLAGS += -DGMTIME_UNRELIABLE_ERRORS
@@ -1826,7 +1816,7 @@ $(SCRIPT_LIB) : % : %.sh GIT-SCRIPT-DEFINES
 git.res: git.rc GIT-VERSION-FILE
 	$(QUIET_RC)$(RC) \
 	  $(join -DMAJOR= -DMINOR=, $(wordlist 1,2,$(subst -, ,$(subst ., ,$(GIT_VERSION))))) \
-	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
+	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" -i $< -o $@
 
 # This makes sure we depend on the NO_PERL setting itself.
 $(SCRIPT_PERL_GEN): GIT-BUILD-OPTIONS
@@ -2015,7 +2005,7 @@ exec_cmd.sp exec_cmd.s exec_cmd.o: GIT-PREFIX
 exec_cmd.sp exec_cmd.s exec_cmd.o: EXTRA_CPPFLAGS = \
 	'-DGIT_EXEC_PATH="$(gitexecdir_SQ)"' \
 	'-DBINDIR="$(bindir_relative_SQ)"' \
-	'-DFALLBACK_RUNTIME_PREFIX="$(prefix_SQ)"'
+	'-DPREFIX="$(prefix_SQ)"'
 
 builtin/init-db.sp builtin/init-db.s builtin/init-db.o: GIT-PREFIX
 builtin/init-db.sp builtin/init-db.s builtin/init-db.o: EXTRA_CPPFLAGS = \
@@ -2056,7 +2046,7 @@ git-%$X: %.o GIT-LDFLAGS $(GITLIBS)
 
 git-imap-send$X: imap-send.o $(IMAP_SEND_BUILDDEPS) GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
-		$(LIBS) $(IMAP_SEND_LDFLAGS)
+		$(IMAP_SEND_LDFLAGS) $(LIBS)
 
 git-http-fetch$X: http.o http-walker.o http-fetch.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
@@ -2151,9 +2141,22 @@ endif
 po/build/locale/%/LC_MESSAGES/git.mo: po/%.po
 	$(QUIET_MSGFMT)mkdir -p $(dir $@) && $(MSGFMT) -o $@ $<
 
-FIND_SOURCE_FILES = ( git ls-files '*.[hcS]' 2>/dev/null || \
-			$(FIND) . \( -name .git -type d -prune \) \
-				-o \( -name '*.[hcS]' -type f -print \) )
+FIND_SOURCE_FILES = ( \
+	git ls-files \
+		'*.[hcS]' \
+		'*.sh' \
+		':!*[tp][0-9][0-9][0-9][0-9]*' \
+		':!contrib' \
+		2>/dev/null || \
+	$(FIND) . \
+		\( -name .git -type d -prune \) \
+		-o \( -name '[tp][0-9][0-9][0-9][0-9]*' -prune \) \
+		-o \( -name contrib -type d -prune \) \
+		-o \( -name build -type d -prune \) \
+		-o \( -name 'trash*' -type d -prune \) \
+		-o \( -name '*.[hcS]' -type f -print \) \
+		-o \( -name '*.sh' -type f -print \) \
+	)
 
 $(ETAGS_TARGET): FORCE
 	$(RM) $(ETAGS_TARGET)
@@ -2264,7 +2267,7 @@ bin-wrappers/%: wrap-for-bin.sh
 	@mkdir -p bin-wrappers
 	$(QUIET_GEN)sed -e '1s|#!.*/sh|#!$(SHELL_PATH_SQ)|' \
 	     -e 's|@@BUILD_DIR@@|$(shell pwd)|' \
-	     -e 's|@@PROG@@|$(patsubst test-%,t/helper/test-%$(X),$(@F))$(patsubst git%,$(X),$(filter $(@F),$(BINDIR_PROGRAMS_NEED_X)))|' < $< > $@ && \
+	     -e 's|@@PROG@@|$(patsubst test-%,t/helper/test-%,$(@F))|' < $< > $@ && \
 	chmod +x $@
 
 # GNU make supports exporting all variables by "export" without parameters.

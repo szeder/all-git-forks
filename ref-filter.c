@@ -22,6 +22,7 @@ static struct ref_msg {
 	const char *behind;
 	const char *ahead_behind;
 } msgs = {
+	 /* Untranslated plumbing messages: */
 	"gone",
 	"ahead %d",
 	"behind %d",
@@ -37,6 +38,7 @@ void setup_ref_filter_porcelain_msg(void)
 }
 
 typedef enum { FIELD_STR, FIELD_ULONG, FIELD_TIME } cmp_type;
+typedef enum { COMPARE_EQUAL, COMPARE_UNEQUAL, COMPARE_NONE } cmp_status;
 
 struct align {
 	align_type position;
@@ -44,16 +46,16 @@ struct align {
 };
 
 struct if_then_else {
-	const char *if_equals,
-		*not_equals;
+	cmp_status cmp_status;
+	const char *str;
 	unsigned int then_atom_seen : 1,
 		else_atom_seen : 1,
 		condition_satisfied : 1;
 };
 
 struct refname_atom {
-	enum { R_BASE, R_DIR, R_NORMAL, R_SHORT, R_STRIP } option;
-	unsigned int strip;
+	enum { R_NORMAL, R_SHORT, R_LSTRIP, R_RSTRIP } option;
+	int lstrip, rstrip;
 };
 
 /*
@@ -75,15 +77,15 @@ static struct used_atom {
 		struct {
 			enum { RR_REF, RR_TRACK, RR_TRACKSHORT } option;
 			struct refname_atom refname;
-			unsigned int nobracket: 1;
+			unsigned int nobracket : 1;
 		} remote_ref;
 		struct {
 			enum { C_BARE, C_BODY, C_BODY_DEP, C_LINES, C_SIG, C_SUB, C_TRAILERS } option;
 			unsigned int nlines;
 		} contents;
 		struct {
-			const char *if_equals,
-				*not_equals;
+			cmp_status cmp_status;
+			const char *str;
 		} if_then_else;
 		struct {
 			enum { O_FULL, O_LENGTH, O_SHORT } option;
@@ -110,15 +112,15 @@ static void refname_atom_parser_internal(struct refname_atom *atom,
 		atom->option = R_NORMAL;
 	else if (!strcmp(arg, "short"))
 		atom->option = R_SHORT;
-	else if (skip_prefix(arg, "strip=", &arg)) {
-		atom->option = R_STRIP;
-		if (strtoul_ui(arg, 10, &atom->strip) || atom->strip <= 0)
-			die(_("positive value expected refname:strip=%s"), arg);
-	} else if (!strcmp(arg, "dir"))
-		atom->option = R_DIR;
-	else if (!strcmp(arg, "base"))
-		atom->option = R_BASE;
-	else
+	else if (skip_prefix(arg, "lstrip=", &arg)) {
+		atom->option = R_LSTRIP;
+		if (strtol_i(arg, 10, &atom->lstrip))
+			die(_("Integer value expected refname:lstrip=%s"), arg);
+	} else if (skip_prefix(arg, "rstrip=", &arg)) {
+		atom->option = R_RSTRIP;
+		if (strtol_i(arg, 10, &atom->rstrip))
+			die(_("Integer value expected refname:rstrip=%s"), arg);
+	} else
 		die(_("unrecognized %%(%s) argument: %s"), name, arg);
 }
 
@@ -214,11 +216,6 @@ static void objectname_atom_parser(struct used_atom *atom, const char *arg)
 		die(_("unrecognized %%(objectname) argument: %s"), arg);
 }
 
-static void symref_atom_parser(struct used_atom *atom, const char *arg)
-{
-	return refname_atom_parser_internal(&atom->u.refname, arg, atom->name);
-}
-
 static void refname_atom_parser(struct used_atom *atom, const char *arg)
 {
 	return refname_atom_parser_internal(&atom->u.refname, arg, atom->name);
@@ -276,15 +273,18 @@ static void align_atom_parser(struct used_atom *atom, const char *arg)
 
 static void if_atom_parser(struct used_atom *atom, const char *arg)
 {
-	if (!arg)
+	if (!arg) {
+		atom->u.if_then_else.cmp_status = COMPARE_NONE;
 		return;
-	else if (skip_prefix(arg, "equals=", &atom->u.if_then_else.if_equals))
-		 ;
-	else if (skip_prefix(arg, "notequals=", &atom->u.if_then_else.not_equals))
-		;
-	else
+	} else if (skip_prefix(arg, "equals=", &atom->u.if_then_else.str)) {
+		atom->u.if_then_else.cmp_status = COMPARE_EQUAL;
+	} else if (skip_prefix(arg, "notequals=", &atom->u.if_then_else.str)) {
+		atom->u.if_then_else.cmp_status = COMPARE_UNEQUAL;
+	} else {
 		die(_("unrecognized %%(if) argument: %s"), arg);
+	}
 }
+
 
 static struct {
 	const char *name;
@@ -321,7 +321,7 @@ static struct {
 	{ "contents", FIELD_STR, contents_atom_parser },
 	{ "upstream", FIELD_STR, remote_ref_atom_parser },
 	{ "push", FIELD_STR, remote_ref_atom_parser },
-	{ "symref", FIELD_STR, symref_atom_parser },
+	{ "symref", FIELD_STR, refname_atom_parser },
 	{ "flag" },
 	{ "HEAD" },
 	{ "color", FIELD_STR, color_atom_parser },
@@ -512,12 +512,13 @@ static void if_then_else_handler(struct ref_formatting_stack **stack)
 			strbuf_reset(&cur->output);
 			pop_stack_element(&cur);
 		}
-	} else if (!if_then_else->condition_satisfied)
+	} else if (!if_then_else->condition_satisfied) {
 		/*
 		 * No %(else) atom: just drop the %(then) branch if the
 		 * condition is not satisfied.
 		 */
 		strbuf_reset(&cur->output);
+	}
 
 	*stack = cur;
 	free(if_then_else);
@@ -528,8 +529,8 @@ static void if_atom_handler(struct atom_value *atomv, struct ref_formatting_stat
 	struct ref_formatting_stack *new;
 	struct if_then_else *if_then_else = xcalloc(sizeof(struct if_then_else), 1);
 
-	if_then_else->if_equals = atomv->atom->u.if_then_else.if_equals;
-	if_then_else->not_equals = atomv->atom->u.if_then_else.not_equals;
+	if_then_else->str = atomv->atom->u.if_then_else.str;
+	if_then_else->cmp_status = atomv->atom->u.if_then_else.cmp_status;
 
 	push_stack_element(&state->stack);
 	new = state->stack;
@@ -566,11 +567,11 @@ static void then_atom_handler(struct atom_value *atomv, struct ref_formatting_st
 	 * perform the required comparison. If not, only non-empty
 	 * strings satisfy the 'if' condition.
 	 */
-	if (if_then_else->if_equals) {
-		if (!strcmp(if_then_else->if_equals, cur->output.buf))
+	if (if_then_else->cmp_status == COMPARE_EQUAL) {
+		if (!strcmp(if_then_else->str, cur->output.buf))
 			if_then_else->condition_satisfied = 1;
-	} else 	if (if_then_else->not_equals) {
-		if (strcmp(if_then_else->not_equals, cur->output.buf))
+	} else if (if_then_else->cmp_status == COMPARE_UNEQUAL) {
+		if (strcmp(if_then_else->str, cur->output.buf))
 			if_then_else->condition_satisfied = 1;
 	} else if (cur->output.len && !is_empty(cur->output.buf))
 		if_then_else->condition_satisfied = 1;
@@ -1115,20 +1116,67 @@ static inline char *copy_advance(char *dst, const char *src)
 	return dst;
 }
 
-static const char *strip_ref_components(const char *refname, unsigned int len)
+static const char *lstrip_ref_components(const char *refname, int len)
 {
 	long remaining = len;
 	const char *start = refname;
 
-	while (remaining) {
+	if (len < 0) {
+		int i;
+		const char *p = refname;
+
+		/* Find total no of '/' separated path-components */
+		for (i = 0; p[i]; p[i] == '/' ? i++ : *p++)
+			;
+		/*
+		 * The number of components we need to strip is now
+		 * the total minus the components to be left (Plus one
+		 * because we count the number of '/', but the number
+		 * of components is one more than the no of '/').
+		 */
+		remaining = i + len + 1;
+	}
+
+	while (remaining > 0) {
 		switch (*start++) {
 		case '\0':
-			die(_("ref '%s' does not have %ud components to :strip"),
-			    refname, len);
+			return "";
 		case '/':
 			remaining--;
 			break;
 		}
+	}
+
+	return start;
+}
+
+static const char *rstrip_ref_components(const char *refname, int len)
+{
+	long remaining = len;
+	char *start = xstrdup(refname);
+
+	if (len < 0) {
+		int i;
+		const char *p = refname;
+
+		/* Find total no of '/' separated path-components */
+		for (i = 0; p[i]; p[i] == '/' ? i++ : *p++)
+			;
+		/*
+		 * The number of components we need to strip is now
+		 * the total minus the components to be left (Plus one
+		 * because we count the number of '/', but the number
+		 * of components is one more than the no of '/').
+		 */
+		remaining = i + len + 1;
+	}
+
+	while (remaining-- > 0) {
+		char *p = strrchr(start, '/');
+		if (p == NULL)
+			return "";
+		else
+			p[0] = '\0';
 	}
 	return start;
 }
@@ -1137,27 +1185,11 @@ static const char *show_ref(struct refname_atom *atom, const char *refname)
 {
 	if (atom->option == R_SHORT)
 		return shorten_unambiguous_ref(refname, warn_ambiguous_refs);
-	else if (atom->option == R_STRIP)
-		return strip_ref_components(refname, atom->strip);
-	else if (atom->option == R_BASE) {
-		const char *sp, *ep;
-
-		if (skip_prefix(refname, "refs/", &sp)) {
-			ep = strchr(sp, '/');
-			if (!ep)
-				return "";
-			return xstrndup(sp, ep - sp);
-		}
-		return "";
-	} else if (atom->option == R_DIR) {
-		const char *sp, *ep;
-
-		sp = refname;
-		ep = strrchr(sp, '/');
-		if (!ep)
-			return "";
-		return xstrndup(sp, ep - sp);
-	} else
+	else if (atom->option == R_LSTRIP)
+		return lstrip_ref_components(refname, atom->lstrip);
+	else if (atom->option == R_RSTRIP)
+		return rstrip_ref_components(refname, atom->rstrip);
+	else
 		return refname;
 }
 
@@ -1551,8 +1583,14 @@ static int commit_contains(struct ref_filter *filter, struct commit *commit)
  * matches a pattern "refs/heads/mas") or a wildcard (e.g. the same ref
  * matches "refs/heads/mas*", too).
  */
-static int match_pattern(const char **patterns, const char *refname)
+static int match_pattern(const struct ref_filter *filter, const char *refname)
 {
+	const char **patterns = filter->name_patterns;
+	unsigned flags = 0;
+
+	if (filter->ignore_case)
+		flags |= WM_CASEFOLD;
+
 	/*
 	 * When no '--format' option is given we need to skip the prefix
 	 * for matching refs of tags and branches.
@@ -1563,7 +1601,7 @@ static int match_pattern(const char **patterns, const char *refname)
 	       skip_prefix(refname, "refs/", &refname));
 
 	for (; *patterns; patterns++) {
-		if (!wildmatch(*patterns, refname, 0, NULL))
+		if (!wildmatch(*patterns, refname, flags, NULL))
 			return 1;
 	}
 	return 0;
@@ -1575,9 +1613,15 @@ static int match_pattern(const char **patterns, const char *refname)
  * matches a pattern "refs/heads/" but not "refs/heads/m") or a
  * wildcard (e.g. the same ref matches "refs/heads/m*", too).
  */
-static int match_name_as_path(const char **pattern, const char *refname)
+static int match_name_as_path(const struct ref_filter *filter, const char *refname)
 {
+	const char **pattern = filter->name_patterns;
 	int namelen = strlen(refname);
+	unsigned flags = WM_PATHNAME;
+
+	if (filter->ignore_case)
+		flags |= WM_CASEFOLD;
+
 	for (; *pattern; pattern++) {
 		const char *p = *pattern;
 		int plen = strlen(p);
@@ -1600,8 +1644,8 @@ static int filter_pattern_match(struct ref_filter *filter, const char *refname)
 	if (!*filter->name_patterns)
 		return 1; /* No pattern always matches */
 	if (filter->match_as_path)
-		return match_name_as_path(filter->name_patterns, refname);
-	return match_pattern(filter->name_patterns, refname);
+		return match_name_as_path(filter, refname);
+	return match_pattern(filter, refname);
 }
 
 /*
@@ -1856,18 +1900,20 @@ static int cmp_ref_sorting(struct ref_sorting *s, struct ref_array_item *a, stru
 	struct atom_value *va, *vb;
 	int cmp;
 	cmp_type cmp_type = used_atom[s->atom].type;
+	int (*cmp_fn)(const char *, const char *);
 
 	get_ref_atom_value(a, s->atom, &va);
 	get_ref_atom_value(b, s->atom, &vb);
+	cmp_fn = s->ignore_case ? strcasecmp : strcmp;
 	if (s->version)
 		cmp = versioncmp(va->s, vb->s);
 	else if (cmp_type == FIELD_STR)
-		cmp = strcmp(va->s, vb->s);
+		cmp = cmp_fn(va->s, vb->s);
 	else {
 		if (va->ul < vb->ul)
 			cmp = -1;
 		else if (va->ul == vb->ul)
-			cmp = strcmp(a->refname, b->refname);
+			cmp = cmp_fn(a->refname, b->refname);
 		else
 			cmp = 1;
 	}

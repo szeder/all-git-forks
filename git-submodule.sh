@@ -9,10 +9,11 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] status [--cached] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] init [--] [<path>...]
    or: $dashless [--quiet] deinit [-f|--force] (--all| [--] <path>...)
-   or: $dashless [--quiet] update [--init[-default-path]] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
-   or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
+   or: $dashless [--quiet] sync [--recursive] [--] [<path>...]
+   or: $dashless [--quiet] absorbgitdirs [--] [<path>...]"
 OPTIONS_SPEC=
 SUBDIRECTORY_OK=Yes
 . git-sh-setup
@@ -376,7 +377,7 @@ cmd_init()
 		shift
 	done
 
-	git ${wt_prefix:+-C "$wt_prefix"} submodule--helper init ${GIT_QUIET:+--quiet} ${prefix:+--prefix "$prefix"} "$@"
+	git ${wt_prefix:+-C "$wt_prefix"} ${prefix:+--super-prefix "$prefix"} submodule--helper init ${GIT_QUIET:+--quiet}  "$@"
 }
 
 #
@@ -505,12 +506,7 @@ cmd_update()
 			progress="--progress"
 			;;
 		-i|--init)
-			test -z $init || test $init = by_args || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_args
-			;;
-		--init-default-path)
-			test -z $init || test $init = by_config || die "$(gettext "Only one of --init or --init-default-path may be used.")"
-			init=by_config
+			init=1
 			;;
 		--remote)
 			remote=1
@@ -579,17 +575,7 @@ cmd_update()
 
 	if test -n "$init"
 	then
-		if test "$init" = "by_config"
-		then
-			if test $# -gt 0
-			then
-				die "$(gettext "path arguments are incompatible with --init-default-path")"
-			fi
-			cmd_init "--" $(git config --get-all submodule.defaultUpdatePath) || return
-		else
-			cmd_init "--" "$@" || return
-		fi
-
+		cmd_init "--" "$@" || return
 	fi
 
 	{
@@ -1148,9 +1134,9 @@ cmd_sync()
 	done
 }
 
-cmd_embedgitdirs()
+cmd_absorbgitdirs()
 {
-	git submodule--helper embed-git-dirs --prefix "$wt_prefix" "$@"
+	git submodule--helper absorb-git-dirs --prefix "$wt_prefix" "$@"
 }
 
 # This loop parses the command line arguments to find the
@@ -1162,7 +1148,7 @@ cmd_embedgitdirs()
 while test $# != 0 && test -z "$command"
 do
 	case "$1" in
-	add | foreach | init | deinit | update | status | summary | sync | embedgitdirs)
+	add | foreach | init | deinit | update | status | summary | sync | absorbgitdirs)
 		command=$1
 		;;
 	-q|--quiet)

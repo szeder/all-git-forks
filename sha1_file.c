@@ -26,6 +26,7 @@
 #include "mru.h"
 #include "list.h"
 #include "mergesort.h"
+#include "quote.h"
 
 #define SZ_FMT PRIuMAX
 static inline uintmax_t sz_fmt(size_t s) { return s; }
@@ -128,8 +129,10 @@ enum scld_error safe_create_leading_directories(char *path)
 		*slash = '\0';
 		if (!stat(path, &st)) {
 			/* path exists */
-			if (!S_ISDIR(st.st_mode))
+			if (!S_ISDIR(st.st_mode)) {
+				errno = ENOTDIR;
 				ret = SCLD_EXISTS;
+			}
 		} else if (mkdir(path, 0777)) {
 			if (errno == EEXIST &&
 			    !stat(path, &st) && S_ISDIR(st.st_mode))
@@ -157,11 +160,83 @@ enum scld_error safe_create_leading_directories(char *path)
 
 enum scld_error safe_create_leading_directories_const(const char *path)
 {
+	int save_errno;
 	/* path points to cache entries, so xstrdup before messing with it */
 	char *buf = xstrdup(path);
 	enum scld_error result = safe_create_leading_directories(buf);
+
+	save_errno = errno;
 	free(buf);
+	errno = save_errno;
 	return result;
+}
+
+int raceproof_create_file(const char *path, create_file_fn fn, void *cb)
+{
+	/*
+	 * The number of times we will try to remove empty directories
+	 * in the way of path. This is only 1 because if another
+	 * process is racily creating directories that conflict with
+	 * us, we don't want to fight against them.
+	 */
+	int remove_directories_remaining = 1;
+
+	/*
+	 * The number of times that we will try to create the
+	 * directories containing path. We are willing to attempt this
+	 * more than once, because another process could be trying to
+	 * clean up empty directories at the same time as we are
+	 * trying to create them.
+	 */
+	int create_directories_remaining = 3;
+
+	/* A scratch copy of path, filled lazily if we need it: */
+	struct strbuf path_copy = STRBUF_INIT;
+
+	int ret, save_errno;
+
+	/* Sanity check: */
+	assert(*path);
+
+retry_fn:
+	ret = fn(path, cb);
+	save_errno = errno;
+	if (!ret)
+		goto out;
+
+	if (errno == EISDIR && remove_directories_remaining-- > 0) {
+		/*
+		 * A directory is in the way. Maybe it is empty; try
+		 * to remove it:
+		 */
+		if (!path_copy.len)
+			strbuf_addstr(&path_copy, path);
+
+		if (!remove_dir_recursively(&path_copy, REMOVE_DIR_EMPTY_ONLY))
+			goto retry_fn;
+	} else if (errno == ENOENT && create_directories_remaining-- > 0) {
+		/*
+		 * Maybe the containing directory didn't exist, or
+		 * maybe it was just deleted by a process that is
+		 * racing with us to clean up empty directories. Try
+		 * to create it:
+		 */
+		enum scld_error scld_result;
+
+		if (!path_copy.len)
+			strbuf_addstr(&path_copy, path);
+
+		do {
+			scld_result = safe_create_leading_directories(path_copy.buf);
+			if (scld_result == SCLD_OK)
+				goto retry_fn;
+		} while (scld_result == SCLD_VANISHED && create_directories_remaining-- > 0);
+	}
+
+out:
+	strbuf_release(&path_copy);
+	errno = save_errno;
+	return ret;
 }
 
 static void fill_sha1_path(struct strbuf *buf, const unsigned char *sha1)
@@ -283,7 +358,7 @@ static int link_alt_odb_entry(const char *entry, const char *relative_base,
 	struct strbuf pathbuf = STRBUF_INIT;
 
 	if (!is_absolute_path(entry) && relative_base) {
-		strbuf_addstr(&pathbuf, real_path(relative_base));
+		strbuf_realpath(&pathbuf, relative_base, 1);
 		strbuf_addch(&pathbuf, '/');
 	}
 	strbuf_addstr(&pathbuf, entry);
@@ -321,13 +396,40 @@ static int link_alt_odb_entry(const char *entry, const char *relative_base,
 	return 0;
 }
 
+static const char *parse_alt_odb_entry(const char *string,
+				       int sep,
+				       struct strbuf *out)
+{
+	const char *end;
+
+	strbuf_reset(out);
+
+	if (*string == '#') {
+		/* comment; consume up to next separator */
+		end = strchrnul(string, sep);
+	} else if (*string == '"' && !unquote_c_style(out, string, &end)) {
+		/*
+		 * quoted path; unquote_c_style has copied the
+		 * data for us and set "end". Broken quoting (e.g.,
+		 * an entry that doesn't end with a quote) falls
+		 * back to the unquoted case below.
+		 */
+	} else {
+		/* normal, unquoted path */
+		end = strchrnul(string, sep);
+		strbuf_add(out, string, end - string);
+	}
+
+	if (*end)
+		end++;
+	return end;
+}
+
 static void link_alt_odb_entries(const char *alt, int len, int sep,
 				 const char *relative_base, int depth)
 {
-	struct string_list entries = STRING_LIST_INIT_NODUP;
-	char *alt_copy;
-	int i;
 	struct strbuf objdirbuf = STRBUF_INIT;
+	struct strbuf entry = STRBUF_INIT;
 
 	if (depth > 5) {
 		error("%s: ignoring alternate object stores, nesting too deep.",
@@ -340,16 +442,13 @@ static void link_alt_odb_entries(const char *alt, int len, int sep,
 		die("unable to normalize object directory: %s",
 		    objdirbuf.buf);
 
-	alt_copy = xmemdupz(alt, len);
-	string_list_split_in_place(&entries, alt_copy, sep, -1);
-	for (i = 0; i < entries.nr; i++) {
-		const char *entry = entries.items[i].string;
-		if (entry[0] == '\0' || entry[0] == '#')
+	while (*alt) {
+		alt = parse_alt_odb_entry(alt, sep, &entry);
+		if (!entry.len)
 			continue;
-		link_alt_odb_entry(entry, relative_base, depth, objdirbuf.buf);
+		link_alt_odb_entry(entry.buf, relative_base, depth, objdirbuf.buf);
 	}
-	string_list_clear(&entries, 0);
-	free(alt_copy);
+	strbuf_release(&entry);
 	strbuf_release(&objdirbuf);
 }
 
@@ -568,7 +667,7 @@ static int freshen_file(const char *fn)
  * either does not exist on disk, or has a stale mtime and may be subject to
  * pruning).
  */
-static int check_and_freshen_file(const char *fn, int freshen)
+int check_and_freshen_file(const char *fn, int freshen)
 {
 	if (access(fn, F_OK))
 		return 0;
@@ -1295,9 +1394,7 @@ void (*report_garbage)(unsigned seen_bits, const char *path);
 static void report_helper(const struct string_list *list,
 			  int seen_bits, int first, int last)
 {
-	static const int pack_and_index = PACKDIR_FILE_PACK|PACKDIR_FILE_IDX;
-
-	if ((seen_bits & pack_and_index) == pack_and_index)
+	if (seen_bits == (PACKDIR_FILE_PACK|PACKDIR_FILE_IDX))
 		return;
 
 	for (; first < last; first++)
@@ -1331,13 +1428,9 @@ static void report_pack_garbage(struct string_list *list)
 			first = i;
 		}
 		if (!strcmp(path + baselen, "pack"))
-			seen_bits |= PACKDIR_FILE_PACK;
+			seen_bits |= 1;
 		else if (!strcmp(path + baselen, "idx"))
-			seen_bits |= PACKDIR_FILE_IDX;
-		else if (!strcmp(path + baselen, "bitmap"))
-			seen_bits |= PACKDIR_FILE_BITMAP;
-		else if (!strcmp(path + baselen, "keep"))
-			seen_bits |= PACKDIR_FILE_KEEP;
+			seen_bits |= 2;
 	}
 	report_helper(list, seen_bits, first, list->nr);
 }
@@ -1611,39 +1704,54 @@ int git_open_cloexec(const char *name, int flags)
 	return fd;
 }
 
-static int stat_sha1_file(const unsigned char *sha1, struct stat *st)
+/*
+ * Find "sha1" as a loose object in the local repository or in an alternate.
+ * Returns 0 on success, negative on failure.
+ *
+ * The "path" out-parameter will give the path of the object we found (if any).
+ * Note that it may point to static storage and is only valid until another
+ * call to sha1_file_name(), etc.
+ */
+static int stat_sha1_file(const unsigned char *sha1, struct stat *st,
+			  const char **path)
 {
 	struct alternate_object_database *alt;
 
-	if (!lstat(sha1_file_name(sha1), st))
+	*path = sha1_file_name(sha1);
+	if (!lstat(*path, st))
 		return 0;
 
 	prepare_alt_odb();
 	errno = ENOENT;
 	for (alt = alt_odb_list; alt; alt = alt->next) {
-		const char *path = alt_sha1_path(alt, sha1);
-		if (!lstat(path, st))
+		*path = alt_sha1_path(alt, sha1);
+		if (!lstat(*path, st))
 			return 0;
 	}
 
 	return -1;
 }
 
-static int open_sha1_file(const unsigned char *sha1)
+/*
+ * Like stat_sha1_file(), but actually open the object and return the
+ * descriptor. See the caveats on the "path" parameter above.
+ */
+static int open_sha1_file(const unsigned char *sha1, const char **path)
 {
 	int fd;
 	struct alternate_object_database *alt;
 	int most_interesting_errno;
 
-	fd = git_open(sha1_file_name(sha1));
+	*path = sha1_file_name(sha1);
+	fd = git_open(*path);
 	if (fd >= 0)
 		return fd;
 	most_interesting_errno = errno;
 
 	prepare_alt_odb();
 	for (alt = alt_odb_list; alt; alt = alt->next) {
-		const char *path = alt_sha1_path(alt, sha1);
-		fd = git_open(path);
+		*path = alt_sha1_path(alt, sha1);
+		fd = git_open(*path);
 		if (fd >= 0)
 			return fd;
 		if (most_interesting_errno == ENOENT)
@@ -1653,12 +1761,21 @@ static int open_sha1_file(const unsigned char *sha1)
 	return -1;
 }
 
-void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
+/*
+ * Map the loose object at "path" if it is not NULL, or the path found by
+ * searching for a loose object named "sha1".
+ */
+static void *map_sha1_file_1(const char *path,
+			     const unsigned char *sha1,
+			     unsigned long *size)
 {
 	void *map;
 	int fd;
 
-	fd = open_sha1_file(sha1);
+	if (path)
+		fd = git_open(path);
+	else
+		fd = open_sha1_file(sha1, &path);
 	map = NULL;
 	if (fd >= 0) {
 		struct stat st;
@@ -1667,7 +1784,7 @@ void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 			*size = xsize_t(st.st_size);
 			if (!*size) {
 				/* mmap() is forbidden on empty files */
-				error("object file %s is empty", sha1_file_name(sha1));
+				error("object file %s is empty", path);
 				return NULL;
 			}
 			map = xmmap(NULL, *size, PROT_READ, MAP_PRIVATE, fd, 0);
@@ -1675,6 +1792,11 @@ void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
 		close(fd);
 	}
 	return map;
+}
+
+void *map_sha1_file(const unsigned char *sha1, unsigned long *size)
+{
+	return map_sha1_file_1(NULL, sha1, size);
 }
 
 unsigned long unpack_object_header_buffer(const unsigned char *buf,
@@ -2787,8 +2909,9 @@ static int sha1_loose_object_info(const unsigned char *sha1,
 	 * object even exists.
 	 */
 	if (!oi->typep && !oi->typename && !oi->sizep) {
+		const char *path;
 		struct stat st;
-		if (stat_sha1_file(sha1, &st) < 0)
+		if (stat_sha1_file(sha1, &st, &path) < 0)
 			return -1;
 		if (oi->disk_sizep)
 			*oi->disk_sizep = st.st_size;
@@ -2984,6 +3107,8 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 {
 	void *data;
 	const struct packed_git *p;
+	const char *path;
+	struct stat st;
 	const unsigned char *repl = lookup_replace_object_extended(sha1, flag);
 
 	errno = 0;
@@ -2999,12 +3124,9 @@ void *read_sha1_file_extended(const unsigned char *sha1,
 		die("replacement %s not found for %s",
 		    sha1_to_hex(repl), sha1_to_hex(sha1));
 
-	if (has_loose_object(repl)) {
-		const char *path = sha1_file_name(sha1);
-
+	if (!stat_sha1_file(repl, &st, &path))
 		die("loose object %s (stored in %s) is corrupt",
 		    sha1_to_hex(repl), path);
-	}
 
 	if ((p = has_packed_and_bad(repl)) != NULL)
 		die("packed object %s (stored in %s) is corrupt",
@@ -3275,11 +3397,6 @@ static int freshen_packed_object(const unsigned char *sha1)
 	return 1;
 }
 
-int freshen_object(const unsigned char *sha1)
-{
-	return freshen_packed_object(sha1) || freshen_loose_object(sha1);
-}
-
 int write_sha1_file(const void *buf, unsigned long len, const char *type, unsigned char *sha1)
 {
 	char hdr[32];
@@ -3289,7 +3406,7 @@ int write_sha1_file(const void *buf, unsigned long len, const char *type, unsign
 	 * it out into .git/objects/??/?{38} file.
 	 */
 	write_sha1_file_prepare(buf, len, type, sha1, hdr, &hdrlen);
-	if (freshen_object(sha1))
+	if (freshen_packed_object(sha1) || freshen_loose_object(sha1))
 		return 0;
 	return write_loose_object(sha1, hdr, hdrlen, buf, len, 0);
 }
@@ -3307,7 +3424,7 @@ int hash_sha1_file_literally(const void *buf, unsigned long len, const char *typ
 
 	if (!(flags & HASH_WRITE_OBJECT))
 		goto cleanup;
-	if (freshen_object(sha1))
+	if (freshen_packed_object(sha1) || freshen_loose_object(sha1))
 		goto cleanup;
 	status = write_loose_object(sha1, header, hdrlen, buf, len, 0);
 
@@ -3778,4 +3895,123 @@ int for_each_packed_object(each_packed_object_fn cb, void *data, unsigned flags)
 			break;
 	}
 	return r ? r : pack_errors;
+}
+
+static int check_stream_sha1(git_zstream *stream,
+			     const char *hdr,
+			     unsigned long size,
+			     const char *path,
+			     const unsigned char *expected_sha1)
+{
+	git_SHA_CTX c;
+	unsigned char real_sha1[GIT_SHA1_RAWSZ];
+	unsigned char buf[4096];
+	unsigned long total_read;
+	int status = Z_OK;
+
+	git_SHA1_Init(&c);
+	git_SHA1_Update(&c, hdr, stream->total_out);
+
+	/*
+	 * We already read some bytes into hdr, but the ones up to the NUL
+	 * do not count against the object's content size.
+	 */
+	total_read = stream->total_out - strlen(hdr) - 1;
+
+	/*
+	 * This size comparison must be "<=" to read the final zlib packets;
+	 * see the comment in unpack_sha1_rest for details.
+	 */
+	while (total_read <= size &&
+	       (status == Z_OK || status == Z_BUF_ERROR)) {
+		stream->next_out = buf;
+		stream->avail_out = sizeof(buf);
+		if (size - total_read < stream->avail_out)
+			stream->avail_out = size - total_read;
+		status = git_inflate(stream, Z_FINISH);
+		git_SHA1_Update(&c, buf, stream->next_out - buf);
+		total_read += stream->next_out - buf;
+	}
+	git_inflate_end(stream);
+
+	if (status != Z_STREAM_END) {
+		error("corrupt loose object '%s'", sha1_to_hex(expected_sha1));
+		return -1;
+	}
+	if (stream->avail_in) {
+		error("garbage at end of loose object '%s'",
+		      sha1_to_hex(expected_sha1));
+		return -1;
+	}
+
+	git_SHA1_Final(real_sha1, &c);
+	if (hashcmp(expected_sha1, real_sha1)) {
+		error("sha1 mismatch for %s (expected %s)", path,
+		      sha1_to_hex(expected_sha1));
+		return -1;
+	}
+
+	return 0;
+}
+
+int read_loose_object(const char *path,
+		      const unsigned char *expected_sha1,
+		      enum object_type *type,
+		      unsigned long *size,
+		      void **contents)
+{
+	int ret = -1;
+	int fd = -1;
+	void *map = NULL;
+	unsigned long mapsize;
+	git_zstream stream;
+	char hdr[32];
+
+	*contents = NULL;
+
+	map = map_sha1_file_1(path, NULL, &mapsize);
+	if (!map) {
+		error_errno("unable to mmap %s", path);
+		goto out;
+	}
+
+	if (unpack_sha1_header(&stream, map, mapsize, hdr, sizeof(hdr)) < 0) {
+		error("unable to unpack header of %s", path);
+		goto out;
+	}
+
+	*type = parse_sha1_header(hdr, size);
+	if (*type < 0) {
+		error("unable to parse header of %s", path);
+		git_inflate_end(&stream);
+		goto out;
+	}
+
+	if (*type == OBJ_BLOB) {
+		if (check_stream_sha1(&stream, hdr, *size, path, expected_sha1) < 0)
+			goto out;
+	} else {
+		*contents = unpack_sha1_rest(&stream, hdr, *size, expected_sha1);
+		if (!*contents) {
+			error("unable to unpack contents of %s", path);
+			git_inflate_end(&stream);
+			goto out;
+		}
+		if (check_sha1_signature(expected_sha1, *contents,
+					 *size, typename(*type))) {
+			error("sha1 mismatch for %s (expected %s)", path,
+			      sha1_to_hex(expected_sha1));
+			free(*contents);
+			goto out;
+		}
+	}
+
+	ret = 0; /* everything checks out */
+
+out:
+	if (map)
+		munmap(map, mapsize);
+	if (fd >= 0)
+		close(fd);
+	return ret;
 }

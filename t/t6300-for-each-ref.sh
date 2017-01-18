@@ -51,20 +51,26 @@ test_atom() {
 
 test_atom head refname refs/heads/master
 test_atom head refname:short master
-test_atom head refname:strip=1 heads/master
-test_atom head refname:strip=2 master
-test_atom head refname:dir refs/heads
-test_atom head refname:base heads
+test_atom head refname:lstrip=1 heads/master
+test_atom head refname:lstrip=2 master
+test_atom head refname:lstrip=-1 master
+test_atom head refname:lstrip=-2 heads/master
+test_atom head refname:rstrip=1 refs/heads
+test_atom head refname:rstrip=2 refs
+test_atom head refname:rstrip=-1 refs
+test_atom head refname:rstrip=-2 refs/heads
 test_atom head upstream refs/remotes/origin/master
 test_atom head upstream:short origin/master
-test_atom head upstream:strip=2 origin/master
-test_atom head upstream:dir refs/remotes/origin
-test_atom head upstream:base remotes
+test_atom head upstream:lstrip=2 origin/master
+test_atom head upstream:lstrip=-2 origin/master
+test_atom head upstream:rstrip=2 refs/remotes
+test_atom head upstream:rstrip=-2 refs/remotes
 test_atom head push refs/remotes/myfork/master
 test_atom head push:short myfork/master
-test_atom head push:strip=1 remotes/myfork/master
-test_atom head push:dir refs/remotes/myfork
-test_atom head push:base remotes
+test_atom head push:lstrip=1 remotes/myfork/master
+test_atom head push:lstrip=-1 master
+test_atom head push:rstrip=1 refs/remotes/myfork
+test_atom head push:rstrip=-1 refs
 test_atom head objecttype commit
 test_atom head objectsize 171
 test_atom head objectname $(git rev-parse refs/heads/master)
@@ -145,16 +151,6 @@ test_atom tag HEAD ' '
 
 test_expect_success 'Check invalid atoms names are errors' '
 	test_must_fail git for-each-ref --format="%(INVALID)" refs/heads
-'
-
-test_expect_success 'arguments to :strip must be positive integers' '
-	test_must_fail git for-each-ref --format="%(refname:strip=0)" &&
-	test_must_fail git for-each-ref --format="%(refname:strip=-1)" &&
-	test_must_fail git for-each-ref --format="%(refname:strip=foo)"
-'
-
-test_expect_success 'stripping refnames too far gives an error' '
-	test_must_fail git for-each-ref --format="%(refname:strip=3)"
 '
 
 test_expect_success 'Check format specifiers are ignored in naming date atoms' '
@@ -575,54 +571,6 @@ test_expect_success 'Verify sort with multiple keys' '
 	test_cmp expected actual
 '
 
-test_expect_success 'Add symbolic ref for the following tests' '
-	git symbolic-ref refs/heads/sym refs/heads/master
-'
-
-cat >expected <<EOF
-refs/heads/master
-EOF
-
-test_expect_success 'Verify usage of %(symref) atom' '
-	git for-each-ref --format="%(symref)" refs/heads/sym > actual &&
-	test_cmp expected actual
-'
-
-cat >expected <<EOF
-heads/master
-EOF
-
-test_expect_success 'Verify usage of %(symref:short) atom' '
-	git for-each-ref --format="%(symref:short)" refs/heads/sym > actual &&
-	test_cmp expected actual
-'
-
-cat >expected <<EOF
-master
-EOF
-
-test_expect_success 'Verify usage of %(symref:strip) atom' '
-	git for-each-ref --format="%(symref:strip=2)" refs/heads/sym > actual &&
-	test_cmp expected actual
-'
-
-cat >expected <<EOF
-refs/heads
-EOF
-
-test_expect_success 'Verify usage of %(symref:dir) atom' '
-	git for-each-ref --format="%(symref:dir)" refs/heads/sym > actual &&
-	test_cmp expected actual
-'
-
-cat >expected <<EOF
-heads
-EOF
-
-test_expect_success 'Verify usage of %(symref:base) atom' '
-	git for-each-ref --format="%(symref:base)" refs/heads/sym > actual &&
-	test_cmp expected actual
-'
 
 test_expect_success 'do not dereference NULL upon %(HEAD) on unborn branch' '
 	test_when_finished "git checkout master" &&
@@ -656,6 +604,50 @@ test_expect_success 'basic atom: head contents:trailers' '
 
 	EOF
 	test_cmp expect actual.clean
+'
+
+test_expect_success 'Add symbolic ref for the following tests' '
+	git symbolic-ref refs/heads/sym refs/heads/master
+'
+
+cat >expected <<EOF
+refs/heads/master
+EOF
+
+test_expect_success 'Verify usage of %(symref) atom' '
+	git for-each-ref --format="%(symref)" refs/heads/sym >actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<EOF
+heads/master
+EOF
+
+test_expect_success 'Verify usage of %(symref:short) atom' '
+	git for-each-ref --format="%(symref:short)" refs/heads/sym >actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<EOF
+master
+heads/master
+EOF
+
+test_expect_success 'Verify usage of %(symref:lstrip) atom' '
+	git for-each-ref --format="%(symref:lstrip=2)" refs/heads/sym > actual &&
+	git for-each-ref --format="%(symref:lstrip=-2)" refs/heads/sym >> actual &&
+	test_cmp expected actual
+'
+
+cat >expected <<EOF
+refs
+refs/heads
+EOF
+
+test_expect_success 'Verify usage of %(symref:rstrip) atom' '
+	git for-each-ref --format="%(symref:rstrip=2)" refs/heads/sym > actual &&
+	git for-each-ref --format="%(symref:rstrip=-2)" refs/heads/sym >> actual &&
+	test_cmp expected actual
 '
 
 test_done

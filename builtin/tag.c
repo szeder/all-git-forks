@@ -45,11 +45,11 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 	if (!format) {
 		if (filter->lines) {
 			to_free = xstrfmt("%s %%(contents:lines=%d)",
-					  "%(align:15)%(refname:strip=2)%(end)",
+					  "%(align:15)%(refname:lstrip=2)%(end)",
 					  filter->lines);
 			format = to_free;
 		} else
-			format = "%(refname:strip=2)";
+			format = "%(refname:lstrip=2)";
 	}
 
 	verify_ref_format(format);
@@ -344,6 +344,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct ref_filter filter;
 	static struct ref_sorting *sorting = NULL, **sorting_tail = &sorting;
 	char *format = NULL;
+	int icase = 0;
 	struct option options[] = {
 		OPT_CMDMODE('l', "list", &cmdmode, N_("list tag names"), 'l'),
 		{ OPTION_INTEGER, 'n', NULL, &filter.lines, N_("n"),
@@ -379,6 +380,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 			N_("print only tags of the object"), 0, parse_opt_object_name
 		},
 		OPT_STRING(  0 , "format", &format, N_("format"), N_("format to use for the output")),
+		OPT_BOOL('i', "ignore-case", &icase, N_("sorting and filtering are case insensitive")),
 		OPT_END()
 	};
 
@@ -412,6 +414,8 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	}
 	if (!sorting)
 		sorting = ref_default_sorting();
+	sorting->ignore_case = icase;
+	filter.ignore_case = icase;
 	if (cmdmode == 'l') {
 		int ret;
 		if (column_active(colopts)) {

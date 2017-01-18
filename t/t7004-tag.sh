@@ -27,6 +27,30 @@ test_expect_success 'listing all tags in an empty tree should output nothing' '
 	test $(git tag | wc -l) -eq 0
 '
 
+test_expect_success 'sort tags, ignore case' '
+	(
+		git init sort &&
+		cd sort &&
+		test_commit initial &&
+		git tag tag-one &&
+		git tag TAG-two &&
+		git tag -l >actual &&
+		cat >expected <<-\EOF &&
+		TAG-two
+		initial
+		tag-one
+		EOF
+		test_cmp expected actual &&
+		git tag -l -i >actual &&
+		cat >expected <<-\EOF &&
+		initial
+		tag-one
+		TAG-two
+		EOF
+		test_cmp expected actual
+	)
+'
+
 test_expect_success 'looking for a tag in an empty tree should fail' \
 	'! (tag_exists mytag)'
 
@@ -80,6 +104,9 @@ test_expect_success 'listing all tags if one exists should output that tag' '
 
 test_expect_success 'listing a tag using a matching pattern should succeed' \
 	'git tag -l mytag'
+
+test_expect_success 'listing a tag with --ignore-case' \
+	'test $(git tag -l --ignore-case MYTAG) = mytag'
 
 test_expect_success \
 	'listing a tag using a matching pattern should output that tag' \
@@ -1527,14 +1554,14 @@ test_expect_success 'invalid sort parameter in configuratoin' '
 '
 
 test_expect_success 'version sort with prerelease reordering' '
-	test_config versionsort.prereleaseSuffix -beta &&
-	git tag foo1.6-beta1 &&
-	git tag foo1.6-beta2 &&
+	test_config versionsort.prereleaseSuffix -rc &&
+	git tag foo1.6-rc1 &&
+	git tag foo1.6-rc2 &&
 	git tag -l --sort=version:refname "foo*" >actual &&
 	cat >expect <<-\EOF &&
 	foo1.3
-	foo1.6-beta1
-	foo1.6-beta2
+	foo1.6-rc1
+	foo1.6-rc2
 	foo1.6
 	foo1.10
 	EOF
@@ -1542,52 +1569,113 @@ test_expect_success 'version sort with prerelease reordering' '
 '
 
 test_expect_success 'reverse version sort with prerelease reordering' '
-	test_config versionsort.prereleaseSuffix -beta &&
+	test_config versionsort.prereleaseSuffix -rc &&
 	git tag -l --sort=-version:refname "foo*" >actual &&
 	cat >expect <<-\EOF &&
 	foo1.10
 	foo1.6
-	foo1.6-beta2
-	foo1.6-beta1
+	foo1.6-rc2
+	foo1.6-rc1
 	foo1.3
 	EOF
 	test_cmp expect actual
 '
 
 test_expect_success 'version sort with prerelease reordering and common leading character' '
-	test_config versionsort.prereleaseSuffix -beta &&
-	git tag foo1.6-after1 &&
-	git tag -l --sort=version:refname "foo*" >actual &&
+	test_config versionsort.prereleaseSuffix -before &&
+	git tag foo1.7-before1 &&
+	git tag foo1.7 &&
+	git tag foo1.7-after1 &&
+	git tag -l --sort=version:refname "foo1.7*" >actual &&
 	cat >expect <<-\EOF &&
-	foo1.3
-	foo1.6-beta1
-	foo1.6-beta2
-	foo1.6
-	foo1.6-after1
-	foo1.10
+	foo1.7-before1
+	foo1.7
+	foo1.7-after1
 	EOF
 	test_cmp expect actual
 '
 
-# Capitalization of suffixes is important here, because "-RC" would normally
-# be sorted before "-beta" and the config settings should override that.
 test_expect_success 'version sort with prerelease reordering, multiple suffixes and common leading character' '
-	test_config versionsort.prereleaseSuffix -beta &&
-	git config --add versionsort.prereleaseSuffix -RC &&
-	git tag foo1.6-RC1 &&
-	git tag foo1.6-RC2 &&
-	git tag -l --sort=version:refname "foo*" >actual &&
+	test_config versionsort.prereleaseSuffix -before &&
+	git config --add versionsort.prereleaseSuffix -after &&
+	git tag -l --sort=version:refname "foo1.7*" >actual &&
 	cat >expect <<-\EOF &&
-	foo1.3
-	foo1.6-beta1
-	foo1.6-beta2
-	foo1.6-RC1
-	foo1.6-RC2
-	foo1.6
-	foo1.6-after1
-	foo1.10
+	foo1.7-before1
+	foo1.7-after1
+	foo1.7
 	EOF
 	test_cmp expect actual
+'
+
+test_expect_success 'version sort with prerelease reordering, multiple suffixes match the same tag' '
+	test_config versionsort.prereleaseSuffix -bar &&
+	git config --add versionsort.prereleaseSuffix -foo-baz &&
+	git config --add versionsort.prereleaseSuffix -foo-bar &&
+	git tag foo1.8-foo-bar &&
+	git tag foo1.8-foo-baz &&
+	git tag foo1.8 &&
+	git tag -l --sort=version:refname "foo1.8*" >actual &&
+	cat >expect <<-\EOF &&
+	foo1.8-foo-baz
+	foo1.8-foo-bar
+	foo1.8
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'version sort with prerelease reordering, multiple suffixes match starting at the same position' '
+	test_config versionsort.prereleaseSuffix -pre &&
+	git config --add versionsort.prereleaseSuffix -prerelease &&
+	git tag foo1.9-pre1 &&
+	git tag foo1.9-pre2 &&
+	git tag foo1.9-prerelease1 &&
+	git tag -l --sort=version:refname "foo1.9*" >actual &&
+	cat >expect <<-\EOF &&
+	foo1.9-pre1
+	foo1.9-pre2
+	foo1.9-prerelease1
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'version sort with general suffix reordering' '
+	test_config versionsort.suffix -alpha &&
+	git config --add versionsort.suffix -beta &&
+	git config --add versionsort.suffix ""  &&
+	git config --add versionsort.suffix -gamma &&
+	git config --add versionsort.suffix -delta &&
+	git tag foo1.10-alpha &&
+	git tag foo1.10-beta &&
+	git tag foo1.10-gamma &&
+	git tag foo1.10-delta &&
+	git tag foo1.10-unlisted-suffix &&
+	git tag -l --sort=version:refname "foo1.10*" >actual &&
+	cat >expect <<-\EOF &&
+	foo1.10-alpha
+	foo1.10-beta
+	foo1.10
+	foo1.10-unlisted-suffix
+	foo1.10-gamma
+	foo1.10-delta
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'versionsort.suffix overrides versionsort.prereleaseSuffix' '
+	test_config versionsort.suffix -before &&
+	test_config versionsort.prereleaseSuffix -after &&
+	git tag -l --sort=version:refname "foo1.7*" >actual &&
+	cat >expect <<-\EOF &&
+	foo1.7-before1
+	foo1.7
+	foo1.7-after1
+	EOF
+	test_cmp expect actual
+'
+
+test_expect_success 'version sort with very long prerelease suffix' '
+	test_config versionsort.prereleaseSuffix -very-looooooooooooooooooooooooong-prerelease-suffix &&
+	git tag -l --sort=version:refname
 '
 
 run_with_limited_stack () {

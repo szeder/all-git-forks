@@ -76,7 +76,6 @@
 /git-init-db
 /git-interpret-trailers
 /git-instaweb
-/git-legacy-difftool
 /git-log
 /git-ls-files
 /git-ls-remote
@@ -204,7 +203,6 @@
 /config.mak.autogen
 /config.mak.append
 /configure
-/unicode
 /tags
 /TAGS
 /cscope*

@@ -31,8 +31,6 @@ struct hashmap_entry {
 	unsigned int hash;
 };
 
-#define HASHMAP_ENTRY_INIT {NULL, 0}
-
 typedef int (*hashmap_cmp_fn)(const void *entry, const void *entry_or_key,
 		const void *keydata);
 

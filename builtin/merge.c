@@ -45,6 +45,7 @@ struct strategy {
 static const char * const builtin_merge_usage[] = {
 	N_("git merge [<options>] [<commit>...]"),
 	N_("git merge --abort"),
+	N_("git merge --continue"),
 	NULL
 };
 
@@ -64,6 +65,7 @@ static int option_renormalize;
 static int verbosity;
 static int allow_rerere_auto;
 static int abort_current_merge;
+static int continue_current_merge;
 static int allow_unrelated_histories;
 static int show_progress = -1;
 static int default_to_upstream = 1;
@@ -86,8 +88,6 @@ enum ff_type {
 };
 
 static enum ff_type fast_forward = FF_ALLOW;
-
-static int fp_base_only;
 
 static int option_parse_message(const struct option *opt,
 				const char *arg, int unset)
@@ -211,8 +211,6 @@ static struct option builtin_merge_options[] = {
 	{ OPTION_SET_INT, 0, "ff-only", &fast_forward, NULL,
 		N_("abort if fast-forward is not possible"),
 		PARSE_OPT_NOARG | PARSE_OPT_NONEG, NULL, FF_ONLY },
-	OPT_BOOL(0, "fp-base-only", &fp_base_only,
-		 N_("use only merge bases on first-parent chain")),
 	OPT_RERERE_AUTOUPDATE(&allow_rerere_auto),
 	OPT_BOOL(0, "verify-signatures", &verify_signatures,
 		N_("verify that the named commit has a valid GPG signature")),
@@ -226,6 +224,8 @@ static struct option builtin_merge_options[] = {
 	OPT__VERBOSITY(&verbosity),
 	OPT_BOOL(0, "abort", &abort_current_merge,
 		N_("abort the current in-progress merge")),
+	OPT_BOOL(0, "continue", &continue_current_merge,
+		N_("continue the current in-progress merge")),
 	OPT_BOOL(0, "allow-unrelated-histories", &allow_unrelated_histories,
 		 N_("allow merging unrelated histories")),
 	OPT_SET_INT(0, "progress", &show_progress, N_("force progress reporting"), 1),
@@ -638,7 +638,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 	static struct lock_file lock;
 	const char *head_arg = "HEAD";
 
-	hold_locked_index(&lock, 1);
+	hold_locked_index(&lock, LOCK_DIE_ON_ERROR);
 	refresh_cache(REFRESH_QUIET);
 	if (active_cache_changed &&
 	    write_locked_index(&the_index, &lock, COMMIT_LOCK))
@@ -675,7 +675,7 @@ static int try_merge_strategy(const char *strategy, struct commit_list *common,
 		for (j = common; j; j = j->next)
 			commit_list_insert(j->item, &reversed);
 
-		hold_locked_index(&lock, 1);
+		hold_locked_index(&lock, LOCK_DIE_ON_ERROR);
 		clean = merge_recursive(&o, head,
 				remoteheads->item, reversed, &result);
 		if (clean < 0)
@@ -785,7 +785,7 @@ static int merge_trivial(struct commit *head, struct commit_list *remoteheads)
 	struct commit_list *parents, **pptr = &parents;
 	static struct lock_file lock;
 
-	hold_locked_index(&lock, 1);
+	hold_locked_index(&lock, LOCK_DIE_ON_ERROR);
 	refresh_cache(REFRESH_QUIET);
 	if (active_cache_changed &&
 	    write_locked_index(&the_index, &lock, COMMIT_LOCK))
@@ -1110,6 +1110,7 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 	const char *best_strategy = NULL, *wt_strategy = NULL;
 	struct commit_list *remoteheads, *p;
 	void *branch_to_free;
+	int orig_argc = argc;
 
 	if (argc == 2 && !strcmp(argv[1], "-h"))
 		usage_with_options(builtin_merge_usage, builtin_merge_options);
@@ -1143,11 +1144,31 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 		int nargc = 2;
 		const char *nargv[] = {"reset", "--merge", NULL};
 
+		if (orig_argc != 2)
+			usage_msg_opt(_("--abort expects no arguments"),
+			      builtin_merge_usage, builtin_merge_options);
+
 		if (!file_exists(git_path_merge_head()))
 			die(_("There is no merge to abort (MERGE_HEAD missing)."));
 
 		/* Invoke 'git reset --merge' */
 		ret = cmd_reset(nargc, nargv, prefix);
+		goto done;
+	}
+
+	if (continue_current_merge) {
+		int nargc = 1;
+		const char *nargv[] = {"commit", NULL};
+
+		if (orig_argc != 2)
+			usage_msg_opt(_("--continue expects no arguments"),
+			      builtin_merge_usage, builtin_merge_options);
+
+		if (!file_exists(git_path_merge_head()))
+			die(_("There is no merge in progress (MERGE_HEAD missing)."));
+
+		/* Invoke 'git commit' */
+		ret = cmd_commit(nargc, nargv, prefix);
 		goto done;
 	}
 
@@ -1303,14 +1324,9 @@ int cmd_merge(int argc, const char **argv, const char *prefix)
 
 	if (!remoteheads)
 		; /* already up-to-date */
-	else if (!remoteheads->next) {
-		unsigned flags = MB_POSTCLEAN;
-		if (fp_base_only)
-			flags |= MB_FPCHAIN;
-		common = get_merge_bases_opt(head_commit,
-					     1, &remoteheads->item,
-					     flags);
-	} else {
+	else if (!remoteheads->next)
+		common = get_merge_bases(head_commit, remoteheads->item);
+	else {
 		struct commit_list *list = remoteheads;
 		commit_list_insert(head_commit, &list);
 		common = get_octopus_merge_bases(list);
