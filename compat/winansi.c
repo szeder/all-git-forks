@@ -41,26 +41,21 @@ typedef struct _CONSOLE_FONT_INFOEX {
 #endif
 #endif
 
-typedef BOOL (WINAPI *PGETCURRENTCONSOLEFONTEX)(HANDLE, BOOL,
-		PCONSOLE_FONT_INFOEX);
-
 static void warn_if_raster_font(void)
 {
 	DWORD fontFamily = 0;
-	PGETCURRENTCONSOLEFONTEX pGetCurrentConsoleFontEx;
+	DECLARE_PROC_ADDR(kernel32.dll, BOOL, GetCurrentConsoleFontEx,
+			HANDLE, BOOL, PCONSOLE_FONT_INFOEX);
 
 	/* don't bother if output was ascii only */
 	if (!non_ascii_used)
 		return;
 
 	/* GetCurrentConsoleFontEx is available since Vista */
-	pGetCurrentConsoleFontEx = (PGETCURRENTCONSOLEFONTEX) GetProcAddress(
-			GetModuleHandle("kernel32.dll"),
-			"GetCurrentConsoleFontEx");
-	if (pGetCurrentConsoleFontEx) {
+	if (INIT_PROC_ADDR(GetCurrentConsoleFontEx)) {
 		CONSOLE_FONT_INFOEX cfi;
 		cfi.cbSize = sizeof(cfi);
-		if (pGetCurrentConsoleFontEx(console, 0, &cfi))
+		if (GetCurrentConsoleFontEx(console, 0, &cfi))
 			fontFamily = cfi.FontFamily;
 	} else {
 		/* pre-Vista: check default console font in registry */
@@ -494,19 +489,16 @@ static HANDLE swap_osfhnd(int fd, HANDLE new_handle)
 	 * It is because of this implicit close() that we created the
 	 * copy of the original.
 	 *
-	 * Note that the OS can recycle HANDLE (numbers) just like it
-	 * recycles fd (numbers), so we must update the cached value
-	 * of "console".  You can use GetFileType() to see that
-	 * handle and _get_osfhandle(fd) may have the same number
-	 * value, but they refer to different actual files now.
+	 * Note that we need to update the cached console handle to the
+	 * duplicated one because the dup2() call will implicitly close
+	 * the original one.
 	 *
 	 * Note that dup2() when given target := {0,1,2} will also
 	 * call SetStdHandle(), so we don't need to worry about that.
 	 */
-	dup2(new_fd, fd);
 	if (console == handle)
 		console = duplicate;
-	handle = INVALID_HANDLE_VALUE;
+	dup2(new_fd, fd);
 
 	/* Close the temp fd.  This explicitly closes "new_handle"
 	 * (because it has been associated with it).
@@ -521,7 +513,20 @@ static HANDLE swap_osfhnd(int fd, HANDLE new_handle)
 #ifdef DETECT_MSYS_TTY
 
 #include <winternl.h>
+
+#if defined(_MSC_VER)
+
+typedef struct _OBJECT_NAME_INFORMATION
+{
+	UNICODE_STRING Name;
+	WCHAR NameBuffer[0];
+} OBJECT_NAME_INFORMATION, *POBJECT_NAME_INFORMATION;
+
+#define ObjectNameInformation 1
+
+#else
 #include <ntstatus.h>
+#endif
 
 static void detect_msys_tty(int fd)
 {
