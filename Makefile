@@ -338,11 +338,6 @@ all::
 #
 # Define NATIVE_CRLF if your platform uses CRLF for line endings.
 #
-# Define XDL_FAST_HASH to use an alternative line-hashing method in
-# the diff algorithm.  It gives a nice speedup if your processor has
-# fast unaligned word loads.  Does NOT work on big-endian systems!
-# Enabled by default on x86_64.
-#
 # Define GIT_USER_AGENT if you want to change how git identifies itself during
 # network interactions.  The default is "git/$(GIT_VERSION)".
 #
@@ -527,7 +522,6 @@ SCRIPT_LIB += git-sh-setup
 SCRIPT_LIB += git-sh-i18n
 
 SCRIPT_PERL += git-add--interactive.perl
-SCRIPT_PERL += git-difftool.perl
 SCRIPT_PERL += git-archimport.perl
 SCRIPT_PERL += git-cvsexportcommit.perl
 SCRIPT_PERL += git-cvsimport.perl
@@ -888,6 +882,7 @@ BUILTIN_OBJS += builtin/diff-files.o
 BUILTIN_OBJS += builtin/diff-index.o
 BUILTIN_OBJS += builtin/diff-tree.o
 BUILTIN_OBJS += builtin/diff.o
+BUILTIN_OBJS += builtin/difftool.o
 BUILTIN_OBJS += builtin/fast-export.o
 BUILTIN_OBJS += builtin/fetch-pack.o
 BUILTIN_OBJS += builtin/fetch.o
@@ -1485,10 +1480,6 @@ ifndef NO_MSGFMT_EXTENDED_OPTIONS
 	MSGFMT += --check --statistics
 endif
 
-ifneq (,$(XDL_FAST_HASH))
-	BASIC_CFLAGS += -DXDL_FAST_HASH
-endif
-
 ifdef GMTIME_UNRELIABLE_ERRORS
 	COMPAT_OBJS += compat/gmtime.o
 	BASIC_CFLAGS += -DGMTIME_UNRELIABLE_ERRORS
@@ -1825,7 +1816,7 @@ $(SCRIPT_LIB) : % : %.sh GIT-SCRIPT-DEFINES
 git.res: git.rc GIT-VERSION-FILE
 	$(QUIET_RC)$(RC) \
 	  $(join -DMAJOR= -DMINOR=, $(wordlist 1,2,$(subst -, ,$(subst ., ,$(GIT_VERSION))))) \
-	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" $< -o $@
+	  -DGIT_VERSION="\\\"$(GIT_VERSION)\\\"" -i $< -o $@
 
 # This makes sure we depend on the NO_PERL setting itself.
 $(SCRIPT_PERL_GEN): GIT-BUILD-OPTIONS
@@ -2055,7 +2046,7 @@ git-%$X: %.o GIT-LDFLAGS $(GITLIBS)
 
 git-imap-send$X: imap-send.o $(IMAP_SEND_BUILDDEPS) GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
-		$(LIBS) $(IMAP_SEND_LDFLAGS)
+		$(IMAP_SEND_LDFLAGS) $(LIBS)
 
 git-http-fetch$X: http.o http-walker.o http-fetch.o GIT-LDFLAGS $(GITLIBS)
 	$(QUIET_LINK)$(CC) $(ALL_CFLAGS) -o $@ $(ALL_LDFLAGS) $(filter %.o,$^) \
@@ -2114,7 +2105,8 @@ XGETTEXT_FLAGS_C = $(XGETTEXT_FLAGS) --language=C \
 	--keyword=_ --keyword=N_ --keyword="Q_:1,2"
 XGETTEXT_FLAGS_SH = $(XGETTEXT_FLAGS) --language=Shell \
 	--keyword=gettextln --keyword=eval_gettextln
-XGETTEXT_FLAGS_PERL = $(XGETTEXT_FLAGS) --keyword=__ --language=Perl
+XGETTEXT_FLAGS_PERL = $(XGETTEXT_FLAGS) --language=Perl \
+	--keyword=__ --keyword=N__ --keyword="__n:1,2"
 LOCALIZED_C = $(C_OBJ:o=c) $(LIB_H) $(GENERATED_H)
 LOCALIZED_SH = $(SCRIPT_SH)
 LOCALIZED_SH += git-parse-remote.sh
@@ -2149,9 +2141,22 @@ endif
 po/build/locale/%/LC_MESSAGES/git.mo: po/%.po
 	$(QUIET_MSGFMT)mkdir -p $(dir $@) && $(MSGFMT) -o $@ $<
 
-FIND_SOURCE_FILES = ( git ls-files '*.[hcS]' 2>/dev/null || \
-			$(FIND) . \( -name .git -type d -prune \) \
-				-o \( -name '*.[hcS]' -type f -print \) )
+FIND_SOURCE_FILES = ( \
+	git ls-files \
+		'*.[hcS]' \
+		'*.sh' \
+		':!*[tp][0-9][0-9][0-9][0-9]*' \
+		':!contrib' \
+		2>/dev/null || \
+	$(FIND) . \
+		\( -name .git -type d -prune \) \
+		-o \( -name '[tp][0-9][0-9][0-9][0-9]*' -prune \) \
+		-o \( -name contrib -type d -prune \) \
+		-o \( -name build -type d -prune \) \
+		-o \( -name 'trash*' -type d -prune \) \
+		-o \( -name '*.[hcS]' -type f -print \) \
+		-o \( -name '*.sh' -type f -print \) \
+	)
 
 $(ETAGS_TARGET): FORCE
 	$(RM) $(ETAGS_TARGET)
