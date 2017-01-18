@@ -83,12 +83,12 @@ before_install:
       }
       brew update --quiet
       brew tap homebrew/binary --quiet
-      brew_force_set_latest_binary_hash perforce
       brew_force_set_latest_binary_hash perforce-server
       # Uncomment this if you want to run perf tests:
       # brew install gnu-time
-      brew install git-lfs perforce-server perforce gettext
+      brew install git-lfs perforce-server gettext
       brew link --force gettext
+      brew install Caskroom/cask/perforce
       ;;
     esac;
     echo "$(tput setaf 6)Perforce Server Version$(tput sgr0)";
