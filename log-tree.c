@@ -88,13 +88,36 @@ const struct name_decoration *get_name_decoration(const struct object *obj)
 	return lookup_decoration(&name_decoration, obj);
 }
 
+struct reflog_cb {
+	int type;
+	int count;
+	int nth;
+	const char *refname;
+};
+
+static int add_nth_reflog(unsigned char *osha1, unsigned char *nsha1,
+			  const char *email, unsigned long timestamp, int tz,
+			  const char *message, void *cb_data)
+{
+	struct reflog_cb *cb = cb_data;
+	struct commit *commit;
+
+	commit = lookup_commit(nsha1);
+	if (commit && cb->nth) {
+		struct strbuf sb = STRBUF_INIT;
+		strbuf_addf(&sb, "%s@{%d}", cb->refname, cb->nth);
+		add_name_decoration(cb->type, sb.buf, &commit->object);
+		strbuf_release(&sb);
+	}
+	cb->nth++;
+	return cb->nth >= cb->count;
+}
+
 static int add_ref_decoration(const char *refname, const struct object_id *oid,
 			      int flags, void *cb_data)
 {
 	struct object *obj;
 	enum decoration_type type = DECORATION_NONE;
-
-	assert(cb_data == NULL);
 
 	if (starts_with(refname, git_replace_ref_base)) {
 		struct object_id original_oid;
@@ -135,6 +158,17 @@ static int add_ref_decoration(const char *refname, const struct object_id *oid,
 			parse_object(obj->oid.hash);
 		add_name_decoration(DECORATION_REF_TAG, refname, obj);
 	}
+
+	if (cb_data && type == DECORATION_REF_REMOTE) {
+		struct reflog_cb cb;
+
+		memset(&cb, 0, sizeof(cb));
+		cb.refname = refname;
+		cb.type = type;
+		cb.count = *(int *)cb_data + 1 /* for @{0} */;
+
+		for_each_reflog_ent_reverse(refname, add_nth_reflog, &cb);
+	}
 	return 0;
 }
 
@@ -147,13 +181,14 @@ static int add_graft_decoration(const struct commit_graft *graft, void *cb_data)
 	return 0;
 }
 
-void load_ref_decorations(int flags)
+void load_ref_decorations(int flags, int remote_reflog)
 {
 	if (!decoration_loaded) {
+		void *cb = remote_reflog ? &remote_reflog : NULL;
 
 		decoration_loaded = 1;
 		decoration_flags = flags;
-		for_each_ref(add_ref_decoration, NULL);
+		for_each_ref(add_ref_decoration, cb);
 		head_ref(add_ref_decoration, NULL);
 		for_each_commit_graft(add_graft_decoration, NULL);
 	}

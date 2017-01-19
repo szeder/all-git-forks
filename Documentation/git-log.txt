@@ -38,6 +38,11 @@ OPTIONS
 	are shown as if 'short' were given, otherwise no ref names are
 	shown. The default option is 'short'.
 
+--decorate-remote-reflog[=<n>]::
+	Decorate `<n>` most recent reflog entries on remote refs, up
+	to the specified number of entries. By default, only the most
+	recent reflog entry is decorated.
+
 --source::
 	Print out the ref name given on the command line by which each
 	commit was reached.
