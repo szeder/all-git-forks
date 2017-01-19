@@ -166,11 +166,15 @@ static int name_ref(const char *path, const struct object_id *oid, int flags, vo
 
 		/* See if any of the patterns match. */
 		for_each_string_list_item(item, &data->ref_filters) {
-			/* Check every pattern even after we found a match so
-			 * that we can determine when we should abbreviate the
-			 * output. We will abbreviate the output when any of
-			 * the patterns match a subpath, even if one of the
-			 * patterns matches fully.
+			/*
+			 * Check all patterns even after finding a match, so
+			 * that we can see if a match with a subpath exists.
+			 * When a user asked for 'refs/tags/v*' and 'v1.*',
+			 * both of which match, the user is showing her
+			 * willingness to accept a shortened output by having
+			 * the 'v1.*' in the acceptable refnames, so we
+			 * shouldn't stop when seeing 'refs/tags/v1.4' matches
+			 * 'refs/tags/v*'.  We should show it as 'v1.4'.
 			 */
 			switch (subpath_matches(path, item->string)) {
 			case -1: /* did not match */
