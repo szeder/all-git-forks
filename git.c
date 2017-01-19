@@ -2,6 +2,7 @@
 #include "exec_cmd.h"
 #include "help.h"
 #include "run-command.h"
+#include "submodule.h"
 
 const char git_usage_string[] =
 	"git [--version] [--help] [-C <path>] [-c name=value]\n"
@@ -364,6 +365,8 @@ static int run_builtin(struct cmd_struct *p, int argc, const char **argv)
 		if (prefix)
 			die("can't use --super-prefix from a subdirectory");
 	}
+	if (prefix)
+		check_prefix_inside_submodule(prefix);
 
 	if (!help && p->option & NEED_WORK_TREE)
 		setup_work_tree();

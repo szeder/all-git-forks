@@ -495,6 +495,42 @@ void set_config_fetch_recurse_submodules(int value)
 	config_fetch_recurse_submodules = value;
 }
 
+/* check if the given prefix is inside an uninitialized submodule */
+void check_prefix_inside_submodule(const char *prefix)
+{
+	const char *work_tree = get_git_work_tree();
+	if (work_tree) {
+		int pos;
+		const struct cache_entry *in_submodule = NULL;
+
+		if (read_cache() < 0)
+			die("index file corrupt");
+		pos = cache_name_pos(prefix, strlen(prefix));
+		/*
+		 * gitlinks are recored with no ending '/' in the index,
+		 * but the prefix has an ending '/', so we will never find
+		 * an exact match, but always the position where we'd
+		 * insert the prefix.
+		 */
+		if (pos < 0) {
+			const struct cache_entry *ce;
+			int len = strlen(prefix);
+			/* Check the previous position */
+			pos = (-1 - pos) - 1;
+			ce = active_cache[pos];
+			if (ce->ce_namelen < len)
+				len = ce->ce_namelen;
+			if (!memcmp(ce->name, prefix, len))
+				in_submodule = ce;
+		} else
+			/* This case cannot happen because */
+			die("BUG: prefixes end with '/', but we do not record ending slashes in the index");
+
+		if (in_submodule)
+			die(_("command from inside unpopulated submodule '%s' not supported."), in_submodule->name);
+	}
+}
+
 static int has_remote(const char *refname, const struct object_id *oid,
 		      int flags, void *cb_data)
 {
