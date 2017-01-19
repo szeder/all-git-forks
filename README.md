@@ -1,5 +1,6 @@
 Git - fast, scalable, distributed revision control system
 =========================================================
+This fork for single git execute file and local use only
 
 Git is a fast, scalable, distributed revision control system with an
 unusually rich command set that provides both high-level operations

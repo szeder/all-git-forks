@@ -386,7 +386,7 @@ GIT-VERSION-FILE: FORCE
 
 # CFLAGS and LDFLAGS are for the users to override from the command line.
 
-CFLAGS = -g -O2 -Wall
+CFLAGS = -g -O2 -Wall -DNO_CURL -DNO_EXPAT -DNO_GETTEXT -DNO_OPENSSL -DNO_ICONV
 DEVELOPER_CFLAGS = -Werror \
 	-Wdeclaration-after-statement \
 	-Wno-format-zero-length \
@@ -396,7 +396,7 @@ DEVELOPER_CFLAGS = -Werror \
 	-Wstrict-prototypes \
 	-Wunused \
 	-Wvla
-LDFLAGS =
+LDFLAGS = -s
 ALL_CFLAGS = $(CPPFLAGS) $(CFLAGS)
 ALL_LDFLAGS = $(LDFLAGS)
 STRIP ?= strip
@@ -442,7 +442,7 @@ htmldir_relative = $(patsubst $(prefix)/%,%,$(htmldir))
 
 export prefix bindir sharedir sysconfdir gitwebdir localedir
 
-CC = cc
+CC = gcc
 AR = ar
 RM = rm -f
 DIFF = diff
