@@ -229,22 +229,20 @@ struct git_graph *graph_init(struct rev_info *opt)
 	struct git_graph *graph = xmalloc(sizeof(struct git_graph));
 
 	if (!column_colors) {
-		struct argv_array ansi_colors = {
-			column_colors_ansi,
-			column_colors_ansi_max + 1
-		};
-		struct argv_array *colors = &ansi_colors;
 		char *string;
-
-		if (!git_config_get_string("log.graphcolors", &string)) {
+		if (git_config_get_string("log.graphcolors", &string)) {
+			/* not configured -- use default */
+			graph_set_column_colors(column_colors_ansi,
+						column_colors_ansi_max);
+		} else {
 			static struct argv_array custom_colors = ARGV_ARRAY_INIT;
 			argv_array_clear(&custom_colors);
 			parse_graph_colors_config(&custom_colors, string);
 			free(string);
-			colors = &custom_colors;
+			/* graph_set_column_colors takes a max-index, not a count */
+			graph_set_column_colors(custom_colors.argv,
+						custom_colors.argc - 1);
 		}
-		/* graph_set_column_colors takes a max-index, not a count */
-		graph_set_column_colors(colors->argv, colors->argc - 1);
 	}
 
 	graph->commit = NULL;
