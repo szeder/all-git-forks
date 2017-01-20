@@ -207,6 +207,8 @@ int cmd_show_ref(int argc, const char **argv, const char *prefix)
 				if (!quiet)
 					show_one(*pattern, &oid);
 			}
+			else if (show_head && !strcmp(*pattern, "HEAD"))
+				head_ref(show_ref, NULL);
 			else if (!quiet)
 				die("'%s' - not a valid ref", *pattern);
 			else
