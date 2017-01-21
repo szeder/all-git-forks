@@ -138,6 +138,10 @@ effect to your index in a row.
 	examine the commit. This option overrides that behavior and
 	creates an empty commit object.  Implies `--allow-empty`.
 
+--skip-empty::
+	This option causes empty and redundant cherry-picked commits to
+	be skipped without requesting the user intervention.
+
 --strategy=<strategy>::
 	Use the given merge strategy.  Should only be used once.
 	See the MERGE STRATEGIES section in linkgit:git-merge[1]

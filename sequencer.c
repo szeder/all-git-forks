@@ -550,22 +550,32 @@ static int is_original_commit_empty(struct commit *commit)
 
 /*
  * Do we run "git commit" with "--allow-empty"?
+ *
+ * Or do we just skip this empty commit?
+ *
+ * Returns 1 if a commit should be done with --allow-empty,
+ *         0 if a commit should be done without --allow-empty,
+ *         2 if no commit should be done at all (skip empty commit)
+ *         negative values in case of error
+ *
  */
-static int allow_empty(struct replay_opts *opts, struct commit *commit)
+static int allow_or_skip_empty(struct replay_opts *opts, struct commit *commit)
 {
 	int index_unchanged, empty_commit;
 
 	/*
-	 * Three cases:
+	 * Four cases:
 	 *
-	 * (1) we do not allow empty at all and error out.
+	 * (1) we do not allow empty at all and error out;
 	 *
-	 * (2) we allow ones that were initially empty, but
+	 * (2) we skip empty commits altogether;
+	 *
+	 * (3) we allow ones that were initially empty, but
 	 * forbid the ones that become empty;
 	 *
-	 * (3) we allow both.
+	 * (4) we allow both.
 	 */
-	if (!opts->allow_empty)
+	if (!opts->allow_empty && !opts->skip_empty)
 		return 0; /* let "git commit" barf as necessary */
 
 	index_unchanged = is_index_unchanged();
@@ -573,6 +583,9 @@ static int allow_empty(struct replay_opts *opts, struct commit *commit)
 		return index_unchanged;
 	if (!index_unchanged)
 		return 0; /* we do not have to say --allow-empty */
+
+	if (opts->skip_empty)
+		return 2;
 
 	if (opts->keep_redundant_commits)
 		return 1;
@@ -612,7 +625,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 	const char *base_label, *next_label;
 	struct commit_message msg = { NULL, NULL, NULL, NULL };
 	struct strbuf msgbuf = STRBUF_INIT;
-	int res, unborn = 0, allow;
+	int res = 0, unborn = 0, allow;
 
 	if (opts->no_commit) {
 		/*
@@ -771,12 +784,13 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 		goto leave;
 	}
 
-	allow = allow_empty(opts, commit);
+	allow = allow_or_skip_empty(opts, commit);
 	if (allow < 0) {
 		res = allow;
 		goto leave;
 	}
-	if (!opts->no_commit)
+	/* allow == 2 means skip this commit */
+	if (allow != 2 && !opts->no_commit)
 		res = run_git_commit(opts->edit ? NULL : git_path_merge_msg(),
 				     opts, allow, opts->edit, 0, 0);
 
@@ -983,6 +997,8 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		opts->signoff = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.record-origin"))
 		opts->record_origin = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.skip-empty"))
+		opts->skip_empty = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.allow-ff"))
 		opts->allow_ff = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.mainline"))
@@ -1231,6 +1247,8 @@ static int save_opts(struct replay_opts *opts)
 		res |= git_config_set_in_file_gently(opts_file, "options.signoff", "true");
 	if (opts->record_origin)
 		res |= git_config_set_in_file_gently(opts_file, "options.record-origin", "true");
+	if (opts->skip_empty)
+		res |= git_config_set_in_file_gently(opts_file, "options.skip-empty", "true");
 	if (opts->allow_ff)
 		res |= git_config_set_in_file_gently(opts_file, "options.allow-ff", "true");
 	if (opts->mainline) {
@@ -1306,6 +1324,14 @@ int sequencer_continue(struct replay_opts *opts)
 	if ((res = read_populate_todo(&todo_list, opts)))
 		goto release_todo_list;
 
+	/* check if there is something to commit */
+	res = is_index_unchanged();
+	if (res < 0)
+		goto release_todo_list;
+
+	if (res && opts->skip_empty)
+		goto skip_this_commit;
+
 	/* Verify that the conflict has been resolved */
 	if (file_exists(git_path_cherry_pick_head()) ||
 	    file_exists(git_path_revert_head())) {
@@ -1317,6 +1343,7 @@ int sequencer_continue(struct replay_opts *opts)
 		res = error_dirty_index(opts);
 		goto release_todo_list;
 	}
+skip_this_commit:
 	todo_list.current++;
 	res = pick_commits(&todo_list, opts);
 release_todo_list:
