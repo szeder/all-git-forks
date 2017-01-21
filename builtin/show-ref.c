@@ -202,7 +202,8 @@ int cmd_show_ref(int argc, const char **argv, const char *prefix)
 		while (*pattern) {
 			struct object_id oid;
 
-			if (starts_with(*pattern, "refs/") &&
+			if ((starts_with(*pattern, "refs/") ||
+			     (show_head && !strcmp(*pattern, "HEAD"))) &&
 			    !read_ref(*pattern, oid.hash)) {
 				if (!quiet)
 					show_one(*pattern, &oid);

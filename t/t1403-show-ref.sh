@@ -164,4 +164,18 @@ test_expect_success 'show-ref --heads, --tags, --head, pattern' '
 	test_cmp expect actual
 '
 
+test_expect_success 'show-ref --verify --head' '
+	echo $(git rev-parse HEAD) HEAD >expect &&
+	git show-ref --verify --head HEAD >actual &&
+	test_cmp expect actual &&
+
+	>expect &&
+
+	git show-ref --verify --head -q HEAD >actual &&
+	test_cmp expect actual &&
+
+	test_must_fail git show-ref --verify --head -q A >actual &&
+	test_cmp expect actual
+'
+
 test_done
