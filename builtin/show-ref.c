@@ -205,8 +205,7 @@ int cmd_show_ref(int argc, const char **argv, const char *prefix)
 			if ((starts_with(*pattern, "refs/") ||
 			     (show_head && !strcmp(*pattern, "HEAD"))) &&
 			    !read_ref(*pattern, oid.hash)) {
-				if (!quiet)
-					show_one(*pattern, &oid);
+				show_ref(*pattern, &oid, 0, NULL);
 			}
 			else if (!quiet)
 				die("'%s' - not a valid ref", *pattern);
