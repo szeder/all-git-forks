@@ -43,7 +43,7 @@ static int show_ref(const char *refname, const struct object_id *oid,
 		if (!match)
 			return 0;
 	}
-	if (pattern) {
+	if (pattern && !verify) {
 		int reflen = strlen(refname);
 		const char **p = pattern, *m;
 		while ((m = *p++) != NULL) {
@@ -54,9 +54,6 @@ static int show_ref(const char *refname, const struct object_id *oid,
 				continue;
 			if (len == reflen)
 				goto match;
-			/* "--verify" requires an exact match */
-			if (verify)
-				continue;
 			if (refname[reflen - len - 1] == '/')
 				goto match;
 		}
