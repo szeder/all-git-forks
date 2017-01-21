@@ -17,15 +17,6 @@ static int deref_tags, show_head, tags_only, heads_only, found_match, verify,
 static const char **pattern;
 static const char *exclude_existing_arg;
 
-static void show_one(const char *refname, const struct object_id *oid)
-{
-	const char *hex = find_unique_abbrev(oid->hash, abbrev);
-	if (hash_only)
-		printf("%s\n", hex);
-	else
-		printf("%s %s\n", hex, refname);
-}
-
 static int show_ref(const char *refname, const struct object_id *oid,
 		    int flag, void *cbdata)
 {
@@ -74,7 +65,11 @@ match:
 	if (quiet)
 		return 0;
 
-	show_one(refname, oid);
+	hex = find_unique_abbrev(oid->hash, abbrev);
+	if (hash_only)
+		printf("%s\n", hex);
+	else
+		printf("%s %s\n", hex, refname);
 
 	if (!deref_tags)
 		return 0;
