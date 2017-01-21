@@ -95,8 +95,10 @@
 # repository level by setting bash.hideIfPwdIgnored to "false".
 #
 # If you would like __git_ps1 to indicate that you are in a submodule,
-# set GIT_PS1_SHOWSUBMODULE. In this case a "sub:" will be added before
-# the branch name.
+# set GIT_PS1_SHOWSUBMODULE to a nonempty value. In this case the name
+# of the submodule will be prepended to the branch name (e.g. module:master).
+# The name will be prepended by "+" if the currently checked out submodule
+# commit does not match the SHA-1 found in the index of the containing repository.
 
 # check whether printf supports -v
 __git_printf_supports_v=
@@ -288,30 +290,27 @@ __git_eread ()
 	test -r "$f" && read "$@" <"$f"
 }
 
-# __git_is_submodule
-# Based on:
-# http://stackoverflow.com/questions/7359204/git-command-line-know-if-in-submodule
-__git_is_submodule ()
-{
-	local git_dir parent_git module_name path
-	# Find the root of this git repo, then check if its parent dir is also a repo
-	git_dir="$(git rev-parse --show-toplevel)"
-	module_name="$(basename "$git_dir")"
-	parent_git="$(cd "$git_dir/.." && git rev-parse --show-toplevel 2> /dev/null)"
-	if [[ -n $parent_git ]]; then
-		# List all the submodule paths for the parent repo
-		while read path
-		do
-			if [[ "$path" != "$module_name" ]]; then continue; fi
-			if [[ -d "$git_dir/../$path" ]];    then return 0; fi
-		done < <(cd $parent_git && git submodule --quiet foreach 'echo $path' 2> /dev/null)
-    fi
-    return 1
-}
-
+# __git_ps1_submodule
+#
+# $1 - git_dir path
+#
+# Returns the name of the submodule if we are currently inside one. The name
+# will be prepended by "+" if the currently checked out submodule commit does
+# not match the SHA-1 found in the index of the containing repository.
+# NOTE: git_dir looks like in a ...
+# - submodule: "GIT_PARENT/.git/modules/PATH_TO_SUBMODULE"
+# - parent: "GIT_PARENT/.git" (exception "." in .git)
 __git_ps1_submodule ()
 {
-	__git_is_submodule && printf "sub:"
+	local git_dir="$1"
+	local submodule_name="$(basename "$git_dir")"
+	if [ "$submodule_name" != ".git" ] && [ "$submodule_name" != "." ]; then
+		local parent_top="${git_dir%.git*}"
+		local submodule_top="${git_dir#*modules}"
+		local status=""
+		git diff -C "$parent_top" --no-ext-diff --ignore-submodules=dirty --quiet -- "$submodule_top" 2>/dev/null || status="+"
+		printf "$status$submodule_name:"
+	fi
 }
 
 # __git_ps1 accepts 0 or 1 arguments (i.e., format string)
@@ -545,7 +544,7 @@ __git_ps1 ()
 
 	local sub=""
 	if [ -n "${GIT_PS1_SHOWSUBMODULE}" ]; then
-		sub="$(__git_ps1_submodule)"
+		sub="$(__git_ps1_submodule $g)"
 	fi
 
 	local f="$w$i$s$u"
