@@ -1449,6 +1449,12 @@ _git_ls_files ()
 
 _git_ls_remote ()
 {
+	case "$cur" in
+	--*)
+		__gitcomp "--heads --tags --refs --get-url"
+		return
+		;;
+	esac
 	__gitcomp_nl "$(__git_remotes)"
 }
 
