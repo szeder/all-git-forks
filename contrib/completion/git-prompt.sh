@@ -306,9 +306,9 @@ __git_ps1_submodule ()
 	local submodule_name="$(basename "$git_dir")"
 	if [ "$submodule_name" != ".git" ] && [ "$submodule_name" != "." ]; then
 		local parent_top="${git_dir%.git*}"
-		local submodule_top="${git_dir#*modules}"
+		local submodule_top="${git_dir#*modules/}"
 		local status=""
-		git diff -C "$parent_top" --no-ext-diff --ignore-submodules=dirty --quiet -- "$submodule_top" 2>/dev/null || status="+"
+		git -C "$parent_top" diff --no-ext-diff --ignore-submodules=dirty --quiet -- "$submodule_top" 2>/dev/null || status="+"
 		printf "$status$submodule_name:"
 	fi
 }
@@ -544,7 +544,7 @@ __git_ps1 ()
 
 	local sub=""
 	if [ -n "${GIT_PS1_SHOWSUBMODULE}" ]; then
-		sub="$(__git_ps1_submodule $g)"
+		sub="$(__git_ps1_submodule "$g")"
 	fi
 
 	local f="$w$i$s$u"
