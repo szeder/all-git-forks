@@ -985,6 +985,14 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		opts->signoff = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.allow-ff"))
 		opts->allow_ff = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.rerere-autoupdate"))
+		opts->allow_rerere_auto = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.allow-empty"))
+		opts->allow_empty = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.allow-empty-message"))
+		opts->allow_empty_message = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.keep-redundant-commits"))
+		opts->keep_redundant_commits = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.mainline"))
 		opts->mainline = git_config_int(key, value);
 	else if (!strcmp(key, "options.gpg-sign"))
@@ -1233,6 +1241,14 @@ static int save_opts(struct replay_opts *opts)
 		res |= git_config_set_in_file_gently(opts_file, "options.signoff", "true");
 	if (opts->allow_ff)
 		res |= git_config_set_in_file_gently(opts_file, "options.allow-ff", "true");
+	if (opts->allow_rerere_auto)
+		res |= git_config_set_in_file_gently(opts_file, "options.rerere-autoupdate", "true");
+	if (opts->allow_empty)
+		res |= git_config_set_in_file_gently(opts_file, "options.allow-empty", "true");
+	if (opts->allow_empty_message)
+		res |= git_config_set_in_file_gently(opts_file, "options.allow-empty-message", "true");
+	if (opts->keep_redundant_commits)
+		res |= git_config_set_in_file_gently(opts_file, "options.keep-redundant-commits", "true");
 	if (opts->mainline) {
 		struct strbuf buf = STRBUF_INIT;
 		strbuf_addf(&buf, "%d", opts->mainline);
