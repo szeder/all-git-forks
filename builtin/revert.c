@@ -102,7 +102,8 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 			OPT_BOOL(0, "allow-empty", &opts->allow_empty, N_("preserve initially empty commits")),
 			OPT_BOOL(0, "allow-empty-message", &opts->allow_empty_message, N_("allow commits with empty messages")),
 			OPT_BOOL(0, "keep-redundant-commits", &opts->keep_redundant_commits, N_("keep redundant, empty commits")),
-			OPT_BOOL(0, "skip-empty", &opts->skip_empty, N_("skip redundant, empty commits")),
+			OPT_BOOL(0, "skip-empty", &opts->skip_empty, N_("skip both redundant and initially empty commits")),
+			OPT_BOOL(0, "skip-redundant-commits", &opts->skip_redundant_commits, N_("skip redundant commits")),
 			OPT_END(),
 		};
 		options = parse_options_concat(options, cp_extra);
@@ -115,6 +116,9 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 	/* implies allow_empty */
 	if (opts->keep_redundant_commits)
 		opts->allow_empty = 1;
+	/* implies skip_redundant_commits */
+	if (opts->skip_empty)
+		opts->skip_redundant_commits = 1;
 
 	/* Check for incompatible command line arguments */
 	if (cmd) {
@@ -145,6 +149,18 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 				"--no-commit", opts->no_commit,
 				"-x", opts->record_origin,
 				"--edit", opts->edit,
+				NULL);
+
+	if (opts->keep_redundant_commits)
+		verify_opt_compatible(me, "--keep-redundant-commits",
+				"--skip-empty", opts->skip_empty,
+				"--skip-redundant-commits", opts->skip_redundant_commits,
+				NULL);
+
+	if (opts->keep_redundant_commits)
+		verify_opt_compatible(me, "--skip-empty",
+				"--allow-empty", opts->allow_empty,
+				"--keep-redundant-commits", opts->keep_redundant_commits,
 				NULL);
 
 	if (cmd) {

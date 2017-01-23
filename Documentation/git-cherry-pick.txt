@@ -138,9 +138,15 @@ effect to your index in a row.
 	examine the commit. This option overrides that behavior and
 	creates an empty commit object.  Implies `--allow-empty`.
 
+--skip-redundant-commits::
+	Redundant commits will be skipped altogether. This does not
+	influence commits that were originally empty (see
+	`--allow-empty` and `--skip-empty`).
+
 --skip-empty::
 	This option causes empty and redundant cherry-picked commits to
-	be skipped without requesting the user intervention.
+	be skipped without requesting the user intervention. Implies
+	`--skip-redundant-commits`.
 
 --strategy=<strategy>::
 	Use the given merge strategy.  Should only be used once.

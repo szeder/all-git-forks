@@ -563,40 +563,70 @@ static int allow_or_skip_empty(struct replay_opts *opts, struct commit *commit)
 {
 	int index_unchanged, empty_commit;
 
-	/*
-	 * Four cases:
+	/* We have four options:
 	 *
-	 * (1) we do not allow empty at all and error out;
+	 * --allow-empty (AE)
+	 * --keep-redundant-commits (KR)
+	 * --skip-empty (SE)
+	 * --skip-redundant-commits (SR)
 	 *
-	 * (2) we skip empty commits altogether;
+	 * Additionally, if KR, then AE. And if SE, then SR.
+	 * 
+	 * We have three possible states:
+	 * Not Empty (NE)
+	 * Originally Empty (OE)
+	 * made REdundant (RE) (originally not empty)
 	 *
-	 * (3) we allow ones that were initially empty, but
-	 * forbid the ones that become empty;
+	 * NE always gets committed. The other two depend on the combination
+	 * of flags.
 	 *
-	 * (4) we allow both.
+	 *              OE outcome | RE outcome | AE  KR  SE  SR
+	 *     Case 0:  0 (error)    0 (error)     0   0   0   0
+	 *     Case 1:  1 (allow)    0 (error)     1   0   0   0
+	 * N/A Case 2:  2 (skip)     0 (error)     0   0   1   0
+	 * N/A Case 3:  0 (error)    1 (keep)      0   1   0   0
+	 *     Case 4:  1 (allow)    1 (keep)      1   1   0   0
+	 * N/A Case 5:  2 (skip)     1 (keep)      0   1   1   0
+	 *     Case 6:  0 (error)    2 (skip)      0   0   0   1
+	 *     Case 7:  1 (allow)    2 (skip)      1   0   0   1
+	 *     Case 8:  2 (skip )    2 (skip)      0   0   1   1
+	 *
+	 * TODO should we allow Case 2? If so, how?
 	 */
-	if (!opts->allow_empty && !opts->skip_empty)
+
+	/* Case 0 */
+	if (!opts->allow_empty && !opts->skip_redundant_commits)
 		return 0; /* let "git commit" barf as necessary */
 
 	index_unchanged = is_index_unchanged();
 	if (index_unchanged < 0)
 		return index_unchanged;
+
 	if (!index_unchanged)
 		return 0; /* we do not have to say --allow-empty */
 
-	if (opts->skip_empty)
-		return 2;
+	/* Here we know that the commit is either OE or RE */
 
+	/* Case 4, we don't care, result is 'allow' for both cases */
 	if (opts->keep_redundant_commits)
 		return 1;
 
+	/* Case 8, we don't care, result is 'skip' for both cases */
+	if (opts->skip_empty)
+		return 2;
+
+	/* Now we must differentiate between OE and RE,
+	 * for Case 1, 6, 7 */
 	empty_commit = is_original_commit_empty(commit);
 	if (empty_commit < 0)
 		return empty_commit;
-	if (!empty_commit)
-		return 0;
-	else
-		return 1;
+
+	/* An OE will return 1 if AE, 0 otherwise */
+	if (empty_commit)
+		return opts->allow_empty;
+
+	/* An RE will return 2 if SR, 0 otherwise */
+	return 2*opts->skip_redundant_commits;
 }
 
 enum todo_command {
@@ -1009,6 +1039,8 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 		opts->keep_redundant_commits = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.skip-empty"))
 		opts->skip_empty = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.skip-redundant-commits"))
+		opts->skip_redundant_commits = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.mainline"))
 		opts->mainline = git_config_int(key, value);
 	else if (!strcmp(key, "options.gpg-sign"))
@@ -1267,6 +1299,8 @@ static int save_opts(struct replay_opts *opts)
 		res |= git_config_set_in_file_gently(opts_file, "options.keep-redundant-commits", "true");
 	if (opts->skip_empty)
 		res |= git_config_set_in_file_gently(opts_file, "options.skip-empty", "true");
+	if (opts->skip_redundant_commits)
+		res |= git_config_set_in_file_gently(opts_file, "options.skip-redundant-commits", "true");
 	if (opts->mainline) {
 		struct strbuf buf = STRBUF_INIT;
 		strbuf_addf(&buf, "%d", opts->mainline);
