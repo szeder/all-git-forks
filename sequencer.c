@@ -975,22 +975,22 @@ static int populate_opts_cb(const char *key, const char *value, void *data)
 
 	if (!value)
 		error_flag = 0;
-	else if (!strcmp(key, "options.no-commit"))
-		opts->no_commit = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.edit"))
 		opts->edit = git_config_bool_or_int(key, value, &error_flag);
-	else if (!strcmp(key, "options.signoff"))
-		opts->signoff = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.record-origin"))
 		opts->record_origin = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.no-commit"))
+		opts->no_commit = git_config_bool_or_int(key, value, &error_flag);
+	else if (!strcmp(key, "options.signoff"))
+		opts->signoff = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.allow-ff"))
 		opts->allow_ff = git_config_bool_or_int(key, value, &error_flag);
 	else if (!strcmp(key, "options.mainline"))
 		opts->mainline = git_config_int(key, value);
-	else if (!strcmp(key, "options.strategy"))
-		git_config_string_dup(&opts->strategy, key, value);
 	else if (!strcmp(key, "options.gpg-sign"))
 		git_config_string_dup(&opts->gpg_sign, key, value);
+	else if (!strcmp(key, "options.strategy"))
+		git_config_string_dup(&opts->strategy, key, value);
 	else if (!strcmp(key, "options.strategy-option")) {
 		ALLOC_GROW(opts->xopts, opts->xopts_nr + 1, opts->xopts_alloc);
 		opts->xopts[opts->xopts_nr++] = xstrdup(value);
@@ -1223,14 +1223,14 @@ static int save_opts(struct replay_opts *opts)
 	const char *opts_file = git_path_opts_file();
 	int res = 0;
 
-	if (opts->no_commit)
-		res |= git_config_set_in_file_gently(opts_file, "options.no-commit", "true");
 	if (opts->edit)
 		res |= git_config_set_in_file_gently(opts_file, "options.edit", "true");
-	if (opts->signoff)
-		res |= git_config_set_in_file_gently(opts_file, "options.signoff", "true");
 	if (opts->record_origin)
 		res |= git_config_set_in_file_gently(opts_file, "options.record-origin", "true");
+	if (opts->no_commit)
+		res |= git_config_set_in_file_gently(opts_file, "options.no-commit", "true");
+	if (opts->signoff)
+		res |= git_config_set_in_file_gently(opts_file, "options.signoff", "true");
 	if (opts->allow_ff)
 		res |= git_config_set_in_file_gently(opts_file, "options.allow-ff", "true");
 	if (opts->mainline) {
@@ -1239,10 +1239,10 @@ static int save_opts(struct replay_opts *opts)
 		res |= git_config_set_in_file_gently(opts_file, "options.mainline", buf.buf);
 		strbuf_release(&buf);
 	}
-	if (opts->strategy)
-		res |= git_config_set_in_file_gently(opts_file, "options.strategy", opts->strategy);
 	if (opts->gpg_sign)
 		res |= git_config_set_in_file_gently(opts_file, "options.gpg-sign", opts->gpg_sign);
+	if (opts->strategy)
+		res |= git_config_set_in_file_gently(opts_file, "options.strategy", opts->strategy);
 	if (opts->xopts) {
 		int i;
 		for (i = 0; i < opts->xopts_nr; i++)
