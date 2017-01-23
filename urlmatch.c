@@ -490,18 +490,51 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
 	}
 	dot = strrchr(key, '.');
 	if (dot) {
-		char *config_url, *norm_url;
-		struct url_info norm_info;
+		/*
+		 * When the configuration key's URL is prefixed
+		 * with a '?', regular expressions are enabled to
+		 * match the URL instead of the exact-match
+		 * algorithm.
+		 */
+		if (starts_with(key, "?")) {
+			char *config_url;
+			regex_t reg;
+			int status;
 
-		config_url = xmemdupz(key, dot - key);
-		norm_url = url_normalize(config_url, &norm_info);
-		free(config_url);
-		if (!norm_url)
-			return 0;
-		matched_len = match_urls(url, &norm_info, &user_matched);
-		free(norm_url);
-		if (!matched_len)
-			return 0;
+			config_url = xmemdupz(key + 1, dot - key - 1);
+			if (regcomp(&reg, config_url, REG_EXTENDED)) {
+				warning(_("Cannot prepare URL regexp %s"),
+					config_url);
+				free(config_url);
+				return 0;
+			}
+
+			status = regexec(&reg, url->url, 0, NULL, 0);
+			free(config_url);
+			regfree(&reg);
+
+			if (status) {
+				 if (status != REG_NOMATCH)
+					warning(_("regexec returned %d for input '%s'"),
+						status, url->url);
+
+				return 0;
+			}
+		} else {
+			char *config_url, *norm_url;
+			struct url_info norm_info;
+
+			config_url = xmemdupz(key, dot - key);
+			norm_url = url_normalize(config_url, &norm_info);
+			free(config_url);
+			if (!norm_url)
+				return 0;
+			matched_len = match_urls(url, &norm_info, &user_matched);
+			free(norm_url);
+			if (!matched_len)
+				return 0;
+		}
+
 		key = dot + 1;
 	}
 

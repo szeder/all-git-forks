@@ -1906,7 +1906,11 @@ http.followRedirects::
 
 http.<url>.*::
 	Any of the http.* options above can be applied selectively to some URLs.
-	For a config key to match a URL, each element of the config key is
+	There are two different modes to match URLs: if the config key's URL is
+	prefixed with a `?`, it allows to make use of regular expressions. An
+	example for this is `http.?http://.*\\.example\\.com.*` to match all
+	subdomains of `example.com`.
+	If the key is not prefixed with a `?`, each element of the config key is
 	compared to that of the URL, in the following order:
 +
 --
