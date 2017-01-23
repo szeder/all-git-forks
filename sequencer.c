@@ -1359,20 +1359,44 @@ static int continue_single_pick(void)
 	return run_command_v_opt(argv, RUN_GIT_CMD);
 }
 
-int sequencer_continue(struct replay_opts *opts)
+/*
+ * Continue the sequencing, after either committing
+ * (cmd == 'c') or skipping (cmd == 's') the current
+ * commit.
+ */
+int sequencer_continue(struct replay_opts *opts, char cmd)
 {
 	struct todo_list todo_list = TODO_LIST_INIT;
-	int res;
+	int single, res;
 
 	if (read_and_refresh_cache(opts))
 		return -1;
 
-	if (!file_exists(get_todo_path(opts)))
-		return continue_single_pick();
+	if (!file_exists(get_todo_path(opts))) {
+		if (cmd == 'c') {
+			return continue_single_pick();
+		} else {
+			assert(cmd == 's');
+			/* Skipping the only commit is equivalent to an abort */
+			return sequencer_rollback(opts);
+		}
+	}
 	if (read_populate_opts(opts))
 		return -1;
 	if ((res = read_populate_todo(&todo_list, opts)))
 		goto release_todo_list;
+
+	/* If we were asked to skip this commit, rollback
+	 * and continue with the next */
+	if (cmd == 's') {
+		if ((res = rollback_single_pick()))
+			goto release_todo_list;
+		discard_cache();
+		if ((res = read_cache()) < 0)
+			goto release_todo_list;
+		printf("index unchanged: %d\n", is_index_unchanged());
+		goto skip_this_commit;
+	}
 
 	/* check if there is something to commit */
 	res = is_index_unchanged();

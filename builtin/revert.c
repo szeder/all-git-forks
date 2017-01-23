@@ -79,6 +79,7 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 	struct option base_options[] = {
 		OPT_CMDMODE(0, "quit", &cmd, N_("end revert or cherry-pick sequence"), 'q'),
 		OPT_CMDMODE(0, "continue", &cmd, N_("resume revert or cherry-pick sequence"), 'c'),
+		OPT_CMDMODE(0, "skip", &cmd, N_("resume revert or cherry-pick sequence, skipping this commit"), 's'),
 		OPT_CMDMODE(0, "abort", &cmd, N_("cancel revert or cherry-pick sequence"), 'a'),
 		OPT_BOOL('n', "no-commit", &opts->no_commit, N_("don't automatically commit")),
 		OPT_BOOL('e', "edit", &opts->edit, N_("edit the commit message")),
@@ -127,6 +128,8 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 			this_operation = "--quit";
 		else if (cmd == 'c')
 			this_operation = "--continue";
+		else if (cmd == 's')
+			this_operation = "--skip";
 		else {
 			assert(cmd == 'a');
 			this_operation = "--abort";
@@ -188,8 +191,8 @@ static int run_sequencer(int argc, const char **argv, struct replay_opts *opts)
 
 	if (cmd == 'q')
 		return sequencer_remove_state(opts);
-	if (cmd == 'c')
-		return sequencer_continue(opts);
+	if (cmd == 'c' || cmd == 's')
+		return sequencer_continue(opts, cmd);
 	if (cmd == 'a')
 		return sequencer_rollback(opts);
 	return sequencer_pick_revisions(opts);

@@ -41,7 +41,7 @@ struct replay_opts {
 #define REPLAY_OPTS_INIT { -1 }
 
 int sequencer_pick_revisions(struct replay_opts *opts);
-int sequencer_continue(struct replay_opts *opts);
+int sequencer_continue(struct replay_opts *opts, char cmd);
 int sequencer_rollback(struct replay_opts *opts);
 int sequencer_remove_state(struct replay_opts *opts);
 

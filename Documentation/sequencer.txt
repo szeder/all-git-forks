@@ -1,7 +1,15 @@
 --continue::
 	Continue the operation in progress using the information in
 	'.git/sequencer'.  Can be used to continue after resolving
-	conflicts in a failed cherry-pick or revert.
+	conflicts in a failed cherry-pick or revert.  Use `--skip`
+	instead if the current commit should be ignored.
+
+--skip::
+	Skips the current commit, and then continues the operation
+	in progress using the information in '.git/sequencer'.i
+	Can be used to continue to a cherry-pick or rever that was
+	interrupted by an empty commit, or by a commit that conflicts
+	and for which the resolution is to discard the commit.
 
 --quit::
 	Forget about the current operation in progress.  Can be used
