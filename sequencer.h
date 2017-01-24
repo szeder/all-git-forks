@@ -7,8 +7,7 @@ const char *git_path_seq_dir(void);
 
 enum replay_action {
 	REPLAY_REVERT,
-	REPLAY_PICK,
-	REPLAY_INTERACTIVE_REBASE
+	REPLAY_PICK
 };
 
 struct replay_opts {
@@ -24,7 +23,6 @@ struct replay_opts {
 	int allow_empty;
 	int allow_empty_message;
 	int keep_redundant_commits;
-	int verbose;
 
 	int mainline;
 
