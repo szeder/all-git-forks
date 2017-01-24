@@ -1,0 +1,51 @@
+From 953c5d2b4ec61b18d31d11c4e239836485fe7da2 Mon Sep 17 00:00:00 2001
+In-Reply-To: <20170123130635.29577-1-patrick.steinhardt@elego.de>
+References: <20170123130635.29577-1-patrick.steinhardt@elego.de>
+From: Patrick Steinhardt <patrick.steinhardt@elego.de>
+Date: Tue, 24 Jan 2017 17:53:48 +0100
+Subject: [PATCH v2 0/4] urlmatch: allow regexp-based matches
+To: git@vger.kernel.org
+Cc: Junio C Hamano <gitster@pobox.com>,
+    Patrick Steinhardt <ps@pks.im>
+
+Hi,
+
+This is version two of my patch series.
+
+The use case is to be able to configure an HTTP proxy for all
+subdomains of a domain where there are hundreds of subdomains.
+
+Previously, I have been using complete regular expressions with
+an escape-mechanism to match the configuration key's URLs.
+According to Junio's comments, I changed this mechanism to a much
+simpler one, where the user is only allowed to use globbing for
+the host part of the URL. That is a user can now specify a key
+`http.https://*.example.com` to match all sub-domains of
+`example.com`. For now I've decided to implement it such that a
+single `*` matches a single subdomain only, so for example
+`https://foo.bar.example.com` would not match in this case. This
+is similar to how shell-globbing works usually, so it should not
+be of much surprise. It's also highlighted in the documentation.
+
+I did not include an interdiff as too much has changed between
+the two versions.
+
+Regards
+Patrick
+
+Patrick Steinhardt (4):
+  mailmap: add Patrick Steinhardt's work address
+  urlmatch: enable normalization of URLs with globs
+  urlmatch: split host and port fields in `struct url_info`
+  urlmatch: allow globbing for the URL host part
+
+ .mailmap                 |  1 +
+ Documentation/config.txt |  5 +++-
+ t/t1300-repo-config.sh   | 36 +++++++++++++++++++++++++
+ urlmatch.c               | 68 +++++++++++++++++++++++++++++++++++++++++-------
+ urlmatch.h               |  9 ++++---
+ 5 files changed, 104 insertions(+), 15 deletions(-)
+
+-- 
+2.11.0
+
