@@ -1291,9 +1291,11 @@ void add_index_objects_to_pending(struct rev_info *revs, unsigned flags)
 	}
 }
 
-static void handle_one_alternate_ref(const struct ref *ref, void *data)
+static void handle_one_alternate_ref(const char *refname,
+				     const struct object_id *oid,
+				     void *data)
 {
-	handle_one_ref(ref->name, &ref->old_oid, 0, data);
+	handle_one_ref(refname, oid, 0, data);
 }
 
 static int add_parents_only(struct rev_info *revs, const char *arg_, int flags,
