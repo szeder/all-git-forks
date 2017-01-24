@@ -63,6 +63,38 @@ static int append_normalized_escapes(struct strbuf *buf,
 	return 1;
 }
 
+static int match_host(const struct url_info *url_info,
+		      const struct url_info *pattern_info)
+{
+	char *url = xmemdupz(url_info->url + url_info->host_off, url_info->host_len);
+	char *pat = xmemdupz(pattern_info->url + pattern_info->host_off, pattern_info->host_len);
+	char *url_tok, *pat_tok, *url_save, *pat_save;
+	int matching;
+
+	url_tok = strtok_r(url, ".", &url_save);
+	pat_tok = strtok_r(pat, ".", &pat_save);
+
+	for (; url_tok && pat_tok; url_tok = strtok_r(NULL, ".", &url_save),
+				   pat_tok = strtok_r(NULL, ".", &pat_save)) {
+		if (!strcmp(pat_tok, "*"))
+			continue; /* a simple glob matches everything */
+
+		if (strcmp(url_tok, pat_tok)) {
+			/* subdomains do not match */
+			matching = 0;
+			break;
+		}
+	}
+
+	/* matching if both URL and pattern are at their ends */
+	matching = (url_tok == NULL && pat_tok == NULL);
+
+	free(url);
+	free(pat);
+
+	return matching;
+}
+
 static char *url_normalize_1(const char *url, struct url_info *out_info, char allow_globs)
 {
 	/*
@@ -467,9 +499,7 @@ static int match_urls(const struct url_info *url,
 	}
 
 	/* check the host */
-	if (url_prefix->host_len != url->host_len ||
-	    strncmp(url->url + url->host_off,
-		    url_prefix->url + url_prefix->host_off, url->host_len))
+	if (!match_host(url, url_prefix))
 		return 0; /* host names do not match */
 
 	/* check the port */
@@ -512,7 +542,7 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
 		struct url_info norm_info;
 
 		config_url = xmemdupz(key, dot - key);
-		norm_url = url_normalize(config_url, &norm_info);
+		norm_url = url_normalize_1(config_url, &norm_info, 1);
 		free(config_url);
 		if (!norm_url)
 			return 0;
