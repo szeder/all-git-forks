@@ -1,0 +1,31 @@
+From a17ec3bede760c62afec4058fecc6b40b433acc2 Mon Sep 17 00:00:00 2001
+In-Reply-To: <20170123130635.29577-1-patrick.steinhardt@elego.de>
+References: <20170123130635.29577-1-patrick.steinhardt@elego.de>
+From: Patrick Steinhardt <patrick.steinhardt@elego.de>
+Date: Tue, 24 Jan 2017 17:48:36 +0100
+Subject: [PATCH v3 1/4] mailmap: add Patrick Steinhardt's work address
+To: git@vger.kernel.org
+Cc: Junio C Hamano <gitster@pobox.com>,
+    Patrick Steinhardt <ps@pks.im>,
+    Philip Oakley <philipoakley@iee.org>
+
+Signed-off-by: Patrick Steinhardt <patrick.steinhardt@elego.de>
+---
+ .mailmap | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/.mailmap b/.mailmap
+index 9c87a3840..ea59205b9 100644
+--- a/.mailmap
++++ b/.mailmap
+@@ -177,6 +177,7 @@ Paolo Bonzini <bonzini@gnu.org> <paolo.bonzini@lu.unisi.ch>
+ Pascal Obry <pascal@obry.net> <pascal.obry@gmail.com>
+ Pascal Obry <pascal@obry.net> <pascal.obry@wanadoo.fr>
+ Pat Notz <patnotz@gmail.com> <pknotz@sandia.gov>
++Patrick Steinhardt <ps@pks.im> <patrick.steinhardt@elego.de>
+ Paul Mackerras <paulus@samba.org> <paulus@dorrigo.(none)>
+ Paul Mackerras <paulus@samba.org> <paulus@pogo.(none)>
+ Peter Baumann <waste.manager@gmx.de> <Peter.B.Baumann@stud.informatik.uni-erlangen.de>
+-- 
+2.11.0
+
