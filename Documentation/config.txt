@@ -1914,7 +1914,10 @@ http.<url>.*::
   must match exactly between the config key and the URL.
 
 . Host/domain name (e.g., `example.com` in `https://example.com/`).
-  This field must match exactly between the config key and the URL.
+  This field must match between the config key and the URL. It is
+  possible to use globs in the config key to match all subdomains, e.g.
+  `https://*.example.com/` to match all subdomains of `example.com`. Note
+  that a glob only every matches a single part of the hostname.
 
 . Port number (e.g., `8080` in `http://example.com:8080/`).
   This field must match exactly between the config key and the URL.
