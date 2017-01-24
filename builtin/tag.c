@@ -30,6 +30,7 @@ static const char * const git_tag_usage[] = {
 
 static unsigned int colopts;
 static int force_sign_annotate;
+static int create_reflog;
 
 static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, const char *format)
 {
@@ -163,6 +164,10 @@ static int git_tag_config(const char *var, const char *value, void *cb)
 		return status;
 	if (!strcmp(var, "tag.forcesignannotated")) {
 		force_sign_annotate = git_config_bool(var, value);
+		return 0;
+	}
+	if (!strcmp(var, "tag.createreflog")) {
+		create_reflog = git_config_bool(var, value);
 		return 0;
 	}
 
@@ -325,7 +330,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	const char *object_ref, *tag;
 	struct create_tag_options opt;
 	char *cleanup_arg = NULL;
-	int create_reflog = 0;
 	int annotate = 0, force = 0;
 	int cmdmode = 0, create_tag_object = 0;
 	const char *msgfile = NULL, *keyid = NULL;
