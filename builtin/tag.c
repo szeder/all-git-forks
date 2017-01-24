@@ -66,16 +66,15 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 }
 
 typedef int (*each_tag_name_fn)(const char *name, const char *ref,
-				const unsigned char *sha1, void *cb_data);
+				const unsigned char *sha1, const void *cb_data);
 
 static int for_each_tag_name(const char **argv, each_tag_name_fn fn,
-		void *cb_data)
+			     const void *cb_data)
 {
 	const char **p;
 	char ref[PATH_MAX];
 	int had_error = 0;
 	unsigned char sha1[20];
-
 
 	for (p = argv; *p; p++) {
 		if (snprintf(ref, sizeof(ref), "refs/tags/%s", *p)
@@ -96,7 +95,7 @@ static int for_each_tag_name(const char **argv, each_tag_name_fn fn,
 }
 
 static int delete_tag(const char *name, const char *ref,
-				const unsigned char *sha1, void *cb_data)
+		      const unsigned char *sha1, const void *cb_data)
 {
 	if (delete_ref(ref, sha1, 0))
 		return 1;
@@ -105,16 +104,22 @@ static int delete_tag(const char *name, const char *ref,
 }
 
 static int verify_tag(const char *name, const char *ref,
-				const unsigned char *sha1, void *cb_data)
+		      const unsigned char *sha1, const void *cb_data)
 {
 	int flags;
-	char *fmt_pretty = cb_data;
+	const char *fmt_pretty = cb_data;
 	flags = GPG_VERIFY_VERBOSE;
 
 	if (fmt_pretty)
-		flags = GPG_VERIFY_QUIET;
+		flags = GPG_VERIFY_OMIT_STATUS;
 
-	return verify_and_format_tag(sha1, name, fmt_pretty, flags);
+	if (gpg_verify_tag(sha1, name, flags))
+		return -1;
+
+	if (fmt_pretty)
+		pretty_print_ref(name, sha1, fmt_pretty);
+
+	return 0;
 }
 
 static int do_sign(struct strbuf *buffer)
@@ -343,7 +348,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct strbuf err = STRBUF_INIT;
 	struct ref_filter filter;
 	static struct ref_sorting *sorting = NULL, **sorting_tail = &sorting;
-	char *format = NULL;
+	const char *format = NULL;
 	int icase = 0;
 	struct option options[] = {
 		OPT_CMDMODE('l', "list", &cmdmode, N_("list tag names"), 'l'),

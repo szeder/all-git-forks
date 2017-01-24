@@ -19,7 +19,6 @@ static const char * const verify_tag_usage[] = {
 		NULL
 };
 
-
 static int git_verify_tag_config(const char *var, const char *value, void *cb)
 {
 	int status = git_gpg_config(var, value, cb);
@@ -52,16 +51,24 @@ int cmd_verify_tag(int argc, const char **argv, const char *prefix)
 
 	if (fmt_pretty) {
 		verify_ref_format(fmt_pretty);
-		flags |= GPG_VERIFY_QUIET;
+		flags |= GPG_VERIFY_OMIT_STATUS;
 	}
 
 	while (i < argc) {
 		unsigned char sha1[20];
 		const char *name = argv[i++];
-		if (get_sha1(name, sha1))
+		if (get_sha1(name, sha1)) {
 			had_error = !!error("tag '%s' not found.", name);
-		else if (verify_and_format_tag(sha1, name, fmt_pretty, flags))
+			continue;
+		}
+
+		if (gpg_verify_tag(sha1, name, flags)) {
 			had_error = 1;
+			continue;
+		}
+
+		if (fmt_pretty)
+			pretty_print_ref(name, sha1, fmt_pretty);
 	}
 	return had_error;
 }

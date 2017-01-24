@@ -4,7 +4,6 @@
 #include "tree.h"
 #include "blob.h"
 #include "gpg-interface.h"
-#include "ref-filter.h"
 
 const char *tag_type = "tag";
 
@@ -27,15 +26,15 @@ static int run_gpg_verify(const char *buf, unsigned long size, unsigned flags)
 	ret = check_signature(buf, payload_size, buf + payload_size,
 				size - payload_size, &sigc);
 
-	if (!(flags & GPG_VERIFY_QUIET))
+	if (!(flags & GPG_VERIFY_OMIT_STATUS))
 		print_signature_buffer(&sigc, flags);
 
 	signature_check_clear(&sigc);
 	return ret;
 }
 
-int verify_and_format_tag(const unsigned char *sha1, const char *name,
-		const char *fmt_pretty, unsigned flags)
+int gpg_verify_tag(const unsigned char *sha1, const char *name_to_report,
+		unsigned flags)
 {
 	enum object_type type;
 	char *buf;
@@ -45,25 +44,21 @@ int verify_and_format_tag(const unsigned char *sha1, const char *name,
 	type = sha1_object_info(sha1, NULL);
 	if (type != OBJ_TAG)
 		return error("%s: cannot verify a non-tag object of type %s.",
-				name ?
-				name :
+				name_to_report ?
+				name_to_report :
 				find_unique_abbrev(sha1, DEFAULT_ABBREV),
 				typename(type));
 
 	buf = read_sha1_file(sha1, &type, &size);
 	if (!buf)
 		return error("%s: unable to read file.",
-				name ?
-				name :
+				name_to_report ?
+				name_to_report :
 				find_unique_abbrev(sha1, DEFAULT_ABBREV));
 
 	ret = run_gpg_verify(buf, size, flags);
 
 	free(buf);
-
-	if (fmt_pretty)
-		pretty_print_ref(name, sha1, fmt_pretty, FILTER_REFS_TAGS);
-
 	return ret;
 }
 
