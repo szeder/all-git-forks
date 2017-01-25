@@ -149,6 +149,26 @@ const char *get_signing_key(void)
 	return git_committer_info(IDENT_STRICT|IDENT_NO_DATE);
 }
 
+static int pipe_gpg_command(struct child_process *cmd,
+			    const char *in, size_t in_len,
+			    struct strbuf *out, size_t out_hint,
+			    struct strbuf *err, size_t err_hint)
+{
+	int ret = pipe_command(cmd, in, in_len, out, out_hint, err, err_hint);
+	/* Print out any line that doesn't start with [GNUPG:] if the gpg
+	 * command failed. */
+	if (ret) {
+		struct strbuf **err_lines = strbuf_split(err, '\n');
+		for (struct strbuf **line = err_lines; *line; line++) {
+			if (memcmp((*line)->buf, "[GNUPG:]", 8)) {
+				strbuf_rtrim(*line);
+				fprintf(stderr, "%s\n", (*line)->buf);
+			}
+		}
+		strbuf_list_free(err_lines);
+	}
+	return ret;
+}
 /*
  * Create a detached signature for the contents of "buffer" and append
  * it after "signature"; "buffer" and "signature" can be the same
@@ -175,8 +195,8 @@ int sign_buffer(struct strbuf *buffer, struct strbuf *signature, const char *sig
 	 * because gpg exits without reading and then write gets SIGPIPE.
 	 */
 	sigchain_push(SIGPIPE, SIG_IGN);
-	ret = pipe_command(&gpg, buffer->buf, buffer->len,
-			   signature, 1024, &gpg_status, 0);
+	ret = pipe_gpg_command(&gpg, buffer->buf, buffer->len,
+			       signature, 1024, &gpg_status, 0);
 	sigchain_pop(SIGPIPE);
 
 	ret |= !strstr(gpg_status.buf, "\n[GNUPG:] SIG_CREATED ");
@@ -232,8 +252,8 @@ int verify_signed_buffer(const char *payload, size_t payload_size,
 		gpg_status = &buf;
 
 	sigchain_push(SIGPIPE, SIG_IGN);
-	ret = pipe_command(&gpg, payload, payload_size,
-			   gpg_status, 0, gpg_output, 0);
+	ret = pipe_gpg_command(&gpg, payload, payload_size,
+			       gpg_status, 0, gpg_output, 0);
 	sigchain_pop(SIGPIPE);
 
 	delete_tempfile(&temp);
