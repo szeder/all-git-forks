@@ -90,6 +90,20 @@ test_expect_success '--create-reflog does not create reflog on failure' '
 	test_must_fail git reflog exists refs/tags/mytag
 '
 
+test_expect_success 'option tag.createreflog creates reflog by default' '
+	test_when_finished "git tag -d tag_with_reflog" &&
+	git config tag.createReflog true &&
+	git tag tag_with_reflog &&
+	git reflog exists refs/tags/tag_with_reflog
+'
+
+test_expect_success 'option tag.createreflog overridden by command line' '
+	test_when_finished "git tag -d tag_without_reflog" &&
+	git config tag.createReflog true &&
+	git tag --no-create-reflog tag_without_reflog &&
+	test_must_fail git reflog exists refs/tags/tag_without_reflog
+'
+
 test_expect_success 'listing all tags if one exists should succeed' '
 	git tag -l &&
 	git tag

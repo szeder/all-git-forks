@@ -2945,6 +2945,11 @@ submodule.alternateErrorStrategy
 	as computed via `submodule.alternateLocation`. Possible values are
 	`ignore`, `info`, `die`. Default is `die`.
 
+tag.createReflog::
+	A boolean to specify whether newly created tags should have a reflog.
+	If `--[no-]create-reflog` is specified on the command line, it takes
+	precedence. Defaults to `false`.
+
 tag.forceSignAnnotated::
 	A boolean to specify whether annotated tags created should be GPG signed.
 	If `--annotate` is specified on the command line, it takes

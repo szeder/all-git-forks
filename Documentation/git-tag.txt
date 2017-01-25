@@ -13,7 +13,7 @@ SYNOPSIS
 	<tagname> [<commit> | <object>]
 'git tag' -d <tagname>...
 'git tag' [-n[<num>]] -l [--contains <commit>] [--points-at <object>]
-	[--column[=<options>] | --no-column] [--create-reflog] [--sort=<key>]
+	[--column[=<options>] | --no-column] [--[no-]create-reflog] [--sort=<key>]
 	[--format=<format>] [--[no-]merged [<commit>]] [<pattern>...]
 'git tag' -v <tagname>...
 
@@ -149,8 +149,10 @@ This option is only applicable when listing tags without annotation lines.
 	all, 'whitespace' removes just leading/trailing whitespace lines and
 	'strip' removes both whitespace and commentary.
 
---create-reflog::
-	Create a reflog for the tag.
+--[no-]create-reflog::
+	Force to create a reflog for the tag, or no reflog if `--no-create-reflog`
+	is used. Unless the `tag.createReflog` config variable is set to true, no
+	reflog is created by default. See linkgit:git-config[1].
 
 <tagname>::
 	The name of the tag to create, delete, or describe.
