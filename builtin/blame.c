@@ -1885,6 +1885,7 @@ static const char *format_time(unsigned long time, const char *tz_str,
 #define OUTPUT_SHOW_EMAIL	0400
 #define OUTPUT_LINE_PORCELAIN 01000
 #define OUTPUT_AGGREGATE      02000
+#define OUTPUT_HINT           04000
 
 static void emit_porcelain_details(struct origin *suspect, int repeat)
 {
@@ -2001,8 +2002,12 @@ static void print_revision_info(char* revision_hex, int revision_length, struct 
 	if (line_number && (opt & OUTPUT_AGGREGATE))
 		printf(opt & OUTPUT_ANNOTATE_COMPAT ? "%*d)" : " %*d) ",
 			   max_digits, line_number);
-	if (!line_number)
-		printf(")\n");
+	if (!line_number) {
+		printf(")");
+		if (opt & OUTPUT_HINT)
+			printf(" %s", ci.summary.buf);
+		printf("\n");
+	}
 }
 
 static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
@@ -2017,6 +2022,9 @@ static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
 
 	get_commit_info(suspect->commit, &ci, 1);
 	sha1_to_hex_r(hex, suspect->commit->object.oid.hash);
+
+	if (~(opt & OUTPUT_AGGREGATE) & (opt & OUTPUT_HINT))
+		opt=opt|OUTPUT_AGGREGATE;
 
 	if (opt & OUTPUT_AGGREGATE)
 		print_revision_info(hex, revision_length, ent, ci, opt, show_raw_time, 0);
@@ -2638,6 +2646,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		{ OPTION_CALLBACK, 'M', NULL, &opt, N_("score"), N_("Find line movements within and across files"), PARSE_OPT_OPTARG, blame_move_callback },
 		OPT_STRING_LIST('L', NULL, &range_list, N_("n,m"), N_("Process only line range n,m, counting from 1")),
 		OPT_BIT(0, "aggregate", &output_option, N_("Aggregate output"), OUTPUT_AGGREGATE),
+		OPT_BIT(0, "hint", &output_option, N_("Show revision hints"), OUTPUT_HINT),
 		OPT__ABBREV(&abbrev),
 		OPT_END()
 	};
