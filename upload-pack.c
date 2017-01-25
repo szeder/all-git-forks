@@ -862,9 +862,13 @@ static void receive_needs(struct string_list *wanted_ns_refs)
 		} else if (skip_prefix(line, "want ", &arg) &&
 			   !get_sha1_hex(arg, sha1_buf)) {
 			o = parse_object(sha1_buf);
-			if (!o)
+			if (!o) {
+				packet_write_fmt(1,
+						 "ERR upload-pack: not our ref %s",
+						 sha1_to_hex(sha1_buf));
 				die("git upload-pack: not our ref %s",
 				    sha1_to_hex(sha1_buf));
+			}
 			if (!(o->flags & WANTED)) {
 				o->flags |= WANTED;
 				if (!((allow_unadvertised_object_request & ALLOW_ANY_SHA1) == ALLOW_ANY_SHA1
