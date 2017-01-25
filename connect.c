@@ -691,6 +691,29 @@ static const char *get_ssh_command(void)
 	return NULL;
 }
 
+static void override_ssh_variant(int *port_option, int *needs_batch)
+{
+	const char *variant;
+
+	if (git_config_get_string_const("core.sshvariant", &variant))
+		return;
+	if (!strcmp(variant, "tortoiseplink")) {
+		*port_option = 'P';
+		*needs_batch = 1;
+	} else if (!strcmp(variant, "putty")) {
+		*port_option = 'P';
+		*needs_batch = 0;
+	} else {
+		/* default */
+		if (strcmp(variant, "ssh")) {
+			warning(_("core.sshvariant: unknown value '%s'"), variant);
+			warning(_("using OpenSSH compatible behaviour"));
+		}
+		*port_option = 'p';
+		*needs_batch = 0;
+	}
+}
+
 /*
  * This returns a dummy child_process if the transport protocol does not
  * need fork(2), or a struct child_process object if it does.  Once done,
@@ -836,6 +859,9 @@ struct child_process *git_connect(int fd[2], const char *url,
 				argv_array_push(&conn->args, "-4");
 			else if (flags & CONNECT_IPV6)
 				argv_array_push(&conn->args, "-6");
+
+			override_ssh_variant(&port_option, &needs_batch);
+
 			if (needs_batch)
 				argv_array_push(&conn->args, "-batch");
 			if (port) {
