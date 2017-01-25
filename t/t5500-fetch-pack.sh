@@ -551,6 +551,7 @@ test_expect_success 'fetch-pack can fetch refs using a partial name' '
 	git init server &&
 	(
 		cd server &&
+		git config uploadpack.advertiseRefInWant false
 		test_commit 1 &&
 		test_commit 2 &&
 		git checkout -b one
@@ -587,6 +588,7 @@ test_expect_success 'fetch-pack can fetch refs using a glob' '
 	git init server &&
 	(
 		cd server &&
+		git config uploadpack.advertiseRefInWant false
 		test_commit 1 &&
 		test_commit 2 &&
 		git checkout -b ona &&

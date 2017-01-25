@@ -62,7 +62,7 @@ static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
 static const char *pack_objects_hook;
-static int advertise_ref_in_want;
+static int advertise_ref_in_want = 1;
 
 static void reset_timeout(void)
 {
