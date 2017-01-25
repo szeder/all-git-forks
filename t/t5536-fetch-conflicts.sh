@@ -93,6 +93,8 @@ test_expect_success 'fetch conflict: criss-cross args' '
 		verify_stderr <<-\EOF
 		warning: refs/remotes/origin/branch1 usually tracks refs/heads/branch1, not refs/heads/branch2
 		warning: refs/remotes/origin/branch2 usually tracks refs/heads/branch2, not refs/heads/branch1
+		warning: refs/remotes/origin/branch1 usually tracks refs/heads/branch1, not refs/heads/branch2
+		warning: refs/remotes/origin/branch2 usually tracks refs/heads/branch2, not refs/heads/branch1
 		EOF
 	)
 '

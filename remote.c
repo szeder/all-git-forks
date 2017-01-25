@@ -929,7 +929,7 @@ struct ref *alloc_ref(const char *name)
 	return alloc_ref_with_prefix("", 0, name);
 }
 
-struct ref *copy_ref(const struct ref *ref)
+struct ref *copy_ref_peerless(const struct ref *ref)
 {
 	struct ref *cpy;
 	size_t len;
@@ -941,6 +941,16 @@ struct ref *copy_ref(const struct ref *ref)
 	cpy->next = NULL;
 	cpy->symref = xstrdup_or_null(ref->symref);
 	cpy->remote_status = xstrdup_or_null(ref->remote_status);
+	cpy->peer_ref = NULL;
+	return cpy;
+}
+
+struct ref *copy_ref(const struct ref *ref)
+{
+	struct ref *cpy;
+	if (!ref)
+		return NULL;
+	cpy = copy_ref_peerless(ref);
 	cpy->peer_ref = copy_ref(ref->peer_ref);
 	return cpy;
 }
