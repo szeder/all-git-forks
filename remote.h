@@ -162,6 +162,13 @@ int ref_newer(const struct object_id *new_oid, const struct object_id *old_oid);
  */
 struct ref *ref_remove_duplicates(struct ref *ref_map);
 
+/*
+ * Parse the given ref or ref pattern. If a ref, write a refspec with that ref
+ * as src, and with an empty dst. If a ref pattern, write a glob refspec with
+ * that pattern as src and dst.
+ */
+void parse_ref_or_pattern(struct refspec *refspec, const char *str);
+
 int valid_fetch_refspec(const char *refspec);
 struct refspec *parse_fetch_refspec(int nr_refspec, const char **refspec);
 
@@ -191,6 +198,15 @@ void set_ref_status_for_push(struct ref *remote_refs, int send_mirror,
  */
 int get_fetch_map(const struct ref *remote_refs, const struct refspec *refspec,
 		  struct ref ***tail, int missing_ok);
+
+/*
+ * Convenience function to generate an array of refs corresponding to the given
+ * refspecs. This is equivalent to repeatedly calling get_fetch_map and
+ * rearranging the returned refs as an array.
+ */
+void get_ref_array(const struct ref ***refs, int *nr_ref,
+		   const struct ref *remote_refs,
+		   const struct refspec *refspecs, int nr_refspecs);
 
 struct ref *get_remote_ref(const struct ref *remote_refs, const char *name);
 

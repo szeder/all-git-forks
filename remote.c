@@ -612,6 +612,39 @@ static struct refspec *parse_refspec_internal(int nr_refspec, const char **refsp
 	die("Invalid refspec '%s'", refspec[i]);
 }
 
+void parse_ref_or_pattern(struct refspec *refspec, const char *str)
+{
+	struct object_id oid;
+	memset(refspec, 0, sizeof(*refspec));
+
+	if (!get_oid_hex(str, &oid)) {
+		if (str[GIT_SHA1_HEXSZ] == ' ') {
+			struct object_id oid2;
+			/* <sha1> <ref>, find refname */
+			refspec->src = xstrdup(str + GIT_SHA1_HEXSZ + 1);
+			if (!get_oid_hex(refspec->src, &oid2)
+			    && !oidcmp(&oid, &oid2))
+				/* The name is actually a SHA-1 */
+				refspec->exact_sha1 = 1;
+		} else if (str[GIT_SHA1_HEXSZ] == '\0') {
+			; /* <sha1>, leave sha1 as name */
+			refspec->src = xstrdup(str);
+			refspec->exact_sha1 = 1;
+		} else {
+			/* <ref> */
+			refspec->src = xstrdup(str);
+		}
+	} else {
+		/* <ref> */
+		refspec->src = xstrdup(str);
+	}
+
+	if (has_glob_specials(refspec->src)) {
+		refspec->pattern = 1;
+		refspec->dst = refspec->src;
+	}
+}
+
 int valid_fetch_refspec(const char *fetch_refspec_str)
 {
 	struct refspec *refspec;
@@ -1922,6 +1955,28 @@ int get_fetch_map(const struct ref *remote_refs,
 		tail_link_ref(ref_map, tail);
 
 	return 0;
+}
+
+void get_ref_array(const struct ref ***refs, int *nr_ref,
+		   const struct ref *remote_refs,
+		   const struct refspec *refspecs, int nr_refspecs)
+{
+	struct ref *head = NULL, **tail = &head;
+	const struct ref **array = NULL;
+	int nr = 0, alloc = 0;
+
+	struct ref *r;
+	int i;
+
+	for (i = 0; i < nr_refspecs; i++)
+		get_fetch_map(remote_refs, &refspecs[i], &tail, 1);
+	for (r = head; r; r = r->next) {
+		nr++;
+		ALLOC_GROW(array, nr, alloc);
+		array[nr - 1] = r;
+	}
+	*refs = array;
+	*nr_ref = nr;
 }
 
 int resolve_remote_symref(struct ref *ref, struct ref *list)

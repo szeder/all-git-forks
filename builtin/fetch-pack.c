@@ -11,32 +11,12 @@ static const char fetch_pack_usage[] =
 "[--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] "
 "[--no-progress] [--diag-url] [-v] [<host>:]<directory> [<refs>...]";
 
-static void add_sought_entry(const struct ref ***sought, int *nr, int *alloc,
+static void add_sought_entry(struct refspec **sought, int *nr, int *alloc,
 			     const char *name)
 {
-	struct ref *ref;
-	struct object_id oid;
-
-	if (!get_oid_hex(name, &oid)) {
-		if (name[GIT_SHA1_HEXSZ] == ' ') {
-			/* <sha1> <ref>, find refname */
-			name += GIT_SHA1_HEXSZ + 1;
-		} else if (name[GIT_SHA1_HEXSZ] == '\0') {
-			; /* <sha1>, leave sha1 as name */
-		} else {
-			/* <ref>, clear cruft from oid */
-			oidclr(&oid);
-		}
-	} else {
-		/* <ref>, clear cruft from get_oid_hex */
-		oidclr(&oid);
-	}
-
-	ref = alloc_ref(name);
-	oidcpy(&ref->old_oid, &oid);
 	(*nr)++;
 	ALLOC_GROW(*sought, *nr, *alloc);
-	(*sought)[*nr - 1] = ref;
+	parse_ref_or_pattern(&(*sought)[*nr - 1], name);
 }
 
 int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
@@ -44,8 +24,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	int i, ret;
 	struct ref *ref = NULL;
 	const char *dest = NULL;
-	const struct ref **sought = NULL;
+	struct refspec *sought = NULL;
 	int nr_sought = 0, alloc_sought = 0;
+	const struct ref **sought_refs;
+	int nr_sought_refs;
 	int fd[2];
 	char *pack_lockfile = NULL;
 	char **pack_lockfile_ptr = NULL;
@@ -195,8 +177,9 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 			return args.diag_url ? 0 : 1;
 	}
 	get_remote_heads(fd[0], NULL, 0, &ref, 0, NULL, &shallow);
+	get_ref_array(&sought_refs, &nr_sought_refs, ref, sought, nr_sought);
 
-	ref = fetch_pack(&args, fd, conn, ref, dest, sought, nr_sought,
+	ref = fetch_pack(&args, fd, conn, ref, dest, sought_refs, nr_sought_refs,
 			 &shallow, pack_lockfile_ptr);
 	if (pack_lockfile) {
 		printf("lock %s\n", pack_lockfile);
@@ -222,12 +205,15 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	 */
 	for (i = 0; i < nr_sought; i++) {
 		struct ref *r;
-		for (r = ref; r; r = r->next)
-			if (!sought[i] || refname_match(sought[i]->name, r->name))
+		if (sought[i].pattern)
+			continue; /* patterns do not need to match anything */
+		for (r = ref; r; r = r->next) {
+			if (refname_match(sought[i].src, r->name))
 				break;
+		}
 		if (r)
 			continue;
-		error("no such remote ref %s", sought[i]->name);
+		error("no such remote ref %s", sought[i].src);
 		ret = 1;
 	}
 

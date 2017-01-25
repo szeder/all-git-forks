@@ -547,6 +547,44 @@ test_expect_success 'fetch-pack can fetch a raw sha1' '
 	git fetch-pack hidden $(git -C hidden rev-parse refs/hidden/one)
 '
 
+test_expect_success 'fetch-pack can fetch refs using a partial name' '
+	git init server &&
+	(
+		cd server &&
+		test_commit 1 &&
+		test_commit 2 &&
+		git checkout -b one
+	) &&
+	rm -f trace &&
+	GIT_TRACE_PACKET="$(pwd)/trace" git fetch-pack server one >actual &&
+	grep " want " trace &&
+	! grep " want-ref " trace &&
+
+	grep "$(printf "%s refs/heads/one" $(git -C server rev-parse --verify one))" actual
+'
+
+test_expect_success 'fetch-pack can fetch refs using a glob' '
+	rm -rf server &&
+	git init server &&
+	(
+		cd server &&
+		test_commit 1 &&
+		test_commit 2 &&
+		git checkout -b ona &&
+		git checkout -b onb &&
+		test_commit 3 &&
+		git checkout -b onc
+	) &&
+	rm -f trace &&
+	GIT_TRACE_PACKET="$(pwd)/trace" git fetch-pack server "refs/heads/on*" >actual &&
+	grep " want " trace &&
+	! grep " want-ref " trace &&
+
+	grep "$(printf "%s refs/heads/ona" $(git -C server rev-parse --verify ona))" actual &&
+	grep "$(printf "%s refs/heads/onb" $(git -C server rev-parse --verify onb))" actual &&
+	grep "$(printf "%s refs/heads/onc" $(git -C server rev-parse --verify onc))" actual
+'
+
 check_prot_path () {
 	cat >expected <<-EOF &&
 	Diag: url=$1
