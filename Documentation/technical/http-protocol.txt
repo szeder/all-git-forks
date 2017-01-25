@@ -316,7 +316,8 @@ to prevent caching of the response.
 
 Servers SHOULD support all capabilities defined here.
 
-Clients MUST send at least one "want" command in the request body.
+Clients MUST send at least one "want" or "want-ref" command in the
+request body.
 Clients MUST NOT reference an id in a "want" command which did not
 appear in the response obtained through ref discovery unless the
 server advertises capability `allow-tip-sha1-in-want` or
@@ -330,7 +331,7 @@ server advertises capability `allow-tip-sha1-in-want` or
   want_list         =  PKT-LINE(want NUL cap_list LF)
 		       *(want_pkt)
   want_pkt          =  PKT-LINE(want LF)
-  want              =  "want" SP id
+  want              =  "want" SP id / "want-ref" SP name
   cap_list          =  *(SP capability) SP
 
   have_list         =  *PKT-LINE("have" SP id LF)
@@ -352,7 +353,8 @@ C: Build an empty set, `common`, to hold the objects that are later
    determined to be on both ends.
 
 C: Build a set, `want`, of the objects from `advertised` the client
-   wants to fetch, based on what it saw during ref discovery.
+   wants to fetch, based on what it saw during ref discovery. This is to
+   be used if the server does not support the ref-in-want capability.
 
 C: Start a queue, `c_pending`, ordered by commit time (popping newest
    first).  Add all client refs.  When a commit is popped from
@@ -363,8 +365,8 @@ C: Start a queue, `c_pending`, ordered by commit time (popping newest
 
 C: Send one `$GIT_URL/git-upload-pack` request:
 
-   C: 0032want <want #1>...............................
-   C: 0032want <want #2>...............................
+   C: <size>want-ref <want #1>...............................
+   C: <size>want-ref <want #2>...............................
    ....
    C: 0032have <common #1>.............................
    C: 0032have <common #2>.............................
@@ -384,7 +386,7 @@ the pkt-line value.
 Commands MUST appear in the following order, if they appear
 at all in the request stream:
 
-* "want"
+* "want" or "want-ref"
 * "have"
 
 The stream is terminated by a pkt-line flush (`0000`).
@@ -392,6 +394,9 @@ The stream is terminated by a pkt-line flush (`0000`).
 A single "want" or "have" command MUST have one hex formatted
 SHA-1 as its value.  Multiple SHA-1s MUST be sent by sending
 multiple commands.
+
+A "want-ref" command MUST be followed by a ref name (which may include
+shell glob characters) or a hex formatted SHA-1.
 
 The `have` list is created by popping the first 32 commits
 from `c_pending`.  Less can be supplied if `c_pending` empties.
@@ -409,6 +414,9 @@ Verify all objects in `want` are directly reachable from refs.
 
 The server MAY walk backwards through history or through
 the reflog to permit slightly stale requests.
+
+Treat "want-ref" requests as if the equivalent 0 or more "want" commands
+(according to the server's refs) were given instead.
 
 If no "want" objects are received, send an error:
 TODO: Define error if no "want" lines are requested.

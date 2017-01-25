@@ -62,6 +62,7 @@ static int use_sideband;
 static int advertise_refs;
 static int stateless_rpc;
 static const char *pack_objects_hook;
+static int advertise_ref_in_want;
 
 static void reset_timeout(void)
 {
@@ -380,7 +381,25 @@ static int ok_to_give_up(void)
 	return 1;
 }
 
-static int get_common_commits(void)
+static void write_wanted_ns_refs(const struct string_list *wanted_ns_refs)
+{
+	const struct string_list_item *item;
+	for_each_string_list_item(item, wanted_ns_refs) {
+		unsigned char sha1[GIT_SHA1_RAWSZ];
+		if (!get_sha1_hex(item->string, sha1)) {
+			packet_write_fmt(1, "wanted-ref %s %s\n", item->string,
+					 item->string);
+		} else {
+			if (read_ref(item->string, sha1))
+				die("unable to read ref %s", item->string);
+			packet_write_fmt(1, "wanted-ref %s %s\n",
+					 sha1_to_hex(sha1),
+					 strip_namespace(item->string));
+		}
+	}
+}
+
+static int get_common_commits(const struct string_list *wanted_ns_refs)
 {
 	unsigned char sha1[20];
 	char last_hex[41];
@@ -442,6 +461,7 @@ static int get_common_commits(void)
 			continue;
 		}
 		if (!strcmp(line, "done")) {
+			write_wanted_ns_refs(wanted_ns_refs);
 			if (have_obj.nr > 0) {
 				if (multi_ack)
 					packet_write_fmt(1, "ACK %s\n", last_hex);
@@ -729,7 +749,26 @@ static void deepen_by_rev_list(int ac, const char **av,
 	packet_flush(1);
 }
 
-static void receive_needs(void)
+static int mark_ref_wanted(const char *ns_ref,
+			   const struct object_id *oid, int flags,
+			   void *wanted_ns_refs_)
+{
+	struct string_list *wanted_ns_refs = wanted_ns_refs_;
+	struct object *o;
+
+	if (ref_is_hidden(strip_namespace(ns_ref), ns_ref))
+		return 0;
+
+	o = parse_object_or_die(oid->hash, ns_ref);
+	if (!(o->flags & WANTED)) {
+		o->flags |= WANTED;
+		add_object_array(o, NULL, &want_obj);
+	}
+	string_list_insert(wanted_ns_refs, ns_ref);
+	return 0;
+}
+
+static void receive_needs(struct string_list *wanted_ns_refs)
 {
 	struct object_array shallows = OBJECT_ARRAY_INIT;
 	struct string_list deepen_not = STRING_LIST_INIT_DUP;
@@ -793,8 +832,35 @@ static void receive_needs(void)
 			deepen_rev_list = 1;
 			continue;
 		}
-		if (skip_prefix(line, "want ", &arg) &&
-		    !get_sha1_hex(arg, sha1_buf)) {
+		if (skip_prefix(line, "want-ref ", &arg)) {
+			struct object_id oid;
+
+			char *space = strchrnul(arg, ' ');
+			char *ns_ref = xstrfmt("%s%.*s",
+					       get_git_namespace(),
+					       (int)(space - arg),
+					       arg);
+			if (has_glob_specials(ns_ref))
+				for_each_glob_ref(mark_ref_wanted, ns_ref,
+						  wanted_ns_refs);
+			else if (!get_oid_hex(arg, &oid)) {
+				o = parse_object(oid.hash);
+				if (o && !(o->flags & WANTED)) {
+					o->flags |= WANTED;
+					if (!((allow_unadvertised_object_request & ALLOW_ANY_SHA1) == ALLOW_ANY_SHA1
+					      || is_our_ref(o)))
+						has_non_tip = 1;
+					add_object_array(o, NULL, &want_obj);
+				}
+				mark_ref_wanted(ns_ref, &oid, 0,
+						wanted_ns_refs);
+			} else if (!read_ref(ns_ref, oid.hash))
+				mark_ref_wanted(ns_ref, &oid, 0,
+						wanted_ns_refs);
+			free(ns_ref);
+			features = space;
+		} else if (skip_prefix(line, "want ", &arg) &&
+			   !get_sha1_hex(arg, sha1_buf)) {
 			o = parse_object(sha1_buf);
 			if (!o)
 				die("git upload-pack: not our ref %s",
@@ -806,11 +872,10 @@ static void receive_needs(void)
 					has_non_tip = 1;
 				add_object_array(o, NULL, &want_obj);
 			}
+			features = arg + 40;
 		} else
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
-
-		features = arg + 40;
 
 		if (parse_feature_request(features, "deepen-relative"))
 			deepen_relative = 1;
@@ -935,7 +1000,7 @@ static int send_ref(const char *refname, const struct object_id *oid,
 		struct strbuf symref_info = STRBUF_INIT;
 
 		format_symref_info(&symref_info, cb_data);
-		packet_write_fmt(1, "%s %s%c%s%s%s%s%s agent=%s\n",
+		packet_write_fmt(1, "%s %s%c%s%s%s%s%s%s agent=%s\n",
 			     oid_to_hex(oid), refname_nons,
 			     0, capabilities,
 			     (allow_unadvertised_object_request & ALLOW_TIP_SHA1) ?
@@ -943,6 +1008,8 @@ static int send_ref(const char *refname, const struct object_id *oid,
 			     (allow_unadvertised_object_request & ALLOW_REACHABLE_SHA1) ?
 				     " allow-reachable-sha1-in-want" : "",
 			     stateless_rpc ? " no-done" : "",
+			     advertise_ref_in_want ?
+				     " ref-in-want" : "",
 			     symref_info.buf,
 			     git_user_agent_sanitized());
 		strbuf_release(&symref_info);
@@ -975,6 +1042,7 @@ static int find_symref(const char *refname, const struct object_id *oid,
 static void upload_pack(void)
 {
 	struct string_list symref = STRING_LIST_INIT_DUP;
+	struct string_list wanted_ns_refs = STRING_LIST_INIT_DUP;
 
 	head_ref_namespaced(find_symref, &symref);
 
@@ -992,11 +1060,12 @@ static void upload_pack(void)
 	if (advertise_refs)
 		return;
 
-	receive_needs();
+	receive_needs(&wanted_ns_refs);
 	if (want_obj.nr) {
-		get_common_commits();
+		get_common_commits(&wanted_ns_refs);
 		create_pack_file();
 	}
+	string_list_clear(&wanted_ns_refs, 0);
 }
 
 static int upload_pack_config(const char *var, const char *value, void *unused)
@@ -1020,6 +1089,8 @@ static int upload_pack_config(const char *var, const char *value, void *unused)
 		keepalive = git_config_int(var, value);
 		if (!keepalive)
 			keepalive = -1;
+	} else if (!strcmp("uploadpack.advertiserefinwant", var)) {
+		advertise_ref_in_want = git_config_bool(var, value);
 	} else if (current_config_scope() != CONFIG_SCOPE_REPO) {
 		if (!strcmp("uploadpack.packobjectshook", var))
 			return git_config_string(&pack_objects_hook, var, value);
