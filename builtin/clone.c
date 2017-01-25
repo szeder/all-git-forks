@@ -858,6 +858,8 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	struct refspec *refspec;
 	const char *fetch_pattern;
 
+	struct ref *new_remote_refs = NULL;
+
 	packet_trace_identity("clone");
 	argc = parse_options(argc, argv, prefix, builtin_clone_options,
 			     builtin_clone_usage, 0);
@@ -1075,8 +1077,15 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 				break;
 			}
 
-		if (!is_local && !complete_refs_before_fetch)
-			transport_fetch_refs(transport, mapped_refs, NULL);
+		if (!is_local && !complete_refs_before_fetch) {
+			transport_fetch_refs(transport, mapped_refs,
+					     &new_remote_refs);
+			if (new_remote_refs) {
+				refs = new_remote_refs;
+				free_refs(mapped_refs);
+				mapped_refs = wanted_peer_refs(refs, refspec);
+			}
+		}
 
 		remote_head = find_ref_by_name(refs, "HEAD");
 		remote_head_points_at =
@@ -1148,5 +1157,6 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 	junk_mode = JUNK_LEAVE_ALL;
 
 	free(refspec);
+	free_refs(new_remote_refs);
 	return err;
 }

@@ -84,15 +84,12 @@ struct transport {
 	 *
 	 * The transport *may* provide, in fetched_refs, the list of refs that
 	 * it fetched. If the transport knows anything about the fetched refs
-	 * that the caller does not know (for example, shallow status), it
-	 * should provide that list of refs and include that information in the
-	 * list.
-	 *
-	 * If the transport did not get hashes for refs in
-	 * get_refs_list(), it should set the old_sha1 fields in the
-	 * provided refs now.
+	 * that the caller does not know (for example, shallow status or ref
+	 * hashes), it should provide that list of refs and include that
+	 * information in the list.
 	 **/
-	int (*fetch)(struct transport *transport, int refs_nr, struct ref **refs,
+	int (*fetch)(struct transport *transport,
+		     int refs_nr, const struct ref **refs,
 		     struct ref **fetched_refs);
 
 	/**

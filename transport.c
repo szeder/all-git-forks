@@ -95,7 +95,7 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 }
 
 static int fetch_refs_from_bundle(struct transport *transport,
-			       int nr_heads, struct ref **to_fetch,
+			       int nr_heads, const struct ref **to_fetch,
 			       struct ref **fetched_refs)
 {
 	struct bundle_transport_data *data = transport->data;
@@ -203,7 +203,7 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 }
 
 static int fetch_refs_via_pack(struct transport *transport,
-			       int nr_heads, struct ref **to_fetch,
+			       int nr_heads, const struct ref **to_fetch,
 			       struct ref **fetched_refs)
 {
 	struct git_transport_data *data = transport->data;
@@ -1101,7 +1101,7 @@ int transport_fetch_refs(struct transport *transport, struct ref *refs,
 {
 	int rc;
 	int nr_heads = 0, nr_alloc = 0, nr_refs = 0;
-	struct ref **heads = NULL;
+	const struct ref **heads = NULL;
 	struct ref *nop_head = NULL, **nop_tail = &nop_head;
 	struct ref *rm;
 

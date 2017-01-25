@@ -384,7 +384,7 @@ static int release_helper(struct transport *transport)
 }
 
 static int fetch_with_fetch(struct transport *transport,
-			    int nr_heads, struct ref **to_fetch)
+			    int nr_heads, const struct ref **to_fetch)
 {
 	struct helper_data *data = transport->data;
 	int i;
@@ -477,13 +477,14 @@ static int get_exporter(struct transport *transport,
 }
 
 static int fetch_with_import(struct transport *transport,
-			     int nr_heads, struct ref **to_fetch)
+			     int nr_heads, const struct ref **to_fetch, struct ref **fetched_refs)
 {
 	struct child_process fastimport;
 	struct helper_data *data = transport->data;
 	int i;
-	struct ref *posn;
+	const struct ref *posn;
 	struct strbuf buf = STRBUF_INIT;
+	struct ref *fr_head = NULL, **fr_tail = &fr_head;
 
 	get_helper(transport);
 
@@ -522,28 +523,38 @@ static int fetch_with_import(struct transport *transport,
 	 * (If no "refspec" capability was specified, for historical
 	 * reasons we default to the equivalent of *:*.)
 	 *
-	 * Store the result in to_fetch[i].old_sha1.  Callers such
+	 * Store the result in old_oid in fetched_refs.  Callers such
 	 * as "git fetch" can use the value to write feedback to the
 	 * terminal, populate FETCH_HEAD, and determine what new value
 	 * should be written to peer_ref if the update is a
 	 * fast-forward or this is a forced update.
 	 */
+	if (!fetched_refs)
+		goto cleanup;
 	for (i = 0; i < nr_heads; i++) {
-		char *private, *name;
-		posn = to_fetch[i];
-		if (posn->status & REF_STATUS_UPTODATE)
+		struct ref *ref;
+		char *private;
+		const char *name;
+
+		ref = copy_ref_peerless(to_fetch[i]);
+		*fr_tail = ref;
+		fr_tail = &ref->next;
+		if (ref->status & REF_STATUS_UPTODATE)
 			continue;
-		name = posn->symref ? posn->symref : posn->name;
+		name = ref->symref ? ref->symref : ref->name;
 		if (data->refspecs)
 			private = apply_refspecs(data->refspecs, data->refspec_nr, name);
 		else
 			private = xstrdup(name);
 		if (private) {
-			if (read_ref(private, posn->old_oid.hash) < 0)
+			if (read_ref(private, ref->old_oid.hash) < 0)
 				die("Could not read ref %s", private);
 			free(private);
 		}
 	}
+	*fetched_refs = fr_head;
+
+cleanup:
 	strbuf_release(&buf);
 	return 0;
 }
@@ -646,7 +657,8 @@ static int connect_helper(struct transport *transport, const char *name,
 }
 
 static int fetch(struct transport *transport,
-		 int nr_heads, struct ref **to_fetch, struct ref **fetched_refs)
+		 int nr_heads, const struct ref **to_fetch,
+		 struct ref **fetched_refs)
 {
 	struct helper_data *data = transport->data;
 	int i, count;
@@ -679,7 +691,7 @@ static int fetch(struct transport *transport,
 		return fetch_with_fetch(transport, nr_heads, to_fetch);
 
 	if (data->import)
-		return fetch_with_import(transport, nr_heads, to_fetch);
+		return fetch_with_import(transport, nr_heads, to_fetch, fetched_refs);
 
 	return -1;
 }

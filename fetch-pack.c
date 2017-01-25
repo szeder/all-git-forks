@@ -52,6 +52,10 @@ static int non_common_revs, multi_ack, use_sideband;
 #define ALLOW_REACHABLE_SHA1	02
 static unsigned int allow_unadvertised_object_request;
 
+/* An arbitrary non-NULL non-const pointer to assign to the util field of
+ * string list items when we need one. */
+#define ARBITRARY (&transfer_unpack_limit)
+
 __attribute__((format (printf, 2, 3)))
 static inline void print_verbose(const struct fetch_pack_args *args,
 				 const char *fmt, ...)
@@ -556,7 +560,7 @@ static void mark_recent_complete_commits(struct fetch_pack_args *args,
 
 static void filter_refs(struct fetch_pack_args *args,
 			struct ref **refs,
-			struct ref **sought, int nr_sought)
+			const struct ref **sought, int nr_sought)
 {
 	struct ref *newlist = NULL;
 	struct ref **newtail = &newlist;
@@ -604,16 +608,16 @@ static void filter_refs(struct fetch_pack_args *args,
 		for (i = 0; i < nr_sought; i++) {
 			unsigned char sha1[20];
 
-			ref = sought[i];
+			const struct ref *sref = sought[i];
 			if (matched[i])
 				continue;
-			if (get_sha1_hex(ref->name, sha1) ||
-			    ref->name[40] != '\0' ||
-			    hashcmp(sha1, ref->old_oid.hash))
+			if (get_sha1_hex(sref->name, sha1) ||
+			    sref->name[40] != '\0' ||
+			    hashcmp(sha1, sref->old_oid.hash))
 				continue;
 
 			matched[i] = 1;
-			*newtail = copy_ref(ref);
+			*newtail = copy_ref(sref);
 			newtail = &(*newtail)->next;
 		}
 	}
@@ -629,7 +633,7 @@ static void mark_alternate_complete(const struct ref *ref, void *unused)
 
 static int everything_local(struct fetch_pack_args *args,
 			    struct ref **refs,
-			    struct ref **sought, int nr_sought)
+			    const struct ref **sought, int nr_sought)
 {
 	struct ref *ref;
 	int retval;
@@ -831,7 +835,7 @@ static int cmp_ref_by_name(const void *a_, const void *b_)
 static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 				 int fd[2],
 				 const struct ref *orig_ref,
-				 struct ref **sought, int nr_sought,
+				 const struct ref **sought, int nr_sought,
 				 struct shallow_info *si,
 				 char **pack_lockfile)
 {
@@ -955,7 +959,7 @@ static void fetch_pack_setup(void)
 	did_setup = 1;
 }
 
-static int remove_duplicates_in_refs(struct ref **ref, int nr)
+static int remove_duplicates_in_refs(const struct ref **ref, int nr)
 {
 	struct string_list names = STRING_LIST_INIT_NODUP;
 	int src, dst;
@@ -965,7 +969,7 @@ static int remove_duplicates_in_refs(struct ref **ref, int nr)
 		item = string_list_insert(&names, ref[src]->name);
 		if (item->util)
 			continue; /* already have it */
-		item->util = ref[src];
+		item->util = ARBITRARY;
 		if (src != dst)
 			ref[dst] = ref[src];
 		dst++;
@@ -1078,7 +1082,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		       int fd[], struct child_process *conn,
 		       const struct ref *ref,
 		       const char *dest,
-		       struct ref **sought, int nr_sought,
+		       const struct ref **sought, int nr_sought,
 		       struct sha1_array *shallow,
 		       char **pack_lockfile)
 {

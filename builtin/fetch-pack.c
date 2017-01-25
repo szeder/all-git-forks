@@ -11,7 +11,7 @@ static const char fetch_pack_usage[] =
 "[--include-tag] [--upload-pack=<git-upload-pack>] [--depth=<n>] "
 "[--no-progress] [--diag-url] [-v] [<host>:]<directory> [<refs>...]";
 
-static void add_sought_entry(struct ref ***sought, int *nr, int *alloc,
+static void add_sought_entry(const struct ref ***sought, int *nr, int *alloc,
 			     const char *name)
 {
 	struct ref *ref;
@@ -44,7 +44,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	int i, ret;
 	struct ref *ref = NULL;
 	const char *dest = NULL;
-	struct ref **sought = NULL;
+	const struct ref **sought = NULL;
 	int nr_sought = 0, alloc_sought = 0;
 	int fd[2];
 	char *pack_lockfile = NULL;
