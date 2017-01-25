@@ -2059,6 +2059,103 @@ static int for_each_good_bisect_ref(const char *submodule, each_ref_fn fn, void 
 	return for_each_bisect_ref(submodule, fn, cb_data, term_good);
 }
 
+enum ref_selector {
+	REF_SELECT_NONE,
+	REF_SELECT_ALL,
+	REF_SELECT_BRANCHES,
+	REF_SELECT_TAGS,
+	REF_SELECT_REMOTES,
+	REF_SELECT_BY_GLOB
+};
+
+static enum ref_selector parse_ref_selector_option(int argc, const char **argv,
+						   const char **optarg,
+						   int *argcount)
+{
+	const char *arg = argv[0];
+
+	*optarg = NULL;
+
+	if (!strcmp(arg, "--all"))
+		return REF_SELECT_ALL;
+	else if (!strcmp(arg, "--branches") ||
+		 skip_prefix(arg, "--branches=", optarg))
+		return REF_SELECT_BRANCHES;
+	else if (!strcmp(arg, "--tags") ||
+		 skip_prefix(arg, "--tags=", optarg))
+		return REF_SELECT_TAGS;
+	else if (!strcmp(arg, "--remotes") ||
+		 skip_prefix(arg, "--remotes=", optarg))
+		return REF_SELECT_REMOTES;
+	else if ((*argcount = parse_long_opt("glob", argv, optarg)))
+		return REF_SELECT_BY_GLOB;
+
+	return REF_SELECT_NONE;
+}
+
+static int handle_refs_pseudo_opt(const char *submodule,
+				  struct rev_info *revs,
+				  int argc, const char **argv,
+				  int *flags, int *ret)
+{
+	struct all_refs_cb cb;
+	const char *optarg = NULL;
+	int argcount;
+	enum ref_selector selector;
+
+	selector = parse_ref_selector_option(argc, argv, &optarg, &argcount);
+
+	if (optarg)
+		init_all_refs_cb(&cb, revs, *flags);
+	*ret = 1;
+
+	switch (selector) {
+	case REF_SELECT_ALL:
+		handle_refs(submodule, revs, *flags, for_each_ref_submodule);
+		handle_refs(submodule, revs, *flags, head_ref_submodule);
+		break;
+
+	case REF_SELECT_BRANCHES:
+		if (optarg)
+			for_each_glob_ref_in(handle_one_ref, optarg,
+					     "refs/heads/", &cb);
+		else
+			handle_refs(submodule, revs, *flags,
+				    for_each_branch_ref_submodule);
+		break;
+
+	case REF_SELECT_TAGS:
+		if (optarg)
+			for_each_glob_ref_in(handle_one_ref, optarg,
+					     "refs/tags/", &cb);
+		else
+			handle_refs(submodule, revs, *flags,
+				    for_each_tag_ref_submodule);
+		break;
+
+	case REF_SELECT_REMOTES:
+		if (optarg)
+			for_each_glob_ref_in(handle_one_ref, optarg,
+					     "refs/remotes/", &cb);
+		else
+			handle_refs(submodule, revs, *flags,
+				    for_each_remote_ref_submodule);
+		break;
+
+	case REF_SELECT_BY_GLOB:
+		init_all_refs_cb(&cb, revs, *flags);
+		for_each_glob_ref(handle_one_ref, optarg, &cb);
+		*ret = argcount;
+		break;
+
+	case REF_SELECT_NONE:
+		return 0;
+	}
+
+	clear_ref_exclusion(&revs->ref_excludes);
+	return 1;
+}
+
 static int handle_revision_pseudo_opt(const char *submodule,
 				struct rev_info *revs,
 				int argc, const char **argv, int *flags)
@@ -2066,6 +2163,7 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	const char *arg = argv[0];
 	const char *optarg;
 	int argcount;
+	int ret;
 
 	/*
 	 * NOTE!
@@ -2077,48 +2175,16 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	 * When implementing your new pseudo-option, remember to
 	 * register it in the list at the top of handle_revision_opt.
 	 */
-	if (!strcmp(arg, "--all")) {
-		handle_refs(submodule, revs, *flags, for_each_ref_submodule);
-		handle_refs(submodule, revs, *flags, head_ref_submodule);
-		clear_ref_exclusion(&revs->ref_excludes);
-	} else if (!strcmp(arg, "--branches")) {
-		handle_refs(submodule, revs, *flags, for_each_branch_ref_submodule);
-		clear_ref_exclusion(&revs->ref_excludes);
+	if (handle_refs_pseudo_opt(submodule, revs, argc, argv, flags, &ret)) {
+		return ret;
 	} else if (!strcmp(arg, "--bisect")) {
 		read_bisect_terms(&term_bad, &term_good);
 		handle_refs(submodule, revs, *flags, for_each_bad_bisect_ref);
 		handle_refs(submodule, revs, *flags ^ (UNINTERESTING | BOTTOM), for_each_good_bisect_ref);
 		revs->bisect = 1;
-	} else if (!strcmp(arg, "--tags")) {
-		handle_refs(submodule, revs, *flags, for_each_tag_ref_submodule);
-		clear_ref_exclusion(&revs->ref_excludes);
-	} else if (!strcmp(arg, "--remotes")) {
-		handle_refs(submodule, revs, *flags, for_each_remote_ref_submodule);
-		clear_ref_exclusion(&revs->ref_excludes);
-	} else if ((argcount = parse_long_opt("glob", argv, &optarg))) {
-		struct all_refs_cb cb;
-		init_all_refs_cb(&cb, revs, *flags);
-		for_each_glob_ref(handle_one_ref, optarg, &cb);
-		clear_ref_exclusion(&revs->ref_excludes);
-		return argcount;
 	} else if ((argcount = parse_long_opt("exclude", argv, &optarg))) {
 		add_ref_exclusion(&revs->ref_excludes, optarg);
 		return argcount;
-	} else if (starts_with(arg, "--branches=")) {
-		struct all_refs_cb cb;
-		init_all_refs_cb(&cb, revs, *flags);
-		for_each_glob_ref_in(handle_one_ref, arg + 11, "refs/heads/", &cb);
-		clear_ref_exclusion(&revs->ref_excludes);
-	} else if (starts_with(arg, "--tags=")) {
-		struct all_refs_cb cb;
-		init_all_refs_cb(&cb, revs, *flags);
-		for_each_glob_ref_in(handle_one_ref, arg + 7, "refs/tags/", &cb);
-		clear_ref_exclusion(&revs->ref_excludes);
-	} else if (starts_with(arg, "--remotes=")) {
-		struct all_refs_cb cb;
-		init_all_refs_cb(&cb, revs, *flags);
-		for_each_glob_ref_in(handle_one_ref, arg + 10, "refs/remotes/", &cb);
-		clear_ref_exclusion(&revs->ref_excludes);
 	} else if (!strcmp(arg, "--reflog")) {
 		add_reflogs_to_pending(revs, *flags);
 	} else if (!strcmp(arg, "--indexed-objects")) {
