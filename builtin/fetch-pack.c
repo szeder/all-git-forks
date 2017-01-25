@@ -191,10 +191,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		printf("connectivity-ok\n");
 		fflush(stdout);
 	}
-	close(fd[0]);
-	close(fd[1]);
-	if (finish_connect(conn))
-		return 1;
+	if (finish_connect(conn)) {
+		ret = 1;
+		goto cleanup;
+	}
 
 	ret = !ref;
 
@@ -218,11 +218,17 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		ret = 1;
 	}
 
+	if (args.stateless_rpc)
+		goto cleanup;
+
 	while (ref) {
 		printf("%s %s\n",
 		       oid_to_hex(&ref->old_oid), ref->name);
 		ref = ref->next;
 	}
 
+cleanup:
+	close(fd[0]);
+	close(fd[1]);
 	return ret;
 }
