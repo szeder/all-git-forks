@@ -57,6 +57,11 @@ include::line-range-format.txt[]
 	Show revision hints on aggregated information about the revision.
 	Implies --aggregate.
 
+--[no-]color::
+	Revision information will be highlighted on normal output
+	when running git from a terminal. This option allows
+	for color to be forcibly enabled or disabled.
+
 --encoding=<encoding>::
 	Specifies the encoding used to output author names
 	and commit summaries. Setting it to `none` makes blame

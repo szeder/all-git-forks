@@ -1886,6 +1886,7 @@ static const char *format_time(unsigned long time, const char *tz_str,
 #define OUTPUT_LINE_PORCELAIN 01000
 #define OUTPUT_AGGREGATE      02000
 #define OUTPUT_HINT           04000
+#define OUTPUT_COLOR         010000
 
 static void emit_porcelain_details(struct origin *suspect, int repeat)
 {
@@ -1943,6 +1944,8 @@ static void emit_porcelain(struct scoreboard *sb, struct blame_entry *ent,
 static void print_revision_info(char* revision_hex, int revision_length, struct blame_entry* ent,
 		struct commit_info ci, int opt, int show_raw_time, int line_number)
 {
+	if (opt & OUTPUT_COLOR)
+		printf("%s", GIT_COLOR_BOLD);
 	if (!line_number)
 		printf("\t");
 	int length = revision_length;
@@ -2008,6 +2011,8 @@ static void print_revision_info(char* revision_hex, int revision_length, struct 
 			printf(" %s", ci.summary.buf);
 		printf("\n");
 	}
+	if (opt & OUTPUT_COLOR)
+		printf("%s", GIT_COLOR_RESET);
 }
 
 static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
@@ -2608,6 +2613,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	char *final_commit_name = NULL;
 	enum object_type type;
 	struct commit *final_commit = NULL;
+	int show_color;
 
 	struct string_list range_list = STRING_LIST_INIT_NODUP;
 	int output_option = 0, opt = 0;
@@ -2647,6 +2653,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		OPT_STRING_LIST('L', NULL, &range_list, N_("n,m"), N_("Process only line range n,m, counting from 1")),
 		OPT_BIT(0, "aggregate", &output_option, N_("Aggregate output"), OUTPUT_AGGREGATE),
 		OPT_BIT(0, "hint", &output_option, N_("Show revision hints"), OUTPUT_HINT),
+		OPT_BOOL(0, "color", &show_color, N_("Show colors on revision information")),
 		OPT__ABBREV(&abbrev),
 		OPT_END()
 	};
@@ -2666,6 +2673,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 	save_commit_buffer = 0;
 	dashdash_pos = 0;
 	show_progress = -1;
+	show_color = -1;
 
 	parse_options_start(&ctx, argc, argv, prefix, options,
 			    PARSE_OPT_KEEP_DASHDASH | PARSE_OPT_KEEP_ARGV0);
@@ -2697,6 +2705,11 @@ parse_done:
 		show_progress = 0;
 	} else if (show_progress < 0)
 		show_progress = isatty(2);
+
+	if (show_color < 0)
+		show_color = isatty(1);
+	if (show_color)
+		output_option = output_option | OUTPUT_COLOR;
 
 	if (0 < abbrev && abbrev < GIT_SHA1_HEXSZ)
 		/* one more abbrev length is needed for the boundary commit */
