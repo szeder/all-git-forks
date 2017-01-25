@@ -220,7 +220,7 @@ static int will_fetch(struct ref **head, const unsigned char *sha1)
 	return 0;
 }
 
-static void find_non_local_tags(struct transport *transport,
+static void find_non_local_tags(const struct ref *refs,
 			struct ref **head,
 			struct ref ***tail)
 {
@@ -230,7 +230,7 @@ static void find_non_local_tags(struct transport *transport,
 	struct string_list_item *item = NULL;
 
 	for_each_ref(add_existing, &existing_refs);
-	for (ref = transport_get_remote_refs(transport); ref; ref = ref->next) {
+	for (ref = refs; ref; ref = ref->next) {
 		if (!starts_with(ref->name, "refs/tags/"))
 			continue;
 
@@ -302,7 +302,8 @@ static void find_non_local_tags(struct transport *transport,
 	string_list_clear(&remote_refs, 0);
 }
 
-static struct ref *get_ref_map(struct transport *transport,
+static struct ref *get_ref_map(const struct remote *remote,
+			       const struct ref *remote_refs,
 			       struct refspec *refspecs, int refspec_count,
 			       int tags, int *autotags)
 {
@@ -313,8 +314,6 @@ static struct ref *get_ref_map(struct transport *transport,
 
 	/* opportunistically-updated references: */
 	struct ref *orefs = NULL, **oref_tail = &orefs;
-
-	const struct ref *remote_refs = transport_get_remote_refs(transport);
 
 	struct string_list existing_refs = STRING_LIST_INIT_DUP;
 
@@ -355,8 +354,8 @@ static struct ref *get_ref_map(struct transport *transport,
 			fetch_refspec = parse_fetch_refspec(refmap_nr, refmap_array);
 			fetch_refspec_nr = refmap_nr;
 		} else {
-			fetch_refspec = transport->remote->fetch;
-			fetch_refspec_nr = transport->remote->fetch_refspec_nr;
+			fetch_refspec = remote->fetch;
+			fetch_refspec_nr = remote->fetch_refspec_nr;
 		}
 
 		for (i = 0; i < fetch_refspec_nr; i++)
@@ -365,7 +364,6 @@ static struct ref *get_ref_map(struct transport *transport,
 		die("--refmap option is only meaningful with command-line refspec(s).");
 	} else {
 		/* Use the defaults */
-		struct remote *remote = transport->remote;
 		struct branch *branch = branch_get(NULL);
 		int has_merge = branch_has_merge_config(branch);
 		if (remote &&
@@ -404,7 +402,7 @@ static struct ref *get_ref_map(struct transport *transport,
 		/* also fetch all tags */
 		get_fetch_map(remote_refs, tag_refspec, &tail, 0);
 	else if (tags == TAGS_DEFAULT && *autotags)
-		find_non_local_tags(transport, &ref_map, &tail);
+		find_non_local_tags(remote_refs, &ref_map, &tail);
 
 	/* Now append any refs to be updated opportunistically: */
 	*tail = orefs;
@@ -1083,6 +1081,7 @@ static int do_fetch(struct transport *transport,
 	struct ref *ref_map;
 	int autotags = (transport->remote->fetch_tags == 1);
 	int retcode = 0;
+	const struct ref *remote_refs;
 
 	if (tags == TAGS_DEFAULT) {
 		if (transport->remote->fetch_tags == 2)
@@ -1101,7 +1100,9 @@ static int do_fetch(struct transport *transport,
 			goto cleanup;
 	}
 
-	ref_map = get_ref_map(transport, refs, ref_count, tags, &autotags);
+	remote_refs = transport_get_remote_refs(transport);
+	ref_map = get_ref_map(transport->remote, remote_refs, refs, ref_count,
+			      tags, &autotags);
 	if (!update_head_ok)
 		check_not_current_branch(ref_map);
 
@@ -1134,7 +1135,7 @@ static int do_fetch(struct transport *transport,
 	if (tags == TAGS_DEFAULT && autotags) {
 		struct ref **tail = &ref_map;
 		ref_map = NULL;
-		find_non_local_tags(transport, &ref_map, &tail);
+		find_non_local_tags(remote_refs, &ref_map, &tail);
 		if (ref_map)
 			backfill_tags(transport, ref_map);
 		free_refs(ref_map);
