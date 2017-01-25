@@ -413,6 +413,8 @@ extern int error_errno(const char *err, ...) __attribute__((format (printf, 1, 2
 extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern void warning_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 
+#pragma GCC diagnostic ignored "-Wformat-zero-length"
+
 #ifndef NO_OPENSSL
 #ifdef APPLE_COMMON_CRYPTO
 #include "compat/apple-common-crypto.h"
