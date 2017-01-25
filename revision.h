@@ -52,6 +52,8 @@ struct rev_cmdline_info {
 #define REVISION_WALK_NO_WALK_SORTED 1
 #define REVISION_WALK_NO_WALK_UNSORTED 2
 
+typedef int (*handle_pseudo_opt_cb)(const char *, struct rev_info *, int, const char **, int *);
+
 struct rev_info {
 	/* Starting list */
 	struct commit_list *commits;
@@ -213,6 +215,8 @@ struct rev_info {
 
 	struct commit_list *previous_parents;
 	const char *break_bar;
+
+	handle_pseudo_opt_cb handle_pseudo_opt;
 };
 
 extern int ref_excluded(struct string_list *, const char *path);

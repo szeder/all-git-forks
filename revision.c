@@ -2273,10 +2273,15 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 		const char *arg = argv[i];
 		if (*arg == '-') {
 			int opts;
+			handle_pseudo_opt_cb handle_pseudo_opt =
+				handle_revision_pseudo_opt;
 
-			opts = handle_revision_pseudo_opt(submodule,
-						revs, argc - i, argv + i,
-						&flags);
+			if (revs->handle_pseudo_opt)
+				handle_pseudo_opt = revs->handle_pseudo_opt;
+
+			opts = handle_pseudo_opt(submodule,
+						 revs, argc - i, argv + i,
+						 &flags);
 			if (opts > 0) {
 				i += opts - 1;
 				continue;
