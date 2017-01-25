@@ -219,11 +219,19 @@ static void consume_shallow_list(struct fetch_pack_args *args, int fd)
 	}
 }
 
-static enum ack_type get_ack(int fd, unsigned char *result_sha1)
+/*
+ * Reads an ACK or NAK from fd. If wanted_ref_tail is not NULL, also accepts
+ * any "wanted-ref" lines before that ACK or NAK, writing them to
+ * wanted_ref_tail.
+ */
+static enum ack_type get_ack(int fd, unsigned char *result_sha1,
+			     struct ref ***wanted_ref_tail)
 {
 	int len;
-	char *line = packet_read_line(fd, &len);
+	char *line;
 	const char *arg;
+start:
+	line = packet_read_line(fd, &len);
 
 	if (!len)
 		die(_("git fetch-pack: expected ACK/NAK, got EOF"));
@@ -244,7 +252,19 @@ static enum ack_type get_ack(int fd, unsigned char *result_sha1)
 			return ACK;
 		}
 	}
-	die(_("git fetch-pack: expected ACK/NAK, got '%s'"), line);
+	if (wanted_ref_tail) {
+		struct object_id oid;
+		if (skip_prefix(line, "wanted-ref ", &arg) &&
+		    !get_sha1_hex(arg, oid.hash) && arg[40] == ' ' && arg[41]) {
+			struct ref *ref = alloc_ref(arg + 41);
+			oidcpy(&ref->old_oid, &oid);
+			**wanted_ref_tail = ref;
+			*wanted_ref_tail = &ref->next;
+			goto start;
+		}
+		die(_("git fetch_pack: expected ACK/NAK or wanted-ref, got '%s'"), line);
+	}
+	die(_("git fetch_pack: expected ACK/NAK, got '%s'"), line);
 }
 
 static void send_request(struct fetch_pack_args *args,
@@ -282,29 +302,55 @@ static int next_flush(struct fetch_pack_args *args, int count)
 	return count;
 }
 
-static int find_common(struct fetch_pack_args *args,
-		       int fd[2], unsigned char *result_sha1,
-		       struct ref *refs)
+static void write_capabilities(struct strbuf *sb,
+			       const struct fetch_pack_args *args)
 {
-	int fetching;
-	int count = 0, flushes = 0, flush_at = INITIAL_FLUSH, retval;
-	const unsigned char *sha1;
-	unsigned in_vain = 0;
-	int got_continue = 0;
-	int got_ready = 0;
-	struct strbuf req_buf = STRBUF_INIT;
-	size_t state_len = 0;
+	if (multi_ack == 2)     strbuf_addstr(sb, " multi_ack_detailed");
+	if (multi_ack == 1)     strbuf_addstr(sb, " multi_ack");
+	if (no_done)            strbuf_addstr(sb, " no-done");
+	if (use_sideband == 2)  strbuf_addstr(sb, " side-band-64k");
+	if (use_sideband == 1)  strbuf_addstr(sb, " side-band");
+	if (args->deepen_relative) strbuf_addstr(sb, " deepen-relative");
+	if (args->use_thin_pack) strbuf_addstr(sb, " thin-pack");
+	if (args->no_progress)   strbuf_addstr(sb, " no-progress");
+	if (args->include_tag)   strbuf_addstr(sb, " include-tag");
+	if (prefer_ofs_delta)   strbuf_addstr(sb, " ofs-delta");
+	if (deepen_since_ok)    strbuf_addstr(sb, " deepen-since");
+	if (deepen_not_ok)      strbuf_addstr(sb, " deepen-not");
+	if (agent_supported)    strbuf_addf(sb, " agent=%s",
+					    git_user_agent_sanitized());
+}
 
-	if (args->stateless_rpc && multi_ack == 1)
-		die(_("--stateless-rpc requires multi_ack_detailed"));
-	if (marked)
-		for_each_ref(clear_marks, NULL);
-	marked = 1;
+static void write_wants(struct strbuf *sb, const struct fetch_pack_args *args,
+			const struct refspec *refspecs, int nr_refspec,
+			struct ref *refs)
+{
+	int capabilities_written = 0;
 
-	for_each_ref(rev_list_insert_ref_oid, NULL);
-	for_each_alternate_ref(insert_one_alternate_ref, NULL);
+	if (refspecs) {
+		int i;
+		for (i = 0; i < nr_refspec; i++) {
+			const char *to_send = (refspecs[i].src && refspecs[i].src[0])
+				? refspecs[i].src : "HEAD";
+			if (i == 0) {
+				struct strbuf c = STRBUF_INIT;
+				write_capabilities(&c, args);
+				packet_buf_write(sb, "want-ref %s%s\n",
+						 to_send, c.buf);
+				strbuf_release(&c);
+			} else
+				packet_buf_write(sb, "want-ref %s\n", to_send);
 
-	fetching = 0;
+			/* write everything that refname_match supports */
+			packet_buf_write(sb, "want-ref refs/%s\n", to_send);
+			packet_buf_write(sb, "want-ref refs/tags/%s\n", to_send);
+			packet_buf_write(sb, "want-ref refs/heads/%s\n", to_send);
+			packet_buf_write(sb, "want-ref refs/remotes/%s\n", to_send);
+			packet_buf_write(sb, "want-ref refs/remotes/%s/HEAD\n", to_send);
+		}
+		return;
+	}
+
 	for ( ; refs ; refs = refs->next) {
 		unsigned char *remote = refs->old_oid.hash;
 		const char *remote_hex;
@@ -326,30 +372,41 @@ static int find_common(struct fetch_pack_args *args,
 		}
 
 		remote_hex = sha1_to_hex(remote);
-		if (!fetching) {
+		if (!capabilities_written) {
 			struct strbuf c = STRBUF_INIT;
-			if (multi_ack == 2)     strbuf_addstr(&c, " multi_ack_detailed");
-			if (multi_ack == 1)     strbuf_addstr(&c, " multi_ack");
-			if (no_done)            strbuf_addstr(&c, " no-done");
-			if (use_sideband == 2)  strbuf_addstr(&c, " side-band-64k");
-			if (use_sideband == 1)  strbuf_addstr(&c, " side-band");
-			if (args->deepen_relative) strbuf_addstr(&c, " deepen-relative");
-			if (args->use_thin_pack) strbuf_addstr(&c, " thin-pack");
-			if (args->no_progress)   strbuf_addstr(&c, " no-progress");
-			if (args->include_tag)   strbuf_addstr(&c, " include-tag");
-			if (prefer_ofs_delta)   strbuf_addstr(&c, " ofs-delta");
-			if (deepen_since_ok)    strbuf_addstr(&c, " deepen-since");
-			if (deepen_not_ok)      strbuf_addstr(&c, " deepen-not");
-			if (agent_supported)    strbuf_addf(&c, " agent=%s",
-							    git_user_agent_sanitized());
-			packet_buf_write(&req_buf, "want %s%s\n", remote_hex, c.buf);
+			write_capabilities(&c, args);
+			packet_buf_write(sb, "want %s%s\n", remote_hex, c.buf);
 			strbuf_release(&c);
+			capabilities_written = 1;
 		} else
-			packet_buf_write(&req_buf, "want %s\n", remote_hex);
-		fetching++;
+			packet_buf_write(sb, "want %s\n", remote_hex);
 	}
+}
 
-	if (!fetching) {
+static int find_common(struct fetch_pack_args *args,
+		       int fd[2], unsigned char *result_sha1,
+		       struct strbuf *wants, struct ref **wanted_refs)
+{
+	int count = 0, flushes = 0, flush_at = INITIAL_FLUSH, retval;
+	const unsigned char *sha1;
+	unsigned in_vain = 0;
+	int got_continue = 0;
+	int got_ready = 0;
+	struct strbuf req_buf = STRBUF_INIT;
+	size_t state_len = 0;
+
+	if (args->stateless_rpc && multi_ack == 1)
+		die(_("--stateless-rpc requires multi_ack_detailed"));
+	if (marked)
+		for_each_ref(clear_marks, NULL);
+	marked = 1;
+
+	for_each_ref(rev_list_insert_ref_oid, NULL);
+	for_each_alternate_ref(insert_one_alternate_ref, NULL);
+
+	strbuf_swap(&req_buf, wants);
+
+	if (!req_buf.len) {
 		strbuf_release(&req_buf);
 		packet_flush(fd[1]);
 		return 1;
@@ -435,7 +492,7 @@ static int find_common(struct fetch_pack_args *args,
 
 			consume_shallow_list(args, fd[0]);
 			do {
-				ack = get_ack(fd[0], result_sha1);
+				ack = get_ack(fd[0], result_sha1, NULL);
 				if (ack)
 					print_verbose(args, _("got %s %d %s"), "ack",
 						      ack, sha1_to_hex(result_sha1));
@@ -504,7 +561,9 @@ done:
 	if (!got_ready || !no_done)
 		consume_shallow_list(args, fd[0]);
 	while (flushes || multi_ack) {
-		int ack = get_ack(fd[0], result_sha1);
+		struct ref *wr = NULL, **wr_tail = &wr;
+		int ack = get_ack(fd[0], result_sha1, &wr_tail);
+		*wanted_refs = wr;
 		if (ack) {
 			print_verbose(args, _("got %s (%d) %s"), "ack",
 				      ack, sha1_to_hex(result_sha1));
@@ -835,6 +894,7 @@ static int cmp_ref_by_name(const void *a_, const void *b_)
 static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 				 int fd[2],
 				 const struct ref *orig_ref,
+				 const struct refspec *refspecs, int nr_refspec,
 				 const struct ref **sought, int nr_sought,
 				 struct shallow_info *si,
 				 char **pack_lockfile)
@@ -843,6 +903,10 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 	unsigned char sha1[20];
 	const char *agent_feature;
 	int agent_len;
+	int ref_in_want = 0;
+	struct strbuf wants = STRBUF_INIT;
+	struct ref *wanted_refs = NULL;
+	int want_ref_used = 0;
 
 	sort_ref_list(&ref, ref_compare_name);
 	QSORT(sought, nr_sought, cmp_ref_by_name);
@@ -907,17 +971,26 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 		die(_("Server does not support --shallow-exclude"));
 	if (!server_supports("deepen-relative") && args->deepen_relative)
 		die(_("Server does not support --deepen"));
+	if (server_supports("ref-in-want"))
+		ref_in_want = 1;
 
 	if (everything_local(args, &ref, sought, nr_sought)) {
 		packet_flush(fd[1]);
 		goto all_done;
 	}
-	if (find_common(args, fd, sha1, ref) < 0)
+
+	if (ref_in_want && refspecs) {
+		write_wants(&wants, args, refspecs, nr_refspec, NULL);
+		want_ref_used = 1;
+	} else
+		write_wants(&wants, args, NULL, 0, ref);
+	if (find_common(args, fd, sha1, &wants, &wanted_refs) < 0)
 		if (!args->keep_pack)
 			/* When cloning, it is not unusual to have
 			 * no common commit.
 			 */
 			warning(_("no common commits"));
+	strbuf_release(&wants);
 
 	if (args->stateless_rpc)
 		packet_flush(fd[1]);
@@ -932,6 +1005,13 @@ static struct ref *do_fetch_pack(struct fetch_pack_args *args,
 		die(_("git fetch-pack: fetch failed."));
 
  all_done:
+	if (want_ref_used) {
+		free_refs(ref);
+		return wanted_refs;
+	}
+
+	if (wanted_refs)
+		die("Protocol error: we are not using ref-in-want but server still sends wanted-ref");
 	return ref;
 }
 
@@ -1082,6 +1162,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		       int fd[], struct child_process *conn,
 		       const struct ref *ref,
 		       const char *dest,
+		       const struct refspec *refspecs, int nr_refspec,
 		       const struct ref **sought, int nr_sought,
 		       struct sha1_array *shallow,
 		       char **pack_lockfile)
@@ -1098,8 +1179,8 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		die(_("no matching remote head"));
 	}
 	prepare_shallow_info(&si, shallow);
-	ref_cpy = do_fetch_pack(args, fd, ref, sought, nr_sought,
-				&si, pack_lockfile);
+	ref_cpy = do_fetch_pack(args, fd, ref, refspecs, nr_refspec,
+				sought, nr_sought, &si, pack_lockfile);
 	reprepare_packed_git();
 	update_shallow(args, ref_cpy, &si);
 	clear_shallow_info(&si);

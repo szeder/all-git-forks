@@ -5,6 +5,7 @@
 #include "run-command.h"
 
 struct sha1_array;
+struct refspec;
 
 struct fetch_pack_args {
 	const char *uploadpack;
@@ -38,6 +39,7 @@ struct ref *fetch_pack(struct fetch_pack_args *args,
 		       int fd[], struct child_process *conn,
 		       const struct ref *ref,
 		       const char *dest,
+		       const struct refspec *refspecs, int nr_refspec,
 		       const struct ref **sought,
 		       int nr_sought,
 		       struct sha1_array *shallow,
