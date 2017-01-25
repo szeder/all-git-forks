@@ -1884,6 +1884,7 @@ static const char *format_time(unsigned long time, const char *tz_str,
 #define OUTPUT_NO_AUTHOR       0200
 #define OUTPUT_SHOW_EMAIL	0400
 #define OUTPUT_LINE_PORCELAIN 01000
+#define OUTPUT_AGGREGATE      02000
 
 static void emit_porcelain_details(struct origin *suspect, int repeat)
 {
@@ -1931,43 +1932,41 @@ static void emit_porcelain(struct scoreboard *sb, struct blame_entry *ent,
 		putchar('\n');
 }
 
-static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
+/**
+ * Print information about the revision.
+ * This information can be used in either aggregated output
+ * or prepending each line of the content of the file being blamed
+ * 
+ * if line_number == 0, it's an aggregate line
+ */
+static void print_revision_info(char* revision_hex, int revision_length, struct blame_entry* ent,
+		struct commit_info ci, int opt, int show_raw_time, int line_number)
 {
-	int cnt;
-	const char *cp;
-	struct origin *suspect = ent->suspect;
-	struct commit_info ci;
-	char hex[GIT_SHA1_HEXSZ + 1];
-	int show_raw_time = !!(opt & OUTPUT_RAW_TIMESTAMP);
-
-	get_commit_info(suspect->commit, &ci, 1);
-	sha1_to_hex_r(hex, suspect->commit->object.oid.hash);
-
-	cp = nth_line(sb, ent->lno);
-	for (cnt = 0; cnt < ent->num_lines; cnt++) {
-		char ch;
-		int length = (opt & OUTPUT_LONG_OBJECT_NAME) ? GIT_SHA1_HEXSZ : abbrev;
-
-		if (suspect->commit->object.flags & UNINTERESTING) {
+	if (!line_number)
+		printf("\t");
+	int length = revision_length;
+	if (!line_number || !(opt & OUTPUT_AGGREGATE)) {
+		if (ent->suspect->commit->object.flags & UNINTERESTING) {
 			if (blank_boundary)
-				memset(hex, ' ', length);
+				memset(revision_hex, ' ', length);
 			else if (!(opt & OUTPUT_ANNOTATE_COMPAT)) {
 				length--;
 				putchar('^');
 			}
 		}
 
-		printf("%.*s", length, hex);
+		printf("%.*s", length, revision_hex);
 		if (opt & OUTPUT_ANNOTATE_COMPAT) {
 			const char *name;
 			if (opt & OUTPUT_SHOW_EMAIL)
 				name = ci.author_mail.buf;
 			else
 				name = ci.author.buf;
-			printf("\t(%10s\t%10s\t%d)", name,
+			printf("\t(%10s\t%10s", name,
 			       format_time(ci.author_time, ci.author_tz.buf,
-					   show_raw_time),
-			       ent->lno + 1 + cnt);
+					   show_raw_time));
+			if (line_number)
+				printf("\t%d)", line_number);
 		} else {
 			if (opt & OUTPUT_SHOW_SCORE)
 				printf(" %*d %02d",
@@ -1975,10 +1974,10 @@ static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
 				       ent->suspect->refcnt);
 			if (opt & OUTPUT_SHOW_NAME)
 				printf(" %-*.*s", longest_file, longest_file,
-				       suspect->path);
-			if (opt & OUTPUT_SHOW_NUMBER)
+				       ent->suspect->path);
+			if ((opt & OUTPUT_SHOW_NUMBER) && line_number)
 				printf(" %*d", max_orig_digits,
-				       ent->s_lno + 1 + cnt);
+				       line_number);
 
 			if (!(opt & OUTPUT_NO_AUTHOR)) {
 				const char *name;
@@ -1994,9 +1993,38 @@ static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
 						   ci.author_tz.buf,
 						   show_raw_time));
 			}
-			printf(" %*d) ",
-			       max_digits, ent->lno + 1 + cnt);
+			if (line_number)
+				printf(" %*d) ",
+					   max_digits, line_number);
 		}
+	}
+	if (line_number && (opt & OUTPUT_AGGREGATE))
+		printf(opt & OUTPUT_ANNOTATE_COMPAT ? "%*d)" : " %*d) ",
+			   max_digits, line_number);
+	if (!line_number)
+		printf(")\n");
+}
+
+static void emit_other(struct scoreboard *sb, struct blame_entry *ent, int opt)
+{
+	int cnt;
+	const char *cp;
+	struct origin *suspect = ent->suspect;
+	struct commit_info ci;
+	char hex[GIT_SHA1_HEXSZ + 1];
+	int show_raw_time = !!(opt & OUTPUT_RAW_TIMESTAMP);
+	int revision_length = (opt & OUTPUT_LONG_OBJECT_NAME) ? GIT_SHA1_HEXSZ : abbrev;
+
+	get_commit_info(suspect->commit, &ci, 1);
+	sha1_to_hex_r(hex, suspect->commit->object.oid.hash);
+
+	if (opt & OUTPUT_AGGREGATE)
+		print_revision_info(hex, revision_length, ent, ci, opt, show_raw_time, 0);
+
+	cp = nth_line(sb, ent->lno);
+	char ch;
+	for (cnt = 0; cnt < ent->num_lines; cnt++) {
+		print_revision_info(hex, revision_length, ent, ci, opt, show_raw_time, ent->lno + 1 + cnt);
 		do {
 			ch = *cp++;
 			putchar(ch);
@@ -2609,6 +2637,7 @@ int cmd_blame(int argc, const char **argv, const char *prefix)
 		{ OPTION_CALLBACK, 'C', NULL, &opt, N_("score"), N_("Find line copies within and across files"), PARSE_OPT_OPTARG, blame_copy_callback },
 		{ OPTION_CALLBACK, 'M', NULL, &opt, N_("score"), N_("Find line movements within and across files"), PARSE_OPT_OPTARG, blame_move_callback },
 		OPT_STRING_LIST('L', NULL, &range_list, N_("n,m"), N_("Process only line range n,m, counting from 1")),
+		OPT_BIT(0, "aggregate", &output_option, N_("Aggregate output"), OUTPUT_AGGREGATE),
 		OPT__ABBREV(&abbrev),
 		OPT_END()
 	};
