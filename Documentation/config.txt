@@ -459,6 +459,19 @@ core.sshCommand::
 	the `GIT_SSH_COMMAND` environment variable and is overridden
 	when the environment variable is set.
 
+core.sshVariant::
+	SSH implementations used by Git when running `git fetch`,
+	`git clone`, and `git push` use slightly different command
+	line options (e.g. PuTTY and TortoisePlink use `-P <port>`
+	while OpenSSH uses `-p <port>` to specify the port number.
+	TortoisePlink in addition requires `-batch` option to be
+	passed).  Git guesses which variant is in use correctly from
+	the name of the ssh command used (see `core.sshCommand`
+	configuration variable and also `GIT_SSH_COMMAND`
+	environment variable) most of the time.  You can set this
+	variable to 'putty', 'tortoiseplink', or 'ssh' to correct it
+	when Git makes an incorrect guess.
+
 core.ignoreStat::
 	If true, Git will avoid using lstat() calls to detect if files have
 	changed by setting the "assume-unchanged" bit for those tracked files
