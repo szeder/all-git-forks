@@ -89,8 +89,7 @@ struct ref {
 		force:1,
 		forced_update:1,
 		expect_old_sha1:1,
-		deletion:1,
-		matched:1;
+		deletion:1;
 
 	/*
 	 * Order is important here, as we write to FETCH_HEAD

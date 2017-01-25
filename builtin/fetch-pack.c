@@ -4,6 +4,7 @@
 #include "remote.h"
 #include "connect.h"
 #include "sha1-array.h"
+#include "refs.h"
 
 static const char fetch_pack_usage[] =
 "git fetch-pack [--all] [--stdin] [--quiet | -q] [--keep | -k] [--thin] "
@@ -220,7 +221,11 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	 * an error.
 	 */
 	for (i = 0; i < nr_sought; i++) {
-		if (!sought[i] || sought[i]->matched)
+		struct ref *r;
+		for (r = ref; r; r = r->next)
+			if (!sought[i] || refname_match(sought[i]->name, r->name))
+				break;
+		if (r)
 			continue;
 		error("no such remote ref %s", sought[i]->name);
 		ret = 1;

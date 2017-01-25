@@ -562,6 +562,7 @@ static void filter_refs(struct fetch_pack_args *args,
 	struct ref **newtail = &newlist;
 	struct ref *ref, *next;
 	int i;
+	int *matched = xcalloc(nr_sought, sizeof(*matched));
 
 	i = 0;
 	for (ref = *refs; ref; ref = next) {
@@ -578,7 +579,7 @@ static void filter_refs(struct fetch_pack_args *args,
 					break; /* definitely do not have it */
 				else if (cmp == 0) {
 					keep = 1; /* definitely have it */
-					sought[i]->matched = 1;
+					matched[i] = 1;
 				}
 				i++;
 			}
@@ -604,19 +605,21 @@ static void filter_refs(struct fetch_pack_args *args,
 			unsigned char sha1[20];
 
 			ref = sought[i];
-			if (ref->matched)
+			if (matched[i])
 				continue;
 			if (get_sha1_hex(ref->name, sha1) ||
 			    ref->name[40] != '\0' ||
 			    hashcmp(sha1, ref->old_oid.hash))
 				continue;
 
-			ref->matched = 1;
+			matched[i] = 1;
 			*newtail = copy_ref(ref);
 			newtail = &(*newtail)->next;
 		}
 	}
 	*refs = newlist;
+
+	free(matched);
 }
 
 static void mark_alternate_complete(const struct ref *ref, void *unused)

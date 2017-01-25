@@ -33,8 +33,6 @@ struct fetch_pack_args {
 
 /*
  * sought represents remote references that should be updated from.
- * On return, the names that were found on the remote will have been
- * marked as such.
  */
 struct ref *fetch_pack(struct fetch_pack_args *args,
 		       int fd[], struct child_process *conn,
