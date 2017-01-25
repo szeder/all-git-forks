@@ -82,13 +82,20 @@ struct transport {
 	 * Fetch the objects for the given refs. Note that this gets
 	 * an array, and should ignore the list structure.
 	 *
+	 * The user may provide the array of refspecs used to generate the
+	 * given refs. If provided, the transport should prefer the refspecs if
+	 * possible (but may still use the refs for pre-fetch optimizations,
+	 * for example).
+	 *
 	 * The transport *may* provide, in fetched_refs, the list of refs that
-	 * it fetched. If the transport knows anything about the fetched refs
-	 * that the caller does not know (for example, shallow status or ref
-	 * hashes), it should provide that list of refs and include that
-	 * information in the list.
+	 * it fetched, and must do so if it is different from the given refs.
+	 * If the transport knows anything about the fetched refs that the
+	 * caller does not know (for example, shallow status or ref hashes), it
+	 * should provide that list of refs and include that information in the
+	 * list.
 	 **/
 	int (*fetch)(struct transport *transport,
+		     int refspec_nr, const struct refspec *refspecs,
 		     int refs_nr, const struct ref **refs,
 		     struct ref **fetched_refs);
 
@@ -234,8 +241,9 @@ int transport_push(struct transport *connection,
 
 const struct ref *transport_get_remote_refs(struct transport *transport);
 
-int transport_fetch_refs(struct transport *transport, struct ref *refs,
-			 struct ref **fetched_refs);
+int transport_fetch_refs(struct transport *transport,
+			 const struct refspec *refspecs, int refspec_nr,
+			 struct ref *refs, struct ref **fetched_refs);
 void transport_unlock_pack(struct transport *transport);
 int transport_disconnect(struct transport *transport);
 char *transport_anonymize_url(const char *url);

@@ -12,6 +12,7 @@
 #include "credential.h"
 #include "sha1-array.h"
 #include "send-pack.h"
+#include "refs.h"
 
 static struct remote *remote;
 /* always ends with a trailing slash */
@@ -31,7 +32,8 @@ struct options {
 		thin : 1,
 		/* One of the SEND_PACK_PUSH_CERT_* constants. */
 		push_cert : 2,
-		deepen_relative : 1;
+		deepen_relative : 1,
+		echo_refs : 1;
 };
 static struct options options;
 static struct string_list cas_options = STRING_LIST_INIT_DUP;
@@ -136,6 +138,14 @@ static int set_option(const char *name, const char *value)
 			options.push_cert = SEND_PACK_PUSH_CERT_NEVER;
 		else if (!strcmp(value, "if-asked"))
 			options.push_cert = SEND_PACK_PUSH_CERT_IF_ASKED;
+		else
+			return -1;
+		return 0;
+	} else if (!strcmp(name, "echo-refs")) {
+		if (!strcmp(value, "true"))
+			options.echo_refs = 1;
+		else if (!strcmp(value, "false"))
+			options.echo_refs = 0;
 		else
 			return -1;
 		return 0;
@@ -750,7 +760,7 @@ static int rpc_service(struct rpc_state *rpc, struct discovery *heads)
 	return err;
 }
 
-static int fetch_dumb(int nr_heads, struct ref **to_fetch)
+static int fetch_dumb(int nr_heads, const struct ref **to_fetch)
 {
 	struct walker *walker;
 	char **targets;
@@ -775,11 +785,24 @@ static int fetch_dumb(int nr_heads, struct ref **to_fetch)
 		free(targets[i]);
 	free(targets);
 
+	if (options.echo_refs) {
+		struct strbuf sb = STRBUF_INIT;
+		for (i = 0; i < nr_heads; i++) {
+			strbuf_reset(&sb);
+			strbuf_addf(&sb,
+				    "%s %s\n",
+				    oid_to_hex(&to_fetch[i]->old_oid),
+				    to_fetch[i]->name);
+			write_or_die(1, sb.buf, sb.len);
+		}
+	}
+
 	return ret ? error("fetch failed.") : 0;
 }
 
 static int fetch_git(struct discovery *heads,
-	int nr_heads, struct ref **to_fetch)
+	int nr_refspec, const struct refspec *refspecs,
+	int nr_heads, const struct ref **to_fetch)
 {
 	struct rpc_state rpc;
 	struct strbuf preamble = STRBUF_INIT;
@@ -811,10 +834,15 @@ static int fetch_git(struct discovery *heads,
 				 options.deepen_not.items[i].string);
 	if (options.deepen_relative && options.depth)
 		argv_array_push(&args, "--deepen-relative");
+	if (options.echo_refs)
+		argv_array_push(&args, "--always-print-refs");
 	argv_array_push(&args, url.buf);
 
-	for (i = 0; i < nr_heads; i++) {
-		struct ref *ref = to_fetch[i];
+	if (refspecs) {
+		for (i = 0; i < nr_refspec; i++)
+			packet_buf_write(&preamble, "%s\n", refspecs[i].src);
+	} else {
+		const struct ref *ref = to_fetch[i];
 		if (!*ref->name)
 			die("cannot fetch by sha1 over smart http");
 		packet_buf_write(&preamble, "%s %s\n",
@@ -837,46 +865,38 @@ static int fetch_git(struct discovery *heads,
 	return err;
 }
 
-static int fetch(int nr_heads, struct ref **to_fetch)
+static int fetch(int nr_refspec, const struct refspec *refspecs)
 {
+	const struct ref **to_fetch;
+	int nr;
+	int ret, i;
 	struct discovery *d = discover_refs("git-upload-pack", 0);
+	get_ref_array(&to_fetch, &nr, d->refs, refspecs, nr_refspec);
+
 	if (d->proto_git)
-		return fetch_git(d, nr_heads, to_fetch);
+		ret = fetch_git(d, nr_refspec, refspecs, nr, to_fetch);
 	else
-		return fetch_dumb(nr_heads, to_fetch);
+		ret = fetch_dumb(nr, to_fetch);
+
+	for (i = 0; i < nr; i++) {
+		free((void *) to_fetch[i]);
+	}
+	free(to_fetch);
+
+	return ret;
 }
 
 static void parse_fetch(struct strbuf *buf)
 {
-	struct ref **to_fetch = NULL;
-	struct ref *list_head = NULL;
-	struct ref **list = &list_head;
-	int alloc_heads = 0, nr_heads = 0;
+	struct refspec *to_fetch = NULL;
+	int alloc = 0, nr = 0;
 
 	do {
 		const char *p;
 		if (skip_prefix(buf->buf, "fetch ", &p)) {
-			const char *name;
-			struct ref *ref;
-			struct object_id old_oid;
-
-			if (get_oid_hex(p, &old_oid))
-				die("protocol error: expected sha/ref, got %s'", p);
-			if (p[GIT_SHA1_HEXSZ] == ' ')
-				name = p + GIT_SHA1_HEXSZ + 1;
-			else if (!p[GIT_SHA1_HEXSZ])
-				name = "";
-			else
-				die("protocol error: expected sha/ref, got %s'", p);
-
-			ref = alloc_ref(name);
-			oidcpy(&ref->old_oid, &old_oid);
-
-			*list = ref;
-			list = &ref->next;
-
-			ALLOC_GROW(to_fetch, nr_heads + 1, alloc_heads);
-			to_fetch[nr_heads++] = ref;
+			nr++;
+			ALLOC_GROW(to_fetch, nr, alloc);
+			parse_ref_or_pattern(&to_fetch[nr - 1], p);
 		}
 		else
 			die("http transport does not support %s", buf->buf);
@@ -888,10 +908,8 @@ static void parse_fetch(struct strbuf *buf)
 			break;
 	} while (1);
 
-	if (fetch(nr_heads, to_fetch))
+	if (fetch(nr, to_fetch))
 		exit(128); /* error already reported */
-	free_refs(list_head);
-	free(to_fetch);
 
 	printf("\n");
 	fflush(stdout);
@@ -1084,6 +1102,7 @@ int cmd_main(int argc, const char **argv)
 			printf("option\n");
 			printf("push\n");
 			printf("check-connectivity\n");
+			printf("echo-refs\n");
 			printf("\n");
 			fflush(stdout);
 		} else {

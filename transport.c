@@ -95,6 +95,7 @@ static struct ref *get_refs_from_bundle(struct transport *transport, int for_pus
 }
 
 static int fetch_refs_from_bundle(struct transport *transport,
+			       int nr_refspec, const struct refspec *refspecs,
 			       int nr_heads, const struct ref **to_fetch,
 			       struct ref **fetched_refs)
 {
@@ -203,6 +204,7 @@ static struct ref *get_refs_via_connect(struct transport *transport, int for_pus
 }
 
 static int fetch_refs_via_pack(struct transport *transport,
+			       int nr_refspec, const struct refspec *refspecs,
 			       int nr_heads, const struct ref **to_fetch,
 			       struct ref **fetched_refs)
 {
@@ -1096,8 +1098,9 @@ const struct ref *transport_get_remote_refs(struct transport *transport)
 	return transport->remote_refs;
 }
 
-int transport_fetch_refs(struct transport *transport, struct ref *refs,
-			 struct ref **fetched_refs)
+int transport_fetch_refs(struct transport *transport,
+			 const struct refspec *refspecs, int refspec_nr,
+			 struct ref *refs, struct ref **fetched_refs)
 {
 	int rc;
 	int nr_heads = 0, nr_alloc = 0, nr_refs = 0;
@@ -1136,7 +1139,8 @@ int transport_fetch_refs(struct transport *transport, struct ref *refs,
 			heads[nr_heads++] = rm;
 	}
 
-	rc = transport->fetch(transport, nr_heads, heads, fetched_refs);
+	rc = transport->fetch(transport, refspec_nr, refspecs,
+			      nr_heads, heads, fetched_refs);
 	if (nop_head) {
 		*nop_tail = *fetched_refs;
 		*fetched_refs = nop_head;

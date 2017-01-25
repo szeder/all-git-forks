@@ -28,7 +28,8 @@ struct helper_data {
 		signed_tags : 1,
 		check_connectivity : 1,
 		no_disconnect_req : 1,
-		no_private_update : 1;
+		no_private_update : 1,
+		echo_refs : 1;
 	char *export_marks;
 	char *import_marks;
 	/* These go from remote name (as in "list") to private name */
@@ -195,6 +196,8 @@ static struct child_process *get_helper(struct transport *transport)
 			data->import_marks = xstrdup(arg);
 		} else if (starts_with(capname, "no-private-update")) {
 			data->no_private_update = 1;
+		} else if (!strcmp(capname, "echo-refs")) {
+			data->echo_refs = 1;
 		} else if (mandatory) {
 			die("Unknown mandatory capability %s. This remote "
 			    "helper probably needs newer version of Git.",
@@ -383,27 +386,49 @@ static int release_helper(struct transport *transport)
 	return res;
 }
 
+static struct ref *copy_ref_array(struct ref **array, int nr)
+{
+	struct ref *head = NULL, **tail = &head;
+	int i;
+	for (i = 0; i < nr; i++) {
+		*tail = copy_ref(array[i]);
+		tail = &(*tail)->next;
+	}
+	return head;
+}
+
 static int fetch_with_fetch(struct transport *transport,
-			    int nr_heads, const struct ref **to_fetch)
+			    int nr_refspec, const struct refspec *refspecs,
+			    int nr_heads, const struct ref **to_fetch,
+			    struct ref **fetched_refs)
 {
 	struct helper_data *data = transport->data;
 	int i;
 	struct strbuf buf = STRBUF_INIT;
+	int use_echo_refs = data->echo_refs && refspecs;
+	struct ref *fetched = NULL;
 
-	for (i = 0; i < nr_heads; i++) {
-		const struct ref *posn = to_fetch[i];
-		if (posn->status & REF_STATUS_UPTODATE)
-			continue;
+	if (use_echo_refs) {
+		set_helper_option(transport, "echo-refs", "true");
+		for (i = 0; i < nr_refspec; i++)
+			strbuf_addf(&buf, "fetch %s\n", refspecs[i].src);
+	} else {
+		for (i = 0; i < nr_heads; i++) {
+			const struct ref *posn = to_fetch[i];
+			if (posn->status & REF_STATUS_UPTODATE)
+				continue;
 
-		strbuf_addf(&buf, "fetch %s %s\n",
-			    oid_to_hex(&posn->old_oid),
-			    posn->symref ? posn->symref : posn->name);
+			strbuf_addf(&buf, "fetch %s %s\n",
+				    oid_to_hex(&posn->old_oid),
+				    posn->symref ? posn->symref : posn->name);
+		}
 	}
 
 	strbuf_addch(&buf, '\n');
 	sendline(data, &buf);
 
 	while (1) {
+		struct object_id oid;
 		if (recvline(data, &buf))
 			exit(128);
 
@@ -418,12 +443,29 @@ static int fetch_with_fetch(struct transport *transport,
 			 data->transport_options.check_self_contained_and_connected &&
 			 !strcmp(buf.buf, "connectivity-ok"))
 			data->transport_options.self_contained_and_connected = 1;
-		else if (!buf.len)
+		else if (use_echo_refs && !get_oid_hex(buf.buf, &oid)
+			 && buf.buf[GIT_SHA1_HEXSZ] == ' ') {
+			struct ref *ref = alloc_ref(buf.buf + GIT_SHA1_HEXSZ + 1);
+			oidcpy(&ref->old_oid, &oid);
+			ref->next = fetched;
+			fetched = ref;
+		} else if (!buf.len)
 			break;
 		else
 			warning("%s unexpectedly said: '%s'", data->name, buf.buf);
 	}
 	strbuf_release(&buf);
+
+	if (use_echo_refs) {
+		if (fetched_refs)
+			*fetched_refs = fetched;
+	} else {
+		assert(fetched == NULL);
+		if (fetched_refs)
+			*fetched_refs = copy_ref_array((struct ref **) to_fetch,
+						       nr_heads);
+	}
+
 	return 0;
 }
 
@@ -657,6 +699,7 @@ static int connect_helper(struct transport *transport, const char *name,
 }
 
 static int fetch(struct transport *transport,
+		 int nr_refspec, const struct refspec *refspecs,
 		 int nr_heads, const struct ref **to_fetch,
 		 struct ref **fetched_refs)
 {
@@ -665,8 +708,8 @@ static int fetch(struct transport *transport,
 
 	if (process_connect(transport, 0)) {
 		do_take_over(transport);
-		return transport->fetch(transport, nr_heads, to_fetch,
-					fetched_refs);
+		return transport->fetch(transport, nr_refspec, refspecs,
+					nr_heads, to_fetch, fetched_refs);
 	}
 
 	count = 0;
@@ -688,7 +731,8 @@ static int fetch(struct transport *transport,
 		set_helper_option(transport, "update-shallow", "true");
 
 	if (data->fetch)
-		return fetch_with_fetch(transport, nr_heads, to_fetch);
+		return fetch_with_fetch(transport, nr_refspec, refspecs,
+					nr_heads, to_fetch, fetched_refs);
 
 	if (data->import)
 		return fetch_with_import(transport, nr_heads, to_fetch, fetched_refs);

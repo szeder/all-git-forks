@@ -35,6 +35,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 	struct fetch_pack_args args;
 	struct sha1_array shallow = SHA1_ARRAY_INIT;
 	struct string_list deepen_not = STRING_LIST_INIT_DUP;
+	int always_print_refs = 0;
 
 	packet_trace_identity("fetch-pack");
 
@@ -124,6 +125,10 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		}
 		if (!strcmp("--update-shallow", arg)) {
 			args.update_shallow = 1;
+			continue;
+		}
+		if (!strcmp("--always-print-refs", arg)) {
+			always_print_refs = 1;
 			continue;
 		}
 		usage(fetch_pack_usage);
@@ -218,7 +223,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		ret = 1;
 	}
 
-	if (args.stateless_rpc)
+	if (args.stateless_rpc && !always_print_refs)
 		goto cleanup;
 
 	while (ref) {
@@ -226,6 +231,7 @@ int cmd_fetch_pack(int argc, const char **argv, const char *prefix)
 		       oid_to_hex(&ref->old_oid), ref->name);
 		ref = ref->next;
 	}
+	fflush(stdout);
 
 cleanup:
 	close(fd[0]);
