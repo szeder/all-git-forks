@@ -2152,8 +2152,22 @@ static int handle_refs_pseudo_opt(const char *submodule,
 		return 0;
 	}
 
-	clear_ref_exclusion(&revs->ref_excludes);
 	return 1;
+}
+
+static int handle_revision_pseudo_opt(const char *, struct rev_info *, int, const char **, int *);
+
+static int handle_revision_pseudo_opt_after_exclude(const char *submodule,
+						    struct rev_info *revs,
+						    int argc, const char **argv,
+						    int *flags)
+{
+	int ret;
+
+	ret = handle_revision_pseudo_opt(submodule, revs, argc, argv, flags);
+	clear_ref_exclusion(&revs->ref_excludes);
+	revs->handle_pseudo_opt = NULL;
+	return ret;
 }
 
 static int handle_revision_pseudo_opt(const char *submodule,
@@ -2184,6 +2198,7 @@ static int handle_revision_pseudo_opt(const char *submodule,
 		revs->bisect = 1;
 	} else if ((argcount = parse_long_opt("exclude", argv, &optarg))) {
 		add_ref_exclusion(&revs->ref_excludes, optarg);
+		revs->handle_pseudo_opt = handle_revision_pseudo_opt_after_exclude;
 		return argcount;
 	} else if (!strcmp(arg, "--reflog")) {
 		add_reflogs_to_pending(revs, *flags);
