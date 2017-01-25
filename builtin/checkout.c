@@ -846,6 +846,7 @@ static int switch_branches(const struct checkout_opts *opts,
 	}
 
 	ret = merge_working_tree(opts, &old, new, &writeout_error);
+
 	if (ret) {
 		free(path_to_free);
 		return ret;
