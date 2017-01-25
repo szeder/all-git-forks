@@ -793,8 +793,20 @@ static void receive_needs(void)
 			deepen_rev_list = 1;
 			continue;
 		}
-		if (!skip_prefix(line, "want ", &arg) ||
-		    get_sha1_hex(arg, sha1_buf))
+		if (skip_prefix(line, "want ", &arg) &&
+		    !get_sha1_hex(arg, sha1_buf)) {
+			o = parse_object(sha1_buf);
+			if (!o)
+				die("git upload-pack: not our ref %s",
+				    sha1_to_hex(sha1_buf));
+			if (!(o->flags & WANTED)) {
+				o->flags |= WANTED;
+				if (!((allow_unadvertised_object_request & ALLOW_ANY_SHA1) == ALLOW_ANY_SHA1
+				      || is_our_ref(o)))
+					has_non_tip = 1;
+				add_object_array(o, NULL, &want_obj);
+			}
+		} else
 			die("git upload-pack: protocol error, "
 			    "expected to get sha, not '%s'", line);
 
@@ -820,18 +832,6 @@ static void receive_needs(void)
 			no_progress = 1;
 		if (parse_feature_request(features, "include-tag"))
 			use_include_tag = 1;
-
-		o = parse_object(sha1_buf);
-		if (!o)
-			die("git upload-pack: not our ref %s",
-			    sha1_to_hex(sha1_buf));
-		if (!(o->flags & WANTED)) {
-			o->flags |= WANTED;
-			if (!((allow_unadvertised_object_request & ALLOW_ANY_SHA1) == ALLOW_ANY_SHA1
-			      || is_our_ref(o)))
-				has_non_tip = 1;
-			add_object_array(o, NULL, &want_obj);
-		}
 	}
 
 	/*
