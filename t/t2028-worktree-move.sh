@@ -71,13 +71,14 @@ test_expect_success 'move locked worktree' '
 '
 
 test_expect_success 'move worktree' '
+	toplevel="$(pwd)" &&
 	git worktree move source destination &&
 	test_path_is_missing source &&
 	git worktree list --porcelain | grep "^worktree" >actual &&
 	cat <<-EOF >expected &&
-	worktree $TRASH_DIRECTORY
-	worktree $TRASH_DIRECTORY/destination
-	worktree $TRASH_DIRECTORY/elsewhere
+	worktree $toplevel
+	worktree $toplevel/destination
+	worktree $toplevel/elsewhere
 	EOF
 	test_cmp expected actual &&
 	git -C destination log --format=%s >actual2 &&
