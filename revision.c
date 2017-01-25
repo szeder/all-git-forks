@@ -2157,6 +2157,49 @@ static int handle_refs_pseudo_opt(const char *submodule,
 
 static int handle_revision_pseudo_opt(const char *, struct rev_info *, int, const char **, int *);
 
+static int handle_revision_pseudo_opt_after_decorate_reflog(
+	const char *submodule, struct rev_info *revs,
+	int argc, const char **argv, int *flags)
+{
+	struct all_refs_cb cb;
+	const char *optarg = NULL;
+	int argcount;
+	enum ref_selector selector;
+
+	selector = parse_ref_selector_option(argc, argv, &optarg, &argcount);
+
+	if (optarg)
+		init_all_refs_cb(&cb, revs, *flags);
+
+	switch (selector) {
+	case REF_SELECT_ALL:
+		/* keep the info for load_ref_decorations() later */
+		return 1;
+
+	case REF_SELECT_BRANCHES:
+		/* keep the info for load_ref_decorations() later */
+		return 1;
+
+	case REF_SELECT_TAGS:
+		/* keep the info for load_ref_decorations() later */
+		return 1;
+
+	case REF_SELECT_REMOTES:
+		/* keep the info for load_ref_decorations() later */
+		return 1;
+
+	case REF_SELECT_BY_GLOB:
+		/* keep the info for load_ref_decorations() later */
+		return 1;
+
+	case REF_SELECT_NONE:
+		break;
+	}
+
+	revs->handle_pseudo_opt = NULL;
+	return handle_revision_pseudo_opt(submodule, revs, argc, argv, flags);
+}
+
 static int handle_revision_pseudo_opt_after_exclude(const char *submodule,
 						    struct rev_info *revs,
 						    int argc, const char **argv,
@@ -2199,6 +2242,9 @@ static int handle_revision_pseudo_opt(const char *submodule,
 	} else if ((argcount = parse_long_opt("exclude", argv, &optarg))) {
 		add_ref_exclusion(&revs->ref_excludes, optarg);
 		revs->handle_pseudo_opt = handle_revision_pseudo_opt_after_exclude;
+		return argcount;
+	} else if ((argcount = parse_long_opt("decorate-reflog", argv, &optarg))) {
+		revs->handle_pseudo_opt = handle_revision_pseudo_opt_after_decorate_reflog;
 		return argcount;
 	} else if (!strcmp(arg, "--reflog")) {
 		add_reflogs_to_pending(revs, *flags);
