@@ -612,7 +612,7 @@ static void update_refs_for_switch(const struct checkout_opts *opts,
 	const char *old_desc, *reflog_msg;
 	if (opts->new_branch) {
 		if (opts->new_orphan_branch) {
-			if (opts->new_branch_log && !log_all_ref_updates) {
+			if (opts->new_branch_log && should_autocreate_reflog("refs/heads/")) {
 				int ret;
 				char *refname;
 				struct strbuf err = STRBUF_INIT;
