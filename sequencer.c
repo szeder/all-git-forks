@@ -16,6 +16,7 @@
 #include "refs.h"
 #include "argv-array.h"
 #include "quote.h"
+#include "trailer.h"
 
 #define GIT_REFLOG_ACTION "GIT_REFLOG_ACTION"
 
@@ -27,6 +28,7 @@ GIT_PATH_FUNC(git_path_seq_dir, "sequencer")
 static GIT_PATH_FUNC(git_path_todo_file, "sequencer/todo")
 static GIT_PATH_FUNC(git_path_opts_file, "sequencer/opts")
 static GIT_PATH_FUNC(git_path_head_file, "sequencer/head")
+static GIT_PATH_FUNC(git_path_abort_safety_file, "sequencer/abort-safety")
 
 /*
  * A script to set the GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL, and
@@ -56,30 +58,6 @@ static const char *get_todo_path(const struct replay_opts *opts)
 	return git_path_todo_file();
 }
 
-static int is_rfc2822_line(const char *buf, int len)
-{
-	int i;
-
-	for (i = 0; i < len; i++) {
-		int ch = buf[i];
-		if (ch == ':')
-			return 1;
-		if (!isalnum(ch) && ch != '-')
-			break;
-	}
-
-	return 0;
-}
-
-static int is_cherry_picked_from_line(const char *buf, int len)
-{
-	/*
-	 * We only care that it looks roughly like (cherry picked from ...)
-	 */
-	return len > strlen(cherry_picked_prefix) + 1 &&
-		starts_with(buf, cherry_picked_prefix) && buf[len - 1] == ')';
-}
-
 /*
  * Returns 0 for non-conforming footer
  * Returns 1 for conforming footer
@@ -89,49 +67,25 @@ static int is_cherry_picked_from_line(const char *buf, int len)
 static int has_conforming_footer(struct strbuf *sb, struct strbuf *sob,
 	int ignore_footer)
 {
-	char prev;
-	int i, k;
-	int len = sb->len - ignore_footer;
-	const char *buf = sb->buf;
-	int found_sob = 0;
+	struct trailer_info info;
+	int i;
+	int found_sob = 0, found_sob_last = 0;
 
-	/* footer must end with newline */
-	if (!len || buf[len - 1] != '\n')
+	trailer_info_get(&info, sb->buf);
+
+	if (info.trailer_start == info.trailer_end)
 		return 0;
 
-	prev = '\0';
-	for (i = len - 1; i > 0; i--) {
-		char ch = buf[i];
-		if (prev == '\n' && ch == '\n') /* paragraph break */
-			break;
-		prev = ch;
-	}
+	for (i = 0; i < info.trailer_nr; i++)
+		if (sob && !strncmp(info.trailers[i], sob->buf, sob->len)) {
+			found_sob = 1;
+			if (i == info.trailer_nr - 1)
+				found_sob_last = 1;
+		}
 
-	/* require at least one blank line */
-	if (prev != '\n' || buf[i] != '\n')
-		return 0;
+	trailer_info_release(&info);
 
-	/* advance to start of last paragraph */
-	while (i < len - 1 && buf[i] == '\n')
-		i++;
-
-	for (; i < len; i = k) {
-		int found_rfc2822;
-
-		for (k = i; k < len && buf[k] != '\n'; k++)
-			; /* do nothing */
-		k++;
-
-		found_rfc2822 = is_rfc2822_line(buf + i, k - i - 1);
-		if (found_rfc2822 && sob &&
-		    !strncmp(buf + i, sob->buf, sob->len))
-			found_sob = k;
-
-		if (!(found_rfc2822 ||
-		      is_cherry_picked_from_line(buf + i, k - i - 1)))
-			return 0;
-	}
-	if (found_sob == i)
+	if (found_sob_last)
 		return 3;
 	if (found_sob)
 		return 2;
@@ -248,7 +202,7 @@ static int write_message(const void *buf, size_t len, const char *filename,
 	}
 	if (append_eol && write(msg_fd, "\n", 1) < 0) {
 		rollback_lock_file(&msg_file);
-		return error_errno(_("could not write eol to '%s"), filename);
+		return error_errno(_("could not write eol to '%s'"), filename);
 	}
 	if (commit_lock_file(&msg_file) < 0) {
 		rollback_lock_file(&msg_file);
@@ -310,6 +264,20 @@ static int error_dirty_index(struct replay_opts *opts)
 	return -1;
 }
 
+static void update_abort_safety_file(void)
+{
+	struct object_id head;
+
+	/* Do nothing on a single-pick */
+	if (!file_exists(git_path_seq_dir()))
+		return;
+
+	if (!get_oid("HEAD", &head))
+		write_file(git_path_abort_safety_file(), "%s", oid_to_hex(&head));
+	else
+		write_file(git_path_abort_safety_file(), "%s", "");
+}
+
 static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 			int unborn, struct replay_opts *opts)
 {
@@ -339,6 +307,7 @@ static int fast_forward_to(const unsigned char *to, const unsigned char *from,
 	strbuf_release(&sb);
 	strbuf_release(&err);
 	ref_transaction_free(transaction);
+	update_abort_safety_file();
 	return 0;
 }
 
@@ -370,7 +339,7 @@ static int do_recursive_merge(struct commit *base, struct commit *next,
 	char **xopt;
 	static struct lock_file index_lock;
 
-	hold_locked_index(&index_lock, 1);
+	hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
 
 	read_cache();
 
@@ -813,6 +782,7 @@ static int do_pick_commit(enum todo_command command, struct commit *commit,
 
 leave:
 	free_message(commit, &msg);
+	update_abort_safety_file();
 
 	return res;
 }
@@ -1132,9 +1102,34 @@ static int save_head(const char *head)
 	return 0;
 }
 
+static int rollback_is_safe(void)
+{
+	struct strbuf sb = STRBUF_INIT;
+	struct object_id expected_head, actual_head;
+
+	if (strbuf_read_file(&sb, git_path_abort_safety_file(), 0) >= 0) {
+		strbuf_trim(&sb);
+		if (get_oid_hex(sb.buf, &expected_head)) {
+			strbuf_release(&sb);
+			die(_("could not parse %s"), git_path_abort_safety_file());
+		}
+		strbuf_release(&sb);
+	}
+	else if (errno == ENOENT)
+		oidclr(&expected_head);
+	else
+		die_errno(_("could not read '%s'"), git_path_abort_safety_file());
+
+	if (get_oid("HEAD", &actual_head))
+		oidclr(&actual_head);
+
+	return !oidcmp(&actual_head, &expected_head);
+}
+
 static int reset_for_rollback(const unsigned char *sha1)
 {
 	const char *argv[4];	/* reset --merge <arg> + NULL */
+
 	argv[0] = "reset";
 	argv[1] = "--merge";
 	argv[2] = sha1_to_hex(sha1);
@@ -1189,6 +1184,12 @@ int sequencer_rollback(struct replay_opts *opts)
 		error(_("cannot abort from a branch yet to be born"));
 		goto fail;
 	}
+
+	if (!rollback_is_safe()) {
+		/* Do not error, just do not rollback */
+		warning(_("You seem to have moved HEAD. "
+			  "Not rewinding, check your HEAD!"));
+	} else
 	if (reset_for_rollback(sha1))
 		goto fail;
 	strbuf_release(&buf);
@@ -1393,6 +1394,7 @@ int sequencer_pick_revisions(struct replay_opts *opts)
 		return -1;
 	if (save_opts(opts))
 		return -1;
+	update_abort_safety_file();
 	res = pick_commits(&todo_list, opts);
 	todo_list_release(&todo_list);
 	return res;
