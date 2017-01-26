@@ -13,10 +13,10 @@ module Git
           prefix = parent.document.attr('git-relative-html-prefix')
           %(<a href="#{prefix}#{target}.html">#{target}(#{attrs[1]})</a>\n)
         elsif parent.document.basebackend? 'docbook'
-          %(<citerefentry>
-<refentrytitle>#{target}</refentrytitle><manvolnum>#{attrs[1]}</manvolnum>
-</citerefentry>
-)
+          "<citerefentry>\n" \
+            "<refentrytitle>#{target}</refentrytitle>" \
+            "<manvolnum>#{attrs[1]}</manvolnum>\n" \
+          "</citerefentry>\n"
         end
       end
     end
