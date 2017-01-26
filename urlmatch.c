@@ -63,36 +63,47 @@ static int append_normalized_escapes(struct strbuf *buf,
 	return 1;
 }
 
+static const char *end_of_token(const char *s, int c, size_t n)
+{
+	const char *next = memchr(s, c, n);
+	if (!next)
+		next = s + n;
+	return next;
+}
+
 static int match_host(const struct url_info *url_info,
 		      const struct url_info *pattern_info)
 {
-	char *url = xmemdupz(url_info->url + url_info->host_off, url_info->host_len);
-	char *pat = xmemdupz(pattern_info->url + pattern_info->host_off, pattern_info->host_len);
-	char *url_tok, *pat_tok, *url_save, *pat_save;
-	int matching;
+	const char *url = url_info->url + url_info->host_off;
+	const char *pat = pattern_info->url + pattern_info->host_off;
+	int url_len = url_info->host_len;
+	int pat_len = pattern_info->host_len;
 
-	url_tok = strtok_r(url, ".", &url_save);
-	pat_tok = strtok_r(pat, ".", &pat_save);
+	while (url_len && pat_len) {
+		const char *url_next = end_of_token(url, '.', url_len);
+		const char *pat_next = end_of_token(pat, '.', pat_len);
 
-	for (; url_tok && pat_tok; url_tok = strtok_r(NULL, ".", &url_save),
-				   pat_tok = strtok_r(NULL, ".", &pat_save)) {
-		if (!strcmp(pat_tok, "*"))
-			continue; /* a simple glob matches everything */
+		if (pat_next == pat + 1 && pat[0] == '*')
+			/* wildcard matches anything */
+			;
+		else if ((pat_next - pat) == (url_next - url) &&
+			 !memcmp(url, pat, url_next - url))
+			/* the components are the same */
+			;
+		else
+			return 0; /* found an unmatch */
 
-		if (strcmp(url_tok, pat_tok)) {
-			/* subdomains do not match */
-			matching = 0;
-			break;
-		}
+		if (url_next < url + url_len)
+			url_next++;
+		url_len -= url_next - url;
+		url = url_next;
+		if (pat_next < pat + pat_len)
+			pat_next++;
+		pat_len -= pat_next - pat;
+		pat = pat_next;
 	}
 
-	/* matching if both URL and pattern are at their ends */
-	matching = (url_tok == NULL && pat_tok == NULL);
-
-	free(url);
-	free(pat);
-
-	return matching;
+	return (!url_len && !pat_len);
 }
 
 static char *url_normalize_1(const char *url, struct url_info *out_info, char allow_globs)

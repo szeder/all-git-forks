@@ -1177,7 +1177,7 @@ test_expect_success 'urlmatch' '
 	test_cmp expect actual
 '
 
-test_expect_success 'glob-based urlmatch' '
+test_expect_success 'urlmatch with wildcard' '
 	cat >.git/config <<-\EOF &&
 	[http]
 		sslVerify
@@ -1210,6 +1210,10 @@ test_expect_success 'glob-based urlmatch' '
 		echo http.sslverify false
 	} >expect &&
 	git config --get-urlmatch HTTP https://good.example.com >actual &&
+	test_cmp expect actual &&
+
+	echo http.sslverify >expect &&
+	git config --get-urlmatch HTTP https://more.example.com.au >actual &&
 	test_cmp expect actual
 '
 
