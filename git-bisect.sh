@@ -1,5 +1,6 @@
 #!/bin/sh
 
+SUBDIRECTORY_OK=Yes
 USAGE='[help|start|bad|good|new|old|terms|skip|next|reset|visualize|replay|log|run]'
 LONG_USAGE='git bisect help
 	print this long help message.
