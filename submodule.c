@@ -1281,6 +1281,24 @@ static int submodule_has_dirty_index(const struct submodule *sub)
 	return ret;
 }
 
+void submodule_clean_index(const char *path)
+{
+	struct child_process cp = CHILD_PROCESS_INIT;
+	prepare_submodule_repo_env_no_git_dir(&cp.env_array);
+
+	cp.git_cmd = 1;
+	cp.no_stdin = 1;
+	cp.dir = path;
+
+	argv_array_pushf(&cp.args, "--super-prefix=%s/", path);
+	argv_array_pushl(&cp.args, "read-tree", "-u", "--reset", NULL);
+
+	argv_array_push(&cp.args, EMPTY_TREE_SHA1_HEX);
+
+	if (run_command(&cp))
+		die("could not clean submodule index");
+}
+
 /**
  * Moves a submodule at a given path from a given head to another new head.
  * For edge cases (a submodule coming into existence or removing a submodule)
@@ -1314,6 +1332,9 @@ int submodule_go_from_to(const char *path,
 				    get_git_common_dir(), sub->name);
 			connect_work_tree_and_git_dir(path, sb.buf);
 			strbuf_release(&sb);
+
+			/* make sure the index is clean as well */
+			submodule_clean_index(path);
 		}
 	}
 
