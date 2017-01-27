@@ -1260,15 +1260,12 @@ static int submodule_has_dirty_index(const struct submodule *sub)
 	int ret = 0;
 
 	prepare_submodule_repo_env_no_git_dir(&cp.env_array);
-	argv_array_pushf(&cp.env_array, "GIT_WORK_TREE=%s", sub->path);
-	argv_array_pushf(&cp.env_array, "GIT_DIR=%s/modules/%s",
-					get_git_common_dir(), sub->name);
 
 	cp.git_cmd = 1;
 	argv_array_pushl(&cp.args, "diff-index", "--cached", "HEAD", NULL);
 	cp.no_stdin = 1;
 	cp.out = -1;
-	//~ cp.dir = sub->path;
+	cp.dir = sub->path;
 	if (start_command(&cp))
 		die("could not recurse into submodule %s", sub->path);
 
