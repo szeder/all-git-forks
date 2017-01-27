@@ -150,11 +150,11 @@ test_git_directory_is_unchanged () {
 
 test_git_directory_exists() {
 	test -e ".git/modules/$1" &&
-	(
-		cd ".git/modules/$1" &&
+	if test -f sub1/.git
+	then
 		# does core.worktree point at the right place?
-		test "$(git config core.worktree)" = "../../../$1"
-	)
+		test "$(git -C .git/modules/$1 config core.worktree)" = "../../../$1"
+	fi
 }
 
 # Helper function to be executed at the start of every test below, it sets up
@@ -185,6 +185,18 @@ reset_work_tree_to () {
 			git submodule update --init --recursive "sub1"
 		fi
 	)
+}
+
+reset_work_tree_to_interested () {
+	reset_work_tree_to $1 &&
+	# indicate we are interested in the submodule:
+	git -C submodule_update config submodule.sub1.url "bogus" &&
+	# also have it available:
+	if ! test -d submodule_update/.git/modules/sub1
+	then
+		mkdir submodule_update/.git/modules &&
+		cp -r submodule_update_repo/.git/modules/sub1 submodule_update/.git/modules/sub1
+	fi
 }
 
 # Test that the superproject contains the content according to commit "$1"
@@ -726,7 +738,7 @@ test_submodule_switch_recursing () {
 	# Switching to a commit letting a submodule appear checks it out ...
 	test_expect_success "$command: added submodule is checked out" '
 		prolog &&
-		reset_work_tree_to no_submodule &&
+		reset_work_tree_to_interested no_submodule &&
 		(
 			cd submodule_update &&
 			git branch -t add_sub1 origin/add_sub1 &&
@@ -738,7 +750,7 @@ test_submodule_switch_recursing () {
 	# ... ignoring an empty existing directory ...
 	test_expect_success "$command: added submodule is checked out in empty dir" '
 		prolog &&
-		reset_work_tree_to no_submodule &&
+		reset_work_tree_to_interested no_submodule &&
 		(
 			cd submodule_update &&
 			mkdir sub1 &&
@@ -751,7 +763,7 @@ test_submodule_switch_recursing () {
 	# ... unless there is an untracked file in its place.
 	test_expect_success "$command: added submodule doesn't remove untracked file with same name" '
 		prolog &&
-		reset_work_tree_to no_submodule &&
+		reset_work_tree_to_interested no_submodule &&
 		(
 			cd submodule_update &&
 			git branch -t add_sub1 origin/add_sub1 &&
@@ -765,21 +777,21 @@ test_submodule_switch_recursing () {
 	test_expect_success "$command: added submodule removes an untracked ignored file" '
 		test_when_finished "rm submodule_update/.git/info/exclude" &&
 		prolog &&
-		reset_work_tree_to no_submodule &&
+		reset_work_tree_to_interested no_submodule &&
 		(
 			cd submodule_update &&
 			git branch -t add_sub1 origin/add_sub1 &&
 			: >sub1 &&
 			echo sub1 > .git/info/exclude
 			$command add_sub1 &&
-			test_superproject_content origin/no_submodule &&
+			test_superproject_content origin/add_sub1 &&
 			test_submodule_content sub1 origin/add_sub1
 		)
 	'
 	# Replacing a tracked file with a submodule produces a checked out submodule
 	test_expect_success "$command: replace tracked file with submodule checks out submodule" '
 		prolog &&
-		reset_work_tree_to replace_sub1_with_file &&
+		reset_work_tree_to_interested replace_sub1_with_file &&
 		(
 			cd submodule_update &&
 			git branch -t replace_file_with_sub1 origin/replace_file_with_sub1 &&
@@ -791,7 +803,7 @@ test_submodule_switch_recursing () {
 	# ... as does removing a directory with tracked files with a submodule.
 	test_expect_success "$command: replace directory with submodule" '
 		prolog &&
-		reset_work_tree_to replace_sub1_with_directory &&
+		reset_work_tree_to_interested replace_sub1_with_directory &&
 		(
 			cd submodule_update &&
 			git branch -t replace_directory_with_sub1 origin/replace_directory_with_sub1 &&
@@ -805,7 +817,7 @@ test_submodule_switch_recursing () {
 	# Removing a submodule removes its work tree ...
 	test_expect_success "$command: removed submodule removes submodules working tree" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t remove_sub1 origin/remove_sub1 &&
@@ -817,7 +829,7 @@ test_submodule_switch_recursing () {
 	# ... absorbing a .git directory along the way.
 	test_expect_success "$command: removed submodule absorbs submodules .git directory" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t remove_sub1 origin/remove_sub1 &&
@@ -833,7 +845,7 @@ test_submodule_switch_recursing () {
 	# when the submodule is clean
 	test_expect_success "$command: replace submodule with a directory" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_directory origin/replace_sub1_with_directory &&
@@ -845,7 +857,7 @@ test_submodule_switch_recursing () {
 	# ... absorbing a .git directory.
 	test_expect_success "$command: replace submodule containing a .git directory with a directory must absorb the git dir" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_directory origin/replace_sub1_with_directory &&
@@ -860,7 +872,7 @@ test_submodule_switch_recursing () {
 	# Replacing it with a file ...
 	test_expect_success "$command: replace submodule with a file" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_file origin/replace_sub1_with_file &&
@@ -873,7 +885,7 @@ test_submodule_switch_recursing () {
 	# ... must check its local work tree for untracked files
 	test_expect_success "$command: replace submodule with a file must fail with untracked files" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_file origin/replace_sub1_with_file &&
@@ -888,7 +900,7 @@ test_submodule_switch_recursing () {
 	test_expect_success "$command: replace submodule with a file works ignores ignored files in submodule" '
 		test_when_finished "rm .git/modules/sub1/info/exclude" &&
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_file origin/replace_sub1_with_file &&
@@ -903,7 +915,7 @@ test_submodule_switch_recursing () {
 	# Updating a submodule sha1 updates the submodule's work tree
 	test_expect_success "$command: modified submodule updates submodule work tree" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t modify_sub1 origin/modify_sub1 &&
@@ -917,7 +929,7 @@ test_submodule_switch_recursing () {
 	# superproject nor the submodule's work tree.
 	test_expect_success "$command: updating to a missing submodule commit fails" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t invalid_sub1 origin/invalid_sub1 &&
@@ -929,7 +941,7 @@ test_submodule_switch_recursing () {
 
 	test_expect_success "$command: modified submodule updates submodule recursively" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t modify_sub1_recursively origin/modify_sub1_recursively &&
@@ -950,7 +962,7 @@ test_submodule_forced_switch_recursing () {
 	# Switching to a commit letting a submodule appear creates empty dir ...
 	test_expect_success "$command: added submodule is checked out" '
 		prolog &&
-		reset_work_tree_to no_submodule &&
+		reset_work_tree_to_interested no_submodule &&
 		(
 			cd submodule_update &&
 			git branch -t add_sub1 origin/add_sub1 &&
@@ -962,7 +974,7 @@ test_submodule_forced_switch_recursing () {
 	# ... and doesn't care if it already exists ...
 	test_expect_success "$command: added submodule ignores empty directory" '
 		prolog &&
-		reset_work_tree_to no_submodule &&
+		reset_work_tree_to_interested no_submodule &&
 		(
 			cd submodule_update &&
 			git branch -t add_sub1 origin/add_sub1 &&
@@ -975,7 +987,7 @@ test_submodule_forced_switch_recursing () {
 	# ... not caring about an untracked file either
 	test_expect_success "$command: added submodule does remove untracked unignored file with same name when forced" '
 		prolog &&
-		reset_work_tree_to no_submodule &&
+		reset_work_tree_to_interested no_submodule &&
 		(
 			cd submodule_update &&
 			git branch -t add_sub1 origin/add_sub1 &&
@@ -988,7 +1000,7 @@ test_submodule_forced_switch_recursing () {
 	# Replacing a tracked file with a submodule checks out the submodule
 	test_expect_success "$command: replace tracked file with submodule populates the submodule" '
 		prolog &&
-		reset_work_tree_to replace_sub1_with_file &&
+		reset_work_tree_to_interested replace_sub1_with_file &&
 		(
 			cd submodule_update &&
 			git branch -t replace_file_with_sub1 origin/replace_file_with_sub1 &&
@@ -1001,7 +1013,7 @@ test_submodule_forced_switch_recursing () {
 	# submodule.
 	test_expect_success "$command: replace directory with submodule" '
 		prolog &&
-		reset_work_tree_to replace_sub1_with_directory &&
+		reset_work_tree_to_interested replace_sub1_with_directory &&
 		(
 			cd submodule_update &&
 			git branch -t replace_directory_with_sub1 origin/replace_directory_with_sub1 &&
@@ -1015,7 +1027,7 @@ test_submodule_forced_switch_recursing () {
 	# Removing a submodule doesn't remove its work tree ...
 	test_expect_success "$command: removed submodule leaves submodule directory and its contents in place" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t remove_sub1 origin/remove_sub1 &&
@@ -1027,7 +1039,7 @@ test_submodule_forced_switch_recursing () {
 	# ... especially when it contains a .git directory.
 	test_expect_success "$command: removed submodule leaves submodule containing a .git directory alone" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t remove_sub1 origin/remove_sub1 &&
@@ -1042,7 +1054,7 @@ test_submodule_forced_switch_recursing () {
 	# Replacing a submodule with files in a directory ...
 	test_expect_success "$command: replace submodule with a directory" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_directory origin/replace_sub1_with_directory &&
@@ -1053,7 +1065,7 @@ test_submodule_forced_switch_recursing () {
 	# ... absorbing a .git directory.
 	test_expect_success "$command: replace submodule containing a .git directory with a directory must fail" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_directory origin/replace_sub1_with_directory &&
@@ -1067,7 +1079,7 @@ test_submodule_forced_switch_recursing () {
 	# Replacing it with a file
 	test_expect_success "$command: replace submodule with a file must fail" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_file origin/replace_sub1_with_file &&
@@ -1079,7 +1091,7 @@ test_submodule_forced_switch_recursing () {
 	# ... even if the submodule contains ignored files
 	test_expect_success "$command: replace submodule with a file" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_file origin/replace_sub1_with_file &&
@@ -1092,7 +1104,7 @@ test_submodule_forced_switch_recursing () {
 	# ... but stops for untracked files that would be lost
 	test_expect_success "$command: replace submodule with a file" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t replace_sub1_with_file origin/replace_sub1_with_file &&
@@ -1107,7 +1119,7 @@ test_submodule_forced_switch_recursing () {
 	# Updating a submodule sha1 updates the submodule's work tree
 	test_expect_success "$command: modified submodule updates submodule work tree" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t modify_sub1 origin/modify_sub1 &&
@@ -1120,7 +1132,7 @@ test_submodule_forced_switch_recursing () {
 	# submodule's work tree, subsequent update will fail
 	test_expect_success "$command: modified submodule does not update submodule work tree to invalid commit" '
 		prolog &&
-		reset_work_tree_to add_sub1 &&
+		reset_work_tree_to_interested add_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t invalid_sub1 origin/invalid_sub1 &&
@@ -1132,7 +1144,7 @@ test_submodule_forced_switch_recursing () {
 	# Updating a submodule from an invalid sha1 updates
 	test_expect_success "$command: modified submodule does not update submodule work tree from invalid commit" '
 		prolog &&
-		reset_work_tree_to invalid_sub1 &&
+		reset_work_tree_to_interested invalid_sub1 &&
 		(
 			cd submodule_update &&
 			git branch -t valid_sub1 origin/valid_sub1 &&
