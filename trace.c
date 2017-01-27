@@ -150,6 +150,23 @@ static void print_trace_line(struct trace_key *key, struct strbuf *buf)
 	strbuf_release(buf);
 }
 
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#define BT_BUF_SIZE 128
+static const char *get_indent()
+{
+	static char buf[2*BT_BUF_SIZE];
+	void *buffer[BT_BUF_SIZE];
+	int i, nptrs = backtrace(buffer, BT_BUF_SIZE);
+
+	for (i = 0; i < 2*(nptrs-7); i++)
+		buf[i] = ' ';
+	buf[i] = '\0';
+	return buf;
+}
+
 static void trace_vprintf_fl(const char *file, int line, struct trace_key *key,
 			     const char *format, va_list ap)
 {
@@ -158,6 +175,7 @@ static void trace_vprintf_fl(const char *file, int line, struct trace_key *key,
 	if (!prepare_trace_line(file, line, key, &buf))
 		return;
 
+	strbuf_addstr(&buf, get_indent());
 	strbuf_vaddf(&buf, format, ap);
 	print_trace_line(key, &buf);
 }
