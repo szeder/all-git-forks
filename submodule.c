@@ -568,7 +568,7 @@ void set_config_update_recurse_submodules(int value)
 	config_update_recurse_submodules = value;
 }
 
-static int submodules_interesting_for_update(void)
+int submodules_interesting_for_update(void)
 {
 	/*
 	 * Update can't be "none", "merge" or "rebase",

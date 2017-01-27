@@ -64,6 +64,7 @@ extern void set_config_update_recurse_submodules(int value);
  * This function checks if we are interested in the given submodule
  * for any kind of operation.
  */
+extern int submodules_interesting_for_update(void);
 extern int is_interesting_submodule(const struct cache_entry *ce);
 extern void check_for_new_submodule_commits(unsigned char new_sha1[20]);
 extern int fetch_populated_submodules(const struct argv_array *options,
