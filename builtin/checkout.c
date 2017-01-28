@@ -1213,10 +1213,13 @@ int cmd_checkout(int argc, const char **argv, const char *prefix)
 		git_xmerge_config("merge.conflictstyle", conflict_style, NULL);
 	}
 
+	trace_printf("builtin/checkout checking %d != %d", recurse_submodules, RECURSE_SUBMODULES_OFF);
 	if (recurse_submodules != RECURSE_SUBMODULES_OFF) {
 		git_config(submodule_config, NULL);
-		if (recurse_submodules != RECURSE_SUBMODULES_DEFAULT)
+		if (recurse_submodules != RECURSE_SUBMODULES_DEFAULT) {
+			trace_printf("builtin/checkout also !=  %d ", RECURSE_SUBMODULES_DEFAULT);
 			set_config_update_recurse_submodules(recurse_submodules);
+		}
 	}
 
 	if ((!!opts.new_branch + !!opts.new_branch_force + !!opts.new_orphan_branch) > 1)
