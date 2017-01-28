@@ -183,6 +183,7 @@ static int do_add_entry(struct unpack_trees_options *o, struct cache_entry *ce,
 		set |= CE_WT_REMOVE;
 
 	ce->ce_flags = (ce->ce_flags & ~clear) | set;
+	trace_printf("do_add_entry, %s %o %s", ce->name, ce->ce_mode, oid_to_hex(&ce->oid));
 	return add_index_entry(&o->result, ce,
 			       ADD_CACHE_OK_TO_ADD | ADD_CACHE_OK_TO_REPLACE);
 }
@@ -255,12 +256,38 @@ static int submodule_check_from_to(const struct cache_entry *ce, const char *old
 	return 0;
 }
 
+static void reload_gitmodules_file(struct index_state *index,
+				   struct checkout *state)
+{
+	int i;
+	trace_printf("reload .gitmodules file");
+	for (i = 0; i < index->cache_nr; i++) {
+		struct cache_entry *ce = index->cache[i];
+		if (ce->ce_flags & CE_UPDATE) {
+
+			int r = strcmp(ce->name, ".gitmodules");
+			if (r < 0)
+				continue;
+			else if (r == 0) {
+				checkout_entry(ce, state, NULL);
+			} else
+				break;
+		}
+	}
+	gitmodules_config();
+	git_config(submodule_config, NULL);
+	trace_printf("reloaded .gitmodules file");
+}
+
 /*
  * Unlink the last component and schedule the leading directories for
  * removal, such that empty directories get removed.
  */
 static void unlink_entry(const struct cache_entry *ce)
 {
+	trace_printf("unlink_entry %s", ce->name);
+	if (is_interesting_submodule(ce))
+		submodule_go_from_to(ce->name, "HEAD", NULL, 0, 1);
 	if (!check_leading_path(ce->name, ce_namelen(ce)))
 		return;
 	if (remove_or_warn(ce->ce_mode, ce->name))
@@ -302,12 +329,14 @@ static int check_updates(struct unpack_trees_options *o)
 
 	progress = get_progress(o);
 
+	trace_printf("check_updates: first phase: removing entries");
 	if (o->update)
 		git_attr_set_direction(GIT_ATTR_CHECKOUT, index);
 	for (i = 0; i < index->cache_nr; i++) {
 		const struct cache_entry *ce = index->cache[i];
 
 		if (ce->ce_flags & CE_WT_REMOVE) {
+			trace_printf("check_updates: remove entry %s", ce->name);
 			display_progress(progress, ++cnt);
 			if (o->update && !o->dry_run)
 				unlink_entry(ce);
@@ -316,10 +345,16 @@ static int check_updates(struct unpack_trees_options *o)
 	remove_marked_cache_entries(index);
 	remove_scheduled_dirs();
 
+	trace_printf("check_updates: reload .gitmodules");
+	if (submodules_interesting_for_update() && o->update && !o->dry_run)
+		reload_gitmodules_file(index, &state);
+
+	trace_printf("check_updates: update files");
 	for (i = 0; i < index->cache_nr; i++) {
 		struct cache_entry *ce = index->cache[i];
 
 		if (ce->ce_flags & CE_UPDATE) {
+			trace_printf("check_updates: checking out entry %s", ce->name);
 			if (ce->ce_flags & CE_WT_REMOVE)
 				die("BUG: both update and delete flags are set on %s",
 				    ce->name);
@@ -1357,8 +1392,10 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 {
 	struct stat st;
 
+	trace_printf("verify_uptodate_1");
 	if (o->index_only)
 		return 0;
+	trace_printf("verify_uptodate_1 1");
 
 	/*
 	 * CE_VALID and CE_SKIP_WORKTREE cheat, we better check again
@@ -1374,9 +1411,17 @@ static int verify_uptodate_1(const struct cache_entry *ce,
 		int flags = CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE;
 		unsigned changed = ie_match_stat(o->src_index, ce, &st, flags);
 
-		if (is_interesting_submodule(ce))
-			return submodule_check_from_to(ce,
+		if (is_interesting_submodule(ce)) {
+			int r;
+			trace_printf("verify_uptodate_1 22222");
+			r = submodule_check_from_to(ce,
 				"HEAD", oid_to_hex(&ce->oid), o);
+			trace_printf("verify_uptodate_1 22222 done");
+			if (r)
+				return o->gently ? -1 :
+					add_rejected_path(o, error_type, ce->name);
+			return 0;
+		}
 
 		if (!changed)
 			return 0;
@@ -1602,9 +1647,15 @@ static int verify_absent_1(const struct cache_entry *ce,
 		path = xmemdupz(ce->name, len);
 		if (lstat(path, &st))
 			ret = error_errno("cannot stat '%s'", path);
-		else
-			ret = check_ok_to_remove(path, len, DT_UNKNOWN, NULL,
-						 &st, error_type, o);
+		else {
+			if (is_interesting_submodule(ce))
+				ret = submodule_check_from_to(ce,
+							oid_to_hex(&ce->oid),
+							NULL, o);
+			else
+				ret = check_ok_to_remove(path, len, DT_UNKNOWN, NULL,
+							 &st, error_type, o);
+		}
 		free(path);
 		return ret;
 	} else if (lstat(ce->name, &st)) {
@@ -1649,6 +1700,8 @@ static int merged_entry(const struct cache_entry *ce,
 	int update = CE_UPDATE;
 	struct cache_entry *merge = dup_entry(ce);
 
+	trace_printf("merged_entry %s", ce->name);
+
 	if (!old) {
 		/*
 		 * New index entries. In sparse checkout, the following
@@ -1672,11 +1725,14 @@ static int merged_entry(const struct cache_entry *ce,
 		}
 		invalidate_ce_path(merge, o);
 
-		if (is_interesting_submodule(ce))
-			return submodule_check_from_to(ce,
-						       oid_to_hex(&old->oid),
-						       oid_to_hex(&ce->oid),
-						       o);
+		if (is_interesting_submodule(ce)) {
+			int ret = submodule_check_from_to(ce,
+							  oid_to_hex(&old->oid),
+							  oid_to_hex(&ce->oid),
+							  o);
+			if (ret)
+				return ret;
+		}
 
 	} else if (!(old->ce_flags & CE_CONFLICTED)) {
 		/*
@@ -1686,6 +1742,7 @@ static int merged_entry(const struct cache_entry *ce,
 		 * This also removes the UPDATE flag on a match; otherwise
 		 * we will end up overwriting local changes in the work tree.
 		 */
+		trace_printf("merged_entry !(old->ce_flags & CE_CONFLICTED) %s", ce->name);
 		if (same(old, merge)) {
 			copy_cache_entry(merge, old);
 			update = 0;
@@ -1699,6 +1756,7 @@ static int merged_entry(const struct cache_entry *ce,
 			invalidate_ce_path(old, o);
 		}
 	} else {
+		trace_printf("merged_entry last %s", ce->name);
 		/*
 		 * Previously unmerged entry left as an existence
 		 * marker by read_index_unmerged();
@@ -1714,18 +1772,27 @@ static int deleted_entry(const struct cache_entry *ce,
 			 const struct cache_entry *old,
 			 struct unpack_trees_options *o)
 {
+
+
+	trace_printf("deleted_entry %s 1", ce->name);
 	/* Did it exist in the index? */
 	if (!old) {
 		if (verify_absent(ce, ERROR_WOULD_LOSE_UNTRACKED_REMOVED, o))
 			return -1;
 		return 0;
 	}
-	if (is_interesting_submodule(ce))
-		return submodule_check_from_to(ce, oid_to_hex(&old->oid), NULL, o);
+	//~ if (is_interesting_submodule(ce)) {
+		//~ int r = submodule_check_from_to(ce, oid_to_hex(&old->oid), NULL, o);
+		//~ if (r)
+			//~ return r;
+	//~ }
 
+	trace_printf("deleted_entry %s 2: conflicted %d", ce->name, !(old->ce_flags & CE_CONFLICTED));
 	if (!(old->ce_flags & CE_CONFLICTED) && verify_uptodate(old, o))
 		return -1;
+	trace_printf("deleted_entry %s 3", ce->name);
 	add_entry(o, ce, CE_REMOVE, 0);
+	trace_printf("deleted_entry %s add_entry(o, ce, CE_REMOVE, 0);", ce->name);
 	invalidate_ce_path(ce, o);
 	return 1;
 }
