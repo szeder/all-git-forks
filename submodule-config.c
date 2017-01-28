@@ -450,8 +450,12 @@ static const struct submodule *config_from(struct submodule_cache *cache,
 		return entry->config;
 	}
 
+	//~ trace_printf("config_from survived first return series");
+
 	if (!gitmodule_sha1_from_commit(treeish_name, sha1, &rev))
 		goto out;
+
+	//~ trace_printf("config_from found .gitmodules %s", sha1_to_hex(sha1));
 
 	switch (lookup_type) {
 	case lookup_name:
@@ -461,12 +465,17 @@ static const struct submodule *config_from(struct submodule_cache *cache,
 		submodule = cache_lookup_path(cache, sha1, key);
 		break;
 	}
-	if (submodule)
+	if (submodule) {
+		//~ trace_printf("config_from found sub, returning non null");
 		goto out;
+	}
 
 	config = read_sha1_file(sha1, &type, &config_size);
+	//~ trace_printf("config_from config %p %d", config, type);
 	if (!config || type != OBJ_BLOB)
 		goto out;
+
+	//~ trace_printf("config_from could read .gitmodules");
 
 	/* fill the submodule config into the cache */
 	parameter.cache = cache;
@@ -525,6 +534,7 @@ const struct submodule *submodule_from_path(const unsigned char *treeish_name,
 		const char *path)
 {
 	ensure_cache_init();
+	//~ trace_printf("submodule_from_path (%s) (%s)", treeish_name, path);
 	return config_from(&the_submodule_cache, treeish_name, path, lookup_path);
 }
 
