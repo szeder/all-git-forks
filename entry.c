@@ -2,6 +2,7 @@
 #include "blob.h"
 #include "dir.h"
 #include "streaming.h"
+#include "submodule.h"
 
 static void create_directories(const char *path, int path_len,
 			       const struct checkout *state)
@@ -147,6 +148,8 @@ static int write_entry(struct cache_entry *ce,
 	size_t wrote, newsize = 0;
 	struct stat st;
 
+	trace_printf("write_entry %s", ce->name);
+
 	if (ce_mode_s_ifmt == S_IFREG) {
 		struct stream_filter *filter = get_stream_filter(ce->name,
 								 ce->oid.hash);
@@ -199,10 +202,21 @@ static int write_entry(struct cache_entry *ce,
 			return error("unable to write file %s", path);
 		break;
 	case S_IFGITLINK:
+		trace_printf("write_entry in S_IFGITLINK %s", ce->name);
 		if (to_tempfile)
 			return error("cannot create temporary submodule %s", path);
 		if (mkdir(path, 0777) < 0)
 			return error("cannot create submodule directory %s", path);
+		trace_printf("write_entry is interesting? %s", ce->name);
+		if (is_interesting_submodule(ce))
+				/*
+				 * force=1 is ok for any case as we did a dry
+				 * run before with appropriate force setting
+				 */
+				submodule_go_from_to(ce->name,
+					NULL, oid_to_hex(&ce->oid), 0, 1);
+		else
+			trace_printf("write_entry is interesting? NO! %s", ce->name);
 		break;
 	default:
 		return error("unknown file mode for %s in index", path);
@@ -251,6 +265,7 @@ int checkout_entry(struct cache_entry *ce,
 	static struct strbuf path = STRBUF_INIT;
 	struct stat st;
 
+	trace_printf("checkout_entry %s", ce->name);
 	if (topath)
 		return write_entry(ce, topath, state, 1);
 
@@ -260,6 +275,30 @@ int checkout_entry(struct cache_entry *ce,
 
 	if (!check_path(path.buf, path.len, &st, state->base_dir_len)) {
 		unsigned changed = ce_match_stat(ce, &st, CE_MATCH_IGNORE_VALID|CE_MATCH_IGNORE_SKIP_WORKTREE);
+		trace_printf("file already there, no call to write_entry %s, changed %d", ce->name, changed);
+
+		/*
+		 * Needs to be checked before !changed returns early,
+		 * as the possibly empty directory was not changed
+		 */
+		if (is_interesting_submodule(ce)) {
+			int err;
+			if (!is_submodule_populated_gently(ce->name, &err)) {
+				struct stat sb;
+				if (lstat(ce->name, &sb))
+					die(_("could not stat file '%s'"), ce->name);
+				if (!(st.st_mode & S_IFDIR))
+					unlink_or_warn(ce->name);
+				    //~ !unlink(absolute_path(ce->name)))
+					//~ die_errno(_("could not delete file '%s'"), absolute_path(ce->name));
+
+				submodule_go_from_to(ce->name,
+					NULL, oid_to_hex(&ce->oid), 0, 1);
+			} else
+				submodule_go_from_to(ce->name,
+					"HEAD", oid_to_hex(&ce->oid), 0, 1);
+		}
+
 		if (!changed)
 			return 0;
 		if (!state->force) {
