@@ -574,6 +574,7 @@ int submodules_interesting_for_update(void)
 	 * Update can't be "none", "merge" or "rebase",
 	 * treat any value as OFF, except an explicit ON.
 	 */
+	 trace_printf("submodules_interesting_for_update %d == %d?", config_update_recurse_submodules, RECURSE_SUBMODULES_ON);
 	return config_update_recurse_submodules == RECURSE_SUBMODULES_ON;
 }
 
@@ -583,7 +584,6 @@ int is_interesting_submodule(const struct cache_entry *ce)
 
 	if (!S_ISGITLINK(ce->ce_mode))
 		return 0;
-
 	if (!submodules_interesting_for_update())
 		return 0;
 
@@ -1316,6 +1316,8 @@ int submodule_go_from_to(const char *path,
 	struct child_process cp = CHILD_PROCESS_INIT;
 	const struct submodule *sub;
 
+	trace_printf("submodule_go_from_to %s %s %s dry=%d, force=%d", path, old, new, dry_run, force);
+
 	sub = submodule_from_path(null_sha1, path);
 
 	if (!sub)
@@ -1326,10 +1328,13 @@ int submodule_go_from_to(const char *path,
 			if (!submodule_uses_gitfile(path))
 				absorb_git_dir_into_superproject("", path,
 					ABSORB_GITDIR_RECURSE_SUBMODULES);
+
 		} else {
 			struct strbuf sb = STRBUF_INIT;
 			strbuf_addf(&sb, "%s/modules/%s",
 				    get_git_common_dir(), sub->name);
+
+			trace_printf("connect_work_tree_and_git_dir %s %s ", path, sb.buf);
 			connect_work_tree_and_git_dir(path, sb.buf);
 			strbuf_release(&sb);
 
