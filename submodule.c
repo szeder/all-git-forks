@@ -1348,14 +1348,11 @@ int submodule_go_from_to(const char *path,
 
 	prepare_submodule_repo_env_no_git_dir(&cp.env_array);
 
-	argv_array_pushf(&cp.env_array, "GIT_WORK_TREE=%s", path);
-	argv_array_pushf(&cp.env_array, "GIT_DIR=%s/modules/%s",
-					get_git_common_dir(), sub->name);
-
 	cp.git_cmd = 1;
 	cp.no_stdin = 1;
+	cp.dir = path;
 
-	argv_array_pushf(&cp.args, "--super-prefix=%s", path);
+	argv_array_pushf(&cp.args, "--super-prefix=%s/", path);
 	argv_array_pushl(&cp.args, "read-tree", NULL);
 
 	if (!dry_run)
@@ -1377,20 +1374,21 @@ int submodule_go_from_to(const char *path,
 	}
 
 	if (!dry_run) {
-		/* also set the HEAD accordingly */
-		cp.git_cmd = 1;
-		cp.no_stdin = 1;
-		argv_array_clear(&cp.args);
-		cp.argv = NULL;
-		argv_array_pushl(&cp.args, "update-ref", "HEAD",
-				 new ? new : EMPTY_TREE_SHA1_HEX, NULL);
+		if (new) {
+			struct child_process cp1 = CHILD_PROCESS_INIT;
+			/* also set the HEAD accordingly */
+			cp1.git_cmd = 1;
+			cp1.no_stdin = 1;
+			cp1.dir = path;
 
-		if (run_command(&cp)) {
-			ret = -1;
-			goto out;
-		}
+			argv_array_pushl(&cp1.args, "update-ref", "HEAD",
+					 new ? new : EMPTY_TREE_SHA1_HEX, NULL);
 
-		if (!new) {
+			if (run_command(&cp1)) {
+				ret = -1;
+				goto out;
+			}
+		} else {
 			struct strbuf sb = STRBUF_INIT;
 
 			strbuf_addf(&sb, "%s/.git", path);
