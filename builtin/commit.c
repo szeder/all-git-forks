@@ -33,6 +33,7 @@
 #include "notes-utils.h"
 #include "mailmap.h"
 #include "sigchain.h"
+#include "authors.h"
 
 static const char * const builtin_commit_usage[] = {
 	N_("git commit [<options>] [--] <pathspec>..."),
@@ -622,6 +623,29 @@ static void determine_author_info(struct strbuf *author_ident)
 	free(date);
 }
 
+static void determine_authors_info(struct strbuf *authors_info)
+{
+	const char *current_authors_info;
+
+	if (author_message) {
+		struct authors_split authors;
+		size_t len;
+		const char *a;
+
+		a = find_commit_header(author_message_buffer, "authors", &len);
+		if (a) {
+			if (split_authors_line(&authors, a, len) < 0)
+				die(_("commit '%s' has malformed authors line"), author_message);
+
+			strbuf_add(authors_info, a, len);
+		}
+	} else {
+		current_authors_info = git_authors_info();
+		if (current_authors_info)
+			strbuf_addstr(authors_info, current_authors_info);
+	}
+}
+
 static int author_date_is_interesting(void)
 {
 	return author_message || force_date;
@@ -660,7 +684,8 @@ static void adjust_comment_line_char(const struct strbuf *sb)
 static int prepare_to_commit(const char *index_file, const char *prefix,
 			     struct commit *current_head,
 			     struct wt_status *s,
-			     struct strbuf *author_ident)
+			     struct strbuf *author_ident,
+			     struct strbuf *authors_info)
 {
 	struct stat statbuf;
 	struct strbuf committer_ident = STRBUF_INIT;
@@ -671,8 +696,15 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	int clean_message_contents = (cleanup_mode != CLEANUP_NONE);
 	int old_display_comment_prefix;
 
-	/* This checks and barfs if author is badly specified */
-	determine_author_info(author_ident);
+	determine_authors_info(authors_info);
+	if (authors_info->len > 0) {
+		strbuf_addstr(author_ident, git_authors_first_info(authors_info->buf));
+		strbuf_addstr(&committer_ident, git_authors_first_info(authors_info->buf));
+	} else {
+		/* This checks and barfs if author is badly specified */
+		determine_author_info(author_ident);
+		strbuf_addstr(&committer_ident, git_committer_info(IDENT_STRICT));
+	}
 
 	if (!no_verify && run_commit_hook(use_editor, index_file, "pre-commit", NULL))
 		return 0;
@@ -800,11 +832,11 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 	strbuf_release(&sb);
 
 	/* This checks if committer ident is explicitly given */
-	strbuf_addstr(&committer_ident, git_committer_info(IDENT_STRICT));
 	if (use_editor && include_status) {
 		int ident_shown = 0;
 		int saved_color_setting;
 		struct ident_split ci, ai;
+		struct authors_split authors_split;
 
 		if (whence != FROM_COMMIT) {
 			if (cleanup_mode == CLEANUP_SCISSORS)
@@ -854,6 +886,14 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		assert_split_ident(&ai, author_ident);
 		assert_split_ident(&ci, &committer_ident);
 
+		if (authors_info->len > 0) {
+			split_authors_line(&authors_split, authors_info->buf, authors_info->len);
+			status_printf_ln(s, GIT_COLOR_NORMAL,
+				_("%s"
+				"Authors:   %.*s"),
+				ident_shown++ ? "" : "\n",
+				(int)(authors_split.end - authors_split.begin), authors_split.begin);
+		}
 		if (ident_cmp(&ai, &ci))
 			status_printf_ln(s, GIT_COLOR_NORMAL,
 				_("%s"
@@ -1637,6 +1677,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 
 	struct strbuf sb = STRBUF_INIT;
 	struct strbuf author_ident = STRBUF_INIT;
+	struct strbuf authors_info = STRBUF_INIT;
 	const char *index_file, *reflog_msg;
 	char *nl;
 	unsigned char sha1[20];
@@ -1675,7 +1716,7 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	/* Set up everything for writing the commit object.  This includes
 	   running hooks, writing the trees, and interacting with the user.  */
 	if (!prepare_to_commit(index_file, prefix,
-			       current_head, &s, &author_ident)) {
+			       current_head, &s, &author_ident, &authors_info)) {
 		rollback_index_files();
 		return 1;
 	}
@@ -1762,11 +1803,14 @@ int cmd_commit(int argc, const char **argv, const char *prefix)
 	}
 
 	if (commit_tree_extended(sb.buf, sb.len, active_cache_tree->sha1,
-			 parents, sha1, author_ident.buf, sign_commit, extra)) {
+			 parents, sha1, author_ident.buf,
+			 authors_info.len > 0 ? authors_info.buf : NULL,
+			 sign_commit, extra)) {
 		rollback_index_files();
 		die(_("failed to write commit object"));
 	}
 	strbuf_release(&author_ident);
+	strbuf_release(&authors_info);
 	free_commit_extra_headers(extra);
 
 	nl = strchr(sb.buf, '\n');

@@ -30,6 +30,7 @@
 #include "mailinfo.h"
 #include "apply.h"
 #include "string-list.h"
+#include "authors.h"
 
 /**
  * Returns 1 if the file is empty or does not exist, 0 otherwise.
@@ -106,6 +107,7 @@ struct am_state {
 	char *author_name;
 	char *author_email;
 	char *author_date;
+	char *authors;
 	char *msg;
 	size_t msg_len;
 
@@ -171,6 +173,7 @@ static void am_state_release(struct am_state *state)
 	free(state->author_name);
 	free(state->author_email);
 	free(state->author_date);
+	free(state->authors);
 	free(state->msg);
 	argv_array_clear(&state->git_apply_opts);
 }
@@ -1237,6 +1240,7 @@ static int parse_mail(struct am_state *state, const char *mail)
 	struct strbuf author_name = STRBUF_INIT;
 	struct strbuf author_date = STRBUF_INIT;
 	struct strbuf author_email = STRBUF_INIT;
+	struct strbuf authors = STRBUF_INIT;
 	int ret = 0;
 	struct mailinfo mi;
 
@@ -1303,6 +1307,8 @@ static int parse_mail(struct am_state *state, const char *mail)
 			strbuf_addstr(&author_email, x);
 		else if (skip_prefix(sb.buf, "Date: ", &x))
 			strbuf_addstr(&author_date, x);
+		else if (skip_prefix(sb.buf, "Authors: ", &x))
+			strbuf_addstr(&authors, x);
 	}
 	fclose(fp);
 
@@ -1333,6 +1339,10 @@ static int parse_mail(struct am_state *state, const char *mail)
 	assert(!state->author_date);
 	state->author_date = strbuf_detach(&author_date, NULL);
 
+	assert(!state->authors);
+	if (authors.len > 0)
+		state->authors = strbuf_detach(&authors, NULL);
+
 	assert(!state->msg);
 	state->msg = strbuf_detach(&msg, &state->msg_len);
 
@@ -1341,6 +1351,7 @@ finish:
 	strbuf_release(&author_date);
 	strbuf_release(&author_email);
 	strbuf_release(&author_name);
+	strbuf_release(&authors);
 	strbuf_release(&sb);
 	clear_mailinfo(&mi);
 	return ret;
@@ -1678,6 +1689,7 @@ static void do_commit(const struct am_state *state)
 	struct commit_list *parents = NULL;
 	const char *reflog_msg, *author;
 	struct strbuf sb = STRBUF_INIT;
+	const char *authors_info = NULL;
 
 	if (run_hook_le(NULL, "pre-applypatch", NULL))
 		exit(1);
@@ -1701,8 +1713,12 @@ static void do_commit(const struct am_state *state)
 		setenv("GIT_COMMITTER_DATE",
 			state->ignore_date ? "" : state->author_date, 1);
 
+	if (state->authors)
+		authors_info = fmt_authors(state->authors,
+				state->ignore_date ? NULL : state->author_date);
+
 	if (commit_tree(state->msg, state->msg_len, tree.hash, parents, commit.hash,
-				author, state->sign_commit))
+				author, authors_info, state->sign_commit))
 		die(_("failed to write commit object"));
 
 	reflog_msg = getenv("GIT_REFLOG_ACTION");

@@ -118,7 +118,7 @@ int cmd_commit_tree(int argc, const char **argv, const char *prefix)
 	}
 
 	if (commit_tree(buffer.buf, buffer.len, tree_oid.hash, parents,
-			commit_oid.hash, NULL, sign_commit)) {
+			commit_oid.hash, NULL, NULL, sign_commit)) {
 		strbuf_release(&buffer);
 		return 1;
 	}

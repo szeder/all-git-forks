@@ -11,6 +11,7 @@
 #include "reflog-walk.h"
 #include "gpg-interface.h"
 #include "trailer.h"
+#include "authors.h"
 
 static char *user_format;
 static struct cmt_fmt_map {
@@ -506,6 +507,55 @@ void pp_user_info(struct pretty_print_context *pp,
 		break;
 	default:
 		/* notin' */
+		break;
+	}
+}
+
+void pp_authors_info(struct pretty_print_context *pp,
+		     struct strbuf *sb,
+		     const char *line, const char *encoding)
+{
+	struct ident_split ident;
+	char *line_end;
+	struct authors_split authors;
+
+	if (pp->fmt == CMIT_FMT_ONELINE)
+		return;
+
+	line_end = strchrnul(line, '\n');
+
+	if (split_authors_line(&authors, line, line_end - line))
+		return;
+
+	if (cmit_fmt_is_mail(pp->fmt)) {
+		strbuf_addstr(sb, authors_split_to_email_froms(&authors));
+	} else {
+		strbuf_addstr(sb, "Authors: ");
+		if (pp->fmt == CMIT_FMT_FULLER)
+			strbuf_addstr(sb, "    ");
+		strbuf_add(sb, authors.begin, authors.end - authors.begin);
+		strbuf_addch(sb, '\n');
+	}
+
+	/* Use the ident split for parsing the date part */
+	if (split_ident_line(&ident, line, line_end - line))
+		return;
+
+	switch (pp->fmt) {
+	case CMIT_FMT_MEDIUM:
+		strbuf_addf(sb, "Date:    %s\n",
+			    show_ident_date(&ident, &pp->date_mode));
+		break;
+	case CMIT_FMT_EMAIL:
+	case CMIT_FMT_MBOXRD:
+		strbuf_addf(sb, "Date: %s\n",
+			    show_ident_date(&ident, DATE_MODE(RFC2822)));
+		break;
+	case CMIT_FMT_FULLER:
+		strbuf_addf(sb, "AuthorsDate: %s\n",
+			    show_ident_date(&ident, &pp->date_mode));
+		break;
+	default:
 		break;
 	}
 }
@@ -1544,6 +1594,23 @@ static void pp_header(struct pretty_print_context *pp,
 		      struct strbuf *sb)
 {
 	int parents_shown = 0;
+	int has_authors = 0;
+	const char *msg = *msg_p;
+
+	/* Check if header has `authors` header */
+	for(;;) {
+		const char *line = msg;
+		int linelen = get_one_line(msg);
+		if (!linelen)
+			break;
+		msg += linelen;
+		if (linelen == 1)
+			break;
+		if (starts_with(line, "authors ")) {
+			has_authors = 1;
+			break;
+		}
+	}
 
 	for (;;) {
 		const char *name, *line = *msg_p;
@@ -1582,13 +1649,19 @@ static void pp_header(struct pretty_print_context *pp,
 		 * FULLER shows both authors and dates.
 		 */
 		if (skip_prefix(line, "author ", &name)) {
-			strbuf_grow(sb, linelen + 80);
-			pp_user_info(pp, "Author", sb, name, encoding);
+			if (!has_authors) {
+				strbuf_grow(sb, linelen + 80);
+				pp_user_info(pp, "Author", sb, name, encoding);
+			}
 		}
 		if (skip_prefix(line, "committer ", &name) &&
 		    (pp->fmt == CMIT_FMT_FULL || pp->fmt == CMIT_FMT_FULLER)) {
 			strbuf_grow(sb, linelen + 80);
-			pp_user_info(pp, "Commit", sb, name, encoding);
+			pp_user_info(pp, has_authors ? "Commit " : "Commit", sb, name, encoding);
+		}
+		if (skip_prefix(line, "authors ", &name)) {
+			strbuf_grow(sb, linelen + 80);
+			pp_authors_info(pp, sb, name, encoding);
 		}
 	}
 }

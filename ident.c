@@ -177,7 +177,7 @@ const char *ident_default_email(void)
 	return git_default_email.buf;
 }
 
-static const char *ident_default_date(void)
+const char *ident_default_date(void)
 {
 	if (!git_default_date.len)
 		datestamp(&git_default_date);

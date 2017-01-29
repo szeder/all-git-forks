@@ -1,6 +1,7 @@
 #include "cache.h"
 #include "utf8.h"
 #include "strbuf.h"
+#include "authors.h"
 #include "mailinfo.h"
 
 static void cleanup_space(struct strbuf *sb)
@@ -533,6 +534,18 @@ static int check_header(struct mailinfo *mi,
 {
 	int i, ret = 0, len;
 	struct strbuf sb = STRBUF_INIT;
+	struct strbuf from = STRBUF_INIT;
+
+	if (overwrite && cmp_header(line, "From")) {
+		len = strlen("From: ");
+		strbuf_add(&from, line->buf + len, line->len - len);
+		decode_header(mi, &from);
+
+		if (mi->authors.len > 0)
+			strbuf_addch(&mi->authors,',');
+		strbuf_addstr(&mi->authors, from.buf);
+	}
+	strbuf_release(&from);
 
 	/* search for the interesting parts */
 	for (i = 0; header[i]; i++) {
@@ -1068,6 +1081,8 @@ static void handle_info(struct mailinfo *mi)
 			fprintf(mi->output, "%s: %s\n", header[i], hdr->buf);
 		}
 	}
+	if (has_multiple_authors(mi->authors.buf))
+		fprintf(mi->output, "Authors: %s\n", mi->authors.buf);
 	fprintf(mi->output, "\n");
 }
 
@@ -1133,6 +1148,7 @@ void setup_mailinfo(struct mailinfo *mi)
 	strbuf_init(&mi->charset, 0);
 	strbuf_init(&mi->log_message, 0);
 	strbuf_init(&mi->inbody_header_accum, 0);
+	strbuf_init(&mi->authors, 0);
 	mi->header_stage = 1;
 	mi->use_inbody_headers = 1;
 	mi->content_top = mi->content;
@@ -1147,6 +1163,7 @@ void clear_mailinfo(struct mailinfo *mi)
 	strbuf_release(&mi->email);
 	strbuf_release(&mi->charset);
 	strbuf_release(&mi->inbody_header_accum);
+	strbuf_release(&mi->authors);
 	free(mi->message_id);
 
 	for (i = 0; mi->p_hdr_data[i]; i++)

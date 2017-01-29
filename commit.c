@@ -11,6 +11,7 @@
 #include "commit-slab.h"
 #include "prio-queue.h"
 #include "sha1-lookup.h"
+#include "authors.h"
 
 static struct commit_extra_header *read_commit_extra_header_lines(const char *buf, size_t len, const char **);
 
@@ -1312,7 +1313,8 @@ static inline int standard_header_field(const char *field, size_t len)
 		(len == 6 && !memcmp(field, "parent ", 7)) ||
 		(len == 6 && !memcmp(field, "author ", 7)) ||
 		(len == 9 && !memcmp(field, "committer ", 10)) ||
-		(len == 8 && !memcmp(field, "encoding ", 9)));
+		(len == 8 && !memcmp(field, "encoding ", 9)) ||
+		(len == 7 && !memcmp(field, "authors ", 8)));
 }
 
 static int excluded_header_field(const char *field, size_t len, const char **exclude)
@@ -1388,14 +1390,14 @@ void free_commit_extra_headers(struct commit_extra_header *extra)
 int commit_tree(const char *msg, size_t msg_len,
 		const unsigned char *tree,
 		struct commit_list *parents, unsigned char *ret,
-		const char *author, const char *sign_commit)
+		const char *author, const char *authors, const char *sign_commit)
 {
 	struct commit_extra_header *extra = NULL, **tail = &extra;
 	int result;
 
 	append_merge_tag_headers(parents, &tail);
 	result = commit_tree_extended(msg, msg_len, tree, parents, ret,
-				      author, sign_commit, extra);
+				      author, authors, sign_commit, extra);
 	free_commit_extra_headers(extra);
 	return result;
 }
@@ -1518,7 +1520,8 @@ N_("Warning: commit message did not conform to UTF-8.\n"
 int commit_tree_extended(const char *msg, size_t msg_len,
 			 const unsigned char *tree,
 			 struct commit_list *parents, unsigned char *ret,
-			 const char *author, const char *sign_commit,
+			 const char *author, const char *authors,
+			 const char *sign_commit,
 			 struct commit_extra_header *extra)
 {
 	int result;
@@ -1549,11 +1552,13 @@ int commit_tree_extended(const char *msg, size_t msg_len,
 
 	/* Person/date information */
 	if (!author)
-		author = git_author_info(IDENT_STRICT);
+		author = authors ? git_authors_first_info(authors) : git_author_info(IDENT_STRICT);
 	strbuf_addf(&buffer, "author %s\n", author);
-	strbuf_addf(&buffer, "committer %s\n", git_committer_info(IDENT_STRICT));
+	strbuf_addf(&buffer, "committer %s\n", authors ? git_authors_first_info(authors) : git_committer_info(IDENT_STRICT));
 	if (!encoding_is_utf8)
 		strbuf_addf(&buffer, "encoding %s\n", git_commit_encoding);
+	if (authors)
+		strbuf_addf(&buffer, "authors %s\n", authors);
 
 	while (extra) {
 		add_extra_header(&buffer, extra);

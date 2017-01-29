@@ -33,6 +33,8 @@ struct mailinfo {
 
 	struct strbuf log_message;
 	int input_error;
+
+	struct strbuf authors;
 };
 
 extern void setup_mailinfo(struct mailinfo *);
