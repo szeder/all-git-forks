@@ -93,6 +93,10 @@
 # directory is set up to be ignored by git, then set
 # GIT_PS1_HIDE_IF_PWD_IGNORED to a nonempty value. Override this on the
 # repository level by setting bash.hideIfPwdIgnored to "false".
+#
+# If you would like __git_ps1 to indicate that you are in a submodule,
+# set GIT_PS1_SHOWSUBMODULE. In this case a "sub:" will be added before
+# the branch name.
 
 # check whether printf supports -v
 __git_printf_supports_v=
@@ -282,6 +286,32 @@ __git_eread ()
 	local f="$1"
 	shift
 	test -r "$f" && read "$@" <"$f"
+}
+
+# __git_is_submodule
+# Based on:
+# http://stackoverflow.com/questions/7359204/git-command-line-know-if-in-submodule
+__git_is_submodule ()
+{
+	local git_dir parent_git module_name path
+	# Find the root of this git repo, then check if its parent dir is also a repo
+	git_dir="$(git rev-parse --show-toplevel)"
+	module_name="$(basename "$git_dir")"
+	parent_git="$(cd "$git_dir/.." && git rev-parse --show-toplevel 2> /dev/null)"
+	if [[ -n $parent_git ]]; then
+		# List all the submodule paths for the parent repo
+		while read path
+		do
+			if [[ "$path" != "$module_name" ]]; then continue; fi
+			if [[ -d "$git_dir/../$path" ]];    then return 0; fi
+		done < <(cd $parent_git && git submodule --quiet foreach 'echo $path' 2> /dev/null)
+    fi
+    return 1
+}
+
+__git_ps1_submodule ()
+{
+	__git_is_submodule && printf "sub:"
 }
 
 # __git_ps1 accepts 0 or 1 arguments (i.e., format string)
@@ -513,8 +543,13 @@ __git_ps1 ()
 		b="\${__git_ps1_branch_name}"
 	fi
 
+	local sub=""
+	if [ -n "${GIT_PS1_SHOWSUBMODULE}" ]; then
+		sub="$(__git_ps1_submodule)"
+	fi
+
 	local f="$w$i$s$u"
-	local gitstring="$c$b${f:+$z$f}$r$p"
+	local gitstring="$c$sub$b${f:+$z$f}$r$p"
 
 	if [ $pcmode = yes ]; then
 		if [ "${__git_printf_supports_v-}" != yes ]; then
