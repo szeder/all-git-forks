@@ -37,6 +37,11 @@ test_expect_success 'setup for prompt tests' '
 	git commit -m "yet another b2" file &&
 	mkdir ignored_dir &&
 	echo "ignored_dir/" >>.gitignore &&
+	git checkout -b submodule &&
+	git submodule add ./. sub &&
+	git -C sub checkout master &&
+	git add sub &&
+	git commit -m submodule &&
 	git checkout master
 '
 
@@ -754,5 +759,43 @@ test_expect_success 'prompt - hide if pwd ignored - inside gitdir (stderr)' '
 	) &&
 	test_cmp expected "$actual"
 '
+
+test_expect_success 'prompt - submodule indicator' '
+	printf " (sub:master)" >expected &&
+	git checkout submodule &&
+	test_when_finished "git checkout master" &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE=1 &&
+		__git_ps1 >"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
+
+test_expect_success 'prompt - submodule indicator - verify false' '
+	printf " (master)" >expected &&
+	git checkout submodule &&
+	test_when_finished "git checkout master" &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE= &&
+		__git_ps1 >"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
+
+test_expect_success 'prompt - submodule indicator - dirty status indicator' '
+	printf " (+sub:b1)" >expected &&
+	git checkout submodule &&
+	git -C sub checkout b1 &&
+	test_when_finished "git checkout master" &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE=1 &&
+		__git_ps1 >"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
+
 
 test_done
