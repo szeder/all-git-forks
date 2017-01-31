@@ -1,0 +1,58 @@
+From 542b3b76f6c23a2b0e1e1306b6e58ce522977bf3 Mon Sep 17 00:00:00 2001
+Message-Id: <cover.1485853153.git.ps@pks.im>
+In-Reply-To: <20170123130635.29577-1-patrick.steinhardt@elego.de>
+References: <20170123130635.29577-1-patrick.steinhardt@elego.de>
+From: Patrick Steinhardt <ps@pks.im>
+Date: Tue, 31 Jan 2017 09:59:13 +0100
+Subject: [PATCH v5 0/5] urlmatch: allow wildcard-based matches
+To: git@vger.kernel.org
+Cc: Junio C Hamano <gitster@pobox.com>,
+    Patrick Steinhardt <ps@pks.im>
+
+Hi,
+
+this is version 5 of my patch series. The previous version can
+be found at [1]. The use case is to be able to configure an HTTP
+proxy for all subdomains of a domain where there are hundreds of
+subdomains.
+
+This includes only a single change, interdiff is included below.
+The previous version had an embarassing bug because a variable
+was not properly initialized in all cases, leading to undefined
+behavior. I also verified that the patches work on top of
+4e59582ff (Seventh batch for 2.12, 2017-01-23), where Junio
+reported the test failures.
+
+Regards
+Patrick
+
+Patrick Steinhardt (5):
+  mailmap: add Patrick Steinhardt's work address
+  urlmatch: enable normalization of URLs with globs
+  urlmatch: split host and port fields in `struct url_info`
+  urlmatch: include host in urlmatch ranking
+  urlmatch: allow globbing for the URL host part
+
+ .mailmap                 |   1 +
+ Documentation/config.txt |   5 +-
+ t/t1300-repo-config.sh   | 105 ++++++++++++++++++++++++++++++++++++
+ urlmatch.c               | 138 +++++++++++++++++++++++++++++++++++------------
+ urlmatch.h               |  12 +++--
+ 5 files changed, 220 insertions(+), 41 deletions(-)
+
+-- 
+2.11.0
+
+diff --git a/urlmatch.c b/urlmatch.c
+index bb5267732..6c12f1a48 100644
+--- a/urlmatch.c
++++ b/urlmatch.c
+@@ -552,7 +552,7 @@ int urlmatch_config_entry(const char *var, const char *value, void *cb)
+ {
+ 	struct string_list_item *item;
+ 	struct urlmatch_config *collect = cb;
+-	struct urlmatch_item matched;
++	struct urlmatch_item matched = {0};
+ 	struct url_info *url = &collect->url;
+ 	const char *key, *dot;
+ 	struct strbuf synthkey = STRBUF_INIT;
