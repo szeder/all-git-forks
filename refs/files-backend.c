@@ -2647,7 +2647,7 @@ static int files_rename_ref(struct ref_store *ref_store,
 	}
 
 	flag = log_all_ref_updates;
-	log_all_ref_updates = 0;
+	log_all_ref_updates = LOG_REFS_NONE;
 	if (write_ref_to_lockfile(lock, orig_sha1, &err) ||
 	    commit_ref_update(refs, lock, orig_sha1, NULL, &err)) {
 		error("unable to write current sha1 into %s: %s", oldrefname, err.buf);
@@ -2822,8 +2822,8 @@ int files_log_ref_write(const char *refname, const unsigned char *old_sha1,
 {
 	int logfd, result;
 
-	if (log_all_ref_updates < 0)
-		log_all_ref_updates = !is_bare_repository();
+	if (log_all_ref_updates == LOG_REFS_UNSET)
+		log_all_ref_updates = is_bare_repository() ? LOG_REFS_NONE : LOG_REFS_NORMAL;
 
 	result = log_ref_setup(refname, flags & REF_FORCE_CREATE_REFLOG,
 			       &logfd, err);
