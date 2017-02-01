@@ -16,9 +16,22 @@ c_lblue='\\[\\e[1;34m\\]'
 c_clear='\\[\\e[0m\\]'
 
 test_expect_success 'setup for prompt tests' '
+	mkdir .subrepo &&
+	(cd .subrepo &&
+		git init &&
+		echo 1 >file &&
+		git add file &&
+		git commit -m initial &&
+		git checkout -b dirty &&
+		echo 2 >file &&
+		git commit -m "diry branch" file
+	) &&
 	git init otherrepo &&
 	echo 1 >file &&
 	git add file &&
+	git submodule add ./.subrepo sub &&
+	git -C sub checkout master &&
+	git add sub &&
 	test_tick &&
 	git commit -m initial &&
 	git tag -a -m msg1 t1 &&
@@ -37,11 +50,6 @@ test_expect_success 'setup for prompt tests' '
 	git commit -m "yet another b2" file &&
 	mkdir ignored_dir &&
 	echo "ignored_dir/" >>.gitignore &&
-	git checkout -b submodule &&
-	git submodule add ./. sub &&
-	git -C sub checkout master &&
-	git add sub &&
-	git commit -m submodule &&
 	git checkout master
 '
 
@@ -762,20 +770,16 @@ test_expect_success 'prompt - hide if pwd ignored - inside gitdir (stderr)' '
 
 test_expect_success 'prompt - submodule indicator' '
 	printf " (sub:master)" >expected &&
-	git checkout submodule &&
-	test_when_finished "git checkout master" &&
 	(
 		cd sub &&
-		GIT_PS1_SHOWSUBMODULE=1 &&
+		GIT_PS1_SHOWSUBMODULE=y &&
 		__git_ps1 >"$actual"
 	) &&
 	test_cmp expected "$actual"
 '
 
-test_expect_success 'prompt - submodule indicator - verify false' '
+test_expect_success 'prompt - submodule indicator - disable' '
 	printf " (master)" >expected &&
-	git checkout submodule &&
-	test_when_finished "git checkout master" &&
 	(
 		cd sub &&
 		GIT_PS1_SHOWSUBMODULE= &&
@@ -785,17 +789,29 @@ test_expect_success 'prompt - submodule indicator - verify false' '
 '
 
 test_expect_success 'prompt - submodule indicator - dirty status indicator' '
-	printf " (+sub:b1)" >expected &&
-	git checkout submodule &&
-	git -C sub checkout b1 &&
-	test_when_finished "git checkout master" &&
+	printf " (+sub:dirty)" >expected &&
+	git -C sub checkout dirty &&
+	test_when_finished "git -C sub checkout master" &&
 	(
 		cd sub &&
-		GIT_PS1_SHOWSUBMODULE=1 &&
+		GIT_PS1_SHOWSUBMODULE=y &&
+		GIT_PS1_SHOWDIRTYSTATE=y &&
 		__git_ps1 >"$actual"
 	) &&
 	test_cmp expected "$actual"
 '
 
+test_expect_success 'prompt - submodule indicator - dirty status indicator disable' '
+	printf " (sub:dirty)" >expected &&
+	git -C sub checkout dirty &&
+	test_when_finished "git -C sub checkout master" &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE=y &&
+		GIT_PS1_SHOWDIRTYSTATE= &&
+		__git_ps1 >"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
 
 test_done
