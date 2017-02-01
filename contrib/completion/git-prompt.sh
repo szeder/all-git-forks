@@ -97,8 +97,9 @@
 # If you would like __git_ps1 to indicate that you are in a submodule,
 # set GIT_PS1_SHOWSUBMODULE to a nonempty value. In this case the name
 # of the submodule will be prepended to the branch name (e.g. module:master).
-# The name will be prepended by "+" if the currently checked out submodule
-# commit does not match the SHA-1 found in the index of the containing repository.
+# If you set GIT_PS1_SHOWDIRTYSTATE to a nonempty value, the name will be 
+# prepended by "+" if the currently checked out submodule commit does not 
+# match the SHA-1 found in the index of the containing repository.
 
 # check whether printf supports -v
 __git_printf_supports_v=
@@ -291,25 +292,27 @@ __git_eread ()
 }
 
 # __git_ps1_submodule
-#
-# $1 - git_dir path
-#
-# Returns the name of the submodule if we are currently inside one. The name
-# will be prepended by "+" if the currently checked out submodule commit does
-# not match the SHA-1 found in the index of the containing repository.
+# Requires the git dir set in $g by the caller.
+# Returns the name of the submodule in $sub if we are currently inside one. The 
+# name will be prepended by "+" if the currently checked out submodule commit 
+# does not match the SHA-1 found in the index of the containing repository.
 # NOTE: git_dir looks like in a ...
-# - submodule: "GIT_PARENT/.git/modules/PATH_TO_SUBMODULE"
-# - parent: "GIT_PARENT/.git" (exception "." in .git)
+# - submodule: 	"GIT_PARENT/.git/modules/PATH_TO_SUBMODULE"
+# - parent: 	"GIT_PARENT/.git" (exception "." in .git)
 __git_ps1_submodule ()
 {
-	local git_dir="$1"
+	local git_dir="$g"
 	local submodule_name="$(basename "$git_dir")"
 	if [ "$submodule_name" != ".git" ] && [ "$submodule_name" != "." ]; then
 		local parent_top="${git_dir%.git*}"
 		local submodule_top="${git_dir#*modules/}"
 		local status=""
-		git -C "$parent_top" diff --no-ext-diff --ignore-submodules=dirty --quiet -- "$submodule_top" 2>/dev/null || status="+"
-		printf "$status$submodule_name:"
+		if [ -n "${GIT_PS1_SHOWDIRTYSTATE-}" ] &&
+		   [ "$(git config --bool bash.showDirtyState)" != "false" ]
+		then
+			git -C "$parent_top" diff --no-ext-diff --ignore-submodules=dirty --quiet -- "$submodule_top" 2>/dev/null || status="+"
+		fi
+	sub="$status$submodule_name:"
 	fi
 }
 
@@ -544,7 +547,7 @@ __git_ps1 ()
 
 	local sub=""
 	if [ -n "${GIT_PS1_SHOWSUBMODULE}" ]; then
-		sub="$(__git_ps1_submodule "$g")"
+		__git_ps1_submodule
 	fi
 
 	local f="$w$i$s$u"
