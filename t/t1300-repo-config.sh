@@ -1177,6 +1177,39 @@ test_expect_success 'urlmatch' '
 	test_cmp expect actual
 '
 
+test_expect_success 'urlmatch accumulates values' '
+	cat >.git/config <<-\EOF &&
+	[http]
+		extraheader = x-magic-one: abra
+		extraheader = x-magic-two: cadabra
+	[http "https://header.example.com"]
+		extraheader = x-magic-three: simsala
+	EOF
+
+	{
+		echo http.extraheader x-magic-one: abra &&
+		echo http.extraheader x-magic-two: cadabra
+	} >expect &&
+	git config --get-urlmatch http https://example.com >actual &&
+	test_cmp expect actual &&
+
+	{
+		echo http.extraheader x-magic-one: abra &&
+		echo http.extraheader x-magic-two: cadabra &&
+		echo http.extraheader x-magic-three: simsala
+	} >expect &&
+	git config --get-urlmatch http https://header.example.com >actual &&
+	test_cmp expect actual &&
+
+	{
+		echo http.extraheader x-magic-one: abra &&
+		echo http.extraheader x-magic-two: cadabra &&
+		echo http.extraheader x-magic-three: simsala
+	} >expect &&
+	git config --get-urlmatch http.extraheader https://header.example.com >actual &&
+	test_cmp expect actual
+'
+
 # good section hygiene
 test_expect_failure 'unsetting the last key in a section removes header' '
 	cat >.git/config <<-\EOF &&
