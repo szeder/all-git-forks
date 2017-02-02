@@ -263,15 +263,15 @@ check_language () {
 		>expect
 		;;
 	?*)
-		echo "Accept-Language: $1" >expect
+		echo "=> Send header: Accept-Language: $1" >expect
 		;;
 	esac &&
-	GIT_CURL_VERBOSE=1 \
+	GIT_TRACE_CURL=true \
 	LANGUAGE=$2 \
 	git ls-remote "$HTTPD_URL/dumb/repo.git" >output 2>&1 &&
 	tr -d '\015' <output |
 	sort -u |
-	sed -ne '/^Accept-Language:/ p' >actual &&
+	sed -ne '/^=> Send header: Accept-Language:/ p' >actual &&
 	test_cmp expect actual
 }
 
@@ -295,8 +295,77 @@ ja;q=0.95, zh;q=0.94, sv;q=0.93, pt;q=0.92, nb;q=0.91, *;q=0.90" \
 '
 
 test_expect_success 'git client does not send an empty Accept-Language' '
-	GIT_CURL_VERBOSE=1 LANGUAGE= git ls-remote "$HTTPD_URL/dumb/repo.git" 2>stderr &&
-	! grep "^Accept-Language:" stderr
+	GIT_TRACE_CURL=true LANGUAGE= git ls-remote "$HTTPD_URL/dumb/repo.git" 2>stderr &&
+	! grep "^=> Send header: Accept-Language:" stderr
+'
+
+test_expect_success 'remote-http complains cleanly about malformed urls' '
+	# do not actually issue "list" or other commands, as we do not
+	# want to rely on what curl would actually do with such a broken
+	# URL. This is just about making sure we do not segfault during
+	# initialization.
+	test_must_fail git remote-http http::/example.com/repo.git
+'
+
+test_expect_success 'redirects can be forbidden/allowed' '
+	test_must_fail git -c http.followRedirects=false \
+		clone $HTTPD_URL/dumb-redir/repo.git dumb-redir &&
+	git -c http.followRedirects=true \
+		clone $HTTPD_URL/dumb-redir/repo.git dumb-redir 2>stderr
+'
+
+test_expect_success 'redirects are reported to stderr' '
+	# just look for a snippet of the redirected-to URL
+	test_i18ngrep /dumb/ stderr
+'
+
+test_expect_success 'non-initial redirects can be forbidden' '
+	test_must_fail git -c http.followRedirects=initial \
+		clone $HTTPD_URL/redir-objects/repo.git redir-objects &&
+	git -c http.followRedirects=true \
+		clone $HTTPD_URL/redir-objects/repo.git redir-objects
+'
+
+test_expect_success 'http.followRedirects defaults to "initial"' '
+	test_must_fail git clone $HTTPD_URL/redir-objects/repo.git default
+'
+
+# The goal is for a clone of the "evil" repository, which has no objects
+# itself, to cause the client to fetch objects from the "victim" repository.
+test_expect_success 'set up evil alternates scheme' '
+	victim=$HTTPD_DOCUMENT_ROOT_PATH/victim.git &&
+	git init --bare "$victim" &&
+	git -C "$victim" --work-tree=. commit --allow-empty -m secret &&
+	git -C "$victim" repack -ad &&
+	git -C "$victim" update-server-info &&
+	sha1=$(git -C "$victim" rev-parse HEAD) &&
+
+	evil=$HTTPD_DOCUMENT_ROOT_PATH/evil.git &&
+	git init --bare "$evil" &&
+	# do this by hand to avoid object existence check
+	printf "%s\\t%s\\n" $sha1 refs/heads/master >"$evil/info/refs"
+'
+
+# Here we'll just redirect via HTTP. In a real-world attack these would be on
+# different servers, but we should reject it either way.
+test_expect_success 'http-alternates is a non-initial redirect' '
+	echo "$HTTPD_URL/dumb/victim.git/objects" \
+		>"$evil/objects/info/http-alternates" &&
+	test_must_fail git -c http.followRedirects=initial \
+		clone $HTTPD_URL/dumb/evil.git evil-initial &&
+	git -c http.followRedirects=true \
+		clone $HTTPD_URL/dumb/evil.git evil-initial
+'
+
+# Curl supports a lot of protocols that we'd prefer not to allow
+# http-alternates to use, but it's hard to test whether curl has
+# accessed, say, the SMTP protocol, because we are not running an SMTP server.
+# But we can check that it does not allow access to file://, which would
+# otherwise allow this clone to complete.
+test_expect_success 'http-alternates cannot point at funny protocols' '
+	echo "file://$victim/objects" >"$evil/objects/info/http-alternates" &&
+	test_must_fail git -c http.followRedirects=true \
+		clone "$HTTPD_URL/dumb/evil.git" evil-file
 '
 
 stop_httpd

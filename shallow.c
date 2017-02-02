@@ -10,6 +10,8 @@
 #include "diff.h"
 #include "revision.h"
 #include "commit-slab.h"
+#include "revision.h"
+#include "list-objects.h"
 
 static int is_shallow = -1;
 static struct stat_validity shallow_stat;
@@ -137,6 +139,82 @@ struct commit_list *get_shallow_commits(struct object_array *heads, int depth,
 	return result;
 }
 
+static void show_commit(struct commit *commit, void *data)
+{
+	commit_list_insert(commit, data);
+}
+
+/*
+ * Given rev-list arguments, run rev-list. All reachable commits
+ * except border ones are marked with not_shallow_flag. Border commits
+ * are marked with shallow_flag. The list of border/shallow commits
+ * are also returned.
+ */
+struct commit_list *get_shallow_commits_by_rev_list(int ac, const char **av,
+						    int shallow_flag,
+						    int not_shallow_flag)
+{
+	struct commit_list *result = NULL, *p;
+	struct commit_list *not_shallow_list = NULL;
+	struct rev_info revs;
+	int both_flags = shallow_flag | not_shallow_flag;
+
+	/*
+	 * SHALLOW (excluded) and NOT_SHALLOW (included) should not be
+	 * set at this point. But better be safe than sorry.
+	 */
+	clear_object_flags(both_flags);
+
+	is_repository_shallow(); /* make sure shallows are read */
+
+	init_revisions(&revs, NULL);
+	save_commit_buffer = 0;
+	setup_revisions(ac, av, &revs, NULL);
+
+	if (prepare_revision_walk(&revs))
+		die("revision walk setup failed");
+	traverse_commit_list(&revs, show_commit, NULL, &not_shallow_list);
+
+	/* Mark all reachable commits as NOT_SHALLOW */
+	for (p = not_shallow_list; p; p = p->next)
+		p->item->object.flags |= not_shallow_flag;
+
+	/*
+	 * mark border commits SHALLOW + NOT_SHALLOW.
+	 * We cannot clear NOT_SHALLOW right now. Imagine border
+	 * commit A is processed first, then commit B, whose parent is
+	 * A, later. If NOT_SHALLOW on A is cleared at step 1, B
+	 * itself is considered border at step 2, which is incorrect.
+	 */
+	for (p = not_shallow_list; p; p = p->next) {
+		struct commit *c = p->item;
+		struct commit_list *parent;
+
+		if (parse_commit(c))
+			die("unable to parse commit %s",
+			    oid_to_hex(&c->object.oid));
+
+		for (parent = c->parents; parent; parent = parent->next)
+			if (!(parent->item->object.flags & not_shallow_flag)) {
+				c->object.flags |= shallow_flag;
+				commit_list_insert(c, &result);
+				break;
+			}
+	}
+	free_commit_list(not_shallow_list);
+
+	/*
+	 * Now we can clean up NOT_SHALLOW on border commits. Having
+	 * both flags set can confuse the caller.
+	 */
+	for (p = result; p; p = p->next) {
+		struct object *o = &p->item->object;
+		if ((o->flags & both_flags) == both_flags)
+			o->flags &= ~not_shallow_flag;
+	}
+	return result;
+}
+
 static void check_shallow_file_for_update(void)
 {
 	if (is_shallow == -1)
@@ -260,7 +338,7 @@ static int advertise_shallow_grafts_cb(const struct commit_graft *graft, void *c
 {
 	int fd = *(int *)cb;
 	if (graft->nr_parent == -1)
-		packet_write(fd, "shallow %s\n", oid_to_hex(&graft->oid));
+		packet_write_fmt(fd, "shallow %s\n", oid_to_hex(&graft->oid));
 	return 0;
 }
 
@@ -353,12 +431,14 @@ void remove_nonexistent_theirs_shallow(struct shallow_info *info)
 
 define_commit_slab(ref_bitmap, uint32_t *);
 
+#define POOL_SIZE (512 * 1024)
+
 struct paint_info {
 	struct ref_bitmap ref_bitmap;
 	unsigned nr_bits;
-	char **slab;
+	char **pools;
 	char *free, *end;
-	unsigned slab_count;
+	unsigned pool_count;
 };
 
 static uint32_t *paint_alloc(struct paint_info *info)
@@ -366,12 +446,15 @@ static uint32_t *paint_alloc(struct paint_info *info)
 	unsigned nr = (info->nr_bits + 31) / 32;
 	unsigned size = nr * sizeof(uint32_t);
 	void *p;
-	if (!info->slab_count || info->free + size > info->end) {
-		info->slab_count++;
-		REALLOC_ARRAY(info->slab, info->slab_count);
-		info->free = xmalloc(COMMIT_SLAB_SIZE);
-		info->slab[info->slab_count - 1] = info->free;
-		info->end = info->free + COMMIT_SLAB_SIZE;
+	if (!info->pool_count || size > info->end - info->free) {
+		if (size > POOL_SIZE)
+			die("BUG: pool size too small for %d in paint_alloc()",
+			    size);
+		info->pool_count++;
+		REALLOC_ARRAY(info->pools, info->pool_count);
+		info->free = xmalloc(POOL_SIZE);
+		info->pools[info->pool_count - 1] = info->free;
+		info->end = info->free + POOL_SIZE;
 	}
 	p = info->free;
 	info->free += size;
@@ -384,19 +467,19 @@ static uint32_t *paint_alloc(struct paint_info *info)
  * all walked commits.
  */
 static void paint_down(struct paint_info *info, const unsigned char *sha1,
-		       int id)
+		       unsigned int id)
 {
 	unsigned int i, nr;
 	struct commit_list *head = NULL;
 	int bitmap_nr = (info->nr_bits + 31) / 32;
-	size_t bitmap_size = st_mult(bitmap_nr, sizeof(uint32_t));
+	size_t bitmap_size = st_mult(sizeof(uint32_t), bitmap_nr);
 	uint32_t *tmp = xmalloc(bitmap_size); /* to be freed before return */
 	uint32_t *bitmap = paint_alloc(info);
 	struct commit *c = lookup_commit_reference_gently(sha1, 1);
 	if (!c)
 		return;
 	memset(bitmap, 0, bitmap_size);
-	bitmap[id / 32] |= (1 << (id % 32));
+	bitmap[id / 32] |= (1U << (id % 32));
 	commit_list_insert(c, &head);
 	while (head) {
 		struct commit_list *p;
@@ -429,12 +512,8 @@ static void paint_down(struct paint_info *info, const unsigned char *sha1,
 			    oid_to_hex(&c->object.oid));
 
 		for (p = c->parents; p; p = p->next) {
-			uint32_t **p_refs = ref_bitmap_at(&info->ref_bitmap,
-							  p->item);
 			if (p->item->object.flags & SEEN)
 				continue;
-			if (*p_refs == NULL || *p_refs == *refs)
-				*p_refs = *refs;
 			commit_list_insert(p->item, &head);
 		}
 	}
@@ -546,9 +625,9 @@ void assign_shallow_commits_to_refs(struct shallow_info *info,
 		post_assign_shallow(info, &pi.ref_bitmap, ref_status);
 
 	clear_ref_bitmap(&pi.ref_bitmap);
-	for (i = 0; i < pi.slab_count; i++)
-		free(pi.slab[i]);
-	free(pi.slab);
+	for (i = 0; i < pi.pool_count; i++)
+		free(pi.pools[i]);
+	free(pi.pools);
 	free(shallow);
 }
 
@@ -570,11 +649,11 @@ static int add_ref(const char *refname, const struct object_id *oid,
 
 static void update_refstatus(int *ref_status, int nr, uint32_t *bitmap)
 {
-	int i;
+	unsigned int i;
 	if (!ref_status)
 		return;
 	for (i = 0; i < nr; i++)
-		if (bitmap[i / 32] & (1 << (i % 32)))
+		if (bitmap[i / 32] & (1U << (i % 32)))
 			ref_status[i]++;
 }
 

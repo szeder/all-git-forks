@@ -1,6 +1,15 @@
 #ifndef GIT_COMPAT_UTIL_H
 #define GIT_COMPAT_UTIL_H
 
+#ifdef USE_MSVC_CRTDBG
+/*
+ * For these to work they must appear very early in each
+ * file -- before most of the standard header files.
+ */
+#include <stdlib.h>
+#include <crtdbg.h>
+#endif
+
 #define _FILE_OFFSET_BITS 64
 
 
@@ -42,6 +51,23 @@
 #endif
 #endif
 
+/*
+ * Under certain circumstances Git's source code is cleverer than the C
+ * compiler when the latter warns about some "uninitialized value", e.g. when
+ * a value is both initialized and used under the same condition.
+ *
+ * GCC can be fooled to not spit out this warning by using the construct:
+ * "int value = value;". Other C compilers are not that easily fooled and would
+ * require a #pragma (which is not portable, and would litter the source code).
+ *
+ * To keep things simple, we only fool GCC, and initialize such values instead
+ * when compiling with other C compilers.
+ */
+#ifdef __GNUC__
+#define FAKE_INIT(a, b, c) a b = b
+#else
+#define FAKE_INIT(a, b, c) a b = c
+#endif
 
 /*
  * BUILD_ASSERT_OR_ZERO - assert a build-time dependency, as an expression.
@@ -269,6 +295,33 @@ extern char *gitdirname(char *);
 
 #ifndef NO_ICONV
 #include <iconv.h>
+#ifdef _MSC_VER
+/*
+ * At least version 1.14.0.11 of the libiconv NuPkg at
+ * https://www.nuget.org/packages/libiconv/ does not set errno at all.
+ *
+ * Let's simulate it by testing whether we might have possibly run out of
+ * space.
+ */
+static inline size_t msvc_iconv(iconv_t conv,
+	const char **inpos, size_t *insize,
+	char **outpos, size_t *outsize)
+{
+	int saved_errno = errno;
+	size_t res;
+
+	errno = ENOENT;
+	res = iconv(conv, inpos, insize, outpos, outsize);
+	if (!res)
+		errno = saved_errno;
+	else if (errno == ENOENT)
+		errno = *outsize < 16 ? E2BIG : 0;
+
+	return res;
+}
+#undef iconv
+#define iconv msvc_iconv
+#endif
 #endif
 
 #ifndef NO_OPENSSL
@@ -332,6 +385,14 @@ extern char *gitdirname(char *);
 #define _PATH_DEFPATH "/usr/local/bin:/usr/bin:/bin"
 #endif
 
+#ifndef platform_core_config
+static inline int noop_core_config(const char *var, const char *value)
+{
+	return 0;
+}
+#define platform_core_config noop_core_config
+#endif
+
 #ifndef has_dos_drive_prefix
 static inline int git_has_dos_drive_prefix(const char *path)
 {
@@ -346,14 +407,6 @@ static inline int git_skip_dos_drive_prefix(char **path)
 	return 0;
 }
 #define skip_dos_drive_prefix git_skip_dos_drive_prefix
-#endif
-
-#ifndef has_unc_prefix
-static inline int git_has_unc_prefix(const char *path)
-{
-	return 0;
-}
-#define has_unc_prefix git_has_unc_prefix
 #endif
 
 #ifndef is_dir_sep
@@ -380,12 +433,12 @@ static inline char *git_find_last_dir_sep(const char *path)
 #define find_last_dir_sep git_find_last_dir_sep
 #endif
 
-#ifndef git_program_data_config
-#define git_program_data_config() NULL
-#endif
-
 #ifndef query_user_email
 #define query_user_email() NULL
+#endif
+
+#ifndef git_program_data_config
+#define git_program_data_config() NULL
 #endif
 
 #if defined(__HP_cc) && (__HP_cc >= 61000)
@@ -427,7 +480,9 @@ extern NORETURN void usagef(const char *err, ...) __attribute__((format (printf,
 extern NORETURN void die(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern NORETURN void die_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern int error(const char *err, ...) __attribute__((format (printf, 1, 2)));
+extern int error_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 extern void warning(const char *err, ...) __attribute__((format (printf, 1, 2)));
+extern void warning_errno(const char *err, ...) __attribute__((format (printf, 1, 2)));
 
 #ifndef NO_OPENSSL
 #ifdef APPLE_COMMON_CRYPTO
@@ -452,10 +507,14 @@ static inline int const_error(void)
 	return -1;
 }
 #define error(...) (error(__VA_ARGS__), const_error())
+#define error_errno(...) (error_errno(__VA_ARGS__), const_error())
 #endif
 
 extern void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_list params));
 extern void set_error_routine(void (*routine)(const char *err, va_list params));
+extern void (*get_error_routine(void))(const char *err, va_list params);
+extern void set_warn_routine(void (*routine)(const char *warn, va_list params));
+extern void (*get_warn_routine(void))(const char *warn, va_list params);
 extern void set_die_is_recursing_routine(int (*routine)(void));
 extern void set_error_handle(FILE *);
 
@@ -486,6 +545,23 @@ static inline int skip_prefix(const char *str, const char *prefix,
 			return 1;
 		}
 	} while (*str++ == *prefix++);
+	return 0;
+}
+
+/*
+ * Like skip_prefix, but promises never to read past "len" bytes of the input
+ * buffer, and returns the remaining number of bytes in "out" via "outlen".
+ */
+static inline int skip_prefix_mem(const char *buf, size_t len,
+				  const char *prefix,
+				  const char **out, size_t *outlen)
+{
+	size_t prefix_len = strlen(prefix);
+	if (prefix_len <= len && !memcmp(buf, prefix, prefix_len)) {
+		*out = buf + prefix_len;
+		*outlen = len - prefix_len;
+		return 1;
+	}
 	return 0;
 }
 
@@ -662,8 +738,20 @@ void *gitmemmem(const void *haystack, size_t haystacklen,
                 const void *needle, size_t needlelen);
 #endif
 
+#ifdef OVERRIDE_STRDUP
+#ifdef strdup
+#undef strdup
+#endif
+#define strdup gitstrdup
+char *gitstrdup(const char *s);
+#endif
+
 #ifdef NO_GETPAGESIZE
 #define getpagesize() sysconf(_SC_PAGESIZE)
+#endif
+
+#ifndef O_CLOEXEC
+#define O_CLOEXEC 0
 #endif
 
 #ifdef FREAD_READS_DIRECTORIES
@@ -784,6 +872,14 @@ extern FILE *fopen_for_writing(const char *path);
 #define ALLOC_ARRAY(x, alloc) (x) = xmalloc(st_mult(sizeof(*(x)), (alloc)))
 #define REALLOC_ARRAY(x, alloc) (x) = xrealloc((x), st_mult(sizeof(*(x)), (alloc)))
 
+#define COPY_ARRAY(dst, src, n) copy_array((dst), (src), (n), sizeof(*(dst)) + \
+	BUILD_ASSERT_OR_ZERO(sizeof(*(dst)) == sizeof(*(src))))
+static inline void copy_array(void *dst, const void *src, size_t n, size_t size)
+{
+	if (n)
+		memcpy(dst, src, st_mult(size, n));
+}
+
 /*
  * These functions help you allocate structs with flex arrays, and copy
  * the data directly into the array. For example, if you had:
@@ -814,7 +910,7 @@ extern FILE *fopen_for_writing(const char *path);
  * you can do:
  *
  *   struct foo *f;
- *   FLEX_ALLOC_STR(f, name, src);
+ *   FLEXPTR_ALLOC_STR(f, name, src);
  *
  * and "name" will point to a block of memory after the struct, which will be
  * freed along with the struct (but the pointer can be repointed anywhere).
@@ -826,25 +922,20 @@ extern FILE *fopen_for_writing(const char *path);
  * times, and it must be assignable as an lvalue.
  */
 #define FLEX_ALLOC_MEM(x, flexname, buf, len) do { \
-	(x) = NULL; /* silence -Wuninitialized for offset calculation */ \
-	(x) = xalloc_flex(sizeof(*(x)), (char *)(&((x)->flexname)) - (char *)(x), (buf), (len)); \
+	size_t flex_array_len_ = (len); \
+	(x) = xcalloc(1, st_add3(sizeof(*(x)), flex_array_len_, 1)); \
+	memcpy((void *)(x)->flexname, (buf), flex_array_len_); \
 } while (0)
 #define FLEXPTR_ALLOC_MEM(x, ptrname, buf, len) do { \
-	(x) = xalloc_flex(sizeof(*(x)), sizeof(*(x)), (buf), (len)); \
+	size_t flex_array_len_ = (len); \
+	(x) = xcalloc(1, st_add3(sizeof(*(x)), flex_array_len_, 1)); \
+	memcpy((x) + 1, (buf), flex_array_len_); \
 	(x)->ptrname = (void *)((x)+1); \
 } while(0)
 #define FLEX_ALLOC_STR(x, flexname, str) \
 	FLEX_ALLOC_MEM((x), flexname, (str), strlen(str))
 #define FLEXPTR_ALLOC_STR(x, ptrname, str) \
 	FLEXPTR_ALLOC_MEM((x), ptrname, (str), strlen(str))
-
-static inline void *xalloc_flex(size_t base_len, size_t offset,
-				const void *src, size_t src_len)
-{
-	unsigned char *ret = xcalloc(1, st_add3(base_len, src_len, 1));
-	memcpy(ret + offset, src, src_len);
-	return ret;
-}
 
 static inline char *xstrdup_or_null(const char *str)
 {
@@ -960,6 +1051,27 @@ void git_qsort(void *base, size_t nmemb, size_t size,
 #define qsort git_qsort
 #endif
 
+#define QSORT(base, n, compar) sane_qsort((base), (n), sizeof(*(base)), compar)
+static inline void sane_qsort(void *base, size_t nmemb, size_t size,
+			      int(*compar)(const void *, const void *))
+{
+	if (nmemb > 1)
+		qsort(base, nmemb, size, compar);
+}
+
+#ifndef REG_STARTEND
+#error "Git requires REG_STARTEND support. Compile with NO_REGEX=NeedsStartEnd"
+#endif
+
+static inline int regexec_buf(const regex_t *preg, const char *buf, size_t size,
+			      size_t nmatch, regmatch_t pmatch[], int eflags)
+{
+	assert(nmatch > 0 && pmatch);
+	pmatch[0].rm_so = 0;
+	pmatch[0].rm_eo = size;
+	return regexec(preg, buf, nmatch, pmatch, eflags | REG_STARTEND);
+}
+
 #ifndef DIR_HAS_BSD_GROUP_SEMANTICS
 # define FORCE_DIR_SET_GID S_ISGID
 #else
@@ -1074,5 +1186,7 @@ struct tm *git_gmtime_r(const time_t *, struct tm *);
 #ifndef enable_fscache
 #define enable_fscache(x) /* noop */
 #endif
+
+extern int cmd_main(int, const char **);
 
 #endif

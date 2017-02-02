@@ -18,6 +18,12 @@ static const char *const git_repack_usage[] = {
 	NULL
 };
 
+static const char incremental_bitmap_conflict_error[] = N_(
+"Incremental repacks are incompatible with bitmap indexes.  Use\n"
+"--no-write-bitmap-index or disable the pack.writebitmaps configuration."
+);
+
+
 static int repack_config(const char *var, const char *value, void *cb)
 {
 	if (!strcmp(var, "repack.usedeltabaseoffset")) {
@@ -146,6 +152,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	int pack_everything = 0;
 	int delete_redundant = 0;
 	const char *unpack_unreachable = NULL;
+	int keep_unreachable = 0;
 	const char *window = NULL, *window_memory = NULL;
 	const char *depth = NULL;
 	const char *max_pack_size = NULL;
@@ -175,6 +182,8 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 				N_("write bitmap index")),
 		OPT_STRING(0, "unpack-unreachable", &unpack_unreachable, N_("approxidate"),
 				N_("with -A, do not loosen objects older than this")),
+		OPT_BOOL('k', "keep-unreachable", &keep_unreachable,
+				N_("with -a, repack unreachable objects")),
 		OPT_STRING(0, "window", &window, N_("n"),
 				N_("size of the window used for delta compression")),
 		OPT_STRING(0, "window-memory", &window_memory, N_("bytes"),
@@ -196,8 +205,15 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 	if (delete_redundant && repository_format_precious_objects)
 		die(_("cannot delete packs in a precious-objects repo"));
 
+	if (keep_unreachable &&
+	    (unpack_unreachable || (pack_everything & LOOSEN_UNREACHABLE)))
+		die(_("--keep-unreachable and -A are incompatible"));
+
 	if (pack_kept_objects < 0)
 		pack_kept_objects = write_bitmaps;
+
+	if (write_bitmaps && !(pack_everything & ALL_INTO_ONE))
+		die(_(incremental_bitmap_conflict_error));
 
 	packdir = mkpathdup("%s/pack", get_object_directory());
 	packtmp = mkpathdup("%s/.tmp-%d-pack", packdir, (int)getpid());
@@ -239,6 +255,9 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 			} else if (pack_everything & LOOSEN_UNREACHABLE) {
 				argv_array_push(&cmd.args,
 						"--unpack-unreachable");
+			} else if (keep_unreachable) {
+				argv_array_push(&cmd.args, "--keep-unreachable");
+				argv_array_push(&cmd.args, "--pack-loose-unreachable");
 			} else {
 				argv_array_push(&cmd.env_array, "GIT_REF_PARANOIA=1");
 			}
@@ -380,7 +399,7 @@ int cmd_repack(int argc, const char **argv, const char *prefix)
 					  item->string,
 					  exts[ext].name);
 			if (remove_path(fname))
-				warning(_("removing '%s' failed"), fname);
+				warning(_("failed to remove '%s'"), fname);
 			free(fname);
 		}
 	}

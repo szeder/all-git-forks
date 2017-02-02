@@ -16,7 +16,7 @@ int trust_executable_bit = 1;
 int trust_ctime = 1;
 int check_stat = 1;
 int has_symlinks = 1;
-int minimum_abbrev = 4, default_abbrev = 7;
+int minimum_abbrev = 4, default_abbrev = -1;
 int ignore_case;
 int assume_unchanged;
 int prefer_symlink_refs;
@@ -31,15 +31,15 @@ const char *git_log_output_encoding;
 const char *apply_default_whitespace;
 const char *apply_default_ignorewhitespace;
 const char *git_attributes_file;
+const char *git_hooks_path;
 int zlib_compression_level = Z_BEST_SPEED;
 int core_compression_level;
-int core_compression_seen;
+int pack_compression_level = Z_DEFAULT_COMPRESSION;
 int fsync_object_files;
 size_t packed_git_window_size = DEFAULT_PACKED_GIT_WINDOW_SIZE;
 size_t packed_git_limit = DEFAULT_PACKED_GIT_LIMIT;
 size_t delta_base_cache_limit = 96 * 1024 * 1024;
 unsigned long big_file_threshold = 512 * 1024 * 1024;
-const char *pager_program;
 int pager_use_color = 1;
 const char *editor_program;
 const char *askpass_program;
@@ -63,9 +63,6 @@ int core_apply_sparse_checkout;
 int merge_log_config = -1;
 int precomposed_unicode = -1; /* see probe_utf8_pathname_composition() */
 unsigned long pack_size_limit_cfg;
-enum hide_dotfiles_type hide_dotfiles = HIDE_DOTFILES_DOTGITONLY;
-int core_fscache;
-int core_long_paths;
 
 #ifndef PROTECT_HFS_DEFAULT
 #define PROTECT_HFS_DEFAULT 0
@@ -101,6 +98,8 @@ static char *work_tree;
 static const char *namespace;
 static size_t namespace_len;
 
+static const char *super_prefix;
+
 static const char *git_dir, *git_common_dir;
 static char *git_object_dir, *git_index_file, *git_graft_file;
 int git_db_env, git_index_env, git_graft_env, git_common_dir_env;
@@ -121,6 +120,7 @@ const char * const local_repo_env[] = {
 	NO_REPLACE_OBJECTS_ENVIRONMENT,
 	GIT_REPLACE_REF_BASE_ENVIRONMENT,
 	GIT_PREFIX_ENVIRONMENT,
+	GIT_SUPER_PREFIX_ENVIRONMENT,
 	GIT_SHALLOW_FILE_ENVIRONMENT,
 	GIT_COMMON_DIR_ENVIRONMENT,
 	NULL
@@ -197,6 +197,13 @@ int is_bare_repository(void)
 	return is_bare_repository_cfg && !get_git_work_tree();
 }
 
+int have_git_dir(void)
+{
+	return startup_info->have_repository
+		|| git_dir
+		|| getenv(GIT_DIR_ENVIRONMENT);
+}
+
 const char *get_git_dir(void)
 {
 	if (!git_dir)
@@ -221,6 +228,16 @@ const char *strip_namespace(const char *namespaced_ref)
 	if (!starts_with(namespaced_ref, get_git_namespace()))
 		return NULL;
 	return namespaced_ref + namespace_len;
+}
+
+const char *get_super_prefix(void)
+{
+	static int initialized;
+	if (!initialized) {
+		super_prefix = getenv(GIT_SUPER_PREFIX_ENVIRONMENT);
+		initialized = 1;
+	}
+	return super_prefix;
 }
 
 static int git_work_tree_initialized;
@@ -345,4 +362,9 @@ int get_shared_repository(void)
 		need_shared_repository_from_config = 0;
 	}
 	return the_shared_repository;
+}
+
+void reset_shared_repository(void)
+{
+	need_shared_repository_from_config = 1;
 }

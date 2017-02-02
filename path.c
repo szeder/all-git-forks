@@ -5,6 +5,8 @@
 #include "strbuf.h"
 #include "string-list.h"
 #include "dir.h"
+#include "worktree.h"
+#include "submodule-config.h"
 #include "exec_cmd.h"
 
 static int get_st_mode_bits(const char *path, int *mode)
@@ -24,7 +26,8 @@ static struct strbuf *get_pathname(void)
 		STRBUF_INIT, STRBUF_INIT, STRBUF_INIT, STRBUF_INIT
 	};
 	static int index;
-	struct strbuf *sb = &pathname_array[3 & ++index];
+	struct strbuf *sb = &pathname_array[index];
+	index = (index + 1) % ARRAY_SIZE(pathname_array);
 	strbuf_reset(sb);
 	return sb;
 }
@@ -380,14 +383,17 @@ static void adjust_git_path(struct strbuf *buf, int git_dir_len)
 			      get_index_file(), strlen(get_index_file()));
 	else if (git_db_env && dir_prefix(base, "objects"))
 		replace_dir(buf, git_dir_len + 7, get_object_directory());
+	else if (git_hooks_path && dir_prefix(base, "hooks"))
+		replace_dir(buf, git_dir_len + 5, git_hooks_path);
 	else if (git_common_dir_env)
 		update_common_dir(buf, git_dir_len, NULL);
 }
 
-static void do_git_path(struct strbuf *buf, const char *fmt, va_list args)
+static void do_git_path(const struct worktree *wt, struct strbuf *buf,
+			const char *fmt, va_list args)
 {
 	int gitdir_len;
-	strbuf_addstr(buf, get_git_dir());
+	strbuf_addstr(buf, get_worktree_git_dir(wt));
 	if (buf->len && !is_dir_sep(buf->buf[buf->len - 1]))
 		strbuf_addch(buf, '/');
 	gitdir_len = buf->len;
@@ -401,7 +407,7 @@ char *git_path_buf(struct strbuf *buf, const char *fmt, ...)
 	va_list args;
 	strbuf_reset(buf);
 	va_start(args, fmt);
-	do_git_path(buf, fmt, args);
+	do_git_path(NULL, buf, fmt, args);
 	va_end(args);
 	return buf->buf;
 }
@@ -410,7 +416,7 @@ void strbuf_git_path(struct strbuf *sb, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	do_git_path(sb, fmt, args);
+	do_git_path(NULL, sb, fmt, args);
 	va_end(args);
 }
 
@@ -419,7 +425,7 @@ const char *git_path(const char *fmt, ...)
 	struct strbuf *pathname = get_pathname();
 	va_list args;
 	va_start(args, fmt);
-	do_git_path(pathname, fmt, args);
+	do_git_path(NULL, pathname, fmt, args);
 	va_end(args);
 	return pathname->buf;
 }
@@ -429,7 +435,7 @@ char *git_pathdup(const char *fmt, ...)
 	struct strbuf path = STRBUF_INIT;
 	va_list args;
 	va_start(args, fmt);
-	do_git_path(&path, fmt, args);
+	do_git_path(NULL, &path, fmt, args);
 	va_end(args);
 	return strbuf_detach(&path, NULL);
 }
@@ -455,12 +461,26 @@ const char *mkpath(const char *fmt, ...)
 	return cleanup_path(pathname->buf);
 }
 
-static void do_submodule_path(struct strbuf *buf, const char *path,
-			      const char *fmt, va_list args)
+const char *worktree_git_path(const struct worktree *wt, const char *fmt, ...)
+{
+	struct strbuf *pathname = get_pathname();
+	va_list args;
+	va_start(args, fmt);
+	do_git_path(wt, pathname, fmt, args);
+	va_end(args);
+	return pathname->buf;
+}
+
+/* Returns 0 on success, negative on failure. */
+#define SUBMODULE_PATH_ERR_NOT_CONFIGURED -1
+static int do_submodule_path(struct strbuf *buf, const char *path,
+			     const char *fmt, va_list args)
 {
 	const char *git_dir;
 	struct strbuf git_submodule_common_dir = STRBUF_INIT;
 	struct strbuf git_submodule_dir = STRBUF_INIT;
+	const struct submodule *sub;
+	int err = 0;
 
 	strbuf_addstr(buf, path);
 	strbuf_complete(buf, '/');
@@ -471,8 +491,19 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 		strbuf_reset(buf);
 		strbuf_addstr(buf, git_dir);
 	}
+	if (!is_git_directory(buf->buf)) {
+		gitmodules_config();
+		sub = submodule_from_path(null_sha1, path);
+		if (!sub) {
+			err = SUBMODULE_PATH_ERR_NOT_CONFIGURED;
+			goto cleanup;
+		}
+		strbuf_reset(buf);
+		strbuf_git_path(buf, "%s/%s", "modules", sub->name);
+	}
+
 	strbuf_addch(buf, '/');
-	strbuf_addstr(&git_submodule_dir, buf->buf);
+	strbuf_addbuf(&git_submodule_dir, buf);
 
 	strbuf_vaddf(buf, fmt, args);
 
@@ -481,26 +512,66 @@ static void do_submodule_path(struct strbuf *buf, const char *path,
 
 	strbuf_cleanup_path(buf);
 
+cleanup:
 	strbuf_release(&git_submodule_dir);
 	strbuf_release(&git_submodule_common_dir);
+
+	return err;
 }
 
 char *git_pathdup_submodule(const char *path, const char *fmt, ...)
 {
+	int err;
 	va_list args;
 	struct strbuf buf = STRBUF_INIT;
 	va_start(args, fmt);
-	do_submodule_path(&buf, path, fmt, args);
+	err = do_submodule_path(&buf, path, fmt, args);
 	va_end(args);
+	if (err) {
+		strbuf_release(&buf);
+		return NULL;
+	}
 	return strbuf_detach(&buf, NULL);
 }
 
-void strbuf_git_path_submodule(struct strbuf *buf, const char *path,
-			       const char *fmt, ...)
+int strbuf_git_path_submodule(struct strbuf *buf, const char *path,
+			      const char *fmt, ...)
+{
+	int err;
+	va_list args;
+	va_start(args, fmt);
+	err = do_submodule_path(buf, path, fmt, args);
+	va_end(args);
+
+	return err;
+}
+
+static void do_git_common_path(struct strbuf *buf,
+			       const char *fmt,
+			       va_list args)
+{
+	strbuf_addstr(buf, get_git_common_dir());
+	if (buf->len && !is_dir_sep(buf->buf[buf->len - 1]))
+		strbuf_addch(buf, '/');
+	strbuf_vaddf(buf, fmt, args);
+	strbuf_cleanup_path(buf);
+}
+
+const char *git_common_path(const char *fmt, ...)
+{
+	struct strbuf *pathname = get_pathname();
+	va_list args;
+	va_start(args, fmt);
+	do_git_common_path(pathname, fmt, args);
+	va_end(args);
+	return pathname->buf;
+}
+
+void strbuf_git_common_path(struct strbuf *sb, const char *fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
-	do_submodule_path(buf, path, fmt, args);
+	do_git_common_path(sb, fmt, args);
 	va_end(args);
 }
 
@@ -925,7 +996,7 @@ const char *remove_leading_path(const char *in, const char *prefix)
  *
  * Performs the following normalizations on src, storing the result in dst:
  * - Ensures that components are separated by '/' (Windows only)
- * - Squashes sequences of '/'.
+ * - Squashes sequences of '/' except "//server/share" on Windows
  * - Removes "." components.
  * - Removes ".." components, and the components the precede them.
  * Returns failure (non-zero) if a ".." component appears as first path
@@ -948,17 +1019,22 @@ const char *remove_leading_path(const char *in, const char *prefix)
 int normalize_path_copy_len(char *dst, const char *src, int *prefix_len)
 {
 	char *dst0;
-	int i = has_unc_prefix(src);
+	const char *end;
 
-	for (i = i ? i : has_dos_drive_prefix(src); i > 0; i--)
-		*dst++ = *src++;
+	/*
+	 * Copy initial part of absolute path: "/", "C:/", "//server/share/".
+	 */
+	end = src + offset_1st_component(src);
+	while (src < end) {
+		char c = *src++;
+		if (is_dir_sep(c))
+			c = '/';
+		*dst++ = c;
+	}
 	dst0 = dst;
 
-	if (is_dir_sep(*src)) {
-		*dst++ = '/';
-		while (is_dir_sep(*src))
-			src++;
-	}
+	while (is_dir_sep(*src))
+		src++;
 
 	for (;;) {
 		char c = *src;

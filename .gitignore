@@ -76,6 +76,7 @@
 /git-init-db
 /git-interpret-trailers
 /git-instaweb
+/git-legacy-difftool
 /git-log
 /git-ls-files
 /git-ls-remote
@@ -114,6 +115,7 @@
 /git-read-tree
 /git-rebase
 /git-rebase--am
+/git-rebase--helper
 /git-rebase--interactive
 /git-rebase--merge
 /git-receive-pack
@@ -179,6 +181,7 @@
 /gitweb/gitweb.cgi
 /gitweb/static/gitweb.js
 /gitweb/static/gitweb.min.*
+/libgit
 /test-chmtime
 /test-ctype
 /test-config
@@ -213,6 +216,8 @@
 /test-urlmatch-normalization
 /test-wildmatch
 /common-cmds.h
+/vcs-svn_lib
+/xdiff_lib
 *.tar.gz
 *.dsc
 *.deb
@@ -236,7 +241,6 @@
 /config.mak.autogen
 /config.mak.append
 /configure
-/unicode
 /tags
 /TAGS
 /cscope*
@@ -250,8 +254,17 @@
 *.user
 *.idb
 *.pdb
-/Debug/
-/Release/
+*.ilk
+*.iobj
+*.ipdb
+*.dll
+.vs/
+*.manifest
+Debug/
+Release/
+/UpgradeLog*.htm
+/git.VC.VC.opendb
+/git.VC.db
 /.vagrant/
 /vagrant2[0-9][0-9][0-9]*-*-*
 /d2[0-9][0-9][0-9]*-*-*

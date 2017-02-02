@@ -41,10 +41,8 @@ static int add_entry(int insert_at, struct string_list *list, const char *string
 	if (exact_match)
 		return -1 - index;
 
-	if (list->nr + 1 >= list->alloc) {
-		list->alloc += 32;
-		REALLOC_ARRAY(list->items, list->alloc);
-	}
+	if (list->nr + 1 >= list->alloc)
+		ALLOC_GROW(list->items, list->nr+1, list->alloc);
 	if (index < list->nr)
 		memmove(list->items + index + 1, list->items + index,
 				(list->nr - index)
@@ -225,7 +223,7 @@ static int cmp_items(const void *a, const void *b)
 void string_list_sort(struct string_list *list)
 {
 	compare_for_qsort = list->cmp ? list->cmp : strcmp;
-	qsort(list->items, list->nr, sizeof(*list->items), cmp_items);
+	QSORT(list->items, list->nr, cmp_items);
 }
 
 struct string_list_item *unsorted_string_list_lookup(struct string_list *list,

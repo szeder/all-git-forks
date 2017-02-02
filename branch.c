@@ -228,8 +228,7 @@ N_("\n"
 "will track its remote counterpart, you may want to use\n"
 "\"git push -u\" to set the upstream config as you push.");
 
-void create_branch(const char *head,
-		   const char *name, const char *start_name,
+void create_branch(const char *name, const char *start_name,
 		   int force, int reflog, int clobber_head,
 		   int quiet, enum branch_track track)
 {
@@ -334,21 +333,22 @@ void remove_branch_state(void)
 	unlink(git_path_squash_msg());
 }
 
-void die_if_checked_out(const char *branch)
+void die_if_checked_out(const char *branch, int ignore_current_worktree)
 {
-	char *existing;
+	const struct worktree *wt;
 
-	existing = find_shared_symref("HEAD", branch);
-	if (existing) {
-		skip_prefix(branch, "refs/heads/", &branch);
-		die(_("'%s' is already checked out at '%s'"), branch, existing);
-	}
+	wt = find_shared_symref("HEAD", branch);
+	if (!wt || (ignore_current_worktree && wt->is_current))
+		return;
+	skip_prefix(branch, "refs/heads/", &branch);
+	die(_("'%s' is already checked out at '%s'"),
+	    branch, wt->path);
 }
 
 int replace_each_worktree_head_symref(const char *oldref, const char *newref)
 {
 	int ret = 0;
-	struct worktree **worktrees = get_worktrees();
+	struct worktree **worktrees = get_worktrees(0);
 	int i;
 
 	for (i = 0; worktrees[i]; i++) {
@@ -357,7 +357,8 @@ int replace_each_worktree_head_symref(const char *oldref, const char *newref)
 		if (strcmp(oldref, worktrees[i]->head_ref))
 			continue;
 
-		if (set_worktree_head_symref(worktrees[i]->git_dir, newref)) {
+		if (set_worktree_head_symref(get_worktree_git_dir(worktrees[i]),
+					     newref)) {
 			ret = -1;
 			error(_("HEAD of working tree %s is not updated"),
 			      worktrees[i]->path);

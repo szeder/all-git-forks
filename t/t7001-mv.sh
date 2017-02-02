@@ -292,8 +292,8 @@ test_expect_success 'setup submodule' '
 	echo content >file &&
 	git add file &&
 	git commit -m "added sub and file" &&
-	mkdir -p deep/directory/hierachy &&
-	git submodule add ./. deep/directory/hierachy/sub &&
+	mkdir -p deep/directory/hierarchy &&
+	git submodule add ./. deep/directory/hierarchy/sub &&
 	git commit -m "added another submodule" &&
 	git branch submodule
 '
@@ -308,7 +308,7 @@ test_expect_success 'git mv moves a submodule with a .git directory and no .gitm
 	(
 		cd sub &&
 		rm -f .git &&
-		cp -a ../.git/modules/sub .git &&
+		cp -R -P -p ../.git/modules/sub .git &&
 		GIT_WORK_TREE=. git config --unset core.worktree
 	) &&
 	mkdir mod &&
@@ -331,7 +331,7 @@ test_expect_success 'git mv moves a submodule with a .git directory and .gitmodu
 	(
 		cd sub &&
 		rm -f .git &&
-		cp -a ../.git/modules/sub .git &&
+		cp -R -P -p ../.git/modules/sub .git &&
 		GIT_WORK_TREE=. git config --unset core.worktree
 	) &&
 	mkdir mod &&
@@ -485,8 +485,8 @@ test_expect_success 'moving a submodule in nested directories' '
 		# git status would fail if the update of linking git dir to
 		# work dir of the submodule failed.
 		git status &&
-		git config -f ../.gitmodules submodule.deep/directory/hierachy/sub.path >../actual &&
-		echo "directory/hierachy/sub" >../expect
+		git config -f ../.gitmodules submodule.deep/directory/hierarchy/sub.path >../actual &&
+		echo "directory/hierarchy/sub" >../expect
 	) &&
 	test_cmp actual expect
 '

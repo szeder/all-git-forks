@@ -60,7 +60,7 @@ test_expect_success 'setup' '
 	test_commit P fileP
 '
 
-# "exec" commands are ran with the user shell by default, but this may
+# "exec" commands are run with the user shell by default, but this may
 # be non-POSIX. For example, if SHELL=zsh then ">file" doesn't work
 # to create a file. Unsetting SHELL avoids such non-portable behavior
 # in tests. It must be exported for it to take effect where needed.
@@ -219,9 +219,9 @@ test_expect_success 'abort with error when new base cannot be checked out' '
 	git commit -m "remove file in base" &&
 	set_fake_editor &&
 	test_must_fail git rebase -i master > output 2>&1 &&
-	grep "The following untracked working tree files would be overwritten by checkout:" \
+	test_i18ngrep "The following untracked working tree files would be overwritten by checkout:" \
 		output &&
-	grep "file1" output &&
+	test_i18ngrep "file1" output &&
 	test_path_is_missing .git/rebase-merge &&
 	git reset --hard HEAD^
 '
@@ -235,6 +235,22 @@ test_expect_success 'retain authorship' '
 	set_fake_editor &&
 	git rebase -i --onto master HEAD^ &&
 	git show HEAD | grep "^Author: Twerp Snog"
+'
+
+test_expect_success 'retain authorship w/ conflicts' '
+	git reset --hard twerp &&
+	test_commit a conflict a conflict-a &&
+	git reset --hard twerp &&
+	GIT_AUTHOR_NAME=AttributeMe \
+	test_commit b conflict b conflict-b &&
+	set_fake_editor &&
+	test_must_fail git rebase -i conflict-a &&
+	echo resolved >conflict &&
+	git add conflict &&
+	git rebase --continue &&
+	test $(git rev-parse conflict-a^0) = $(git rev-parse HEAD^) &&
+	git show >out &&
+	grep AttributeMe out
 '
 
 test_expect_success 'squash' '
@@ -540,7 +556,7 @@ test_expect_success 'clean error after failed "exec"' '
 	echo "edited again" > file7 &&
 	git add file7 &&
 	test_must_fail git rebase --continue 2>error &&
-	grep "You have staged changes in your working tree." error
+	test_i18ngrep "you have staged changes in your working tree" error
 '
 
 test_expect_success 'rebase a detached HEAD' '
@@ -770,7 +786,6 @@ test_expect_success 'rebase-i history with funny messages' '
 	test_cmp expect actual
 '
 
-
 test_expect_success 'prepare for rebase -i --exec' '
 	git checkout master &&
 	git checkout -b execute &&
@@ -778,7 +793,6 @@ test_expect_success 'prepare for rebase -i --exec' '
 	test_commit two_exec main.txt two_exec &&
 	test_commit three_exec main.txt three_exec
 '
-
 
 test_expect_success 'running "git rebase -i --exec git show HEAD"' '
 	set_fake_editor &&
@@ -792,7 +806,6 @@ test_expect_success 'running "git rebase -i --exec git show HEAD"' '
 	test_cmp expected actual
 '
 
-
 test_expect_success 'running "git rebase --exec git show HEAD -i"' '
 	git reset --hard execute &&
 	set_fake_editor &&
@@ -805,7 +818,6 @@ test_expect_success 'running "git rebase --exec git show HEAD -i"' '
 	sed -e "1,9d" expect >expected &&
 	test_cmp expected actual
 '
-
 
 test_expect_success 'running "git rebase -ix git show HEAD"' '
 	git reset --hard execute &&
@@ -834,7 +846,6 @@ test_expect_success 'rebase -ix with several <CMD>' '
 	test_cmp expected actual
 '
 
-
 test_expect_success 'rebase -ix with several instances of --exec' '
 	git reset --hard execute &&
 	set_fake_editor &&
@@ -848,7 +859,6 @@ test_expect_success 'rebase -ix with several instances of --exec' '
 	sed -e "1,11d" expect >expected &&
 	test_cmp expected actual
 '
-
 
 test_expect_success 'rebase -ix with --autosquash' '
 	git reset --hard execute &&
@@ -875,15 +885,14 @@ test_expect_success 'rebase -ix with --autosquash' '
 	test_cmp expected actual
 '
 
-
-test_expect_success 'rebase --exec without -i shows error message' '
+test_expect_success 'rebase --exec works without -i ' '
 	git reset --hard execute &&
-	set_fake_editor &&
-	test_must_fail git rebase --exec "git show HEAD" HEAD~2 2>actual &&
-	echo "The --exec option must be used with the --interactive option" >expected &&
-	test_i18ncmp expected actual
+	rm -rf exec_output &&
+	EDITOR="echo >invoked_editor" git rebase --exec "echo a line >>exec_output"  HEAD~2 2>actual &&
+	test_i18ngrep  "Successfully rebased and updated" actual &&
+	test_line_count = 2 exec_output &&
+	test_path_is_missing invoked_editor
 '
-
 
 test_expect_success 'rebase -i --exec without <CMD>' '
 	git reset --hard execute &&
@@ -983,6 +992,17 @@ test_expect_success 'rebase -i respects core.commentchar' '
 	test B = $(git cat-file commit HEAD^ | sed -ne \$p)
 '
 
+test_expect_success 'rebase -i respects core.commentchar=auto' '
+	test_config core.commentchar auto &&
+	write_script copy-edit-script.sh <<-\EOF &&
+	cp "$1" edit-script
+	EOF
+	test_set_editor "$(pwd)/copy-edit-script.sh" &&
+	test_when_finished "git rebase --abort || :" &&
+	git rebase -i HEAD^ &&
+	test -z "$(grep -ve "^#" -e "^\$" -e "^pick" edit-script)"
+'
+
 test_expect_success 'rebase -i, with <onto> and <upstream> specified as :/quuxery' '
 	test_when_finished "git branch -D torebase" &&
 	git checkout -b torebase branch1 &&
@@ -1067,7 +1087,7 @@ test_expect_success 'todo count' '
 	EOF
 	test_set_editor "$(pwd)/dump-raw.sh" &&
 	git rebase -i HEAD~4 >actual &&
-	grep "^# Rebase ..* onto ..* ([0-9]" actual
+	test_i18ngrep "^# Rebase ..* onto ..* ([0-9]" actual
 '
 
 test_expect_success 'rebase -i commits that overwrite untracked files (pick)' '
@@ -1167,7 +1187,7 @@ test_expect_success 'rebase -i respects rebase.missingCommitsCheck = ignore' '
 	FAKE_LINES="1 2 3 4" \
 		git rebase -i --root 2>actual &&
 	test D = $(git cat-file commit HEAD | sed -ne \$p) &&
-	test_cmp expect actual
+	test_i18ncmp expect actual
 '
 
 cat >expect <<EOF
@@ -1188,7 +1208,7 @@ test_expect_success 'rebase -i respects rebase.missingCommitsCheck = warn' '
 	set_fake_editor &&
 	FAKE_LINES="1 2 3 4" \
 		git rebase -i --root 2>actual &&
-	test_cmp expect actual &&
+	test_i18ncmp expect actual &&
 	test D = $(git cat-file commit HEAD | sed -ne \$p)
 '
 
@@ -1202,7 +1222,7 @@ To avoid this message, use "drop" to explicitly remove a commit.
 Use 'git config rebase.missingCommitsCheck' to change the level of warnings.
 The possible behaviours are: ignore, warn, error.
 
-You can fix this with 'git rebase --edit-todo'.
+You can fix this with 'git rebase --edit-todo' and then run 'git rebase --continue'.
 Or you can abort the rebase with 'git rebase --abort'.
 EOF
 
@@ -1212,7 +1232,7 @@ test_expect_success 'rebase -i respects rebase.missingCommitsCheck = error' '
 	set_fake_editor &&
 	test_must_fail env FAKE_LINES="1 2 4" \
 		git rebase -i --root 2>actual &&
-	test_cmp expect actual &&
+	test_i18ncmp expect actual &&
 	cp .git/rebase-merge/git-rebase-todo.backup \
 		.git/rebase-merge/git-rebase-todo &&
 	FAKE_LINES="1 2 drop 3 4 drop 5" \
@@ -1222,20 +1242,13 @@ test_expect_success 'rebase -i respects rebase.missingCommitsCheck = error' '
 	test B = $(git cat-file commit HEAD^ | sed -ne \$p)
 '
 
-cat >expect <<EOF
-Warning: the command isn't recognized in the following line:
- - badcmd $(git rev-list --oneline -1 master~1)
-
-You can fix this with 'git rebase --edit-todo'.
-Or you can abort the rebase with 'git rebase --abort'.
-EOF
-
 test_expect_success 'static check of bad command' '
 	rebase_setup_and_clean bad-cmd &&
 	set_fake_editor &&
 	test_must_fail env FAKE_LINES="1 2 3 bad 4 5" \
 		git rebase -i --root 2>actual &&
-	test_cmp expect actual &&
+	test_i18ngrep "badcmd $(git rev-list --oneline -1 master~1)" actual &&
+	test_i18ngrep "You can fix this with .git rebase --edit-todo.." actual &&
 	FAKE_LINES="1 2 3 drop 4 5" git rebase --edit-todo &&
 	git rebase --continue &&
 	test E = $(git cat-file commit HEAD | sed -ne \$p) &&
@@ -1257,20 +1270,13 @@ test_expect_success 'tabs and spaces are accepted in the todolist' '
 	test E = $(git cat-file commit HEAD | sed -ne \$p)
 '
 
-cat >expect <<EOF
-Warning: the SHA-1 is missing or isn't a commit in the following line:
- - edit XXXXXXX False commit
-
-You can fix this with 'git rebase --edit-todo'.
-Or you can abort the rebase with 'git rebase --abort'.
-EOF
-
 test_expect_success 'static check of bad SHA-1' '
 	rebase_setup_and_clean bad-sha &&
 	set_fake_editor &&
 	test_must_fail env FAKE_LINES="1 2 edit fakesha 3 4 5 #" \
 		git rebase -i --root 2>actual &&
-	test_cmp expect actual &&
+	test_i18ngrep "edit XXXXXXX False commit" actual &&
+	test_i18ngrep "You can fix this with .git rebase --edit-todo.." actual &&
 	FAKE_LINES="1 2 4 5 6" git rebase --edit-todo &&
 	git rebase --continue &&
 	test E = $(git cat-file commit HEAD | sed -ne \$p)
@@ -1286,6 +1292,14 @@ test_expect_success 'editor saves as CR/LF' '
 		test_set_editor "$(pwd)/add-crs.sh" &&
 		git rebase -i HEAD^
 	)
+'
+
+SQ="'"
+test_expect_success 'rebase -i --gpg-sign=<key-id>' '
+	set_fake_editor &&
+	FAKE_LINES="edit 1" git rebase -i --gpg-sign="\"S I Gner\"" HEAD^ \
+		>out 2>err &&
+	test_i18ngrep "$SQ-S\"S I Gner\"$SQ" err
 '
 
 test_done

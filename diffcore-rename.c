@@ -60,7 +60,8 @@ static int add_rename_dst(struct diff_filespec *two)
 		memmove(rename_dst + first + 1, rename_dst + first,
 			(rename_dst_nr - first - 1) * sizeof(*rename_dst));
 	rename_dst[first].two = alloc_filespec(two->path);
-	fill_filespec(rename_dst[first].two, two->sha1, two->sha1_valid, two->mode);
+	fill_filespec(rename_dst[first].two, two->oid.hash, two->oid_valid,
+		      two->mode);
 	rename_dst[first].pair = NULL;
 	return 0;
 }
@@ -80,6 +81,18 @@ static struct diff_rename_src *register_rename_src(struct diff_filepair *p)
 
 	first = 0;
 	last = rename_src_nr;
+
+	if (last > 0) {
+		struct diff_rename_src *src = &(rename_src[last-1]);
+		int cmp = strcmp(one->path, src->p->one->path);
+		if (!cmp)
+			return src;
+		if (cmp > 0) {
+			first = last;
+			goto append_it;
+		}
+	}
+
 	while (last > first) {
 		int next = (last + first) >> 1;
 		struct diff_rename_src *src = &(rename_src[next]);
@@ -93,6 +106,7 @@ static struct diff_rename_src *register_rename_src(struct diff_filepair *p)
 		first = next+1;
 	}
 
+append_it:
 	/* insert to make it at "first" */
 	ALLOC_GROW(rename_src, rename_src_nr + 1, rename_src_alloc);
 	rename_src_nr++;
@@ -144,7 +158,6 @@ static int estimate_similarity(struct diff_filespec *src,
 	 * call into this function in that case.
 	 */
 	unsigned long max_size, delta_size, base_size, src_copied, literal_added;
-	unsigned long delta_limit;
 	int score;
 
 	/* We deal only with regular files.  Symlink renames are handled
@@ -190,11 +203,8 @@ static int estimate_similarity(struct diff_filespec *src,
 	if (!dst->cnt_data && diff_populate_filespec(dst, 0))
 		return 0;
 
-	delta_limit = (unsigned long)
-		(base_size * (MAX_SCORE-minimum_score) / MAX_SCORE);
 	if (diffcore_count_changes(src, dst,
 				   &src->cnt_data, &dst->cnt_data,
-				   delta_limit,
 				   &src_copied, &literal_added))
 		return 0;
 
@@ -260,12 +270,13 @@ struct file_similarity {
 
 static unsigned int hash_filespec(struct diff_filespec *filespec)
 {
-	if (!filespec->sha1_valid) {
+	if (!filespec->oid_valid) {
 		if (diff_populate_filespec(filespec, 0))
 			return 0;
-		hash_sha1_file(filespec->data, filespec->size, "blob", filespec->sha1);
+		hash_sha1_file(filespec->data, filespec->size, "blob",
+			       filespec->oid.hash);
 	}
-	return sha1hash(filespec->sha1);
+	return sha1hash(filespec->oid.hash);
 }
 
 static int find_identical_files(struct hashmap *srcs,
@@ -287,7 +298,7 @@ static int find_identical_files(struct hashmap *srcs,
 		struct diff_filespec *source = p->filespec;
 
 		/* False hash collision? */
-		if (hashcmp(source->sha1, target->sha1))
+		if (oidcmp(&source->oid, &target->oid))
 			continue;
 		/* Non-regular files? If so, the modes must match! */
 		if (!S_ISREG(source->mode) || !S_ISREG(target->mode)) {
@@ -466,7 +477,7 @@ void diffcore_rename(struct diff_options *options)
 				 strcmp(options->single_follow, p->two->path))
 				continue; /* not interested */
 			else if (!DIFF_OPT_TST(options, RENAME_EMPTY) &&
-				 is_empty_blob_sha1(p->two->sha1))
+				 is_empty_blob_sha1(p->two->oid.hash))
 				continue;
 			else if (add_rename_dst(p->two) < 0) {
 				warning("skipping rename detection, detected"
@@ -476,7 +487,7 @@ void diffcore_rename(struct diff_options *options)
 			}
 		}
 		else if (!DIFF_OPT_TST(options, RENAME_EMPTY) &&
-			 is_empty_blob_sha1(p->one->sha1))
+			 is_empty_blob_sha1(p->one->oid.hash))
 			continue;
 		else if (!DIFF_PAIR_UNMERGED(p) && !DIFF_FILE_VALID(p->two)) {
 			/*
@@ -539,7 +550,7 @@ void diffcore_rename(struct diff_options *options)
 				rename_dst_nr * rename_src_nr, 50, 1);
 	}
 
-	mx = xcalloc(st_mult(num_create, NUM_CANDIDATE_PER_DST), sizeof(*mx));
+	mx = xcalloc(st_mult(NUM_CANDIDATE_PER_DST, num_create), sizeof(*mx));
 	for (dst_cnt = i = 0; i < rename_dst_nr; i++) {
 		struct diff_filespec *two = rename_dst[i].two;
 		struct diff_score *m;
@@ -578,7 +589,7 @@ void diffcore_rename(struct diff_options *options)
 	stop_progress(&progress);
 
 	/* cost matrix sorted by most to least similar pair */
-	qsort(mx, dst_cnt * NUM_CANDIDATE_PER_DST, sizeof(*mx), score_compare);
+	QSORT(mx, dst_cnt * NUM_CANDIDATE_PER_DST, score_compare);
 
 	rename_count += find_renames(mx, dst_cnt, minimum_score, 0);
 	if (detect_rename == DIFF_DETECT_COPY)

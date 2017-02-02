@@ -43,14 +43,14 @@ int check_ref_type(const struct ref *ref, int flags)
 	return check_ref(ref->name, flags);
 }
 
-static void die_initial_contact(int got_at_least_one_head)
+static void die_initial_contact(int unexpected)
 {
-	if (got_at_least_one_head)
-		die("The remote end hung up upon initial contact");
+	if (unexpected)
+		die(_("The remote end hung up upon initial contact"));
 	else
-		die("Could not read from remote repository.\n\n"
-		    "Please make sure you have the correct access rights\n"
-		    "and the repository exists.");
+		die(_("Could not read from remote repository.\n\n"
+		      "Please make sure you have the correct access rights\n"
+		      "and the repository exists."));
 }
 
 static void parse_one_symref_info(struct string_list *symref, const char *val, int len)
@@ -115,10 +115,18 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			      struct sha1_array *shallow_points)
 {
 	struct ref **orig_list = list;
-	int got_at_least_one_head = 0;
+
+	/*
+	 * A hang-up after seeing some response from the other end
+	 * means that it is unexpected, as we know the other end is
+	 * willing to talk to us.  A hang-up before seeing any
+	 * response does not necessarily mean an ACL problem, though.
+	 */
+	int saw_response;
+	int got_dummy_ref_with_capabilities_declaration = 0;
 
 	*list = NULL;
-	for (;;) {
+	for (saw_response = 0; ; saw_response = 1) {
 		struct ref *ref;
 		struct object_id old_oid;
 		char *name;
@@ -131,7 +139,7 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 				  PACKET_READ_GENTLE_ON_EOF |
 				  PACKET_READ_CHOMP_NEWLINE);
 		if (len < 0)
-			die_initial_contact(got_at_least_one_head);
+			die_initial_contact(saw_response);
 
 		if (!len)
 			break;
@@ -165,13 +173,25 @@ struct ref **get_remote_heads(int in, char *src_buf, size_t src_len,
 			continue;
 		}
 
+		if (!strcmp(name, "capabilities^{}")) {
+			if (saw_response)
+				die("protocol error: unexpected capabilities^{}");
+			if (got_dummy_ref_with_capabilities_declaration)
+				die("protocol error: multiple capabilities^{}");
+			got_dummy_ref_with_capabilities_declaration = 1;
+			continue;
+		}
+
 		if (!check_ref(name, flags))
 			continue;
+
+		if (got_dummy_ref_with_capabilities_declaration)
+			die("protocol error: unexpected ref after capabilities^{}");
+
 		ref = alloc_ref(buffer + GIT_SHA1_HEXSZ + 1);
 		oidcpy(&ref->old_oid, &old_oid);
 		*list = ref;
 		list = &ref->next;
-		got_at_least_one_head = 1;
 	}
 
 	annotate_refs_with_symref_info(*orig_list);
@@ -658,6 +678,62 @@ static enum protocol parse_connect_url(const char *url_orig, char **ret_host,
 
 static struct child_process no_fork = CHILD_PROCESS_INIT;
 
+static const char *get_ssh_command(void)
+{
+	const char *ssh;
+
+	if ((ssh = getenv("GIT_SSH_COMMAND")))
+		return ssh;
+
+	if (!git_config_get_string_const("core.sshcommand", &ssh))
+		return ssh;
+
+	return NULL;
+}
+
+static int handle_ssh_variant(const char *ssh_command, int is_cmdline,
+			      int *port_option, int *needs_batch)
+{
+	const char *variant = getenv("GIT_SSH_VARIANT");
+	char *p = NULL;
+
+	if (variant)
+		; /* okay, fall through */
+	else if (!git_config_get_string("ssh.variant", &p))
+		variant = p;
+	else if (!is_cmdline) {
+		p = xstrdup(ssh_command);
+		variant = basename(p);
+	} else {
+		const char **ssh_argv;
+
+		p = xstrdup(ssh_command);
+		if (split_cmdline(p, &ssh_argv)) {
+			variant = basename((char *)ssh_argv[0]);
+			/*
+			 * At this point, variant points into the buffer
+			 * referenced by p, hence we do not need ssh_argv
+			 * any longer.
+			 */
+			free(ssh_argv);
+		} else
+			return 0;
+	}
+
+	if (!strcasecmp(variant, "plink") ||
+	    !strcasecmp(variant, "plink.exe") ||
+	    !strcasecmp(variant, "putty"))
+		*port_option = 'P';
+	else if (!strcasecmp(variant, "tortoiseplink") ||
+		 !strcasecmp(variant, "tortoiseplink.exe")) {
+		*port_option = 'P';
+		*needs_batch = 1;
+	}
+	free(p);
+
+	return 1;
+}
+
 /*
  * This returns a dummy child_process if the transport protocol does not
  * need fork(2), or a struct child_process object if it does.  Once done,
@@ -717,7 +793,7 @@ struct child_process *git_connect(int fd[2], const char *url,
 		 * Note: Do not add any other headers here!  Doing so
 		 * will cause older git-daemon servers to crash.
 		 */
-		packet_write(fd[1],
+		packet_write_fmt(fd[1],
 			     "%s %s%chost=%s%c",
 			     prog, path, 0,
 			     target_host, 0);
@@ -736,7 +812,8 @@ struct child_process *git_connect(int fd[2], const char *url,
 		conn->in = conn->out = -1;
 		if (protocol == PROTO_SSH) {
 			const char *ssh;
-			int putty = 0, tortoiseplink = 0;
+			int needs_batch = 0;
+			int port_option = 'p';
 			char *ssh_host = hostandport;
 			const char *port = NULL;
 			transport_check_allowed("ssh");
@@ -758,11 +835,11 @@ struct child_process *git_connect(int fd[2], const char *url,
 				return NULL;
 			}
 
-			ssh = getenv("GIT_SSH_COMMAND");
-			if (!ssh) {
-				const char *base;
-				char *ssh_dup;
-
+			ssh = get_ssh_command();
+			if (ssh)
+				handle_ssh_variant(ssh, 1, &port_option,
+						   &needs_batch);
+			else {
 				/*
 				 * GIT_SSH is the no-shell version of
 				 * GIT_SSH_COMMAND (and must remain so for
@@ -773,17 +850,10 @@ struct child_process *git_connect(int fd[2], const char *url,
 				ssh = getenv("GIT_SSH");
 				if (!ssh)
 					ssh = "ssh";
-
-				ssh_dup = xstrdup(ssh);
-				base = basename(ssh_dup);
-
-				tortoiseplink = !strcasecmp(base, "tortoiseplink") ||
-					!strcasecmp(base, "tortoiseplink.exe");
-				putty = tortoiseplink ||
-					!strcasecmp(base, "plink") ||
-					!strcasecmp(base, "plink.exe");
-
-				free(ssh_dup);
+				else
+					handle_ssh_variant(ssh, 0,
+							   &port_option,
+							   &needs_batch);
 			}
 
 			argv_array_push(&conn->args, ssh);
@@ -791,11 +861,11 @@ struct child_process *git_connect(int fd[2], const char *url,
 				argv_array_push(&conn->args, "-4");
 			else if (flags & CONNECT_IPV6)
 				argv_array_push(&conn->args, "-6");
-			if (tortoiseplink)
+			if (needs_batch)
 				argv_array_push(&conn->args, "-batch");
 			if (port) {
-				/* P is for PuTTY, p is for OpenSSH */
-				argv_array_push(&conn->args, putty ? "-P" : "-p");
+				argv_array_pushf(&conn->args,
+						 "-%c", port_option);
 				argv_array_push(&conn->args, port);
 			}
 			argv_array_push(&conn->args, ssh_host);

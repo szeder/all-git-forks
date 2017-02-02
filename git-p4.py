@@ -25,6 +25,7 @@ import stat
 import zipfile
 import zlib
 import ctypes
+import errno
 
 try:
     from subprocess import CalledProcessError
@@ -822,7 +823,7 @@ def p4ChangesForPaths(depotPaths, changeRange, requestedBlockSize):
                 die("cannot use --changes-block-size with non-numeric revisions")
             block_size = None
 
-    changes = []
+    changes = set()
 
     # Retrieve changes a block at a time, to prevent running
     # into a MaxResults/MaxScanRows error from the server.
@@ -841,7 +842,7 @@ def p4ChangesForPaths(depotPaths, changeRange, requestedBlockSize):
 
         # Insert changes in chronological order
         for line in reversed(p4_read_pipe_lines(cmd)):
-            changes.append(int(line.split(" ")[1]))
+            changes.add(int(line.split(" ")[1]))
 
         if not block_size:
             break
@@ -1005,18 +1006,20 @@ class LargeFileSystem(object):
            steps."""
         if self.exceedsLargeFileThreshold(relPath, contents) or self.hasLargeFileExtension(relPath):
             contentTempFile = self.generateTempFile(contents)
-            (git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
-
-            # Move temp file to final location in large file system
-            largeFileDir = os.path.dirname(localLargeFile)
-            if not os.path.isdir(largeFileDir):
-                os.makedirs(largeFileDir)
-            shutil.move(contentTempFile, localLargeFile)
-            self.addLargeFile(relPath)
-            if gitConfigBool('git-p4.largeFilePush'):
-                self.pushFile(localLargeFile)
-            if verbose:
-                sys.stderr.write("%s moved to large file system (%s)\n" % (relPath, localLargeFile))
+            (pointer_git_mode, contents, localLargeFile) = self.generatePointer(contentTempFile)
+            if pointer_git_mode:
+                git_mode = pointer_git_mode
+            if localLargeFile:
+                # Move temp file to final location in large file system
+                largeFileDir = os.path.dirname(localLargeFile)
+                if not os.path.isdir(largeFileDir):
+                    os.makedirs(largeFileDir)
+                shutil.move(contentTempFile, localLargeFile)
+                self.addLargeFile(relPath)
+                if gitConfigBool('git-p4.largeFilePush'):
+                    self.pushFile(localLargeFile)
+                if verbose:
+                    sys.stderr.write("%s moved to large file system (%s)\n" % (relPath, localLargeFile))
         return (git_mode, contents)
 
 class MockLFS(LargeFileSystem):
@@ -1056,6 +1059,9 @@ class GitLFS(LargeFileSystem):
            the actual content. Return also the new location of the actual
            content.
            """
+        if os.path.getsize(contentFile) == 0:
+            return (None, '', None)
+
         pointerProcess = subprocess.Popen(
             ['git', 'lfs', 'pointer', '--file=' + contentFile],
             stdout=subprocess.PIPE
@@ -1167,6 +1173,15 @@ class P4UserMap:
             self.users[output["User"]] = output["FullName"] + " <" + output["Email"] + ">"
             self.emails[output["Email"]] = output["User"]
 
+        mapUserConfigRegex = re.compile(r"^\s*(\S+)\s*=\s*(.+)\s*<(\S+)>\s*$", re.VERBOSE)
+        for mapUserConfig in gitConfigList("git-p4.mapUser"):
+            mapUser = mapUserConfigRegex.findall(mapUserConfig)
+            if mapUser and len(mapUser[0]) == 3:
+                user = mapUser[0][0]
+                fullname = mapUser[0][1]
+                email = mapUser[0][2]
+                self.users[user] = fullname + " <" + email + ">"
+                self.emails[email] = user
 
         s = ''
         for (key, val) in self.users.items():
@@ -1529,7 +1544,7 @@ class P4Submit(Command, P4UserMap):
             if response == 'n':
                 return False
 
-    def get_diff_description(self, editedFiles, filesToAdd):
+    def get_diff_description(self, editedFiles, filesToAdd, symlinks):
         # diff
         if os.environ.has_key("P4DIFF"):
             del(os.environ["P4DIFF"])
@@ -1544,10 +1559,17 @@ class P4Submit(Command, P4UserMap):
             newdiff += "==== new file ====\n"
             newdiff += "--- /dev/null\n"
             newdiff += "+++ %s\n" % newFile
-            f = open(newFile, "r")
-            for line in f.readlines():
-                newdiff += "+" + line
-            f.close()
+
+            is_link = os.path.islink(newFile)
+            expect_link = newFile in symlinks
+
+            if is_link and expect_link:
+                newdiff += "+%s\n" % os.readlink(newFile)
+            else:
+                f = open(newFile, "r")
+                for line in f.readlines():
+                    newdiff += "+" + line
+                f.close()
 
         return (diff + newdiff).replace('\r\n', '\n')
 
@@ -1565,6 +1587,7 @@ class P4Submit(Command, P4UserMap):
         filesToDelete = set()
         editedFiles = set()
         pureRenameCopy = set()
+        symlinks = set()
         filesToChangeExecBit = {}
 
         for line in diff:
@@ -1581,6 +1604,11 @@ class P4Submit(Command, P4UserMap):
                 filesToChangeExecBit[path] = diff['dst_mode']
                 if path in filesToDelete:
                     filesToDelete.remove(path)
+
+                dst_mode = int(diff['dst_mode'], 8)
+                if dst_mode == 0120000:
+                    symlinks.add(path)
+
             elif modifier == "D":
                 filesToDelete.add(path)
                 if path in filesToAdd:
@@ -1718,7 +1746,7 @@ class P4Submit(Command, P4UserMap):
         separatorLine = "######## everything below this line is just the diff #######\n"
         if not self.prepare_p4_only:
             submitTemplate += separatorLine
-            submitTemplate += self.get_diff_description(editedFiles, filesToAdd)
+            submitTemplate += self.get_diff_description(editedFiles, filesToAdd, symlinks)
 
         (handle, fileName) = tempfile.mkstemp()
         tmpFile = os.fdopen(handle, "w+b")
@@ -1925,7 +1953,7 @@ class P4Submit(Command, P4UserMap):
         if self.useClientSpec:
             self.clientSpecDirs = getClientSpec()
 
-        # Check for the existance of P4 branches
+        # Check for the existence of P4 branches
         branchesDetected = (len(p4BranchesInGit().keys()) > 1)
 
         if self.useClientSpec and not branchesDetected:
@@ -2265,7 +2293,7 @@ class P4Sync(Command, P4UserMap):
         self.useClientSpec_from_options = False
         self.clientSpecDirs = None
         self.tempBranches = []
-        self.tempBranchLocation = "git-p4-tmp"
+        self.tempBranchLocation = "refs/git-p4-tmp"
         self.largeFileSystem = None
 
         if gitConfig('git-p4.largeFileSystem'):
@@ -2317,6 +2345,15 @@ class P4Sync(Command, P4UserMap):
             files.append(file)
             fnum = fnum + 1
         return files
+
+    def extractJobsFromCommit(self, commit):
+        jobs = []
+        jnum = 0
+        while commit.has_key("job%s" % jnum):
+            job = commit["job%s" % jnum]
+            jobs.append(job)
+            jnum = jnum + 1
+        return jobs
 
     def stripRepoPath(self, path, prefixes):
         """When streaming files, this is called to map a p4 depot path
@@ -2656,13 +2693,14 @@ class P4Sync(Command, P4UserMap):
             return True
         hasPrefix = [p for p in self.branchPrefixes
                         if p4PathStartsWith(path, p)]
-        if hasPrefix and self.verbose:
+        if not hasPrefix and self.verbose:
             print('Ignoring file outside of prefix: {0}'.format(path))
         return hasPrefix
 
     def commit(self, details, files, branch, parent = ""):
         epoch = details["time"]
         author = details["user"]
+        jobs = self.extractJobsFromCommit(details)
 
         if self.verbose:
             print('commit into {0}'.format(branch))
@@ -2690,6 +2728,8 @@ class P4Sync(Command, P4UserMap):
 
         self.gitStream.write("data <<EOT\n")
         self.gitStream.write(details["desc"])
+        if len(jobs) > 0:
+            self.gitStream.write("\nJobs: %s" % (' '.join(jobs)))
         self.gitStream.write("\n[git-p4: depot-paths = \"%s\": change = %s" %
                              (','.join(self.branchPrefixes), details["change"]))
         if len(details['options']) > 0:

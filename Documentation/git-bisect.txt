@@ -18,8 +18,8 @@ on the subcommand:
 
  git bisect start [--term-{old,good}=<term> --term-{new,bad}=<term>]
 		  [--no-checkout] [<bad> [<good>...]] [--] [<paths>...]
- git bisect (bad|new) [<rev>]
- git bisect (good|old) [<rev>...]
+ git bisect (bad|new|<term-new>) [<rev>]
+ git bisect (good|old|<term-old>) [<rev>...]
  git bisect terms [--term-good | --term-bad]
  git bisect skip [(<rev>|<range>)...]
  git bisect reset [<commit>]
@@ -205,7 +205,7 @@ $ git bisect visualize
 
 `view` may also be used as a synonym for `visualize`.
 
-If the 'DISPLAY' environment variable is not set, 'git log' is used
+If the `DISPLAY` environment variable is not set, 'git log' is used
 instead.  You can also give command-line options such as `-p` and
 `--stat`.
 
@@ -358,7 +358,7 @@ OPTIONS
 --no-checkout::
 +
 Do not checkout the new working tree at each iteration of the bisection
-process. Instead just update a special reference named 'BISECT_HEAD' to make
+process. Instead just update a special reference named `BISECT_HEAD` to make
 it point to the commit that should be tested.
 +
 This option may be useful when the test you would perform in each step

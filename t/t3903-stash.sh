@@ -131,6 +131,26 @@ test_expect_success 'drop middle stash' '
 	test 1 = $(git show HEAD:file)
 '
 
+test_expect_success 'drop middle stash by index' '
+	git reset --hard &&
+	echo 8 >file &&
+	git stash &&
+	echo 9 >file &&
+	git stash &&
+	git stash drop 1 &&
+	test 2 = $(git stash list | wc -l) &&
+	git stash apply &&
+	test 9 = $(cat file) &&
+	test 1 = $(git show :file) &&
+	test 1 = $(git show HEAD:file) &&
+	git reset --hard &&
+	git stash drop &&
+	git stash apply &&
+	test 3 = $(cat file) &&
+	test 1 = $(git show :file) &&
+	test 1 = $(git show HEAD:file)
+'
+
 test_expect_success 'stash pop' '
 	git reset --hard &&
 	git stash pop &&
@@ -604,6 +624,21 @@ test_expect_success 'invalid ref of the form stash@{n}, n >= N' '
 	git stash drop
 '
 
+test_expect_success 'invalid ref of the form "n", n >= N' '
+	git stash clear &&
+	test_must_fail git stash drop 0 &&
+	echo bar5 >file &&
+	echo bar6 >file2 &&
+	git add file2 &&
+	git stash &&
+	test_must_fail git stash drop 1 &&
+	test_must_fail git stash pop 1 &&
+	test_must_fail git stash apply 1 &&
+	test_must_fail git stash show 1 &&
+	test_must_fail git stash branch tmp 1 &&
+	git stash drop
+'
+
 test_expect_success 'stash branch should not drop the stash if the branch exists' '
 	git stash clear &&
 	echo foo >file &&
@@ -729,6 +764,15 @@ test_expect_success 'stash list --cc shows combined diff' '
 	EOF
 	git stash list --format=%gd -p --cc >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success 'stash is not confused by partial renames' '
+	mv file renamed &&
+	git add renamed &&
+	git stash &&
+	git stash apply &&
+	test_path_is_file renamed &&
+	test_path_is_missing file
 '
 
 test_done

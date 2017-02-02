@@ -105,16 +105,22 @@ static int is_executable(const char *name)
 		return 0;
 
 #if defined(GIT_WINDOWS_NATIVE)
-	/* On Windows we cannot use the executable bit. The executable
-	 * state is determined by extension only. We do this first
-	 * because with virus scanners opening an executeable for
-	 * reading is potentially expensive.
+	/*
+	 * On Windows there is no executable bit. The file extension
+	 * indicates whether it can be run as an executable, and Git
+	 * has special-handling to detect scripts and launch them
+	 * through the indicated script interpreter. We test for the
+	 * file extension first because virus scanners may make
+	 * opening an executable for reading expensive.
 	 */
 	if (ends_with(name, ".exe"))
 		return S_IXUSR;
 
-{	/* now that we know it does not have an executable extension,
-	   peek into the file instead */
+{
+	/*
+	 * Now that we know it does not have an executable extension,
+	 * peek into the file instead.
+	 */
 	char buf[3] = { 0 };
 	int n;
 	int fd = open(name, O_RDONLY);
@@ -179,8 +185,7 @@ void load_command_list(const char *prefix,
 
 	if (exec_path) {
 		list_commands_in_dir(main_cmds, exec_path, prefix);
-		qsort(main_cmds->names, main_cmds->cnt,
-		      sizeof(*main_cmds->names), cmdname_compare);
+		QSORT(main_cmds->names, main_cmds->cnt, cmdname_compare);
 		uniq(main_cmds);
 	}
 
@@ -199,8 +204,7 @@ void load_command_list(const char *prefix,
 		}
 		free(paths);
 
-		qsort(other_cmds->names, other_cmds->cnt,
-		      sizeof(*other_cmds->names), cmdname_compare);
+		QSORT(other_cmds->names, other_cmds->cnt, cmdname_compare);
 		uniq(other_cmds);
 	}
 	exclude_cmds(other_cmds, main_cmds);
@@ -247,8 +251,7 @@ void list_common_cmds_help(void)
 			longest = strlen(common_cmds[i].name);
 	}
 
-	qsort(common_cmds, ARRAY_SIZE(common_cmds),
-		sizeof(common_cmds[0]), cmd_group_cmp);
+	QSORT(common_cmds, ARRAY_SIZE(common_cmds), cmd_group_cmp);
 
 	puts(_("These are common Git commands used in various situations:"));
 
@@ -333,8 +336,7 @@ const char *help_unknown_cmd(const char *cmd)
 
 	add_cmd_list(&main_cmds, &aliases);
 	add_cmd_list(&main_cmds, &other_cmds);
-	qsort(main_cmds.names, main_cmds.cnt,
-	      sizeof(*main_cmds.names), cmdname_compare);
+	QSORT(main_cmds.names, main_cmds.cnt, cmdname_compare);
 	uniq(&main_cmds);
 
 	/* This abuses cmdname->len for levenshtein distance */
@@ -368,8 +370,7 @@ const char *help_unknown_cmd(const char *cmd)
 			levenshtein(cmd, candidate, 0, 2, 1, 3) + 1;
 	}
 
-	qsort(main_cmds.names, main_cmds.cnt,
-	      sizeof(*main_cmds.names), levenshtein_compare);
+	QSORT(main_cmds.names, main_cmds.cnt, levenshtein_compare);
 
 	if (!main_cmds.cnt)
 		die(_("Uh oh. Your system reports no Git commands at all."));
@@ -423,11 +424,22 @@ const char *help_unknown_cmd(const char *cmd)
 
 int cmd_version(int argc, const char **argv, const char *prefix)
 {
+	static char build_platform[] = GIT_BUILD_PLATFORM;
+
 	/*
 	 * The format of this string should be kept stable for compatibility
 	 * with external projects that rely on the output of "git version".
 	 */
 	printf("git version %s\n", git_version_string);
+	while (*++argv) {
+		if (!strcmp(*argv, "--build-options")) {
+			printf("built from commit: %s\n",
+			       git_built_from_commit_string);
+			printf("sizeof-long: %d\n", (int)sizeof(long));
+			printf("machine: %s\n", build_platform);
+			/* NEEDSWORK: also save and output GIT-BUILD_OPTIONS? */
+		}
+	}
 	return 0;
 }
 

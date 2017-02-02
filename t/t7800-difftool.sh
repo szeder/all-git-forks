@@ -23,6 +23,22 @@ prompt_given ()
 	test "$prompt" = "Launch 'test-tool' [Y/n]? branch"
 }
 
+for use_builtin_difftool in false true
+do
+
+test_expect_success 'verify we are running the correct difftool' '
+	if test true = '$use_builtin_difftool'
+	then
+		test_must_fail ok=129 git difftool -h >help &&
+		grep "g, --gui" help
+	else
+		git difftool -h >help &&
+		grep "g|--gui" help
+	fi
+'
+
+# NEEDSWORK: lose all the PERL prereqs once legacy-difftool is retired.
+
 # Create a file on master and change it on branch
 test_expect_success PERL 'setup' '
 	echo master >file &&
@@ -122,6 +138,12 @@ test_expect_success PERL 'difftool stops on error with --trust-exit-code' '
 	test_must_fail git difftool -y --trust-exit-code \
 		--extcmd .git/fail-right-file branch >actual &&
 	test_cmp expect actual
+'
+
+test_expect_success PERL 'difftool honors exit status if command not found' '
+	test_config difftool.nonexistent.cmd i-dont-exist &&
+	test_config difftool.trustExitCode false &&
+	test_must_fail git difftool -y -t nonexistent branch
 '
 
 test_expect_success PERL 'difftool honors --gui' '
@@ -314,7 +336,7 @@ test_expect_success PERL 'difftool --extcmd cat arg1' '
 test_expect_success PERL 'difftool --extcmd cat arg2' '
 	echo branch >expect &&
 	git difftool --no-prompt \
-		--extcmd sh\ -c\ \"cat\ \$2\" branch >actual &&
+		--extcmd sh\ -c\ \"cat\ \\\"\$2\\\"\" branch >actual &&
 	test_cmp expect actual
 '
 
@@ -368,6 +390,7 @@ test_expect_success PERL 'setup change in subdirectory' '
 	echo master >sub/sub &&
 	git add sub/sub &&
 	git commit -m "added sub/sub" &&
+	git tag v1 &&
 	echo test >>file &&
 	echo test >>sub/sub &&
 	git add file sub/sub &&
@@ -403,12 +426,63 @@ run_dir_diff_test 'difftool --dir-diff ignores --prompt' '
 	grep file output
 '
 
-run_dir_diff_test 'difftool --dir-diff from subdirectory' '
+run_dir_diff_test 'difftool --dir-diff branch from subdirectory' '
 	(
 		cd sub &&
 		git difftool --dir-diff $symlinks --extcmd ls branch >output &&
+		# "sub" must only exist in "right"
+		# "file" and "file2" must be listed in both "left" and "right"
+		test "1" = $(grep sub output | wc -l) &&
+		test "2" = $(grep file"$" output | wc -l) &&
+		test "2" = $(grep file2 output | wc -l)
+	)
+'
+
+run_dir_diff_test 'difftool --dir-diff v1 from subdirectory' '
+	(
+		cd sub &&
+		git difftool --dir-diff $symlinks --extcmd ls v1 >output &&
+		# "sub" and "file" exist in both v1 and HEAD.
+		# "file2" is unchanged.
+		test "2" = $(grep sub output | wc -l) &&
+		test "2" = $(grep file output | wc -l) &&
+		test "0" = $(grep file2 output | wc -l)
+	)
+'
+
+run_dir_diff_test 'difftool --dir-diff branch from subdirectory w/ pathspec' '
+	(
+		cd sub &&
+		git difftool --dir-diff $symlinks --extcmd ls branch -- .>output &&
+		# "sub" only exists in "right"
+		# "file" and "file2" must not be listed
+		test "1" = $(grep sub output | wc -l) &&
+		test "0" = $(grep file output | wc -l)
+	)
+'
+
+run_dir_diff_test 'difftool --dir-diff v1 from subdirectory w/ pathspec' '
+	(
+		cd sub &&
+		git difftool --dir-diff $symlinks --extcmd ls v1 -- .>output &&
+		# "sub" exists in v1 and HEAD
+		# "file" is filtered out by the pathspec
+		test "2" = $(grep sub output | wc -l) &&
+		test "0" = $(grep file output | wc -l)
+	)
+'
+
+run_dir_diff_test 'difftool --dir-diff from subdirectory with GIT_DIR set' '
+	(
+		GIT_DIR=$(pwd)/.git &&
+		export GIT_DIR &&
+		GIT_WORK_TREE=$(pwd) &&
+		export GIT_WORK_TREE &&
+		cd sub &&
+		git difftool --dir-diff $symlinks --extcmd ls \
+			branch -- sub >output &&
 		grep sub output &&
-		grep file output
+		! grep file output
 	)
 '
 
@@ -446,7 +520,7 @@ write_script .git/CHECK_SYMLINKS <<\EOF
 for f in file file2 sub/sub
 do
 	echo "$f"
-	readlink "$2/$f"
+	ls -ld "$2/$f" | sed -e 's/.* -> //'
 done >actual
 EOF
 
@@ -545,5 +619,18 @@ test_expect_success PERL,SYMLINKS 'difftool --dir-diff symlinked directories' '
 		test_cmp expect actual
 	)
 '
+
+test true != $use_builtin_difftool || break
+
+test_expect_success 'tear down for re-run' '
+	rm -rf * .[a-z]* &&
+	git init
+'
+
+# run as builtin difftool now
+GIT_CONFIG_PARAMETERS="'difftool.usebuiltin=true'"
+export GIT_CONFIG_PARAMETERS
+
+done
 
 test_done

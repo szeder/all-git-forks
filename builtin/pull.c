@@ -17,6 +17,7 @@
 #include "revision.h"
 #include "tempfile.h"
 #include "lockfile.h"
+#include "wt-status.h"
 
 enum rebase_type {
 	REBASE_INVALID = -1,
@@ -86,9 +87,12 @@ static char *opt_commit;
 static char *opt_edit;
 static char *opt_ff;
 static char *opt_verify_signatures;
+static int opt_autostash = -1;
+static int config_autostash;
 static struct argv_array opt_strategies = ARGV_ARRAY_INIT;
 static struct argv_array opt_strategy_opts = ARGV_ARRAY_INIT;
 static char *opt_gpg_sign;
+static int opt_allow_unrelated_histories;
 
 /* Options passed to git-fetch */
 static char *opt_all;
@@ -149,6 +153,8 @@ static struct option pull_options[] = {
 	OPT_PASSTHRU(0, "verify-signatures", &opt_verify_signatures, NULL,
 		N_("verify that the named commit has a valid GPG signature"),
 		PARSE_OPT_NOARG),
+	OPT_BOOL(0, "autostash", &opt_autostash,
+		N_("automatically stash/stash pop before and after rebase")),
 	OPT_PASSTHRU_ARGV('s', "strategy", &opt_strategies, N_("strategy"),
 		N_("merge strategy to use"),
 		0),
@@ -159,6 +165,9 @@ static struct option pull_options[] = {
 	OPT_PASSTHRU('S', "gpg-sign", &opt_gpg_sign, N_("key-id"),
 		N_("GPG sign commit"),
 		PARSE_OPT_OPTARG),
+	OPT_SET_INT(0, "allow-unrelated-histories",
+		    &opt_allow_unrelated_histories,
+		    N_("allow merging unrelated histories"), 1),
 
 	/* Options passed to git-fetch */
 	OPT_GROUP(N_("Options related to fetching")),
@@ -306,70 +315,15 @@ static enum rebase_type config_get_rebase(void)
 }
 
 /**
- * Returns 1 if there are unstaged changes, 0 otherwise.
+ * Read config variables.
  */
-static int has_unstaged_changes(const char *prefix)
+static int git_pull_config(const char *var, const char *value, void *cb)
 {
-	struct rev_info rev_info;
-	int result;
-
-	init_revisions(&rev_info, prefix);
-	DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
-	DIFF_OPT_SET(&rev_info.diffopt, QUICK);
-	diff_setup_done(&rev_info.diffopt);
-	result = run_diff_files(&rev_info, 0);
-	return diff_result_code(&rev_info.diffopt, result);
-}
-
-/**
- * Returns 1 if there are uncommitted changes, 0 otherwise.
- */
-static int has_uncommitted_changes(const char *prefix)
-{
-	struct rev_info rev_info;
-	int result;
-
-	if (is_cache_unborn())
+	if (!strcmp(var, "rebase.autostash")) {
+		config_autostash = git_config_bool(var, value);
 		return 0;
-
-	init_revisions(&rev_info, prefix);
-	DIFF_OPT_SET(&rev_info.diffopt, IGNORE_SUBMODULES);
-	DIFF_OPT_SET(&rev_info.diffopt, QUICK);
-	add_head_to_pending(&rev_info);
-	diff_setup_done(&rev_info.diffopt);
-	result = run_diff_index(&rev_info, 1);
-	return diff_result_code(&rev_info.diffopt, result);
-}
-
-/**
- * If the work tree has unstaged or uncommitted changes, dies with the
- * appropriate message.
- */
-static void die_on_unclean_work_tree(const char *prefix)
-{
-	struct lock_file *lock_file = xcalloc(1, sizeof(*lock_file));
-	int do_die = 0;
-
-	hold_locked_index(lock_file, 0);
-	refresh_cache(REFRESH_QUIET);
-	update_index_if_able(&the_index, lock_file);
-	rollback_lock_file(lock_file);
-
-	if (has_unstaged_changes(prefix)) {
-		error(_("Cannot pull with rebase: You have unstaged changes."));
-		do_die = 1;
 	}
-
-	if (has_uncommitted_changes(prefix)) {
-		if (do_die)
-			error(_("Additionally, your index contains uncommitted changes."));
-		else
-			error(_("Cannot pull with rebase: Your index contains uncommitted changes."));
-		do_die = 1;
-	}
-
-	if (do_die)
-		exit(1);
+	return git_default_config(var, value, cb);
 }
 
 /**
@@ -612,6 +566,8 @@ static int run_merge(void)
 	argv_array_pushv(&args, opt_strategy_opts.argv);
 	if (opt_gpg_sign)
 		argv_array_push(&args, opt_gpg_sign);
+	if (opt_allow_unrelated_histories > 0)
+		argv_array_push(&args, "--allow-unrelated-histories");
 
 	argv_array_push(&args, "FETCH_HEAD");
 	ret = run_command_v_opt(args.argv, RUN_GIT_CMD);
@@ -789,6 +745,13 @@ static int run_rebase(const unsigned char *curr_head,
 	argv_array_pushv(&args, opt_strategy_opts.argv);
 	if (opt_gpg_sign)
 		argv_array_push(&args, opt_gpg_sign);
+	if (opt_autostash == 0)
+		argv_array_push(&args, "--no-autostash");
+	else if (opt_autostash == 1)
+		argv_array_push(&args, "--autostash");
+	if (opt_verify_signatures &&
+	    !strcmp(opt_verify_signatures, "--verify-signatures"))
+		warning(_("ignoring --verify-signatures for rebase"));
 
 	argv_array_push(&args, "--onto");
 	argv_array_push(&args, sha1_to_hex(merge_head));
@@ -823,10 +786,10 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 	if (opt_rebase < 0)
 		opt_rebase = config_get_rebase();
 
-	git_config(git_default_config, NULL);
+	git_config(git_pull_config, NULL);
 
 	if (read_cache_unmerged())
-		die_resolve_conflict("Pull");
+		die_resolve_conflict("pull");
 
 	if (file_exists(git_path("MERGE_HEAD")))
 		die_conclude_merge();
@@ -834,15 +797,20 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 	if (get_sha1("HEAD", orig_head))
 		hashclr(orig_head);
 
+	if (!opt_rebase && opt_autostash != -1)
+		die(_("--[no-]autostash option is only valid with --rebase."));
+
 	if (opt_rebase) {
-		int autostash = 0;
+		int autostash = config_autostash;
+		if (opt_autostash != -1)
+			autostash = opt_autostash;
 
 		if (is_null_sha1(orig_head) && !is_cache_unborn())
 			die(_("Updating an unborn branch with changes added to the index."));
 
-		git_config_get_bool("rebase.autostash", &autostash);
 		if (!autostash)
-			die_on_unclean_work_tree(prefix);
+			require_clean_work_tree(N_("pull with rebase"),
+				_("please commit or stash them."), 1, 0);
 
 		if (get_rebase_fork_point(rebase_fork_point, repo, *refspecs))
 			hashclr(rebase_fork_point);
@@ -889,10 +857,24 @@ int cmd_pull(int argc, const char **argv, const char *prefix)
 		if (merge_heads.nr > 1)
 			die(_("Cannot merge multiple branches into empty head."));
 		return pull_into_void(*merge_heads.sha1, curr_head);
-	} else if (opt_rebase) {
-		if (merge_heads.nr > 1)
-			die(_("Cannot rebase onto multiple branches."));
+	}
+	if (opt_rebase && merge_heads.nr > 1)
+		die(_("Cannot rebase onto multiple branches."));
+
+	if (opt_rebase) {
+		struct commit_list *list = NULL;
+		struct commit *merge_head, *head;
+
+		head = lookup_commit_reference(orig_head);
+		commit_list_insert(head, &list);
+		merge_head = lookup_commit_reference(merge_heads.sha1[0]);
+		if (is_descendant_of(merge_head, list)) {
+			/* we can fast-forward this without invoking rebase */
+			opt_ff = "--ff-only";
+			return run_merge();
+		}
 		return run_rebase(curr_head, *merge_heads.sha1, rebase_fork_point);
-	} else
+	} else {
 		return run_merge();
+	}
 }

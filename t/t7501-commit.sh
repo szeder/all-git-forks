@@ -155,6 +155,15 @@ test_expect_success 'amend --only ignores staged contents' '
 	git diff --exit-code
 '
 
+test_expect_success 'allow-empty --only ignores staged contents' '
+	echo changed-again >file &&
+	git add file &&
+	git commit --allow-empty --only -m "empty" &&
+	git cat-file blob HEAD:file >file.actual &&
+	test_cmp file.expect file.actual &&
+	git diff --exit-code
+'
+
 test_expect_success 'set up editor' '
 	cat >editor <<-\EOF &&
 	#!/bin/sh
@@ -605,6 +614,26 @@ test_expect_success '--only works on to-be-born branch' '
 	echo newfile >expected &&
 	git ls-tree -r --name-only HEAD >actual &&
 	test_cmp expected actual
+'
+
+test_expect_success '--dry-run with conflicts fixed from a merge' '
+	# setup two branches with conflicting information
+	# in the same file, resolve the conflict,
+	# call commit with --dry-run
+	echo "Initial contents, unimportant" >test-file &&
+	git add test-file &&
+	git commit -m "Initial commit" &&
+	echo "commit-1-state" >test-file &&
+	git commit -m "commit 1" -i test-file &&
+	git tag commit-1 &&
+	git checkout -b branch-2 HEAD^1 &&
+	echo "commit-2-state" >test-file &&
+	git commit -m "commit 2" -i test-file &&
+	! $(git merge --no-commit commit-1) &&
+	echo "commit-2-state" >test-file &&
+	git add test-file &&
+	git commit --dry-run &&
+	git commit -m "conflicts fixed from merge."
 '
 
 test_done

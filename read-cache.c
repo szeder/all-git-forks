@@ -19,8 +19,9 @@
 #include "split-index.h"
 #include "utf8.h"
 
-static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
-					       unsigned int options);
+#ifndef NO_PTHREADS
+#include <pthread.h>
+#endif
 
 /* Mask for the name length in ce_flags in the on-disk index */
 
@@ -76,6 +77,7 @@ void rename_index_entry_at(struct index_state *istate, int nr, const char *new_n
 	copy_cache_entry(new, old);
 	new->ce_flags &= ~CE_HASHED;
 	new->ce_namelen = namelen;
+	new->precompute_hash_state = 0;
 	new->index = 0;
 	memcpy(new->name, new_name, namelen + 1);
 
@@ -159,12 +161,19 @@ void fill_stat_cache_info(struct cache_entry *ce, struct stat *st)
 static int ce_compare_data(const struct cache_entry *ce, struct stat *st)
 {
 	int match = -1;
-	int fd = open(ce->name, O_RDONLY);
+	static int cloexec = O_CLOEXEC;
+	int fd = open(ce->name, O_RDONLY | cloexec);
+
+	if ((cloexec & O_CLOEXEC) && fd < 0 && errno == EINVAL) {
+		/* Try again w/o O_CLOEXEC: the kernel might not support it */
+		cloexec &= ~O_CLOEXEC;
+		fd = open(ce->name, O_RDONLY | cloexec);
+	}
 
 	if (fd >= 0) {
 		unsigned char sha1[20];
 		if (!index_fd(sha1, fd, st, OBJ_BLOB, ce->name, 0))
-			match = hashcmp(sha1, ce->sha1);
+			match = hashcmp(sha1, ce->oid.hash);
 		/* index_fd() closed the file descriptor already */
 	}
 	return match;
@@ -181,7 +190,7 @@ static int ce_compare_link(const struct cache_entry *ce, size_t expected_size)
 	if (strbuf_readlink(&sb, ce->name, expected_size))
 		return -1;
 
-	buffer = read_sha1_file(ce->sha1, &type, &size);
+	buffer = read_sha1_file(ce->oid.hash, &type, &size);
 	if (buffer) {
 		if (size == sb.len)
 			match = memcmp(buffer, sb.buf, size);
@@ -205,7 +214,7 @@ static int ce_compare_gitlink(const struct cache_entry *ce)
 	 */
 	if (resolve_gitlink_ref(ce->name, "HEAD", sha1) < 0)
 		return 0;
-	return hashcmp(sha1, ce->sha1);
+	return hashcmp(sha1, ce->oid.hash);
 }
 
 static int ce_modified_check_fs(const struct cache_entry *ce, struct stat *st)
@@ -265,7 +274,7 @@ static int ce_match_stat_basic(const struct cache_entry *ce, struct stat *st)
 
 	/* Racily smudged entry? */
 	if (!ce->ce_stat_data.sd_size) {
-		if (!is_empty_blob_sha1(ce->sha1))
+		if (!is_empty_blob_sha1(ce->oid.hash))
 			changed |= DATA_CHANGED;
 	}
 
@@ -506,7 +515,6 @@ int index_name_pos(const struct index_state *istate, const char *name, int namel
 	return index_name_stage_pos(istate, name, namelen, 0);
 }
 
-/* Remove entry, return true if there are more entries to go.. */
 int remove_index_entry_at(struct index_state *istate, int pos)
 {
 	struct cache_entry *ce = istate->cache[pos];
@@ -618,6 +626,7 @@ static struct cache_entry *create_alias_ce(struct index_state *istate,
 	new = xcalloc(1, cache_entry_size(len));
 	memcpy(new->name, alias->name, len);
 	copy_cache_entry(new, ce);
+	new->precompute_hash_state = 0;
 	save_or_free_index_entry(istate, ce);
 	return new;
 }
@@ -627,7 +636,7 @@ void set_object_name_for_intent_to_add_entry(struct cache_entry *ce)
 	unsigned char sha1[20];
 	if (write_sha1_file("", 0, blob_type, sha1))
 		die("cannot create an empty blob in the object database");
-	hashcpy(ce->sha1, sha1);
+	hashcpy(ce->oid.hash, sha1);
 }
 
 int add_to_index(struct index_state *istate, const char *path, struct stat *st, int flags)
@@ -659,9 +668,10 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	else
 		ce->ce_flags |= CE_INTENT_TO_ADD;
 
-	if (trust_executable_bit && has_symlinks)
+
+	if (trust_executable_bit && has_symlinks) {
 		ce->ce_mode = create_ce_mode(st_mode);
-	else {
+	} else {
 		/* If there is an existing entry, pick the mode bits and type
 		 * from it, otherwise assume unexecutable regular file.
 		 */
@@ -692,7 +702,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 		return 0;
 	}
 	if (!intent_only) {
-		if (index_path(ce->sha1, path, st, HASH_WRITE_OBJECT)) {
+		if (index_path(ce->oid.hash, path, st, HASH_WRITE_OBJECT)) {
 			free(ce);
 			return error("unable to index file %s", path);
 		}
@@ -706,7 +716,7 @@ int add_to_index(struct index_state *istate, const char *path, struct stat *st, 
 	/* It was suspected to be racily clean, but it turns out to be Ok */
 	was_same = (alias &&
 		    !ce_stage(alias) &&
-		    !hashcmp(alias->sha1, ce->sha1) &&
+		    !oidcmp(&alias->oid, &ce->oid) &&
 		    ce->ce_mode == alias->ce_mode);
 
 	if (pretend)
@@ -744,7 +754,7 @@ struct cache_entry *make_cache_entry(unsigned int mode,
 	size = cache_entry_size(len);
 	ce = xcalloc(1, size);
 
-	hashcpy(ce->sha1, sha1);
+	hashcpy(ce->oid.hash, sha1);
 	memcpy(ce->name, path, len);
 	ce->ce_flags = create_ce_flags(stage);
 	ce->ce_namelen = len;
@@ -754,6 +764,35 @@ struct cache_entry *make_cache_entry(unsigned int mode,
 	if (ret != ce)
 		free(ce);
 	return ret;
+}
+
+/*
+ * Chmod an index entry with either +x or -x.
+ *
+ * Returns -1 if the chmod for the particular cache entry failed (if it's
+ * not a regular file), -2 if an invalid flip argument is passed in, 0
+ * otherwise.
+ */
+int chmod_index_entry(struct index_state *istate, struct cache_entry *ce,
+		      char flip)
+{
+	if (!S_ISREG(ce->ce_mode))
+		return -1;
+	switch (flip) {
+	case '+':
+		ce->ce_mode |= 0111;
+		break;
+	case '-':
+		ce->ce_mode &= ~0111;
+		break;
+	default:
+		return -2;
+	}
+	cache_tree_invalidate_path(istate, ce->name);
+	ce->ce_flags |= CE_UPDATE_IN_BASE;
+	istate->cache_changed |= CE_ENTRY_CHANGED;
+
+	return 0;
 }
 
 int ce_same_name(const struct cache_entry *a, const struct cache_entry *b)
@@ -862,6 +901,34 @@ static int has_file_name(struct index_state *istate,
 }
 
 /*
+ * Like strcmp(), but also return the offset of the first change.
+ */
+int strcmp_offset(const char *s1_in, const char *s2_in, int *first_change)
+{
+	const unsigned char *s1 = (const unsigned char *)s1_in;
+	const unsigned char *s2 = (const unsigned char *)s2_in;
+	int diff = 0;
+	int k;
+
+	*first_change = 0;
+	for (k=0; s1[k]; k++)
+		if ((diff = (s1[k] - s2[k])))
+			goto found_it;
+	if (!s2[k])
+		return 0;
+	diff = -1;
+
+found_it:
+	*first_change = k;
+	if (diff > 0)
+		return 1;
+	else if (diff < 0)
+		return -1;
+	else
+		return 0;
+}
+
+/*
  * Do we have another file with a pathname that is a proper
  * subset of the name we're trying to add?
  */
@@ -872,6 +939,21 @@ static int has_dir_name(struct index_state *istate,
 	int stage = ce_stage(ce);
 	const char *name = ce->name;
 	const char *slash = name + ce_namelen(ce);
+	int len_eq_last;
+	int cmp_last = 0;
+
+	if (istate->cache_nr > 0) {
+		/*
+		 * Compare the entry's full path with the last path in the index.
+		 * If it sorts AFTER the last entry in the index and they have no
+		 * common prefix, then there cannot be any F/D name conflicts.
+		 */
+		cmp_last = strcmp_offset(name,
+			istate->cache[istate->cache_nr-1]->name,
+			&len_eq_last);
+		if (cmp_last > 0 && len_eq_last == 0)
+			return retval;
+	}
 
 	for (;;) {
 		int len;
@@ -883,6 +965,24 @@ static int has_dir_name(struct index_state *istate,
 				return retval;
 		}
 		len = slash - name;
+
+		if (cmp_last > 0) {
+			/*
+			 * If this part of the directory prefix (including the trailing
+			 * slash) already appears in the path of the last entry in the
+			 * index, then we cannot also have a file with this prefix (or
+			 * any parent directory prefix).
+			 */
+			if (len+1 <= len_eq_last)
+				return retval;
+			/*
+			 * If this part of the directory prefix (excluding the trailing
+			 * slash) is longer than the known equal portions, then this part
+			 * of the prefix cannot collide with a file.  Go on to the parent.
+			 */
+			if (len > len_eq_last)
+				continue;
+		}
 
 		pos = index_name_stage_pos(istate, name, len, stage);
 		if (pos >= 0) {
@@ -975,7 +1075,16 @@ static int add_index_entry_with_check(struct index_state *istate, struct cache_e
 
 	if (!(option & ADD_CACHE_KEEP_CACHE_TREE))
 		cache_tree_invalidate_path(istate, ce->name);
-	pos = index_name_stage_pos(istate, ce->name, ce_namelen(ce), ce_stage(ce));
+
+	/*
+	 * If this entry's path sorts after the last entry in the index,
+	 * we can avoid searching for it.
+	 */
+	if (istate->cache_nr > 0 &&
+		strcmp(ce->name, istate->cache[istate->cache_nr - 1]->name) > 0)
+		pos = -istate->cache_nr - 1;
+	else
+		pos = index_name_stage_pos(istate, ce->name, ce_namelen(ce), ce_stage(ce));
 
 	/* existing match? Just replace it. */
 	if (pos >= 0) {
@@ -1254,7 +1363,7 @@ int refresh_index(struct index_state *istate, unsigned int flags,
 	return has_errors;
 }
 
-static struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
+struct cache_entry *refresh_cache_entry(struct cache_entry *ce,
 					       unsigned int options)
 {
 	return refresh_cache_ent(&the_index, ce, options, NULL, NULL);
@@ -1364,6 +1473,34 @@ static int verify_hdr(struct cache_header *hdr, unsigned long size)
 	return 0;
 }
 
+#ifndef NO_PTHREADS
+/*
+ * Require index file to be larger than this threshold before
+ * we bother using a thread to verify the SHA.
+ * This value was arbitrarily chosen.
+ */
+#define VERIFY_HDR_THRESHOLD	10*1024*1024
+
+struct verify_hdr_thread_data
+{
+	pthread_t thread_id;
+	struct cache_header *hdr;
+	size_t size;
+	int result;
+};
+
+/*
+ * A thread proc to run the verify_hdr() computation
+ * in a background thread.
+ */
+static void *verify_hdr_thread(void *_data)
+{
+	struct verify_hdr_thread_data *p = _data;
+	p->result = verify_hdr(p->hdr, (unsigned long)p->size);
+	return NULL;
+}
+#endif
+
 static int read_index_extension(struct index_state *istate,
 				const char *ext, void *data, unsigned long sz)
 {
@@ -1423,8 +1560,9 @@ static struct cache_entry *cache_entry_from_ondisk(struct ondisk_cache_entry *on
 	ce->ce_stat_data.sd_size  = get_be32(&ondisk->size);
 	ce->ce_flags = flags & ~CE_NAMEMASK;
 	ce->ce_namelen = len;
+	ce->precompute_hash_state = 0;
 	ce->index = 0;
-	hashcpy(ce->sha1, ondisk->sha1);
+	hashcpy(ce->oid.hash, ondisk->sha1);
 	memcpy(ce->name, name, len);
 	ce->name[len] = '\0';
 	return ce;
@@ -1551,6 +1689,9 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	void *mmap;
 	size_t mmap_size;
 	struct strbuf previous_name_buf = STRBUF_INIT, *previous_name;
+#ifndef NO_PTHREADS
+	struct verify_hdr_thread_data verify_hdr_thread_data;
+#endif
 
 	if (istate->initialized)
 		return istate->cache_nr;
@@ -1577,8 +1718,23 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 	close(fd);
 
 	hdr = mmap;
+#ifdef NO_PTHREADS
 	if (verify_hdr(hdr, mmap_size) < 0)
 		goto unmap;
+#else
+	if (mmap_size < VERIFY_HDR_THRESHOLD) {
+		if (verify_hdr(hdr, mmap_size) < 0)
+			goto unmap;
+	} else {
+		verify_hdr_thread_data.hdr = hdr;
+		verify_hdr_thread_data.size = mmap_size;
+		verify_hdr_thread_data.result = -1;
+		if (pthread_create(
+				&verify_hdr_thread_data.thread_id, NULL,
+				verify_hdr_thread, &verify_hdr_thread_data))
+			die_errno("unable to start verify_hdr_thread");
+	}
+#endif
 
 	hashcpy(istate->sha1, (const unsigned char *)hdr + mmap_size - 20);
 	istate->version = ntohl(hdr->hdr_version);
@@ -1626,6 +1782,16 @@ int do_read_index(struct index_state *istate, const char *path, int must_exist)
 		src_offset += 8;
 		src_offset += extsize;
 	}
+
+#ifndef NO_PTHREADS
+	if (mmap_size >= VERIFY_HDR_THRESHOLD) {
+		if (pthread_join(verify_hdr_thread_data.thread_id, NULL))
+			die_errno("unable to join verify_hdr_thread");
+		if (verify_hdr_thread_data.result < 0)
+			goto unmap;
+	}
+#endif
+
 	munmap(mmap, mmap_size);
 	return istate->cache_nr;
 
@@ -1849,7 +2015,7 @@ static char *copy_cache_entry_to_ondisk(struct ondisk_cache_entry *ondisk,
 	ondisk->uid  = htonl(ce->ce_stat_data.sd_uid);
 	ondisk->gid  = htonl(ce->ce_stat_data.sd_gid);
 	ondisk->size = htonl(ce->ce_stat_data.sd_size);
-	hashcpy(ondisk->sha1, ce->sha1);
+	hashcpy(ondisk->sha1, ce->oid.hash);
 
 	flags = ce->ce_flags & ~CE_NAMEMASK;
 	flags |= (ce_namelen(ce) >= CE_NAMEMASK ? CE_NAMEMASK : ce_namelen(ce));
@@ -1870,7 +2036,7 @@ static int ce_write_entry(git_SHA_CTX *c, int fd, struct cache_entry *ce,
 {
 	int size;
 	struct ondisk_cache_entry *ondisk;
-	int saved_namelen = saved_namelen; /* compiler workaround */
+	FAKE_INIT(int, saved_namelen, 0);
 	char *name;
 	int result;
 
@@ -2038,7 +2204,7 @@ static int do_write_index(struct index_state *istate, int newfd,
 			continue;
 		if (!ce_uptodate(ce) && is_racy_timestamp(istate, ce))
 			ce_smudge_racily_clean_entry(ce);
-		if (is_null_sha1(ce->sha1)) {
+		if (is_null_oid(&ce->oid)) {
 			static const char msg[] = "cache entry has null sha1: %s";
 			static int allow = -1;
 
@@ -2285,7 +2451,7 @@ void *read_blob_data_from_index(struct index_state *istate, const char *path, un
 	}
 	if (pos < 0)
 		return NULL;
-	data = read_sha1_file(istate->cache[pos]->sha1, &type, &sz);
+	data = read_sha1_file(istate->cache[pos]->oid.hash, &type, &sz);
 	if (!data || type != OBJ_BLOB) {
 		free(data);
 		return NULL;

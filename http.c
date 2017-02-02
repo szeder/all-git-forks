@@ -11,6 +11,7 @@
 #include "gettext.h"
 #include "transport.h"
 
+static struct trace_key trace_curl = TRACE_KEY_INIT(CURL);
 #if LIBCURL_VERSION_NUM >= 0x070a08
 long int git_curl_ipresolve = CURL_IPRESOLVE_WHATEVER;
 #else
@@ -89,6 +90,18 @@ static struct {
 	 * here, too
 	 */
 };
+#if LIBCURL_VERSION_NUM >= 0x071600
+static const char *curl_deleg;
+static struct {
+	const char *name;
+	long curl_deleg_param;
+} curl_deleg_levels[] = {
+	{ "none", CURLGSSAPI_DELEGATION_NONE },
+	{ "policy", CURLGSSAPI_DELEGATION_POLICY_FLAG },
+	{ "always", CURLGSSAPI_DELEGATION_FLAG },
+};
+#endif
+
 static struct credential proxy_auth = CREDENTIAL_INIT;
 static const char *curl_proxyuserpwd;
 static const char *curl_cookie_file;
@@ -96,7 +109,9 @@ static int curl_save_cookies;
 struct credential http_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
 static const char *user_agent;
-static int curl_empty_auth;
+static int curl_empty_auth = 1;
+
+enum http_follow_config http_follow_config = HTTP_FOLLOW_INITIAL;
 
 #if LIBCURL_VERSION_NUM >= 0x071700
 /* Use CURLOPT_KEYPASSWD as is */
@@ -200,6 +215,13 @@ static void finish_active_slot(struct active_request_slot *slot)
 		slot->callback_func(slot->callback_data);
 }
 
+static void xmulti_remove_handle(struct active_request_slot *slot)
+{
+#ifdef USE_CURL_MULTI
+	curl_multi_remove_handle(curlm, slot->curl);
+#endif
+}
+
 #ifdef USE_CURL_MULTI
 static void process_curl_messages(void)
 {
@@ -215,7 +237,7 @@ static void process_curl_messages(void)
 			       slot->curl != curl_message->easy_handle)
 				slot = slot->next;
 			if (slot != NULL) {
-				curl_multi_remove_handle(curlm, slot->curl);
+				xmulti_remove_handle(slot);
 				slot->curl_result = curl_result;
 				finish_active_slot(slot);
 			} else {
@@ -315,6 +337,15 @@ static int http_options(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (!strcmp("http.delegation", var)) {
+#if LIBCURL_VERSION_NUM >= 0x071600
+		return git_config_string(&curl_deleg, var, value);
+#else
+		warning(_("Delegation control is not supported with cURL < 7.22.0"));
+		return 0;
+#endif
+	}
+
 	if (!strcmp("http.pinnedpubkey", var)) {
 #if LIBCURL_VERSION_NUM >= 0x072c00
 		return git_config_pathname(&ssl_pinnedkey, var, value);
@@ -337,13 +368,23 @@ static int http_options(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (!strcmp("http.followredirects", var)) {
+		if (value && !strcmp(value, "initial"))
+			http_follow_config = HTTP_FOLLOW_INITIAL;
+		else if (git_config_bool(var, value))
+			http_follow_config = HTTP_FOLLOW_ALWAYS;
+		else
+			http_follow_config = HTTP_FOLLOW_NONE;
+		return 0;
+	}
+
 	/* Fall back on the default ones */
 	return git_default_config(var, value, cb);
 }
 
 static void init_curl_http_auth(CURL *result)
 {
-	if (!http_auth.username) {
+	if (!http_auth.username || !*http_auth.username) {
 		if (curl_empty_auth)
 			curl_easy_setopt(result, CURLOPT_USERPWD, ":");
 		return;
@@ -460,8 +501,7 @@ static int sockopt_callback(void *client, curl_socket_t fd, curlsocktype type)
 
 	rc = setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *)&ka, len);
 	if (rc < 0)
-		warning("unable to set SO_KEEPALIVE on socket %s",
-			strerror(errno));
+		warning_errno("unable to set SO_KEEPALIVE on socket");
 
 	return 0; /* CURL_SOCKOPT_OK only exists since curl 7.21.5 */
 }
@@ -477,6 +517,125 @@ static void set_curl_keepalive(CURL *c)
 	/* not supported on older curl versions */
 }
 #endif
+
+static void redact_sensitive_header(struct strbuf *header)
+{
+	const char *sensitive_header;
+
+	if (skip_prefix(header->buf, "Authorization:", &sensitive_header) ||
+	    skip_prefix(header->buf, "Proxy-Authorization:", &sensitive_header)) {
+		/* The first token is the type, which is OK to log */
+		while (isspace(*sensitive_header))
+			sensitive_header++;
+		while (*sensitive_header && !isspace(*sensitive_header))
+			sensitive_header++;
+		/* Everything else is opaque and possibly sensitive */
+		strbuf_setlen(header,  sensitive_header - header->buf);
+		strbuf_addstr(header, " <redacted>");
+	}
+}
+
+static void curl_dump_header(const char *text, unsigned char *ptr, size_t size, int hide_sensitive_header)
+{
+	struct strbuf out = STRBUF_INIT;
+	struct strbuf **headers, **header;
+
+	strbuf_addf(&out, "%s, %10.10ld bytes (0x%8.8lx)\n",
+		text, (long)size, (long)size);
+	trace_strbuf(&trace_curl, &out);
+	strbuf_reset(&out);
+	strbuf_add(&out, ptr, size);
+	headers = strbuf_split_max(&out, '\n', 0);
+
+	for (header = headers; *header; header++) {
+		if (hide_sensitive_header)
+			redact_sensitive_header(*header);
+		strbuf_insert((*header), 0, text, strlen(text));
+		strbuf_insert((*header), strlen(text), ": ", 2);
+		strbuf_rtrim((*header));
+		strbuf_addch((*header), '\n');
+		trace_strbuf(&trace_curl, (*header));
+	}
+	strbuf_list_free(headers);
+	strbuf_release(&out);
+}
+
+static void curl_dump_data(const char *text, unsigned char *ptr, size_t size)
+{
+	size_t i;
+	struct strbuf out = STRBUF_INIT;
+	unsigned int width = 60;
+
+	strbuf_addf(&out, "%s, %10.10ld bytes (0x%8.8lx)\n",
+		text, (long)size, (long)size);
+	trace_strbuf(&trace_curl, &out);
+
+	for (i = 0; i < size; i += width) {
+		size_t w;
+
+		strbuf_reset(&out);
+		strbuf_addf(&out, "%s: ", text);
+		for (w = 0; (w < width) && (i + w < size); w++) {
+			unsigned char ch = ptr[i + w];
+
+			strbuf_addch(&out,
+				       (ch >= 0x20) && (ch < 0x80)
+				       ? ch : '.');
+		}
+		strbuf_addch(&out, '\n');
+		trace_strbuf(&trace_curl, &out);
+	}
+	strbuf_release(&out);
+}
+
+static int curl_trace(CURL *handle, curl_infotype type, char *data, size_t size, void *userp)
+{
+	const char *text;
+	enum { NO_FILTER = 0, DO_FILTER = 1 };
+
+	switch (type) {
+	case CURLINFO_TEXT:
+		trace_printf_key(&trace_curl, "== Info: %s", data);
+	default:		/* we ignore unknown types by default */
+		return 0;
+
+	case CURLINFO_HEADER_OUT:
+		text = "=> Send header";
+		curl_dump_header(text, (unsigned char *)data, size, DO_FILTER);
+		break;
+	case CURLINFO_DATA_OUT:
+		text = "=> Send data";
+		curl_dump_data(text, (unsigned char *)data, size);
+		break;
+	case CURLINFO_SSL_DATA_OUT:
+		text = "=> Send SSL data";
+		curl_dump_data(text, (unsigned char *)data, size);
+		break;
+	case CURLINFO_HEADER_IN:
+		text = "<= Recv header";
+		curl_dump_header(text, (unsigned char *)data, size, NO_FILTER);
+		break;
+	case CURLINFO_DATA_IN:
+		text = "<= Recv data";
+		curl_dump_data(text, (unsigned char *)data, size);
+		break;
+	case CURLINFO_SSL_DATA_IN:
+		text = "<= Recv SSL data";
+		curl_dump_data(text, (unsigned char *)data, size);
+		break;
+	}
+	return 0;
+}
+
+void setup_curl_trace(CURL *handle)
+{
+	if (!trace_want(&trace_curl))
+		return;
+	curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(handle, CURLOPT_DEBUGFUNCTION, curl_trace);
+	curl_easy_setopt(handle, CURLOPT_DEBUGDATA, NULL);
+}
+
 
 static CURL *get_curl_handle(void)
 {
@@ -501,6 +660,22 @@ static CURL *get_curl_handle(void)
 #endif
 #ifdef LIBCURL_CAN_HANDLE_AUTH_ANY
 	curl_easy_setopt(result, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
+#endif
+
+#if LIBCURL_VERSION_NUM >= 0x071600
+	if (curl_deleg) {
+		int i;
+		for (i = 0; i < ARRAY_SIZE(curl_deleg_levels); i++) {
+			if (!strcmp(curl_deleg, curl_deleg_levels[i].name)) {
+				curl_easy_setopt(result, CURLOPT_GSSAPI_DELEGATION,
+						curl_deleg_levels[i].curl_deleg_param);
+				break;
+			}
+		}
+		if (i == ARRAY_SIZE(curl_deleg_levels))
+			warning("Unknown delegation method '%s': using default",
+				curl_deleg);
+	}
 #endif
 
 	if (http_proactive_auth)
@@ -554,7 +729,6 @@ static CURL *get_curl_handle(void)
 				 curl_low_speed_time);
 	}
 
-	curl_easy_setopt(result, CURLOPT_FOLLOWLOCATION, 1);
 	curl_easy_setopt(result, CURLOPT_MAXREDIRS, 20);
 #if LIBCURL_VERSION_NUM >= 0x071301
 	curl_easy_setopt(result, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
@@ -571,14 +745,15 @@ static CURL *get_curl_handle(void)
 	if (is_transport_allowed("ftps"))
 		allowed_protocols |= CURLPROTO_FTPS;
 	curl_easy_setopt(result, CURLOPT_REDIR_PROTOCOLS, allowed_protocols);
+	curl_easy_setopt(result, CURLOPT_PROTOCOLS, allowed_protocols);
 #else
 	if (transport_restrict_protocols())
 		warning("protocol restrictions not applied to curl redirects because\n"
 			"your curl version is too old (>= 7.19.4)");
 #endif
-
 	if (getenv("GIT_CURL_VERBOSE"))
-		curl_easy_setopt(result, CURLOPT_VERBOSE, 1);
+		curl_easy_setopt(result, CURLOPT_VERBOSE, 1L);
+	setup_curl_trace(result);
 
 	curl_easy_setopt(result, CURLOPT_USERAGENT,
 		user_agent ? user_agent : git_user_agent());
@@ -604,7 +779,7 @@ static CURL *get_curl_handle(void)
 	 * precedence here, as in CURL.
 	 */
 	if (!curl_http_proxy) {
-		if (!strcmp(http_auth.protocol, "https")) {
+		if (http_auth.protocol && !strcmp(http_auth.protocol, "https")) {
 			var_override(&curl_http_proxy, getenv("HTTPS_PROXY"));
 			var_override(&curl_http_proxy, getenv("https_proxy"));
 		} else {
@@ -762,9 +937,7 @@ void http_cleanup(void)
 	while (slot != NULL) {
 		struct active_request_slot *next = slot->next;
 		if (slot->curl != NULL) {
-#ifdef USE_CURL_MULTI
-			curl_multi_remove_handle(curlm, slot->curl);
-#endif
+			xmulti_remove_handle(slot);
 			curl_easy_cleanup(slot->curl);
 		}
 		free(slot);
@@ -883,6 +1056,16 @@ struct active_request_slot *get_active_slot(void)
 	curl_easy_setopt(slot->curl, CURLOPT_FAILONERROR, 1);
 	curl_easy_setopt(slot->curl, CURLOPT_RANGE, NULL);
 
+	/*
+	 * Default following to off unless "ALWAYS" is configured; this gives
+	 * callers a sane starting point, and they can tweak for individual
+	 * HTTP_FOLLOW_* cases themselves.
+	 */
+	if (http_follow_config == HTTP_FOLLOW_ALWAYS)
+		curl_easy_setopt(slot->curl, CURLOPT_FOLLOWLOCATION, 1);
+	else
+		curl_easy_setopt(slot->curl, CURLOPT_FOLLOWLOCATION, 0);
+
 #if LIBCURL_VERSION_NUM >= 0x070a08
 	curl_easy_setopt(slot->curl, CURLOPT_IPRESOLVE, git_curl_ipresolve);
 #endif
@@ -903,6 +1086,8 @@ int start_active_slot(struct active_request_slot *slot)
 
 	if (curlm_result != CURLM_OK &&
 	    curlm_result != CURLM_CALL_MULTI_PERFORM) {
+		warning("curl_multi_add_handle failed: %s",
+			curl_multi_strerror(curlm_result));
 		active_requests--;
 		slot->in_use = 0;
 		return 0;
@@ -1042,13 +1227,13 @@ void run_active_slot(struct active_request_slot *slot)
 static void release_active_slot(struct active_request_slot *slot)
 {
 	closedown_active_slot(slot);
-	if (slot->curl && curl_session_count > min_curl_sessions) {
-#ifdef USE_CURL_MULTI
-		curl_multi_remove_handle(curlm, slot->curl);
-#endif
-		curl_easy_cleanup(slot->curl);
-		slot->curl = NULL;
-		curl_session_count--;
+	if (slot->curl) {
+		xmulti_remove_handle(slot);
+		if (curl_session_count > min_curl_sessions) {
+			curl_easy_cleanup(slot->curl);
+			slot->curl = NULL;
+			curl_session_count--;
+		}
 	}
 #ifdef USE_CURL_MULTI
 	fill_active_slots();
@@ -1106,7 +1291,7 @@ void append_remote_object_url(struct strbuf *buf, const char *url,
 
 	strbuf_addf(buf, "objects/%.*s/", 2, hex);
 	if (!only_two_digit_prefix)
-		strbuf_addf(buf, "%s", hex+2);
+		strbuf_addstr(buf, hex + 2);
 }
 
 char *get_remote_object_url(const char *url, const char *hex,
@@ -1123,9 +1308,12 @@ static int handle_curl_result(struct slot_results *results)
 	 * If we see a failing http code with CURLE_OK, we have turned off
 	 * FAILONERROR (to keep the server's custom error response), and should
 	 * translate the code into failure here.
+	 *
+	 * Likewise, if we see a redirect (30x code), that means we turned off
+	 * redirect-following, and we should treat the result as an error.
 	 */
 	if (results->curl_result == CURLE_OK &&
-	    results->http_code >= 400) {
+	    results->http_code >= 300) {
 		results->curl_result = CURLE_HTTP_RETURNED_ERROR;
 		/*
 		 * Normally curl will already have put the "reason phrase"
@@ -1444,6 +1632,9 @@ static int http_request(const char *url,
 		strbuf_addstr(&buf, " no-cache");
 	if (options && options->keep_error)
 		curl_easy_setopt(slot->curl, CURLOPT_FAILONERROR, 0);
+	if (options && options->initial_request &&
+	    http_follow_config == HTTP_FOLLOW_INITIAL)
+		curl_easy_setopt(slot->curl, CURLOPT_FOLLOWLOCATION, 1);
 
 	headers = curl_slist_append(headers, buf.buf);
 
@@ -1492,16 +1683,16 @@ static int http_request(const char *url,
  *
  * Note that this assumes a sane redirect scheme. It's entirely possible
  * in the example above to end up at a URL that does not even end in
- * "info/refs".  In such a case we simply punt, as there is not much we can
- * do (and such a scheme is unlikely to represent a real git repository,
- * which means we are likely about to abort anyway).
+ * "info/refs".  In such a case we die. There's not much we can do, such a
+ * scheme is unlikely to represent a real git repository, and failing to
+ * rewrite the base opens options for malicious redirects to do funny things.
  */
 static int update_url_from_redirect(struct strbuf *base,
 				    const char *asked,
 				    const struct strbuf *got)
 {
 	const char *tail;
-	size_t tail_len;
+	size_t new_len;
 
 	if (!strcmp(asked, got->buf))
 		return 0;
@@ -1510,14 +1701,16 @@ static int update_url_from_redirect(struct strbuf *base,
 		die("BUG: update_url_from_redirect: %s is not a superset of %s",
 		    asked, base->buf);
 
-	tail_len = strlen(tail);
-
-	if (got->len < tail_len ||
-	    strcmp(tail, got->buf + got->len - tail_len))
-		return 0; /* insane redirect scheme */
+	new_len = got->len;
+	if (!strip_suffix_mem(got->buf, &new_len, tail))
+		die(_("unable to update url base from redirection:\n"
+		      "  asked for: %s\n"
+		      "   redirect: %s"),
+		    asked, got->buf);
 
 	strbuf_reset(base);
-	strbuf_add(base, got->buf, got->len - tail_len);
+	strbuf_add(base, got->buf, new_len);
+
 	return 1;
 }
 
@@ -1856,8 +2049,19 @@ static size_t fwrite_sha1_file(char *ptr, size_t eltsize, size_t nmemb,
 	unsigned char expn[4096];
 	size_t size = eltsize * nmemb;
 	int posn = 0;
-	struct http_object_request *freq =
-		(struct http_object_request *)data;
+	struct http_object_request *freq = data;
+	struct active_request_slot *slot = freq->slot;
+
+	if (slot) {
+		CURLcode c = curl_easy_getinfo(slot->curl, CURLINFO_HTTP_CODE,
+						&slot->http_code);
+		if (c != CURLE_OK)
+			die("BUG: curl_easy_getinfo for HTTP code failed: %s",
+				curl_easy_strerror(c));
+		if (slot->http_code >= 300)
+			return size;
+	}
+
 	do {
 		ssize_t retval = xwrite(freq->localfile,
 					(char *) ptr + posn, size - posn);
@@ -1923,8 +2127,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	}
 
 	if (freq->localfile < 0) {
-		error("Couldn't create temporary file %s: %s",
-		      freq->tmpfile, strerror(errno));
+		error_errno("Couldn't create temporary file %s", freq->tmpfile);
 		goto abort;
 	}
 
@@ -1969,8 +2172,8 @@ struct http_object_request *new_http_object_request(const char *base_url,
 			prev_posn = 0;
 			lseek(freq->localfile, 0, SEEK_SET);
 			if (ftruncate(freq->localfile, 0) < 0) {
-				error("Couldn't truncate temporary file %s: %s",
-					  freq->tmpfile, strerror(errno));
+				error_errno("Couldn't truncate temporary file %s",
+					    freq->tmpfile);
 				goto abort;
 			}
 		}
@@ -1979,6 +2182,7 @@ struct http_object_request *new_http_object_request(const char *base_url,
 	freq->slot = get_active_slot();
 
 	curl_easy_setopt(freq->slot->curl, CURLOPT_FILE, freq);
+	curl_easy_setopt(freq->slot->curl, CURLOPT_FAILONERROR, 0);
 	curl_easy_setopt(freq->slot->curl, CURLOPT_WRITEFUNCTION, fwrite_sha1_file);
 	curl_easy_setopt(freq->slot->curl, CURLOPT_ERRORBUFFER, freq->errorstr);
 	curl_easy_setopt(freq->slot->curl, CURLOPT_URL, freq->url);

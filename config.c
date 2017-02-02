@@ -24,7 +24,7 @@ struct config_source {
 			size_t pos;
 		} buf;
 	} u;
-	const char *origin_type;
+	enum config_origin_type origin_type;
 	const char *name;
 	const char *path;
 	int die_on_error;
@@ -38,8 +38,36 @@ struct config_source {
 	long (*do_ftell)(struct config_source *c);
 };
 
+/*
+ * These variables record the "current" config source, which
+ * can be accessed by parsing callbacks.
+ *
+ * The "cf" variable will be non-NULL only when we are actually parsing a real
+ * config source (file, blob, cmdline, etc).
+ *
+ * The "current_config_kvi" variable will be non-NULL only when we are feeding
+ * cached config from a configset into a callback.
+ *
+ * They should generally never be non-NULL at the same time. If they are both
+ * NULL, then we aren't parsing anything (and depending on the function looking
+ * at the variables, it's either a bug for it to be called in the first place,
+ * or it's a function which can be reused for non-config purposes, and should
+ * fall back to some sane behavior).
+ */
 static struct config_source *cf;
+static struct key_value_info *current_config_kvi;
 
+/*
+ * Similar to the variables above, this gives access to the "scope" of the
+ * current value (repo, global, etc). For cached values, it can be found via
+ * the current_config_kvi as above. During parsing, the current value can be
+ * found in this variable. It's not part of "cf" because it transcends a single
+ * file (i.e., a file included from .git/config is still in "repo" scope).
+ */
+static enum config_scope current_parsing_scope;
+
+static int core_compression_seen;
+static int pack_compression_seen;
 static int zlib_compression_seen;
 
 /*
@@ -131,7 +159,9 @@ static int handle_path_include(const char *path, struct config_include_data *inc
 	if (!access_or_die(path, R_OK, 0)) {
 		if (++inc->depth > MAX_INCLUDE_DEPTH)
 			die(include_depth_advice, MAX_INCLUDE_DEPTH, path,
-			    cf && cf->name ? cf->name : "the command line");
+			    !cf ? "<unknown>" :
+			    cf->name ? cf->name :
+			    "the command line");
 		ret = git_config_from_file(git_config_include, path, inc);
 		inc->depth--;
 	}
@@ -205,32 +235,41 @@ int git_config_parse_parameter(const char *text,
 int git_config_from_parameters(config_fn_t fn, void *data)
 {
 	const char *env = getenv(CONFIG_DATA_ENVIRONMENT);
+	int ret = 0;
 	char *envw;
 	const char **argv = NULL;
 	int nr = 0, alloc = 0;
 	int i;
+	struct config_source source;
 
 	if (!env)
 		return 0;
+
+	memset(&source, 0, sizeof(source));
+	source.prev = cf;
+	source.origin_type = CONFIG_ORIGIN_CMDLINE;
+	cf = &source;
+
 	/* sq_dequote will write over it */
 	envw = xstrdup(env);
 
 	if (sq_dequote_to_argv(envw, &argv, &nr, &alloc) < 0) {
-		free(envw);
-		return error("bogus format in " CONFIG_DATA_ENVIRONMENT);
+		ret = error("bogus format in " CONFIG_DATA_ENVIRONMENT);
+		goto out;
 	}
 
 	for (i = 0; i < nr; i++) {
 		if (git_config_parse_parameter(argv[i], fn, data) < 0) {
-			free(argv);
-			free(envw);
-			return -1;
+			ret = -1;
+			goto out;
 		}
 	}
 
+out:
 	free(argv);
 	free(envw);
-	return nr > 0;
+	cf = source.prev;
+	return ret;
 }
 
 static int get_next_char(void)
@@ -417,6 +456,8 @@ static int git_parse_source(config_fn_t fn, void *data)
 	int comment = 0;
 	int baselen = 0;
 	struct strbuf *var = &cf->var;
+	int error_return = 0;
+	char *error_msg = NULL;
 
 	/* U+FEFF Byte Order Mark in UTF8 */
 	const char *bomptr = utf8_bom;
@@ -471,10 +512,40 @@ static int git_parse_source(config_fn_t fn, void *data)
 		if (get_value(fn, data, var) < 0)
 			break;
 	}
+
+	switch (cf->origin_type) {
+	case CONFIG_ORIGIN_BLOB:
+		error_msg = xstrfmt(_("bad config line %d in blob %s"),
+				      cf->linenr, cf->name);
+		break;
+	case CONFIG_ORIGIN_FILE:
+		error_msg = xstrfmt(_("bad config line %d in file %s"),
+				      cf->linenr, cf->name);
+		break;
+	case CONFIG_ORIGIN_STDIN:
+		error_msg = xstrfmt(_("bad config line %d in standard input"),
+				      cf->linenr);
+		break;
+	case CONFIG_ORIGIN_SUBMODULE_BLOB:
+		error_msg = xstrfmt(_("bad config line %d in submodule-blob %s"),
+				       cf->linenr, cf->name);
+		break;
+	case CONFIG_ORIGIN_CMDLINE:
+		error_msg = xstrfmt(_("bad config line %d in command line %s"),
+				       cf->linenr, cf->name);
+		break;
+	default:
+		error_msg = xstrfmt(_("bad config line %d in %s"),
+				      cf->linenr, cf->name);
+	}
+
 	if (cf->die_on_error)
-		die(_("bad config line %d in %s %s"), cf->linenr, cf->origin_type, cf->name);
+		die("%s", error_msg);
 	else
-		return error(_("bad config line %d in %s %s"), cf->linenr, cf->origin_type, cf->name);
+		error_return = error("%s", error_msg);
+
+	free(error_msg);
+	return error_return;
 }
 
 static int parse_unit_factor(const char *end, uintmax_t *val)
@@ -583,16 +654,35 @@ int git_parse_ulong(const char *value, unsigned long *ret)
 NORETURN
 static void die_bad_number(const char *name, const char *value)
 {
-	const char *reason = errno == ERANGE ?
-			     "out of range" :
-			     "invalid unit";
+	const char * error_type = (errno == ERANGE)? _("out of range"):_("invalid unit");
+
 	if (!value)
 		value = "";
 
-	if (cf && cf->origin_type && cf->name)
-		die(_("bad numeric config value '%s' for '%s' in %s %s: %s"),
-		    value, name, cf->origin_type, cf->name, reason);
-	die(_("bad numeric config value '%s' for '%s': %s"), value, name, reason);
+	if (!(cf && cf->name))
+		die(_("bad numeric config value '%s' for '%s': %s"),
+		    value, name, error_type);
+
+	switch (cf->origin_type) {
+	case CONFIG_ORIGIN_BLOB:
+		die(_("bad numeric config value '%s' for '%s' in blob %s: %s"),
+		    value, name, cf->name, error_type);
+	case CONFIG_ORIGIN_FILE:
+		die(_("bad numeric config value '%s' for '%s' in file %s: %s"),
+		    value, name, cf->name, error_type);
+	case CONFIG_ORIGIN_STDIN:
+		die(_("bad numeric config value '%s' for '%s' in standard input: %s"),
+		    value, name, error_type);
+	case CONFIG_ORIGIN_SUBMODULE_BLOB:
+		die(_("bad numeric config value '%s' for '%s' in submodule-blob %s: %s"),
+		    value, name, cf->name, error_type);
+	case CONFIG_ORIGIN_CMDLINE:
+		die(_("bad numeric config value '%s' for '%s' in command line %s: %s"),
+		    value, name, cf->name, error_type);
+	default:
+		die(_("bad numeric config value '%s' for '%s' in %s: %s"),
+		    value, name, cf->name, error_type);
+	}
 }
 
 int git_config_int(const char *name, const char *value)
@@ -717,6 +807,9 @@ static int git_default_core_config(const char *var, const char *value)
 	if (!strcmp(var, "core.attributesfile"))
 		return git_config_pathname(&git_attributes_file, var, value);
 
+	if (!strcmp(var, "core.hookspath"))
+		return git_config_pathname(&git_hooks_path, var, value);
+
 	if (!strcmp(var, "core.bare")) {
 		is_bare_repository_cfg = git_config_bool(var, value);
 		return 0;
@@ -743,12 +836,21 @@ static int git_default_core_config(const char *var, const char *value)
 	}
 
 	if (!strcmp(var, "core.abbrev")) {
-		int abbrev = git_config_int(var, value);
-		if (abbrev < minimum_abbrev || abbrev > 40)
-			return -1;
-		default_abbrev = abbrev;
+		if (!value)
+			return config_error_nonbool(var);
+		if (!strcasecmp(value, "auto"))
+			default_abbrev = -1;
+		else {
+			int abbrev = git_config_int(var, value);
+			if (abbrev < minimum_abbrev || abbrev > 40)
+				return error("abbrev length out of range: %d", abbrev);
+			default_abbrev = abbrev;
+		}
 		return 0;
 	}
+
+	if (!strcmp(var, "core.disambiguate"))
+		return set_disambiguate_hint_config(var, value);
 
 	if (!strcmp(var, "core.loosecompression")) {
 		int level = git_config_int(var, value);
@@ -771,6 +873,8 @@ static int git_default_core_config(const char *var, const char *value)
 		core_compression_seen = 1;
 		if (!zlib_compression_seen)
 			zlib_compression_level = level;
+		if (!pack_compression_seen)
+			pack_compression_level = level;
 		return 0;
 	}
 
@@ -835,9 +939,6 @@ static int git_default_core_config(const char *var, const char *value)
 		notes_ref_name = xstrdup(value);
 		return 0;
 	}
-
-	if (!strcmp(var, "core.pager"))
-		return git_config_string(&pager_program, var, value);
 
 	if (!strcmp(var, "core.editor"))
 		return git_config_string(&editor_program, var, value);
@@ -908,26 +1009,8 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
-	if (!strcmp(var, "core.hidedotfiles")) {
-		if (value && !strcasecmp(value, "dotgitonly"))
-			hide_dotfiles = HIDE_DOTFILES_DOTGITONLY;
-		else
-			hide_dotfiles = git_config_bool(var, value);
-		return 0;
-	}
-
-	if (!strcmp(var, "core.fscache")) {
-		core_fscache = git_config_bool(var, value);
-		return 0;
-	}
-
-	if (!strcmp(var, "core.longpaths")) {
-		core_long_paths = git_config_bool(var, value);
-		return 0;
-	}
-
 	/* Add other config variables here and to Documentation/config.txt. */
-	return 0;
+	return platform_core_config(var, value);
 }
 
 static int git_default_i18n_config(const char *var, const char *value)
@@ -1044,6 +1127,18 @@ int git_default_config(const char *var, const char *value, void *dummy)
 		pack_size_limit_cfg = git_config_ulong(var, value);
 		return 0;
 	}
+
+	if (!strcmp(var, "pack.compression")) {
+		int level = git_config_int(var, value);
+		if (level == -1)
+			level = Z_DEFAULT_COMPRESSION;
+		else if (level < 0 || level > Z_BEST_COMPRESSION)
+			die(_("bad pack compression level %d"), level);
+		pack_compression_level = level;
+		pack_compression_seen = 1;
+		return 0;
+	}
+
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
 }
@@ -1076,7 +1171,8 @@ static int do_config_from(struct config_source *top, config_fn_t fn, void *data)
 }
 
 static int do_config_from_file(config_fn_t fn,
-		const char *origin_type, const char *name, const char *path, FILE *f,
+		const enum config_origin_type origin_type,
+		const char *name, const char *path, FILE *f,
 		void *data)
 {
 	struct config_source top;
@@ -1095,7 +1191,7 @@ static int do_config_from_file(config_fn_t fn,
 
 static int git_config_from_stdin(config_fn_t fn, void *data)
 {
-	return do_config_from_file(fn, "standard input", "", NULL, stdin, data);
+	return do_config_from_file(fn, CONFIG_ORIGIN_STDIN, "", NULL, stdin, data);
 }
 
 int git_config_from_file(config_fn_t fn, const char *filename, void *data)
@@ -1106,14 +1202,14 @@ int git_config_from_file(config_fn_t fn, const char *filename, void *data)
 	f = fopen(filename, "r");
 	if (f) {
 		flockfile(f);
-		ret = do_config_from_file(fn, "file", filename, filename, f, data);
+		ret = do_config_from_file(fn, CONFIG_ORIGIN_FILE, filename, filename, f, data);
 		funlockfile(f);
 		fclose(f);
 	}
 	return ret;
 }
 
-int git_config_from_mem(config_fn_t fn, const char *origin_type,
+int git_config_from_mem(config_fn_t fn, const enum config_origin_type origin_type,
 			const char *name, const char *buf, size_t len, void *data)
 {
 	struct config_source top;
@@ -1150,7 +1246,7 @@ static int git_config_from_blob_sha1(config_fn_t fn,
 		return error("reference '%s' does not point to a blob", name);
 	}
 
-	ret = git_config_from_mem(fn, "blob", name, buf, size, data);
+	ret = git_config_from_mem(fn, CONFIG_ORIGIN_BLOB, name, buf, size, data);
 	free(buf);
 
 	return ret;
@@ -1202,51 +1298,45 @@ int git_config_system(void)
 	return !git_env_bool("GIT_CONFIG_NOSYSTEM", 0);
 }
 
-static inline void config_from_file_gently(config_fn_t fn, const char *filename,
-		void *data, unsigned access_flags, int *ret, int *found) {
-	if (!filename || access_or_die(filename, R_OK, access_flags))
-		return;
-
-	*ret += git_config_from_file(fn, filename, data);
-	(*found)++;
-}
-
 static int do_git_config_sequence(config_fn_t fn, void *data)
 {
-	int ret = 0, found = 0;
+	int ret = 0;
 	char *xdg_config = xdg_config_home("config");
 	char *user_config = expand_user_path("~/.gitconfig");
-	char *repo_config = git_pathdup("config");
+	char *repo_config = have_git_dir() ? git_pathdup("config") : NULL;
 
+	current_parsing_scope = CONFIG_SCOPE_SYSTEM;
 	if (git_config_system()) {
-		config_from_file_gently(fn, git_program_data_config(), data,
-				0, &ret, &found);
-		config_from_file_gently(fn, git_etc_gitconfig(), data, 0,
-				&ret, &found);
+		if (git_program_data_config() &&
+		    !access_or_die(git_program_data_config(), R_OK, 0))
+			ret += git_config_from_file(fn,
+						    git_program_data_config(),
+						    data);
+		if (!access_or_die(git_etc_gitconfig(), R_OK, 0))
+			ret += git_config_from_file(fn, git_etc_gitconfig(),
+						    data);
 	}
 
-	config_from_file_gently(fn, xdg_config, data, ACCESS_EACCES_OK,
-			&ret, &found);
-	config_from_file_gently(fn, user_config, data, ACCESS_EACCES_OK,
-			&ret, &found);
+	current_parsing_scope = CONFIG_SCOPE_GLOBAL;
+	if (xdg_config && !access_or_die(xdg_config, R_OK, ACCESS_EACCES_OK))
+		ret += git_config_from_file(fn, xdg_config, data);
 
-	config_from_file_gently(fn, repo_config, data, 0, &ret, &found);
+	if (user_config && !access_or_die(user_config, R_OK, ACCESS_EACCES_OK))
+		ret += git_config_from_file(fn, user_config, data);
 
-	switch (git_config_from_parameters(fn, data)) {
-	case -1: /* error */
+	current_parsing_scope = CONFIG_SCOPE_REPO;
+	if (repo_config && !access_or_die(repo_config, R_OK, 0))
+		ret += git_config_from_file(fn, repo_config, data);
+
+	current_parsing_scope = CONFIG_SCOPE_CMDLINE;
+	if (git_config_from_parameters(fn, data) < 0)
 		die(_("unable to parse command-line config"));
-		break;
-	case 0: /* found nothing */
-		break;
-	default: /* found at least one item */
-		found++;
-		break;
-	}
 
+	current_parsing_scope = CONFIG_SCOPE_UNKNOWN;
 	free(xdg_config);
 	free(user_config);
 	free(repo_config);
-	return ret == 0 ? found : ret;
+	return ret;
 }
 
 int git_config_with_options(config_fn_t fn, void *data,
@@ -1281,7 +1371,7 @@ static void git_config_raw(config_fn_t fn, void *data)
 	if (git_config_with_options(fn, data, NULL, 1) < 0)
 		/*
 		 * git_config_with_options() normally returns only
-		 * positive values, as most errors are fatal, and
+		 * zero, as most errors are fatal, and
 		 * non-fatal potential errors are guarded by "if"
 		 * statements that are entered only when no error is
 		 * possible.
@@ -1290,7 +1380,7 @@ static void git_config_raw(config_fn_t fn, void *data)
 		 * something went really wrong and we should stop
 		 * immediately.
 		 */
-		die(_("unknown error occured while reading the configuration files"));
+		die(_("unknown error occurred while reading the configuration files"));
 }
 
 static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
@@ -1299,16 +1389,20 @@ static void configset_iter(struct config_set *cs, config_fn_t fn, void *data)
 	struct string_list *values;
 	struct config_set_element *entry;
 	struct configset_list *list = &cs->list;
-	struct key_value_info *kv_info;
 
 	for (i = 0; i < list->nr; i++) {
 		entry = list->items[i].e;
 		value_index = list->items[i].value_index;
 		values = &entry->value_list;
-		if (fn(entry->key, values->items[value_index].string, data) < 0) {
-			kv_info = values->items[value_index].util;
-			git_die_config_linenr(entry->key, kv_info->filename, kv_info->linenr);
-		}
+
+		current_config_kvi = values->items[value_index].util;
+
+		if (fn(entry->key, values->items[value_index].string, data) < 0)
+			git_die_config_linenr(entry->key,
+					      current_config_kvi->filename,
+					      current_config_kvi->linenr);
+
+		current_config_kvi = NULL;
 	}
 }
 
@@ -1365,14 +1459,19 @@ static int configset_add_value(struct config_set *cs, const char *key, const cha
 	l_item->e = e;
 	l_item->value_index = e->value_list.nr - 1;
 
-	if (cf) {
+	if (!cf)
+		die("BUG: configset_add_value has no source");
+	if (cf->name) {
 		kv_info->filename = strintern(cf->name);
 		kv_info->linenr = cf->linenr;
+		kv_info->origin_type = cf->origin_type;
 	} else {
 		/* for values read from `git_config_from_parameters()` */
 		kv_info->filename = NULL;
 		kv_info->linenr = -1;
+		kv_info->origin_type = CONFIG_ORIGIN_CMDLINE;
 	}
+	kv_info->scope = current_parsing_scope;
 	si->util = kv_info;
 
 	return 0;
@@ -2038,6 +2137,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 	 */
 	fd = lock_config_file(config_filename, &lock);
 	if (fd < 0) {
+		error_errno("could not lock config file %s", config_filename);
 		free(store.key);
 		ret = CONFIG_NO_LOCK;
 		goto out_free;
@@ -2051,8 +2151,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 		free(store.key);
 
 		if ( ENOENT != errno ) {
-			error("opening %s: %s", config_filename,
-			      strerror(errno));
+			error_errno("opening %s", config_filename);
 			ret = CONFIG_INVALID_FILE; /* same as "invalid config file" */
 			goto out_free;
 		}
@@ -2129,15 +2228,19 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 			goto out_free;
 		}
 
-		fstat(in_fd, &st);
+		if (fstat(in_fd, &st) == -1) {
+			error_errno(_("fstat on %s failed"), config_filename);
+			ret = CONFIG_INVALID_FILE;
+			goto out_free;
+		}
+
 		contents_sz = xsize_t(st.st_size);
 		contents = xmmap_gently(NULL, contents_sz, PROT_READ,
 					MAP_PRIVATE, in_fd, 0);
 		if (contents == MAP_FAILED) {
 			if (errno == ENODEV && S_ISDIR(st.st_mode))
 				errno = EISDIR;
-			error("unable to mmap '%s': %s",
-			      config_filename, strerror(errno));
+			error_errno("unable to mmap '%s'", config_filename);
 			ret = CONFIG_INVALID_FILE;
 			contents = NULL;
 			goto out_free;
@@ -2146,8 +2249,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 		in_fd = -1;
 
 		if (chmod(get_lock_file_path(lock), st.st_mode & 07777) < 0) {
-			error("chmod on %s failed: %s",
-			      get_lock_file_path(lock), strerror(errno));
+			error_errno("chmod on %s failed", get_lock_file_path(lock));
 			ret = CONFIG_NO_WRITE;
 			goto out_free;
 		}
@@ -2203,8 +2305,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 	}
 
 	if (commit_lock_file(lock) < 0) {
-		error("could not write config file %s: %s", config_filename,
-		      strerror(errno));
+		error_errno("could not write config file %s", config_filename);
 		ret = CONFIG_NO_WRITE;
 		lock = NULL;
 		goto out_free;
@@ -2334,7 +2435,7 @@ int git_config_rename_section_in_file(const char *config_filename,
 
 	if (new_name && !section_name_is_ok(new_name)) {
 		ret = error("invalid section name: %s", new_name);
-		goto out;
+		goto out_no_rollback;
 	}
 
 	if (!config_filename)
@@ -2346,14 +2447,17 @@ int git_config_rename_section_in_file(const char *config_filename,
 
 	if (!(config_file = fopen(config_filename, "rb"))) {
 		/* no config file means nothing to rename, no error */
-		goto unlock_and_out;
+		goto commit_and_out;
 	}
 
-	fstat(fileno(config_file), &st);
+	if (fstat(fileno(config_file), &st) == -1) {
+		ret = error_errno(_("fstat on %s failed"), config_filename);
+		goto out;
+	}
 
 	if (chmod(get_lock_file_path(lock), st.st_mode & 07777) < 0) {
-		ret = error("chmod on %s failed: %s",
-			    get_lock_file_path(lock), strerror(errno));
+		ret = error_errno("chmod on %s failed",
+				  get_lock_file_path(lock));
 		goto out;
 	}
 
@@ -2405,11 +2509,13 @@ int git_config_rename_section_in_file(const char *config_filename,
 		}
 	}
 	fclose(config_file);
-unlock_and_out:
+commit_and_out:
 	if (commit_lock_file(lock) < 0)
-		ret = error("could not write config file %s: %s",
-			    config_filename, strerror(errno));
+		ret = error_errno("could not write config file %s",
+				  config_filename);
 out:
+	rollback_lock_file(lock);
+out_no_rollback:
 	free(filename_buf);
 	return ret;
 }
@@ -2464,10 +2570,46 @@ int parse_config_key(const char *var,
 
 const char *current_config_origin_type(void)
 {
-	return cf && cf->origin_type ? cf->origin_type : "command line";
+	int type;
+	if (current_config_kvi)
+		type = current_config_kvi->origin_type;
+	else if(cf)
+		type = cf->origin_type;
+	else
+		die("BUG: current_config_origin_type called outside config callback");
+
+	switch (type) {
+	case CONFIG_ORIGIN_BLOB:
+		return "blob";
+	case CONFIG_ORIGIN_FILE:
+		return "file";
+	case CONFIG_ORIGIN_STDIN:
+		return "standard input";
+	case CONFIG_ORIGIN_SUBMODULE_BLOB:
+		return "submodule-blob";
+	case CONFIG_ORIGIN_CMDLINE:
+		return "command line";
+	default:
+		die("BUG: unknown config origin type");
+	}
 }
 
 const char *current_config_name(void)
 {
-	return cf && cf->name ? cf->name : "";
+	const char *name;
+	if (current_config_kvi)
+		name = current_config_kvi->filename;
+	else if (cf)
+		name = cf->name;
+	else
+		die("BUG: current_config_name called outside config callback");
+	return name ? name : "";
+}
+
+enum config_scope current_config_scope(void)
+{
+	if (current_config_kvi)
+		return current_config_kvi->scope;
+	else
+		return current_parsing_scope;
 }

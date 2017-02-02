@@ -36,7 +36,7 @@ static int update_info_file(char *path, int (*generate)(FILE *))
 
 out:
 	if (ret) {
-		error("unable to update %s: %s", path, strerror(errno));
+		error_errno("unable to update %s", path);
 		if (fp)
 			fclose(fp);
 		else if (fd >= 0)
@@ -229,7 +229,7 @@ static void init_pack_info(const char *infofile, int force)
 	}
 
 	/* renumber them */
-	qsort(info, num_pack, sizeof(info[0]), compare_info);
+	QSORT(info, num_pack, compare_info);
 	for (i = 0; i < num_pack; i++)
 		info[i]->new_num = i;
 }

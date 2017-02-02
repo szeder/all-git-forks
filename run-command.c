@@ -21,6 +21,7 @@ void child_process_clear(struct child_process *child)
 
 struct child_to_clean {
 	pid_t pid;
+	struct child_process *process;
 	struct child_to_clean *next;
 };
 static struct child_to_clean *children_to_clean;
@@ -31,6 +32,18 @@ static void cleanup_children(int sig, int in_signal)
 	while (children_to_clean) {
 		struct child_to_clean *p = children_to_clean;
 		children_to_clean = p->next;
+
+		if (p->process && !in_signal) {
+			struct child_process *process = p->process;
+			if (process->clean_on_exit_handler) {
+				trace_printf(
+					"trace: run_command: running exit handler for pid %"
+					PRIuMAX, (uintmax_t)p->pid
+				);
+				process->clean_on_exit_handler(process);
+			}
+		}
+
 		kill(p->pid, sig);
 		if (!in_signal)
 			free(p);
@@ -49,10 +62,11 @@ static void cleanup_children_on_exit(void)
 	cleanup_children(SIGTERM, 0);
 }
 
-static void mark_child_for_cleanup(pid_t pid)
+static void mark_child_for_cleanup(pid_t pid, struct child_process *process)
 {
 	struct child_to_clean *p = xmalloc(sizeof(*p));
 	p->pid = pid;
+	p->process = process;
 	p->next = children_to_clean;
 	children_to_clean = p;
 
@@ -233,7 +247,7 @@ static int wait_or_whine(pid_t pid, const char *argv0, int in_signal)
 
 	if (waiting < 0) {
 		failed_errno = errno;
-		error("waitpid for %s failed: %s", argv0, strerror(errno));
+		error_errno("waitpid for %s failed", argv0);
 	} else if (waiting != pid) {
 		error("waitpid is confused (%s)", argv0);
 	} else if (WIFSIGNALED(status)) {
@@ -420,10 +434,9 @@ fail_pipe:
 		}
 	}
 	if (cmd->pid < 0)
-		error("cannot fork() for %s: %s", cmd->argv[0],
-			strerror(errno));
+		error_errno("cannot fork() for %s", cmd->argv[0]);
 	else if (cmd->clean_on_exit)
-		mark_child_for_cleanup(cmd->pid);
+		mark_child_for_cleanup(cmd->pid, cmd);
 
 	/*
 	 * Wait for child's execvp. If the execvp succeeds (or if fork()
@@ -482,9 +495,9 @@ fail_pipe:
 			cmd->dir, fhin, fhout, fherr);
 	failed_errno = errno;
 	if (cmd->pid < 0 && (!cmd->silent_exec_failure || errno != ENOENT))
-		error("cannot spawn %s: %s", cmd->argv[0], strerror(errno));
+		error_errno("cannot spawn %s", cmd->argv[0]);
 	if (cmd->clean_on_exit && cmd->pid >= 0)
-		mark_child_for_cleanup(cmd->pid);
+		mark_child_for_cleanup(cmd->pid, cmd);
 
 	argv_array_clear(&nargv);
 	cmd->argv = sargv;
@@ -635,7 +648,7 @@ int in_async(void)
 	return !pthread_equal(main_thread, pthread_self());
 }
 
-void NORETURN async_exit(int code)
+static void NORETURN async_exit(int code)
 {
 	pthread_exit((void *)(intptr_t)code);
 }
@@ -685,12 +698,25 @@ int in_async(void)
 	return process_is_async;
 }
 
-void NORETURN async_exit(int code)
+static void NORETURN async_exit(int code)
 {
 	exit(code);
 }
 
 #endif
+
+void check_pipe(int err)
+{
+	if (err == EPIPE) {
+		if (in_async())
+			async_exit(141);
+
+		signal(SIGPIPE, SIG_DFL);
+		raise(SIGPIPE);
+		/* Should never happen, but just in case... */
+		exit(141);
+	}
+}
 
 int start_async(struct async *async)
 {
@@ -703,7 +729,7 @@ int start_async(struct async *async)
 		if (pipe(fdin) < 0) {
 			if (async->out > 0)
 				close(async->out);
-			return error("cannot create pipe: %s", strerror(errno));
+			return error_errno("cannot create pipe");
 		}
 		async->in = fdin[1];
 	}
@@ -715,7 +741,7 @@ int start_async(struct async *async)
 				close_pair(fdin);
 			else if (async->in)
 				close(async->in);
-			return error("cannot create pipe: %s", strerror(errno));
+			return error_errno("cannot create pipe");
 		}
 		async->out = fdout[0];
 	}
@@ -740,7 +766,7 @@ int start_async(struct async *async)
 
 	async->pid = fork();
 	if (async->pid < 0) {
-		error("fork (async) failed: %s", strerror(errno));
+		error_errno("fork (async) failed");
 		goto error;
 	}
 	if (!async->pid) {
@@ -753,7 +779,7 @@ int start_async(struct async *async)
 		exit(!!async->proc(proc_in, proc_out, async->data));
 	}
 
-	mark_child_for_cleanup(async->pid);
+	mark_child_for_cleanup(async->pid, NULL);
 
 	if (need_in)
 		close(fdin[0]);
@@ -787,7 +813,7 @@ int start_async(struct async *async)
 	{
 		int err = pthread_create(&async->tid, NULL, run_thread, async);
 		if (err) {
-			error("cannot create thread: %s", strerror(err));
+			error_errno("cannot create thread");
 			goto error;
 		}
 	}
@@ -826,8 +852,14 @@ const char *find_hook(const char *name)
 
 	strbuf_reset(&path);
 	strbuf_git_path(&path, "hooks/%s", name);
-	if (access(path.buf, X_OK) < 0)
+	if (access(path.buf, X_OK) < 0) {
+#ifdef STRIP_EXTENSION
+		strbuf_addstr(&path, STRIP_EXTENSION);
+		if (access(path.buf, X_OK) >= 0)
+			return path.buf;
+#endif
 		return NULL;
+	}
 	return path.buf;
 }
 
@@ -862,19 +894,161 @@ int run_hook_le(const char *const *env, const char *name, ...)
 	return ret;
 }
 
-int capture_command(struct child_process *cmd, struct strbuf *buf, size_t hint)
+struct io_pump {
+	/* initialized by caller */
+	int fd;
+	int type; /* POLLOUT or POLLIN */
+	union {
+		struct {
+			const char *buf;
+			size_t len;
+		} out;
+		struct {
+			struct strbuf *buf;
+			size_t hint;
+		} in;
+	} u;
+
+	/* returned by pump_io */
+	int error; /* 0 for success, otherwise errno */
+
+	/* internal use */
+	struct pollfd *pfd;
+};
+
+static int pump_io_round(struct io_pump *slots, int nr, struct pollfd *pfd)
 {
-	cmd->out = -1;
+	int pollsize = 0;
+	int i;
+
+	for (i = 0; i < nr; i++) {
+		struct io_pump *io = &slots[i];
+		if (io->fd < 0)
+			continue;
+		pfd[pollsize].fd = io->fd;
+		pfd[pollsize].events = io->type;
+		io->pfd = &pfd[pollsize++];
+	}
+
+	if (!pollsize)
+		return 0;
+
+	if (poll(pfd, pollsize, -1) < 0) {
+		if (errno == EINTR)
+			return 1;
+		die_errno("poll failed");
+	}
+
+	for (i = 0; i < nr; i++) {
+		struct io_pump *io = &slots[i];
+
+		if (io->fd < 0)
+			continue;
+
+		if (!(io->pfd->revents & (POLLOUT|POLLIN|POLLHUP|POLLERR|POLLNVAL)))
+			continue;
+
+		if (io->type == POLLOUT) {
+			ssize_t len = xwrite(io->fd,
+					     io->u.out.buf, io->u.out.len);
+			if (len < 0) {
+				io->error = errno;
+				close(io->fd);
+				io->fd = -1;
+			} else {
+				io->u.out.buf += len;
+				io->u.out.len -= len;
+				if (!io->u.out.len) {
+					close(io->fd);
+					io->fd = -1;
+				}
+			}
+		}
+
+		if (io->type == POLLIN) {
+			ssize_t len = strbuf_read_once(io->u.in.buf,
+						       io->fd, io->u.in.hint);
+			if (len < 0)
+				io->error = errno;
+			if (len <= 0) {
+				close(io->fd);
+				io->fd = -1;
+			}
+		}
+	}
+
+	return 1;
+}
+
+static int pump_io(struct io_pump *slots, int nr)
+{
+	struct pollfd *pfd;
+	int i;
+
+	for (i = 0; i < nr; i++)
+		slots[i].error = 0;
+
+	ALLOC_ARRAY(pfd, nr);
+	while (pump_io_round(slots, nr, pfd))
+		; /* nothing */
+	free(pfd);
+
+	/* There may be multiple errno values, so just pick the first. */
+	for (i = 0; i < nr; i++) {
+		if (slots[i].error) {
+			errno = slots[i].error;
+			return -1;
+		}
+	}
+	return 0;
+}
+
+
+int pipe_command(struct child_process *cmd,
+		 const char *in, size_t in_len,
+		 struct strbuf *out, size_t out_hint,
+		 struct strbuf *err, size_t err_hint)
+{
+	struct io_pump io[3];
+	int nr = 0;
+
+	if (in)
+		cmd->in = -1;
+	if (out)
+		cmd->out = -1;
+	if (err)
+		cmd->err = -1;
+
 	if (start_command(cmd) < 0)
 		return -1;
 
-	if (strbuf_read(buf, cmd->out, hint) < 0) {
-		close(cmd->out);
+	if (in) {
+		io[nr].fd = cmd->in;
+		io[nr].type = POLLOUT;
+		io[nr].u.out.buf = in;
+		io[nr].u.out.len = in_len;
+		nr++;
+	}
+	if (out) {
+		io[nr].fd = cmd->out;
+		io[nr].type = POLLIN;
+		io[nr].u.in.buf = out;
+		io[nr].u.in.hint = out_hint;
+		nr++;
+	}
+	if (err) {
+		io[nr].fd = cmd->err;
+		io[nr].type = POLLIN;
+		io[nr].u.in.buf = err;
+		io[nr].u.in.hint = err_hint;
+		nr++;
+	}
+
+	if (pump_io(io, nr) < 0) {
 		finish_command(cmd); /* throw away exit code */
 		return -1;
 	}
 
-	close(cmd->out);
 	return finish_command(cmd);
 }
 
@@ -912,7 +1086,7 @@ struct parallel_processes {
 	struct strbuf buffered_output; /* of finished children */
 };
 
-static int default_start_failure(struct strbuf *err,
+static int default_start_failure(struct strbuf *out,
 				 void *pp_cb,
 				 void *pp_task_cb)
 {
@@ -920,7 +1094,7 @@ static int default_start_failure(struct strbuf *err,
 }
 
 static int default_task_finished(int result,
-				 struct strbuf *err,
+				 struct strbuf *out,
 				 void *pp_cb,
 				 void *pp_task_cb)
 {
@@ -1004,7 +1178,7 @@ static void pp_cleanup(struct parallel_processes *pp)
 	 * When get_next_task added messages to the buffer in its last
 	 * iteration, the buffered output is non empty.
 	 */
-	fputs(pp->buffered_output.buf, stderr);
+	strbuf_write(&pp->buffered_output, stderr);
 	strbuf_release(&pp->buffered_output);
 
 	sigchain_pop_common();
@@ -1089,7 +1263,7 @@ static void pp_output(struct parallel_processes *pp)
 	int i = pp->output_owner;
 	if (pp->children[i].state == GIT_CP_WORKING &&
 	    pp->children[i].err.len) {
-		fputs(pp->children[i].err.buf, stderr);
+		strbuf_write(&pp->children[i].err, stderr);
 		strbuf_reset(&pp->children[i].err);
 	}
 }
@@ -1127,11 +1301,11 @@ static int pp_collect_finished(struct parallel_processes *pp)
 			strbuf_addbuf(&pp->buffered_output, &pp->children[i].err);
 			strbuf_reset(&pp->children[i].err);
 		} else {
-			fputs(pp->children[i].err.buf, stderr);
+			strbuf_write(&pp->children[i].err, stderr);
 			strbuf_reset(&pp->children[i].err);
 
 			/* Output all other finished child processes */
-			fputs(pp->buffered_output.buf, stderr);
+			strbuf_write(&pp->buffered_output, stderr);
 			strbuf_reset(&pp->buffered_output);
 
 			/*

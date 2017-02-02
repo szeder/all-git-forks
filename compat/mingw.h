@@ -11,6 +11,12 @@ typedef _sigset_t sigset_t;
 #undef _POSIX_THREAD_SAFE_FUNCTIONS
 #endif
 
+extern int core_fscache;
+extern int core_long_paths;
+
+extern int mingw_core_config(const char *var, const char *value);
+#define platform_core_config mingw_core_config
+
 /*
  * things that are not available in header files
  */
@@ -76,6 +82,9 @@ typedef int pid_t;
 #endif
 #ifndef ECONNABORTED
 #define ECONNABORTED WSAECONNABORTED
+#endif
+#ifndef ENOTSOCK
+#define ENOTSOCK WSAENOTSOCK
 #endif
 
 struct passwd {
@@ -256,11 +265,52 @@ char *mingw_getcwd(char *pointer, int len);
 #error "NO_UNSETENV is incompatible with the MinGW startup code!"
 #endif
 
+#if defined(_MSC_VER)
+/*
+ * We bind *env() routines (even the mingw_ ones) to private msc_ versions.
+ * These talk to the CRT using UNICODE/wchar_t, but maintain the original
+ * narrow-char API.
+ *
+ * Note that the MSCRT maintains both ANSI (getenv()) and UNICODE (_wgetenv())
+ * routines and stores both versions of each environment variable in parallel
+ * (and secretly updates both when you set one or the other), but it uses CP_ACP
+ * to do the conversion rather than CP_UTF8.
+ *
+ * Since everything in the git code base is UTF8, we define the msc_ routines
+ * to access the CRT using the UNICODE routines and manually convert them to
+ * UTF8.  This also avoids round-trip problems.
+ *
+ * This also helps with our linkage, since "_wenviron" is publicly exported
+ * from the CRT.  But to access "_environ" we would have to statically link
+ * to the CRT (/MT).
+ *
+ * We also use "wmain(argc,argv,env)" and get the initial UNICODE setup for us.
+ * This avoids the need for the msc_startup() to import and convert the
+ * inherited environment.
+ *
+ * We require NO_SETENV (and let gitsetenv() call our msc_putenv).
+ */
+#define getenv       msc_getenv
+#define putenv       msc_putenv
+#define unsetenv     msc_putenv
+#define mingw_getenv msc_getenv
+#define mingw_putenv msc_putenv
+char *msc_getenv(const char *name);
+int   msc_putenv(const char *name);
+
+#ifndef NO_SETENV
+#error "NO_SETENV is required for MSC startup code!"
+#endif
+
+#else
+
 char *mingw_getenv(const char *name);
 #define getenv mingw_getenv
 int mingw_putenv(const char *namevalue);
 #define putenv mingw_putenv
 #define unsetenv mingw_putenv
+
+#endif
 
 int mingw_gethostname(char *host, int namelen);
 #define gethostname mingw_gethostname
@@ -344,10 +394,12 @@ static inline long long filetime_to_hnsec(const FILETIME *ft)
 #ifndef __MINGW64_VERSION_MAJOR
 #define off_t off64_t
 #define lseek _lseeki64
+#ifndef _MSC_VER
 struct timespec {
 	time_t tv_sec;
 	long tv_nsec;
 };
+#endif
 #endif
 
 static inline void filetime_to_timespec(const FILETIME *ft, struct timespec *ts)
@@ -394,6 +446,9 @@ extern int (*lstat)(const char *file_name, struct stat *buf);
 
 int mingw_utime(const char *file_name, const struct utimbuf *times);
 #define utime mingw_utime
+size_t mingw_strftime(char *s, size_t max,
+		   const char *format, const struct tm *tm);
+#define strftime mingw_strftime
 
 pid_t mingw_spawnvpe(const char *cmd, const char **argv, char **env,
 		     const char *dir,
@@ -417,6 +472,9 @@ int mingw_raise(int sig);
  * ANSI emulation wrappers
  */
 
+int winansi_isatty(int fd);
+#define isatty winansi_isatty
+
 void winansi_init(void);
 HANDLE winansi_get_osfhandle(int fd);
 
@@ -428,7 +486,6 @@ HANDLE winansi_get_osfhandle(int fd);
 	(isalpha(*(path)) && (path)[1] == ':' ? 2 : 0)
 int mingw_skip_dos_drive_prefix(char **path);
 #define skip_dos_drive_prefix mingw_skip_dos_drive_prefix
-#define has_unc_prefix(path) (*(path) == '\\' && (path)[1] == '\\' ? 2 : 0)
 #define is_dir_sep(c) ((c) == '/' || (c) == '\\')
 static inline char *mingw_find_last_dir_sep(const char *path)
 {
@@ -448,19 +505,16 @@ static inline void convert_slashes(char *path)
 int mingw_offset_1st_component(const char *path);
 #define offset_1st_component mingw_offset_1st_component
 #define PATH_SEP ';'
-extern const char *program_data_config(void);
-#define git_program_data_config program_data_config
 extern char *mingw_query_user_email(void);
 #define query_user_email mingw_query_user_email
+extern const char *program_data_config(void);
+#define git_program_data_config program_data_config
 #if !defined(__MINGW64_VERSION_MAJOR) && (!defined(_MSC_VER) || _MSC_VER < 1800)
 #define PRIuMAX "I64u"
 #define PRId64 "I64d"
 #else
 #include <inttypes.h>
 #endif
-
-void mingw_open_html(const char *path);
-#define open_html mingw_open_html
 
 /**
  * Max length of long paths (exceeding MAX_PATH). The actual maximum supported
@@ -583,9 +637,6 @@ static inline int xutftowcs_path(wchar_t *wcs, const char *utf)
 	return xutftowcs_path_ex(wcs, utf, MAX_PATH, -1, MAX_PATH, 0);
 }
 
-/* need to re-declare that here as mingw.h is included before cache.h */
-extern int core_long_paths;
-
 /**
  * Simplified file system specific variant of xutftowcsn for Windows APIs
  * that support long paths via '\\?\'-prefix, assumes output buffer size is
@@ -642,17 +693,38 @@ extern CRITICAL_SECTION pinfo_cs;
 
 /*
  * A replacement of main() that adds win32 specific initialization.
+ *
+ * Note that the end of these macros are unterminated so that the
+ * brace group following the use of the macro is the body of the
+ * function.
  */
+#if defined(_MSC_VER)
 
-void mingw_startup();
-#define main(c,v) dummy_decl_mingw_main(); \
+int msc_startup(int argc, wchar_t **w_argv, wchar_t **w_env);
+extern int msc_main(int argc, const char **argv);
+
+#define main(c,v) dummy_decl_msc_main(void);				\
+int wmain(int my_argc,									\
+		  wchar_t **my_w_argv,							\
+		  wchar_t **my_w_env)							\
+{														\
+	return msc_startup(my_argc, my_w_argv, my_w_env);	\
+}														\
+int msc_main(c, v)
+
+#else
+
+void mingw_startup(void);
+#define main(c,v) dummy_decl_mingw_main(void); \
 static int mingw_main(c,v); \
-int main(int argc, char **argv) \
+int main(int argc, const char **argv) \
 { \
 	mingw_startup(); \
 	return mingw_main(__argc, (void *)__argv); \
 } \
 static int mingw_main(c,v)
+
+#endif
 
 /*
  * Used by Pthread API implementation for Windows

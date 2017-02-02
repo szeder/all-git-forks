@@ -33,14 +33,14 @@ including full documentation and Git related tools.
 
 See [Documentation/gittutorial.txt][] to get started, then see
 [Documentation/giteveryday.txt][] for a useful minimum set of commands, and
-[Documentation/git-commandname.txt][] for documentation of each command.
+Documentation/git-<commandname>.txt for documentation of each command.
 If git has been correctly installed, then the tutorial can also be
-read with "man gittutorial" or "git help tutorial", and the
-documentation of each command with "man git-commandname" or "git help
-commandname".
+read with `man gittutorial` or `git help tutorial`, and the
+documentation of each command with `man git-<commandname>` or `git help
+<commandname>`.
 
 CVS users may also want to read [Documentation/gitcvs-migration.txt][]
-("man gitcvs-migration" or "git help cvs-migration" if git is
+(`man gitcvs-migration` or `git help cvs-migration` if git is
 installed).
 
 The user discussion and development of Git take place on the Git
@@ -49,7 +49,7 @@ requests, comments and patches to git@vger.kernel.org (read
 [Documentation/SubmittingPatches][] for instructions on patch submission).
 To subscribe to the list, send an email with just "subscribe git" in
 the body to majordomo@vger.kernel.org. The mailing list archives are
-available at http://news.gmane.org/gmane.comp.version-control.git/,
+available at https://public-inbox.org/git,
 http://marc.info/?l=git and other archival sites.
 
 The maintainer frequently sends the "What's cooking" reports that
@@ -73,6 +73,5 @@ and the name as (depending on your mood):
 [INSTALL]: INSTALL
 [Documentation/gittutorial.txt]: Documentation/gittutorial.txt
 [Documentation/giteveryday.txt]: Documentation/giteveryday.txt
-[Documentation/git-commandname.txt]: Documentation/git-commandname.txt
 [Documentation/gitcvs-migration.txt]: Documentation/gitcvs-migration.txt
 [Documentation/SubmittingPatches]: Documentation/SubmittingPatches
