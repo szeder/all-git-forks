@@ -2,6 +2,7 @@
 #include "cache.h"
 #include "transport.h"
 #include "remote.h"
+#include "refs.h"
 
 static const char * const ls_remote_usage[] = {
 	N_("git ls-remote [--heads] [--tags] [--refs] [--upload-pack=<exec>]\n"
@@ -31,6 +32,16 @@ static int tail_match(const char **pattern, const char *path)
 	return 0;
 }
 
+static int has_ref_locally(const struct ref *ref)
+{
+	unsigned char sha1[20];
+
+	if (!resolve_ref_unsafe(ref->name, RESOLVE_REF_READING, sha1, NULL))
+		return 0;
+
+	return !hashcmp(ref->old_oid.hash, sha1);
+}
+
 int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 {
 	const char *dest = NULL;
@@ -39,6 +50,7 @@ int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 	int quiet = 0;
 	int status = 0;
 	int show_symref_target = 0;
+	int diff = 0;
 	const char *uploadpack = NULL;
 	const char **pattern = NULL;
 
@@ -62,6 +74,8 @@ int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 			    N_("exit with exit code 2 if no matching refs are found"), 2),
 		OPT_BOOL(0, "symref", &show_symref_target,
 			 N_("show underlying ref in addition to the object pointed by it")),
+		OPT_BOOL(0, "diff", &diff,
+			 N_("show only refs that differ from local refs")),
 		OPT_END()
 	};
 
@@ -98,12 +112,16 @@ int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 	if (transport_disconnect(transport))
 		return 1;
 
+	if (diff)
+		flags |= REF_NORMAL;
 	if (!dest && !quiet)
 		fprintf(stderr, "From %s\n", *remote->url);
 	for ( ; ref; ref = ref->next) {
 		if (!check_ref_type(ref, flags))
 			continue;
 		if (!tail_match(pattern, ref->name))
+			continue;
+		if (diff && has_ref_locally(ref))
 			continue;
 		if (show_symref_target && ref->symref)
 			printf("ref: %s\t%s\n", ref->symref, ref->name);
