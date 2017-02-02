@@ -16,9 +16,22 @@ c_lblue='\\[\\e[1;34m\\]'
 c_clear='\\[\\e[0m\\]'
 
 test_expect_success 'setup for prompt tests' '
+	mkdir .subrepo &&
+	(cd .subrepo &&
+		git init &&
+		echo 1 >file &&
+		git add file &&
+		git commit -m initial &&
+		git checkout -b dirty &&
+		echo 2 >file &&
+		git commit -m "dirty branch" file
+	) &&
 	git init otherrepo &&
 	echo 1 >file &&
 	git add file &&
+	git submodule add ./.subrepo sub &&
+	git -C sub checkout master &&
+	git add sub &&
 	test_tick &&
 	git commit -m initial &&
 	git tag -a -m msg1 t1 &&
@@ -751,6 +764,52 @@ test_expect_success 'prompt - hide if pwd ignored - inside gitdir (stderr)' '
 		GIT_PS1_HIDE_IF_PWD_IGNORED=y &&
 		cd .git &&
 		__git_ps1 >/dev/null 2>"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
+
+test_expect_success 'prompt - submodule indicator' '
+	printf " (sub:master)" >expected &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE=y &&
+		__git_ps1 >"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
+
+test_expect_success 'prompt - submodule indicator - disabled' '
+	printf " (master)" >expected &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE= &&
+		__git_ps1 >"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
+
+test_expect_success 'prompt - submodule indicator - dirty status indicator' '
+	printf " (+sub:dirty)" >expected &&
+	git -C sub checkout dirty &&
+	test_when_finished "git -C sub checkout master" &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE=y &&
+		GIT_PS1_SHOWDIRTYSTATE=y &&
+		__git_ps1 >"$actual"
+	) &&
+	test_cmp expected "$actual"
+'
+
+test_expect_success 'prompt - submodule indicator - dirty status indicator disabled' '
+	printf " (sub:dirty)" >expected &&
+	git -C sub checkout dirty &&
+	test_when_finished "git -C sub checkout master" &&
+	(
+		cd sub &&
+		GIT_PS1_SHOWSUBMODULE=y &&
+		GIT_PS1_SHOWDIRTYSTATE= &&
+		__git_ps1 >"$actual"
 	) &&
 	test_cmp expected "$actual"
 '
