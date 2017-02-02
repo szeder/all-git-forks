@@ -24,7 +24,7 @@ test_expect_success 'setup for prompt tests' '
 		git commit -m initial &&
 		git checkout -b dirty &&
 		echo 2 >file &&
-		git commit -m "diry branch" file
+		git commit -m "dirty branch" file
 	) &&
 	git init otherrepo &&
 	echo 1 >file &&
@@ -778,7 +778,7 @@ test_expect_success 'prompt - submodule indicator' '
 	test_cmp expected "$actual"
 '
 
-test_expect_success 'prompt - submodule indicator - disable' '
+test_expect_success 'prompt - submodule indicator - disabled' '
 	printf " (master)" >expected &&
 	(
 		cd sub &&
@@ -801,7 +801,7 @@ test_expect_success 'prompt - submodule indicator - dirty status indicator' '
 	test_cmp expected "$actual"
 '
 
-test_expect_success 'prompt - submodule indicator - dirty status indicator disable' '
+test_expect_success 'prompt - submodule indicator - dirty status indicator disabled' '
 	printf " (sub:dirty)" >expected &&
 	git -C sub checkout dirty &&
 	test_when_finished "git -C sub checkout master" &&
