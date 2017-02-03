@@ -1688,6 +1688,14 @@ int mingw_accept(int sockfd1, struct sockaddr *sa, socklen_t *sz)
 	return sockfd2;
 }
 
+static int num_retries[6] = { 0 };
+static void dump_retry_stats()
+{
+	fprintf(stderr, "rename retries: #1 %d, #2 %d, #3 %d, #4 %d, #5 %d\n",
+		num_retries[1], num_retries[2], num_retries[3], num_retries[4], num_retries[5]);
+}
+static int dump_registered;
+
 #undef rename
 int mingw_rename(const char *pold, const char *pnew)
 {
@@ -1707,7 +1715,7 @@ int mingw_rename(const char *pold, const char *pnew)
 		return -1;
 repeat:
 	if (MoveFileExW(wpold, wpnew, MOVEFILE_REPLACE_EXISTING))
-		return 0;
+		return ++num_retries[tries], 0;
 	/* TODO: translate more errors */
 	gle = GetLastError();
 	if (gle == ERROR_ACCESS_DENIED &&
@@ -1740,6 +1748,8 @@ repeat:
 		 */
 		Sleep(delay[tries]);
 		tries++;
+		if (!dump_registered)
+			atexit(dump_retry_stats), dump_registered++;
 		goto repeat;
 	}
 	if (gle == ERROR_ACCESS_DENIED &&
