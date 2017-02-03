@@ -567,7 +567,7 @@ proc read_diff {fd conflict_size cont_info} {
 	}
 }
 
-proc apply_hunk {x y} {
+proc apply_hunk {x y {revert 0}} {
 	global current_diff_path current_diff_header current_diff_side
 	global ui_diff ui_index file_states
 
@@ -584,7 +584,12 @@ proc apply_hunk {x y} {
 			return
 		}
 	} else {
-		set failed_msg [mc "Failed to stage selected hunk."]
+		if {$revert} {
+			set failed_msg [mc "Failed to revert selected hunk."]
+			set apply_cmd {apply --reverse --whitespace=nowarn}
+		} else {
+			set failed_msg [mc "Failed to stage selected hunk."]
+		}
 		if {[string index $mi 1] ne {M}} {
 			unlock_index
 			return
@@ -627,6 +632,8 @@ proc apply_hunk {x y} {
 
 	if {$current_diff_side eq $ui_index} {
 		set mi ${o}M
+	} elseif {$revert} {
+		set mi "[string index $mi 0]$o"
 	} elseif {[string index $mi 0] eq {_}} {
 		set mi M$o
 	} else {
@@ -640,7 +647,7 @@ proc apply_hunk {x y} {
 	}
 }
 
-proc apply_range_or_line {x y} {
+proc apply_range_or_line {x y {revert 0}} {
 	global current_diff_path current_diff_header current_diff_side
 	global ui_diff ui_index file_states
 
@@ -655,7 +662,13 @@ proc apply_range_or_line {x y} {
 	}
 
 	set first_l [$ui_diff index "$first linestart"]
-	set last_l [$ui_diff index "$last lineend"]
+	# don't include the next line if $last points to the start of a line
+	# ie. <lno>.0
+	if {[lindex [split $last .] 1] == 0} {
+		set last_l [$ui_diff index "$last -1 line lineend"]
+	} else {
+		set last_l [$ui_diff index "$last lineend"]
+	}
 
 	if {$current_diff_path eq {} || $current_diff_header eq {}} return
 	if {![lock_index apply_hunk]} return
@@ -671,8 +684,14 @@ proc apply_range_or_line {x y} {
 			return
 		}
 	} else {
-		set failed_msg [mc "Failed to stage selected line."]
-		set to_context {-}
+		if {$revert} {
+			set failed_msg [mc "Failed to revert selected line."]
+			set apply_cmd {apply --reverse --whitespace=nowarn}
+			set to_context {+}
+		} else {
+			set failed_msg [mc "Failed to stage selected line."]
+			set to_context {-}
+		}
 		if {[string index $mi 1] ne {M}} {
 			unlock_index
 			return
@@ -695,9 +714,11 @@ proc apply_range_or_line {x y} {
 		# $i_l is now at the beginning of a line
 
 		# pick start line number from hunk header
-		set hh [$ui_diff get $i_l "$i_l + 1 lines"]
-		set hh [lindex [split $hh ,] 0]
-		set hln [lindex [split $hh -] 1]
+		if {![regexp {^@@ -(\d+)(?:,\d+)? \+(?:\d+)(?:,\d+)? @@(?:\s|$)} \
+			[$ui_diff get $i_l "$i_l + 1 lines"] hh hln]} {
+			unlock_index
+			return
+		}
 
 		# There is a special situation to take care of. Consider this
 		# hunk:

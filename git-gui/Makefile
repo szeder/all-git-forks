@@ -26,7 +26,7 @@ NONTCL_LIBFILES = \
 #end NONTCL_LIBFILES
 
 ifndef SHELL_PATH
-	SHELL_PATH = /bin/sh
+	SHELL_PATH = $(shell cd /bin && pwd -W)/sh
 endif
 
 ifndef gitexecdir
@@ -96,7 +96,7 @@ ifndef V
 	REMOVE_F1 = && echo '   ' REMOVE `basename "$$dst"` && $(RM_RF) "$$dst"
 endif
 
-TCLTK_PATH ?= wish
+TCLTK_PATH ?= wish85
 ifeq (./,$(dir $(TCLTK_PATH)))
 	TCL_PATH ?= $(subst wish,tclsh,$(TCLTK_PATH))
 else
