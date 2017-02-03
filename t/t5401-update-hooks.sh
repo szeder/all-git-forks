@@ -130,7 +130,7 @@ remote: STDERR post-receive
 remote: STDOUT post-update
 remote: STDERR post-update
 EOF
-test_expect_success 'send-pack stderr contains hook messages' '
+test_expect_success NOT_MINGW 'send-pack stderr contains hook messages' '
 	grep ^remote: send.err | sed "s/ *\$//" >actual &&
 	test_cmp expect actual
 '
