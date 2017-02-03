@@ -194,13 +194,13 @@ __git_ps1_show_upstream ()
 		"") # no upstream
 			p="" ;;
 		"0	0") # equal to upstream
-			p="=" ;;
+			p="${GIT_PS1_UPSTREAMEQUALS==}" ;;
 		"0	"*) # ahead of upstream
-			p=">" ;;
+			p="${GIT_PS1_UPSTREAMAHEAD=>}" ;;
 		*"	0") # behind upstream
-			p="<" ;;
+			p="${GIT_PS1_UPSTREAMBEHIND=<}" ;;
 		*)	    # diverged from upstream
-			p="<>" ;;
+			p="${GIT_PS1_UPSTREAMDIVERGED=<>}" ;;
 		esac
 	else
 		case "$count" in
@@ -513,8 +513,8 @@ __git_ps1 ()
 		b="\${__git_ps1_branch_name}"
 	fi
 
-	local f="$w$i$s$u"
-	local gitstring="$c$b${f:+$z$f}$r$p"
+	local f="$w$i$s$u$r$p"
+	local gitstring="$c$b${f:+$z$f}"
 
 	if [ $pcmode = yes ]; then
 		if [ "${__git_printf_supports_v-}" != yes ]; then
