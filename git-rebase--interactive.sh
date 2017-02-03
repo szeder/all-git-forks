@@ -390,13 +390,26 @@ pick_one_preserving_merges () {
 			msg_content="$(commit_message $sha1)"
 			# No point in merging the first parent, that's HEAD
 			new_parents=${new_parents# $first_parent}
-			merge_args="--no-log --no-ff"
-			if ! do_with_author output eval \
-			'git merge ${gpg_sign_opt:+"$gpg_sign_opt"} \
-				$merge_args $strategy_args -m "$msg_content" $new_parents'
+			if test -z "$first_parent_only"
 			then
-				printf "%s\n" "$msg_content" > "$GIT_DIR"/MERGE_MSG
-				die_with_patch $sha1 "$(eval_gettext "Error redoing merge \$sha1")"
+				merge_args="--no-log --no-ff"
+				if ! do_with_author output eval \
+				'git merge ${gpg_sign_opt:+"$gpg_sign_opt"} \
+					$merge_args $strategy_args -m "$msg_content" $new_parents'
+				then
+					printf "%s\n" "$msg_content" > "$GIT_DIR"/MERGE_MSG
+					die_with_patch $sha1 "$(eval_gettext "Error redoing merge \$sha1")"
+				fi
+			else
+				printf "%s\n" $new_parents >"$GIT_DIR"/MERGE_HEAD
+				printf "%s\n" "$msg_content" >"$GIT_DIR"/MERGE_MSG
+				if output git cherry-pick -m 1 -n "$sha1"
+				then
+					do_with_author output git commit --no-verify -F "$GIT_DIR"/MERGE_MSG ||
+						die_with_patch $sha1 "$(eval_gettext "Could not replay merge \$sha1")"
+				else
+					die_with_patch $sha1 "$(eval_gettext "Could not pick merge \$sha1")"
+				fi
 			fi
 			echo "$sha1 $(git rev-parse HEAD^0)" >> "$rewritten_list"
 			;;

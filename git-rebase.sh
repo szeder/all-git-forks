@@ -32,6 +32,7 @@ verify             allow pre-rebase hook to run
 rerere-autoupdate  allow rerere to update index with resolved conflicts
 root!              rebase all reachable commits up to the root(s)
 autosquash         move commits that begin with squash!/fixup! under -i
+first-parent       reply merges by picking the first-parent change
 committer-date-is-author-date! passed to 'git am'
 ignore-date!       passed to 'git am'
 whitespace=!       passed to 'git apply'
@@ -85,6 +86,7 @@ state_dir=
 action=
 preserve_merges=
 autosquash=
+first_parent_only=
 keep_empty=
 test "$(git config --bool rebase.autosquash)" = "true" && autosquash=t
 case "$(git config --bool commit.gpgsign)" in
@@ -299,6 +301,9 @@ do
 	--no-autostash)
 		autostash=false
 		;;
+	--first-parent)
+		first_parent_only=t
+		;;
 	--verbose)
 		verbose=t
 		diffstat=t
@@ -366,6 +371,11 @@ fi
 if test "$action" = "edit-todo" && test "$type" != "interactive"
 then
 	die "$(gettext "The --edit-todo action can only be used during interactive rebase.")"
+fi
+
+if test -n "$first_parent_only" && test -z "$preserve_merges"
+then
+	die "$(gettext "Option --first-parent can only be used with -p.")"
 fi
 
 case "$action" in
