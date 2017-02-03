@@ -27,7 +27,7 @@ do_pack () {
 }
 
 munge () {
-	printf "$3" | dd of="$1" bs=1 conv=notrunc seek=$2
+	printf "$3" | test_overwrite_bytes "$1" "$2"
 }
 
 # Offset in a v2 .idx to its initial and extended offset tables. For an index

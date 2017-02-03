@@ -888,6 +888,22 @@ test_skip_or_die () {
 	esac
 }
 
+# Overwrite bytes at an offset in a file
+# $1 ... the file to modify
+# $2 ... byte offset into file
+# stdin ... new bytes
+test_overwrite_bytes () {
+	perl -e '
+		$fname = shift @ARGV;
+		$offset = shift @ARGV;
+		$bytes = <>;
+		open my $fh, "+<", $fname	or die "open $fname: $!\n";
+		seek($fh, $offset, 0)		or die "seek $fname: $!\n";
+		syswrite($fh, $bytes)		or die "write $fname: $!\n";
+		close $fh			or die "close $fname: $!\n";
+	' "$@"
+}
+
 # The following mingw_* functions obey POSIX shell syntax, but are actually
 # bash scripts, and are meant to be used only with bash on Windows.
 

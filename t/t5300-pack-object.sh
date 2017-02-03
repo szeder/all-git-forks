@@ -226,7 +226,7 @@ test_expect_success \
 test_expect_success \
     'verify-pack catches a corrupted pack signature' \
     'cat test-1-${packname_1}.pack >test-3.pack &&
-     echo | dd of=test-3.pack count=1 bs=1 conv=notrunc seek=2 &&
+     echo | test_overwrite_bytes test-3.pack 2 &&
      if git verify-pack test-3.idx
      then false
      else :;
@@ -235,7 +235,7 @@ test_expect_success \
 test_expect_success \
     'verify-pack catches a corrupted pack version' \
     'cat test-1-${packname_1}.pack >test-3.pack &&
-     echo | dd of=test-3.pack count=1 bs=1 conv=notrunc seek=7 &&
+     echo | test_overwrite_bytes test-3.pack 7 &&
      if git verify-pack test-3.idx
      then false
      else :;
@@ -244,7 +244,7 @@ test_expect_success \
 test_expect_success \
     'verify-pack catches a corrupted type/size of the 1st packed object data' \
     'cat test-1-${packname_1}.pack >test-3.pack &&
-     echo | dd of=test-3.pack count=1 bs=1 conv=notrunc seek=12 &&
+     echo | test_overwrite_bytes test-3.pack 12 &&
      if git verify-pack test-3.idx
      then false
      else :;
@@ -255,7 +255,7 @@ test_expect_success \
     'l=$(wc -c <test-3.idx) &&
      l=$(expr $l - 20) &&
      cat test-1-${packname_1}.pack >test-3.pack &&
-     printf "%20s" "" | dd of=test-3.idx count=20 bs=1 conv=notrunc seek=$l &&
+     printf "%20s" "" | test_overwrite_bytes test-3.idx $l &&
      if git verify-pack test-3.pack
      then false
      else :;

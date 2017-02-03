@@ -12,7 +12,7 @@ obj_to_file() {
 corrupt_byte() {
 	obj_file=$(obj_to_file "$1") &&
 	chmod +w "$obj_file" &&
-	printf '\0' | dd of="$obj_file" bs=1 seek="$2" conv=notrunc
+	printf '\0' | test_overwrite_bytes "$obj_file" "$2"
 }
 
 test_expect_success 'setup corrupt repo' '
