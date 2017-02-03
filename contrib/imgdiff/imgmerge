@@ -1,0 +1,50 @@
+#!/bin/bash
+
+if test $# -ne 4; then
+	echo >&2 "usage: $0 base ours theirs result"
+	exit 2
+fi
+
+base=$1
+ours=$2
+theirs=$3
+result=$4
+
+mask_bo=$result.mask-bo$$.bmp
+mask_bo_neg=$result.mask-bon$$.bmp
+mask_bt=$result.mask-bt$$.bmp
+mask_both=$result.mask-both$$.ppm
+
+tmp1=$result.tmp1$$.bmp
+tmp2=$result.tmp2$$.bmp
+
+# the formula is:
+#
+# mask = | ours-base |
+# result = ours * (mask) + theirs * (1-mask)
+
+# $1,$2...images to compare, $3...resulting mask file
+# sets all pixels to white where the two images differ
+# and all pixels to black where they are identical
+make_diff_mask ()
+{
+	composite -compose difference "$1" "$2" "$3" &&
+	
+	# if the first -level operation were dropped, then the conversion
+	# to gray-scale could map pixels with only a tiny difference to black
+	convert "$3" -level 0,1 -colorspace GRAY -level 0,1 "$3"
+}
+
+trap 'rm -f "$mask_bt" "$mask_bo" "$mask_bo_neg" "$tmp1" "$tmp2" "$mask_both"' 0
+
+make_diff_mask "$theirs" "$base" "$mask_bt" &&
+make_diff_mask "$ours" "$base" "$mask_bo" &&
+convert "$mask_bo" -negate "$mask_bo_neg" &&
+
+composite -compose multiply "$ours" "$mask_bo" "$tmp1" &&
+composite -compose multiply "$theirs" "$mask_bo_neg" "$tmp2" &&
+composite -compose plus "$tmp1" "$tmp2" "$result" &&
+
+composite -compose multiply "$mask_bt" "$mask_bo" -compress None "$mask_both" || exit 2
+
+test -z "$(sed -n -e '1,3d' -e '/65535/{p;q;}' < "$mask_both")"

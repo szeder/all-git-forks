@@ -1,0 +1,59 @@
+This directory contains facilities that allow to highlight changes
+between two images and to perform a 3-way merge of images.
+
+Prerequisites
+-------------
+
+ImageMagick - http://www.imagemagick.org/script/download.php
+
+
+Installation
+------------
+
+Copy the files imgdiff and imgmerge into a directory that is in your PATH.
+
+
+Usage
+-----
+
+Activate imgdiff in your repository
+
+a.	Define a custom diff driver:
+
+		$ git config diff.imgdiff.command imgdiff
+
+b.	Use the custom driver for your images, i.e. put
+	a line like this in your .git/info/attributes:
+
+			*.png	diff=imgdiff
+
+Since this uses ImageMagick behind the scenes, all image formats
+are supported that your ImageMagick installation supports.
+
+You can also run the program from the command line like this:
+
+	$ imgdiff pictureold.png picturenew.png
+
+Activate imgmerge in your repository
+
+
+a.	Define a custom merge driver:
+
+		$ git config merge.imgmerge.name "image merge driver"
+		$ git config merge.imgmerge.driver "imgmerge %O %A %B %A"
+
+b.	Use the custom driver for your images, i.e. put
+	a line like this in your .git/info/attributes:
+
+			*.png	merge=imgmerge
+
+You can also run the merge driver from the command line like this:
+
+	$ imgmerge base.png ours.png theirs.png result.png
+
+The merge algorithm produces no conflict if the changes on the branches
+("base" to "ours" vs. "base" to "theirs") are on disjoint sets of
+pixels. If the branches modify the same pixel, then this results in a
+conflict, and the conflicting pixels are set to "ours".
+
+The merge does not work with images that have an alpha channel.

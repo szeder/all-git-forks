@@ -1,0 +1,53 @@
+#!/bin/sh
+
+d=$TMP/imgdiff$$.png
+a=$TMP/imgdiff$$a.miff
+b=$TMP/imgdiff$$b.miff
+
+trap 'rm -f "$d" "$a" "$b"' 0 1 2 15
+
+if test $# = 7; then
+	of="$2"
+	nf="$5"
+	case $3:$6 in
+	.:*)
+		echo "New image $1"
+		imdisplay "$nf"
+		exit
+		;;
+	*:.)
+		echo "Deleted image $1"
+		convert -size 140x80 xc:none -fill red \
+			-gravity NorthWest -draw "text 10,10 'Deleted'" \
+			-gravity SouthEast -draw "text 5,15 'Deleted'" \
+			miff:- | \
+		composite -tile - "$of" "$d" &&
+		imdisplay "$d"
+		exit
+		;;
+	*)
+		echo "Image $1 changed"
+	esac
+else
+	of="$1"
+	nf="$2"
+	echo "Images $of and $nf differ"
+fi
+
+# compute image sizes
+sa=$(identify "$of")
+sb=$(identify "$nf")
+sa=${sa#"$of "* }
+sb=${sb#"$nf "* }
+sa=${sa%% *}
+sb=${sb%% *}
+
+if test "$sa" != "$sb"; then
+	# sizes differ; must construct images of the same size
+	convert "xc:none[$sa!]" -scale "$sb<" "$of" -composite "$a" &&
+	convert "xc:none[$sa!]" -scale "$sb<" "$nf" -composite "$b"
+	of=$a
+	nf=$b
+fi &&
+compare "$of" "$nf" "$d" &&
+imdisplay "$d"
