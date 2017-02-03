@@ -364,14 +364,14 @@ is_hidden () {
 	return 1
 }
 
-test_expect_success MINGW '.git hidden' '
+test_expect_success MINGW '.git not hidden' '
 	rm -rf newdir &&
 	(
 		unset GIT_DIR GIT_WORK_TREE
 		mkdir newdir &&
 		cd newdir &&
 		git init &&
-		is_hidden .git
+		! is_hidden .git
 	) &&
 	check_config newdir/.git false unset
 '
