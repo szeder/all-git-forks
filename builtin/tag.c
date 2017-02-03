@@ -379,7 +379,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	memset(&filter, 0, sizeof(filter));
 	filter.lines = -1;
 
-	argc = parse_options(argc, argv, prefix, options, git_tag_usage, 0);
+	argc = parse_options(argc, argv, prefix, options, NULL, 0);
 
 	if (keyid) {
 		opt.sign = 1;
