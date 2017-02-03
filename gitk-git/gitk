@@ -157,7 +157,7 @@ proc unmerged_files {files} {
 proc parseviewargs {n arglist} {
     global vdatemode vmergeonly vflags vdflags vrevs vfiltered vorigargs env
     global vinlinediff
-    global worddiff git_version
+    global worddiff git_version gitdir
 
     set vdatemode($n) 0
     set vmergeonly($n) 0
@@ -256,7 +256,14 @@ proc parseviewargs {n arglist} {
 	    "--merge" {
 		set vmergeonly($n) 1
 		# git rev-parse doesn't understand --merge
-		lappend revargs --gitk-symmetric-diff-marker MERGE_HEAD...HEAD
+		# check MERGE_HEAD again at the end so that it appears in
+		# the error message when none of the _HEADs is found
+		foreach merge_head {MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD MERGE_HEAD} {
+		    if {[file exists [file join $gitdir $merge_head]]} {
+			break
+		    }
+		}
+		lappend revargs --gitk-symmetric-diff-marker $merge_head...HEAD
 	    }
 	    "--no-replace-objects" {
 		set env(GIT_NO_REPLACE_OBJECTS) "1"
@@ -2492,17 +2499,9 @@ proc makewindow {} {
     .pwbottom add .bright
     .ctop add .pwbottom
 
-    # restore window width & height if known
+    # restore window position if known
     if {[info exists geometry(main)]} {
-	if {[scan $geometry(main) "%dx%d" w h] >= 2} {
-	    if {$w > [winfo screenwidth .]} {
-		set w [winfo screenwidth .]
-	    }
-	    if {$h > [winfo screenheight .]} {
-		set h [winfo screenheight .]
-	    }
-	    wm geometry . "${w}x$h"
-	}
+        wm geometry . "$geometry(main)"
     }
 
     if {[info exists geometry(state)] && $geometry(state) eq "zoomed"} {
@@ -6611,7 +6610,8 @@ proc drawtags {id x xt y1} {
 	lappend wvals $wid
 	set xt [expr {$xt + $wid + $extra}]
     }
-    set t [$canv create line $x $y1 [lindex $xvals end] $y1 \
+    set yl [expr {$y1 - $lthickness}]
+    set t [$canv create line $x $yl [lindex $xvals end] $yl \
 	       -width $lthickness -fill $reflinecolor -tags tag.$id]
     $canv lower $t
     foreach tag $marks x $xvals wid $wvals {
