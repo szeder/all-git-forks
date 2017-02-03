@@ -292,6 +292,29 @@ $ git reset --keep start                    <3>
 <3> But you can use "reset --keep" to remove the unwanted commit after
     you switched to "branch2".
 
+Split a commit into two::
++
+Suppose that you have created a commit, but later decide that you want to split
+the changes into two separate commits, including only part of the old commit
+into the first commit, and including the rest as a separate commit on top. You
+can use git reset in patch mode to interactively select which hunks to split
+out into a separate commit.
++
+------------
+$ git reset -p HEAD^                        <1>
+$ git commit --amend                        <2>
+$ git commit ...                            <3>
+------------
++
+<1> This lets you interactively undo changes between HEAD^ and HEAD, so you can
+    select which parts to remove from the initial commit. The changes are
+    placed into the index, leaving the working tree untouched.
+<2> Now, you ammend the initial commit with the modifications that you just
+    made in the index.
+<3> Finally, you can add and then commit the final original unmodified files
+    back as the second commit, enabling you to logically separate a commit
+    into a sequence of two commits instead.
+
 
 DISCUSSION
 ----------
