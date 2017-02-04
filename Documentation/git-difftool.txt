@@ -89,7 +89,8 @@ instead.  `--no-symlinks` is the default on Windows.
 --gui::
 	When 'git-difftool' is invoked with the `-g` or `--gui` option
 	the default diff tool will be read from the configured
-	`diff.guitool` variable instead of `diff.tool`.
+	`diff.guitool` variable instead of `diff.tool`. If `diff.guitool`
+	is not defined, it will try and read from `merge.guitool`.
 
 --[no-]trust-exit-code::
 	'git-difftool' invokes a diff tool individually on each file.

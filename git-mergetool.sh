@@ -9,7 +9,7 @@
 # at the discretion of Junio C Hamano.
 #
 
-USAGE='[--tool=tool] [--tool-help] [-y|--no-prompt|--prompt] [-O<orderfile>] [file to merge] ...'
+USAGE='[--tool=tool] [-g|--gui] [--tool-help] [-y|--no-prompt|--prompt] [-O<orderfile>] [file to merge] ...'
 SUBDIRECTORY_OK=Yes
 NONGIT_OK=Yes
 OPTIONS_SPEC=
@@ -413,6 +413,9 @@ main () {
 				merge_tool="$2"
 				shift ;;
 			esac
+			;;
+		-g|--gui)
+			merge_tool=$(git config merge.guitool)
 			;;
 		-y|--no-prompt)
 			prompt=false

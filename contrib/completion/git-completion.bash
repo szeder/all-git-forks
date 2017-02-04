@@ -1268,7 +1268,7 @@ _git_difftool ()
 			--base --ours --theirs
 			--no-renames --diff-filter= --find-copies-harder
 			--relative --ignore-submodules
-			--tool="
+			--tool= --gui"
 		return
 		;;
 	esac
@@ -1566,7 +1566,7 @@ _git_mergetool ()
 		return
 		;;
 	--*)
-		__gitcomp "--tool="
+		__gitcomp "--tool= --gui"
 		return
 		;;
 	esac
@@ -2189,6 +2189,7 @@ _git_config ()
 		diff.submodule
 		diff.suppressBlankEmpty
 		diff.tool
+		diff.guitool
 		diff.wordRegex
 		diff.algorithm
 		difftool.
@@ -2290,6 +2291,7 @@ _git_config ()
 		merge.renormalize
 		merge.stat
 		merge.tool
+		merge.guitool
 		merge.verbosity
 		mergetool.
 		mergetool.keepBackup
