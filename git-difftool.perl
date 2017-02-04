@@ -29,8 +29,8 @@ sub usage
 	print << 'USAGE';
 usage: git difftool [-t|--tool=<tool>] [--tool-help]
                     [-x|--extcmd=<cmd>]
-                    [-g|--gui] [--no-gui]
-                    [--prompt] [-y|--no-prompt]
+                    [-g|--gui] [--prompt]
+                    [-y|--no-prompt]
                     [-d|--dir-diff]
                     ['git diff' options]
 USAGE
