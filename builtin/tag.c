@@ -24,7 +24,7 @@ static const char * const git_tag_usage[] = {
 	N_("git tag -d <tagname>..."),
 	N_("git tag -l [-n[<num>]] [--contains <commit>] [--points-at <object>]"
 		"\n\t\t[--format=<format>] [--[no-]merged [<commit>]] [<pattern>...]"),
-	N_("git tag -v [--format=<format>] <tagname>..."),
+	N_("git tag -v <tagname>..."),
 	NULL
 };
 
@@ -66,10 +66,9 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 }
 
 typedef int (*each_tag_name_fn)(const char *name, const char *ref,
-				const unsigned char *sha1, const void *cb_data);
+				const unsigned char *sha1);
 
-static int for_each_tag_name(const char **argv, each_tag_name_fn fn,
-			     const void *cb_data)
+static int for_each_tag_name(const char **argv, each_tag_name_fn fn)
 {
 	const char **p;
 	char ref[PATH_MAX];
@@ -88,14 +87,14 @@ static int for_each_tag_name(const char **argv, each_tag_name_fn fn,
 			had_error = 1;
 			continue;
 		}
-		if (fn(*p, ref, sha1, cb_data))
+		if (fn(*p, ref, sha1))
 			had_error = 1;
 	}
 	return had_error;
 }
 
 static int delete_tag(const char *name, const char *ref,
-		      const unsigned char *sha1, const void *cb_data)
+				const unsigned char *sha1)
 {
 	if (delete_ref(ref, sha1, 0))
 		return 1;
@@ -104,22 +103,9 @@ static int delete_tag(const char *name, const char *ref,
 }
 
 static int verify_tag(const char *name, const char *ref,
-		      const unsigned char *sha1, const void *cb_data)
+				const unsigned char *sha1)
 {
-	int flags;
-	const char *fmt_pretty = cb_data;
-	flags = GPG_VERIFY_VERBOSE;
-
-	if (fmt_pretty)
-		flags = GPG_VERIFY_OMIT_STATUS;
-
-	if (gpg_verify_tag(sha1, name, flags))
-		return -1;
-
-	if (fmt_pretty)
-		pretty_print_ref(name, sha1, fmt_pretty);
-
-	return 0;
+	return gpg_verify_tag(sha1, name, GPG_VERIFY_VERBOSE);
 }
 
 static int do_sign(struct strbuf *buffer)
@@ -349,7 +335,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct ref_filter filter;
 	static struct ref_sorting *sorting = NULL, **sorting_tail = &sorting;
 	const char *format = NULL;
-	int icase = 0;
 	struct option options[] = {
 		OPT_CMDMODE('l', "list", &cmdmode, N_("list tag names"), 'l'),
 		{ OPTION_INTEGER, 'n', NULL, &filter.lines, N_("n"),
@@ -385,7 +370,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 			N_("print only tags of the object"), 0, parse_opt_object_name
 		},
 		OPT_STRING(  0 , "format", &format, N_("format"), N_("format to use for the output")),
-		OPT_BOOL('i', "ignore-case", &icase, N_("sorting and filtering are case insensitive")),
 		OPT_END()
 	};
 
@@ -417,8 +401,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	}
 	if (!sorting)
 		sorting = ref_default_sorting();
-	sorting->ignore_case = icase;
-	filter.ignore_case = icase;
 	if (cmdmode == 'l') {
 		int ret;
 		if (column_active(colopts)) {
@@ -442,12 +424,9 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	if (filter.merge_commit)
 		die(_("--merged and --no-merged option are only allowed with -l"));
 	if (cmdmode == 'd')
-		return for_each_tag_name(argv, delete_tag, NULL);
-	if (cmdmode == 'v') {
-		if (format)
-			verify_ref_format(format);
-		return for_each_tag_name(argv, verify_tag, format);
-	}
+		return for_each_tag_name(argv, delete_tag);
+	if (cmdmode == 'v')
+		return for_each_tag_name(argv, verify_tag);
 
 	if (msg.given || msgfile) {
 		if (msg.given && msgfile)

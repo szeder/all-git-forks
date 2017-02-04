@@ -568,8 +568,6 @@ int cmd_push(int argc, const char **argv, const char *prefix)
 		flags |= TRANSPORT_RECURSE_SUBMODULES_CHECK;
 	else if (recurse_submodules == RECURSE_SUBMODULES_ON_DEMAND)
 		flags |= TRANSPORT_RECURSE_SUBMODULES_ON_DEMAND;
-	else if (recurse_submodules == RECURSE_SUBMODULES_ONLY)
-		flags |= TRANSPORT_RECURSE_SUBMODULES_ONLY;
 
 	if (tags)
 		add_refspec("refs/tags/*");

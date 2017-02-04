@@ -66,8 +66,6 @@ static struct key_value_info *current_config_kvi;
  */
 static enum config_scope current_parsing_scope;
 
-static int core_compression_seen;
-static int pack_compression_seen;
 static int zlib_compression_seen;
 
 /*
@@ -826,12 +824,7 @@ static int git_default_core_config(const char *var, const char *value)
 	}
 
 	if (!strcmp(var, "core.logallrefupdates")) {
-		if (value && !strcasecmp(value, "always"))
-			log_all_ref_updates = LOG_REFS_ALWAYS;
-		else if (git_config_bool(var, value))
-			log_all_ref_updates = LOG_REFS_NORMAL;
-		else
-			log_all_ref_updates = LOG_REFS_NONE;
+		log_all_ref_updates = git_config_bool(var, value);
 		return 0;
 	}
 
@@ -841,16 +834,10 @@ static int git_default_core_config(const char *var, const char *value)
 	}
 
 	if (!strcmp(var, "core.abbrev")) {
-		if (!value)
-			return config_error_nonbool(var);
-		if (!strcasecmp(value, "auto"))
-			default_abbrev = -1;
-		else {
-			int abbrev = git_config_int(var, value);
-			if (abbrev < minimum_abbrev || abbrev > 40)
-				return error("abbrev length out of range: %d", abbrev);
-			default_abbrev = abbrev;
-		}
+		int abbrev = git_config_int(var, value);
+		if (abbrev < minimum_abbrev || abbrev > 40)
+			return -1;
+		default_abbrev = abbrev;
 		return 0;
 	}
 
@@ -878,8 +865,6 @@ static int git_default_core_config(const char *var, const char *value)
 		core_compression_seen = 1;
 		if (!zlib_compression_seen)
 			zlib_compression_level = level;
-		if (!pack_compression_seen)
-			pack_compression_level = level;
 		return 0;
 	}
 
@@ -1014,16 +999,8 @@ static int git_default_core_config(const char *var, const char *value)
 		return 0;
 	}
 
-	if (!strcmp(var, "core.hidedotfiles")) {
-		if (value && !strcasecmp(value, "dotgitonly"))
-			hide_dotfiles = HIDE_DOTFILES_DOTGITONLY;
-		else
-			hide_dotfiles = git_config_bool(var, value);
-		return 0;
-	}
-
 	/* Add other config variables here and to Documentation/config.txt. */
-	return 0;
+	return platform_core_config(var, value);
 }
 
 static int git_default_i18n_config(const char *var, const char *value)
@@ -1140,18 +1117,6 @@ int git_default_config(const char *var, const char *value, void *dummy)
 		pack_size_limit_cfg = git_config_ulong(var, value);
 		return 0;
 	}
-
-	if (!strcmp(var, "pack.compression")) {
-		int level = git_config_int(var, value);
-		if (level == -1)
-			level = Z_DEFAULT_COMPRESSION;
-		else if (level < 0 || level > Z_BEST_COMPRESSION)
-			die(_("bad pack compression level %d"), level);
-		pack_compression_level = level;
-		pack_compression_seen = 1;
-		return 0;
-	}
-
 	/* Add other config variables here and to Documentation/config.txt. */
 	return 0;
 }
@@ -1241,10 +1206,10 @@ int git_config_from_mem(config_fn_t fn, const enum config_origin_type origin_typ
 	return do_config_from(&top, fn, data);
 }
 
-int git_config_from_blob_sha1(config_fn_t fn,
-			      const char *name,
-			      const unsigned char *sha1,
-			      void *data)
+static int git_config_from_blob_sha1(config_fn_t fn,
+				     const char *name,
+				     const unsigned char *sha1,
+				     void *data)
 {
 	enum object_type type;
 	char *buf;
@@ -1319,9 +1284,16 @@ static int do_git_config_sequence(config_fn_t fn, void *data)
 	char *repo_config = have_git_dir() ? git_pathdup("config") : NULL;
 
 	current_parsing_scope = CONFIG_SCOPE_SYSTEM;
-	if (git_config_system() && !access_or_die(git_etc_gitconfig(), R_OK, 0))
-		ret += git_config_from_file(fn, git_etc_gitconfig(),
-					    data);
+	if (git_config_system()) {
+		if (git_program_data_config() &&
+		    !access_or_die(git_program_data_config(), R_OK, 0))
+			ret += git_config_from_file(fn,
+						    git_program_data_config(),
+						    data);
+		if (!access_or_die(git_etc_gitconfig(), R_OK, 0))
+			ret += git_config_from_file(fn, git_etc_gitconfig(),
+						    data);
+	}
 
 	current_parsing_scope = CONFIG_SCOPE_GLOBAL;
 	if (xdg_config && !access_or_die(xdg_config, R_OK, ACCESS_EACCES_OK))
@@ -2076,6 +2048,20 @@ int git_config_key_is_valid(const char *key)
 	return !git_config_parse_key_1(key, NULL, NULL, 1);
 }
 
+static int lock_config_file(const char *config_filename,
+		struct lock_file **result)
+{
+	int fd;
+
+	*result = xcalloc(1, sizeof(struct lock_file));
+	fd = hold_lock_file_for_update(*result, config_filename, 0);
+	if (fd < 0)
+		error("could not lock config file %s: %s", config_filename,
+				strerror(errno));
+
+	return fd;
+}
+
 /*
  * If value==NULL, unset in (remove from) config,
  * if value_regex!=NULL, disregard key/value pairs where value does not match.
@@ -2127,8 +2113,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 	 * The lock serves a purpose in addition to locking: the new
 	 * contents of .git/config will be written into it.
 	 */
-	lock = xcalloc(1, sizeof(struct lock_file));
-	fd = hold_lock_file_for_update(lock, config_filename, 0);
+	fd = lock_config_file(config_filename, &lock);
 	if (fd < 0) {
 		error_errno("could not lock config file %s", config_filename);
 		free(store.key);
@@ -2221,12 +2206,7 @@ int git_config_set_multivar_in_file_gently(const char *config_filename,
 			goto out_free;
 		}
 
-		if (fstat(in_fd, &st) == -1) {
-			error_errno(_("fstat on %s failed"), config_filename);
-			ret = CONFIG_INVALID_FILE;
-			goto out_free;
-		}
-
+		fstat(in_fd, &st);
 		contents_sz = xsize_t(st.st_size);
 		contents = xmmap_gently(NULL, contents_sz, PROT_READ,
 					MAP_PRIVATE, in_fd, 0);
@@ -2428,28 +2408,22 @@ int git_config_rename_section_in_file(const char *config_filename,
 
 	if (new_name && !section_name_is_ok(new_name)) {
 		ret = error("invalid section name: %s", new_name);
-		goto out_no_rollback;
+		goto out;
 	}
 
 	if (!config_filename)
 		config_filename = filename_buf = git_pathdup("config");
 
-	lock = xcalloc(1, sizeof(struct lock_file));
-	out_fd = hold_lock_file_for_update(lock, config_filename, 0);
-	if (out_fd < 0) {
-		ret = error("could not lock config file %s", config_filename);
+	out_fd = lock_config_file(config_filename, &lock);
+	if (out_fd < 0)
 		goto out;
-	}
 
 	if (!(config_file = fopen(config_filename, "rb"))) {
 		/* no config file means nothing to rename, no error */
-		goto commit_and_out;
+		goto unlock_and_out;
 	}
 
-	if (fstat(fileno(config_file), &st) == -1) {
-		ret = error_errno(_("fstat on %s failed"), config_filename);
-		goto out;
-	}
+	fstat(fileno(config_file), &st);
 
 	if (chmod(get_lock_file_path(lock), st.st_mode & 07777) < 0) {
 		ret = error_errno("chmod on %s failed",
@@ -2505,13 +2479,11 @@ int git_config_rename_section_in_file(const char *config_filename,
 		}
 	}
 	fclose(config_file);
-commit_and_out:
+unlock_and_out:
 	if (commit_lock_file(lock) < 0)
 		ret = error_errno("could not write config file %s",
 				  config_filename);
 out:
-	rollback_lock_file(lock);
-out_no_rollback:
 	free(filename_buf);
 	return ret;
 }

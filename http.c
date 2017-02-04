@@ -109,7 +109,7 @@ static int curl_save_cookies;
 struct credential http_auth = CREDENTIAL_INIT;
 static int http_proactive_auth;
 static const char *user_agent;
-static int curl_empty_auth;
+static int curl_empty_auth = 1;
 
 enum http_follow_config http_follow_config = HTTP_FOLLOW_INITIAL;
 
@@ -263,10 +263,10 @@ static int http_options(const char *var, const char *value, void *cb)
 	if (!strcmp("http.sslversion", var))
 		return git_config_string(&ssl_version, var, value);
 	if (!strcmp("http.sslcert", var))
-		return git_config_string(&ssl_cert, var, value);
+		return git_config_pathname(&ssl_cert, var, value);
 #if LIBCURL_VERSION_NUM >= 0x070903
 	if (!strcmp("http.sslkey", var))
-		return git_config_string(&ssl_key, var, value);
+		return git_config_pathname(&ssl_key, var, value);
 #endif
 #if LIBCURL_VERSION_NUM >= 0x070908
 	if (!strcmp("http.sslcapath", var))
@@ -636,25 +636,11 @@ void setup_curl_trace(CURL *handle)
 	curl_easy_setopt(handle, CURLOPT_DEBUGDATA, NULL);
 }
 
-static long get_curl_allowed_protocols(int from_user)
-{
-	long allowed_protocols = 0;
-
-	if (is_transport_allowed("http", from_user))
-		allowed_protocols |= CURLPROTO_HTTP;
-	if (is_transport_allowed("https", from_user))
-		allowed_protocols |= CURLPROTO_HTTPS;
-	if (is_transport_allowed("ftp", from_user))
-		allowed_protocols |= CURLPROTO_FTP;
-	if (is_transport_allowed("ftps", from_user))
-		allowed_protocols |= CURLPROTO_FTPS;
-
-	return allowed_protocols;
-}
 
 static CURL *get_curl_handle(void)
 {
 	CURL *result = curl_easy_init();
+	long allowed_protocols = 0;
 
 	if (!result)
 		die("curl_easy_init failed");
@@ -750,13 +736,20 @@ static CURL *get_curl_handle(void)
 	curl_easy_setopt(result, CURLOPT_POST301, 1);
 #endif
 #if LIBCURL_VERSION_NUM >= 0x071304
-	curl_easy_setopt(result, CURLOPT_REDIR_PROTOCOLS,
-			 get_curl_allowed_protocols(0));
-	curl_easy_setopt(result, CURLOPT_PROTOCOLS,
-			 get_curl_allowed_protocols(-1));
+	if (is_transport_allowed("http"))
+		allowed_protocols |= CURLPROTO_HTTP;
+	if (is_transport_allowed("https"))
+		allowed_protocols |= CURLPROTO_HTTPS;
+	if (is_transport_allowed("ftp"))
+		allowed_protocols |= CURLPROTO_FTP;
+	if (is_transport_allowed("ftps"))
+		allowed_protocols |= CURLPROTO_FTPS;
+	curl_easy_setopt(result, CURLOPT_REDIR_PROTOCOLS, allowed_protocols);
+	curl_easy_setopt(result, CURLOPT_PROTOCOLS, allowed_protocols);
 #else
-	warning("protocol restrictions not applied to curl redirects because\n"
-		"your curl version is too old (>= 7.19.4)");
+	if (transport_restrict_protocols())
+		warning("protocol restrictions not applied to curl redirects because\n"
+			"your curl version is too old (>= 7.19.4)");
 #endif
 	if (getenv("GIT_CURL_VERBOSE"))
 		curl_easy_setopt(result, CURLOPT_VERBOSE, 1L);

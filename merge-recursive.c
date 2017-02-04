@@ -2008,7 +2008,7 @@ int merge_recursive(struct merge_options *o,
 {
 	struct commit_list *iter;
 	struct commit *merged_common_ancestors;
-	struct tree *mrtree = mrtree;
+	FAKE_INIT(struct tree *, mrtree, NULL);
 	int clean;
 
 	if (show(o, 4)) {
@@ -2133,7 +2133,7 @@ int merge_recursive_generic(struct merge_options *o,
 		}
 	}
 
-	hold_locked_index(lock, LOCK_DIE_ON_ERROR);
+	hold_locked_index(lock, 1);
 	clean = merge_recursive(o, head_commit, next_commit, ca,
 			result);
 	if (clean < 0)

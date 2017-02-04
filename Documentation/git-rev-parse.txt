@@ -91,8 +91,7 @@ repository.  For example:
 ----
 prefix=$(git rev-parse --show-prefix)
 cd "$(git rev-parse --show-toplevel)"
-# rev-parse provides the -- needed for 'set'
-eval "set $(git rev-parse --sq --prefix "$prefix" -- "$@")"
+eval "set -- $(git rev-parse --sq --prefix "$prefix" "$@")"
 ----
 
 --verify::

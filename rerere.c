@@ -708,7 +708,7 @@ static void update_paths(struct string_list *update)
 {
 	int i;
 
-	hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
+	hold_locked_index(&index_lock, 1);
 
 	for (i = 0; i < update->nr; i++) {
 		struct string_list_item *item = &update->items[i];

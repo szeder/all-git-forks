@@ -29,7 +29,6 @@ struct ref_sorting {
 	struct ref_sorting *next;
 	int atom; /* index into used_atom array (internal) */
 	unsigned reverse : 1,
-		ignore_case : 1,
 		version : 1;
 };
 
@@ -63,7 +62,6 @@ struct ref_filter {
 
 	unsigned int with_commit_tag_algo : 1,
 		match_as_path : 1,
-		ignore_case : 1,
 		detached : 1;
 	unsigned int kind,
 		lines;
@@ -108,12 +106,5 @@ int parse_opt_ref_sorting(const struct option *opt, const char *arg, int unset);
 struct ref_sorting *ref_default_sorting(void);
 /*  Function to parse --merged and --no-merged options */
 int parse_opt_merge_filter(const struct option *opt, const char *arg, int unset);
-
-/*
- * Print a single ref, outside of any ref-filter. Note that the
- * name must be a fully qualified refname.
- */
-void pretty_print_ref(const char *name, const unsigned char *sha1,
-		const char *format);
 
 #endif /*  REF_FILTER_H  */

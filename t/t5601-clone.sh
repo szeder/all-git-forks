@@ -151,7 +151,7 @@ test_expect_success 'clone --mirror does not repeat tags' '
 	git clone --mirror src mirror2 &&
 	(cd mirror2 &&
 	 git show-ref 2> clone.err > clone.out) &&
-	! grep Duplicate mirror2/clone.err &&
+	test_must_fail grep Duplicate mirror2/clone.err &&
 	grep some-tag mirror2/clone.out
 
 '
@@ -384,6 +384,21 @@ test_expect_success 'tortoiseplink is like putty, with extra arguments' '
 	copy_ssh_wrapper_as "$TRASH_DIRECTORY/tortoiseplink" &&
 	git clone "[myhost:123]:src" ssh-bracket-clone-plink-2 &&
 	expect_ssh "-batch -P 123" myhost src
+'
+
+test_expect_success 'double quoted plink.exe in GIT_SSH_COMMAND' '
+	copy_ssh_wrapper_as "$TRASH_DIRECTORY/plink.exe" &&
+	GIT_SSH_COMMAND="\"$TRASH_DIRECTORY/plink.exe\" -v" \
+		git clone "[myhost:123]:src" ssh-bracket-clone-plink-3 &&
+	expect_ssh "-v -P 123" myhost src
+'
+
+SQ="'"
+test_expect_success 'single quoted plink.exe in GIT_SSH_COMMAND' '
+	copy_ssh_wrapper_as "$TRASH_DIRECTORY/plink.exe" &&
+	GIT_SSH_COMMAND="$SQ$TRASH_DIRECTORY/plink.exe$SQ -v" \
+		git clone "[myhost:123]:src" ssh-bracket-clone-plink-4 &&
+	expect_ssh "-v -P 123" myhost src
 '
 
 # Reset the GIT_SSH environment variable for clone tests.

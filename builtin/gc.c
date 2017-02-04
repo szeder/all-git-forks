@@ -191,11 +191,6 @@ static void add_repack_all_option(void)
 	}
 }
 
-static void add_repack_incremental_option(void)
-{
-       argv_array_push(&repack, "--no-write-bitmap-index");
-}
-
 static int need_to_gc(void)
 {
 	/*
@@ -213,9 +208,7 @@ static int need_to_gc(void)
 	 */
 	if (too_many_packs())
 		add_repack_all_option();
-	else if (too_many_loose_objects())
-		add_repack_incremental_option();
-	else
+	else if (!too_many_loose_objects())
 		return 0;
 
 	if (run_hook_le(NULL, "pre-auto-gc", NULL))
@@ -441,8 +434,10 @@ int cmd_gc(int argc, const char **argv, const char *prefix)
 
 	report_garbage = report_pack_garbage;
 	reprepare_packed_git();
-	if (pack_garbage.nr > 0)
+	if (pack_garbage.nr > 0) {
+		close_all_packs();
 		clean_pack_garbage();
+	}
 
 	if (auto_gc && too_many_loose_objects())
 		warning(_("There are too many unreachable loose objects; "

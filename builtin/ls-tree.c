@@ -31,18 +31,21 @@ static const  char * const ls_tree_usage[] = {
 
 static int show_recursive(const char *base, int baselen, const char *pathname)
 {
-	int i;
+	const char **s;
 
 	if (ls_options & LS_RECURSIVE)
 		return 1;
 
-	if (!pathspec.nr)
+	s = pathspec._raw;
+	if (!s)
 		return 0;
 
-	for (i = 0; i < pathspec.nr; i++) {
-		const char *spec = pathspec.items[i].match;
+	for (;;) {
+		const char *spec = *s++;
 		int len, speclen;
 
+		if (!spec)
+			return 0;
 		if (strncmp(base, spec, baselen))
 			continue;
 		len = strlen(pathname);
@@ -56,7 +59,6 @@ static int show_recursive(const char *base, int baselen, const char *pathname)
 			continue;
 		return 1;
 	}
-	return 0;
 }
 
 static int show_tree(const unsigned char *sha1, struct strbuf *base,
@@ -173,8 +175,8 @@ int cmd_ls_tree(int argc, const char **argv, const char *prefix)
 	 * cannot be lifted until it is converted to use
 	 * match_pathspec() or tree_entry_interesting()
 	 */
-	parse_pathspec(&pathspec, PATHSPEC_ALL_MAGIC &
-				  ~(PATHSPEC_FROMTOP | PATHSPEC_LITERAL),
+	parse_pathspec(&pathspec, PATHSPEC_GLOB | PATHSPEC_ICASE |
+				  PATHSPEC_EXCLUDE,
 		       PATHSPEC_PREFER_CWD,
 		       prefix, argv + 1);
 	for (i = 0; i < pathspec.nr; i++)

@@ -12,8 +12,7 @@ USAGE="[--quiet] add [-b <branch>] [-f|--force] [--name <name>] [--reference <re
    or: $dashless [--quiet] update [--init] [--remote] [-N|--no-fetch] [-f|--force] [--checkout|--merge|--rebase] [--[no-]recommend-shallow] [--reference <repository>] [--recursive] [--] [<path>...]
    or: $dashless [--quiet] summary [--cached|--files] [--summary-limit <n>] [commit] [--] [<path>...]
    or: $dashless [--quiet] foreach [--recursive] <command>
-   or: $dashless [--quiet] sync [--recursive] [--] [<path>...]
-   or: $dashless [--quiet] absorbgitdirs [--] [<path>...]"
+   or: $dashless [--quiet] sync [--recursive] [--] [<path>...]"
 OPTIONS_SPEC=
 SUBDIRECTORY_OK=Yes
 . git-sh-setup
@@ -22,10 +21,14 @@ require_work_tree
 wt_prefix=$(git rev-parse --show-prefix)
 cd_to_toplevel
 
-# Tell the rest of git that any URLs we get don't come
-# directly from the user, so it can apply policy as appropriate.
-GIT_PROTOCOL_FROM_USER=0
-export GIT_PROTOCOL_FROM_USER
+# Restrict ourselves to a vanilla subset of protocols; the URLs
+# we get are under control of a remote repository, and we do not
+# want them kicking off arbitrary git-remote-* programs.
+#
+# If the user has already specified a set of allowed protocols,
+# we assume they know what they're doing and use that instead.
+: ${GIT_ALLOW_PROTOCOL=file:git:http:https:ssh}
+export GIT_ALLOW_PROTOCOL
 
 command=
 branch=
@@ -204,14 +207,8 @@ cmd_add()
 			tstart
 			s|/*$||
 		')
-	if test -z "$force"
-	then
-		git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
-		die "$(eval_gettext "'\$sm_path' already exists in the index")"
-	else
-		git ls-files -s "$sm_path" | sane_grep -v "^160000" > /dev/null 2>&1 &&
-		die "$(eval_gettext "'\$sm_path' already exists in the index and is not a submodule")"
-	fi
+	git ls-files --error-unmatch "$sm_path" > /dev/null 2>&1 &&
+	die "$(eval_gettext "'\$sm_path' already exists in the index")"
 
 	if test -z "$force" && ! git add --dry-run --ignore-missing "$sm_path" > /dev/null 2>&1
 	then
@@ -377,7 +374,7 @@ cmd_init()
 		shift
 	done
 
-	git ${wt_prefix:+-C "$wt_prefix"} ${prefix:+--super-prefix "$prefix"} submodule--helper init ${GIT_QUIET:+--quiet}  "$@"
+	git ${wt_prefix:+-C "$wt_prefix"} submodule--helper init ${GIT_QUIET:+--quiet} ${prefix:+--prefix "$prefix"} "$@"
 }
 
 #
@@ -613,10 +610,7 @@ cmd_update()
 		if test $just_cloned -eq 1
 		then
 			subsha1=
-			case "$update_module" in
-			merge | rebase | none)
-				update_module=checkout ;;
-			esac
+			update_module=checkout
 		else
 			subsha1=$(sanitize_submodule_env; cd "$sm_path" &&
 				git rev-parse --verify HEAD) ||
@@ -849,7 +843,7 @@ cmd_summary() {
 				test $status != A && test $ignore_config = all && continue
 			fi
 			# Also show added or modified modules which are checked out
-			GIT_DIR="$sm_path/.git" git-rev-parse --git-dir >/dev/null 2>&1 &&
+			GIT_DIR="$sm_path/.git" git rev-parse --git-dir >/dev/null 2>&1 &&
 			printf '%s\n' "$sm_path"
 		done
 	)
@@ -883,11 +877,11 @@ cmd_summary() {
 		missing_dst=
 
 		test $mod_src = 160000 &&
-		! GIT_DIR="$name/.git" git-rev-parse -q --verify $sha1_src^0 >/dev/null &&
+		! GIT_DIR="$name/.git" git rev-parse -q --verify $sha1_src^0 >/dev/null &&
 		missing_src=t
 
 		test $mod_dst = 160000 &&
-		! GIT_DIR="$name/.git" git-rev-parse -q --verify $sha1_dst^0 >/dev/null &&
+		! GIT_DIR="$name/.git" git rev-parse -q --verify $sha1_dst^0 >/dev/null &&
 		missing_dst=t
 
 		display_name=$(git submodule--helper relative-path "$name" "$wt_prefix")
@@ -1137,11 +1131,6 @@ cmd_sync()
 	done
 }
 
-cmd_absorbgitdirs()
-{
-	git submodule--helper absorb-git-dirs --prefix "$wt_prefix" "$@"
-}
-
 # This loop parses the command line arguments to find the
 # subcommand name to dispatch.  Parsing of the subcommand specific
 # options are primarily done by the subcommand implementations.
@@ -1151,7 +1140,7 @@ cmd_absorbgitdirs()
 while test $# != 0 && test -z "$command"
 do
 	case "$1" in
-	add | foreach | init | deinit | update | status | summary | sync | absorbgitdirs)
+	add | foreach | init | deinit | update | status | summary | sync)
 		command=$1
 		;;
 	-q|--quiet)

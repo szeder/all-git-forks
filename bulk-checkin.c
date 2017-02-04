@@ -7,6 +7,8 @@
 #include "pack.h"
 #include "strbuf.h"
 
+static int pack_compression_level = Z_DEFAULT_COMPRESSION;
+
 static struct bulk_checkin_state {
 	unsigned plugged:1;
 

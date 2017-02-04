@@ -39,10 +39,6 @@ test_expect_success setup '
 		echo "a+bc"
 		echo "abc"
 	} >ab &&
-	{
-		echo d &&
-		echo 0
-	} >d0 &&
 	echo vvv >v &&
 	echo ww w >w &&
 	echo x x xx x >x &&
@@ -1109,36 +1105,36 @@ test_expect_success 'grep pattern with grep.patternType=fixed, =basic, =extended
 '
 
 test_expect_success 'grep -G -F -P -E pattern' '
-	echo "d0:d" >expected &&
-	git grep -G -F -P -E "[\d]" d0 >actual &&
-	test_cmp expected actual
+	>empty &&
+	test_must_fail git grep -G -F -P -E "a\x{2b}b\x{2a}c" ab >actual &&
+	test_cmp empty actual
 '
 
 test_expect_success 'grep pattern with grep.patternType=fixed, =basic, =perl, =extended' '
-	echo "d0:d" >expected &&
-	git \
+	>empty &&
+	test_must_fail git \
 		-c grep.patterntype=fixed \
 		-c grep.patterntype=basic \
 		-c grep.patterntype=perl \
 		-c grep.patterntype=extended \
-		grep "[\d]" d0 >actual &&
-	test_cmp expected actual
+		grep "a\x{2b}b\x{2a}c" ab >actual &&
+	test_cmp empty actual
 '
 
 test_expect_success LIBPCRE 'grep -G -F -E -P pattern' '
-	echo "d0:0" >expected &&
-	git grep -G -F -E -P "[\d]" d0 >actual &&
+	echo "ab:a+b*c" >expected &&
+	git grep -G -F -E -P "a\x{2b}b\x{2a}c" ab >actual &&
 	test_cmp expected actual
 '
 
 test_expect_success LIBPCRE 'grep pattern with grep.patternType=fixed, =basic, =extended, =perl' '
-	echo "d0:0" >expected &&
+	echo "ab:a+b*c" >expected &&
 	git \
 		-c grep.patterntype=fixed \
 		-c grep.patterntype=basic \
 		-c grep.patterntype=extended \
 		-c grep.patterntype=perl \
-		grep "[\d]" d0 >actual &&
+		grep "a\x{2b}b\x{2a}c" ab >actual &&
 	test_cmp expected actual
 '
 

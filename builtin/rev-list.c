@@ -237,7 +237,7 @@ static int show_bisect_vars(struct rev_list_info *info, int reaches, int all)
 		cnt = reaches;
 
 	if (revs->commits)
-		oid_to_hex_r(hex, &revs->commits->item->object.oid);
+		sha1_to_hex_r(hex, revs->commits->item->object.oid.hash);
 
 	if (flags & BISECT_SHOW_ALL) {
 		traverse_commit_list(revs, show_commit, show_object, info);
@@ -388,7 +388,8 @@ int cmd_rev_list(int argc, const char **argv, const char *prefix)
 		mark_edges_uninteresting(&revs, show_edge);
 
 	if (bisect_list) {
-		int reaches = reaches, all = all;
+		FAKE_INIT(int, reaches, 0);
+		FAKE_INIT(int, all, 0);
 
 		revs.commits = find_bisection(revs.commits, &reaches, &all,
 					      bisect_find_all);

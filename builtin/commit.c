@@ -351,7 +351,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 
 	if (interactive) {
 		char *old_index_env = NULL;
-		hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
+		hold_locked_index(&index_lock, 1);
 
 		refresh_cache_or_die(refresh_flags);
 
@@ -396,7 +396,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * (B) on failure, rollback the real index.
 	 */
 	if (all || (also && pathspec.nr)) {
-		hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
+		hold_locked_index(&index_lock, 1);
 		add_files_to_cache(also ? prefix : NULL, &pathspec, 0);
 		refresh_cache_or_die(refresh_flags);
 		update_main_cache_tree(WRITE_TREE_SILENT);
@@ -416,7 +416,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	 * We still need to refresh the index here.
 	 */
 	if (!only && !pathspec.nr) {
-		hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
+		hold_locked_index(&index_lock, 1);
 		refresh_cache_or_die(refresh_flags);
 		if (active_cache_changed
 		    || !cache_tree_fully_valid(active_cache_tree))
@@ -468,7 +468,7 @@ static const char *prepare_index(int argc, const char **argv, const char *prefix
 	if (read_cache() < 0)
 		die(_("cannot read the index"));
 
-	hold_locked_index(&index_lock, LOCK_DIE_ON_ERROR);
+	hold_locked_index(&index_lock, 1);
 	add_remove_files(&partial);
 	refresh_cache(REFRESH_QUIET);
 	update_main_cache_tree(WRITE_TREE_SILENT);
@@ -790,7 +790,7 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		strbuf_stripspace(&sb, 0);
 
 	if (signoff)
-		append_signoff(&sb, ignore_non_trailer(sb.buf, sb.len), 0);
+		append_signoff(&sb, ignore_non_trailer(&sb), 0);
 
 	if (fwrite(sb.buf, 1, sb.len, s->fp) < sb.len)
 		die_errno(_("could not write commit template"));
@@ -960,15 +960,15 @@ static int prepare_to_commit(const char *index_file, const char *prefix,
 		return 0;
 
 	if (use_editor) {
-		struct argv_array env = ARGV_ARRAY_INIT;
-
-		argv_array_pushf(&env, "GIT_INDEX_FILE=%s", index_file);
-		if (launch_editor(git_path_commit_editmsg(), NULL, env.argv)) {
+		char index[PATH_MAX];
+		const char *env[2] = { NULL };
+		env[0] =  index;
+		snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", index_file);
+		if (launch_editor(git_path_commit_editmsg(), NULL, env)) {
 			fprintf(stderr,
 			_("Please supply the message using either -m or -F option.\n"));
 			exit(1);
 		}
-		argv_array_clear(&env);
 	}
 
 	if (!no_verify &&
@@ -1330,6 +1330,7 @@ static int git_status_config(const char *k, const char *v, void *cb)
 
 int cmd_status(int argc, const char **argv, const char *prefix)
 {
+	static int no_lock_index = 0;
 	static struct wt_status s;
 	int fd;
 	unsigned char sha1[20];
@@ -1357,6 +1358,8 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		  N_("ignore changes to submodules, optional when: all, dirty, untracked. (Default: all)"),
 		  PARSE_OPT_OPTARG, NULL, (intptr_t)"all" },
 		OPT_COLUMN(0, "column", &s.colopts, N_("list untracked files in columns")),
+		OPT_BOOL(0, "no-lock-index", &no_lock_index,
+			 N_("do not lock the index")),
 		OPT_END(),
 	};
 
@@ -1370,6 +1373,11 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 	finalize_colopts(&s.colopts, -1);
 	finalize_deferred_config(&s);
 
+	if (no_lock_index)
+		setenv("GIT_LOCK_INDEX", "false", 1);
+	else if (!git_parse_maybe_bool(getenv("GIT_LOCK_INDEX")))
+		no_lock_index = 1;
+
 	handle_untracked_files_arg(&s);
 	if (show_ignored_in_status)
 		s.show_ignored_files = 1;
@@ -1377,10 +1385,11 @@ int cmd_status(int argc, const char **argv, const char *prefix)
 		       PATHSPEC_PREFER_FULL,
 		       prefix, argv);
 
+	enable_fscache(1);
 	read_cache_preload(&s.pathspec);
 	refresh_index(&the_index, REFRESH_QUIET|REFRESH_UNMERGED, &s.pathspec, NULL, NULL);
 
-	fd = hold_locked_index(&index_lock, 0);
+	fd = no_lock_index ? -1 : hold_locked_index(&index_lock, 0);
 
 	s.is_initial = get_sha1(s.reference, sha1) ? 1 : 0;
 	if (!s.is_initial)
@@ -1525,10 +1534,12 @@ static int git_commit_config(const char *k, const char *v, void *cb)
 static int run_rewrite_hook(const unsigned char *oldsha1,
 			    const unsigned char *newsha1)
 {
+	/* oldsha1 SP newsha1 LF NUL */
+	static char buf[2*40 + 3];
 	struct child_process proc = CHILD_PROCESS_INIT;
 	const char *argv[3];
 	int code;
-	struct strbuf sb = STRBUF_INIT;
+	size_t n;
 
 	argv[0] = find_hook("post-rewrite");
 	if (!argv[0])
@@ -1544,33 +1555,34 @@ static int run_rewrite_hook(const unsigned char *oldsha1,
 	code = start_command(&proc);
 	if (code)
 		return code;
-	strbuf_addf(&sb, "%s %s\n", sha1_to_hex(oldsha1), sha1_to_hex(newsha1));
+	n = snprintf(buf, sizeof(buf), "%s %s\n",
+		     sha1_to_hex(oldsha1), sha1_to_hex(newsha1));
 	sigchain_push(SIGPIPE, SIG_IGN);
-	write_in_full(proc.in, sb.buf, sb.len);
+	write_in_full(proc.in, buf, n);
 	close(proc.in);
-	strbuf_release(&sb);
 	sigchain_pop(SIGPIPE);
 	return finish_command(&proc);
 }
 
 int run_commit_hook(int editor_is_used, const char *index_file, const char *name, ...)
 {
-	struct argv_array hook_env = ARGV_ARRAY_INIT;
+	const char *hook_env[3] =  { NULL };
+	char index[PATH_MAX];
 	va_list args;
 	int ret;
 
-	argv_array_pushf(&hook_env, "GIT_INDEX_FILE=%s", index_file);
+	snprintf(index, sizeof(index), "GIT_INDEX_FILE=%s", index_file);
+	hook_env[0] = index;
 
 	/*
 	 * Let the hook know that no editor will be launched.
 	 */
 	if (!editor_is_used)
-		argv_array_push(&hook_env, "GIT_EDITOR=:");
+		hook_env[1] = "GIT_EDITOR=:";
 
 	va_start(args, name);
-	ret = run_hook_ve(hook_env.argv,name, args);
+	ret = run_hook_ve(hook_env, name, args);
 	va_end(args);
-	argv_array_clear(&hook_env);
 
 	return ret;
 }

@@ -69,7 +69,10 @@ create_lib_submodule_repo () {
 
 		git checkout -b "replace_sub1_with_directory" "add_sub1" &&
 		git submodule update &&
-		git -C sub1 checkout modifications &&
+		(
+			cd sub1 &&
+			git checkout modifications
+		) &&
 		git rm --cached sub1 &&
 		rm sub1/.git* &&
 		git config -f .gitmodules --remove-section "submodule.sub1" &&

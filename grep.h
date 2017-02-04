@@ -161,7 +161,6 @@ struct grep_source {
 		GREP_SOURCE_SHA1,
 		GREP_SOURCE_FILE,
 		GREP_SOURCE_BUF,
-		GREP_SOURCE_SUBMODULE,
 	} type;
 	void *identifier;
 

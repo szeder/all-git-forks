@@ -764,13 +764,6 @@ test_expect_success 'rename a remote with name prefix of other remote' '
 	)
 '
 
-test_expect_success 'rename succeeds with existing remote.<target>.prune' '
-	git clone one four.four &&
-	test_when_finished git config --global --unset remote.upstream.prune &&
-	git config --global remote.upstream.prune true &&
-	git -C four.four remote rename origin upstream
-'
-
 cat >remotes_origin <<EOF
 URL: $(pwd)/one
 Push: refs/heads/master:refs/heads/upstream
@@ -811,6 +804,7 @@ test_expect_success 'migrate a remote from named file in $GIT_DIR/branches' '
 	(
 		cd six &&
 		git remote rm origin &&
+		mkdir -p .git/branches &&
 		echo "$origin_url" >.git/branches/origin &&
 		git remote rename origin origin &&
 		test_path_is_missing .git/branches/origin &&
@@ -825,6 +819,7 @@ test_expect_success 'migrate a remote from named file in $GIT_DIR/branches (2)' 
 	(
 		cd seven &&
 		git remote rm origin &&
+		mkdir -p .git/branches &&
 		echo "quux#foom" > .git/branches/origin &&
 		git remote rename origin origin &&
 		test_path_is_missing .git/branches/origin &&

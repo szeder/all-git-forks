@@ -99,7 +99,7 @@ static struct option builtin_clone_options[] = {
 	OPT_STRING(0, "shallow-since", &option_since, N_("time"),
 		    N_("create a shallow clone since a specific time")),
 	OPT_STRING_LIST(0, "shallow-exclude", &option_not, N_("revision"),
-			N_("deepen history of shallow clone, excluding rev")),
+			N_("deepen history of shallow clone by excluding rev")),
 	OPT_BOOL(0, "single-branch", &option_single_branch,
 		    N_("clone only one branch, HEAD or --branch")),
 	OPT_BOOL(0, "shallow-submodules", &option_shallow_submodules,
@@ -170,7 +170,7 @@ static char *get_repo_path(const char *repo, int *is_bundle)
 
 	strbuf_addstr(&path, repo);
 	raw = get_repo_path_1(&path, is_bundle);
-	canon = raw ? absolute_pathdup(raw) : NULL;
+	canon = raw ? xstrdup(absolute_path(raw)) : NULL;
 	strbuf_release(&path);
 	return canon;
 }
@@ -711,7 +711,7 @@ static int checkout(int submodule_progress)
 	setup_work_tree();
 
 	lock_file = xcalloc(1, sizeof(struct lock_file));
-	hold_locked_index(lock_file, LOCK_DIE_ON_ERROR);
+	hold_locked_index(lock_file, 1);
 
 	memset(&opts, 0, sizeof opts);
 	opts.update = 1;
@@ -894,7 +894,7 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 
 	path = get_repo_path(repo_name, &is_bundle);
 	if (path)
-		repo = absolute_pathdup(repo_name);
+		repo = xstrdup(absolute_path(repo_name));
 	else if (!strchr(repo_name, ':'))
 		die(_("repository '%s' does not exist"), repo_name);
 	else
@@ -1076,7 +1076,9 @@ int cmd_clone(int argc, const char **argv, const char *prefix)
 			}
 
 		if (!is_local && !complete_refs_before_fetch)
-			transport_fetch_refs(transport, mapped_refs);
+			if (transport_fetch_refs(transport, mapped_refs))
+				die(_("could not fetch refs from %s"),
+				    transport->url);
 
 		remote_head = find_ref_by_name(refs, "HEAD");
 		remote_head_points_at =
