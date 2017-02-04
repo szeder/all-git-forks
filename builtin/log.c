@@ -158,6 +158,67 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 
 	if (quiet)
 		rev->diffopt.output_format |= DIFF_FORMAT_NO_OUTPUT;
+	int i;
+
+	// TESTING PRINT
+	printf("\n Printing after parse_options: ");
+	for(i = 0; i < argc; ++i) {
+		printf("%s, ", argv[i]);
+	}
+	printf("\n");
+	// END TESTING PRINT
+
+	/* Check if any argument has a "-" in it,
+	 * which has been referred to as a shorthand for @{-1} */
+	char *startChars = NULL, *endChars = NULL;
+	size_t start_chars_alloc = 0, end_chars_alloc = 0;
+	size_t start_chars_nr = 0, end_chars_nr = 0;
+
+	ALLOC_GROW(startChars, 5, start_chars_alloc);
+	ALLOC_GROW(endChars, 5, end_chars_alloc);
+	start_chars_nr = 5;
+	end_chars_nr = 5;
+
+	for(i = 0; i < argc; ++i) {
+		if (strlen(argv[i]) > 4) {
+			int j;
+			for(j = 0; j < 4; ++j) {
+				startChars[j] = argv[i][j];
+				endChars[end_chars_nr - 2 - j] = argv[i][strlen(argv[i]) - j - 1];
+			}
+			startChars[start_chars_nr - 1] = 0;
+			endChars[end_chars_nr - 1] = 0;
+			printf("\nSTART CHARS: %s, END CHARS: %s", startChars, endChars);
+		}
+		if (!strcmp(argv[i], "-")) {
+			argv[i] = "@{-1}";
+		} else if (!strcmp(startChars, "-...")) {
+			char * newArg = NULL;
+			size_t new_argv_alloc = 0;
+			ALLOC_GROW(newArg, strlen(argv[i]) + 4, new_argv_alloc);
+
+			strcpy(newArg, "@{-1}");
+			newArg[5] = 0;
+
+			strcat(newArg, argv[i] + 1);
+
+			argv[i] = newArg;
+			printf("\n ARGUMENT CHANGED: %s", argv[i]);
+		} else if (!strcmp(endChars, "...-")) {
+			char * newArg = NULL;
+			size_t new_argv_alloc = 0;
+			ALLOC_GROW(newArg, strlen(argv[i]) + 4, new_argv_alloc);
+
+			strcpy(newArg, argv[i]);
+			newArg[strlen(argv[i])-1] = 0;
+
+			strcat(newArg, "@{-1}");
+
+			argv[i] = newArg;
+			printf("\n ARGUMENT CHANGED: %s", argv[i]);
+		}
+	}
+
 	argc = setup_revisions(argc, argv, rev, opt);
 
 	/* Any arguments at this point are not recognized */
