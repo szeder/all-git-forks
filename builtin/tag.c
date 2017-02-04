@@ -29,6 +29,7 @@ static const char * const git_tag_usage[] = {
 };
 
 static unsigned int colopts;
+static int force_annotate;
 static int force_sign_annotate;
 
 static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, const char *format)
@@ -175,6 +176,10 @@ static int git_tag_config(const char *var, const char *value, void *cb)
 	status = git_gpg_config(var, value, cb);
 	if (status)
 		return status;
+	if (!strcmp(var, "tag.annotate")) {
+		force_annotate = git_config_bool(var, value);
+		return 0;
+	}
 	if (!strcmp(var, "tag.forcesignannotated")) {
 		force_sign_annotate = git_config_bool(var, value);
 		return 0;
@@ -340,7 +345,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	struct create_tag_options opt;
 	char *cleanup_arg = NULL;
 	int create_reflog = 0;
-	int annotate = 0, force = 0;
+	int annotate = -1, force = 0;
 	int cmdmode = 0, create_tag_object = 0;
 	const char *msgfile = NULL, *keyid = NULL;
 	struct msg_arg msg = { 0, STRBUF_INIT };
@@ -401,10 +406,14 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		opt.sign = 1;
 		set_signing_key(keyid);
 	}
-	create_tag_object = (opt.sign || annotate || msg.given || msgfile);
 
 	if (argc == 0 && !cmdmode)
 		cmdmode = 'l';
+
+	if (force_annotate && !cmdmode && annotate == -1)
+		annotate = 1;
+
+	create_tag_object = (opt.sign || annotate > 0 || msg.given || msgfile);
 
 	if ((create_tag_object || force) && (cmdmode != 0))
 		usage_with_options(git_tag_usage, options);
@@ -495,7 +504,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 		die(_("Invalid cleanup mode %s"), cleanup_arg);
 
 	if (create_tag_object) {
-		if (force_sign_annotate && !annotate)
+		if (force_sign_annotate && annotate == -1)
 			opt.sign = 1;
 		create_tag(object, tag, &buf, &opt, prev, object);
 	}

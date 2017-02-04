@@ -2954,6 +2954,11 @@ submodule.alternateErrorStrategy
 	as computed via `submodule.alternateLocation`. Possible values are
 	`ignore`, `info`, `die`. Default is `die`.
 
+tag.annotate::
+	A boolean to specify whether annotated tags should be created by
+	default.  If `--no-annotate` is specified on the command line,
+	it takes precedence over this option.
+
 tag.forceSignAnnotated::
 	A boolean to specify whether annotated tags created should be GPG signed.
 	If `--annotate` is specified on the command line, it takes

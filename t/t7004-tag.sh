@@ -762,6 +762,29 @@ echo from a fake editor.
 EOF
 chmod +x fakeeditor
 
+get_tag_header config-annotate $commit commit $time >expect
+./fakeeditor >>expect
+test_expect_success 'tag.annotate creates annotated tags' '
+	test_config tag.annotate true &&
+	GIT_EDITOR=./fakeeditor git tag config-annotate &&
+	get_tag_msg config-annotate >actual &&
+	test_cmp expect actual
+'
+test_expect_success 'tag --no-annotate overrides tag.annotate=true config' '
+	test_config tag.annotate true &&
+	GIT_EDITOR=false git tag --no-annotate cli-override-tag-annotate &&
+	tag_exists cli-override-tag-annotate
+'
+
+get_tag_header config-no-annotate $commit commit $time >expect
+./fakeeditor >>expect
+test_expect_success 'tag --annotate overrides tag.annotate=false config' '
+	test_config tag.annotate false &&
+	GIT_EDITOR=./fakeeditor git tag --annotate config-no-annotate &&
+	get_tag_msg config-no-annotate >actual &&
+	test_cmp expect actual
+'
+
 get_tag_header implied-sign $commit commit $time >expect
 ./fakeeditor >>expect
 echo '-----BEGIN PGP SIGNATURE-----' >>expect
