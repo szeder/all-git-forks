@@ -158,6 +158,70 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 
 	if (quiet)
 		rev->diffopt.output_format |= DIFF_FORMAT_NO_OUTPUT;
+	int i;
+
+	// TESTING PRINT
+	printf("\n Printing after parse_options: ");
+	for(i = 0; i < argc; ++i) {
+		printf("%s, ", argv[i]);
+	}
+	printf("\n");
+	// END TESTING PRINT
+
+	/* Check if any argument has a "-" in it,
+	 * which has been referred to as a shorthand for @{-1}
+	 * 1. git log -
+	 * 2. git log -...
+	 * 3. git log -...other-branch-name
+	 * 4. git log -...-
+	 */
+	struct strbuf start_chars = STRBUF_INIT;
+	strbuf_grow(&start_chars, 4);
+	strbuf_setlen(&start_chars, 4);
+
+	struct strbuf end_chars = STRBUF_INIT;
+
+	for(i = 0; i < argc; ++i) {
+		if (!strcmp(argv[i], "-")) {
+			argv[i] = "@{-1}";
+		} else if (strlen(argv[i]) >= 4) {
+			strbuf_splice(&start_chars, 0, 4, argv[i], 4);
+			strbuf_addstr(&end_chars, argv[i] + (strlen(argv[i]) - 4));
+
+			printf("\nBUFFER START CHARS: %s, END CHARS: %s",
+					start_chars.buf, end_chars.buf);
+
+			if (!strcmp(start_chars.buf, "-...")) {
+				struct strbuf changed_argument = STRBUF_INIT;
+
+				strbuf_addstr(&changed_argument, "@{-1}");
+				strbuf_addstr(&changed_argument, argv[i] + 1);
+
+				strbuf_setlen(&changed_argument, strlen(argv[i]) + 4);
+
+				argv[i] = strbuf_detach(&changed_argument, NULL);
+
+				printf("\nBUFFER ARGUMENT CHANGED: %s", argv[i]);
+			}
+
+			if (!strcmp(end_chars.buf, "...-")) {
+				struct strbuf changed_argument = STRBUF_INIT;
+				strbuf_addstr(&changed_argument, argv[i]);
+				strbuf_grow(&changed_argument, strlen(argv[i]) + 4);
+				strbuf_setlen(&changed_argument, strlen(argv[i]) + 4);
+
+				strbuf_splice(&changed_argument, strlen(argv[i]) - 1, 5, "@{-1}", 5);
+
+				argv[i] = strbuf_detach(&changed_argument, NULL);
+
+				printf("\nBUFFER ARGUMENT CHANGED: %s", argv[i]);
+			}
+		}
+	}
+
+	strbuf_release(&start_chars);
+	strbuf_release(&end_chars);
+
 	argc = setup_revisions(argc, argv, rev, opt);
 
 	/* Any arguments at this point are not recognized */
