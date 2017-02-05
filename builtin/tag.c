@@ -302,6 +302,43 @@ static void create_tag(const unsigned char *object, const char *tag,
 	}
 }
 
+static void create_reflog_msg(const unsigned char *object, struct strbuf *sb)
+{
+	enum object_type type;
+	char *buf;
+	unsigned long size;
+	int subject_len = 0;
+	const char *subject_start;
+
+	type = sha1_object_info(object, NULL);
+	switch (type) {
+	default:
+		strbuf_addstr(sb, "internal object");
+		break;
+	case OBJ_COMMIT:
+		strbuf_addstr(sb, "commit: ");
+		buf = read_sha1_file(object, &type, &size);
+		if (buf) {
+			subject_len = find_commit_subject(buf, &subject_start);
+			strbuf_insert(sb, 8, subject_start, subject_len);
+			free(buf);
+		} else {
+			die("commit object %s could not be read",
+				sha1_to_hex(repl));
+		}
+		break;
+	case OBJ_TREE:
+		strbuf_addstr(sb, "tree object");
+		break;
+	case OBJ_BLOB:
+		strbuf_addstr(sb, "blob object");
+		break;
+	case OBJ_TAG:
+		strbuf_addstr(sb, "other tag object");
+		break;
+	}
+}
+
 struct msg_arg {
 	int given;
 	struct strbuf buf;
@@ -335,6 +372,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 {
 	struct strbuf buf = STRBUF_INIT;
 	struct strbuf ref = STRBUF_INIT;
+	struct strbuf reflog_msg = STRBUF_INIT;
 	unsigned char object[20], prev[20];
 	const char *object_ref, *tag;
 	struct create_tag_options opt;
@@ -494,6 +532,8 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	else
 		die(_("Invalid cleanup mode %s"), cleanup_arg);
 
+	create_reflog_msg(object, &reflog_msg);
+
 	if (create_tag_object) {
 		if (force_sign_annotate && !annotate)
 			opt.sign = 1;
@@ -504,7 +544,7 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	if (!transaction ||
 	    ref_transaction_update(transaction, ref.buf, object, prev,
 				   create_reflog ? REF_FORCE_CREATE_REFLOG : 0,
-				   NULL, &err) ||
+				   reflog_msg.buf, &err) ||
 	    ref_transaction_commit(transaction, &err))
 		die("%s", err.buf);
 	ref_transaction_free(transaction);
@@ -514,5 +554,6 @@ int cmd_tag(int argc, const char **argv, const char *prefix)
 	strbuf_release(&err);
 	strbuf_release(&buf);
 	strbuf_release(&ref);
+	strbuf_release(&reflog_msg);
 	return 0;
 }
