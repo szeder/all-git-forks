@@ -132,7 +132,7 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 			 struct rev_info *rev, struct setup_revision_opt *opt)
 {
 	struct userformat_want w;
-	int quiet = 0, source = 0, mailmap = 0;
+	int quiet = 0, source = 0, mailmap = 0, i = 0;
 	static struct line_opt_callback_data line_cb = {NULL, NULL, STRING_LIST_INIT_DUP};
 
 	const struct option builtin_log_options[] = {
@@ -158,6 +158,51 @@ static void cmd_log_init_finish(int argc, const char **argv, const char *prefix,
 
 	if (quiet)
 		rev->diffopt.output_format |= DIFF_FORMAT_NO_OUTPUT;
+
+	/*
+	 * Check if any argument has a "-" in it, which has been referred to as a
+	 * shorthand for @{-1}.  Handles methods that might be used to list commits
+	 * as mentioned in git rev-list --help
+	 */
+
+	for(i = 0; i < argc; ++i) {
+		if (!strcmp(argv[i], "-")) {
+			argv[i] = "@{-1}";
+		} else if (!strcmp(argv[i], "^-")) {
+			argv[i] = "^@{-1}";
+		} else if (strlen(argv[i]) >= 4) {
+
+			if (strstr(argv[i], "-...") == argv[i] || strstr(argv[i], "-..") == argv[i]) {
+				struct strbuf changed_argument = STRBUF_INIT;
+
+				strbuf_addstr(&changed_argument, "@{-1}");
+				strbuf_addstr(&changed_argument, argv[i] + 1);
+
+				strbuf_setlen(&changed_argument, strlen(argv[i]) + 4);
+
+				argv[i] = strbuf_detach(&changed_argument, NULL);
+			}
+
+			/*
+			 * Find the first occurence, and add the size to it and proceed if
+			 * the resulting value is NULL
+			 */
+			if (!(strstr(argv[i], "...-") + 4)  ||
+					!(strstr(argv[i], "..-") + 3)) {
+				struct strbuf changed_argument = STRBUF_INIT;
+
+				strbuf_addstr(&changed_argument, argv[i]);
+
+				strbuf_grow(&changed_argument, strlen(argv[i]) + 4);
+				strbuf_setlen(&changed_argument, strlen(argv[i]) + 4);
+
+				strbuf_splice(&changed_argument, strlen(argv[i]) - 1, 5, "@{-1}", 5);
+
+				argv[i] = strbuf_detach(&changed_argument, NULL);
+			}
+		}
+	}
+
 	argc = setup_revisions(argc, argv, rev, opt);
 
 	/* Any arguments at this point are not recognized */
