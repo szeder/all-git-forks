@@ -2206,7 +2206,7 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 	for (left = i = 1; i < argc; i++) {
 		const char *arg = argv[i];
 		if (*arg == '-') {
-			int opts;
+			int opts, args;
 
 			opts = handle_revision_pseudo_opt(submodule,
 						revs, argc - i, argv + i,
@@ -2234,7 +2234,12 @@ int setup_revisions(int argc, const char **argv, struct rev_info *revs, struct s
 			}
 			if (opts < 0)
 				exit(128);
-			continue;
+
+			args = handle_revision_arg(arg, revs, flags, revarg_opt);
+			if (args)
+				continue;
+			else
+				--left;
 		}
 
 
