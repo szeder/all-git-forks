@@ -1258,6 +1258,24 @@ static int handle_one_reflog(const char *path, const struct object_id *oid,
 	return 0;
 }
 
+static void add_other_head_reflogs_to_pending(struct all_refs_cb *cb)
+{
+	struct worktree **worktrees, **p;
+
+	worktrees = get_worktrees(0);
+	for (p = worktrees; *p; p++) {
+		struct worktree *wt = *p;
+
+		if (wt->is_current)
+			continue;
+
+		cb->warned_bad_reflog = 0;
+		cb->name_for_errormsg = "HEAD";
+		for_each_reflog_ent_submodule(wt->path, "HEAD", handle_one_reflog_ent, cb);
+	}
+	free_worktrees(worktrees);
+}
+
 void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)
 {
 	struct all_refs_cb cb;
@@ -1265,6 +1283,9 @@ void add_reflogs_to_pending(struct rev_info *revs, unsigned flags)
 	cb.all_revs = revs;
 	cb.all_flags = flags;
 	for_each_reflog(handle_one_reflog, &cb);
+
+	if (!revs->single_worktree)
+		add_other_head_reflogs_to_pending(&cb);
 }
 
 static void add_cache_tree(struct cache_tree *it, struct rev_info *revs,
