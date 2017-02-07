@@ -3093,13 +3093,20 @@ int set_worktree_head_symref(const char *gitdir, const char *target)
 static int files_reflog_exists(struct ref_store *ref_store,
 			       const char *refname)
 {
+	struct files_ref_store *refs =
+		files_downcast(ref_store, 0, "reflog_exists");
 	struct stat st;
+	char *path;
+	int ret;
 
-	/* Check validity (but we don't need the result): */
-	files_downcast(ref_store, 0, "reflog_exists");
+	if (*refs->base.submodule)
+		path = git_pathdup_submodule(refs->base.submodule, "logs/%s", refname);
+	else
+		path = git_pathdup("logs/%s", refname);
 
-	return !lstat(git_path("logs/%s", refname), &st) &&
-		S_ISREG(st.st_mode);
+	ret = !lstat(path, &st) && S_ISREG(st.st_mode);
+	free(path);
+	return ret;
 }
 
 static int files_delete_reflog(struct ref_store *ref_store,
@@ -3349,14 +3356,19 @@ static struct ref_iterator_vtable files_reflog_iterator_vtable = {
 
 static struct ref_iterator *files_reflog_iterator_begin(struct ref_store *ref_store)
 {
+	struct files_ref_store *refs =
+		files_downcast(ref_store, 0, "reflog_iterator_begin");
 	struct files_reflog_iterator *iter = xcalloc(1, sizeof(*iter));
 	struct ref_iterator *ref_iterator = &iter->base;
-
-	/* Check validity (but we don't need the result): */
-	files_downcast(ref_store, 0, "reflog_iterator_begin");
+	char *path;
 
 	base_ref_iterator_init(ref_iterator, &files_reflog_iterator_vtable);
-	iter->dir_iterator = dir_iterator_begin(git_path("logs"));
+	if (refs->base.submodule)
+		path = git_pathdup_submodule(refs->base.submodule, "logs");
+	else
+		path = git_pathdup("logs");
+	iter->dir_iterator = dir_iterator_begin(path);
+	free(path);
 	return ref_iterator;
 }
 

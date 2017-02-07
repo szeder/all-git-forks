@@ -299,6 +299,8 @@ typedef int each_reflog_ent_fn(
 int for_each_reflog_ent(const char *refname, each_reflog_ent_fn fn, void *cb_data);
 int for_each_reflog_ent_reverse(const char *refname, each_reflog_ent_fn fn, void *cb_data);
 
+int for_each_reflog_ent_submodule(const char *submodule, const char *refname, each_reflog_ent_fn fn, void *cb_data);
+
 /*
  * Calls the specified function for each reflog file until it returns nonzero,
  * and returns the value
