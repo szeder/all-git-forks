@@ -67,6 +67,30 @@ test_expect_success 'auto gc with too many loose objects does not attempt to cre
 	test_line_count = 2 new # There is one new pack and its .idx
 '
 
+test_expect_success 'install pre-auto-gc hook for worktrees' '
+	mkdir -p .git/hooks &&
+	write_script .git/hooks/pre-auto-gc <<-\EOF
+	echo "Preserving refs/reflogs of worktrees" >&2 &&
+	dir="$(git rev-parse --git-common-dir)" &&
+	refsdir="$dir/logs/refs" &&
+	rm -f "$refsdir"/preserve &&
+	ident="$(GIT_COMMITTER_DATE= git var GIT_COMMITTER_IDENT)" &&
+	(
+		find "$dir"/logs "$dir"/worktrees/*/logs \
+			-type f -exec cat {} \; |
+		cut -d" " -f1
+		find "$dir"/HEAD "$dir"/worktrees/*/HEAD "$dir"/refs \
+			"$dir"/worktrees/*/refs -type f -exec cat {} \; |
+		grep -v "^ref:"
+	) 2>/dev/null |
+	sort |
+	uniq |
+	sed "s/.*/& & $ident	dummy/" >"$dir"/preserve &&
+	mkdir -p "$refsdir" &&
+	mv "$dir"/preserve "$refsdir"/
+	EOF
+'
+
 trigger_auto_gc () {
 	# This is unfortunately very, very ugly
 	gdir="$(git rev-parse --git-common-dir)" &&
@@ -76,7 +100,7 @@ trigger_auto_gc () {
 	git -c gc.auto=1 -c gc.pruneexpire=now -c gc.autodetach=0 gc --auto
 }
 
-test_expect_failure 'gc respects refs/reflogs in all worktrees' '
+test_expect_success 'gc respects refs/reflogs in all worktrees' '
 	test_commit something &&
 	git worktree add worktree &&
 	(
