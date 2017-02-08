@@ -271,6 +271,8 @@ relative_path "<null>"		"<empty>"	./
 relative_path "<null>"		"<null>"	./
 relative_path "<null>"		/foo/a/b	./
 
+test_git_path "mkdir sub && cd sub && test_when_finished cd .. &&" \
+	foo "$(pwd)/.git/foo"
 test_git_path A=B                info/grafts .git/info/grafts
 test_git_path GIT_GRAFT_FILE=foo info/grafts foo
 test_git_path GIT_GRAFT_FILE=foo info/////grafts foo

@@ -597,9 +597,13 @@ int cmd_rev_parse(int argc, const char **argv, const char *prefix)
 		}
 
 		if (!strcmp(arg, "--git-path")) {
+			const char *path;
 			if (!argv[i + 1])
 				die("--git-path requires an argument");
-			puts(git_path("%s", argv[i + 1]));
+			path = git_path("%s", argv[i + 1]);
+			if (prefix && !is_absolute_path(path))
+				path = real_path(path);
+			puts(path);
 			i++;
 			continue;
 		}
