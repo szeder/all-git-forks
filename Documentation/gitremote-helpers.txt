@@ -462,6 +462,9 @@ set by Git if the remote helper has the 'option' capability.
 'option pushcert {'true'|'false'}::
 	GPG sign pushes.
 
+'option push-option <c-string>::
+	Transmit this push option.
+
 SEE ALSO
 --------
 linkgit:git-remote[1]
