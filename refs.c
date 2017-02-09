@@ -1404,11 +1404,8 @@ void base_ref_store_init(struct ref_store *refs,
 		if (main_ref_store)
 			die("BUG: main_ref_store initialized twice");
 
-		refs->submodule = "";
 		main_ref_store = refs;
 	} else {
-		refs->submodule = xstrdup(submodule);
-
 		if (!submodule_ref_stores.tablesize)
 			hashmap_init(&submodule_ref_stores, submodule_hash_cmp, 20);
 
@@ -1471,12 +1468,6 @@ struct ref_store *get_ref_store(const char *submodule)
 	}
 
 	return refs;
-}
-
-void assert_main_repository(struct ref_store *refs, const char *caller)
-{
-	if (*refs->submodule)
-		die("BUG: %s called for a submodule", caller);
 }
 
 /* backend functions */

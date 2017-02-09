@@ -627,13 +627,6 @@ extern struct ref_storage_be refs_be_files;
 struct ref_store {
 	/* The backend describing this ref_store's storage scheme: */
 	const struct ref_storage_be *be;
-
-	/*
-	 * The name of the submodule represented by this object, or
-	 * the empty string if it represents the main repository's
-	 * reference store:
-	 */
-	const char *submodule;
 };
 
 /*
@@ -674,11 +667,5 @@ struct ref_store *lookup_ref_store(const char *submodule);
  * submodule==NULL.
  */
 struct ref_store *get_ref_store(const char *submodule);
-
-/*
- * Die if refs is for a submodule (i.e., not for the main repository).
- * caller is used in any necessary error messages.
- */
-void assert_main_repository(struct ref_store *refs, const char *caller);
 
 #endif /* REFS_REFS_INTERNAL_H */
