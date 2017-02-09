@@ -51,6 +51,14 @@ matrix:
       before_script:
       script: ci/test-documentation.sh
       after_failure:
+    - env:
+        - USE_ASCIIDOCTOR=YesPlease
+      os: linux
+      compiler: clang
+      before_install:
+      before_script:  gem install asciidoctor
+      script: ci/test-documentation.sh
+      after_failure:
 
 before_install:
   - >
