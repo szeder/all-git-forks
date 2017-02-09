@@ -88,6 +88,9 @@ int peel_ref(const char *refname, unsigned char *sha1);
  */
 int resolve_gitlink_ref(const char *submodule, const char *refname,
 			unsigned char *sha1);
+const char *resolve_ref_submodule(const char *submodule, const char *refname,
+				  int resolve_flags, unsigned char *sha1,
+				  int *flags);
 
 /*
  * Return true iff abbrev_name is a possible abbreviation for

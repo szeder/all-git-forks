@@ -1325,18 +1325,18 @@ const char *resolve_ref_unsafe(const char *refname, int resolve_flags,
 				       resolve_flags, sha1, flags);
 }
 
-int resolve_gitlink_ref(const char *submodule, const char *refname,
-			unsigned char *sha1)
+const char *resolve_ref_submodule(const char *submodule, const char *refname,
+				  int resolve_flags, unsigned char *sha1,
+				  int *flags)
 {
 	size_t len = strlen(submodule);
 	struct ref_store *refs;
-	int flags;
 
 	while (len && submodule[len - 1] == '/')
 		len--;
 
 	if (!len)
-		return -1;
+		return NULL;
 
 	if (submodule[len]) {
 		/* We need to strip off one or more trailing slashes */
@@ -1349,9 +1349,17 @@ int resolve_gitlink_ref(const char *submodule, const char *refname,
 	}
 
 	if (!refs)
-		return -1;
+		return NULL;
 
-	if (!resolve_ref_recursively(refs, refname, 0, sha1, &flags) ||
+	return resolve_ref_recursively(refs, refname, resolve_flags, sha1, flags);
+}
+
+int resolve_gitlink_ref(const char *submodule, const char *refname,
+			unsigned char *sha1)
+{
+	int flags;
+
+	if (!resolve_ref_submodule(submodule, refname, 0, sha1, &flags) ||
 	    is_null_sha1(sha1))
 		return -1;
 	return 0;
