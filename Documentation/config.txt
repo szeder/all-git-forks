@@ -1402,6 +1402,11 @@ gc.autoDetach::
 	Make `git gc --auto` return immediately and run in background
 	if the system supports it. Default is true.
 
+gc.maxLogAge::
+	If the file gc.log exists, then `git gc --auto` won't run
+	unless that file is more than maxLogAge seconds old.  Default
+	is 86400, one day.
+
 gc.packRefs::
 	Running `git pack-refs` in a repository renders it
 	unclonable by Git versions prior to 1.5.1.2 over dumb

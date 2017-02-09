@@ -33,6 +33,7 @@ static int aggressive_window = 250;
 static int gc_auto_threshold = 6700;
 static int gc_auto_pack_limit = 50;
 static int detach_auto = 1;
+static int gc_max_log_age_seconds = 86400;
 static const char *prune_expire = "2.weeks.ago";
 static const char *prune_worktrees_expire = "3.months.ago";
 
@@ -111,6 +112,7 @@ static void gc_config(void)
 	git_config_get_int("gc.auto", &gc_auto_threshold);
 	git_config_get_int("gc.autopacklimit", &gc_auto_pack_limit);
 	git_config_get_bool("gc.autodetach", &detach_auto);
+	git_config_get_int("gc.maxlogage", &gc_max_log_age_seconds);
 	git_config_date_string("gc.pruneexpire", &prune_expire);
 	git_config_date_string("gc.worktreepruneexpire", &prune_worktrees_expire);
 	git_config(git_default_config, NULL);
@@ -291,8 +293,19 @@ static int report_last_gc_error(void)
 {
 	struct strbuf sb = STRBUF_INIT;
 	int ret;
+	struct stat st;
+	const char *gc_log_path = git_path("gc.log");
 
-	ret = strbuf_read_file(&sb, git_path("gc.log"), 0);
+	if (stat(gc_log_path, &st)) {
+		if (errno == ENOENT)
+			return 0;
+		return error(_("Can't read %s"), gc_log_path);
+	}
+
+	if (time(NULL) - st.st_mtime > gc_max_log_age_seconds)
+		return 0;
+
+	ret = strbuf_read_file(&sb, gc_log_path, 0);
 	if (ret > 0)
 		return error(_("The last gc run reported the following. "
 			       "Please correct the root cause\n"
