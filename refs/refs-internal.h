@@ -481,7 +481,7 @@ struct ref_store;
  * Initialize the ref_store for the specified submodule, or for the
  * main repository if submodule == NULL. These functions should call
  * base_ref_store_init() to initialize the shared part of the
- * ref_store and to record the ref_store for later lookup.
+ * ref_store.
  */
 typedef struct ref_store *ref_store_init_fn(const char *submodule);
 
@@ -630,12 +630,17 @@ struct ref_store {
 };
 
 /*
- * Fill in the generic part of refs for the specified submodule and
- * add it to our collection of reference stores.
+ * Register the specified ref_store to be the one that should be used
+ * for submodule (or the main repository if submodule is NULL). It is
+ * a fatal error to call this function twice for the same submodule.
+ */
+void register_ref_store(struct ref_store *refs, const char *submodule);
+
+/*
+ * Fill in the generic part of refs.
  */
 void base_ref_store_init(struct ref_store *refs,
-			 const struct ref_storage_be *be,
-			 const char *submodule);
+			 const struct ref_storage_be *be);
 
 /*
  * Create, record, and return a ref_store instance for the specified

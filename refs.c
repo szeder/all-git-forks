@@ -1395,11 +1395,8 @@ static struct ref_store *main_ref_store;
 /* A hashmap of ref_stores, stored by submodule name: */
 static struct hashmap submodule_ref_stores;
 
-void base_ref_store_init(struct ref_store *refs,
-			 const struct ref_storage_be *be,
-			 const char *submodule)
+void register_ref_store(struct ref_store *refs, const char *submodule)
 {
-	refs->be = be;
 	if (!submodule) {
 		if (main_ref_store)
 			die("BUG: main_ref_store initialized twice");
@@ -1416,18 +1413,28 @@ void base_ref_store_init(struct ref_store *refs,
 	}
 }
 
+void base_ref_store_init(struct ref_store *refs,
+			 const struct ref_storage_be *be)
+{
+	refs->be = be;
+}
+
 struct ref_store *ref_store_init(const char *submodule)
 {
 	const char *be_name = "files";
 	struct ref_storage_be *be = find_ref_storage_backend(be_name);
+	struct ref_store *refs;
 
 	if (!be)
 		die("BUG: reference backend %s is unknown", be_name);
 
 	if (!submodule || !*submodule)
-		return be->init(NULL);
+		refs = be->init(NULL);
 	else
-		return be->init(submodule);
+		refs = be->init(submodule);
+
+	register_ref_store(refs, submodule);
+	return refs;
 }
 
 struct ref_store *lookup_ref_store(const char *submodule)
