@@ -1230,10 +1230,10 @@ int for_each_rawref(each_ref_fn fn, void *cb_data)
 }
 
 /* This function needs to return a meaningful errno on failure */
-static const char *resolve_ref_recursively(struct ref_store *refs,
-					   const char *refname,
-					   int resolve_flags,
-					   unsigned char *sha1, int *flags)
+const char *resolve_ref_recursively(struct ref_store *refs,
+				    const char *refname,
+				    int resolve_flags,
+				    unsigned char *sha1, int *flags)
 {
 	static struct strbuf sb_refname = STRBUF_INIT;
 	int unused_flags;
@@ -1390,27 +1390,6 @@ static struct ref_store *main_ref_store;
 static struct hashmap submodule_ref_stores;
 
 /*
- * Return the ref_store instance for the specified submodule (or the
- * main repository if submodule is NULL). If that ref_store hasn't
- * been initialized yet, return NULL.
- */
-static struct ref_store *lookup_ref_store(const char *submodule)
-{
-	struct submodule_hash_entry *entry;
-
-	if (!submodule)
-		return main_ref_store;
-
-	if (!submodule_ref_stores.tablesize)
-		/* It's initialized on demand in register_ref_store(). */
-		return NULL;
-
-	entry = hashmap_get_from_hash(&submodule_ref_stores,
-				      strhash(submodule), submodule);
-	return entry ? entry->refs : NULL;
-}
-
-/*
  * Register the specified ref_store to be the one that should be used
  * for submodule (or the main repository if submodule is NULL). It is
  * a fatal error to call this function twice for the same submodule.
@@ -1449,6 +1428,27 @@ static struct ref_store *ref_store_init(const char *submodule)
 	refs = be->init(submodule);
 	register_ref_store(refs, submodule);
 	return refs;
+}
+
+/*
+ * Return the ref_store instance for the specified submodule (or the
+ * main repository if submodule is NULL). If that ref_store hasn't
+ * been initialized yet, return NULL.
+ */
+static struct ref_store *lookup_ref_store(const char *submodule)
+{
+	struct submodule_hash_entry *entry;
+
+	if (!submodule)
+		return main_ref_store;
+
+	if (!submodule_ref_stores.tablesize)
+		/* It's initialized on demand in register_ref_store(). */
+		return NULL;
+
+	entry = hashmap_get_from_hash(&submodule_ref_stores,
+				      strhash(submodule), submodule);
+	return entry ? entry->refs : NULL;
 }
 
 struct ref_store *get_ref_store(const char *submodule)
