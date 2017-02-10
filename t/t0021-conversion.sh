@@ -4,15 +4,17 @@ test_description='blob conversion via gitattributes'
 
 . ./test-lib.sh
 
-TEST_ROOT="$(pwd)"
+TEST_ROOT="$PWD"
+PATH=$TEST_ROOT:$PATH
 
-cat <<EOF >"$TEST_ROOT/rot13.sh"
-#!$SHELL_PATH
+write_script <<\EOF "$TEST_ROOT/rot13.sh"
 tr \
   'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' \
   'nopqrstuvwxyzabcdefghijklmNOPQRSTUVWXYZABCDEFGHIJKLM'
 EOF
-chmod +x "$TEST_ROOT/rot13.sh"
+
+write_script rot13-filter.pl "$PERL_PATH" \
+	<"$TEST_DIRECTORY"/t0021/rot13-filter.pl
 
 generate_random_characters () {
 	LEN=$1
@@ -22,13 +24,12 @@ generate_random_characters () {
 }
 
 file_size () {
-	cat "$1" | wc -c | sed "s/^[ ]*//"
+	perl -e 'print -s $ARGV[0]' "$1"
 }
 
 filter_git () {
 	rm -f rot13-filter.log &&
-	git "$@" 2>git-stderr.log &&
-	rm -f git-stderr.log
+	git "$@"
 }
 
 # Compare two files and ensure that `clean` and `smudge` respectively are
@@ -40,10 +41,9 @@ test_cmp_count () {
 	actual=$2
 	for FILE in "$expect" "$actual"
 	do
-		sort "$FILE" | uniq -c | sed "s/^[ ]*//" |
-			sed "s/^\([0-9]\) IN: clean/x IN: clean/" |
-			sed "s/^\([0-9]\) IN: smudge/x IN: smudge/" >"$FILE.tmp" &&
-		mv "$FILE.tmp" "$FILE"
+		sort "$FILE" | uniq -c |
+		sed -e "s/^ *[0-9][0-9]*[ 	]*IN: /x IN: /" >"$FILE.tmp" &&
+		mv "$FILE.tmp" "$FILE" || return
 	done &&
 	test_cmp "$expect" "$actual"
 }
@@ -66,7 +66,7 @@ test_cmp_exclude_clean () {
 # is equal to the committed content.
 test_cmp_committed_rot13 () {
 	test_cmp "$1" "$2" &&
-	"$TEST_ROOT/rot13.sh" <"$1" >expected &&
+	rot13.sh <"$1" >expected &&
 	git cat-file blob :"$2" >actual &&
 	test_cmp expected actual
 }
@@ -93,7 +93,7 @@ test_expect_success setup '
 	git checkout -- test test.t test.i &&
 
 	echo "content-test2" >test2.o &&
-	echo "content-test3 - filename with special characters" >"test3 '\''sq'\'',\$x.o"
+	echo "content-test3 - filename with special characters" >"test3 '\''sq'\'',\$x=.o"
 '
 
 script='s/^\$Id: \([0-9a-f]*\) \$/\1/p'
@@ -342,7 +342,7 @@ test_expect_success 'diff does not reuse worktree files that need cleaning' '
 '
 
 test_expect_success PERL 'required process filter should filter data' '
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean smudge" &&
 	test_config_global filter.protocol.required true &&
 	rm -rf repo &&
 	mkdir repo &&
@@ -350,21 +350,20 @@ test_expect_success PERL 'required process filter should filter data' '
 		cd repo &&
 		git init &&
 
-		echo "git-stderr.log" >.gitignore &&
 		echo "*.r filter=protocol" >.gitattributes &&
 		git add . &&
-		git commit . -m "test commit 1" &&
+		git commit -m "test commit 1" &&
 		git branch empty-branch &&
 
 		cp "$TEST_ROOT/test.o" test.r &&
 		cp "$TEST_ROOT/test2.o" test2.r &&
 		mkdir testsubdir &&
-		cp "$TEST_ROOT/test3 '\''sq'\'',\$x.o" "testsubdir/test3 '\''sq'\'',\$x.r" &&
+		cp "$TEST_ROOT/test3 '\''sq'\'',\$x=.o" "testsubdir/test3 '\''sq'\'',\$x=.r" &&
 		>test4-empty.r &&
 
 		S=$(file_size test.r) &&
 		S2=$(file_size test2.r) &&
-		S3=$(file_size "testsubdir/test3 '\''sq'\'',\$x.r") &&
+		S3=$(file_size "testsubdir/test3 '\''sq'\'',\$x=.r") &&
 
 		filter_git add . &&
 		cat >expected.log <<-EOF &&
@@ -373,35 +372,20 @@ test_expect_success PERL 'required process filter should filter data' '
 			IN: clean test.r $S [OK] -- OUT: $S . [OK]
 			IN: clean test2.r $S2 [OK] -- OUT: $S2 . [OK]
 			IN: clean test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
+			IN: clean testsubdir/test3 '\''sq'\'',\$x=.r $S3 [OK] -- OUT: $S3 . [OK]
 			STOP
 		EOF
 		test_cmp_count expected.log rot13-filter.log &&
 
-		filter_git commit . -m "test commit 2" &&
-		cat >expected.log <<-EOF &&
-			START
-			init handshake complete
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
-			IN: clean test2.r $S2 [OK] -- OUT: $S2 . [OK]
-			IN: clean test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
-			IN: clean test.r $S [OK] -- OUT: $S . [OK]
-			IN: clean test2.r $S2 [OK] -- OUT: $S2 . [OK]
-			IN: clean test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: clean testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
-			STOP
-		EOF
-		test_cmp_count expected.log rot13-filter.log &&
-
-		rm -f test2.r "testsubdir/test3 '\''sq'\'',\$x.r" &&
+		git commit -m "test commit 2" &&
+		rm -f test2.r "testsubdir/test3 '\''sq'\'',\$x=.r" &&
 
 		filter_git checkout --quiet --no-progress . &&
 		cat >expected.log <<-EOF &&
 			START
 			init handshake complete
 			IN: smudge test2.r $S2 [OK] -- OUT: $S2 . [OK]
-			IN: smudge testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
+			IN: smudge testsubdir/test3 '\''sq'\'',\$x=.r $S3 [OK] -- OUT: $S3 . [OK]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
@@ -422,20 +406,20 @@ test_expect_success PERL 'required process filter should filter data' '
 			IN: smudge test.r $S [OK] -- OUT: $S . [OK]
 			IN: smudge test2.r $S2 [OK] -- OUT: $S2 . [OK]
 			IN: smudge test4-empty.r 0 [OK] -- OUT: 0  [OK]
-			IN: smudge testsubdir/test3 '\''sq'\'',\$x.r $S3 [OK] -- OUT: $S3 . [OK]
+			IN: smudge testsubdir/test3 '\''sq'\'',\$x=.r $S3 [OK] -- OUT: $S3 . [OK]
 			STOP
 		EOF
 		test_cmp_exclude_clean expected.log rot13-filter.log &&
 
 		test_cmp_committed_rot13 "$TEST_ROOT/test.o" test.r &&
 		test_cmp_committed_rot13 "$TEST_ROOT/test2.o" test2.r &&
-		test_cmp_committed_rot13 "$TEST_ROOT/test3 '\''sq'\'',\$x.o" "testsubdir/test3 '\''sq'\'',\$x.r"
+		test_cmp_committed_rot13 "$TEST_ROOT/test3 '\''sq'\'',\$x=.o" "testsubdir/test3 '\''sq'\'',\$x=.r"
 	)
 '
 
 test_expect_success PERL 'required process filter takes precedence' '
 	test_config_global filter.protocol.clean false &&
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean" &&
 	test_config_global filter.protocol.required true &&
 	rm -rf repo &&
 	mkdir repo &&
@@ -460,7 +444,7 @@ test_expect_success PERL 'required process filter takes precedence' '
 '
 
 test_expect_success PERL 'required process filter should be used only for "clean" operation only' '
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean" &&
 	rm -rf repo &&
 	mkdir repo &&
 	(
@@ -495,7 +479,7 @@ test_expect_success PERL 'required process filter should be used only for "clean
 '
 
 test_expect_success PERL 'required process filter should process multiple packets' '
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean smudge" &&
 	test_config_global filter.protocol.required true &&
 
 	rm -rf repo &&
@@ -515,7 +499,7 @@ test_expect_success PERL 'required process filter should process multiple packet
 		for FILE in "$TEST_ROOT"/*.file
 		do
 			cp "$FILE" . &&
-			"$TEST_ROOT/rot13.sh" <"$FILE" >"$FILE.rot13"
+			rot13.sh <"$FILE" >"$FILE.rot13"
 		done &&
 
 		echo "*.file filter=protocol" >.gitattributes &&
@@ -555,7 +539,7 @@ test_expect_success PERL 'required process filter should process multiple packet
 '
 
 test_expect_success PERL 'required process filter with clean error should fail' '
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean smudge" &&
 	test_config_global filter.protocol.required true &&
 	rm -rf repo &&
 	mkdir repo &&
@@ -574,7 +558,7 @@ test_expect_success PERL 'required process filter with clean error should fail' 
 '
 
 test_expect_success PERL 'process filter should restart after unexpected write failure' '
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean smudge" &&
 	rm -rf repo &&
 	mkdir repo &&
 	(
@@ -618,14 +602,14 @@ test_expect_success PERL 'process filter should restart after unexpected write f
 
 		# Smudge failed
 		! test_cmp smudge-write-fail.o smudge-write-fail.r &&
-		"$TEST_ROOT/rot13.sh" <smudge-write-fail.o >expected &&
+		rot13.sh <smudge-write-fail.o >expected &&
 		git cat-file blob :smudge-write-fail.r >actual &&
 		test_cmp expected actual
 	)
 '
 
 test_expect_success PERL 'process filter should not be restarted if it signals an error' '
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean smudge" &&
 	rm -rf repo &&
 	mkdir repo &&
 	(
@@ -664,7 +648,7 @@ test_expect_success PERL 'process filter should not be restarted if it signals a
 '
 
 test_expect_success PERL 'process filter abort stops processing of all further files' '
-	test_config_global filter.protocol.process "$TEST_DIRECTORY/t0021/rot13-filter.pl clean smudge" &&
+	test_config_global filter.protocol.process "rot13-filter.pl clean smudge" &&
 	rm -rf repo &&
 	mkdir repo &&
 	(

@@ -122,7 +122,7 @@ static struct option builtin_fetch_options[] = {
 	OPT_STRING(0, "shallow-since", &deepen_since, N_("time"),
 		   N_("deepen history of shallow repository based on time")),
 	OPT_STRING_LIST(0, "shallow-exclude", &deepen_not, N_("revision"),
-			N_("deepen history of shallow clone by excluding rev")),
+			N_("deepen history of shallow clone, excluding rev")),
 	OPT_INTEGER(0, "deepen", &deepen_relative,
 		    N_("deepen history of shallow clone")),
 	{ OPTION_SET_INT, 0, "unshallow", &unshallow, NULL,
@@ -359,9 +359,6 @@ static struct ref *get_ref_map(struct transport *transport,
 
 		for (i = 0; i < fetch_refspec_nr; i++)
 			get_fetch_map(ref_map, &fetch_refspec[i], &oref_tail, 1);
-
-		if (tags == TAGS_SET)
-			get_fetch_map(remote_refs, tag_refspec, &tail, 0);
 	} else if (refmap_array) {
 		die("--refmap option is only meaningful with command-line refspec(s).");
 	} else {
@@ -1180,7 +1177,7 @@ static int add_remote_or_group(const char *name, struct string_list *list)
 	git_config(get_remote_group, &g);
 	if (list->nr == prev_nr) {
 		struct remote *remote = remote_get(name);
-		if (!remote_is_configured(remote))
+		if (!remote_is_configured(remote, 0))
 			return 0;
 		string_list_append(list, remote->name);
 	}

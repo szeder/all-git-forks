@@ -228,8 +228,7 @@ N_("\n"
 "will track its remote counterpart, you may want to use\n"
 "\"git push -u\" to set the upstream config as you push.");
 
-void create_branch(const char *head,
-		   const char *name, const char *start_name,
+void create_branch(const char *name, const char *start_name,
 		   int force, int reflog, int clobber_head,
 		   int quiet, enum branch_track track)
 {
@@ -299,7 +298,7 @@ void create_branch(const char *head,
 			 start_name);
 
 	if (reflog)
-		log_all_ref_updates = 1;
+		log_all_ref_updates = LOG_REFS_NORMAL;
 
 	if (!dont_change_ref) {
 		struct ref_transaction *transaction;
@@ -349,7 +348,7 @@ void die_if_checked_out(const char *branch, int ignore_current_worktree)
 int replace_each_worktree_head_symref(const char *oldref, const char *newref)
 {
 	int ret = 0;
-	struct worktree **worktrees = get_worktrees();
+	struct worktree **worktrees = get_worktrees(0);
 	int i;
 
 	for (i = 0; worktrees[i]; i++) {
