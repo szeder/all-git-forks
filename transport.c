@@ -645,10 +645,15 @@ static int external_specification_len(const char *url)
 	return strchr(url, ':') - url;
 }
 
+int override_protocol_whitelist;
+
 static const struct string_list *protocol_whitelist(void)
 {
 	static int enabled = -1;
 	static struct string_list allowed = STRING_LIST_INIT_DUP;
+
+	if (override_protocol_whitelist)
+		return NULL;
 
 	if (enabled < 0) {
 		const char *v = getenv("GIT_ALLOW_PROTOCOL");
