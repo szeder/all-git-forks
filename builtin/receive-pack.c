@@ -65,6 +65,8 @@ static void *head_name_to_free;
 static int sent_capabilities;
 static int shallow_update;
 static const char *alt_shallow_file;
+static int advertise_alternates = 1;
+
 static struct strbuf push_cert = STRBUF_INIT;
 static unsigned char push_cert_sha1[20];
 static struct signature_check sigcheck;
@@ -222,6 +224,11 @@ static int receive_pack_config(const char *var, const char *value, void *cb)
 		return 0;
 	}
 
+	if (strcmp(var, "receive.advertisealternates") == 0) {
+		advertise_alternates = git_config_bool(var, value);
+		return 0;
+	}
+
 	return git_default_config(var, value, cb);
 }
 
@@ -292,7 +299,8 @@ static void write_head_info(void)
 	static struct oidset seen = OIDSET_INIT;
 
 	for_each_ref(show_ref_cb, &seen);
-	for_each_alternate_ref(show_one_alternate_ref, &seen);
+	if (advertise_alternates)
+		for_each_alternate_ref(show_one_alternate_ref, &seen);
 	oidset_clear(&seen);
 	if (!sent_capabilities)
 		show_ref("capabilities^{}", null_sha1);
