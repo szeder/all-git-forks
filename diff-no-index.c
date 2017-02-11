@@ -246,6 +246,8 @@ void diff_no_index(struct rev_info *revs,
 		int j;
 		if (!strcmp(argv[i], "--no-index"))
 			i++;
+		else if (!strcmp(argv[i], "--progress"))
+			; /* handled elsewhere */
 		else if (!strcmp(argv[i], "--"))
 			i++;
 		else {

@@ -262,6 +262,8 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 	struct blobinfo blob[2];
 	int nongit = 0, no_index = 0;
 	int result = 0;
+	int progress = -1;
+	int unknown_argc, parsed_argc;
 
 	/*
 	 * We could get N tree-ish in the rev.pending_objects list.
@@ -361,6 +363,32 @@ int cmd_diff(int argc, const char **argv, const char *prefix)
 		rev.diffopt.output_format = DIFF_FORMAT_PATCH;
 		diff_setup_done(&rev.diffopt);
 	}
+
+	parsed_argc = 0;
+	for (unknown_argc = i = 1; i < argc; i++) {
+		const char *arg = argv[i];
+		if (!strcmp(arg, "--") || arg[0] != '-') {
+			int j;
+			for (j = i; j < argc; j++)
+				argv[unknown_argc++] = argv[j];
+			break;
+		}
+		else if (!strcmp(argv[i], "--progress"))
+			progress = 1;
+		else if (!strcmp(argv[i], "--no-progress"))
+			progress = 0;
+		else {
+			argv[unknown_argc++] = argv[i];
+			continue;
+		}
+		parsed_argc++;
+	}
+	argc -= parsed_argc;
+
+	if (progress == -1)
+		progress = isatty(2);
+	if (progress)
+		rev.diffopt.show_rename_progress = 1;
 
 	DIFF_OPT_SET(&rev.diffopt, RECURSIVE);
 
