@@ -117,7 +117,7 @@ static void process_tree(struct rev_info *revs,
 			process_gitlink(revs, entry.oid->hash,
 					show, base, entry.path,
 					cb_data);
-		else
+		else if (revs->blob_objects)
 			process_blob(revs,
 				     lookup_blob(entry.oid->hash),
 				     show, base, entry.path,
