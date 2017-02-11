@@ -113,9 +113,6 @@ all::
 #
 # Define NO_SYS_SELECT_H if you don't have sys/select.h.
 #
-# Define NO_SYMLINK_HEAD if you never want .git/HEAD to be a symbolic link.
-# Enable it on Windows.  By default, symrefs are still used.
-#
 # Define NO_SVN_TESTS if you want to skip time-consuming SVN interoperability
 # tests.  These tests take up a significant amount of the total test time
 # but are not needed unless you plan to talk to SVN repos.
@@ -1246,9 +1243,6 @@ endif
 ifdef FREAD_READS_DIRECTORIES
 	COMPAT_CFLAGS += -DFREAD_READS_DIRECTORIES
 	COMPAT_OBJS += compat/fopen.o
-endif
-ifdef NO_SYMLINK_HEAD
-	BASIC_CFLAGS += -DNO_SYMLINK_HEAD
 endif
 ifdef GETTEXT_POISON
 	BASIC_CFLAGS += -DGETTEXT_POISON

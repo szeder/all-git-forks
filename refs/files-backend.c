@@ -2955,21 +2955,6 @@ static int commit_ref_update(struct files_ref_store *refs,
 	return 0;
 }
 
-static int create_ref_symlink(struct ref_lock *lock, const char *target)
-{
-	int ret = -1;
-#ifndef NO_SYMLINK_HEAD
-	char *ref_path = get_locked_file_path(lock->lk);
-	unlink(ref_path);
-	ret = symlink(target, ref_path);
-	free(ref_path);
-
-	if (ret)
-		fprintf(stderr, "no symlink - falling back to symbolic ref\n");
-#endif
-	return ret;
-}
-
 static void update_symref_reflog(struct ref_lock *lock, const char *refname,
 				 const char *target, const char *logmsg)
 {
@@ -2986,11 +2971,6 @@ static void update_symref_reflog(struct ref_lock *lock, const char *refname,
 static int create_symref_locked(struct ref_lock *lock, const char *refname,
 				const char *target, const char *logmsg)
 {
-	if (prefer_symlink_refs && !create_ref_symlink(lock, target)) {
-		update_symref_reflog(lock, refname, target, logmsg);
-		return 0;
-	}
-
 	if (!fdopen_lock_file(lock->lk, "w"))
 		return error("unable to fdopen %s: %s",
 			     lock->lk->tempfile.filename.buf, strerror(errno));
