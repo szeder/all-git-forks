@@ -4,6 +4,8 @@
 #include "git-compat-util.h"
 #include "strbuf.h"
 
+struct argv_array;
+
 struct trace_key {
 	const char * const key;
 	int fd;
@@ -19,6 +21,13 @@ extern void trace_disable(struct trace_key *key);
 extern uint64_t getnanotime(void);
 extern void trace_command_performance(const char **argv);
 extern void trace_verbatim(struct trace_key *key, const void *buf, unsigned len);
+
+/**
+ * Load any trace-related config for git command "cmd", and insert the matching
+ * environment variables into "out", which is suitable for use by run-command
+ * and friends.
+ */
+void trace_config_for(const char *cmd, struct argv_array *out);
 
 #ifndef HAVE_VARIADIC_MACROS
 

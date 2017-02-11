@@ -24,6 +24,7 @@
 
 #include "cache.h"
 #include "quote.h"
+#include "argv-array.h"
 
 /*
  * "Normalize" a key argument by converting NULL to our trace_default,
@@ -36,6 +37,16 @@ static void normalize_trace_key(struct trace_key **key)
 	static struct trace_key trace_default = { "GIT_TRACE" };
 	if (!*key)
 		*key = &trace_default;
+}
+
+static size_t expand_trace_name(struct strbuf *out, const char *fmt,
+				void *data)
+{
+	if (*fmt == 'p') {
+		strbuf_addf(out, "%lu", (unsigned long)getpid());
+		return 1;
+	}
+	return 0;
 }
 
 /* Get a trace file descriptor from "key" env variable. */
@@ -59,15 +70,20 @@ static int get_trace_fd(struct trace_key *key)
 	else if (strlen(trace) == 1 && isdigit(*trace))
 		key->fd = atoi(trace);
 	else if (is_absolute_path(trace)) {
-		int fd = open(trace, O_WRONLY | O_APPEND | O_CREAT, 0666);
+		struct strbuf name = STRBUF_INIT;
+		int fd;
+
+		strbuf_expand(&name, trace, expand_trace_name, NULL);
+		fd = open(name.buf, O_WRONLY | O_APPEND | O_CREAT, 0666);
 		if (fd == -1) {
 			warning("could not open '%s' for tracing: %s",
-				trace, strerror(errno));
+				name.buf, strerror(errno));
 			trace_disable(key);
 		} else {
 			key->fd = fd;
 			key->need_close = 1;
 		}
+		strbuf_release(&name);
 	} else {
 		warning("unknown trace value for '%s': %s\n"
 			"         If you want to trace into a file, then please set %s\n"
@@ -114,12 +130,13 @@ static int prepare_trace_line(const char *file, int line,
 	localtime_r(&secs, &tm);
 	strbuf_addf(buf, "%02d:%02d:%02d.%06ld ", tm.tm_hour, tm.tm_min,
 		    tm.tm_sec, (long) tv.tv_usec);
+	strbuf_addf(buf, "[pid=%lu] ", (unsigned long)getpid());
 
 #ifdef HAVE_VARIADIC_MACROS
 	/* print file:line */
 	strbuf_addf(buf, "%s:%d ", file, line);
-	/* align trace output (column 40 catches most files names in git) */
-	while (buf->len < 40)
+	/* align trace output (column 50 catches most files names in git) */
+	while (buf->len < 50)
 		strbuf_addch(buf, ' ');
 #endif
 
@@ -446,4 +463,47 @@ void trace_command_performance(const char **argv)
 	strbuf_reset(&command_line);
 	sq_quote_argv(&command_line, argv, 0);
 	command_start_time = getnanotime();
+}
+
+struct trace_config_data {
+	const char *want_cmd;
+	struct argv_array *out;
+};
+
+static int trace_config_cb(const char *var, const char *value, void *vdata)
+{
+	struct trace_config_data *data = vdata;
+	const char *have_cmd, *key;
+	int have_len;
+
+	if (!parse_config_key(var, "trace", &have_cmd, &have_len, &key) &&
+	    have_cmd &&
+	    !strncmp(data->want_cmd, have_cmd, have_len) &&
+	    data->want_cmd[have_len] == '\0') {
+		struct strbuf buf = STRBUF_INIT;
+
+		strbuf_addstr(&buf, "GIT_TRACE_");
+		while (*key)
+			strbuf_addch(&buf, toupper(*key++));
+
+		/*
+		 * Environment always takes precedence over config, so do not
+		 * override existing variables. We cannot rely on setenv()'s
+		 * overwrite flag here, because we may pass the list off to
+		 * a spawn() implementation, which always overwrites.
+		 */
+		if (!getenv(buf.buf))
+			argv_array_pushf(data->out, "%s=%s", buf.buf, value);
+
+		strbuf_release(&buf);
+	}
+	return 0;
+}
+
+void trace_config_for(const char *cmd, struct argv_array *out)
+{
+	struct trace_config_data data;
+	data.want_cmd = cmd;
+	data.out = out;
+	git_config(trace_config_cb, &data);
 }
