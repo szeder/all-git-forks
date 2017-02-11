@@ -136,6 +136,7 @@ struct ewah_iterator {
 	size_t buffer_size;
 
 	size_t pointer;
+	size_t words_remaining;
 	eword_t compressed, literals;
 	eword_t rl, lw;
 	int b;
