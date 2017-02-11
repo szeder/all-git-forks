@@ -37,6 +37,7 @@ static struct string_list extra_refs = STRING_LIST_INIT_NODUP;
 static struct refspec *refspecs;
 static int refspecs_nr;
 static int anonymize;
+static int anonymize_refs = 1;
 
 static int parse_opt_signed_tag_mode(const struct option *opt,
 				     const char *arg, int unset)
@@ -576,7 +577,8 @@ static void handle_commit(struct commit *commit, struct rev_info *rev)
 
 	refname = commit->util;
 	if (anonymize) {
-		refname = anonymize_refname(refname);
+		if (anonymize_refs)
+			refname = anonymize_refname(refname);
 		anonymize_ident_line(&committer, &committer_end);
 		anonymize_ident_line(&author, &author_end);
 	}
@@ -998,6 +1000,7 @@ int cmd_fast_export(int argc, const char **argv, const char *prefix)
 		OPT_STRING_LIST(0, "refspec", &refspecs_list, N_("refspec"),
 			     N_("Apply refspec to exported refs")),
 		OPT_BOOL(0, "anonymize", &anonymize, N_("anonymize output")),
+		OPT_BOOL(0, "anonymize-refs", &anonymize_refs, N_("anonymize refs, too")),
 		OPT_END()
 	};
 
