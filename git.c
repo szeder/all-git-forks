@@ -74,6 +74,19 @@ static void commit_pager_choice(void) {
 	}
 }
 
+void try_subcommand_pager(const char *subcommand, int fallback)
+{
+	/* it's too late to turn off a running pager */
+	if (pager_in_use())
+		return;
+
+	if (use_pager == -1)
+		use_pager = check_pager_config(subcommand);
+	if (use_pager == -1)
+		use_pager = fallback;
+	commit_pager_choice();
+}
+
 static int handle_options(const char ***argv, int *argc, int *envchanged)
 {
 	const char **orig_argv = *argv;

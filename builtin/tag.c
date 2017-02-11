@@ -57,6 +57,7 @@ static int list_tags(struct ref_filter *filter, struct ref_sorting *sorting, con
 	filter_refs(&array, filter, FILTER_REFS_TAGS);
 	ref_array_sort(sorting, &array);
 
+	try_subcommand_pager("tag.list", 1);
 	for (i = 0; i < array.nr; i++)
 		show_ref_array_item(array.items[i], format, 0);
 	ref_array_clear(&array);
