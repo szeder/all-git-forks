@@ -12,6 +12,7 @@
 #include "run-command.h"
 #include "connect.h"
 #include "sigchain.h"
+#include "dumpstat/dumpstat.h"
 #include "version.h"
 #include "string-list.h"
 #include "parse-options.h"
@@ -63,6 +64,10 @@ static int advertise_refs;
 static int stateless_rpc;
 static const char *pack_objects_hook;
 
+static struct dumpstat bytes_sent = DUMPSTAT_INIT("bytes_sent");
+static struct dumpstat state = DUMPSTAT_INIT("state");
+static struct dumpstat cloning = DUMPSTAT_INIT("cloning");
+
 static void reset_timeout(void)
 {
 	alarm(timeout);
@@ -70,6 +75,8 @@ static void reset_timeout(void)
 
 static void send_client_data(int fd, const char *data, ssize_t sz)
 {
+	dumpstat_increment(&bytes_sent, sz, 256*1024);
+
 	if (use_sideband) {
 		send_sideband(1, fd, data, sz, use_sideband);
 		return;
@@ -429,6 +436,8 @@ static int get_common_commits(void)
 				}
 				break;
 			default:
+				if (!got_common)
+					dumpstat_bool(&cloning, 0);
 				got_common = 1;
 				memcpy(last_hex, sha1_to_hex(sha1), 41);
 				if (multi_ack == 2)
@@ -980,11 +989,13 @@ static void upload_pack(void)
 
 	if (advertise_refs || !stateless_rpc) {
 		reset_timeout();
+		dumpstat_string(&state, "send_ref");
 		head_ref_namespaced(send_ref, &symref);
 		for_each_namespaced_ref(send_ref, &symref);
 		advertise_shallow_grafts(1);
 		packet_flush(1);
 	} else {
+		dumpstat_string(&state, "mark_our_ref");
 		head_ref_namespaced(check_ref, NULL);
 		for_each_namespaced_ref(check_ref, NULL);
 	}
@@ -992,10 +1003,19 @@ static void upload_pack(void)
 	if (advertise_refs)
 		return;
 
+	dumpstat_string(&state, "receive_needs");
 	receive_needs();
 	if (want_obj.nr) {
+		dumpstat_string(&state, "get_common_commits");
 		get_common_commits();
+
+		dumpstat_bool(&cloning, !have_obj.nr);
+		dumpstat_string(&state, "create_pack_file");
 		create_pack_file();
+	}
+	else {
+		dumpstat_bool(&cloning, 0);
+		dumpstat_string(&state, "up_to_date");
 	}
 }
 
@@ -1043,6 +1063,7 @@ int cmd_main(int argc, const char **argv)
 		OPT_END()
 	};
 
+	dumpstat_identity("upload-pack");
 	packet_trace_identity("upload-pack");
 	check_replace_refs = 0;
 
@@ -1063,5 +1084,6 @@ int cmd_main(int argc, const char **argv)
 
 	git_config(upload_pack_config, NULL);
 	upload_pack();
+	dumpstat_flush(&bytes_sent);
 	return 0;
 }
