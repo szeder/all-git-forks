@@ -301,4 +301,16 @@ test_expect_success 'fetch url' '
 	compare_refs server HEAD local FETCH_HEAD
 '
 
+test_expect_success 'totally broken helper reports failure message' '
+	write_script git-remote-broken <<-\EOF &&
+	exit 1
+	EOF
+	(
+		PATH="$(pwd):$PATH" &&
+		export PATH &&
+		test_must_fail git clone broken://example.com/foo.git 2>stderr
+	) &&
+	test_i18ngrep aborted stderr
+'
+
 test_done
