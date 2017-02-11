@@ -739,6 +739,7 @@ extern int core_apply_sparse_checkout;
 extern int precomposed_unicode;
 extern int protect_hfs;
 extern int protect_ntfs;
+extern int allow_external_symlinks;
 extern int git_db_env, git_index_env, git_graft_env, git_common_dir_env;
 
 /*
@@ -2126,5 +2127,7 @@ void sleep_millisec(int millisec);
  * directories.
  */
 void safe_create_dir(const char *dir, int share);
+
+int safe_symlink(const char *target, const char *linkpath);
 
 #endif /* CACHE_H */

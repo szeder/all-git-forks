@@ -818,7 +818,7 @@ static int update_file_flags(struct merge_options *o,
 			update_wd = 0;
 			goto free_buf;
 		}
-		if (S_ISREG(mode) || (!has_symlinks && S_ISLNK(mode))) {
+		if (S_ISREG(mode) || (S_ISLNK(mode) && !has_symlinks)) {
 			int fd;
 			if (mode & 0100)
 				mode = 0777;
@@ -836,7 +836,7 @@ static int update_file_flags(struct merge_options *o,
 			char *lnk = xmemdupz(buf, size);
 			safe_create_leading_directories_const(path);
 			unlink(path);
-			if (symlink(lnk, path))
+			if (safe_symlink(lnk, path))
 				ret = err(o, _("failed to symlink '%s': %s"),
 					path, strerror(errno));
 			free(lnk);
