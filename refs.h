@@ -568,4 +568,10 @@ struct ref_store *get_submodule_ref_store(const char *submodule);
 struct worktree;
 struct ref_store *get_worktree_ref_store(const struct worktree *wt);
 
+const char *refs_resolve_ref_unsafe(struct ref_store *refs,
+				    const char *refname,
+				    int resolve_flags,
+				    unsigned char *sha1,
+				    int *flags);
+
 #endif /* REFS_H */

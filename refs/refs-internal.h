@@ -634,11 +634,6 @@ struct ref_store {
 void base_ref_store_init(struct ref_store *refs,
 			 const struct ref_storage_be *be);
 
-const char *resolve_ref_recursively(struct ref_store *refs,
-				    const char *refname,
-				    int resolve_flags,
-				    unsigned char *sha1, int *flags);
-
 static inline int is_per_worktree_ref(const char *refname)
 {
 	return !starts_with(refname, "refs/") ||
