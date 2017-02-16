@@ -548,6 +548,33 @@ void set_config_update_recurse_submodules(int value)
 	config_update_recurse_submodules = value;
 }
 
+int touch_submodules_in_worktree(void)
+{
+	/*
+	 * Update can't be "none", "merge" or "rebase",
+	 * treat any value as OFF, except an explicit ON.
+	 */
+	return config_update_recurse_submodules == RECURSE_SUBMODULES_ON;
+}
+
+int is_active_submodule_with_strategy(const struct cache_entry *ce,
+				      enum submodule_update_type strategy)
+{
+	const struct submodule *sub;
+
+	if (!S_ISGITLINK(ce->ce_mode))
+		return 0;
+
+	if (!touch_submodules_in_worktree())
+		return 0;
+
+	sub = submodule_from_path(null_sha1, ce->name);
+	if (!sub)
+		return 0;
+
+	return sub->update_strategy.type == strategy;
+}
+
 static int has_remote(const char *refname, const struct object_id *oid,
 		      int flags, void *cb_data)
 {

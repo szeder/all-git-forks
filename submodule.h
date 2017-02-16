@@ -65,6 +65,19 @@ extern void show_submodule_inline_diff(FILE *f, const char *path,
 		const struct diff_options *opt);
 extern void set_config_fetch_recurse_submodules(int value);
 extern void set_config_update_recurse_submodules(int value);
+
+/*
+ * Traditionally Git ignored changes made for submodules.
+ * This function checks if we are interested in the given submodule
+ * for any kind of operation.
+ */
+extern int touch_submodules_in_worktree(void);
+/*
+ * Check if the given ce entry is a submodule with the given update
+ * strategy configured.
+ */
+extern int is_active_submodule_with_strategy(const struct cache_entry *ce,
+					     enum submodule_update_type strategy);
 extern void check_for_new_submodule_commits(unsigned char new_sha1[20]);
 extern int fetch_populated_submodules(const struct argv_array *options,
 			       const char *prefix, int command_line_option,
