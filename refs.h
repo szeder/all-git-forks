@@ -565,5 +565,7 @@ struct ref_store *get_main_ref_store(void);
  * submodule==NULL.
  */
 struct ref_store *get_submodule_ref_store(const char *submodule);
+struct worktree;
+struct ref_store *get_worktree_ref_store(const struct worktree *wt);
 
 #endif /* REFS_H */

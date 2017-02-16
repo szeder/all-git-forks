@@ -10,6 +10,7 @@
 #include "object.h"
 #include "tag.h"
 #include "submodule.h"
+#include "worktree.h"
 
 /*
  * List of all available backends
@@ -1483,6 +1484,32 @@ struct ref_store *get_submodule_ref_store(const char *submodule)
 
 	if (refs)
 		register_submodule_ref_store(refs, submodule);
+	return refs;
+}
+
+struct ref_store *get_worktree_ref_store(const struct worktree *wt)
+{
+	struct ref_store *refs;
+
+	if (wt->is_current)
+		return get_main_ref_store();
+
+	/*
+	 * We share the same hash map with submodules for
+	 * now. submodule paths are always relative (to topdir) while
+	 * worktree paths are always absolute. No chance of conflict.
+	 */
+	refs = lookup_submodule_ref_store(wt->path);
+	if (refs)
+		return refs;
+
+	if (wt->id)
+		refs = ref_store_init(git_common_path("worktrees/%s", wt->id));
+	else
+		refs = ref_store_init(get_git_common_dir());
+
+	if (refs)
+		register_submodule_ref_store(refs, wt->path);
 	return refs;
 }
 
