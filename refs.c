@@ -1535,13 +1535,25 @@ int peel_ref(const char *refname, unsigned char *sha1)
 	return refs->be->peel_ref(refs, refname, sha1);
 }
 
-int create_symref(const char *ref_target, const char *refs_heads_master,
+int refs_create_symref(struct ref_store *refs,
+		       const char *ref_target,
+		       const char *refs_heads_master,
+		       const char *logmsg)
+{
+	return refs->be->create_symref(refs,
+				       ref_target,
+				       refs_heads_master,
+				       logmsg);
+}
+
+int create_symref(const char *ref_target,
+		  const char *refs_heads_master,
 		  const char *logmsg)
 {
-	struct ref_store *refs = get_main_ref_store();
-
-	return refs->be->create_symref(refs, ref_target, refs_heads_master,
-				       logmsg);
+	return refs_create_symref(get_main_ref_store(),
+				  ref_target,
+				  refs_heads_master,
+				  logmsg);
 }
 
 int ref_transaction_commit(struct ref_transaction *transaction,

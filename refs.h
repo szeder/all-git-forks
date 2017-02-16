@@ -573,5 +573,9 @@ const char *refs_resolve_ref_unsafe(struct ref_store *refs,
 				    int resolve_flags,
 				    unsigned char *sha1,
 				    int *flags);
+int refs_create_symref(struct ref_store *refs,
+		       const char *refname,
+		       const char *target,
+		       const char *logmsg);
 
 #endif /* REFS_H */
