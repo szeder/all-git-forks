@@ -917,13 +917,6 @@ struct packed_ref_cache {
 struct files_ref_store {
 	struct ref_store base;
 
-	/*
-	 * The name of the submodule represented by this object, or
-	 * NULL if it represents the main repository's reference
-	 * store:
-	 */
-	const char *submodule;
-
 	struct strbuf gitdir;
 	struct strbuf gitcommondir;
 
@@ -945,10 +938,7 @@ static void files_path(struct files_ref_store *refs, struct strbuf *sb,
 	va_start(vap, fmt);
 	strbuf_vaddf(&tmp, fmt, vap);
 	va_end(vap);
-	if (refs->submodule)
-		strbuf_git_path_submodule(sb, refs->submodule,
-					  "%s", tmp.buf);
-	else if (!strcmp(tmp.buf, "packed-refs") || !strcmp(tmp.buf, "logs"))
+	if (!strcmp(tmp.buf, "packed-refs") || !strcmp(tmp.buf, "logs"))
 		strbuf_addf(sb, "%s/%s", refs->gitcommondir.buf, tmp.buf);
 	else if (is_per_worktree_ref(tmp.buf) ||
 		 (skip_prefix(tmp.buf, "logs/", &ref) &&
@@ -1007,7 +997,7 @@ static void clear_loose_ref_cache(struct files_ref_store *refs)
  * Create a new submodule ref cache and add it to the internal
  * set of caches.
  */
-static struct ref_store *files_ref_store_create(const char *submodule)
+static struct ref_store *files_ref_store_create(const char *gitdir)
 {
 	struct files_ref_store *refs = xcalloc(1, sizeof(*refs));
 	struct ref_store *ref_store = (struct ref_store *)refs;
@@ -1017,8 +1007,9 @@ static struct ref_store *files_ref_store_create(const char *submodule)
 	strbuf_init(&refs->gitdir, 0);
 	strbuf_init(&refs->gitcommondir, 0);
 
-	if (submodule) {
-		refs->submodule = xstrdup(submodule);
+	if (gitdir) {
+		strbuf_addstr(&refs->gitdir, gitdir);
+		get_common_dir_noenv(&refs->gitcommondir, gitdir);
 	} else {
 		strbuf_addstr(&refs->gitdir, get_git_dir());
 		strbuf_addstr(&refs->gitcommondir, get_git_common_dir());
@@ -1034,8 +1025,7 @@ static struct ref_store *files_ref_store_create(const char *submodule)
 static void files_assert_main_repository(struct files_ref_store *refs,
 					 const char *caller)
 {
-	if (refs->submodule)
-		die("BUG: %s called for a submodule", caller);
+	/* This function is to be deleted in the next patch */
 }
 
 /*
