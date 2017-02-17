@@ -1353,9 +1353,9 @@ test_expect_success 'set up --source tests' '
 
 test_expect_success 'log --source paints branch names' '
 	cat >expect <<-\EOF &&
-	09e12a9	source-b three
-	8e393e1	source-a two
-	1ac6c77	source-b one
+	09e12a9 three	source-b
+	8e393e1 two	source-a
+	1ac6c77 one	source-b
 	EOF
 	git log --oneline --source source-a source-b >actual &&
 	test_cmp expect actual
@@ -1364,9 +1364,9 @@ test_expect_success 'log --source paints branch names' '
 test_expect_success 'log --source paints tag names' '
 	git tag -m tagged source-tag &&
 	cat >expect <<-\EOF &&
-	09e12a9	source-tag three
-	8e393e1	source-a two
-	1ac6c77	source-tag one
+	09e12a9 three	source-tag
+	8e393e1 two	source-a
+	1ac6c77 one	source-tag
 	EOF
 	git log --oneline --source source-tag source-a >actual &&
 	test_cmp expect actual
