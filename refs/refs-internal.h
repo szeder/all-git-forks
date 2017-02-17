@@ -653,7 +653,7 @@ const char *resolve_ref_recursively(struct ref_store *refs,
 
 static inline int is_per_worktree_ref(const char *refname)
 {
-	return !strcmp(refname, "HEAD") ||
+	return !starts_with(refname, "refs/") ||
 		starts_with(refname, "refs/bisect/");
 }
 
