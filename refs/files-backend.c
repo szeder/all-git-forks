@@ -930,6 +930,24 @@ struct files_ref_store {
 /* Lock used for the main packed-refs file: */
 static struct lock_file packlock;
 
+__attribute__((format (printf, 3, 4)))
+static void files_path(struct files_ref_store *refs, struct strbuf *sb,
+		       const char *fmt, ...)
+{
+	struct strbuf tmp = STRBUF_INIT;
+	va_list vap;
+
+	va_start(vap, fmt);
+	strbuf_vaddf(&tmp, fmt, vap);
+	va_end(vap);
+	if (refs->submodule)
+		strbuf_git_path_submodule(sb, refs->submodule,
+					  "%s", tmp.buf);
+	else
+		strbuf_git_path(sb, "%s", tmp.buf);
+	strbuf_release(&tmp);
+}
+
 /*
  * Increment the reference count of *packed_refs.
  */
